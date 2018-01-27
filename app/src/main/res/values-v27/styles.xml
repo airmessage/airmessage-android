@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<style name="AppTheme.AppCompat" parent="@style/Theme.AppCompat.Light.DarkActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="android:colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimary</item>
+		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorPrimary</item>
+		<item name="android:colorAccent">@color/colorAccent</item>
+		
+		<item name="android:colorControlActivated">?android:attr/colorAccent</item>
+		<item name="android:actionBarTheme">@style/SolidActionBar</item>
+		<item name="android:windowBackground">@color/background</item>
+		<item name="android:actionModeBackground">@android:color/transparent</item>
+		
+		<item name="android:windowLightNavigationBar">true</item>
+		<item name="android:navigationBarDividerColor">#FFE0E0E0</item>
+		<item name="android:navigationBarColor">@android:color/white</item>
+	</style>
+	
+	<style name="AppTheme.Setup" parent="@style/Theme.AppCompat.Light.NoActionBar">
+		<item name="android:statusBarColor">#F5F5F5</item>
+		<item name="android:windowLightStatusBar">true</item>
+		<item name="android:colorPrimary">@color/colorPrimary</item>
+		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="colorControlActivated">@color/colorAccent</item>
+		<item name="colorControlHighlight">#60FFFFFF</item>
+		
+		<item name="android:windowLightNavigationBar">false</item>
+		<!-- <item name="android:navigationBarDividerColor">#FFE0E0E0</item> -->
+		<item name="android:navigationBarColor">#C2185B</item>
+	</style>
+	
+	<style name="AppTheme.AppCompat.Messaging" parent="@style/AppTheme.AppCompat">
+		<item name="android:navigationBarDividerColor">@android:color/transparent</item>
+	</style>
+</resources>

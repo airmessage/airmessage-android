@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/content_audio"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content">
+	
+	<LinearLayout
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_centerInParent="true"
+		android:orientation="vertical">
+		<LinearLayout
+			android:id="@+id/downloadcontent"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:background="@drawable/rounded_rectangle"
+			android:backgroundTint="@color/colorMessageOutgoing"
+			android:orientation="horizontal"
+			android:paddingBottom="8dp"
+			android:paddingTop="8dp">
+			
+			<ProgressBar
+				android:id="@+id/progressBar"
+				style="?android:attr/progressBarStyleHorizontal"
+				android:layout_width="80dp"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginEnd="4dp"
+				android:layout_marginStart="10dp"
+				android:indeterminate="true"
+				android:indeterminateOnly="false"
+				android:indeterminateTint="@color/colorMessageOutgoingAccent"
+				android:max="100"
+				android:progressTint="@color/colorMessageOutgoingAccent"
+				android:visibility="gone" />
+			
+			<TextView
+				android:id="@+id/download_label"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginStart="15dp"
+				android:layout_weight="1"
+				android:text="@string/contenttype_audio"
+				android:textColor="@color/colorMessageOutgoingText" />
+			
+			<ImageView
+				android:id="@+id/download_button"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginLeft="8dp"
+				android:layout_marginRight="8dp"
+				android:src="@drawable/download"
+				android:tint="@color/colorMessageOutgoingText" />
+		</LinearLayout>
+		
+		<LinearLayout
+			android:id="@+id/content"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:paddingBottom="8dp"
+			android:paddingTop="8dp"
+			android:background="@drawable/rounded_rectangle"
+			android:backgroundTint="@android:color/white"
+			android:orientation="horizontal"
+			android:visibility="gone">
+			
+			<ImageView
+				android:id="@+id/button_play_pause_toggle"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginEnd="4dp"
+				android:layout_marginStart="10dp"
+				android:src="@drawable/play"
+				android:tint="@android:color/black" />
+			
+			<TextView
+				android:id="@+id/audio_duration"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginLeft="4dp"
+				android:layout_marginRight="4dp"
+				android:text="@string/placeholder_audioduration"
+				android:textColor="@android:color/black" />
+			
+			<ProgressBar
+				android:id="@+id/audio_progress_bar"
+				style="?android:attr/progressBarStyleHorizontal"
+				android:layout_width="80dp"
+				android:layout_height="5dp"
+				android:width="0dip"
+				android:layout_gravity="center_vertical"
+				android:layout_marginEnd="15dp"
+				android:layout_marginStart="10dp"
+				android:indeterminate="false"
+				android:max="100" />
+		</LinearLayout>
+		
+		<LinearLayout
+			android:id="@+id/failedcontent"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:background="@drawable/rounded_rectangle"
+			android:backgroundTint="@color/colorMessageOutgoing"
+			android:orientation="horizontal"
+			android:paddingBottom="8dp"
+			android:paddingTop="8dp"
+			android:visibility="gone">
+			
+			<TextView
+				android:id="@+id/failedcontent_label"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginStart="15dp"
+				android:layout_weight="1"
+				android:text="@string/contenttype_audio"
+				android:textColor="@color/colorMessageOutgoingText" />
+			
+			<ImageView
+				android:id="@+id/failedcontent_button"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginLeft="8dp"
+				android:layout_marginRight="8dp"
+				android:src="@drawable/open"
+				android:tint="@color/colorMessageOutgoingText" />
+		</LinearLayout>
+		
+		<LinearLayout
+			android:id="@+id/processingcontent"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:background="@drawable/rounded_rectangle"
+			android:backgroundTint="@color/colorMessageOutgoing"
+			android:orientation="horizontal"
+			android:paddingBottom="8dp"
+			android:paddingTop="8dp"
+			android:visibility="gone">
+			
+			<TextView
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginStart="15dp"
+				android:layout_weight="1"
+				android:text="@string/contenttype_image"
+				android:textColor="@color/colorMessageOutgoingText" />
+			
+			<ImageView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginLeft="8dp"
+				android:layout_marginRight="8dp"
+				android:src="@drawable/upload"
+				android:tint="@color/colorMessageOutgoingText" />
+		</LinearLayout>
+		
+		<include layout="@layout/layout_tapbackcontainer" />
+	</LinearLayout>
+	
+	<include layout="@layout/layout_stickercontainer" />
+</RelativeLayout>

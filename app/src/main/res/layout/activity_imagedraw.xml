@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical"
+	android:background="@color/backgroundDark"
+	android:clipToPadding="false">
+	<!-- Image view -->
+	<RelativeLayout
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_centerInParent="true">
+		<!-- Fit the largest dimension of the image to the smallest dimension of the display -->
+		<it.sephiroth.android.library.imagezoom.ImageViewTouch
+			android:id="@+id/imagedraw_mainimage"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_centerInParent="true" >
+		</it.sephiroth.android.library.imagezoom.ImageViewTouch>
+		<!-- Text bar -->
+		<RelativeLayout
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:padding="10dp"
+			android:background="@color/imageDrawTextBarBG"
+			android:visibility="gone" >
+			<EditText
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_centerInParent="true"
+				android:background="@android:color/transparent"
+				android:textColor="@android:color/white" />
+		</RelativeLayout>
+	</RelativeLayout>
+	
+	<!-- Progress bar -->
+	<ProgressBar
+		android:layout_width="150dp"
+		android:layout_height="wrap_content"
+		android:layout_marginLeft="50dp"
+		android:layout_marginRight="50dp"
+		style="@android:style/Widget.Material.ProgressBar.Horizontal"
+		android:layout_centerInParent="true"
+		android:progressTint="@color/colorPrimary"
+		android:progressBackgroundTint="@color/colorPrimaryDark"
+		android:max="100"
+		android:progress="25" />
+	
+	<!-- Top bar -->
+	<RelativeLayout
+		android:id="@+id/app_bar"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_alignParentTop="true"
+		android:layout_marginLeft="16dp"
+		android:layout_marginRight="16dp"
+		android:layout_marginTop="16dp">
+		<ImageButton
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_alignParentStart="true"
+			android:layout_gravity="center"
+			android:background="?android:attr/selectableItemBackgroundBorderless"
+			android:contentDescription="@string/button_close"
+			android:src="@drawable/close" />
+		
+		<ImageButton
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_alignParentEnd="true"
+			android:layout_gravity="center"
+			android:background="?android:attr/selectableItemBackgroundBorderless"
+			android:contentDescription="@string/button_send"
+			android:src="@drawable/send" />
+	</RelativeLayout>
+	
+	<!-- Bottom bar section -->
+	<RelativeLayout
+		android:id="@+id/bottom_bar"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent">
+		<!-- Bottom bar -->
+		<RelativeLayout
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_alignParentBottom="true"
+			android:background="@color/imageDrawDrawer" >
+			<!-- Tool bar -->
+			<LinearLayout
+				android:layout_width="match_parent"
+				android:layout_height="48dp"
+				android:layout_alignParentTop="true"
+				android:baselineAligned="false"
+				android:orientation="horizontal"
+				android:visibility="visible">
+				
+				<FrameLayout
+					android:layout_width="0dp"
+					android:layout_height="match_parent"
+					android:layout_weight="1" >
+					
+					<ImageButton
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_gravity="center"
+						android:background="?android:attr/selectableItemBackgroundBorderless"
+						android:contentDescription="@string/draw"
+						android:src="@drawable/brush" />
+				</FrameLayout>
+				
+				<FrameLayout
+					android:layout_width="0dp"
+					android:layout_height="match_parent"
+					android:layout_weight="1" >
+					
+					<ImageButton
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_gravity="center"
+						android:background="?android:attr/selectableItemBackgroundBorderless"
+						android:contentDescription="@string/add_text"
+						android:src="@drawable/text_fields" />
+				</FrameLayout>
+			</LinearLayout>
+			<!-- Draw bar -->
+			<RelativeLayout
+				android:layout_width="match_parent"
+				android:layout_height="48dp"
+				android:layout_alignParentTop="true"
+				android:baselineAligned="false"
+				android:orientation="horizontal"
+				android:paddingLeft="10dp"
+				android:paddingRight="10dp"
+				android:visibility="gone" >
+				<!-- Close button -->
+				<ImageButton
+					android:id="@+id/drawbar_close"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_alignParentStart="true"
+					android:layout_centerVertical="true"
+					android:background="?android:attr/selectableItemBackgroundBorderless"
+					android:contentDescription="@string/button_close"
+					android:src="@drawable/close" />
+				<!-- Color selector -->
+				<HorizontalScrollView
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:layout_marginLeft="34dp"
+					android:layout_marginRight="34dp"
+					android:overScrollMode="never"
+					android:requiresFadingEdge="horizontal"
+					android:fadingEdgeLength="100dp"
+					android:scrollbarAlwaysDrawHorizontalTrack="false" >
+					<LinearLayout
+						android:layout_width="wrap_content"
+						android:layout_height="match_parent" >
+						
+						<View
+							android:layout_width="25dp"
+							android:layout_height="25dp"
+							android:layout_gravity="center"
+							android:layout_marginLeft="15dp"
+							android:layout_marginRight="15dp"
+							android:background="@drawable/circle"
+							android:backgroundTint="@android:color/black" />
+						
+						<View
+							android:layout_width="20dp"
+							android:layout_height="20dp"
+							android:layout_gravity="center"
+							android:layout_marginLeft="15dp"
+							android:layout_marginRight="15dp"
+							android:background="@drawable/circle"
+							android:backgroundTint="@color/drawColor_red" />
+						
+						<View
+							android:layout_width="20dp"
+							android:layout_height="20dp"
+							android:layout_gravity="center"
+							android:layout_marginLeft="15dp"
+							android:layout_marginRight="15dp"
+							android:background="@drawable/circle"
+							android:backgroundTint="@color/drawColor_orange" />
+						
+						<View
+							android:layout_width="20dp"
+							android:layout_height="20dp"
+							android:layout_gravity="center"
+							android:layout_marginLeft="15dp"
+							android:layout_marginRight="15dp"
+							android:background="@drawable/circle"
+							android:backgroundTint="@color/drawColor_yellow" />
+						
+						<View
+							android:layout_width="20dp"
+							android:layout_height="20dp"
+							android:layout_gravity="center"
+							android:layout_marginLeft="15dp"
+							android:layout_marginRight="15dp"
+							android:background="@drawable/circle"
+							android:backgroundTint="@color/drawColor_green" />
+						
+						<View
+							android:layout_width="20dp"
+							android:layout_height="20dp"
+							android:layout_gravity="center"
+							android:layout_marginLeft="15dp"
+							android:layout_marginRight="15dp"
+							android:background="@drawable/circle"
+							android:backgroundTint="@color/drawColor_blue" />
+						
+						<View
+							android:layout_width="20dp"
+							android:layout_height="20dp"
+							android:layout_gravity="center"
+							android:layout_marginLeft="15dp"
+							android:layout_marginRight="15dp"
+							android:background="@drawable/circle"
+							android:backgroundTint="@color/drawColor_purple" />
+						
+						<View
+							android:layout_width="20dp"
+							android:layout_height="20dp"
+							android:layout_gravity="center"
+							android:layout_marginLeft="15dp"
+							android:layout_marginRight="15dp"
+							android:background="@drawable/circle"
+							android:backgroundTint="@android:color/white" />
+					</LinearLayout>
+				</HorizontalScrollView>
+				<!-- Undo button -->
+				<ImageButton
+					android:id="@+id/drawbar_undo"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_alignParentEnd="true"
+					android:layout_centerVertical="true"
+					android:background="?android:attr/selectableItemBackgroundBorderless"
+					android:contentDescription="@string/button_undo"
+					android:src="@drawable/undo" />
+			</RelativeLayout>
+		</RelativeLayout>
+		
+		<!-- Bottom bar below the navigation bar -->
+		<RelativeLayout
+			android:id="@+id/navbar_scrim"
+			android:layout_width="match_parent"
+			android:layout_height="48dp"
+			android:layout_alignParentBottom="true"
+			android:translationY="48dp"
+			android:background="@color/imageDrawDrawer" />
+	</RelativeLayout>
+</RelativeLayout>

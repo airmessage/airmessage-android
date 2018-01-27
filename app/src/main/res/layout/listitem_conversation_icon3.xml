@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+	android:layout_width="@dimen/profile_size"
+	android:layout_height="@dimen/profile_size"
+	xmlns:android="http://schemas.android.com/apk/res/android">
+	
+	<include
+		layout="@layout/reference_user"
+		android:layout_width="19dp"
+		android:layout_height="19dp"
+		android:layout_alignParentTop="true"
+		android:layout_centerHorizontal="true"
+		android:layout_marginTop="1dp" />
+	
+	<include
+		layout="@layout/reference_user"
+		android:layout_width="19dp"
+		android:layout_height="19dp"
+		android:layout_alignParentBottom="true"
+		android:layout_alignParentStart="true"
+		android:layout_marginBottom="1dp" />
+	
+	<include
+		layout="@layout/reference_user"
+		android:layout_width="19dp"
+		android:layout_height="19dp"
+		android:layout_alignParentBottom="true"
+		android:layout_alignParentEnd="true"
+		android:layout_marginBottom="1dp" />
+</RelativeLayout>

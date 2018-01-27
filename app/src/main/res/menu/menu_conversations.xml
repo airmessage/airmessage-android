@@ -1,0 +1,28 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- <item android:id="@+id/action_search"
+        android:icon="@drawable/search"
+        android:title="@string/search"
+		android:showAsAction="ifRoom"
+        app:showAsAction="ifRoom"/> -->
+
+    <item android:id="@+id/action_archived"
+        android:title="@string/archived_conversations"
+		android:showAsAction="never"
+        app:showAsAction="never" />
+
+    <!-- <item android:id="@+id/action_blocked"
+        android:title="@string/blocked_contacts"
+        android:enabled="false"
+        android:showAsAction="never"
+		app:showAsAction="never" /> -->
+	
+	<item android:id="@+id/action_settings"
+		android:title="@string/settings"
+		android:showAsAction="never"
+		app:showAsAction="never" />
+	<item android:id="@+id/action_feedback"
+		android:title="@string/feedback"
+		android:showAsAction="never"
+		app:showAsAction="never" />
+</menu>

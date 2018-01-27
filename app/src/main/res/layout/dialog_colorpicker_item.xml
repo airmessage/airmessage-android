@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:orientation="vertical"
+	android:layout_margin="5dp" >
+	<!-- Main color -->
+	<ImageView
+		android:id="@+id/colorpickeritem_color"
+		android:layout_width="50dp"
+		android:layout_height="50dp"
+		android:layout_centerInParent="true"
+		android:src="@drawable/circle_clickabledark"
+		android:clickable="true" >
+	</ImageView>
+	<!-- Selection indicator -->
+	<RelativeLayout
+		android:id="@+id/colorpickeritem_selection"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_centerInParent="true"
+		android:visibility="gone" >
+		
+		<ImageView
+			android:layout_width="35dp"
+			android:layout_height="35dp"
+			android:layout_centerInParent="true"
+			android:alpha="0.15"
+			android:src="@drawable/circle"
+			android:tint="@android:color/black">
+		</ImageView>
+		
+		<ImageView
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_centerInParent="true"
+			android:src="@drawable/check" />
+	</RelativeLayout>
+</RelativeLayout>

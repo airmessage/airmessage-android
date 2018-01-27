@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+	android:layout_width="@dimen/profile_size"
+	android:layout_height="@dimen/profile_size"
+	xmlns:android="http://schemas.android.com/apk/res/android">
+
+<include
+	layout="@layout/reference_user"
+	android:layout_width="23dp"
+	android:layout_height="23dp"
+	android:layout_alignParentStart="true"
+	android:layout_alignParentTop="true" />
+
+<include
+	layout="@layout/reference_user"
+	android:layout_width="23dp"
+	android:layout_height="23dp"
+	android:layout_alignParentBottom="true"
+	android:layout_alignParentEnd="true" />
+</RelativeLayout>

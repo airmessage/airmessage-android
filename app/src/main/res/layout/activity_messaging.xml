@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				xmlns:app="http://schemas.android.com/apk/res-auto"
+				android:background="@color/backgroundMessaging"
+				android:clipToPadding="false">
+	<!-- Loading Text -->
+	<TextView
+		android:id="@+id/loading_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_centerInParent="true"
+		android:text="@string/loading_messages"
+		android:textColor="?android:textColorSecondary"
+		android:visibility="gone" />
+	<!-- Recording indicator -->
+	<RelativeLayout
+		android:id="@+id/recordingindicator"
+		android:layout_width="80dp"
+		android:layout_height="80dp"
+		android:background="@drawable/circle"
+		android:backgroundTint="@color/colorRecording"
+		android:clipToPadding="false"
+		android:elevation="8dp"
+		android:visibility="invisible">
+		
+		<ImageView
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_centerInParent="true"
+			android:contentDescription="@null"
+			android:src="@drawable/microphone" />
+	</RelativeLayout>
+	<!-- General layout -->
+	<RelativeLayout
+		android:layout_width="match_parent"
+		android:layout_height="match_parent">
+		<!-- Search result bar -->
+		<LinearLayout
+			android:id="@+id/searchresults"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:background="@android:color/white"
+			android:elevation="2dp"
+			android:minHeight="48dp"
+			android:orientation="horizontal"
+			android:visibility="gone">
+			
+			<TextView
+				android:id="@+id/searchresults_message"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginLeft="16dp"
+				android:layout_marginRight="16dp"
+				android:layout_weight="1"
+				android:gravity="center_vertical"
+				android:paddingBottom="12dp"
+				android:paddingTop="12dp"
+				android:text="@string/search_results"
+				android:textColor="?android:attr/textColorSecondary" />
+			
+			<ImageButton
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginEnd="5dp"
+				android:background="?android:attr/selectableItemBackgroundBorderless"
+				android:onClick="onClickSearchPrevious"
+				android:padding="5dp"
+				android:src="@drawable/arrow_left"
+				android:tint="?android:attr/textColorSecondary" />
+			
+			<ImageButton
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginEnd="5dp"
+				android:background="?android:attr/selectableItemBackgroundBorderless"
+				android:onClick="onClickSearchNext"
+				android:padding="5dp"
+				android:src="@drawable/arrow_right"
+				android:tint="?android:attr/textColorSecondary" />
+		</LinearLayout>
+		<!-- Connection warning bar -->
+		<LinearLayout
+			android:id="@+id/serverwarning"
+			android:layout_width="match_parent"
+			android:layout_height="0dp"
+			android:layout_below="@id/searchresults"
+			android:background="@android:color/white"
+			android:elevation="2dp"
+			android:minHeight="48dp"
+			android:orientation="horizontal">
+			
+			<TextView
+				android:id="@+id/serverwarning_message"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginLeft="16dp"
+				android:layout_marginRight="16dp"
+				android:layout_weight="1"
+				android:gravity="center_vertical"
+				android:paddingBottom="12dp"
+				android:paddingTop="12dp"
+				android:text="@string/serverstatus_noconnection"
+				android:textColor="?android:attr/textColorSecondary" />
+			
+			<Button
+				android:id="@+id/serverwarning_button"
+				style="?android:attr/borderlessButtonStyle"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_margin="-5dp"
+				android:padding="5dp"
+				android:tag="@string/tag_primarytint"
+				android:text="@string/button_retry"
+				android:textColor="@color/colorAccent" />
+		</LinearLayout>
+		<!-- Message List -->
+		<android.support.v7.widget.RecyclerView
+			android:id="@+id/list_messages"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:layout_above="@id/inputbar"
+			android:layout_below="@id/serverwarning"
+			android:clipToPadding="false"
+			android:divider="@null"
+			android:dividerHeight="0dp"
+			android:listSelector="@android:color/transparent"
+			android:paddingBottom="5dp"
+			android:paddingTop="5dp"
+			android:scrollbars="horizontal"
+			app:stackFromEnd="true"
+			app:layoutManager="android.support.v7.widget.LinearLayoutManager"
+			android:smoothScrollbar="false"
+			android:transcriptMode="normal" />
+		<!-- Konfetti view -->
+		<nl.dionsegijn.konfetti.KonfettiView
+			android:id="@+id/konfetti"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:layout_above="@id/inputbar"
+			android:layout_below="@id/serverwarning" />
+		<!-- Input bar -->
+		<RelativeLayout
+			android:id="@+id/inputbar"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_alignParentBottom="true"
+			android:background="@android:color/white"
+			android:clipToPadding="false"
+			android:elevation="8dp"
+			android:minHeight="45dp"
+			android:visibility="visible">
+			<!-- Reference bar -->
+			<View
+				android:id="@+id/referencebar"
+				android:layout_width="wrap_content"
+				android:layout_height="45dp"
+				android:layout_gravity="bottom"
+				android:visibility="invisible" />
+			<!-- Message bar -->
+			<LinearLayout
+				android:id="@+id/messagebar"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_gravity="bottom"
+				android:orientation="horizontal"
+				android:visibility="visible">
+				<!-- Add button -->
+				<ImageButton
+					android:id="@+id/button_addcontent"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_gravity="bottom"
+					android:layout_marginBottom="10dp"
+					android:layout_marginStart="15dp"
+					android:background="?android:attr/selectableItemBackgroundBorderless"
+					android:clickable="true"
+					android:contentDescription="@string/contentbar_open"
+					android:focusable="true"
+					android:src="@drawable/add"
+					android:tag="@string/tag_primarytint"
+					android:tint="@color/colorPrimary"
+					android:tooltipText="@string/contentbar_open" />
+				<!-- Message box -->
+				<EditText
+					android:id="@+id/messagebox"
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:layout_marginLeft="10dp"
+					android:layout_marginRight="10dp"
+					android:layout_weight="1"
+					android:background="@null"
+					android:hint="@string/type_a_message"
+					android:imeOptions="flagNoExtractUi"
+					android:inputType="text|textMultiLine|textAutoCorrect|textCapSentences"
+					android:maxHeight="100dp"
+					android:maxLength="1000"
+					android:minHeight="45dp"
+					android:paddingBottom="5dp"
+					android:paddingTop="5dp"
+					android:textCursorDrawable="@null" />
+				<!-- Send button -->
+				<ImageButton
+					android:id="@+id/button_send"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_gravity="bottom"
+					android:layout_marginBottom="10dp"
+					android:layout_marginEnd="15dp"
+					android:background="?android:attr/selectableItemBackgroundBorderless"
+					android:clickable="true"
+					android:contentDescription="@string/button_send"
+					android:src="@drawable/push"
+					android:tag="@string/tag_primarytint"
+					android:tint="@color/colorPrimary"
+					android:tooltipText="@string/button_send" />
+			</LinearLayout>
+			<!-- Content bar -->
+			<RelativeLayout
+				android:id="@+id/contentbar"
+				android:layout_width="match_parent"
+				android:layout_height="45dp"
+				android:layout_gravity="bottom"
+				android:background="@color/colorPrimary"
+				android:tag="@string/tag_primarytint"
+				android:visibility="gone">
+				<!-- Close button -->
+				<ImageButton
+					android:id="@+id/button_closecontent"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_centerVertical="true"
+					android:layout_gravity="bottom"
+					android:layout_marginStart="15dp"
+					android:background="?android:attr/selectableItemBackgroundBorderless"
+					android:clickable="true"
+					android:contentDescription="@string/contentbar_close"
+					android:src="@drawable/add"
+					android:tint="@android:color/white"
+					android:tooltipText="@string/contentbar_close" />
+				<!-- Content buttons -->
+				<LinearLayout
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_alignParentEnd="true"
+					android:layout_centerVertical="true"
+					android:layout_marginLeft="15dp"
+					android:layout_marginRight="15dp"
+					android:orientation="horizontal">
+					<!-- Camera button -->
+					<ImageButton
+						android:id="@+id/button_camera"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_gravity="bottom"
+						android:background="?android:attr/selectableItemBackgroundBorderless"
+						android:clickable="true"
+						android:contentDescription="@string/contentbar_camera"
+						android:src="@drawable/camera"
+						android:tint="@android:color/white"
+						android:tooltipText="@string/contentbar_camera" />
+					<!-- Gallery button -->
+					<ImageButton
+						android:id="@+id/button_gallery"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_gravity="bottom"
+						android:layout_marginStart="25dp"
+						android:background="?android:attr/selectableItemBackgroundBorderless"
+						android:clickable="true"
+						android:contentDescription="@string/contentbar_gallery"
+						android:src="@drawable/gallery"
+						android:tint="@android:color/white"
+						android:tooltipText="@string/contentbar_gallery" />
+					<!-- Attach button -->
+					<ImageButton
+						android:id="@+id/button_attach"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_gravity="bottom"
+						android:layout_marginStart="25dp"
+						android:background="?android:attr/selectableItemBackgroundBorderless"
+						android:clickable="true"
+						android:contentDescription="@string/contentbar_attach"
+						android:src="@drawable/attach"
+						android:tint="@android:color/white"
+						android:tooltipText="@string/contentbar_attach" />
+					<!-- Microphone button -->
+					<ImageButton
+						android:id="@+id/button_record"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_gravity="bottom"
+						android:layout_marginStart="25dp"
+						android:background="?android:attr/selectableItemBackgroundBorderless"
+						android:clickable="true"
+						android:contentDescription="@string/contentbar_record"
+						android:src="@drawable/microphone"
+						android:tint="@android:color/white"
+						android:tooltipText="@string/contentbar_record" />
+				</LinearLayout>
+			</RelativeLayout>
+			<!-- Recording bar -->
+			<LinearLayout
+				android:id="@+id/recordingbar"
+				android:layout_width="match_parent"
+				android:layout_height="45dp"
+				android:layout_gravity="bottom"
+				android:background="@android:color/white"
+				android:orientation="horizontal"
+				android:visibility="gone">
+				<!-- Recording dot -->
+				<View
+					android:layout_width="10dp"
+					android:layout_height="10dp"
+					android:layout_gravity="center_vertical"
+					android:layout_marginStart="22dp"
+					android:background="@drawable/circle"
+					android:backgroundTint="@color/colorRecording" />
+				<!-- Recording time -->
+				<TextView
+					android:id="@+id/recordingtime"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_gravity="center_vertical"
+					android:layout_marginStart="13dp"
+					android:text="@string/placeholder_recordingtime"
+					android:textColor="@android:color/black"
+					android:textSize="15sp" />
+				<!-- Cancel name -->
+				<LinearLayout
+					android:id="@+id/recording_canceltext"
+					android:layout_width="wrap_content"
+					android:layout_height="match_parent">
+					
+					<ImageView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_gravity="center_vertical"
+						android:layout_marginStart="22dp"
+						android:src="@drawable/arrow_left"
+						android:tint="?android:textColorSecondary" />
+					
+					<TextView
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_gravity="center_vertical"
+						android:text="@string/recording_cancel"
+						android:textColor="?android:textColorSecondary" />
+				</LinearLayout>
+			</LinearLayout>
+		</RelativeLayout>
+	</RelativeLayout>
+</RelativeLayout>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="56dp"
+	android:orientation="horizontal"
+	android:paddingLeft="16dp"
+	android:paddingRight="16dp" >
+	<!-- Conversation Icon -->
+	<RelativeLayout
+		android:id="@+id/conversationicon"
+		android:layout_width="@dimen/profile_size"
+		android:layout_height="@dimen/profile_size"
+		android:layout_gravity="center_vertical">
+		<!-- 1 user -->
+		<ViewStub
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:layout="@layout/listitem_conversation_icon1" />
+		<!-- 2 users -->
+		<ViewStub
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:layout="@layout/listitem_conversation_icon2" />
+		<!-- 3 users -->
+		<ViewStub
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:layout="@layout/listitem_conversation_icon3" />
+		<!-- 4 users -->
+		<ViewStub
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:layout="@layout/listitem_conversation_icon4" />
+		<!-- Selected Icon -->
+		<RelativeLayout
+			android:id="@+id/selected"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:background="@drawable/circle"
+			android:backgroundTint="@color/colorPrimary"
+			android:visibility="gone">
+			
+			<ImageView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_centerInParent="true"
+				android:src="@drawable/check" />
+		</RelativeLayout>
+	</RelativeLayout>
+	
+	<TextView
+		android:id="@+id/title"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="center_vertical"
+		android:layout_marginStart="16dp"
+		android:ellipsize="end"
+		android:maxLines="2"
+		android:text="@string/placeholder_title"
+		android:textColor="?android:attr/textColorPrimary"
+		android:textSize="16sp" />
+</LinearLayout>

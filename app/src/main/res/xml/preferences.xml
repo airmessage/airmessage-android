@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:key="@string/preferencegroup_messagenotifications_key"
+        android:title="@string/preferencegroup_messagenotifications_name" >
+        <SwitchPreference
+            android:key="@string/preference_messagenotifications_getnotifications_key"
+            android:title="@string/preference_messagenotifications_getnotifications_title"
+            android:defaultValue="true" />
+        <RingtonePreference
+            android:key="@string/preference_messagenotifications_sound_key"
+            android:dependency="@string/preference_messagenotifications_getnotifications_key"
+            android:title="@string/preference_messagenotifications_sound_title"
+            android:ringtoneType="notification"
+            android:showSilent="true"
+            android:showDefault="true"
+            android:defaultValue="content://settings/system/notification_sound" />
+        <SwitchPreference
+            android:key="@string/preference_messagenotifications_vibrate_key"
+            android:dependency="@string/preference_messagenotifications_getnotifications_key"
+            android:title="@string/preference_messagenotifications_vibrate_title"
+            android:defaultValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:key="@string/preferencegroup_storage_key"
+        android:title="@string/preferencegroup_storage_name" >
+		<SwitchPreference
+			android:key="@string/preference_storage_autodownload_key"
+			android:title="@string/preference_storage_autodownload_name"
+			android:summary="@string/preference_storage_autodownload_desc"
+			android:defaultValue="false" />
+		<Preference
+			android:key="@string/preference_storage_deleteattachments_key"
+			android:title="@string/preference_storage_deleteattachments_name"
+			android:summary="@string/preference_storage_deleteattachments_desc" />
+        <Preference
+            android:key="@string/preference_storage_deleteall_key"
+            android:title="@string/preference_storage_deleteall_name" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:key="@string/preferencegroup_server_key"
+        android:title="@string/preferencegroup_server_name" >
+        <Preference
+            android:key="@string/preference_server_serverdetails_key"
+            android:title="@string/preference_server_serverdetails_title" >
+			<intent
+				android:action="android.intent.action.VIEW"
+				android:targetPackage="me.tagavari.airmessage"
+				android:targetClass="me.tagavari.airmessage.ServerSetup" />
+        </Preference>
+        <Preference
+            android:key="@string/preference_server_resync_key"
+            android:title="@string/preference_server_resync_title" >
+        </Preference>
+		<SwitchPreference
+			android:key="@string/preference_server_disconnectionnotification_key"
+			android:title="@string/preference_server_disconnectionnotification_title"
+			android:summary="@string/preference_server_disconnectionnotification_description"
+			android:defaultValue="true" />
+		<SwitchPreference
+			android:key="@string/preference_server_connectionboot_key"
+			android:title="@string/preference_server_connectionboot_title"
+			android:defaultValue="true" />
+		<!-- <SwitchPreference
+			android:key="@string/preference_server_disconnectionnotification_key"
+			android:title="@string/preference_server_disconnectionnotification_title"
+			android:summary="@string/preference_server_disconnectionnotification_description"
+			android:defaultValue="true" /> -->
+		<SwitchPreference
+			android:key="@string/preference_server_networkreconnect_key"
+			android:title="@string/preference_server_networkreconnect_title"
+			android:summary="@string/preference_server_networkreconnect_description"
+			android:defaultValue="true" />
+        <Preference
+            android:key="@string/preference_server_help_key"
+            android:title="@string/preference_server_help_title" />
+    </PreferenceCategory>
+</PreferenceScreen>

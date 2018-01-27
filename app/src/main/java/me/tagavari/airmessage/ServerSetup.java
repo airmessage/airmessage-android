@@ -1,0 +1,456 @@
+package me.tagavari.airmessage;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.net.Uri;
+import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.text.Spanned;
+import android.text.TextWatcher;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.util.regex.Pattern;
+
+public class ServerSetup extends Activity {
+	//Creating the reference values
+	static final String intentExtraRequired = "isRequired";
+	
+	//Creating the regular expression string
+	private static final Pattern regExValidAddress = Pattern.compile("^(ws(s?):\\/\\/)?(((www\\.)?+[a-zA-Z0-9\\.\\-\\_]+(\\.[a-zA-Z]{2,3})+)|(\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b))(\\/[a-zA-Z0-9\\_\\-\\s\\.\\/\\?\\%\\#\\&\\=]*)?(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))?$");
+	private static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
+	private static final Pattern regExValidProtocol = Pattern.compile("^ws(s?)\\:\\/\\/");
+	private final InputFilter credentialInputFilter = new InputFilter() {
+		@Override
+		public CharSequence filter(CharSequence source, int start, int end, Spanned dest, int dstart, int dend) {
+			//Denying the input if it contains a space
+			if(source.toString().contains(" ")) return "";
+			return null;
+		}
+	};
+	//Creating the view values
+	private EditText hostnameInputField;
+	private EditText passwordInputField;
+	private View nextButton;
+	//Creating the listener values
+	private final TextWatcher addressInputWatcher = new TextWatcher() {
+		@Override
+		public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+		
+		}
+		
+		@Override
+		public void onTextChanged(CharSequence s, int start, int before, int count) {
+			//Comparing the string to the regular expression
+			if(regExValidAddress.matcher(s).find()) {
+				//Enabling the button
+				nextButton.setAlpha(1);
+				nextButton.setClickable(true);
+			} else {
+				//Disabling the button
+				nextButton.setAlpha(0.38F);
+				nextButton.setClickable(false);
+			}
+		}
+		
+		@Override
+		public void afterTextChanged(Editable s) {
+		}
+	};
+	private View layoutAddress;
+	private View layoutSync;
+	
+	//Creating the other values
+	private boolean isRequired;
+	private String newHostname;
+	private String newPassword;
+	/* Stages
+	0 - Server verification
+	1 - Message copy confirmation
+	 */
+	private int page = 0;
+	private BroadcastReceiver serviceBroadcastReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			//Unregistering the receiver
+			LocalBroadcastManager.getInstance(ServerSetup.this).unregisterReceiver(this);
+			
+			//Re-enabling the next button
+			findViewById(R.id.nextbuttonarrow).setVisibility(View.VISIBLE);
+			findViewById(R.id.nextbuttonprogress).setVisibility(View.GONE);
+			nextButton.setAlpha(1);
+			nextButton.setClickable(true);
+			
+			//Getting the result
+			byte result = intent.getByteExtra(Constants.intentParamResult, ConnectionService.intentResultValueConnection);
+			if(result == ConnectionService.intentResultValueSuccess) {
+				//Advancing the page
+				setPage(1);
+				hideSoftKeyboard();
+			} else {
+				//Showing the error dialog
+				showErrorDialog(result);
+				
+				//Enabling the input fields
+				hostnameInputField.setEnabled(true);
+				passwordInputField.setEnabled(true);
+			}
+		}
+	};
+	
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		//Calling the super method
+		super.onCreate(savedInstanceState);
+		
+		//Setting the content view
+		setContentView(R.layout.activity_serversetup);
+		
+		//Getting the views
+		hostnameInputField = findViewById(R.id.input_address);
+		passwordInputField = findViewById(R.id.input_password);
+		nextButton = findViewById(R.id.nextbutton);
+		((EditText) findViewById(R.id.input_password)).setFilters(new InputFilter[]{credentialInputFilter});
+		layoutAddress = findViewById(R.id.layout_serververification);
+		layoutSync = findViewById(R.id.layout_serversync);
+		
+		//Setting the address box watcher
+		hostnameInputField.addTextChangedListener(addressInputWatcher);
+		
+		//Getting if the change is required
+		isRequired = getIntent().getBooleanExtra(intentExtraRequired, false);
+		
+		//Enabling the back button if the change is not required
+		if(!isRequired) findViewById(R.id.backbutton).setVisibility(View.VISIBLE);
+		
+		//Disabling the next button (because for some reason the XML isn't enough)
+		nextButton.setClickable(false);
+		
+		//Filling in the input fields with previous information
+		SharedPreferences sharedPreferences = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
+		hostnameInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesKeyHostname, ""));
+		passwordInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesKeyPassword, ""));
+	}
+	
+	@Override
+	protected void onStop() {
+		//Calling the super method
+		super.onStop();
+		
+		//Unregistering the receiver
+		LocalBroadcastManager.getInstance(ServerSetup.this).unregisterReceiver(serviceBroadcastReceiver);
+	}
+	
+	public void onNextButtonClick(View view) {
+		//Checking if the page is 0
+		if(page == 0) {
+			//Starting the connection
+			startConnection();
+			
+			//Setting the connection data
+			//Starting the service
+			///startService(new Intent(this, ConnectionService.class));
+			
+			//Switching the next button for a loading button
+			findViewById(R.id.nextbuttonarrow).setVisibility(View.GONE);
+			findViewById(R.id.nextbuttonprogress).setVisibility(View.VISIBLE);
+			nextButton.setAlpha(0.38F);
+			nextButton.setClickable(false);
+			
+			//Disabling the input fields
+			hostnameInputField.setEnabled(false);
+			passwordInputField.setEnabled(false);
+		}
+		//Otherwise checking if the page is 1
+		else if(page == 1) {
+			//Checking if there are messages
+			if(ConversationManager.getConversations() != null) {
+				//Showing a warning
+				new AlertDialog.Builder(this)
+						.setTitle(R.string.serversync_warning_title)
+						.setMessage(R.string.serversync_warning_description)
+						.setNegativeButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.setPositiveButton(R.string.button_skip, (dialog, which) -> finishSetup())
+						.create().show();
+			} else {
+				//Finishing the setup
+				finishSetup();
+			}
+		}
+	}
+	
+	private void finishSetup() {
+		//Saving the connection data in the shared preferences
+		SharedPreferences.Editor editor = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE).edit();
+		editor.putString(MainApplication.sharedPreferencesKeyHostname, newHostname); //The raw, unprocessed hostname (No protocol or port)
+		editor.putString(MainApplication.sharedPreferencesKeyPassword, newPassword);
+		editor.apply();
+		
+		//Finishing the activity
+		finish();
+		
+		//Starting the new activity
+		startActivity(new Intent(this, Conversations.class));
+		
+		//Enabling transitions
+		overridePendingTransition(R.anim.fade_in_light, R.anim.activity_slide_up);
+	}
+	
+	private void setPage(int newPage) {
+		//Returning if the page matches
+		if(page == newPage) return;
+		
+		//Switching the page
+		switch(newPage) {
+			case 0:
+				//Sliding the layout left
+				layoutAddress.setX(-layoutAddress.getWidth());
+				layoutAddress.animate().translationX(0);
+				
+				layoutSync.setX(0);
+				layoutSync.animate().translationX(layoutSync.getWidth());
+				
+				//Setting the "NEXT" button
+				((TextView) findViewById(R.id.nextbuttonlabel)).setText(R.string.button_next);
+				if(isRequired) findViewById(R.id.backbutton).setVisibility(View.GONE);
+				
+				//Enabling the input fields
+				hostnameInputField.setEnabled(true);
+				passwordInputField.setEnabled(true);
+				
+				//Updating the "delete messages" section
+				View deleteMessagesLabel = layoutSync.findViewById(R.id.deletemessages_label);
+				View deleteMessagesButton = layoutSync.findViewById(R.id.deletemessages_button);
+				
+				if(ConversationManager.getConversations() != null) {
+					deleteMessagesLabel.setVisibility(View.VISIBLE);
+					deleteMessagesButton.setVisibility(View.VISIBLE);
+				} else {
+					deleteMessagesLabel.setVisibility(View.GONE);
+					deleteMessagesButton.setVisibility(View.GONE);
+				}
+				
+				break;
+			case 1:
+				//Sliding the layout right
+				layoutAddress.setX(0);
+				layoutAddress.animate().translationX(-layoutAddress.getWidth());
+				
+				layoutSync.setX(layoutSync.getWidth());
+				layoutSync.animate().translationX(0);
+				layoutSync.setVisibility(View.VISIBLE);
+				
+				//Setting the "SKIP" button
+				((TextView) findViewById(R.id.nextbuttonlabel)).setText(R.string.button_skip);
+				findViewById(R.id.backbutton).setVisibility(View.VISIBLE);
+				
+				break;
+		}
+		
+		//Updating the page
+		page = newPage;
+	}
+	
+	private void startConnection() {
+		//Saving the new server information
+		newHostname = hostnameInputField.getText().toString();
+		newPassword = passwordInputField.getText().toString();
+		
+		//Setting the values in the service class
+		ConnectionService.hostname = newHostname;
+		ConnectionService.password = newPassword;
+		
+		//Telling the service to connect
+		startService(new Intent(this, ConnectionService.class).setAction(ConnectionService.selfIntentActionConnect));
+		
+		//Adding the broadcast listener
+		LocalBroadcastManager.getInstance(this).registerReceiver(serviceBroadcastReceiver, new IntentFilter(ConnectionService.localBCResult));
+	}
+	
+	public void onBackButtonClick(View view) {
+		switch(page) {
+			case 0:
+				//Finishing the activity (if the server change isn't required)
+				if(!isRequired) finish();
+				
+				break;
+			case 1:
+				//Retracting the page
+				setPage(0);
+				
+				//Disconnecting from the server
+				ConnectionService connectionService = ConnectionService.getInstance();
+				if(connectionService != null) connectionService.disconnect();
+				
+				break;
+		}
+	}
+	
+	private void hideSoftKeyboard() {
+		View view = this.getCurrentFocus();
+		if(view != null) {
+			InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+			imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+		}
+	}
+	
+	private void showErrorDialog(byte reason) {
+		//Creating the alert dialog variable
+		AlertDialog alertDialog = null;
+		
+		switch(reason) {
+			case ConnectionService.intentResultValueInternalException: //Internal exception
+				alertDialog = new AlertDialog.Builder(this)
+						.setTitle(R.string.serververification_connectionerror)
+						.setMessage(R.string.serverstatus_internalexception)
+						.setPositiveButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.create();
+				break;
+			case ConnectionService.intentResultValueBadRequest: //Bad request
+				alertDialog = new AlertDialog.Builder(this)
+						.setTitle(R.string.serververification_connectionerror)
+						.setMessage(R.string.serverstatus_badrequest)
+						.setPositiveButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.create();
+				break;
+			case ConnectionService.intentResultValueConnection: //Connection failed
+				alertDialog = new AlertDialog.Builder(this)
+						.setTitle(R.string.serververification_connectionerror)
+						.setMessage(R.string.no_connection)
+						.setPositiveButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.create();
+				break;
+			case ConnectionService.intentResultValueUnauthorized: //Authentication failed
+				alertDialog = new AlertDialog.Builder(this)
+						.setTitle(R.string.serververification_connectionerror)
+						.setMessage(R.string.serverstatus_authfail)
+						.setPositiveButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.create();
+				break;
+			case ConnectionService.intentResultValueClientOutdated: //Client outdated
+				alertDialog = new AlertDialog.Builder(this)
+						.setTitle(R.string.serververification_connectionerror)
+						.setMessage(R.string.serverstatus_clientoutdated)
+						.setPositiveButton(R.string.button_update, (dialog, which) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))))
+						.setNegativeButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.create();
+				break;
+			case ConnectionService.intentResultValueServerOutdated: //Server outdated
+				alertDialog = new AlertDialog.Builder(this)
+						.setTitle(R.string.serververification_connectionerror)
+						.setMessage(R.string.serverstatus_serveroutdated)
+						.setPositiveButton(R.string.button_help, (dialog, which) -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)))
+						.setNegativeButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.create();
+				break;
+		}
+		
+		//Displaying the dialog
+		if(alertDialog != null) alertDialog.show();
+	}
+	
+	public void buttonSyncMessages(View view) {
+		//Deleting the messages
+		deleteMessages(true);
+	}
+	
+	public void buttonDeleteMessages(View view) {
+		//Deleting the messages
+		deleteMessages(false);
+	}
+	
+	private void deleteMessages(final boolean requestAfter) {
+		//Clearing all conversations
+		/* ConversationManager.getConversations().clear();
+		
+		//Updating the conversation activity list
+		for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks()) callbacks.updateList(false); */
+		
+		//Deleting / syncing the messages
+		if(requestAfter)
+			new Conversations.SyncMessagesTask(getApplicationContext(), null).execute();
+		else new Conversations.DeleteMessagesTask(getApplicationContext(), null).execute();
+		
+		//Finishing the activity
+		finishSetup(); //This is OK because the context is provided from the application rather than the activity
+		
+		/* //Creating a new asynchronous task
+		new AsyncTask<Void, Void, Void>() {
+			@Override
+			protected Void doInBackground(Void... parameters) {
+				//Removing the messages from the database
+				DatabaseManager.deleteEverything(ServerSetup.this);
+				
+				//Clearing the attachments directory
+				MainApplication.clearAttachmentsDirectory(ServerSetup.this);
+				
+				//Returning null
+				return null;
+			}
+			
+			@Override
+			protected void onPostExecute(Void result) {
+				//Dismissing the dialog
+				progressDialog.dismiss();
+				
+				//Requesting the messages (if asked to)
+				if(requestAfter) {
+					boolean messageResult = ConnectionService.requestMassRetrieval();
+					if(!messageResult) Toast.makeText(ServerSetup.this, R.string.no_connection, Toast.LENGTH_SHORT).show();
+				}
+				
+				//Finishing the setup
+				finishSetup();
+			}
+		}.execute(); */
+	}
+	
+	public void onClickLaunchServerGuide(View view) {
+		Intent intent = new Intent(Intent.ACTION_VIEW);
+		intent.setData(Constants.serverSetupAddress);
+		
+		if(intent.resolveActivity(getPackageManager()) != null) startActivity(intent);
+		else Toast.makeText(this, R.string.intent_nobrowser, Toast.LENGTH_SHORT).show();
+		startActivity(intent);
+	}
+	
+	/* @Override
+	public void onBackPressed() {
+		//Finishing the activity (if the server change isn't required)
+		if(!isRequired) { //TODO ensure that the user can't return to the conversation list activity
+			finish();
+			super.onBackPressed();
+		}
+	} */
+	
+	/**
+	 * Defines callbacks for service binding, passed to bindService()
+	 */
+	/* private ServiceConnection serviceConnection = new ServiceConnection() {
+		@Override
+		public void onServiceConnected(ComponentName className, IBinder service) {
+			// We've bound to LocalService, cast the IBinder and get LocalService instance
+			ConnectionService.ConnectionBinder binder = (ConnectionService.ConnectionBinder) service;
+			connectionService = binder.getService();
+			isServiceBound = true;
+			
+			//Connecting to the server
+			startConnection();
+		}
+		
+		@Override
+		public void onServiceDisconnected(ComponentName arg0) {
+			isServiceBound = false;
+		}
+	}; */
+}

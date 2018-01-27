@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "369596104909",
+    "firebase_url": "https://airmessage-a6f9a.firebaseio.com",
+    "project_id": "airmessage-a6f9a",
+    "storage_bucket": "airmessage-a6f9a.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:369596104909:android:df4798456152ebb3",
+        "android_client_info": {
+          "package_name": "me.tagavari.airmessage"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "369596104909-ev1m9m5a31i9len8jpm7os2h49b9q0ql.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "me.tagavari.airmessage",
+            "certificate_hash": "08344cb2144c98eb975a8a57f60d4ae254b4680d"
+          }
+        },
+        {
+          "client_id": "369596104909-b84flhn2c1om3gq9ogonpl5bl3in6b69.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuqxy6XwkYtc1H3s-vealUkfyUBxSb45w"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "369596104909-b84flhn2c1om3gq9ogonpl5bl3in6b69.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

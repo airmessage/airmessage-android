@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:orientation="vertical"
+	android:padding="20dp"
+	tools:context=".ServerSetup">
+	
+	<TextView
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:labelFor="@+id/input_address"
+		android:text="@string/serversync_download_title"
+		android:textSize="24sp"
+		android:textStyle="bold" />
+	
+	<TextView
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="@string/serversync_download_description"
+		android:textColor="?android:textColorSecondary"
+		android:textSize="18sp" />
+	
+	<Button
+		style="@style/Widget.AppCompat.Button.Colored"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="center"
+		android:layout_marginBottom="20dp"
+		android:layout_marginTop="10dp"
+		android:backgroundTint="@color/colorPrimary"
+		android:onClick="buttonSyncMessages"
+		android:text="@string/serversync_download_button" />
+	
+	<TextView
+		android:id="@+id/deletemessages_label"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="center"
+		android:text="@string/serversync_delete_description"
+		android:textColor="?android:textColorSecondary"
+		android:textSize="18sp" />
+	
+	<Button
+		android:id="@+id/deletemessages_button"
+		style="@style/Widget.AppCompat.Button.Colored"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="center"
+		android:layout_marginTop="10dp"
+		android:backgroundTint="@color/colorPrimary"
+		android:onClick="buttonDeleteMessages"
+		android:text="@string/serversync_delete_button" />
+</LinearLayout>

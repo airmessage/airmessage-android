@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:orientation="vertical"
+	tools:context=".MessagingInfo">
+	<!-- Notifications toggle -->
+	<RelativeLayout
+		android:layout_width="match_parent"
+		android:layout_height="64dp"
+		android:background="?android:attr/selectableItemBackground"
+		android:focusable="true"
+		android:clickable="true"
+		android:onClick="toggleNotifications"
+		android:paddingLeft="16dp"
+		android:paddingRight="16dp">
+		
+		<TextView
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_alignParentStart="true"
+			android:layout_centerVertical="true"
+			android:text="@string/preference_messagenotifications_getnotifications_title"
+			android:textColor="?android:textColorPrimary"
+			android:textSize="16sp" />
+		
+		<Switch
+			android:id="@+id/switch_receivenotifications"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_alignParentEnd="true"
+			android:layout_centerVertical="true"
+			android:tag="@string/tag_primarytint" />
+	</RelativeLayout>
+	
+	<View
+		android:layout_width="match_parent"
+		android:layout_height="1dp"
+		android:alpha="0.5"
+		android:background="@android:color/darker_gray" />
+	
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:minHeight="48dp"
+		android:paddingLeft="16dp"
+		android:paddingRight="16dp">
+		
+		<TextView
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center"
+			android:layout_weight="1"
+			android:text="@string/conversationmembers"
+			android:textColor="?android:textColorSecondary"
+			android:textSize="16sp" />
+		
+		<ImageButton
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center"
+			android:layout_weight="0"
+			android:background="?android:attr/selectableItemBackgroundBorderless"
+			android:contentDescription="@string/button_refresh"
+			android:cropToPadding="false"
+			android:src="@drawable/refresh"
+			android:clickable="false"
+			android:alpha="0.54"
+			android:tag="@string/tag_primarytint"
+			android:tint="@color/colorPrimary"
+			android:tooltipText="@string/button_refresh" />
+	</LinearLayout>
+	
+	<LinearLayout
+		android:id="@+id/conversation_members"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="vertical" />
+	
+	<View
+		android:layout_width="match_parent"
+		android:layout_height="1dp"
+		android:alpha="0.5"
+		android:background="@android:color/darker_gray" />
+	
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:minHeight="48dp"
+		android:paddingLeft="16dp"
+		android:paddingRight="16dp"
+		android:visibility="gone">
+		
+		<TextView
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center"
+			android:layout_weight="1"
+			android:text="@string/conversationcontent"
+			android:textColor="?android:textColorSecondary"
+			android:textSize="16sp" />
+		
+		<ImageButton
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center"
+			android:layout_weight="0"
+			android:background="?android:attr/selectableItemBackgroundBorderless"
+			android:contentDescription="@string/button_delete"
+			android:src="@drawable/delete"
+			android:tag="@string/tag_primarytint"
+			android:tint="@color/colorPrimary"
+			android:tooltipText="@string/button_delete" />
+	</LinearLayout>
+</LinearLayout>

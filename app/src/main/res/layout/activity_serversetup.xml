@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent">
+	<!-- Root layout -->
+	<FrameLayout
+		android:id="@+id/scene_root"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:layout_above="@+id/stepperbar">
+		<!-- Server verification -->
+		<include
+			android:id="@+id/layout_serververification"
+			layout="@layout/layout_serververification"
+			android:visibility="visible" />
+		<!-- Server sync -->
+		<include
+			android:id="@+id/layout_serversync"
+			layout="@layout/layout_serversync"
+			android:visibility="invisible" />
+	</FrameLayout>
+	<!-- Bottom Bar -->
+	<RelativeLayout
+		android:id="@id/stepperbar"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_alignParentBottom="true"
+		android:background="@color/colorAccent"
+		android:padding="5dp">
+		
+		<LinearLayout
+			android:id="@+id/nextbutton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_alignParentEnd="true"
+			android:alpha="0.38"
+			android:background="?attr/selectableItemBackground"
+			android:clickable="false"
+			android:onClick="onNextButtonClick"
+			android:padding="5dp">
+			
+			<TextView
+				android:id="@+id/nextbuttonlabel"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:text="@string/button_next"
+				android:textAlignment="center"
+				android:textAllCaps="true"
+				android:textColor="@android:color/white"
+				android:textSize="18sp"
+				android:textStyle="bold" />
+			
+			<ProgressBar
+				android:id="@+id/nextbuttonprogress"
+				style="?android:attr/progressBarStyleSmall"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_marginStart="6dp"
+				android:indeterminateTint="@android:color/white"
+				android:visibility="gone" />
+			
+			<ImageView
+				android:id="@+id/nextbuttonarrow"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:src="@drawable/arrow_right"
+				android:visibility="visible" />
+		</LinearLayout>
+		
+		<LinearLayout
+			android:id="@+id/backbutton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_alignParentStart="true"
+			android:background="?attr/selectableItemBackground"
+			android:clickable="true"
+			android:onClick="onBackButtonClick"
+			android:padding="5dp"
+			android:visibility="gone">
+			
+			<ImageView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:src="@drawable/arrow_left" />
+			
+			<TextView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:text="@string/button_back"
+				android:textAlignment="center"
+				android:textAllCaps="true"
+				android:textColor="@android:color/white"
+				android:textSize="18sp"
+				android:textStyle="bold" />
+		</LinearLayout>
+	</RelativeLayout>
+</RelativeLayout>

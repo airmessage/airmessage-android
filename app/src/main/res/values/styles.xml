@@ -1,0 +1,72 @@
+<resources>
+	
+	<style name="AppTheme" parent="@android:style/Theme.Material.Light.DarkActionBar">
+		<item name="android:colorPrimary">@color/colorPrimary</item>
+		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="android:actionModeBackground">@color/colorPrimary</item>
+		<item name="android:actionBarTheme">@style/SolidActionBar</item>
+		<item name="android:windowBackground">@color/background</item>
+	</style>
+	
+	<style name="SolidActionBar">
+		<item name="android:colorControlNormal">@android:color/white</item>
+		<item name="android:titleTextColor">@android:color/white</item>
+	</style>
+	
+	<style name="AppTheme.AppCompat" parent="@style/Theme.AppCompat.Light.DarkActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="android:colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimary</item>
+		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorPrimary</item>
+		<item name="android:colorAccent">@color/colorAccent</item>
+		
+		<item name="android:colorControlActivated">?android:attr/colorAccent</item>
+		<item name="android:actionBarTheme">@style/SolidActionBar</item>
+		<item name="android:windowBackground">@color/background</item>
+		<item name="android:actionModeBackground">@android:color/transparent</item>
+	</style>
+	
+	<style name="AppTheme.AppCompat.Messaging" parent="@style/AppTheme.AppCompat">
+	
+	</style>
+	
+	<style name="AppTheme.ImageDraw" parent="@android:style/Theme.Material.NoActionBar">
+		<item name="android:windowTranslucentStatus">true</item>
+		<item name="android:windowTranslucentNavigation">true</item>
+		<item name="android:fitsSystemWindows">true</item>
+	</style>
+	
+	<style name="AppTheme.ActionBar" parent="@style/ThemeOverlay.AppCompat.ActionBar">
+		<item name="android:titleTextColor">@android:color/white</item>
+		<item name="android:background">@color/colorPrimary</item>
+		<item name="colorControlNormal">@android:color/white</item>
+	</style>
+	
+	<style name="AppTheme.Setup" parent="@style/Theme.AppCompat.Light.NoActionBar">
+		<item name="android:statusBarColor">#F5F5F5</item>
+		<item name="android:windowLightStatusBar">true</item>
+		<item name="android:colorPrimary">@color/colorPrimary</item>
+		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="colorControlActivated">@color/colorAccent</item>
+		<item name="colorControlHighlight">#60FFFFFF</item>
+	</style>
+	
+	<style name="AppTheme.AppCompat.Transparent" parent="AppTheme.AppCompat">
+		<item name="android:windowIsTranslucent">true</item>
+		<item name="android:windowBackground">@android:color/transparent</item>
+		<item name="android:windowDrawsSystemBarBackgrounds">true</item>
+	</style>
+	
+	<!-- <style name="AppTheme.Dialog" parent="@android:style/Theme.Material.Light.Dialog.Alert" >
+		<item name="android:textColorPrimary">?android:textColorSecondary</item>
+		<item name="android:dialogTitle">?android:textColorPrimary</item>
+		<item name="android:buttonStyle">@style/AppTheme.Dialog.ButtonStyle</item>
+	</style>
+
+	<style name="AppTheme.Dialog.ButtonStyle" parent="@android:style/Theme.Material.Light.Dialog.Alert" >
+		<item name="android:textColor">@color/colorPrimary</item>
+	</style> -->
+</resources>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="56dp"
+	android:background="?android:attr/selectableItemBackground"
+	android:clickable="true"
+	android:focusable="true"
+	android:orientation="horizontal">
+	
+	<include
+		layout="@layout/reference_user"
+		android:layout_width="40dp"
+		android:layout_height="40dp"
+		android:layout_gravity="center"
+		android:layout_marginLeft="16dp"
+		android:layout_marginRight="16dp" />
+	<!-- Sender and email address -->
+	<LinearLayout
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_gravity="center"
+		android:layout_weight="1"
+		android:orientation="vertical">
+		
+		<TextView
+			android:id="@+id/label_member"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:ellipsize="end"
+			android:maxLines="1"
+			android:text="@string/placeholder_name"
+			android:textColor="?android:textColorPrimary"
+			android:textSize="16sp" />
+		
+		<TextView
+			android:id="@+id/label_address"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:ellipsize="end"
+			android:maxLines="1"
+			android:text="@string/placeholder_address"
+			android:textColor="?android:textColorSecondary"
+			android:textSize="14sp"
+			android:visibility="gone" />
+	</LinearLayout>
+	<!-- Pick color button -->
+	<ImageButton
+		android:id="@+id/button_change_color"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="center"
+		android:layout_marginLeft="16dp"
+		android:layout_marginRight="16dp"
+		android:background="?android:selectableItemBackgroundBorderless"
+		android:contentDescription="@string/edit_contact_color"
+		android:src="@drawable/palette"
+		android:tint="@color/colorPrimary"
+		android:tooltipText="@string/edit_contact_color" />
+</LinearLayout>
