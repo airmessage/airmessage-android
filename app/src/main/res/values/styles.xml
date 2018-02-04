@@ -21,6 +21,7 @@
 		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="android:colorBackground">@color/colorBackgroundLight</item>
 		
 		<item name="android:colorControlActivated">?android:attr/colorAccent</item>
 		<item name="android:actionBarTheme">@style/SolidActionBar</item>
@@ -50,6 +51,7 @@
 		<item name="android:colorPrimary">@color/colorPrimary</item>
 		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="android:colorBackground">@color/colorBackgroundLight</item>
 		<item name="colorControlActivated">@color/colorAccent</item>
 		<item name="colorControlHighlight">#60FFFFFF</item>
 	</style>
@@ -58,6 +60,11 @@
 		<item name="android:windowIsTranslucent">true</item>
 		<item name="android:windowBackground">@android:color/transparent</item>
 		<item name="android:windowDrawsSystemBarBackgrounds">true</item>
+	</style>
+	
+	<style name="SplashTheme" parent="@style/Theme.AppCompat.NoActionBar">
+		<item name="android:windowBackground">@drawable/splashscreen</item>
+		<item name="android:windowTranslucentStatus">true</item>
 	</style>
 	
 	<!-- <style name="AppTheme.Dialog" parent="@android:style/Theme.Material.Light.Dialog.Alert" >

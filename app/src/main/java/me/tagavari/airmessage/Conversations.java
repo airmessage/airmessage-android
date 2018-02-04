@@ -571,18 +571,7 @@ public class Conversations extends AppCompatActivity {
 		listView.setMultiChoiceModeListener(listMultiChoiceModeListener);
 		
 		//Setting the listeners
-		findViewById(R.id.fab).setOnClickListener(view -> {
-			//Creating the new message activity intent
-			Intent intent = new Intent(Conversations.this, NewMessage.class);
-			int[] fabLocation = new int[2];
-			view.getLocationInWindow(fabLocation);
-			intent.putExtra(Constants.intentParamRevealX, fabLocation[0] + view.getWidth() / 2);
-			intent.putExtra(Constants.intentParamRevealY, fabLocation[1] + view.getHeight() / 2);
-			
-			//Starting the intent
-			startActivity(intent);
-			overridePendingTransition(0, 0);
-		});
+		findViewById(R.id.fab).setOnClickListener(view -> startActivity(new Intent(Conversations.this, NewMessage.class)));
 	}
 	
 	@Override
@@ -1082,6 +1071,7 @@ public class Conversations extends AppCompatActivity {
 		//Updating the list
 		//if(sort) Collections.sort(ConversationManager.getConversations(), ConversationManager.conversationComparator);
 		ListAdapter listAdapter = ((ListAdapter) listView.getAdapter());
+		if(listAdapter == null) return;
 		listAdapter.filterAndUpdate();
 		
 		//Returning if the state is not ready
@@ -1092,7 +1082,6 @@ public class Conversations extends AppCompatActivity {
 		if(newConversationsExist != conversationsExist) {
 			//Setting "no conversations" view state
 			(findViewById(R.id.no_conversations)).animate().alpha(newConversationsExist ? 1 : 0).start();
-			//.animate().alpha(newConversationsExist ? 1 : 0).start();
 			
 			//Setting the new state
 			conversationsExist = newConversationsExist;

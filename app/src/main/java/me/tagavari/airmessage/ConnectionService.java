@@ -19,6 +19,7 @@ import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
@@ -101,7 +102,8 @@ public class ConnectionService extends Service {
 	static String hostname = null;
 	static String password = null;
 	static byte lastConnectionResult = -1;
-	private boolean connectionExisted = false;
+	private boolean connectionEstablishedForRetrieval = false;
+	private boolean connectionEstablishedForReconnect = false;
 	private boolean massRetrievalInProgress = false;
 	private final Handler massRetrievalTimeoutHandler = new Handler();
 	private Runnable massRetrievalTimeoutRunnable = null;
@@ -145,8 +147,6 @@ public class ConnectionService extends Service {
 	private final ArrayList<ConversationInfoRequest> pendingConversations = new ArrayList<>();
 	private final Handler mainHandler = new Handler(Looper.getMainLooper());
 	
-	private static final List<ServiceStartCallback> startCallbacks = new ArrayList<>();
-	
 	static ConnectionService getInstance() {
 		return serviceReference == null ? null : serviceReference.get();
 	}
@@ -183,6 +183,9 @@ public class ConnectionService extends Service {
 		
 		//Checking if a stop has been requested
 		if(selfIntentActionStop.equals(intentAction)) {
+			//Denying the existence of the connection for reconnection
+			connectionEstablishedForReconnect = false;
+			
 			//Stopping the service
 			stopSelf();
 			
@@ -193,9 +196,18 @@ public class ConnectionService extends Service {
 			return START_NOT_STICKY;
 		}
 		
-		//Disconnecting the client if requested
-		if(selfIntentActionDisconnect.equals(intentAction)) disconnect();
-			//Reconnecting the client if requested
+		//Checking if a disconnect has been requested
+		if(selfIntentActionDisconnect.equals(intentAction)) {
+			//Denying the existence of the connection for reconnection
+			connectionEstablishedForReconnect = false;
+			
+			//Disconnecting
+			disconnect();
+			
+			//Updating the notification
+			postDisconnectedNotification(true);
+		}
+		//Reconnecting the client if requested
 		else if(wsClient == null || wsClient.isClosed() || selfIntentActionConnect.equals(intentAction)) connect();
 		
 		//Setting the service as not shutting down
@@ -289,7 +301,7 @@ public class ConnectionService extends Service {
 			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult).putExtra(Constants.intentParamResult, intentResultValueInternalException));
 			
 			//Updating the notification state
-			postDisconnectedNotification();
+			postDisconnectedNotification(false);
 			
 			//Finishing the service
 			//finishService();
@@ -318,9 +330,9 @@ public class ConnectionService extends Service {
 		notificationManager.notify(-1, getBackgroundNotification(isConnected));
 	}
 	
-	private void postDisconnectedNotification() {
+	private void postDisconnectedNotification(boolean silent) {
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(-1, getOfflineNotification());
+		notificationManager.notify(-1, getOfflineNotification(silent));
 	}
 	
 	/* private void finishService() {
@@ -353,6 +365,8 @@ public class ConnectionService extends Service {
 				.addAction(-1, getResources().getString(R.string.action_disconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionDisconnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.addAction(-1, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.setShowWhen(false)
+				.setPriority(Notification.PRIORITY_MIN)
+				.setOnlyAlertOnce(true)
 				.build();
 		
 		//Setting the notification as ongoing
@@ -362,7 +376,7 @@ public class ConnectionService extends Service {
 		return notification;
 	}
 	
-	private Notification getOfflineNotification() {
+	private Notification getOfflineNotification(boolean silent) {
 		//Building and returning the notification
 		return new NotificationCompat.Builder(this, MainApplication.notificationChannelStatus)
 				.setSmallIcon(R.drawable.warning)
@@ -373,6 +387,7 @@ public class ConnectionService extends Service {
 				.addAction(-1, getResources().getString(R.string.action_reconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.addAction(-1, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.setShowWhen(true)
+				.setOnlyAlertOnce(silent)
 				.build();
 	}
 	
@@ -425,7 +440,7 @@ public class ConnectionService extends Service {
 			postConnectedNotification(true);
 			
 			//Setting the connection as existing
-			connectionExisted = true;
+			connectionEstablishedForRetrieval = connectionEstablishedForReconnect = true;
 			
 			//Getting the last connection time
 			SharedPreferences sharedPrefs = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
@@ -602,8 +617,8 @@ public class ConnectionService extends Service {
 			//Notifying the connection listeners
 			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult).putExtra(Constants.intentParamResult, clientReason));
 			
-			//Checking if a connection existed
-			if(connectionExisted) {
+			//Checking if a connection existed for retrieval
+			if(connectionEstablishedForRetrieval) {
 				//Writing the time to shared preferences
 				SharedPreferences sharedPrefs = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
 				SharedPreferences.Editor editor = sharedPrefs.edit();
@@ -612,11 +627,17 @@ public class ConnectionService extends Service {
 				editor.commit();
 			}
 			
+			//Checking if a connection existed for reconnection and the preference is enabled
+			if(connectionEstablishedForReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
+				//Reconnecting
+				ConnectionService.this.connect();
+			}
+			
 			//Setting the connection as nonexistent
-			connectionExisted = false;
+			connectionEstablishedForRetrieval = connectionEstablishedForReconnect = false;
 			
 			//Posting the disconnected notification
-			if(!isShuttingDown) postDisconnectedNotification();
+			if(!isShuttingDown) postDisconnectedNotification(false);
 			
 			//Removing the scheduled ping
 			//unschedulePing();
@@ -1414,9 +1435,8 @@ public class ConnectionService extends Service {
 	
 	private void schedulePing() {
 		//Scheduling the ping
-		((AlarmManager) getSystemService(ALARM_SERVICE)).setWindow(AlarmManager.RTC_WAKEUP,
-				System.currentTimeMillis() + keepAliveMillis - keepAliveWindowMillis,
-				keepAliveWindowMillis,
+		((AlarmManager) getSystemService(ALARM_SERVICE)).setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+				SystemClock.elapsedRealtime() + keepAliveMillis,
 				pingPendingIntent);
 	}
 	
@@ -1585,7 +1605,7 @@ public class ConnectionService extends Service {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Returning if the action doesn't match or the preference isn't enabled
-			if(!"android.intent.action.BOOT_COMPLETED".equals(intent.getAction()) || !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_connectionboot_key), false)) return;
+			if(!"android.intent.action.BOOT_COMPLETED".equals(intent.getAction())/* || !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_connectionboot_key), false)*/) return;
 			
 			//Starting the service
 			Intent serviceIntent = new Intent(context, ConnectionService.class);
@@ -2339,13 +2359,5 @@ public class ConnectionService extends Service {
 			if(chatRenameActionInfo.newChatName != null && chatRenameActionInfo.newChatName.isEmpty())
 				chatRenameActionInfo.newChatName = null;
 		}
-	}
-	
-	static void addServiceStartCallback(ServiceStartCallback callback) {
-		startCallbacks.add(callback);
-	}
-	
-	interface ServiceStartCallback {
-		void onServiceStarted(ConnectionService service);
 	}
 }

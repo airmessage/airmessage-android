@@ -3,10 +3,12 @@ package me.tagavari.airmessage;
 import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.NotificationManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
@@ -39,6 +41,15 @@ public class Preferences extends PreferenceActivity {
 				updateRingtonePreference(notificationSound, (RingtonePreference) preference);
 			}
 		}
+	};
+	Preference.OnPreferenceChangeListener startOnBootChangeListener = (preference, value) -> {
+		//Updating the service state
+		getPackageManager().setComponentEnabledSetting(new ComponentName(Preferences.this, ConnectionService.ServiceStart.class),
+				(boolean) value ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+				PackageManager.DONT_KILL_APP);
+		
+		//Returning true (to allow the change)
+		return true;
 	};
 	Preference.OnPreferenceClickListener deleteAttachmentsClickListener = preference -> {
 		//Creating a dialog
@@ -145,6 +156,7 @@ public class Preferences extends PreferenceActivity {
 		}
 		
 		//Setting the listeners
+		findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setOnPreferenceChangeListener(startOnBootChangeListener);
 		findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
 		findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
 		findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);

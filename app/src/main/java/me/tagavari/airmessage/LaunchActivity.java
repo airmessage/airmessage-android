@@ -12,6 +12,9 @@ public class LaunchActivity extends Activity {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
 		
+		//Setting the layout
+		//setContentView(R.layout.activity_splash);
+		
 		//Getting the connection service information
 		SharedPreferences sharedPrefs = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
 		ConnectionService.hostname = sharedPrefs.getString(MainApplication.sharedPreferencesKeyHostname, "");
@@ -28,7 +31,6 @@ public class LaunchActivity extends Activity {
 			//Launching the intent
 			startActivity(launchServerSetup);
 		} else {
-			//TODO fetch messages since last connection time
 			//Starting the connection service
 			Intent serviceIntent = new Intent(this, ConnectionService.class);
 			startService(serviceIntent);

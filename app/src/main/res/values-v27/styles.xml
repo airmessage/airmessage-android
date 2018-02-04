@@ -7,6 +7,7 @@
 		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="android:colorBackground">@color/colorBackgroundLight</item>
 		
 		<item name="android:colorControlActivated">?android:attr/colorAccent</item>
 		<item name="android:actionBarTheme">@style/SolidActionBar</item>
@@ -14,8 +15,8 @@
 		<item name="android:actionModeBackground">@android:color/transparent</item>
 		
 		<item name="android:windowLightNavigationBar">true</item>
-		<item name="android:navigationBarDividerColor">#FFE0E0E0</item>
-		<item name="android:navigationBarColor">@android:color/white</item>
+		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
+		<item name="android:navigationBarColor">@color/colorBackgroundLight</item>
 	</style>
 	
 	<style name="AppTheme.Setup" parent="@style/Theme.AppCompat.Light.NoActionBar">
@@ -24,6 +25,7 @@
 		<item name="android:colorPrimary">@color/colorPrimary</item>
 		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="android:colorBackground">@color/colorBackgroundLight</item>
 		<item name="colorControlActivated">@color/colorAccent</item>
 		<item name="colorControlHighlight">#60FFFFFF</item>
 		
@@ -34,5 +36,15 @@
 	
 	<style name="AppTheme.AppCompat.Messaging" parent="@style/AppTheme.AppCompat">
 		<item name="android:navigationBarDividerColor">@android:color/transparent</item>
+		<item name="android:navigationBarColor">@color/colorForegroundLight</item>
+	</style>
+	
+	<style name="SplashTheme" parent="@style/Theme.AppCompat.NoActionBar">
+		<item name="android:windowBackground">@drawable/splashscreen</item>
+		<item name="android:windowTranslucentStatus">true</item>
+		
+		<item name="android:windowLightNavigationBar">true</item>
+		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
+		<item name="android:navigationBarColor">@color/colorBackgroundLight</item>
 	</style>
 </resources>

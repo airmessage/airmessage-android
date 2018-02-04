@@ -151,7 +151,7 @@
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:layout_alignParentBottom="true"
-			android:background="@android:color/white"
+			android:background="@color/colorForegroundLight"
 			android:clipToPadding="false"
 			android:elevation="8dp"
 			android:minHeight="45dp"

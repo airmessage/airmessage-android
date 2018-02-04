@@ -1983,15 +1983,15 @@ public class Messaging extends AppCompatActivity {
 			if(conversationItems.isEmpty()) return;
 			
 			//Getting if the list is currently scrolled to the bottom
-			boolean scrolledToBottom = ((LinearLayoutManager) messageList.getLayoutManager()).findLastCompletelyVisibleItemPosition() == conversationItems.size() - 2; //-2 because the item was already added to the list
+			boolean scrolledToBottom = ((LinearLayoutManager) messageList.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 2; //-2 because the item was already added to the list
 			
 			//Calling the original method
 			notifyItemInserted(position);
 			
 			//Checking if the list is scrolled to the end and the new item is at the bottom
-			if(scrolledToBottom && position == conversationItems.size() - 1) {
+			if(scrolledToBottom && position == getItemCount() - 1) {
 				//Scrolling to the bottom
-				messageList.smoothScrollToPosition(conversationItems.size() - 1);
+				messageList.smoothScrollToPosition(getItemCount() - 1);
 			}
 		}
 	}

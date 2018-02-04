@@ -405,17 +405,28 @@ class BitmapCacheHelper {
 			//Getting the file
 			File file = parameters[0];
 			
-			//Reading the image's EXIF data
-			ExifInterface exif;
-			try {
-				exif = new ExifInterface(file.getAbsolutePath());
-			} catch(IOException exception) {
-				exception.printStackTrace();
-				return null;
-			}
+			//Creating the EXIF flags
+			boolean useExif = false;
+			int exifOrientation = -1;
 			
-			//Getting the EXIF orientation
-			int exifOrientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+			//Checking if the image is a JPEG file (contains EXIF data)
+			if("image/jpeg".equals(Constants.getMimeType(file))) {
+				//Reading the image's EXIF data
+				ExifInterface exif = null;
+				try {
+					exif = new ExifInterface(file.getAbsolutePath());
+					useExif = true;
+				} catch(IOException exception) {
+					//Printing the stack trace
+					exception.printStackTrace();
+				}
+				
+				//Checking if EXIF should be used
+				if(useExif) {
+					//Getting the EXIF orientation
+					exifOrientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+				}
+			}
 			
 			//Creating the bitmap options
 			BitmapFactory.Options options = new BitmapFactory.Options();
@@ -438,7 +449,10 @@ class BitmapCacheHelper {
 			if(bitmap == null) return null;
 			
 			//Rotating the bitmap
-			return rotateBitmap(bitmap, exifOrientation);
+			if(useExif) bitmap = rotateBitmap(bitmap, exifOrientation);
+			
+			//Returning the bitmap
+			return bitmap;
 		}
 		
 		@Override

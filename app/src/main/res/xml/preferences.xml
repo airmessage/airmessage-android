@@ -54,20 +54,25 @@
             android:key="@string/preference_server_resync_key"
             android:title="@string/preference_server_resync_title" >
         </Preference>
-		<SwitchPreference
-			android:key="@string/preference_server_disconnectionnotification_key"
-			android:title="@string/preference_server_disconnectionnotification_title"
-			android:summary="@string/preference_server_disconnectionnotification_description"
-			android:defaultValue="true" />
-		<SwitchPreference
-			android:key="@string/preference_server_connectionboot_key"
-			android:title="@string/preference_server_connectionboot_title"
-			android:defaultValue="true" />
 		<!-- <SwitchPreference
 			android:key="@string/preference_server_disconnectionnotification_key"
 			android:title="@string/preference_server_disconnectionnotification_title"
 			android:summary="@string/preference_server_disconnectionnotification_description"
 			android:defaultValue="true" /> -->
+		<SwitchPreference
+			android:key="@string/preference_server_connectionboot_key"
+			android:title="@string/preference_server_connectionboot_title"
+			android:defaultValue="true" />
+		<SwitchPreference
+			android:key="@string/preference_server_networkreconnect_key"
+			android:title="@string/preference_server_networkreconnect_title"
+			android:summary="@string/preference_server_networkreconnect_description"
+			android:defaultValue="true" />
+		<SwitchPreference
+			android:key="@string/preference_server_dropreconnect_key"
+			android:title="@string/preference_server_dropreconnect_title"
+			android:summary="@string/preference_server_dropreconnect_description"
+			android:defaultValue="true" />
 		<SwitchPreference
 			android:key="@string/preference_server_networkreconnect_key"
 			android:title="@string/preference_server_networkreconnect_title"

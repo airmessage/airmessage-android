@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+	<!-- Background -->
+	<item android:drawable="@android:color/background_light" />
+	
+	<!-- App icon -->
+	<item
+		android:width="100dp"
+		android:height="100dp"
+		android:drawable="@drawable/app_icon"
+		android:gravity="center" />
+</layer-list>

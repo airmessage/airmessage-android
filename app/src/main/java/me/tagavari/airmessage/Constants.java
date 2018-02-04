@@ -59,8 +59,6 @@ class Constants {
 	static final String intentParamList = "list";
 	static final String intentParamAction = "action";
 	static final String intentParamCurrent = "current";
-	static final String intentParamRevealX = "reveal-X";
-	static final String intentParamRevealY = "reveal-Y";
 	
 	static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	

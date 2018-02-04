@@ -1,6 +1,5 @@
 package me.tagavari.airmessage;
 
-import android.animation.Animator;
 import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
@@ -27,10 +26,8 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.view.animation.AccelerateInterpolator;
 import android.view.inputmethod.EditorInfo;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
@@ -166,10 +163,6 @@ public class NewMessage extends AppCompatActivity {
 	private static final String retainedFragmentTag = RetainedFragment.class.getName();
 	private RetainedFragment retainedFragment;
 	
-	//Creating the other values
-	private int activityRevealX;
-	private int activityRevealY;
-	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		//Calling the super method
@@ -219,11 +212,6 @@ public class NewMessage extends AppCompatActivity {
 		//Configuring the list
 		contactsListAdapter = new ListAdapter(retainedFragment.contactList);
 		contactsList.setAdapter(contactsListAdapter);
-		
-		//Revealing the activity
-		activityRevealX = getIntent().getIntExtra(Constants.intentParamRevealX, 0);
-		activityRevealY = getIntent().getIntExtra(Constants.intentParamRevealY, 0);
-		revealActivity(activityRevealX, activityRevealY);
 	}
 	
 	private void prepareRetainedFragment() {
@@ -265,69 +253,6 @@ public class NewMessage extends AppCompatActivity {
 				chipIndex++;
 			}
 		}
-	}
-	
-	private void revealActivity(int revealX, int revealY) {
-		//Getting the root layout
-		View rootLayout = getWindow().getDecorView();
-		View contentLayout = findViewById(R.id.root);
-		
-		//Hiding the root layout
-		contentLayout.setVisibility(View.INVISIBLE);
-		getSupportActionBar().hide();
-		
-		rootLayout.post(() -> {
-			//Calculating the reveal radius
-			float finalRadius = (float) (Math.max(rootLayout.getWidth(), rootLayout.getHeight()) * 1.1);
-			
-			//Creating the animation
-			Animator circularReveal = ViewAnimationUtils.createCircularReveal(rootLayout, revealX, revealY, 0, finalRadius);
-			circularReveal.setDuration(400);
-			circularReveal.setInterpolator(new AccelerateInterpolator());
-			
-			//Revealing the layout
-			contentLayout.setVisibility(View.VISIBLE);
-			getSupportActionBar().show();
-			circularReveal.start();
-		});
-	}
-	
-	protected void unrevealActivity(int revealX, int revealY) {
-		//Getting the root layout
-		View rootLayout = getWindow().getDecorView();
-		
-		//Returning if the layout's window token is invalid (the view is not attached)
-		if(rootLayout.getWindowToken() == null) return;
-		
-		//Calculating the reveal radius
-		float finalRadius = (float) (Math.max(rootLayout.getWidth(), rootLayout.getHeight()) * 1.1);
-		
-		//Creating the animation
-		Animator circularReveal = ViewAnimationUtils.createCircularReveal(rootLayout, revealX, revealY, finalRadius, 0);
-		circularReveal.setDuration(400);
-		circularReveal.addListener(new Animator.AnimatorListener() {
-			@Override
-			public void onAnimationStart(Animator animator) {}
-			
-			@Override
-			public void onAnimationEnd(Animator animator) {
-				//Hiding the root layout
-				rootLayout.setVisibility(View.INVISIBLE);
-				
-				//Finishing the activity
-				NewMessage.super.finish();
-				overridePendingTransition(0, 0);
-			}
-			
-			@Override
-			public void onAnimationCancel(Animator animator) {}
-			
-			@Override
-			public void onAnimationRepeat(Animator animator) {}
-		});
-		
-		//Starting the animation
-		circularReveal.start();
 	}
 	
 	void updateContactState(byte oldState, byte newState) {
@@ -433,12 +358,6 @@ public class NewMessage extends AppCompatActivity {
 						.show();
 			}
 		}
-	}
-	
-	@Override
-	public void finish() {
-		//Unrevealing the activity
-		unrevealActivity(activityRevealX, activityRevealY);
 	}
 	
 	public void toggleInputType(View view) {

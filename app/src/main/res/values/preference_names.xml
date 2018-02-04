@@ -42,12 +42,12 @@
 	<string name="preference_server_resync_title">Resync messages</string>
 	<string name="preference_server_connectionboot_key" translatable="false">pref_key_server_connectionboot</string>
 	<string name="preference_server_connectionboot_title">Automatically connect on boot</string>
-	<string name="preference_server_disconnectionnotification_key" translatable="false">pref_key_server_disconnectionnotification</string>
+	<!-- <string name="preference_server_disconnectionnotification_key" translatable="false">pref_key_server_disconnectionnotification</string>
 	<string name="preference_server_disconnectionnotification_title">Disconnected notification</string>
-	<string name="preference_server_disconnectionnotification_description">Display notification when the connection is lost</string>
-	<string name="preference_server_immediatereconnect_key" translatable="false">pref_key_server_immediatereconnect</string>
-	<string name="preference_server_immediatereconnect_title">Immediate automatic reconnect</string>
-	<string name="preference_server_immediatereconnect_description">Attempt to reconnect immediately after the connection is lost</string>
+	<string name="preference_server_disconnectionnotification_description">Display notification when the connection is lost</string> -->
+	<string name="preference_server_dropreconnect_key" translatable="false">pref_key_server_dropreconnect</string>
+	<string name="preference_server_dropreconnect_title">Connection drop reconnect</string>
+	<string name="preference_server_dropreconnect_description">Attempt to reconnect immediately after the connection is lost</string>
 	<string name="preference_server_networkreconnect_key" translatable="false">pref_key_server_networkreconnect</string>
 	<string name="preference_server_networkreconnect_title">Network switch reconnect</string>
 	<string name="preference_server_networkreconnect_description">Attempt to reconnect when the device connects to a new network (ex. Wi-Fi to Cellular)</string>

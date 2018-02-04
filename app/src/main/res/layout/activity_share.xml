@@ -173,6 +173,7 @@
 			android:layout_gravity="center"
 			android:minWidth="64dp"
 			android:text="@string/new_message"
-			android:textColor="@color/colorPrimary" />
+			android:textColor="@color/colorPrimary"
+			android:onClick="createNewConversation"/>
 	</LinearLayout>
 </LinearLayout>

@@ -887,7 +887,7 @@ class ConversationManager {
 								//Skipping the remainder of the iteration if the item doesn't match
 								if(ghostMessage.getAttachments().isEmpty()) continue;
 								AttachmentInfo firstAttachment = ghostMessage.getAttachments().get(0);
-								if(!Arrays.equals(attachmentInfo.getFileChecksum(), firstAttachment.getFileChecksum())) continue;
+								if(attachmentInfo.getFileChecksum() == null || !Arrays.equals(attachmentInfo.getFileChecksum(), firstAttachment.getFileChecksum())) continue;
 								
 								//Updating the ghost item
 								ghostMessage.setDate(messageInfo.getDate());
@@ -1013,8 +1013,8 @@ class ConversationManager {
 			conversationItems.add(message); //The item can be appended to the end because it'll always be the most recent item (it was just added)
 			ghostMessages.add(message);
 			
-			//Determining the item's relations
-			addConversationItemRelation(this, conversationItems, message, context, false);
+			//Determining and updating the item's relations
+			addConversationItemRelation(this, conversationItems, message, context, true);
 			
 			//Updating the last item
 			updateLastItem(context);
@@ -1895,12 +1895,12 @@ class ConversationManager {
 					
 					@Override
 					public void onUploadFinished(byte[] checksum) {
+						//Setting the checksum
+						attachments.get(0).setFileChecksum(checksum);
+						
 						//Getting the view
 						View view = getView();
 						if(view == null) return;
-						
-						//Setting the checksum
-						attachments.get(0).setFileChecksum(checksum);
 						
 						//Updating the progress bar
 						((ProgressWheel) view.findViewById(R.id.send_progress)).setProgress(1);
@@ -3999,15 +3999,11 @@ class ConversationManager {
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
 			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
-			if(alignToRight)
-				((RoundedImageView) itemView.findViewById(R.id.content_view)).setRadii(pxCornerUnanchored,
-						radiusTop,
-						radiusBottom,
-						pxCornerUnanchored);
-			else ((RoundedImageView) itemView.findViewById(R.id.content_view)).setRadii(radiusTop,
-					pxCornerUnanchored,
-					pxCornerUnanchored,
-					radiusBottom);
+			
+			RoundedImageView imageView = itemView.findViewById(R.id.content_view);
+			if(alignToRight) imageView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+			else imageView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			imageView.invalidate();
 		}
 		
 		@Override

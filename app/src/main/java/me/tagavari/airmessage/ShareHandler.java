@@ -85,7 +85,7 @@ public class ShareHandler extends Activity {
 		}
 		
 		//Checking if the intent is a single object
-		if(Intent.ACTION_SEND.equals(intentAction) && intentType != null) {
+		if(Intent.ACTION_SEND.equals(intentAction)) {
 			//Checking if the content type is text
 			if("text/plain".equals(intentType)) {
 				//Setting the target text
@@ -181,6 +181,11 @@ public class ShareHandler extends Activity {
 		finish();
 	}
 	
+	public void createNewConversation(View view) {
+		//Launching the conversation manager
+		startActivity(new Intent(this, NewMessage.class));
+	}
+	
 	void conversationLoadFinished(ArrayList<ConversationManager.ConversationInfo> result) {
 		//Replacing the conversations
 		if(result != null) {
@@ -257,9 +262,13 @@ public class ShareHandler extends Activity {
 	}
 	
 	public void updateList() {
+		//Returning if the conversations aren't ready
+		if(conversations == null || !conversations.isLoaded()) return;
+		
 		//Updating the list
 		//if(sort) Collections.sort(ConversationManager.getConversations(), ConversationManager.conversationComparator);
-		((ArrayAdapter) listView.getAdapter()).notifyDataSetChanged();
+		ArrayAdapter arrayAdapter = (ArrayAdapter) listView.getAdapter();
+		if(arrayAdapter != null) arrayAdapter.notifyDataSetChanged();
 		
 		//Returning if the state is not ready
 		if(currentState != Conversations.stateReady) return;

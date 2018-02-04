@@ -9,7 +9,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
@@ -34,7 +33,7 @@ class NotificationUtils {
 		addMessageToNotification(context, messageInfo.getConversationInfo(), messageInfo.getSummary(context), messageInfo.getSender(), messageInfo.getDate());
 	}
 	
-	private static Notification getSummaryNotification(Context context) {
+	/* private static Notification getSummaryNotification(Context context) {
 		//Creating the click intent
 		Intent clickIntent = new Intent(context, Conversations.class);
 		
@@ -53,9 +52,11 @@ class NotificationUtils {
 				.setGroup(MainApplication.notificationGroupMessage)
 				//Setting the message as the group summary
 				.setGroupSummary(true)
+				//Setting the importance as high
+				.setPriority(Notification.PRIORITY_HIGH)
 				//Building the notification
 				.build();
-	}
+	} */
 	
 	private static Bitmap getCroppedBitmap(Bitmap bitmap) {
 		Bitmap output = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
@@ -107,19 +108,21 @@ class NotificationUtils {
 				//.setShowWhen(true)
 				//Setting the group
 				.setGroup(MainApplication.notificationGroupMessage)
-				//Setting the priority
-				.setPriority(Notification.PRIORITY_HIGH)
 				//Setting the category
 				.setCategory(Notification.CATEGORY_MESSAGE);
 		//TODO add person
 		//.addPerson();
 		
-		if(playSound && Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+		//Checking if the Android version is below Oreo
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
 			//Setting the sound
-			notificationBuilder.setSound(Uri.parse(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_messagenotifications_sound_key), null)));
+			if(playSound && PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_sound_key), false)) notificationBuilder.setSound(Uri.parse(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_messagenotifications_sound_key), null)));
 			
 			//Enabling vibration if it is enabled in the preferences
 			if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_vibrate_key), false)) notificationBuilder.setVibrate(new long[]{1000, 1000});
+			
+			//Setting the priority
+			notificationBuilder.setPriority(Notification.PRIORITY_HIGH);
 		}
 		
 		//Disabling alerts if a sound shouldn't be played
