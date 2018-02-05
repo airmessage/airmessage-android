@@ -71,22 +71,28 @@
 		android:layout_height="match_parent"
 		android:layout_below="@id/user_input">
 		<!-- Contacts list -->
-		<ListView
+		<!-- <ListView
 			android:id="@+id/list_contacts"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:divider="@null"
 			android:dividerHeight="0dp"
-			android:visibility="gone" />
+			android:visibility="gone" /> -->
+		<android.support.v7.widget.RecyclerView
+			android:id="@+id/list_contacts"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:visibility="visible"
+			android:scrollbars="vertical"/>
 		<!-- Loading text -->
-		<TextView
+		<!-- <TextView
 			android:id="@+id/message_loading"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
 			android:text="@string/loading"
 			android:textColor="?android:attr/textColorSecondary"
-			android:visibility="gone" />
+			android:visibility="gone" /> -->
 		<!-- Permission missing warning -->
 		<LinearLayout
 			android:id="@+id/message_permission"

@@ -15,25 +15,27 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.transition.ChangeBounds;
 import android.transition.Fade;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
-import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -52,14 +54,16 @@ public class NewMessage extends AppCompatActivity {
 	
 	private MenuItem confirmMenuItem;
 	private EditText recipientInput;
-	private ListView contactsList;
-	private ListAdapter contactsListAdapter;
+	private RecyclerView contactsList;
+	private RecyclerAdapter contactsListAdapter;
+	//private ListView contactsList;
+	//private ListAdapter contactsListAdapter;
 	
 	//Creating the listener values
 	private final TextWatcher recipientInputTextWatcher = new TextWatcher() {
 		@Override
 		public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-			
+		
 		}
 		
 		@Override
@@ -107,7 +111,7 @@ public class NewMessage extends AppCompatActivity {
 		
 		@Override
 		public void afterTextChanged(Editable s) {
-			
+		
 		}
 	};
 	private final View.OnKeyListener recipientInputOnKeyListener = new View.OnKeyListener() {
@@ -199,6 +203,7 @@ public class NewMessage extends AppCompatActivity {
 			} else {
 				//Setting the state to no access
 				retainedFragment.updateState(RetainedFragment.contactStateNoAccess);
+				updateContactState((byte) -1, RetainedFragment.contactStateNoAccess);
 			}
 		} else {
 			//Updating the state
@@ -210,7 +215,8 @@ public class NewMessage extends AppCompatActivity {
 		//recipientInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
 		
 		//Configuring the list
-		contactsListAdapter = new ListAdapter(retainedFragment.contactList);
+		contactsList.setLayoutManager(new LinearLayoutManager(this));
+		contactsListAdapter = new RecyclerAdapter(retainedFragment.contactList, contactsList);
 		contactsList.setAdapter(contactsListAdapter);
 	}
 	
@@ -260,7 +266,7 @@ public class NewMessage extends AppCompatActivity {
 			case -1:
 				break;
 			case RetainedFragment.contactStateLoading:
-				findViewById(R.id.message_loading).setVisibility(View.GONE);
+				findViewById(R.id.list_contacts).setVisibility(View.GONE);
 				break;
 			case RetainedFragment.contactStateLoaded:
 				findViewById(R.id.list_contacts).setVisibility(View.GONE);
@@ -275,16 +281,18 @@ public class NewMessage extends AppCompatActivity {
 		
 		switch(newState) {
 			case RetainedFragment.contactStateLoading:
-				findViewById(R.id.message_loading).setVisibility(View.VISIBLE);
+				findViewById(R.id.list_contacts).setVisibility(View.VISIBLE);
 				break;
 			case RetainedFragment.contactStateLoaded:
 				findViewById(R.id.list_contacts).setVisibility(View.VISIBLE);
 				break;
 			case RetainedFragment.contactStateNoAccess:
 				findViewById(R.id.message_permission).setVisibility(View.VISIBLE);
+				findViewById(R.id.list_contacts).setVisibility(View.GONE);
 				break;
 			case RetainedFragment.contactStateFailed:
 				findViewById(R.id.message_error).setVisibility(View.VISIBLE);
+				findViewById(R.id.list_contacts).setVisibility(View.GONE);
 				break;
 		}
 	}
@@ -342,7 +350,17 @@ public class NewMessage extends AppCompatActivity {
 			}
 			//Otherwise checking if the result is a denial
 			else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
-				//Showing a dialog
+				//Showing a snackbar
+				Snackbar.make(findViewById(android.R.id.content), R.string.permission_rejected, Snackbar.LENGTH_LONG)
+						.setAction(R.string.settings, view -> {
+							//Opening the application settings
+							Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+							intent.setData(Uri.parse("package:" + getPackageName()));
+							startActivity(intent);
+						})
+						.setActionTextColor(getResources().getColor(R.color.colorAccent, null))
+						.show();
+				/* //Showing a dialog
 				new AlertDialog.Builder(this)
 						.setMessage(R.string.permission_rejected)
 						.setNegativeButton(R.string.button_dismiss, (dialog, which) -> {
@@ -355,7 +373,7 @@ public class NewMessage extends AppCompatActivity {
 							startActivity(intent);
 						})
 						.create()
-						.show();
+						.show(); */
 			}
 		}
 	}
@@ -673,7 +691,7 @@ public class NewMessage extends AppCompatActivity {
 		}
 	}
 	
-	private class ListAdapter extends BaseAdapter {
+	/* private class ListAdapter extends BaseAdapter {
 		//Creating the list values
 		private ArrayList<ContactInfo> originalItems;
 		private final ArrayList<ContactInfo> filteredItems = new ArrayList<>();
@@ -787,7 +805,7 @@ public class NewMessage extends AppCompatActivity {
 			
 			//Setting the click listener
 			view.findViewById(R.id.area_content).setOnClickListener(clickView -> {
-				//Checking if there is only one address
+				//Checking if there is only one label
 				if(contactInfo.addresses.size() == 1) {
 					//Adding the chip
 					addChip(new Chip(contactInfo.addresses.get(0)));
@@ -866,13 +884,13 @@ public class NewMessage extends AppCompatActivity {
 					}
 				}
 				
-				//Checking if the filter text is a valid address
+				//Checking if the filter text is a valid label
 				if(Constants.validateAddress(filter)) {
 					//Showing the header view
 					setHeaderState(true);
 					
 					//Updating the header view
-					((TextView) sendHeaderView.findViewById(R.id.label_name)).setText(getResources().getString(R.string.contact_address_fill, filter));
+					((TextView) sendHeaderView.findViewById(R.id.label_address)).setText(getResources().getString(R.string.contact_address_fill, filter));
 				} else {
 					//Hiding the header view
 					setHeaderState(false);
@@ -908,6 +926,318 @@ public class NewMessage extends AppCompatActivity {
 				});
 			}
 			else contactsList.removeHeaderView(sendHeaderView);
+		}
+	} */
+	
+	private class RecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+		//Creating the type constants
+		private static final int TYPE_HEADER = 0;
+		private static final int TYPE_ITEM = 1;
+		
+		//Creating the list values
+		private ArrayList<ContactInfo> originalItems;
+		private final ArrayList<ContactInfo> filteredItems = new ArrayList<>();
+		
+		//Creating the recycler values
+		private RecyclerView recyclerView;
+		
+		//Creating the other values
+		private boolean directAddHeaderVisible = false;
+		private String lastFilterText = "";
+		
+		RecyclerAdapter(ArrayList<ContactInfo> items, RecyclerView recyclerView) {
+			//Setting the items
+			originalItems = items;
+			filteredItems.addAll(items);
+			
+			//Adding the recycler values
+			this.recyclerView = recyclerView;
+		}
+		
+		class HeaderViewHolder extends RecyclerView.ViewHolder {
+			//Creating the view values
+			private final TextView label;
+			
+			HeaderViewHolder(View view) {
+				//Calling the super method
+				super(view);
+				
+				//Setting the views
+				label = view.findViewById(R.id.label);
+			}
+		}
+		
+		class ItemViewHolder extends RecyclerView.ViewHolder {
+			//Creating the view values
+			private final TextView contactName;
+			private final TextView contactAddress;
+			
+			private final View header;
+			private final TextView headerLabel;
+			
+			private final ImageView profileDefault;
+			private final ImageView profileImage;
+			
+			private final View contentArea;
+			
+			private ItemViewHolder(View view) {
+				//Calling the super method
+				super(view);
+				
+				//Getting the views
+				contactName = view.findViewById(R.id.label_name);
+				contactAddress = view.findViewById(R.id.label_address);
+				
+				header = view.findViewById(R.id.header);
+				headerLabel = view.findViewById(R.id.header_label);
+				
+				profileDefault = view.findViewById(R.id.profile_default);
+				profileImage = view.findViewById(R.id.profile_image);
+				
+				contentArea = view.findViewById(R.id.area_content);
+			}
+		}
+		
+		@Override
+		public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+			switch(viewType) {
+				case TYPE_HEADER:
+					return new HeaderViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_contact_sendheader, parent, false));
+				case TYPE_ITEM:
+					return new ItemViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_contact, parent, false));
+				default:
+					return null;
+			}
+		}
+		
+		@Override
+		public void onBindViewHolder(RecyclerView.ViewHolder viewHolder, int position) {
+			switch(getItemViewType(position)) {
+				case TYPE_HEADER: {
+					//Casting the view holder
+					HeaderViewHolder headerViewHolder = (HeaderViewHolder) viewHolder;
+					
+					//Setting the label
+					headerViewHolder.label.setText(getResources().getString(R.string.contact_address_fill, lastFilterText));
+					
+					//Setting the click listener
+					headerViewHolder.itemView.setOnClickListener(view -> {
+						//Adding the chip
+						addChip(new Chip(lastFilterText.trim()));
+						
+						//Clearing the text
+						recipientInput.setText("");
+					});
+					
+					//Breaking
+					break;
+				}
+				case TYPE_ITEM: {
+					//Casting the view holder
+					ItemViewHolder itemViewHolder = (ItemViewHolder) viewHolder;
+					
+					//Getting the item
+					ContactInfo contactInfo = getItemAtIndex(position);
+					
+					//Populating the view
+					itemViewHolder.contactName.setText(contactInfo.name);
+					
+					int addressCount = contactInfo.addresses.size();
+					String firstAddress = contactInfo.addresses.get(0);
+					if(addressCount == 1) itemViewHolder.contactAddress.setText(firstAddress);
+					else itemViewHolder.contactAddress.setText(getResources().getQuantityString(R.plurals.contact_address_multiple, addressCount, firstAddress, addressCount - 1));
+					
+					//Showing / hiding the section header
+					boolean showHeader;
+					//if(!lastFilterText.isEmpty()) showHeader = false;
+					if(position > 0) {
+						ContactInfo contactInfoAbove = filteredItems.get(position - 1);
+						showHeader = contactInfoAbove == null || !stringsHeaderEqual(contactInfo.name, contactInfoAbove.name);
+					} else showHeader = true;
+					
+					if(showHeader) {
+						itemViewHolder.header.setVisibility(View.VISIBLE);
+						itemViewHolder.headerLabel.setText(Character.toString(getNameHeader(contactInfo.name)));
+					} else itemViewHolder.header.setVisibility(View.GONE);
+					
+					//Resetting the image view
+					itemViewHolder.profileDefault.setVisibility(View.VISIBLE);
+					itemViewHolder.profileDefault.setColorFilter(getResources().getColor(R.color.colorPrimary, null), android.graphics.PorterDuff.Mode.MULTIPLY);
+					itemViewHolder.profileImage.setImageBitmap(null);
+					
+					//Assigning the contact's image
+					MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(NewMessage.this, Long.toString(contactInfo.identifier), contactInfo.identifier, new BitmapCacheHelper.ImageDecodeResult() {
+						@Override
+						void onImageMeasured(int width, int height) {
+						
+						}
+						
+						@Override
+						void onImageDecoded(Bitmap result, boolean wasTasked) {
+							//Returning if the result is invalid
+							if(result == null) return;
+							
+							//Returning if the item doesn't exist anymore
+							if(!filteredItems.contains(contactInfo)) return;
+							
+							//Getting the view holder
+							ItemViewHolder currentViewHolder = wasTasked ? (ItemViewHolder) recyclerView.findViewHolderForAdapterPosition(filteredItems.indexOf(contactInfo)) : itemViewHolder;
+							if(currentViewHolder == null) return;
+							
+							//Hiding the default view
+							currentViewHolder.profileDefault.setVisibility(View.INVISIBLE);
+							
+							//Setting the bitmap
+							currentViewHolder.profileImage.setImageBitmap(result);
+							
+							//Fading in the view
+							if(wasTasked) {
+								currentViewHolder.profileImage.setAlpha(0F);
+								currentViewHolder.profileImage.animate().alpha(1).setDuration(300).start();
+							}
+						}
+					});
+					
+					//Setting the click listener
+					itemViewHolder.contentArea.setOnClickListener(clickView -> {
+						//Checking if there is only one label
+						if(contactInfo.addresses.size() == 1) {
+							//Adding the chip
+							addChip(new Chip(contactInfo.addresses.get(0)));
+							
+							//Clearing the text
+							recipientInput.setText("");
+						} else {
+							//Showing a dialog
+							new AlertDialog.Builder(NewMessage.this)
+									.setTitle(R.string.contact_address_select)
+									.setItems(contactInfo.addresses.toArray(new String[0]), ((dialogInterface, index) -> {
+										//Adding the selected chip
+										addChip(new Chip(contactInfo.addresses.get(index)));
+										
+										//Clearing the text
+										recipientInput.setText("");
+									}))
+									.create().show();
+						}
+					});
+					
+					//Breaking
+					break;
+				}
+			}
+		}
+		
+		private ContactInfo getItemAtIndex(int index) {
+			return filteredItems.get(index - (directAddHeaderVisible ? 1 : 0));
+		}
+		
+		@Override
+		public int getItemCount() {
+			return filteredItems.size() + (directAddHeaderVisible ? 1 : 0);
+		}
+		
+		@Override
+		public int getItemViewType(int position) {
+			//Returning "header" if the header is visible and the position is the first one
+			if(directAddHeaderVisible && position == 0) return TYPE_HEADER;
+			
+			//Otherwise returning "item"
+			return TYPE_ITEM;
+		}
+		
+		private char getNameHeader(String name) {
+			if(name.isEmpty()) return '?';
+			return name.charAt(0);
+		}
+		
+		private boolean stringsHeaderEqual(String string1, String string2) {
+			if(string1.isEmpty()) return string2.isEmpty();
+			return string1.charAt(0) == string2.charAt(0);
+		}
+		
+		void onListUpdated() {
+			filterList(lastFilterText);
+		}
+		
+		void updateOriginalItems(ArrayList<ContactInfo> list) {
+			//Setting the original items
+			originalItems = list;
+			
+			//Re-filtering the list
+			filterList(lastFilterText);
+		}
+		
+		void filterList(String filter) {
+			//Setting the last filter text
+			lastFilterText = filter;
+			
+			//Cleaning the filter
+			filter = filter.trim();
+			
+			//Copying the original items
+			filteredItems.clear();
+			
+			//Checking if the filter isn't empty
+			if(!filter.isEmpty()) {
+				//Normalizing the filter
+				String normalizedFilter = Constants.normalizeAddress(filter);
+				
+				//Filtering the list
+				contactLoop:
+				for(ContactInfo contactInfo : originalItems) {
+					//Adding the item if the name matches the filter
+					if(contactInfo.name != null && contactInfo.name.toLowerCase().contains(filter.toLowerCase())) {
+						filteredItems.add(contactInfo);
+						continue contactLoop;
+					}
+					
+					//Adding the item if any of the contact's addresses match the filter
+					for(String address : contactInfo.normalizedAddresses) if(address.startsWith(normalizedFilter)) {
+						filteredItems.add(contactInfo);
+						continue contactLoop;
+					}
+				}
+				
+				//Checking if the filter text is a valid label
+				if(Constants.validateAddress(filter)) {
+					//Showing the header view
+					setHeaderState(true);
+				} else {
+					//Hiding the header view
+					setHeaderState(false);
+				}
+			} else {
+				//Adding all of the items
+				filteredItems.addAll(originalItems);
+				
+				//Removing the header view
+				setHeaderState(false);
+			}
+			
+			//Notifying the adapter
+			notifyDataSetChanged();
+		}
+		
+		private void setHeaderState(boolean state) {
+			//Returning if the requested state matches the current state
+			if(directAddHeaderVisible == state) return;
+			
+			//Updating the state
+			directAddHeaderVisible = state;
+			
+			/* //Adding / removing the header and click listener
+			if(state) {
+				layoutManager.addHeaderView(directAddHeaderView);
+				directAddHeaderView.setOnClickListener(view -> {
+					//Adding the chip
+					addChip(new Chip(lastFilterText.trim()));
+					
+					//Clearing the text
+					recipientInput.setText("");
+				});
+			}
+			else contactsList.removeHeaderView(directAddHeaderView); */
 		}
 	}
 	
@@ -1010,7 +1340,7 @@ public class NewMessage extends AppCompatActivity {
 			updateState(contactStateLoading);
 		}
 		
-		public static class LoadContactsAsyncTask extends AsyncTask<Void, Void, ArrayList<ContactInfo>> {
+		public static class LoadContactsAsyncTask extends AsyncTask<Void, ContactInfo, ArrayList<ContactInfo>> {
 			//Creating the reference values
 			private final WeakReference<Context> contextReference;
 			private final WeakReference<RetainedFragment> fragmentReference;
@@ -1049,7 +1379,7 @@ public class NewMessage extends AppCompatActivity {
 				
 				userIterator:
 				while(cursor.moveToNext()) {
-					//Retrieving and validating the entry's address
+					//Retrieving and validating the entry's label
 					String address = cursor.getString(indexAddress);
 					if(address == null || address.isEmpty()) continue;
 					
@@ -1072,7 +1402,11 @@ public class NewMessage extends AppCompatActivity {
 					//Adding the user to the list
 					ArrayList<String> contactAddresses = new ArrayList<>();
 					contactAddresses.add(address);
-					contactList.add(new ContactInfo(contactID, contactName, contactAddresses));
+					ContactInfo contactInfo = new ContactInfo(contactID, contactName, contactAddresses);
+					contactList.add(contactInfo);
+					
+					//Calling the progress update
+					publishProgress(contactInfo);
 				}
 				
 				//Closing the cursor
@@ -1080,6 +1414,19 @@ public class NewMessage extends AppCompatActivity {
 				
 				//Returning the contact list
 				return contactList;
+			}
+			
+			@Override
+			protected void onProgressUpdate(ContactInfo... newContacts) {
+				//Getting the fragment
+				RetainedFragment fragment = fragmentReference.get();
+				if(fragment == null) return;
+				
+				//Adding the contacts
+				Collections.addAll(fragment.contactList, newContacts);
+				
+				//Updating the list
+				if(fragment.getActivity() != null) fragment.parentActivity.updateContactList();
 			}
 			
 			@Override

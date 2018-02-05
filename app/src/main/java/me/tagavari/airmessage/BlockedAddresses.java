@@ -60,7 +60,7 @@ public class BlockedAddresses extends AppCompatActivity {
 			case -1:
 				break;
 			case RetainedFragment.blockedStateLoading:
-				findViewById(R.id.message_loading).setVisibility(View.GONE);
+				findViewById(R.id.loading_text).setVisibility(View.GONE);
 				break;
 			case RetainedFragment.blockedStateLoaded:
 				findViewById(R.id.list).setVisibility(View.GONE);
@@ -72,7 +72,7 @@ public class BlockedAddresses extends AppCompatActivity {
 		
 		switch(newState) {
 			case RetainedFragment.blockedStateLoading:
-				findViewById(R.id.message_loading).setVisibility(View.VISIBLE);
+				findViewById(R.id.loading_text).setVisibility(View.VISIBLE);
 				break;
 			case RetainedFragment.blockedStateLoaded:
 				findViewById(R.id.list).setVisibility(View.VISIBLE);
