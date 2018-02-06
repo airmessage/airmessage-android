@@ -1028,10 +1028,6 @@ class ConversationManager {
 			if(view != null) updateView(context, view);
 		}
 		
-		private Messaging.RecyclerAdapter getListAdapter() {
-			return arrayAdapterReference == null ? null : arrayAdapterReference.get();
-		}
-		
 		void delete(final Context context) {
 			//Removing the conversation from memory
 			ArrayList<ConversationInfo> conversations = MainApplication.getInstance().getConversations();
@@ -1071,6 +1067,10 @@ class ConversationManager {
 		void setListAdapter(Messaging.RecyclerAdapter arrayAdapter) {
 			//Setting the adapter
 			arrayAdapterReference = new WeakReference<>(arrayAdapter);
+		}
+		
+		Messaging.RecyclerAdapter getListAdapter() {
+			return arrayAdapterReference == null ? null : arrayAdapterReference.get();
 		}
 		
 		int getNextUserColor() {
@@ -2952,6 +2952,15 @@ class ConversationManager {
 			layoutParams.gravity = getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START;
 			textView.setLayoutParams(layoutParams);
 			
+			//Limiting the width of the bubble
+			//Getting the maximum content width
+			int maxContentWidth = (int) Math.min(context.getResources().getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, context.getResources().getDisplayMetrics().widthPixels * .7F);
+			
+			//Enforcing the maximum content width
+			View contentView = convertView.findViewById(R.id.content);
+			contentView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+			if(contentView.getMeasuredWidth() > maxContentWidth) contentView.getLayoutParams().width = maxContentWidth;
+			
 			//Building the common views
 			buildCommonViews(convertView);
 			
@@ -3839,7 +3848,7 @@ class ConversationManager {
 			if(messageInfo.isOutgoing()) {
 				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
 				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingDark, null));
+				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
@@ -3993,7 +4002,7 @@ class ConversationManager {
 			
 			//Assigning the drawable
 			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content_background).setBackground(drawable);
+			itemView.findViewById(R.id.content).findViewById(R.id.content_background).setBackground(drawable);
 			itemView.findViewById(R.id.failedcontent).setBackground(drawable);
 			
 			//Rounding the image view
@@ -4096,7 +4105,7 @@ class ConversationManager {
 			if(messageInfo.isOutgoing()) {
 				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
 				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingDark, null));
+				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
@@ -4409,7 +4418,7 @@ class ConversationManager {
 			if(messageInfo.isOutgoing()) {
 				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
 				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingDark, null));
+				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
@@ -4655,7 +4664,7 @@ class ConversationManager {
 			if(messageInfo.isOutgoing()) {
 				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
 				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingDark, null));
+				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();

@@ -6,4 +6,6 @@
     <dimen name="profile_size">40dp</dimen>
     <dimen name="image_size_min">50dp</dimen>
     <dimen name="image_size_max">250dp</dimen>
+    
+    <dimen name="contentwidth_max">1000dp</dimen>
 </resources>

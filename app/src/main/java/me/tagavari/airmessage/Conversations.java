@@ -69,6 +69,7 @@ public class Conversations extends AppCompatActivity {
 	
 	//Creating the view values
 	private ListView listView;
+	//private RecyclerView recyclerView;
 	private ViewGroup serverWarning;
 	
 	//Creating the menu values
@@ -550,6 +551,9 @@ public class Conversations extends AppCompatActivity {
 		listView = findViewById(R.id.list);
 		serverWarning = findViewById(R.id.serverwarning);
 		
+		//Enforcing the maximum content width
+		Constants.enforceContentWidth(getResources(), listView);
+		
 		//Getting the server warning height
 		serverWarning.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
 			@Override
@@ -771,6 +775,113 @@ public class Conversations extends AppCompatActivity {
 			notifyDataSetChanged();
 		}
 	}
+	
+	/* private class RecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+		//Creating the list values
+		private final List<ConversationManager.ConversationInfo> originalItems;
+		private final List<ConversationManager.ConversationInfo> filteredItems = new ArrayList<>();
+		
+		//Creating the recycler values
+		private RecyclerView recyclerView;
+		
+		RecyclerAdapter(ArrayList<ConversationManager.ConversationInfo> items, RecyclerView recyclerView) {
+			//Setting the original items
+			originalItems = items;
+			
+			//Setting the recycler view
+			this.recyclerView = recyclerView;
+			
+			//Filtering the data
+			filterAndUpdate();
+		}
+		
+		class ViewHolder extends RecyclerView.ViewHolder {
+			ViewHolder(View itemView) {
+				super(itemView);
+			}
+		}
+		
+		class ItemViewHolder extends RecyclerView.ViewHolder {
+			//Creating the view values
+			private final TextView contactName;
+			private final TextView contactAddress;
+			
+			private final View header;
+			private final TextView headerLabel;
+			
+			private final ImageView profileDefault;
+			private final ImageView profileImage;
+			
+			private final View contentArea;
+			
+			private ItemViewHolder(View view) {
+				//Calling the super method
+				super(view);
+				
+				//Getting the views
+				contactName = view.findViewById(R.id.label_name);
+				contactAddress = view.findViewById(R.id.label_address);
+				
+				header = view.findViewById(R.id.header);
+				headerLabel = view.findViewById(R.id.header_label);
+				
+				profileDefault = view.findViewById(R.id.profile_default);
+				profileImage = view.findViewById(R.id.profile_image);
+				
+				contentArea = view.findViewById(R.id.area_content);
+			}
+		}
+		
+		@Override
+		public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+			//Returning the view holder
+			return new ViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_conversation, parent, false));
+		}
+		
+		@Override
+		public void onBindViewHolder(RecyclerView.ViewHolder viewHolder, int position) {
+			//Getting the conversation info
+			ConversationManager.ConversationInfo conversationInfo = filteredItems.get(position);
+			
+			//Setting the view's click listener
+			viewHolder.itemView.setOnClickListener(view -> {
+				//Creating the intent
+				Intent launchMessaging = new Intent(Conversations.this, Messaging.class);
+				
+				//Setting the extra
+				launchMessaging.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
+				
+				//Launching the intent
+				startActivity(launchMessaging);
+			});
+			
+			//Setting the view source
+			LinearLayoutManager layout = (LinearLayoutManager) recyclerView.getLayoutManager();
+			conversationInfo.setViewSource(() -> layout.findViewByPosition(filteredItems.indexOf(conversationInfo)));
+		}
+		
+		@Override
+		public int getItemCount() {
+			return filteredItems.size();
+		}
+		
+		void filterAndUpdate() {
+			//Clearing the filtered data
+			filteredItems.clear();
+			
+			//Iterating over the original data
+			for(ConversationManager.ConversationInfo conversationInfo : originalItems) {
+				//Skipping non-listed conversations
+				if(conversationInfo.isArchived() != listingArchived) continue;
+				
+				//Adding the item to the filtered data
+				filteredItems.add(conversationInfo);
+			}
+			
+			//Notifying the adapter
+			notifyDataSetChanged();
+		}
+	} */
 	
 	@Override
 	public void onResume() {

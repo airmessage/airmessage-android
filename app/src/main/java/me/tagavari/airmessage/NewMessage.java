@@ -18,7 +18,6 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.InputType;
@@ -215,7 +214,6 @@ public class NewMessage extends AppCompatActivity {
 		//recipientInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
 		
 		//Configuring the list
-		contactsList.setLayoutManager(new LinearLayoutManager(this));
 		contactsListAdapter = new RecyclerAdapter(retainedFragment.contactList, contactsList);
 		contactsList.setAdapter(contactsListAdapter);
 	}
@@ -623,62 +621,59 @@ public class NewMessage extends AppCompatActivity {
 			((TextView) view.findViewById(R.id.text)).setText(name);
 			
 			//Setting the view's click listener
-			view.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View view) {
-					//Inflating the view
-					View popupView = getLayoutInflater().inflate(R.layout.popup_userchip, null);
-					
-					//Setting the default information
-					TextView labelView = popupView.findViewById(R.id.label_member);
-					labelView.setText(name);
-					((ImageView) popupView.findViewById(R.id.profile_default)).setColorFilter(getResources().getColor(R.color.colorPrimary), android.graphics.PorterDuff.Mode.MULTIPLY);
-					
-					//Filling in the information
-					MainApplication.getInstance().getUserCacheHelper().getUserInfo(NewMessage.this, name, new UserCacheHelper.UserFetchResult() {
-						@Override
-						void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
-							//Returning if the user info is invalid
-							if(userInfo == null) return;
-							
-							//Updating the text
-							labelView.setText(userInfo.getContactName());
-							TextView addressView = popupView.findViewById(R.id.label_address);
-							addressView.setText(name);
-							addressView.setVisibility(View.VISIBLE);
-							
-						}
-					});
-					MainApplication.getInstance().getUserCacheHelper().assignUserInfo(NewMessage.this, name, labelView);
-					MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(NewMessage.this, name, (View) popupView.findViewById(R.id.profile_image));
-					
-					//Creating the window
-					final PopupWindow popupWindow = new PopupWindow(
-							popupView,
-							Constants.dpToPx(300),
-							Constants.dpToPx(56));
-					
-					popupWindow.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.backgroundClean)));
-					popupWindow.setOutsideTouchable(true);
-					popupWindow.setElevation(Constants.dpToPx(2));
-					popupWindow.setEnterTransition(new ChangeBounds());
-					popupWindow.setExitTransition(new Fade());
-					
-					//Setting the remove listener
-					popupView.findViewById(R.id.button_remove).setOnClickListener(new View.OnClickListener() {
-						@Override
-						public void onClick(View view) {
-							//Removing this chip
-							removeChip(Chip.this);
-							
-							//Dismissing the popup
-							popupWindow.dismiss();
-						}
-					});
-					
-					//Showing the popup
-					popupWindow.showAsDropDown(view);
-				}
+			view.setOnClickListener(click -> {
+				//Inflating the view
+				View popupView = getLayoutInflater().inflate(R.layout.popup_userchip, null);
+				
+				//Setting the default information
+				TextView labelView = popupView.findViewById(R.id.label_member);
+				labelView.setText(name);
+				((ImageView) popupView.findViewById(R.id.profile_default)).setColorFilter(getResources().getColor(R.color.colorPrimary), android.graphics.PorterDuff.Mode.MULTIPLY);
+				
+				//Filling in the information
+				MainApplication.getInstance().getUserCacheHelper().getUserInfo(NewMessage.this, name, new UserCacheHelper.UserFetchResult() {
+					@Override
+					void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
+						//Returning if the user info is invalid
+						if(userInfo == null) return;
+						
+						//Updating the text
+						labelView.setText(userInfo.getContactName());
+						TextView addressView = popupView.findViewById(R.id.label_address);
+						addressView.setText(name);
+						addressView.setVisibility(View.VISIBLE);
+						
+					}
+				});
+				MainApplication.getInstance().getUserCacheHelper().assignUserInfo(NewMessage.this, name, labelView);
+				MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(NewMessage.this, name, (View) popupView.findViewById(R.id.profile_image));
+				
+				//Creating the window
+				final PopupWindow popupWindow = new PopupWindow(
+						popupView,
+						Constants.dpToPx(300),
+						Constants.dpToPx(56));
+				
+				popupWindow.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.colorForegroundLight, null)));
+				popupWindow.setOutsideTouchable(true);
+				popupWindow.setElevation(Constants.dpToPx(2));
+				popupWindow.setEnterTransition(new ChangeBounds());
+				popupWindow.setExitTransition(new Fade());
+				
+				//Setting the remove listener
+				popupView.findViewById(R.id.button_remove).setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View view) {
+						//Removing this chip
+						removeChip(Chip.this);
+						
+						//Dismissing the popup
+						popupWindow.dismiss();
+					}
+				});
+				
+				//Showing the popup
+				popupWindow.showAsDropDown(view);
 			});
 		}
 		

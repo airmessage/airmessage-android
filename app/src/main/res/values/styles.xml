@@ -6,7 +6,7 @@
 		<item name="android:colorAccent">@color/colorAccent</item>
 		<item name="android:actionModeBackground">@color/colorPrimary</item>
 		<item name="android:actionBarTheme">@style/SolidActionBar</item>
-		<item name="android:windowBackground">@color/background</item>
+		<item name="android:windowBackground">@color/colorBackgroundLight</item>
 	</style>
 	
 	<style name="SolidActionBar">
@@ -25,12 +25,14 @@
 		
 		<item name="android:colorControlActivated">?android:attr/colorAccent</item>
 		<item name="android:actionBarTheme">@style/SolidActionBar</item>
-		<item name="android:windowBackground">@color/background</item>
+		<item name="android:windowBackground">@color/colorBackgroundLight</item>
 		<item name="android:actionModeBackground">@android:color/transparent</item>
 	</style>
 	
-	<style name="AppTheme.AppCompat.Messaging" parent="@style/AppTheme.AppCompat">
+	<style name="AppTheme.AppCompat.Messaging" parent="@style/AppTheme.AppCompat" />
 	
+	<style name="OverscrollNeutralizer" parent="@android:style/Theme.Material.Light">
+		<item name="android:colorPrimary">@android:color/darker_gray</item>
 	</style>
 	
 	<style name="AppTheme.ImageDraw" parent="@android:style/Theme.Material.NoActionBar">

@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				xmlns:app="http://schemas.android.com/apk/res-auto"
-				android:background="@color/backgroundMessaging"
-				android:clipToPadding="false">
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:clipToPadding="false">
 	<!-- Loading Text -->
 	<TextView
 		android:id="@+id/loading_text"
@@ -133,11 +132,9 @@
 			android:listSelector="@android:color/transparent"
 			android:paddingBottom="5dp"
 			android:paddingTop="5dp"
-			android:scrollbars="horizontal"
-			app:stackFromEnd="true"
-			app:layoutManager="android.support.v7.widget.LinearLayoutManager"
-			android:smoothScrollbar="false"
-			android:transcriptMode="normal" />
+			android:theme="@style/OverscrollNeutralizer"
+			app:layoutManager=".Messaging$SpeedyLinearLayoutManager"
+			app:stackFromEnd="true" />
 		<!-- Konfetti view -->
 		<nl.dionsegijn.konfetti.KonfettiView
 			android:id="@+id/konfetti"

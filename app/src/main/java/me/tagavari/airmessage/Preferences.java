@@ -138,6 +138,9 @@ public class Preferences extends PreferenceActivity {
 		setActionBar(findViewById(R.id.toolbar));
 		getActionBar().setDisplayHomeAsUpEnabled(true);
 		
+		//Enforcing the maximum content width
+		Constants.enforceContentWidth(getResources(), findViewById(android.R.id.list));
+		
 		//Adding the preferences
 		addPreferencesFromResource(preferences);
 		

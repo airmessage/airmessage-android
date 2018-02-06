@@ -82,8 +82,10 @@
 			android:id="@+id/list_contacts"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
+			android:scrollbars="vertical"
+			android:theme="@style/OverscrollNeutralizer"
 			android:visibility="visible"
-			android:scrollbars="vertical"/>
+			app:layoutManager="android.support.v7.widget.LinearLayoutManager" />
 		<!-- Loading text -->
 		<!-- <TextView
 			android:id="@+id/message_loading"

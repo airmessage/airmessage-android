@@ -124,6 +124,9 @@ public class ServerSetup extends Activity {
 		layoutAddress = findViewById(R.id.layout_serververification);
 		layoutSync = findViewById(R.id.layout_serversync);
 		
+		//Enforcing the maximum content width
+		Constants.enforceContentWidth(getResources(), findViewById(R.id.content));
+		
 		//Setting the address box watcher
 		hostnameInputField.addTextChangedListener(addressInputWatcher);
 		
