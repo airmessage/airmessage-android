@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
-	android:id="@+id/root"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:id="@+id/root"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	xmlns:tools="http://schemas.android.com/tools"
 	tools:context=".Conversations">
 	<!-- App bar -->
 	<android.support.v7.widget.Toolbar
 		android:id="@+id/toolbar"
 		android:layout_width="match_parent"
 		android:layout_height="?android:attr/actionBarSize" />
-	
 	<!-- Floating Action Button -->
 	<android.support.design.widget.FloatingActionButton
 		android:id="@+id/fab"
@@ -22,7 +21,6 @@
 		android:src="@drawable/add"
 		app:backgroundTint="@color/colorAccent"
 		app:fabSize="normal" />
-	
 	<!-- Content layout -->
 	<RelativeLayout
 		android:layout_width="match_parent"
@@ -124,7 +122,7 @@
 				android:background="@android:color/white"
 				android:elevation="2dp"
 				android:minHeight="48dp"
-				android:orientation="horizontal" >
+				android:orientation="horizontal">
 				
 				<TextView
 					android:id="@+id/serverwarning_message"
@@ -175,17 +173,19 @@
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:layout_gravity="center_vertical"
+					android:onClick="onRequestContactsClick"
 					android:text="@string/button_enable"
-					android:textColor="@color/colorAccent"
-					android:onClick="onRequestContactsClick"/>
+					android:textColor="@color/colorAccent" />
 			</LinearLayout>
 			<!-- Conversation List -->
 			<ListView
 				android:id="@+id/list"
 				android:layout_width="match_parent"
 				android:layout_height="match_parent"
+				android:layout_gravity="center"
 				android:divider="@null"
-				android:dividerHeight="0dp"/>
+				android:dividerHeight="0dp"
+				android:theme="@style/OverscrollNeutralizer" />
 		</LinearLayout>
 	</RelativeLayout>
 </android.support.design.widget.CoordinatorLayout>

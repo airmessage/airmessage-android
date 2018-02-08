@@ -1,16 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#3F51B5</color>
-    <color name="colorPrimaryDark">#303F9F</color>
-    <color name="colorAccent">#E91E63</color>
+    <color name="colorPrimary">#2196F3</color>
+    <color name="colorPrimaryDark">#1976D2</color>
+    <color name="colorAccent">@color/colorPrimary</color>
+    <color name="colorAccentDark">@color/colorPrimaryDark</color>
 	
 	<color name="navbarDivider">#FFE0E0E0</color>
 	
 	<color name="colorBackgroundLight">#FAFAFA</color>
 	<color name="colorForegroundLight">#FFFFFF</color>
+	
+	<color name="colorBackgroundDark">#303030</color>
+	<color name="colorForegroundDark">#424242</color>
+	
+	<color name="colorBGMessagingLight">#EEEEEE</color>
+	<color name="colorBGChipLight">#F5F5F5</color>
 
-    <color name="colorMessageOutgoing">#FAFAFA</color>
-    <color name="colorMessageOutgoingDark">#E0E0E0</color>
+    <color name="colorMessageOutgoing">#E0E0E0</color>
 	<color name="colorMessageOutgoingAccent">#9E9E9E</color>
 	
     <color name="colorMessageOutgoingText">#DE000000</color>
@@ -38,12 +44,6 @@
 	<color name="colorServerDisconnected">#F44336</color>
 
     <color name="colorRecording">#F44336</color>
-
-    <color name="background">#FAFAFA</color>
-	<color name="backgroundClean">#FFF</color>
-    <color name="backgroundMessaging">#EEEEEE</color>
-    <color name="backgroundDark">#303030</color>
-    <color name="chip">#F5F5F5</color>
 	
 	<color name="imageDrawDrawer">#80212121</color>
 	<color name="drawColor_red">#F44336</color>

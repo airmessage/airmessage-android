@@ -17,11 +17,11 @@ public class LaunchActivity extends Activity {
 		
 		//Getting the connection service information
 		SharedPreferences sharedPrefs = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
-		ConnectionService.hostname = sharedPrefs.getString(MainApplication.sharedPreferencesKeyHostname, "");
-		ConnectionService.password = sharedPrefs.getString(MainApplication.sharedPreferencesKeyPassword, "");
+		String hostname = sharedPrefs.getString(MainApplication.sharedPreferencesKeyHostname, "");
+		String password = sharedPrefs.getString(MainApplication.sharedPreferencesKeyPassword, "");
 		
 		//Checking if there is no hostname
-		if(ConnectionService.hostname.isEmpty()) {
+		if(hostname.isEmpty()) {
 			//Creating the intent
 			Intent launchServerSetup = new Intent(this, ServerSetup.class);
 			

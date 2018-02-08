@@ -16,6 +16,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.BitmapFactory;
+import android.graphics.PointF;
 import android.graphics.drawable.ColorDrawable;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
@@ -32,11 +33,13 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.transition.ChangeBounds;
 import android.transition.TransitionManager;
+import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -176,8 +179,8 @@ public class Messaging extends AppCompatActivity {
 		}
 	};
 	
-	
 	//Creating the other values
+	private RecyclerAdapter messageListAdapter = null;
 	private boolean serverWarningVisible = false;
 	private boolean messageBoxHasText = false;
 	private ActivityManager.TaskDescription lastTaskDescription;
@@ -206,6 +209,10 @@ public class Messaging extends AppCompatActivity {
 		recordingTimeLabel = inputBar.findViewById(R.id.recordingtime);
 		serverWarningBar = findViewById(R.id.serverwarning);
 		
+		//Enforcing the maximum content width
+		Constants.enforceContentWidth(getResources(), messageList);
+		
+		//Setting up the retained fragment
 		prepareRetainedFragment();
 		
 		//Restoring the input bar state
@@ -269,6 +276,9 @@ public class Messaging extends AppCompatActivity {
 				messageInputField.setText("");
 				messageInputField.invalidate(); //Height of input field doesn't update otherwise
 				messageBoxHasText = false;
+				
+				//Scrolling to the bottom of the chat
+				if(messageListAdapter != null) messageListAdapter.scrollToBottom();
 			}
 		});
 		messageContentButton.setOnClickListener(view -> showContentBar());
@@ -342,9 +352,10 @@ public class Messaging extends AppCompatActivity {
 		}
 		
 		//Setting the list adapter
-		RecyclerAdapter listAdapter = new RecyclerAdapter(retainedFragment.conversationItemList);
-		conversationInfo.setListAdapter(listAdapter);
-		messageList.setAdapter(listAdapter);
+		//messageList.setLayoutManager(new SpeedyLinearLayoutManager(this));
+		messageListAdapter = new RecyclerAdapter(retainedFragment.conversationItemList);
+		conversationInfo.setListAdapter(messageListAdapter);
+		messageList.setAdapter(messageListAdapter);
 		
 		//Setting the title listener
 		conversationInfo.addTitleChangeListener(conversationTitleChangeListener);
@@ -1831,8 +1842,14 @@ public class Messaging extends AppCompatActivity {
 						break;
 					}
 				
-				//Adding the message to the conversation in memory (if the conversation is currently loaded)
-				if(conversationFound) messageInfo.getConversationInfo().addGhostMessage(context, messageInfo);
+				//Checking if the conversation is still loaded
+				if(conversationFound) {
+					//Adding the message to the conversation in memory
+					messageInfo.getConversationInfo().addGhostMessage(context, messageInfo);
+					
+					//Scrolling to the bottom of the chat
+					if(messageInfo.getConversationInfo().getListAdapter() != null) messageInfo.getConversationInfo().getListAdapter().scrollToBottom();
+				}
 			}
 			
 			//Sending the message
@@ -1993,6 +2010,57 @@ public class Messaging extends AppCompatActivity {
 				//Scrolling to the bottom
 				messageList.smoothScrollToPosition(getItemCount() - 1);
 			}
+		}
+		
+		boolean isScrolledToBottom() {
+			return ((LinearLayoutManager) messageList.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
+		}
+		
+		void scrollToBottom() {
+			//Returning if the list has already been scrolled to the bottom
+			if(isScrolledToBottom()) return;
+			
+			//Scrolling to the bottom
+			messageList.smoothScrollToPosition(getItemCount() - 1);
+		}
+	}
+	
+	public static class SpeedyLinearLayoutManager extends LinearLayoutManager {
+		public SpeedyLinearLayoutManager(Context context) {
+			super(context);
+		}
+		
+		public SpeedyLinearLayoutManager(Context context, int orientation, boolean reverseLayout) {
+			super(context, orientation, reverseLayout);
+		}
+		
+		public SpeedyLinearLayoutManager(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+			super(context, attrs, defStyleAttr, defStyleRes);
+		}
+		
+		@Override
+		public void smoothScrollToPosition(RecyclerView recyclerView, RecyclerView.State state, int position) {
+			//Calculating the speed
+			float millisPerInch = 50 - Math.min(Math.abs(findFirstVisibleItemPosition() - position), Math.abs(findLastVisibleItemPosition() - position));
+			if(millisPerInch < 0.01F) {
+				scrollToPosition(position);
+				return;
+			}
+			
+			LinearSmoothScroller linearSmoothScroller = new LinearSmoothScroller(recyclerView.getContext()) {
+				@Override
+				public PointF computeScrollVectorForPosition(int targetPosition) {
+					return SpeedyLinearLayoutManager.this.computeScrollVectorForPosition(targetPosition);
+				}
+				
+				@Override
+				protected float calculateSpeedPerPixel(DisplayMetrics displayMetrics) {
+					return millisPerInch / displayMetrics.densityDpi;
+				}
+			};
+			
+			linearSmoothScroller.setTargetPosition(position);
+			startSmoothScroll(linearSmoothScroller);
 		}
 	}
 	

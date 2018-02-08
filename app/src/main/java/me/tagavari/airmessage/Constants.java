@@ -105,7 +105,7 @@ class Constants {
 	static final float disabledAlpha = 0.54f;
 	
 	//Creating the regular expression constants
-	private static final String emailRegEx = "^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])$";
+	private static final String emailRegEx = "(?i)(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)])";
 	
 	static boolean requestPermission(Activity activity, String[] permissions, int requestID) {
 		//Creating the missing permission list
@@ -489,6 +489,32 @@ class Constants {
 		
 		//Returning the multiplier
 		return multiplier;
+	}
+	
+	/* static void enforceContentWidth(Resources resources, View view) {
+		//Getting the maximum content width
+		int maxContentWidth = resources.getDimensionPixelSize(R.dimen.contentwidth_max);
+		
+		//Enforcing the maximum content width
+		view.post(() -> {if(view.getMeasuredWidth() > maxContentWidth) view.getLayoutParams().width = maxContentWidth;});
+	} */
+	
+	static void enforceContentWidth(Resources resources, View view) {
+		//Getting the maximum content width
+		int maxContentWidth = resources.getDimensionPixelSize(R.dimen.contentwidth_max);
+		
+		//Enforcing the maximum content width
+		view.post(() -> {
+			//Getting the width
+			int width = view.getWidth();
+			
+			//Returning if the view is already below the width
+			if(width <= maxContentWidth) return;
+			
+			//Updating the padding
+			int padding = (width - maxContentWidth) / 2;
+			view.setPaddingRelative(padding, view.getPaddingTop(), padding, view.getPaddingBottom());
+		});
 	}
 	
 	/* private static final char[] hexArray = "0123456789ABCDEF".toCharArray();

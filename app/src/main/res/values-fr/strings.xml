@@ -42,10 +42,6 @@
 	<string name="preference_server_serverdetails_title">Modifier les informations du serveur</string>
 	<string name="preference_server_resync_title">Resynchroniser les messages</string>
 	<string name="preference_server_connectionboot_title">Connexion automatique au démarrage</string>
-	<string name="preference_server_disconnectionnotification_title">Notification lorsque déconnecté</string>
-	<string name="preference_server_disconnectionnotification_description">Afficher une notification lorsque la connexion est perdue</string>
-	<string name="preference_server_immediatereconnect_title">Reconnexion automatique immédiate</string>
-	<string name="preference_server_immediatereconnect_description">Essayer de vous reconnecter immédiatement après la perte de connexion</string>
 	<string name="preference_server_networkreconnect_title">Reconnexion de changement de réseau</string>
 	<string name="preference_server_networkreconnect_description">Essayer de vous reconnecter lorsque l\'appareil se connecte à un nouveau réseau (par exemple: Wi-Fi à cellulaire)</string>
 	<string name="preference_server_help_title">Obtenir de l\'aide</string>
@@ -233,4 +229,6 @@
 	</plurals>
 	<string name="serverstatus_authfail">Le mot de passe a été rejeté</string>
 	<string name="button_reconfigure">Reconfigurer</string>
+	<string name="preference_server_dropreconnect_description">Essayer de vous reconnecter immédiatement après la perte du connexion</string>
+	<string name="preference_server_dropreconnect_title">Reconnexion de connexion perdue</string>
 </resources>

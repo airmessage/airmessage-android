@@ -81,6 +81,9 @@ public class MessagingInfo extends AppCompatActivity {
 		fileGridView.addHeaderView(headerView);
 		fileGridView.setAdapter(new AttachmentAdapter(this, 0, new ArrayList<>()));
 		
+		//Enforcing the maximum content width
+		Constants.enforceContentWidth(getResources(), fileGridView);
+		
 		//Getting the conversation info
 		long conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
 		ConversationManager.ConversationInfo conversationInfo = ConversationManager.findConversationInfo(conversationID);
