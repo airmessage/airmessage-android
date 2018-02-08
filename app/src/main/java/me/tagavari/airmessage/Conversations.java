@@ -537,6 +537,31 @@ public class Conversations extends AppCompatActivity {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
 		
+		//Checking if there is no hostname
+		if(getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE).getString(MainApplication.sharedPreferencesKeyHostname, "").isEmpty()) {
+			//Creating the intent
+			Intent launchServerSetup = new Intent(this, ServerSetup.class);
+			
+			//Setting the change as required
+			launchServerSetup.putExtra(ServerSetup.intentExtraRequired, true);
+			
+			//Launching the intent
+			startActivity(launchServerSetup);
+			
+			//Finishing the current activity
+			finish();
+			
+			//Returning
+			return;
+		}/* else {
+			//Starting the connection service
+			Intent serviceIntent = new Intent(this, ConnectionService.class);
+			startService(serviceIntent);
+			
+			//Launching the conversations activity
+			startActivity(new Intent(this, Conversations.class));
+		} */
+		
 		//Enabling transitions
 		//getWindow().requestFeature(Window.FEATURE_CONTENT_TRANSITIONS);
 		//getWindow().setExitTransition(new Slide());

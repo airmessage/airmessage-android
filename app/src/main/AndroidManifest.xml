@@ -17,7 +17,7 @@
 		android:supportsRtl="true"
 		android:theme="@style/AppTheme.AppCompat">
 		<!-- Blank launch activity -->
-		<activity
+		<!-- <activity
 			android:label="@string/app_name"
 			android:name=".LaunchActivity"
 			android:noHistory="true"
@@ -26,13 +26,17 @@
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
-		</activity>
+		</activity> -->
 		<!-- Conversation List -->
 		<activity
-			android:exported="false"
 			android:label="@string/app_name"
 			android:launchMode="singleTop"
-			android:name=".Conversations" />
+			android:name=".Conversations">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</activity>
 		<!-- Messaging Screen -->
 		<activity
 			android:exported="false"
