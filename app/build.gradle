@@ -1,5 +1,5 @@
 //Load keystore
-def keystorePropertiesFile = rootProject.file(".signing/keystore.properties");
+def keystorePropertiesFile = rootProject.file(".signing/keystore.properties")
 def keystoreProperties = new Properties()
 keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 

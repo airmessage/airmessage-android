@@ -1435,8 +1435,9 @@ public class ConnectionService extends Service {
 	
 	private void schedulePing() {
 		//Scheduling the ping
-		((AlarmManager) getSystemService(ALARM_SERVICE)).setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-				SystemClock.elapsedRealtime() + keepAliveMillis,
+		((AlarmManager) getSystemService(ALARM_SERVICE)).setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+				SystemClock.elapsedRealtime() + keepAliveMillis - keepAliveWindowMillis,
+				keepAliveWindowMillis,
 				pingPendingIntent);
 	}
 	
