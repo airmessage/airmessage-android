@@ -354,7 +354,7 @@ public class Messaging extends AppCompatActivity {
 		//Setting the list adapter
 		//messageList.setLayoutManager(new SpeedyLinearLayoutManager(this));
 		messageListAdapter = new RecyclerAdapter(retainedFragment.conversationItemList);
-		conversationInfo.setListAdapter(messageListAdapter);
+		conversationInfo.setAdapterUpdater(new AdapterUpdater(this));
 		messageList.setAdapter(messageListAdapter);
 		
 		//Setting the title listener
@@ -1733,7 +1733,7 @@ public class Messaging extends AppCompatActivity {
 		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 		
 		//Starting the task
-		new SendFilePreparationTask(getApplicationContext(), messageInfo, file).execute();
+		new SendFilePreparationTask(this, messageInfo, file).execute();
 	}
 	
 	private void sendFile(Uri uri) {
@@ -1741,11 +1741,12 @@ public class Messaging extends AppCompatActivity {
 		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 		
 		//Starting the task
-		new SendFilePreparationTask(getApplicationContext(), messageInfo, uri).execute();
+		new SendFilePreparationTask(this, messageInfo, uri).execute();
 	}
 	
 	private static class SendFilePreparationTask extends AsyncTask<Void, Void, Void> {
 		//Creating the reference values
+		private final WeakReference<Messaging> activityReference;
 		private final WeakReference<Context> contextReference;
 		
 		//Creating the request values
@@ -1753,26 +1754,27 @@ public class Messaging extends AppCompatActivity {
 		private File targetFile;
 		private Uri targetUri;
 		
-		private SendFilePreparationTask(Context context, ConversationManager.MessageInfo messageInfo) {
+		private SendFilePreparationTask(Messaging activity, ConversationManager.MessageInfo messageInfo) {
 			//Setting the references
-			contextReference = new WeakReference<>(context);
+			activityReference = new WeakReference<>(activity);
+			contextReference = new WeakReference<>(activity.getApplicationContext());
 			
 			//Setting the basic values
 			this.messageInfo = messageInfo;
 		}
 		
-		SendFilePreparationTask(Context context, ConversationManager.MessageInfo messageInfo, File file) {
+		SendFilePreparationTask(Messaging activity, ConversationManager.MessageInfo messageInfo, File file) {
 			//Calling the main constructor
-			this(context, messageInfo);
+			this(activity, messageInfo);
 			
 			//Setting the request values
 			targetFile = file;
 			targetUri = null;
 		}
 		
-		SendFilePreparationTask(Context context, ConversationManager.MessageInfo messageInfo, Uri uri) {
+		SendFilePreparationTask(Messaging activity, ConversationManager.MessageInfo messageInfo, Uri uri) {
 			//Calling the main constructor
-			this(context, messageInfo);
+			this(activity, messageInfo);
 			
 			//Setting the request values
 			targetFile = null;
@@ -1847,8 +1849,12 @@ public class Messaging extends AppCompatActivity {
 					//Adding the message to the conversation in memory
 					messageInfo.getConversationInfo().addGhostMessage(context, messageInfo);
 					
-					//Scrolling to the bottom of the chat
-					if(messageInfo.getConversationInfo().getListAdapter() != null) messageInfo.getConversationInfo().getListAdapter().scrollToBottom();
+					//Getting the activity
+					Messaging activity = activityReference.get();
+					if(activity != null) {
+						//Scrolling to the bottom of the chat
+						activity.messageListAdapter.scrollToBottom();
+					}
 				}
 			}
 			
@@ -2466,6 +2472,47 @@ public class Messaging extends AppCompatActivity {
 			
 			//Returning
 			return null;
+		}
+	}
+	
+	private static class AdapterUpdater extends ConversationManager.ConversationInfo.AdapterUpdater {
+		//Creating the references
+		private final WeakReference<Messaging> activityReference;
+		
+		public AdapterUpdater(Messaging activity) {
+			//Setting the references
+			activityReference = new WeakReference<>(activity);
+		}
+		
+		@Override
+		public void updateFully() {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the adapter
+			activity.messageList.getRecycledViewPool().clear();
+			activity.messageListAdapter.notifyDataSetChanged();
+		}
+		
+		@Override
+		public void updateScroll(int index) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the adapter
+			activity.messageListAdapter.scrollNotifyItemInserted(index);
+		}
+		
+		@Override
+		public void updateMove(int from, int to) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the adapter
+			activity.messageListAdapter.notifyItemMoved(from, to);
 		}
 	}
 }

@@ -362,7 +362,8 @@ class ConversationManager {
 		private transient WeakReference<ArrayList<ConversationItem>> conversationItemsReference = null;
 		private transient WeakReference<ArrayList<MessageInfo>> ghostMessagesReference = null;
 		private ArrayList<MemberInfo> conversationMembers;
-		private transient WeakReference<Messaging.RecyclerAdapter> arrayAdapterReference = null;
+		//private transient WeakReference<Messaging.RecyclerAdapter> arrayAdapterReference = null;
+		private transient AdapterUpdater adapterUpdater = null;
 		//private transient View view;
 		//private transient ViewGroup iconView = null;
 		private String name = null;
@@ -669,8 +670,8 @@ class ConversationManager {
 			activityStateTargetReference = null;
 			
 			//Updating the adapter
-			Messaging.RecyclerAdapter adapter = getListAdapter();
-			if(adapter != null) adapter.notifyDataSetChanged();
+			AdapterUpdater updater = getAdapterUpdater();
+			if(updater != null) updater.updateFully();
 		}
 		
 		ArrayList<ConversationItem> getConversationItems() {
@@ -796,9 +797,9 @@ class ConversationManager {
 			updateLastItem(context);
 			//conversationItems.get(conversationItems.size() - 1).toLightConversationItem(context, result -> lastItem = result);
 			
-			//Refreshing the adapter
-			Messaging.RecyclerAdapter adapter = getListAdapter();
-			if(adapter != null) adapter.notifyDataSetChanged();
+			//Updating the adapter
+			AdapterUpdater updater = getAdapterUpdater();
+			if(updater != null) updater.updateFully();
 			
 			//Updating the view
 			View view = getView();
@@ -863,8 +864,8 @@ class ConversationManager {
 								int newIndex = insertConversationItem(ghostMessage, context);
 								
 								//Updating the adapter
-								Messaging.RecyclerAdapter adapter = getListAdapter();
-								if(adapter != null) adapter.notifyItemMoved(originalIndex, newIndex);
+								AdapterUpdater updater = getAdapterUpdater();
+								if(updater != null) updater.updateMove(originalIndex, newIndex);
 							}
 							
 							//Setting the message as replaced
@@ -906,8 +907,8 @@ class ConversationManager {
 									int newIndex = insertConversationItem(ghostMessage, context);
 									
 									//Updating the adapter
-									Messaging.RecyclerAdapter adapter = getListAdapter();
-									if(adapter != null) adapter.notifyItemMoved(originalIndex, newIndex);
+									AdapterUpdater updater = getAdapterUpdater();
+									if(updater != null) updater.updateMove(originalIndex, newIndex);
 								}
 								
 								//Setting the message as replaced
@@ -935,9 +936,9 @@ class ConversationManager {
 				//Updating the last item
 				updateLastItem(context);
 				
-				//Refreshing the adapter
-				Messaging.RecyclerAdapter adapter = getListAdapter();
-				if(adapter != null) adapter.scrollNotifyItemInserted(index);
+				//Updating the adapter
+				AdapterUpdater updater = getAdapterUpdater();
+				if(updater != null) updater.updateScroll(index);
 				
 				//Updating the view
 				View view = getView();
@@ -1019,9 +1020,9 @@ class ConversationManager {
 			//Updating the last item
 			updateLastItem(context);
 			
-			//Refreshing the adapter
-			Messaging.RecyclerAdapter adapter = getListAdapter();
-			if(adapter != null) adapter.scrollNotifyItemInserted(conversationItems.size() - 1);
+			//Updating the adapter
+			AdapterUpdater updater = getAdapterUpdater();
+			if(updater != null) updater.updateScroll(conversationItems.size() - 1);
 			
 			//Updating the view
 			View view = getView();
@@ -1064,13 +1065,27 @@ class ConversationManager {
 			}
 		}
 		
-		void setListAdapter(Messaging.RecyclerAdapter arrayAdapter) {
+		/* void setListAdapter(Messaging.RecyclerAdapter arrayAdapter) {
 			//Setting the adapter
 			arrayAdapterReference = new WeakReference<>(arrayAdapter);
 		}
 		
 		Messaging.RecyclerAdapter getListAdapter() {
 			return arrayAdapterReference == null ? null : arrayAdapterReference.get();
+		} */
+		
+		void setAdapterUpdater(AdapterUpdater adapterUpdater) {
+			this.adapterUpdater = adapterUpdater;
+		}
+		
+		private AdapterUpdater getAdapterUpdater() {
+			return adapterUpdater;
+		}
+		
+		static abstract class AdapterUpdater {
+			abstract void updateFully();
+			abstract void updateScroll(int index);
+			abstract void updateMove(int from, int to);
 		}
 		
 		int getNextUserColor() {
@@ -2138,9 +2153,8 @@ class ConversationManager {
 					if(existingAttachmentViews.isEmpty())
 						attachmentView = attachment.createView(context, null, messagePartContainer);
 					else {
-						int index = existingAttachmentViews.size() - 1;
-						attachmentView = attachment.createView(context, existingAttachmentViews.get(index), messagePartContainer);
-						existingAttachmentViews.remove(index);
+						attachmentView = attachment.createView(context, existingAttachmentViews.get(0), messagePartContainer);
+						existingAttachmentViews.remove(0);
 					}
 					
 					//Adding the view
