@@ -116,7 +116,7 @@ class NotificationUtils {
 		//Checking if the Android version is below Oreo
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
 			//Setting the sound
-			if(playSound && PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_sound_key), false)) notificationBuilder.setSound(Uri.parse(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_messagenotifications_sound_key), null)));
+			if(playSound) notificationBuilder.setSound(Uri.parse(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_messagenotifications_sound_key), null)));
 			
 			//Enabling vibration if it is enabled in the preferences
 			if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_vibrate_key), false)) notificationBuilder.setVibrate(new long[]{1000, 1000});
