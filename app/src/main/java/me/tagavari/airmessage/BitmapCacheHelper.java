@@ -268,27 +268,25 @@ class BitmapCacheHelper {
 			//Checking if an ID has been provided
 			if(contactID != -1) {
 				//Querying the user for a profile image
-				Cursor cursor = contentResolver.query(ContactsContract.Data.CONTENT_URI,
+				try(Cursor cursor = contentResolver.query(ContactsContract.Data.CONTENT_URI,
 						new String[]{ContactsContract.Contacts.PHOTO_ID},
 						ContactsContract.Data.CONTACT_ID + " = ? ", new String[]{Long.toString(contactID)},
-						null);
-				
-				if(cursor == null) return null;
-				
-				//Returning if there are no results
-				if(!cursor.moveToFirst()) {
+						null)) {
+					//Returning if the cursor couldn't be created
+					if(cursor == null) return null;
+					
+					//Returning if there are no results
+					if(!cursor.moveToFirst()) return null;
+					
+					//Getting the data
+					boolean hasProfileImage = !cursor.isNull(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_ID));
+					
+					//Returning if the user has no profile image
+					if(!hasProfileImage) return null;
+					
+					//Closing the cursor
 					cursor.close();
-					return null;
 				}
-				
-				//Getting the data
-				boolean hasProfileImage = !cursor.isNull(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_ID));
-				
-				//Returning if the user has no profile image
-				if(!hasProfileImage) return null;
-				
-				//Closing the cursor
-				cursor.close();
 			} else {
 				//Getting the contact info
 				ContactInfo contactInfo = getContactInfoFromName(contentResolver, contactName);
@@ -302,56 +300,41 @@ class BitmapCacheHelper {
 			
 			//Querying for the user icon
 			Uri photoUri = Uri.withAppendedPath(ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, contactID), ContactsContract.Contacts.Photo.CONTENT_DIRECTORY);
-			Cursor cursor = contentResolver.query(photoUri, new String[]{ContactsContract.Contacts.Photo.PHOTO}, null, null, null);
-			if(cursor == null) return null;
-			
-			//Returning if there is no data
-			if(!cursor.moveToFirst()) {
-				cursor.close();
-				return null;
+			try(Cursor cursor = contentResolver.query(photoUri, new String[]{ContactsContract.Contacts.Photo.PHOTO}, null, null, null)) {
+				//Returning if the cursor couldn't be created
+				if(cursor == null) return null;
+				
+				//Returning if there is no data
+				if(!cursor.moveToFirst()) return null;
+				
+				//Getting the data
+				byte[] data = cursor.getBlob(0);
+				if(data == null) return null;
+				
+				//Returning the bitmap
+				return BitmapFactory.decodeStream(new ByteArrayInputStream(data));
 			}
-			
-			//Getting the data
-			byte[] data = cursor.getBlob(0);
-			if(data == null) {
-				cursor.close();
-				return null;
-			}
-			
-			//Returning the bitmap
-			Bitmap bitmap = BitmapFactory.decodeStream(new ByteArrayInputStream(data));
-			cursor.close();
-			return bitmap;
 		}
 		
 		private ContactInfo getContactInfoFromName(ContentResolver contentResolver, String name) {
 			//Querying the database
-			Cursor cursor = contentResolver.query(ContactsContract.Data.CONTENT_URI,
+			try(Cursor cursor = contentResolver.query(ContactsContract.Data.CONTENT_URI,
 					new String[]{ContactsContract.Data.CONTACT_ID, ContactsContract.Contacts.PHOTO_ID},
 					ContactsContract.CommonDataKinds.Email.ADDRESS + " = ? OR " + ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER + " = ?", new String[]{name, PhoneNumberUtils.normalizeNumber(name)},
-					null);
-			
-			//Checking if the cursor is invalid
-			if(cursor == null) {
-				//Returning null
-				return null;
-			}
-			
-			//Checking if there are no results
-			if(!cursor.moveToFirst()) {
-				//Closing the cursor
-				cursor.close();
+					null)) {
+				//Returning if the cursor is invalid
+				if(cursor == null) return null;
 				
-				//Returning null
-				return null;
+				//Returning if there are no results
+				if(!cursor.moveToFirst()) return null;
+				
+				//Getting the data
+				long contactIdentifier = cursor.getLong(cursor.getColumnIndexOrThrow(ContactsContract.Data.CONTACT_ID));
+				boolean hasProfileImage = !cursor.isNull(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_ID));
+				
+				//Returning the data
+				return new ContactInfo(contactIdentifier, hasProfileImage);
 			}
-			
-			//Getting the data
-			long contactIdentifier = cursor.getLong(cursor.getColumnIndexOrThrow(ContactsContract.Data.CONTACT_ID));
-			boolean hasProfileImage = !cursor.isNull(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_ID));
-			
-			//Returning the data
-			return new ContactInfo(contactIdentifier, hasProfileImage);
 		}
 		
 		private static class ContactInfo {

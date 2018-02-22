@@ -175,6 +175,9 @@ public class MessagingInfo extends AppCompatActivity {
 		//Calling the super method
 		super.onStop();
 		
+		//Returning if the conversation is invalid
+		if(conversationInfo == null) return;
+		
 		//Finding the differences
 		final boolean conversationMutedChanged = conversationInfo.isMuted() != originalMuted;
 		final boolean conversationColorChanged = conversationInfo.getConversationColor() != originalColor;
@@ -199,7 +202,8 @@ public class MessagingInfo extends AppCompatActivity {
 		conversationInfo.updateViewUser(this);
 		
 		//Saving the data in the database
-		new AsyncTask<Object, Void, Void>() {
+		new UpdateConversationAsyncTask(this, conversationInfo, conversationMutedChanged, conversationColorChanged, modifiedMembers).execute();
+		/* new AsyncTask<Object, Void, Void>() {
 			@Override
 			protected Void doInBackground(Object... params) {
 				//Getting the data
@@ -225,7 +229,7 @@ public class MessagingInfo extends AppCompatActivity {
 				//Returning
 				return null;
 			}
-		}.execute(conversationInfo);
+		}.execute(conversationInfo); */
 	}
 	
 	@Override
@@ -417,6 +421,55 @@ public class MessagingInfo extends AppCompatActivity {
 				switchView.setThumbTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0xFFFAFAFA, color}));
 				switchView.setTrackTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0x61000000, color}));
 			}
+		}
+	}
+	
+	private static class UpdateConversationAsyncTask extends AsyncTask<Void, Void, Void> {
+		//Creating the reference values
+		private final WeakReference<Context> contextReference;
+		
+		//Creating the task values
+		private final ConversationManager.ConversationInfo conversationInfo;
+		private final boolean conversationMutedChanged;
+		private final boolean conversationColorChanged;
+		private final List<ConversationManager.MemberInfo> modifiedMembers;
+		
+		UpdateConversationAsyncTask(Context context, ConversationManager.ConversationInfo conversationInfo, boolean conversationMutedChanged, boolean conversationColorChanged, List<ConversationManager.MemberInfo> modifiedMembers) {
+			//Setting the context values
+			contextReference = new WeakReference<>(context);
+			
+			//Setting the task values
+			this.conversationInfo = conversationInfo;
+			this.conversationMutedChanged = conversationMutedChanged;
+			this.conversationColorChanged = conversationColorChanged;
+			this.modifiedMembers = modifiedMembers;
+		}
+		
+		@Override
+		protected Void doInBackground(Void... params) {
+			//Getting the context
+			Context context = contextReference.get();
+			if(context == null) return null;
+			
+			//Getting an instance of the database
+			SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(context);
+			
+			//Updating the database
+			ContentValues contentValues = new ContentValues();
+			if(conversationMutedChanged)
+				contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, conversationInfo.isMuted());
+			if(conversationColorChanged)
+				contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationInfo.getConversationColor());
+			
+			if(contentValues.size() != 0)
+				DatabaseManager.updateConversation(writableDatabase, conversationInfo.getLocalID(), contentValues);
+			
+			//Updating the member colors
+			if(!modifiedMembers.isEmpty())
+				DatabaseManager.updateMemberColors(writableDatabase, conversationInfo.getLocalID(), modifiedMembers.toArray(new ConversationManager.MemberInfo[0]));
+			
+			//Returning
+			return null;
 		}
 	}
 	
