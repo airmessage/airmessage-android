@@ -26,7 +26,7 @@ class NotificationUtils {
 		//Returning message is outgoing or the message's conversation is loaded
 		if(messageInfo.isOutgoing() || Messaging.getLoadedConversations().contains(messageInfo.getConversationInfo().getLocalID())) return;
 		
-		//Returning if notifications are disabled (and the OS version is below API 26 / Oreo)
+		//Returning if notifications are disabled or the conversation is muted
 		if((Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_getnotifications_key), false)) || messageInfo.getConversationInfo().isMuted()) return;
 		
 		//Adding the message
@@ -116,7 +116,7 @@ class NotificationUtils {
 		//Checking if the Android version is below Oreo
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
 			//Setting the sound
-			if(playSound) notificationBuilder.setSound(Uri.parse(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_messagenotifications_sound_key), null)));
+			notificationBuilder.setSound(Uri.parse(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_messagenotifications_sound_key), null)));
 			
 			//Enabling vibration if it is enabled in the preferences
 			if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_vibrate_key), false)) notificationBuilder.setVibrate(new long[]{1000, 1000});
@@ -141,7 +141,7 @@ class NotificationUtils {
 		replyIntent.putExtra(Constants.intentParamData, conversationInfo);
 		//replyIntent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
 		//replyIntent.putExtra(Constants.intentParamGuid, conversationInfo.getGuid());
-		PendingIntent replyPendingIntent = PendingIntent.getBroadcast(context.getApplicationContext(), 100, replyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+		PendingIntent replyPendingIntent = PendingIntent.getBroadcast(context.getApplicationContext(), (int) conversationInfo.getLocalID(), replyIntent, 0);
 		
 		//Getting a notification action from the remote input
 		NotificationCompat.Action action = new NotificationCompat.Action.Builder(R.drawable.reply, context.getResources().getString(R.string.button_reply), replyPendingIntent).setAllowGeneratedReplies(true).addRemoteInput(remoteInput).build();
@@ -156,15 +156,33 @@ class NotificationUtils {
 	private static void addMessageToNotification(Context context, ConversationManager.ConversationInfo conversationInfo, String message, String sender, long timestamp) {
 		//Getting the conversation title
 		conversationInfo.buildTitle(context, (conversationTitle, wasTasked) -> {
-			//Sending the notification if the sender is "me"
-			if(sender == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, timestamp);
-				//Otherwise getting the user info
+			//Checking if the sender is the user
+			if(sender == null) {
+				//Sending the notification without an icon if the conversation is a group chat
+				if(conversationInfo.isGroupChat()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, timestamp);
+				else {
+					//Fetching the icon of the recipient member
+					String member = conversationInfo.getConversationMembers().get(0).getName();
+					MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, member, member, new BitmapCacheHelper.ImageDecodeResult() {
+						@Override
+						void onImageMeasured(int width, int height) {}
+						
+						@Override
+						void onImageDecoded(Bitmap result, boolean wasTasked) {
+							//Sending the notification
+							addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result, null, timestamp);
+						}
+					});
+				}
+			}
+			//Otherwise getting the user info
 			else MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, sender, new UserCacheHelper.UserFetchResult() {
 				@Override
 				void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
-					//Sending the notification if the user info is invalid
-					if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, sender, timestamp);
-						//Otherwise getting the user's icon
+					//Sending the notification without an icon if the conversation is a group chat or the user is invalid
+					if(userInfo == null || conversationInfo.isGroupChat()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, userInfo == null || userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp);
+					//else if(conversationInfo.isGroupChat()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, userInfo.getContactName() == null ? sender, timestamp);
+					//Otherwise fetching the user's icon
 					else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, sender, sender, new BitmapCacheHelper.ImageDecodeResult() {
 						@Override
 						void onImageMeasured(int width, int height) {}
@@ -190,14 +208,26 @@ class NotificationUtils {
 		//Getting the existing notification
 		Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
 		
-		//Setting the message style
 		if(existingNotification != null) {
+			//Extracting the messaging style
 			NotificationCompat.MessagingStyle messagingStyle = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(existingNotification);
+			
+			//Adding the new message
 			messagingStyle.addMessage(message, timestamp, senderName);
+			
+			//Setting the messaging style to the notification
 			notification.setStyle(messagingStyle);
+			
+			//Updating the other notification information
+			//notification.setLargeIcon(Bitmap.createBitmap());
 		} else {
+			//Creating the messaging style
 			NotificationCompat.MessagingStyle messagingStyle = new NotificationCompat.MessagingStyle(context.getResources().getString(R.string.you)).addMessage(message, timestamp, senderName);
+			
+			//Configuring the messaging style
 			if(conversationInfo.isGroupChat()) messagingStyle.setConversationTitle(conversationTitle);
+			
+			//Setting the messaging style to the notification
 			notification.setStyle(messagingStyle);
 		}
 		
