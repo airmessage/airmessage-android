@@ -446,6 +446,9 @@ public class Messaging extends AppCompatActivity {
 			
 			//Coloring the messages
 			if(retainedFragment.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : retainedFragment.conversationItemList) conversationItem.updateViewColor(getResources());
+			
+			//Updating the recycler adapter's views
+			//messageListAdapter.notifyDataSetChanged();
 		}
 		
 		//Updating the server warning bar state
@@ -2479,7 +2482,7 @@ public class Messaging extends AppCompatActivity {
 		//Creating the references
 		private final WeakReference<Messaging> activityReference;
 		
-		public AdapterUpdater(Messaging activity) {
+		AdapterUpdater(Messaging activity) {
 			//Setting the references
 			activityReference = new WeakReference<>(activity);
 		}
@@ -2512,6 +2515,7 @@ public class Messaging extends AppCompatActivity {
 			if(activity == null) return;
 			
 			//Updating the adapter
+			activity.messageListAdapter.notifyItemChanged(from);
 			activity.messageListAdapter.notifyItemMoved(from, to);
 		}
 	}

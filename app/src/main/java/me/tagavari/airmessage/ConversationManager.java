@@ -36,6 +36,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.view.WindowManager;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.OvershootInterpolator;
@@ -840,10 +841,10 @@ class ConversationManager {
 				if(messageInfo.isOutgoing() && messageInfo.getMessageState() != SharedValues.MessageInfo.stateCodeGhost) {
 					//Scanning the ghost items
 					if(messageInfo.getMessageText() != null && messageInfo.getAttachments().isEmpty()) {
-						ListIterator<MessageInfo> listIterator = ghostMessages.listIterator(ghostMessages.size());
-						while(listIterator.hasPrevious()) {
+						ListIterator<MessageInfo> listIterator = ghostMessages.listIterator();
+						while(listIterator.hasNext()) {
 							//Getting the item
-							MessageInfo ghostMessage = listIterator.previous();
+							MessageInfo ghostMessage = listIterator.next();
 							
 							//Skipping the remainder of the iteration if the item doesn't match
 							if(ghostMessage.getMessageText() == null || !messageInfo.getMessageText().equals(ghostMessage.getMessageText())) continue;
@@ -861,12 +862,17 @@ class ConversationManager {
 							{
 								int originalIndex = conversationItems.indexOf(ghostMessage);
 								conversationItems.remove(ghostMessage);
-								int newIndex = insertConversationItem(ghostMessage, context);
+								int newIndex = insertConversationItem(ghostMessage, context, false);
 								
 								//Updating the adapter
-								AdapterUpdater updater = getAdapterUpdater();
-								if(updater != null) updater.updateMove(originalIndex, newIndex);
+								if(originalIndex != newIndex) {
+									AdapterUpdater updater = getAdapterUpdater();
+									if(updater != null) updater.updateMove(originalIndex, newIndex);
+								}
 							}
+							
+							//Updating the item's relations
+							addConversationItemRelation(this, conversationItems, ghostMessage, context, true);
 							
 							//Setting the message as replaced
 							messageReplaced = true;
@@ -880,10 +886,10 @@ class ConversationManager {
 					} else if(messageInfo.getAttachments().size() == 1) {
 						AttachmentInfo attachmentInfo = messageInfo.getAttachments().get(0);
 						if(attachmentInfo.getFileChecksum() != null) {
-							ListIterator<MessageInfo> listIterator = ghostMessages.listIterator(ghostMessages.size());
-							while(listIterator.hasPrevious()) {
+							ListIterator<MessageInfo> listIterator = ghostMessages.listIterator();
+							while(listIterator.hasNext()) {
 								//Getting the item
-								MessageInfo ghostMessage = listIterator.previous();
+								MessageInfo ghostMessage = listIterator.next();
 								
 								//Skipping the remainder of the iteration if the item doesn't match
 								if(ghostMessage.getAttachments().isEmpty()) continue;
@@ -904,12 +910,17 @@ class ConversationManager {
 								{
 									int originalIndex = conversationItems.indexOf(ghostMessage);
 									conversationItems.remove(ghostMessage);
-									int newIndex = insertConversationItem(ghostMessage, context);
+									int newIndex = insertConversationItem(ghostMessage, context, false);
 									
 									//Updating the adapter
-									AdapterUpdater updater = getAdapterUpdater();
-									if(updater != null) updater.updateMove(originalIndex, newIndex);
+									if(originalIndex != newIndex) {
+										AdapterUpdater updater = getAdapterUpdater();
+										if(updater != null) updater.updateMove(originalIndex, newIndex);
+									}
 								}
+								
+								//Updating the item's relations
+								addConversationItemRelation(this, conversationItems, ghostMessage, context, true);
 								
 								//Setting the message as replaced
 								messageReplaced = true;
@@ -928,10 +939,10 @@ class ConversationManager {
 			//Checking if a message could not be replaced
 			if(!messageReplaced) {
 				//Inserting the item
-				int index = insertConversationItem(conversationItem, context);
+				int index = insertConversationItem(conversationItem, context, false);
 				
 				//Determining the item's relations
-				if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, false);
+				if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
 				
 				//Updating the last item
 				updateLastItem(context);
@@ -946,7 +957,7 @@ class ConversationManager {
 			}
 		}
 		
-		private int insertConversationItem(ConversationItem conversationItem, Context context) {
+		private int insertConversationItem(ConversationItem conversationItem, Context context, boolean update) {
 			//Getting the list
 			ArrayList<ConversationItem> conversationItems = getConversationItems();
 			if(conversationItems == null) return -1;
@@ -957,7 +968,7 @@ class ConversationManager {
 				conversationItems.add(conversationItem);
 				
 				//Redetermining the relation
-				if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
+				if(update && conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
 				
 				//Returning the index
 				return 0;
@@ -973,7 +984,7 @@ class ConversationManager {
 				conversationItems.add(addedIndex, conversationItem);
 				
 				//Redetermining the relation
-				if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
+				if(update && conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
 				
 				//Returning the index
 				return addedIndex;
@@ -983,7 +994,7 @@ class ConversationManager {
 			conversationItems.add(0, conversationItem);
 			
 			//Redetermining the relation
-			if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
+			if(update && conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
 			
 			//Returning the index
 			return 0;
@@ -1696,7 +1707,7 @@ class ConversationManager {
 		
 		private void prepareActivityStateDisplay(View itemView, Context context) {
 			//Getting the requested state
-			boolean requestedState = this == getConversationInfo().getActivityStateTarget() &&
+			isShowingMessageState = this == getConversationInfo().getActivityStateTarget() &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
 					messageState != SharedValues.MessageInfo.stateCodeIdle &&
 					messageState != SharedValues.MessageInfo.stateCodeSent;
@@ -1705,7 +1716,7 @@ class ConversationManager {
 			TextSwitcher label = itemView.findViewById(R.id.activitystatus);
 			
 			//Setting up the label
-			if(requestedState) {
+			if(isShowingMessageState) {
 				label.setVisibility(View.VISIBLE);
 				label.setCurrentText(getDeliveryStatusText(context));
 			} else {
@@ -1735,12 +1746,7 @@ class ConversationManager {
 			//Checking if the requested state matches the current state
 			if(requestedState == currentState) {
 				//Updating the text
-				if(requestedState) {
-					label.setVisibility(View.VISIBLE);
-					label.setText(getDeliveryStatusText(context));
-				} else {
-					label.setVisibility(View.GONE);
-				}
+				if(requestedState) label.setText(getDeliveryStatusText(context));
 			} else {
 				//Checking if the conversation should display its state
 				if(requestedState) {
@@ -1749,12 +1755,23 @@ class ConversationManager {
 					
 					//Showing the label
 					label.setVisibility(View.VISIBLE);
-					label.startAnimation(AnimationUtils.loadAnimation(context, R.anim.slide_in_top));
-					//label.animate().alpha(1).start();
+					label.startAnimation(AnimationUtils.loadAnimation(context, R.anim.message_slide_in_bottom));
+					
+					//Measuring the label
+					label.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+					
+					//Expanding the parent view
+					ViewGroup parentView = (ViewGroup) label.getParent();
+					parentView.getLayoutParams().height = parentView.getHeight(); //Freezing the parent view height (to prevent it from expanding for a few moments before the label's view pass)
+					ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) label.getLayoutParams();
+					Constants.ResizeAnimation parentAnim = new Constants.ResizeAnimation(parentView, parentView.getHeight(), parentView.getHeight() + (label.getMeasuredHeight() + layoutParams.topMargin + layoutParams.bottomMargin));
+					parentAnim.setDuration(context.getResources().getInteger(android.R.integer.config_shortAnimTime));
+					parentAnim.setInterpolator(new AccelerateDecelerateInterpolator());
+					parentView.startAnimation(parentAnim);
 				} else {
 					//Hiding the label
-					Animation anim = AnimationUtils.loadAnimation(context, R.anim.slide_out_top);
-					anim.setAnimationListener(new Animation.AnimationListener() {
+					Animation labelAnim = AnimationUtils.loadAnimation(context, R.anim.message_slide_out_top);
+					labelAnim.setAnimationListener(new Animation.AnimationListener() {
 						@Override
 						public void onAnimationStart(Animation animation) {}
 						
@@ -1768,12 +1785,15 @@ class ConversationManager {
 						@Override
 						public void onAnimationRepeat(Animation animation) {}
 					});
-					label.startAnimation(anim);
-					/* label.animate().alpha(0).withEndAction(() -> {
-						//Setting the label's visibility
-						View view = getView();
-						if(view != null) view.findViewById(R.id.activitystatus).setVisibility(View.GONE);
-					}).start(); */
+					label.startAnimation(labelAnim);
+					
+					//Collapsing the parent view
+					ViewGroup parentView = (ViewGroup) label.getParent();
+					ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) label.getLayoutParams();
+					Constants.ResizeAnimation parentAnim = new Constants.ResizeAnimation(parentView, parentView.getHeight(), parentView.getHeight() - (label.getMeasuredHeight() + layoutParams.topMargin + layoutParams.bottomMargin));
+					parentAnim.setDuration(context.getResources().getInteger(android.R.integer.config_shortAnimTime));
+					parentAnim.setInterpolator(new AccelerateDecelerateInterpolator());
+					parentView.startAnimation(parentAnim);
 				}
 			}
 		}
@@ -2080,6 +2100,9 @@ class ConversationManager {
 			//Getting the message part container
 			ViewGroup messagePartContainer = pViewHolder.getGroupMPC();
 			
+			//Setting the message part container's draw order
+			messagePartContainer.setZ(1);
+			
 			//Converting the view to a view group
 			LinearLayout view = pViewHolder.getView();
 			
@@ -2268,6 +2291,10 @@ class ConversationManager {
 				replayButton.setOnClickListener(clickedView -> getConversationInfo().requestScreenEffect(sendEffect));
 			}
 			
+			//Setting the text switcher's animations
+			pViewHolder.getLabelActivityStatus().setInAnimation(AnimationUtils.loadAnimation(context, R.anim.fade_in_delayed));
+			pViewHolder.getLabelActivityStatus().setOutAnimation(AnimationUtils.loadAnimation(context, R.anim.fade_out));
+			
 			//Setting the status
 			//((TextView) view.findViewById(R.id.status)).setText(ConversationInfo.getFormattedTime(getDate()));
 			
@@ -2342,12 +2369,10 @@ class ConversationManager {
 		}
 		
 		private static final float ghostAlpha = 0.50F;
-		
 		private void updateViewProgressState(View itemView, Context context) {
 			//Setting the message part container's alpha
 			ViewGroup messagePartContainer = itemView.findViewById(R.id.messagepart_container);
-			if(messageState == SharedValues.MessageInfo.stateCodeGhost)
-				messagePartContainer.setAlpha(ghostAlpha);
+			if(messageState == SharedValues.MessageInfo.stateCodeGhost) messagePartContainer.setAlpha(ghostAlpha);
 			else messagePartContainer.setAlpha(1);
 			
 			//Getting the send error warning
