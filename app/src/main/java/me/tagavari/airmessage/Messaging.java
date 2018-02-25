@@ -75,6 +75,7 @@ import nl.dionsegijn.konfetti.models.Size;
 
 public class Messaging extends AppCompatActivity {
 	//Creating the static values
+	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
 	private static final List<WeakReference<Messaging>> loadedConversations = new ArrayList<>();
 	
 	//Creating the activity values
@@ -310,6 +311,9 @@ public class Messaging extends AppCompatActivity {
 		//Setting the filler data
 		if(getIntent().hasExtra(Constants.intentParamDataText))
 			messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText));
+		
+		//Adding the conversation as a loaded conversation
+		loadedConversations.add(new WeakReference<>(this));
 	}
 	
 	private void prepareRetainedFragment() {
@@ -434,7 +438,7 @@ public class Messaging extends AppCompatActivity {
 		super.onResume();
 		
 		//Adding the phantom reference
-		loadedConversations.add(new WeakReference<>(this));
+		foregroundConversations.add(new WeakReference<>(this));
 		
 		//Checking if the conversation is valid
 		if(conversationInfo != null) {
@@ -446,6 +450,9 @@ public class Messaging extends AppCompatActivity {
 			
 			//Coloring the messages
 			if(retainedFragment.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : retainedFragment.conversationItemList) conversationItem.updateViewColor(getResources());
+			
+			//Checking if the title is static
+			
 			
 			//Updating the recycler adapter's views
 			//messageListAdapter.notifyDataSetChanged();
@@ -463,8 +470,8 @@ public class Messaging extends AppCompatActivity {
 		//Calling the super method
 		super.onPause();
 		
-		//Clearing the phantom reference
-		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
+		//Iterating over the foreground conversations
+		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext();) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			
@@ -515,7 +522,7 @@ public class Messaging extends AppCompatActivity {
 				conversationInfo.clearMessages();
 				
 				//Setting the conversation as unloaded
-				loadedConversations.remove(conversationInfo.getLocalID());
+				foregroundConversations.remove(conversationInfo.getLocalID());
 				
 				//Updating the conversation's last view time
 				long lastViewTime = System.currentTimeMillis();
@@ -528,12 +535,38 @@ public class Messaging extends AppCompatActivity {
 			retainedFragment.restartingFromConfigChange = true;
 		}
 		
-		//Removing the conversation title change listener
-		if(conversationInfo != null) conversationInfo.removeTitleChangeListener(conversationTitleChangeListener);
-		
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
+	}
+	
+	@Override
+	protected void onDestroy() {
+		//Calling the super method
+		super.onDestroy();
+		
+		//Iterating over the loaded conversations
+		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
+			//Getting the referenced activity
+			Messaging activity = iterator.next().get();
+			
+			//Removing the reference if it is invalid
+			if(activity == null) {
+				iterator.remove();
+				continue;
+			}
+			//Skipping the remainder of the iteration if the activity isn't this one
+			else if(activity != this) continue;
+			
+			//Removing the reference
+			iterator.remove();
+			
+			//Breaking from the loop
+			break;
+		}
+		
+		//Removing the conversation title change listener
+		if(conversationInfo != null) conversationInfo.removeTitleChangeListener(conversationTitleChangeListener);
 	}
 	
 	@Override
@@ -1708,6 +1741,29 @@ public class Messaging extends AppCompatActivity {
 		return false;
 	}
 	
+	public static ArrayList<Long> getForegroundConversations() {
+		//Creating the list
+		ArrayList<Long> list = new ArrayList<>();
+		
+		//Iterating over the loaded conversations
+		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext();) {
+			//Getting the referenced activity
+			Messaging activity = iterator.next().get();
+			
+			//Removing the reference if it is invalid
+			if(activity == null) {
+				iterator.remove();
+				continue;
+			}
+			
+			//Adding the entry to the list
+			list.add(activity.getConversationID());
+		}
+		
+		//Returning the list
+		return list;
+	}
+	
 	public static ArrayList<Long> getLoadedConversations() {
 		//Creating the list
 		ArrayList<Long> list = new ArrayList<>();
@@ -1841,7 +1897,7 @@ public class Messaging extends AppCompatActivity {
 				//Checking if the conversation is loaded
 				long currentConversationID = messageInfo.getConversationInfo().getLocalID();
 				boolean conversationFound = false;
-				for(long identifiers : Messaging.getLoadedConversations())
+				for(long identifiers : Messaging.getForegroundConversations())
 					if(currentConversationID == identifiers) {
 						conversationFound = true;
 						break;
@@ -2231,7 +2287,7 @@ public class Messaging extends AppCompatActivity {
 			@Override
 			protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> messages) {
 				//Returning if the conversation isn't loaded anymore
-				if(!ConversationManager.getLoadedConversations().contains(conversationInfo)) return;
+				if(!ConversationManager.getForegroundConversations().contains(conversationInfo)) return;
 				
 				//Getting the fragment
 				RetainedFragment retainedFragment = fragmentReference.get();

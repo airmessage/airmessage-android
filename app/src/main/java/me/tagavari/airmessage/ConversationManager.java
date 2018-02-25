@@ -177,7 +177,7 @@ class ConversationManager {
 	
 	AttachmentInfo findAttachmentInfoInActiveConversation(String message) {
 		//Returning a matching attachment info
-		for(long conversationLocalID : Messaging.getLoadedConversations())
+		for(long conversationLocalID : Messaging.getForegroundConversations())
 			for(ConversationItem conversationItem : findConversationInfo(conversationLocalID).getConversationItems())
 				if(conversationItem instanceof MessageInfo)
 					for(AttachmentInfo attachmentInfo : ((MessageInfo) conversationItem).getAttachments())
@@ -190,7 +190,7 @@ class ConversationManager {
 	
 	AttachmentInfo findAttachmentInfoInActiveConversation(long localID) {
 		//Returning a matching attachment info
-		for(long conversationLocalID : Messaging.getLoadedConversations())
+		for(long conversationLocalID : Messaging.getForegroundConversations())
 			for(ConversationItem conversationItem : findConversationInfo(conversationLocalID).getConversationItems())
 				if(conversationItem instanceof MessageInfo)
 					for(AttachmentInfo attachmentInfo : ((MessageInfo) conversationItem).getAttachments())
@@ -275,6 +275,21 @@ class ConversationManager {
 		return null;
 	}
 	
+	static ArrayList<ConversationInfo> getForegroundConversations() {
+		//Creating the list
+		ArrayList<ConversationInfo> list = new ArrayList<>();
+		
+		//Iterating over the loaded conversation IDs
+		for(long conversationID : Messaging.getForegroundConversations()) {
+			//Adding the conversation
+			ConversationInfo conversationInfo = findConversationInfo(conversationID);
+			if(conversationInfo != null) list.add(conversationInfo);
+		}
+		
+		//Returning the list
+		return list;
+	}
+	
 	static ArrayList<ConversationInfo> getLoadedConversations() {
 		//Creating the list
 		ArrayList<ConversationInfo> list = new ArrayList<>();
@@ -292,7 +307,7 @@ class ConversationManager {
 	
 	static ConversationManager.AttachmentInfo findAttachmentInfoInActiveConversation(String guid) {
 		//Finding the attachment info
-		for(long conversationID : Messaging.getLoadedConversations()) {
+		for(long conversationID : Messaging.getForegroundConversations()) {
 			ConversationManager.ConversationInfo conversationInfo = findConversationInfo(conversationID);
 			if(conversationInfo == null) continue;
 			ConversationManager.AttachmentInfo attachmentInfo = conversationInfo.findAttachmentInfo(guid);
@@ -367,7 +382,7 @@ class ConversationManager {
 		private transient AdapterUpdater adapterUpdater = null;
 		//private transient View view;
 		//private transient ViewGroup iconView = null;
-		private String name = null;
+		private String title = null;
 		private long timeLastViewed = 0;
 		private boolean isArchived = false;
 		private boolean isMuted = false;
@@ -404,14 +419,14 @@ class ConversationManager {
 			conversationMembers = new ArrayList<>();
 		}
 		
-		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String name, long timeLastViewed, int conversationColor) {
+		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String title, long timeLastViewed, int conversationColor) {
 			//Setting the values
 			this.guid = guid;
 			this.localID = localID;
 			this.conversationState = conversationState;
 			this.service = service;
 			this.conversationMembers = conversationMembers;
-			this.name = name;
+			this.title = title;
 			this.timeLastViewed = timeLastViewed;
 			this.conversationColor = conversationColor;
 		}
@@ -456,7 +471,7 @@ class ConversationManager {
 			final View finalView = convertView;
 			
 			//Setting the title
-			((TextView) convertView.findViewById(R.id.title)).setText(buildTitleDirect(context, name, getConversationMembersAsArray()));
+			((TextView) convertView.findViewById(R.id.title)).setText(buildTitleDirect(context, title, getConversationMembersAsArray()));
 			buildTitle(context, (title, wasTasked) -> {
 				//Setting the title
 				View view = wasTasked ? viewSource.get() : finalView;
@@ -487,7 +502,7 @@ class ConversationManager {
 		
 		private void updateView(Context context, View itemView) {
 			//Setting the title
-			((TextView) itemView.findViewById(R.id.title)).setText(buildTitleDirect(context, name, getConversationMembersAsArray()));
+			((TextView) itemView.findViewById(R.id.title)).setText(buildTitleDirect(context, title, getConversationMembersAsArray()));
 			updateUnreadStatus(itemView);
 			
 			buildTitle(context, (title, wasTasked) -> {
@@ -544,7 +559,7 @@ class ConversationManager {
 			//Returning if the conversation has no members
 			if(conversationMembers.isEmpty()) return;
 			
-			//Setting the name
+			//Setting the title
 			//((TextView) itemView.findViewById(R.id.title)).setText(buildTitle(context));
 			
 			//Getting the conversation icon view
@@ -575,7 +590,7 @@ class ConversationManager {
 				
 				//Assigning the user info
 				final int finalIndex = i;
-				MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(context, getConversationMembers().get(i).getName(), wasTasked -> {
+				MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(context, getConversationMembers().get(i).getStaticTitle(), wasTasked -> {
 					View view = wasTasked ? getView() : itemView;
 					if(view == null) return null;
 					
@@ -1240,11 +1255,11 @@ class ConversationManager {
 		
 		void buildTitle(Context context, Constants.TaskedResultCallback<String> resultCallback) {
 			//Returning the result of the static method
-			buildTitle(context, name, getConversationMembersAsArray(), resultCallback);
+			buildTitle(context, title, getConversationMembersAsArray(), resultCallback);
 		}
 		
 		static void buildTitle(Context context, String name, String[] members, Constants.TaskedResultCallback<String> resultCallback) {
-			//Returning the conversation name if it is valid
+			//Returning the conversation title if it is valid
 			if(name != null && !name.isEmpty()) {
 				resultCallback.onResult(name, false);
 				return;
@@ -1271,7 +1286,7 @@ class ConversationManager {
 				return;
 			}
 			
-			//Creating the named conversation name list
+			//Creating the named conversation title list
 			ArrayList<String> namedConversationMembers = new ArrayList<>();
 			
 			//Converting the list to named members
@@ -1308,7 +1323,7 @@ class ConversationManager {
 		}
 		
 		static String buildTitleDirect(Context context, String name, String[] members) {
-			//Returning the conversation name if it is valid
+			//Returning the conversation title if it is valid
 			if(name != null && !name.isEmpty()) return name;
 			
 			//Returning "unknown" if the conversation has no members
@@ -1335,16 +1350,16 @@ class ConversationManager {
 			return stringBuilder.toString();
 		}
 		
-		String getName() {
-			return name;
+		String getStaticTitle() {
+			return title;
 		}
 		
-		void setName(Context context, String value) {
+		void setTitle(Context context, String value) {
 			//Returning if the operation is invalid
-			if((name != null && name.equals(value))) return;
+			if((title != null && title.equals(value))) return;
 			
-			//Setting the new name
-			name = value;
+			//Setting the new title
+			title = value;
 			
 			//Calling the listeners
 			for(Runnable runnable : titleChangeListeners) runnable.run();

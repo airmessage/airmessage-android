@@ -696,7 +696,7 @@ public class ConnectionService extends Service {
 				if(structConversationInfo.available) {
 					//Setting the conversation details
 					request.conversationInfo.setService(structConversationInfo.service);
-					request.conversationInfo.setName(ConnectionService.this, structConversationInfo.name);
+					request.conversationInfo.setTitle(ConnectionService.this, structConversationInfo.name);
 					request.conversationInfo.setConversationColor(ConversationManager.ConversationInfo.getRandomColor());
 					request.conversationInfo.setConversationMembersCreateColors(structConversationInfo.members);
 					request.conversationInfo.setState(ConversationManager.ConversationInfo.ConversationState.READY);
@@ -1829,6 +1829,7 @@ public class ConnectionService extends Service {
 			Collections.sort(newCompleteConversationItems, ConversationManager.conversationItemComparator);
 			
 			//Getting the loaded conversations
+			List<Long> foregroundConversations = Messaging.getForegroundConversations();
 			List<Long> loadedConversations = Messaging.getLoadedConversations();
 			
 			//Checking if the conversations are loaded in memory
@@ -1852,12 +1853,8 @@ public class ConnectionService extends Service {
 						//Adding the conversation item to its parent conversation
 						parentConversation.addConversationItem(context, conversationItem);
 						
-						//Displaying the send effect
-						if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).getSendEffect().isEmpty())
-							parentConversation.requestScreenEffect(((ConversationManager.MessageInfo) conversationItem).getSendEffect());
-						
 						//Renaming the conversation
-						if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) parentConversation.setName(context, ((ConversationManager.ChatRenameActionInfo) conversationItem).title);
+						if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) parentConversation.setTitle(context, ((ConversationManager.ChatRenameActionInfo) conversationItem).title);
 						else if(conversationItem instanceof ConversationManager.GroupActionInfo) {
 							//Converting the item to a group action info
 							ConversationManager.GroupActionInfo groupActionInfo = (ConversationManager.GroupActionInfo) conversationItem;
@@ -1876,6 +1873,13 @@ public class ConnectionService extends Service {
 								if(member != null && parentConversation.getConversationMembers().contains(member))
 									parentConversation.getConversationMembers().remove(member);
 							}
+						}
+						
+						//Checking if the conversation is in the foreground
+						if(foregroundConversations.contains(parentConversation.getLocalID())) {
+							//Displaying the send effect
+							if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).getSendEffect().isEmpty())
+								parentConversation.requestScreenEffect(((ConversationManager.MessageInfo) conversationItem).getSendEffect());
 						}
 					} else {
 						//Updating the parent conversation's latest item
@@ -2074,7 +2078,7 @@ public class ConnectionService extends Service {
 						//Recording the conversation details
 						transferredConversations.put(clientConversation, new TransferConversationStruct(availableConversation.getGuid(),
 								ConversationManager.ConversationInfo.ConversationState.READY,
-								availableConversation.getName(),
+								availableConversation.getStaticTitle(),
 								conversationItems));
 						
 						//Deleting the available conversation
@@ -2144,7 +2148,7 @@ public class ConnectionService extends Service {
 						TransferConversationStruct transferData = pair.getValue();
 						conversationInfo.setGuid(transferData.guid);
 						conversationInfo.setState(transferData.state);
-						conversationInfo.setName(context, transferData.name);
+						conversationInfo.setTitle(context, transferData.name);
 						for(ConversationManager.ConversationItem item : transferData.conversationItems) conversationInfo.addConversationItem(context, item);
 					}
 				}
@@ -2277,7 +2281,7 @@ public class ConnectionService extends Service {
 				//Finding the referenced item
 				ConversationManager.ConversationItem conversationItem;
 				ConversationManager.MessageInfo messageInfo = null;
-				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getLoadedConversations()) {
+				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getForegroundConversations()) {
 					conversationItem = loadedConversation.findConversationItem(sticker.getMessageID());
 					if(conversationItem == null) continue;
 					if(!(conversationItem instanceof ConversationManager.MessageInfo)) break;
@@ -2296,7 +2300,7 @@ public class ConnectionService extends Service {
 			for(ConversationManager.TapbackInfo tapback : tapbackModifiers) {
 				//Finding the referenced item
 				ConversationManager.MessageInfo messageInfo = null;
-				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getLoadedConversations()) {
+				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getForegroundConversations()) {
 					ConversationManager.ConversationItem conversationItem;
 					conversationItem = loadedConversation.findConversationItem(tapback.getMessageID());
 					if(conversationItem == null) continue;
@@ -2317,7 +2321,7 @@ public class ConnectionService extends Service {
 				//Finding the referenced item
 				ConversationManager.ConversationItem conversationItem;
 				ConversationManager.MessageInfo messageInfo = null;
-				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getLoadedConversations()) {
+				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getForegroundConversations()) {
 					conversationItem = loadedConversation.findConversationItem(tapback.message);
 					if(conversationItem == null) continue;
 					if(!(conversationItem instanceof ConversationManager.MessageInfo)) break;

@@ -897,7 +897,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, structConversationInfo.guid, ConversationManager.ConversationInfo.ConversationState.READY);
 		conversationInfo.setService(structConversationInfo.service);
 		conversationInfo.setConversationColor(conversationColor);
-		conversationInfo.setName(context, structConversationInfo.name);
+		conversationInfo.setTitle(context, structConversationInfo.name);
 		conversationInfo.setConversationMembersCreateColors(structConversationInfo.members);
 		conversationInfo.setTimeLastViewed(currentTime);
 		
@@ -1568,7 +1568,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_GUID, conversationInfo.getGuid());
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_STATE, conversationInfo.getState().getIdentifier());
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, conversationInfo.getService());
-		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_NAME, conversationInfo.getName());
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_NAME, conversationInfo.getStaticTitle());
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationInfo.getConversationColor());
 		
 		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + "=?", new String[]{Long.toString(conversationInfo.getLocalID())});
@@ -1597,7 +1597,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_GUID, sourceConversation.getGuid());
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_STATE, sourceConversation.getState().getIdentifier());
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, sourceConversation.getService());
-		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_NAME, sourceConversation.getName());
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_NAME, sourceConversation.getStaticTitle());
 		
 		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + "=?", new String[]{Long.toString(targetConversation.getLocalID())});
 		
