@@ -74,6 +74,9 @@ public class MessagingInfo extends AppCompatActivity {
 		//Inflating the layout
 		setContentView(R.layout.activity_messaginginfo);
 		
+		//Enabling the toolbar's up navigation
+		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		
 		//Configuring the grid layout
 		headerView = (ViewGroup) getLayoutInflater().inflate(R.layout.activity_messaginginfo_header, null, false);
 		

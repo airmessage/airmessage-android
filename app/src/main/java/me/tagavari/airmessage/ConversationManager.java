@@ -956,7 +956,7 @@ class ConversationManager {
 				//Inserting the item
 				int index = insertConversationItem(conversationItem, context, false);
 				
-				//Determining the item's relations
+				//Determining the item's relations if it is a message
 				if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
 				
 				//Updating the last item
@@ -1580,10 +1580,10 @@ class ConversationManager {
 		private float sendProgress = -1;
 		
 		//Creating the placement values
-		private boolean hasTimeDivider = false;
-		private boolean isAnchoredTop = false;
-		private boolean isAnchoredBottom = false;
-		private boolean isShowingMessageState = false;
+		private transient boolean hasTimeDivider = false;
+		private transient boolean isAnchoredTop = false;
+		private transient boolean isAnchoredBottom = false;
+		private transient boolean isShowingMessageState = false;
 		
 		MessageInfo(long localID, String guid, ConversationInfo conversationInfo, String sender, String messageText, ArrayList<AttachmentInfo> attachments, String sendEffect, long date, int messageState, int errorCode, long dateRead) {
 			//Calling the super constructor
@@ -1770,7 +1770,7 @@ class ConversationManager {
 					
 					//Showing the label
 					label.setVisibility(View.VISIBLE);
-					label.startAnimation(AnimationUtils.loadAnimation(context, R.anim.message_slide_in_bottom));
+					label.startAnimation(AnimationUtils.loadAnimation(context, R.anim.messagestatus_slide_in_bottom));
 					
 					//Measuring the label
 					label.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -1785,7 +1785,7 @@ class ConversationManager {
 					parentView.startAnimation(parentAnim);
 				} else {
 					//Hiding the label
-					Animation labelAnim = AnimationUtils.loadAnimation(context, R.anim.message_slide_out_top);
+					Animation labelAnim = AnimationUtils.loadAnimation(context, R.anim.messagestatus_slide_out_top);
 					labelAnim.setAnimationListener(new Animation.AnimationListener() {
 						@Override
 						public void onAnimationStart(Animation animation) {}

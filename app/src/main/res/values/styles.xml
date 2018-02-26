@@ -12,6 +12,7 @@
 	<style name="SolidActionBar">
 		<item name="android:colorControlNormal">@android:color/white</item>
 		<item name="android:titleTextColor">@android:color/white</item>
+		<item name="android:textColorPrimary">@android:color/white</item>
 	</style>
 	
 	<style name="AppTheme.AppCompat" parent="@style/Theme.AppCompat.Light.DarkActionBar">
@@ -29,7 +30,9 @@
 		<item name="android:actionModeBackground">@android:color/transparent</item>
 	</style>
 	
-	<style name="AppTheme.AppCompat.Messaging" parent="@style/AppTheme.AppCompat" />
+	<style name="AppTheme.AppCompat.Messaging" parent="@style/Theme.AppCompat.Light.NoActionBar">
+		<item name="android:actionBarTheme">@style/SolidActionBar</item>
+	</style>
 	
 	<style name="OverscrollNeutralizer" parent="@android:style/Theme.Material.Light">
 		<item name="android:colorPrimary">@android:color/darker_gray</item>
