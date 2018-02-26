@@ -341,6 +341,8 @@ class ConversationManager {
 	}
 	
 	static class ConversationInfo implements Serializable {
+		private static final long serialVersionUID = 0;
+		
 		//Creating the reference values
 		/* private static final String timeFormat = "h:mm a";
 		private static final String dayFormat = "MMM d";
@@ -1538,6 +1540,8 @@ class ConversationManager {
 	}
 	
 	static class MemberInfo implements Serializable {
+		private static final long serialVersionUID = 0;
+		
 		private final String name;
 		private int color;
 		
