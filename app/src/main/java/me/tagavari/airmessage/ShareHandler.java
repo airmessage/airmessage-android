@@ -6,18 +6,18 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
-import android.view.animation.LinearInterpolator;
-import android.view.animation.RotateAnimation;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -27,6 +27,7 @@ import java.util.List;
 public class ShareHandler extends Activity {
 	//Creating the view values
 	private ListView listView;
+	private ProgressBar massRetrievalProgressBar;
 	
 	//Creating the target values
 	private String targetText = null;
@@ -48,12 +49,50 @@ public class ShareHandler extends Activity {
 			startActivity(launchMessaging);
 		}
 	};
-	private final BroadcastReceiver syncStateBroadcastReceiver = new BroadcastReceiver() {
+	private final BroadcastReceiver massRetrievalStateBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			//Setting the state
-			if(intent.getBooleanExtra(Constants.intentParamAction, true)) setState(Conversations.stateSyncing);
-			else setState(Conversations.stateReady);
+			//Getting the state
+			switch(intent.getByteExtra(Constants.intentParamState, (byte) 0)) {
+				case ConnectionService.intentExtraStateMassRetrievalStarted:
+					//Setting the state to syncing
+					setState(Conversations.stateSyncing);
+					
+					break;
+				case ConnectionService.intentExtraStateMassRetrievalProgress:
+					//Checking if there is a maximum value provided
+					if(intent.hasExtra(Constants.intentParamSize)) {
+						//Setting the progress bar's maximum
+						massRetrievalProgressBar.setMax(intent.getIntExtra(Constants.intentParamSize, 0));
+						
+						//Setting the progress bar as determinate
+						massRetrievalProgressBar.setIndeterminate(false);
+					}
+					
+					//Setting the progress bar's progress
+					if(intent.hasExtra(Constants.intentParamProgress)) {
+						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(intent.getIntExtra(Constants.intentParamProgress, 0), true);
+						else massRetrievalProgressBar.setProgress(intent.getIntExtra(Constants.intentParamProgress, 0));
+					}
+					
+					break;
+				case ConnectionService.intentExtraStateMassRetrievalFailed:
+					//Displaying a snackbar
+					Snackbar.make(findViewById(R.id.root), R.string.serversync_failed, Snackbar.LENGTH_LONG)
+							.setAction(R.string.button_retry, view -> {
+								//Getting the connection service
+								ConnectionService service = ConnectionService.getInstance();
+								if(service == null || !service.isConnected()) return;
+								
+								//Requesting another mass retrieval
+								service.requestMassRetrieval(ShareHandler.this);
+							})
+							.setActionTextColor(getResources().getColor(R.color.colorAccent, null))
+							.show();
+				case ConnectionService.intentExtraStateMassRetrievalFinished: //Fall through
+					setState(Conversations.stateReady);
+					break;
+			}
 		}
 	};
 	private final BroadcastReceiver updateConversationsBroadcastReceiver = new BroadcastReceiver() {
@@ -111,6 +150,7 @@ public class ShareHandler extends Activity {
 		
 		//Getting the views
 		listView = findViewById(R.id.list);
+		massRetrievalProgressBar = findViewById(R.id.syncview_progress);
 		
 		//Configuring the list view
 		listView.setOnItemClickListener(onListItemClickListener);
@@ -129,7 +169,7 @@ public class ShareHandler extends Activity {
 		
 		//Adding the broadcast receivers
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-		localBroadcastManager.registerReceiver(syncStateBroadcastReceiver, new IntentFilter(ConnectionService.localBCMassRetrieval));
+		localBroadcastManager.registerReceiver(massRetrievalStateBroadcastReceiver, new IntentFilter(ConnectionService.localBCMassRetrieval));
 		localBroadcastManager.registerReceiver(updateConversationsBroadcastReceiver, new IntentFilter(Conversations.localBCConversationUpdate));
 		
 		//Getting the conversations
@@ -173,7 +213,7 @@ public class ShareHandler extends Activity {
 		
 		//Unregistering the broadcast receivers
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-		localBroadcastManager.unregisterReceiver(syncStateBroadcastReceiver);
+		localBroadcastManager.unregisterReceiver(massRetrievalStateBroadcastReceiver);
 		localBroadcastManager.unregisterReceiver(updateConversationsBroadcastReceiver);
 	}
 	
@@ -218,8 +258,9 @@ public class ShareHandler extends Activity {
 				break;
 			case Conversations.stateSyncing: {
 				View syncView = findViewById(R.id.syncview);
-				syncView.setVisibility(View.GONE);
-				syncView.findViewById(R.id.syncview_icon).setAnimation(null);
+				syncView.animate()
+						.alpha(0)
+						.withEndAction(() -> syncView.setVisibility(View.GONE));
 				break;
 			}
 			case Conversations.stateReady:
@@ -239,12 +280,22 @@ public class ShareHandler extends Activity {
 			case Conversations.stateSyncing: {
 				View syncView = findViewById(R.id.syncview);
 				syncView.setVisibility(View.VISIBLE);
+				syncView.animate()
+						.alpha(1)
+						.withStartAction(() -> syncView.setVisibility(View.VISIBLE));
 				
-				RotateAnimation rotateAnimation = new RotateAnimation(0, -360, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
-				rotateAnimation.setInterpolator(new LinearInterpolator());
-				rotateAnimation.setDuration(2500);
-				rotateAnimation.setRepeatCount(Animation.INFINITE);
-				syncView.findViewById(R.id.syncview_icon).setAnimation(rotateAnimation);
+				int progress = ConnectionService.getInstance().getMassRetrievalProgress();
+				
+				if(progress == -1) {
+					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(0, false);
+					else massRetrievalProgressBar.setProgress(0);
+					
+					massRetrievalProgressBar.setIndeterminate(true);
+				} else {
+					massRetrievalProgressBar.setMax(ConnectionService.getInstance().getMassRetrievalProgressCount());
+					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(progress, true);
+					else massRetrievalProgressBar.setProgress(progress);
+				}
 				
 				break;
 			}

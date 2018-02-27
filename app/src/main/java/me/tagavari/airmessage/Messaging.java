@@ -35,9 +35,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.transition.ChangeBounds;
+import android.transition.Transition;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
@@ -75,6 +77,7 @@ import nl.dionsegijn.konfetti.models.Size;
 
 public class Messaging extends AppCompatActivity {
 	//Creating the static values
+	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
 	private static final List<WeakReference<Messaging>> loadedConversations = new ArrayList<>();
 	
 	//Creating the activity values
@@ -135,6 +138,8 @@ public class Messaging extends AppCompatActivity {
 	};
 	
 	//Creating the view values
+	private View rootView;
+	private Toolbar toolbar;
 	private RecyclerView messageList;
 	private View inputBar;
 	private View referenceBar;
@@ -155,7 +160,83 @@ public class Messaging extends AppCompatActivity {
 	private MenuItem archiveMenuItem;
 	private MenuItem unarchiveMenuItem;
 	
+	//Creating the other values
+	private RecyclerAdapter messageListAdapter = null;
+	private boolean serverWarningVisible = false;
+	private boolean messageBoxHasText = false;
+	private ActivityManager.TaskDescription lastTaskDescription;
+	
+	private boolean toolbarVisible = true;
+	
 	//Creating the listeners
+	private final ViewTreeObserver.OnGlobalLayoutListener rootLayoutListener = () -> {
+		//Getting the height
+		int height = rootView.getHeight();
+		
+		//Checking if the window is smaller than the minimum height, the window isn't in multi-window mode and the app bar is in its default state
+		if(height < getResources().getDimensionPixelSize(R.dimen.conversationwindow_minheight) && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode()) && currentAppBarState == appBarStateDefault) {
+			//Hiding the app bar
+			hideToolbar();
+		} else {
+			//Showing the app bar
+			showToolbar();
+		}
+	};
+	private final TextWatcher inputFieldTextWatcher = new TextWatcher() {
+		@Override
+		public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+		
+		}
+		
+		@Override
+		public void onTextChanged(CharSequence s, int start, int before, int count) {
+			//Getting if the message box has text
+			messageBoxHasText = stringHasChar(s.toString());
+			
+			//Updating the send button
+			updateSendButton();
+		}
+		
+		@Override
+		public void afterTextChanged(Editable s) {
+		}
+	};
+	private final View.OnClickListener sendButtonClickListener = view -> {
+		//Returning if the input state is not text
+		if(retainedFragment.inputState != InputState.MESSAGE) return;
+		
+		//Checking if the message box has text
+		if(messageBoxHasText) {
+			//Getting the message
+			String message = messageInputField.getText().toString();
+			
+			//Trimming the message
+			message = message.trim();
+			
+			//Returning if the message is empty
+			if(message.isEmpty()) return;
+			
+			//Creating a message
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, conversationInfo, null, message, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+			
+			//Writing the message to the database
+			new AddGhostMessageTask(getApplicationContext(), messageInfo).execute();
+			
+			//Adding the message to the conversation in memory
+			conversationInfo.addGhostMessage(this, messageInfo);
+			
+			//Sending the message
+			messageInfo.sendMessage(this);
+			
+			//Clearing the message box
+			messageInputField.setText("");
+			messageInputField.invalidate(); //Height of input field doesn't update otherwise
+			messageBoxHasText = false;
+			
+			//Scrolling to the bottom of the chat
+			if(messageListAdapter != null) messageListAdapter.scrollToBottom();
+		}
+	};
 	private final View.OnTouchListener recordingTouchListener = new View.OnTouchListener() {
 		@Override
 		public boolean onTouch(View view, MotionEvent motionEvent) {
@@ -179,12 +260,6 @@ public class Messaging extends AppCompatActivity {
 		}
 	};
 	
-	//Creating the other values
-	private RecyclerAdapter messageListAdapter = null;
-	private boolean serverWarningVisible = false;
-	private boolean messageBoxHasText = false;
-	private ActivityManager.TaskDescription lastTaskDescription;
-	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		//Calling the super method
@@ -193,7 +268,12 @@ public class Messaging extends AppCompatActivity {
 		//Setting the content view
 		setContentView(R.layout.activity_messaging);
 		
+		//Setting the action bar
+		setSupportActionBar(findViewById(R.id.toolbar));
+		
 		//Getting the views
+		rootView = findViewById(android.R.id.content);
+		toolbar = findViewById(R.id.toolbar);
 		messageList = findViewById(R.id.list_messages);
 		inputBar = findViewById(R.id.inputbar);
 		messageSendButton = inputBar.findViewById(R.id.button_send);
@@ -222,65 +302,12 @@ public class Messaging extends AppCompatActivity {
 		findViewById(R.id.loading_text).setVisibility(retainedFragment.messagesState == RetainedFragment.messagesStateLoading ? View.VISIBLE : View.GONE);
 		
 		//Enabling the toolbar's up navigation
-		//setActionBar((Toolbar) findViewById(R.id.toolbar));
-		//getActionBar().setDisplayHomeAsUpEnabled(true);
+		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 		
 		//Setting the listeners
-		messageInputField.addTextChangedListener(new TextWatcher() {
-			@Override
-			public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-				
-			}
-			
-			@Override
-			public void onTextChanged(CharSequence s, int start, int before, int count) {
-				//Getting if the message box has text
-				messageBoxHasText = stringHasChar(s.toString());
-				
-				//Updating the send button
-				updateSendButton();
-			}
-			
-			@Override
-			public void afterTextChanged(Editable s) {
-			}
-		});
-		messageSendButton.setOnClickListener(view -> {
-			//Returning if the input state is not text
-			if(retainedFragment.inputState != InputState.MESSAGE) return;
-			
-			//Checking if the message box has text
-			if(messageBoxHasText) {
-				//Getting the message
-				String message = messageInputField.getText().toString();
-				
-				//Trimming the message
-				message = message.trim();
-				
-				//Returning if the message is empty
-				if(message.isEmpty()) return;
-				
-				//Creating a message
-				ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, conversationInfo, null, message, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
-				
-				//Writing the message to the database
-				new AddGhostMessageTask(getApplicationContext(), messageInfo).execute();
-				
-				//Adding the message to the conversation in memory
-				conversationInfo.addGhostMessage(this, messageInfo);
-				
-				//Sending the message
-				messageInfo.sendMessage(this);
-				
-				//Clearing the message box
-				messageInputField.setText("");
-				messageInputField.invalidate(); //Height of input field doesn't update otherwise
-				messageBoxHasText = false;
-				
-				//Scrolling to the bottom of the chat
-				if(messageListAdapter != null) messageListAdapter.scrollToBottom();
-			}
-		});
+		rootView.getViewTreeObserver().addOnGlobalLayoutListener(rootLayoutListener);
+		messageInputField.addTextChangedListener(inputFieldTextWatcher);
+		messageSendButton.setOnClickListener(sendButtonClickListener);
 		messageContentButton.setOnClickListener(view -> showContentBar());
 		contentCloseButton.setOnClickListener(view -> hideContentBar());
 		inputBar.findViewById(R.id.button_camera).setOnClickListener(view -> requestTakePicture());
@@ -310,6 +337,9 @@ public class Messaging extends AppCompatActivity {
 		//Setting the filler data
 		if(getIntent().hasExtra(Constants.intentParamDataText))
 			messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText));
+		
+		//Adding the conversation as a loaded conversation
+		loadedConversations.add(new WeakReference<>(this));
 	}
 	
 	private void prepareRetainedFragment() {
@@ -434,7 +464,7 @@ public class Messaging extends AppCompatActivity {
 		super.onResume();
 		
 		//Adding the phantom reference
-		loadedConversations.add(new WeakReference<>(this));
+		foregroundConversations.add(new WeakReference<>(this));
 		
 		//Checking if the conversation is valid
 		if(conversationInfo != null) {
@@ -446,6 +476,12 @@ public class Messaging extends AppCompatActivity {
 			
 			//Coloring the messages
 			if(retainedFragment.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : retainedFragment.conversationItemList) conversationItem.updateViewColor(getResources());
+			
+			//Checking if the title is static
+			
+			
+			//Updating the recycler adapter's views
+			//messageListAdapter.notifyDataSetChanged();
 		}
 		
 		//Updating the server warning bar state
@@ -460,8 +496,8 @@ public class Messaging extends AppCompatActivity {
 		//Calling the super method
 		super.onPause();
 		
-		//Clearing the phantom reference
-		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
+		//Iterating over the foreground conversations
+		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext();) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			
@@ -512,7 +548,7 @@ public class Messaging extends AppCompatActivity {
 				conversationInfo.clearMessages();
 				
 				//Setting the conversation as unloaded
-				loadedConversations.remove(conversationInfo.getLocalID());
+				foregroundConversations.remove(conversationInfo.getLocalID());
 				
 				//Updating the conversation's last view time
 				long lastViewTime = System.currentTimeMillis();
@@ -525,21 +561,38 @@ public class Messaging extends AppCompatActivity {
 			retainedFragment.restartingFromConfigChange = true;
 		}
 		
-		//Removing the conversation title change listener
-		if(conversationInfo != null) conversationInfo.removeTitleChangeListener(conversationTitleChangeListener);
-		
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
 	}
 	
 	@Override
-	public void finish() {
+	protected void onDestroy() {
 		//Calling the super method
-		super.finish();
+		super.onDestroy();
 		
-		//Overriding the transition
-		//overridePendingTransition(R.anim.fade_in_light, R.anim.slide_out);
+		//Iterating over the loaded conversations
+		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
+			//Getting the referenced activity
+			Messaging activity = iterator.next().get();
+			
+			//Removing the reference if it is invalid
+			if(activity == null) {
+				iterator.remove();
+				continue;
+			}
+			//Skipping the remainder of the iteration if the activity isn't this one
+			else if(activity != this) continue;
+			
+			//Removing the reference
+			iterator.remove();
+			
+			//Breaking from the loop
+			break;
+		}
+		
+		//Removing the conversation title change listener
+		if(conversationInfo != null) conversationInfo.removeTitleChangeListener(conversationTitleChangeListener);
 	}
 	
 	long getConversationID() {
@@ -675,6 +728,7 @@ public class Messaging extends AppCompatActivity {
 					//Finishing the activity
 					finish();
 				}
+				
 				return true;
 			case R.id.action_details:
 				//Checking if the conversation is valid
@@ -857,8 +911,10 @@ public class Messaging extends AppCompatActivity {
 		if(state == appBarStateDefault) {
 			actionBar.setDisplayShowCustomEnabled(false);
 			actionBar.setDisplayShowTitleEnabled(true);
+		} else {
+			actionBar.setDisplayShowCustomEnabled(true);
+			actionBar.setDisplayShowTitleEnabled(false);
 		}
-		else actionBar.setDisplayShowCustomEnabled(true);
 		
 		//Cleaning up the old state
 		switch(currentAppBarState) {
@@ -889,6 +945,7 @@ public class Messaging extends AppCompatActivity {
 						if(s.length() == 0) {
 							//Hiding the result bar
 							findViewById(R.id.searchresults).setVisibility(View.GONE);
+							//getSupportActionBar().setElevation(Constants.dpToPx(4));
 							
 							//Hiding the clear text button
 							actionBar.getCustomView().findViewById(R.id.search_buttonclear).setVisibility(View.INVISIBLE);
@@ -900,6 +957,7 @@ public class Messaging extends AppCompatActivity {
 						//Showing the result bar
 						View searchResultBar = findViewById(R.id.searchresults);
 						searchResultBar.setVisibility(View.VISIBLE);
+						//getSupportActionBar().setElevation(Constants.dpToPx(0));
 						
 						//Showing the clear text button
 						actionBar.getCustomView().findViewById(R.id.search_buttonclear).setVisibility(View.VISIBLE);
@@ -1571,14 +1629,74 @@ public class Messaging extends AppCompatActivity {
 			}
 		});
 		serverWarningBar.startAnimation(resizeAnimation); */
-		TransitionManager.beginDelayedTransition(serverWarningBar, new ChangeBounds());
-		ViewGroup.LayoutParams layoutParams = serverWarningBar.getLayoutParams();
-		layoutParams.height = 0;
-		serverWarningBar.setLayoutParams(layoutParams);
+		ChangeBounds anim = new ChangeBounds();
+		anim.addListener(new Transition.TransitionListener() {
+			@Override
+			public void onTransitionStart(Transition transition) {}
+			
+			@Override
+			public void onTransitionEnd(Transition transition) {
+				serverWarningBar.setVisibility(View.GONE);
+			}
+			
+			@Override
+			public void onTransitionCancel(Transition transition) {}
+			
+			@Override
+			public void onTransitionPause(Transition transition) {}
+			
+			@Override
+			public void onTransitionResume(Transition transition) {}
+		});
+		TransitionManager.beginDelayedTransition(serverWarningBar, anim);
+		serverWarningBar.getLayoutParams().height = 0;
 		
 		//Disabling the action button
 		serverWarningBar.findViewById(R.id.serverwarning_button).setEnabled(false);
 	}
+	
+	void hideToolbar() {
+		//Returning if the toolbar is already invisible
+		if(!toolbarVisible) return;
+		
+		//Setting the toolbar as invisible
+		toolbarVisible = false;
+		
+		//Animating the toolbar
+		((ViewGroup.MarginLayoutParams) findViewById(R.id.content).getLayoutParams()).topMargin = 0;
+		findViewById(R.id.content).requestLayout();
+		toolbar.animate()
+				.y(-toolbar.getHeight())
+				.withEndAction(() -> getSupportActionBar().hide())
+				.start();
+	}
+	
+	void showToolbar() {
+		//Returning if the toolbar is already visible
+		if(toolbarVisible) return;
+		
+		//Setting the toolbar as visible
+		toolbarVisible = true;
+		
+		//Animating the toolbar
+		getSupportActionBar().show();
+		toolbar.animate()
+				.y(0)
+				.withEndAction(() -> {
+					View contentView = findViewById(R.id.content);
+					((ViewGroup.MarginLayoutParams) contentView.getLayoutParams()).topMargin = toolbar.getHeight();
+					contentView.requestLayout();
+				})
+				.start();
+	}
+	
+	/* private int getToolbarHeight() {
+		//Getting the toolbar height
+		TypedArray typedArray = obtainStyledAttributes(new TypedValue().data, new int[]{R.attr.actionBarSize});
+		int size = typedArray.getDimensionPixelSize(0, -1);
+		typedArray.recycle();
+		return size;
+	} */
 	
 	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
@@ -1703,6 +1821,29 @@ public class Messaging extends AppCompatActivity {
 		
 		//Returning false
 		return false;
+	}
+	
+	public static ArrayList<Long> getForegroundConversations() {
+		//Creating the list
+		ArrayList<Long> list = new ArrayList<>();
+		
+		//Iterating over the loaded conversations
+		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext();) {
+			//Getting the referenced activity
+			Messaging activity = iterator.next().get();
+			
+			//Removing the reference if it is invalid
+			if(activity == null) {
+				iterator.remove();
+				continue;
+			}
+			
+			//Adding the entry to the list
+			list.add(activity.getConversationID());
+		}
+		
+		//Returning the list
+		return list;
 	}
 	
 	public static ArrayList<Long> getLoadedConversations() {
@@ -1838,7 +1979,7 @@ public class Messaging extends AppCompatActivity {
 				//Checking if the conversation is loaded
 				long currentConversationID = messageInfo.getConversationInfo().getLocalID();
 				boolean conversationFound = false;
-				for(long identifiers : Messaging.getLoadedConversations())
+				for(long identifiers : Messaging.getForegroundConversations())
 					if(currentConversationID == identifiers) {
 						conversationFound = true;
 						break;
@@ -2147,6 +2288,12 @@ public class Messaging extends AppCompatActivity {
 		}
 		
 		@Override
+		public void onViewDetachedFromWindow(RecyclerView.ViewHolder holder) {
+			//Clearing the view's animation
+			holder.itemView.clearAnimation();
+		}
+		
+		@Override
 		public int getItemCount() {
 			return conversationItems.size();
 		}
@@ -2383,7 +2530,7 @@ public class Messaging extends AppCompatActivity {
 			@Override
 			protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> messages) {
 				//Returning if the conversation isn't loaded anymore
-				if(!ConversationManager.getLoadedConversations().contains(conversationInfo)) return;
+				if(!ConversationManager.getForegroundConversations().contains(conversationInfo)) return;
 				
 				//Getting the fragment
 				RetainedFragment retainedFragment = fragmentReference.get();
@@ -2634,7 +2781,7 @@ public class Messaging extends AppCompatActivity {
 		//Creating the references
 		private final WeakReference<Messaging> activityReference;
 		
-		public AdapterUpdater(Messaging activity) {
+		AdapterUpdater(Messaging activity) {
 			//Setting the references
 			activityReference = new WeakReference<>(activity);
 		}
@@ -2667,6 +2814,7 @@ public class Messaging extends AppCompatActivity {
 			if(activity == null) return;
 			
 			//Updating the adapter
+			activity.messageListAdapter.notifyItemChanged(from);
 			activity.messageListAdapter.notifyItemMoved(from, to);
 		}
 	}

@@ -82,12 +82,17 @@ public class ConnectionService extends Service {
 	static final byte intentResultValueUnauthorized = 5;
 	static final byte intentResultValueConnection = 6;
 	
+	static final byte intentExtraStateMassRetrievalStarted = 0;
+	static final byte intentExtraStateMassRetrievalProgress = 1;
+	static final byte intentExtraStateMassRetrievalFinished = 2;
+	static final byte intentExtraStateMassRetrievalFailed = 3;
+	
 	static final String selfIntentActionConnect = "connect";
 	static final String selfIntentActionDisconnect = "disconnect";
 	static final String selfIntentActionStop = "stop";
 	
 	static final int attachmentChunkSize = 1024 * 1024; //1 MiB
-	static final int keepAliveMillis = 5 * 60 * 1000; //5 minutes
+	static final int keepAliveMillis = 10 * 60 * 1000; //10 minutes
 	static final int keepAliveWindowMillis = 5 * 60 * 1000; //5 minutes
 	
 	private static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
@@ -105,8 +110,20 @@ public class ConnectionService extends Service {
 	private boolean connectionEstablishedForRetrieval = false;
 	private boolean connectionEstablishedForReconnect = false;
 	private boolean massRetrievalInProgress = false;
+	private int massRetrievalProgress = -1;
+	private int massRetrievalProgressCount = -1;
 	private final Handler massRetrievalTimeoutHandler = new Handler();
-	private Runnable massRetrievalTimeoutRunnable = null;
+	private final Runnable massRetrievalTimeoutRunnable = () -> {
+		//Returning if the state matches
+		if(!massRetrievalInProgress) return;
+		
+		//Setting the variable
+		massRetrievalInProgress = false;
+		
+		//Sending a broadcast
+		LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalFailed));
+	};
+	//private static final long massRetrievalTimeout = 2 * 1000; //2 seconds
 	private static final long massRetrievalTimeout = 60 * 1000; //1 minute
 	private int activeCommunicationsVersion = -1;
 	
@@ -490,6 +507,10 @@ public class ConnectionService extends Service {
 						break;
 					}
 					case SharedValues.wsFrameMassRetrieval: { //Mass retrieval
+						//Breaking if the client isn't looking for a mass retrieval
+						if(!massRetrievalInProgress) break;
+						
+						//Reading the data
 						final ArrayList<SharedValues.ConversationItem> receivedItems = (ArrayList<SharedValues.ConversationItem>) in.readObject();
 						final ArrayList<SharedValues.ConversationInfo> receivedConversations = (ArrayList<SharedValues.ConversationInfo>) in.readObject();
 						
@@ -588,9 +609,8 @@ public class ConnectionService extends Service {
 			//Getting the code from the message
 			int code = -1;
 			String errorCodeString = reasonString.substring(reasonString.lastIndexOf(' ') + 1);
-			if(errorCodeString.matches("^\\d+$")) {
-				code = Integer.parseInt(errorCodeString);
-			}
+			if(errorCodeString.matches("^\\d+$")) code = Integer.parseInt(errorCodeString);
+			
 			
 			//Determining the broadcast value
 			byte clientReason;
@@ -639,6 +659,9 @@ public class ConnectionService extends Service {
 			//Posting the disconnected notification
 			if(!isShuttingDown) postDisconnectedNotification(false);
 			
+			//Cancelling the mass retrieval if there is one in progress
+			if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
+			
 			//Removing the scheduled ping
 			//unschedulePing();
 		}
@@ -657,6 +680,15 @@ public class ConnectionService extends Service {
 	private void processMassRetrievalResult(ArrayList<SharedValues.ConversationItem> structConversationItems, ArrayList<SharedValues.ConversationInfo> structConversations) {
 		//Stopping the timeout timer
 		massRetrievalTimeoutHandler.removeCallbacks(massRetrievalTimeoutRunnable);
+		
+		//Calculating the progress
+		massRetrievalProgress = 0;
+		massRetrievalProgressCount = structConversationItems.size() + structConversations.size();
+		
+		//Sending a progress message
+		LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval)
+				.putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress)
+				.putExtra(Constants.intentParamSize, massRetrievalProgressCount));
 		
 		//Creating and running the task
 		new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations).execute();
@@ -696,7 +728,7 @@ public class ConnectionService extends Service {
 				if(structConversationInfo.available) {
 					//Setting the conversation details
 					request.conversationInfo.setService(structConversationInfo.service);
-					request.conversationInfo.setName(ConnectionService.this, structConversationInfo.name);
+					request.conversationInfo.setTitle(ConnectionService.this, structConversationInfo.name);
 					request.conversationInfo.setConversationColor(ConversationManager.ConversationInfo.getRandomColor());
 					request.conversationInfo.setConversationMembersCreateColors(structConversationInfo.members);
 					request.conversationInfo.setState(ConversationManager.ConversationInfo.ConversationState.READY);
@@ -782,6 +814,14 @@ public class ConnectionService extends Service {
 	
 	boolean isMassRetrievalInProgress() {
 		return massRetrievalInProgress;
+	}
+	
+	int getMassRetrievalProgress() {
+		return massRetrievalProgress;
+	}
+	
+	int getMassRetrievalProgressCount() {
+		return massRetrievalProgressCount;
 	}
 	
 	//Creating the constants
@@ -1265,8 +1305,8 @@ public class ConnectionService extends Service {
 	}
 	
 	boolean requestMassRetrieval(Context context) {
-		//Returning false if the client isn't ready
-		if(wsClient == null || !wsClient.isOpen()) return false;
+		//Returning false if the client isn't ready or a mass retrieval is already in progress
+		if(wsClient == null || !wsClient.isOpen() || massRetrievalInProgress) return false;
 		
 		//Preparing to serialize the request
 		try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
@@ -1289,23 +1329,28 @@ public class ConnectionService extends Service {
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(context);
 		
 		//Starting the timeout
-		massRetrievalTimeoutRunnable = () -> {
-			//Returning if the state matches
-			if(!massRetrievalInProgress) return;
-			
-			//Setting the variable
-			massRetrievalInProgress = false;
-			
-			//Sending a broadcast
-			localBroadcastManager.sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamAction, false));
-		};
 		massRetrievalTimeoutHandler.postDelayed(massRetrievalTimeoutRunnable, massRetrievalTimeout);
 		
+		//Resetting the progress
+		massRetrievalProgress = -1;
+		massRetrievalProgressCount = -1;
+		
 		//Sending the broadcast
-		localBroadcastManager.sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamAction, true));
+		localBroadcastManager.sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalStarted));
 		
 		//Returning true
 		return true;
+	}
+	
+	private void cancelMassRetrieval() {
+		//Setting the variable
+		massRetrievalInProgress = false;
+		
+		//Sending a broadcast
+		LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalFailed));
+		
+		//Stopping the timeout timer
+		massRetrievalTimeoutHandler.removeCallbacks(massRetrievalTimeoutRunnable);
 	}
 	
 	/* boolean sendFile(short requestID, int requestIndex, String chatGUID, byte[] fileBytes, String fileName, boolean isLast, MessageResponseManager responseListener) {
@@ -1437,7 +1482,7 @@ public class ConnectionService extends Service {
 		//Scheduling the ping
 		((AlarmManager) getSystemService(ALARM_SERVICE)).setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP,
 				SystemClock.elapsedRealtime() + keepAliveMillis - keepAliveWindowMillis,
-				keepAliveWindowMillis,
+				keepAliveWindowMillis * 2,
 				pingPendingIntent);
 	}
 	
@@ -1830,6 +1875,7 @@ public class ConnectionService extends Service {
 			Collections.sort(newCompleteConversationItems, ConversationManager.conversationItemComparator);
 			
 			//Getting the loaded conversations
+			List<Long> foregroundConversations = Messaging.getForegroundConversations();
 			List<Long> loadedConversations = Messaging.getLoadedConversations();
 			
 			//Checking if the conversations are loaded in memory
@@ -1853,12 +1899,8 @@ public class ConnectionService extends Service {
 						//Adding the conversation item to its parent conversation
 						parentConversation.addConversationItem(context, conversationItem);
 						
-						//Displaying the send effect
-						if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).getSendEffect().isEmpty())
-							parentConversation.requestScreenEffect(((ConversationManager.MessageInfo) conversationItem).getSendEffect());
-						
 						//Renaming the conversation
-						if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) parentConversation.setName(context, ((ConversationManager.ChatRenameActionInfo) conversationItem).title);
+						if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) parentConversation.setTitle(context, ((ConversationManager.ChatRenameActionInfo) conversationItem).title);
 						else if(conversationItem instanceof ConversationManager.GroupActionInfo) {
 							//Converting the item to a group action info
 							ConversationManager.GroupActionInfo groupActionInfo = (ConversationManager.GroupActionInfo) conversationItem;
@@ -1877,6 +1919,13 @@ public class ConnectionService extends Service {
 								if(member != null && parentConversation.getConversationMembers().contains(member))
 									parentConversation.getConversationMembers().remove(member);
 							}
+						}
+						
+						//Checking if the conversation is in the foreground
+						if(foregroundConversations.contains(parentConversation.getLocalID())) {
+							//Displaying the send effect
+							if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).getSendEffect().isEmpty())
+								parentConversation.requestScreenEffect(((ConversationManager.MessageInfo) conversationItem).getSendEffect());
 						}
 					} else {
 						//Updating the parent conversation's latest item
@@ -1930,7 +1979,7 @@ public class ConnectionService extends Service {
 		return null;
 	}
 	
-	private static class MassRetrievalAsyncTask extends AsyncTask<Void, Void, List<ConversationManager.ConversationInfo>> {
+	private static class MassRetrievalAsyncTask extends AsyncTask<Void, Integer, List<ConversationManager.ConversationInfo>> {
 		//Creating the task values
 		private final WeakReference<ConnectionService> serviceReference;
 		private final WeakReference<Context> contextReference;
@@ -1960,10 +2009,16 @@ public class ConnectionService extends Service {
 			//Creating the conversation list
 			List<ConversationManager.ConversationInfo> conversationInfoList = new ArrayList<>();
 			
+			//Creating the progress value
+			int progress = 0;
+			
 			//Iterating over the conversations
 			for(SharedValues.ConversationInfo structConversation : structConversationInfos) {
 				//Writing the conversation
 				conversationInfoList.add(DatabaseManager.addReadyConversationInfo(writableDatabase, context, structConversation));
+				
+				//Publishing the progress
+				publishProgress(++progress);
 			}
 			
 			//Adding the messages
@@ -1986,6 +2041,9 @@ public class ConnectionService extends Service {
 				//Updating the parent conversation's last item
 				if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
 					parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context));
+				
+				//Publishing the progress
+				publishProgress(++progress);
 			}
 			
 			//Sorting the conversations
@@ -1996,13 +2054,26 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
+		protected void onProgressUpdate(Integer... values) {
+			//Getting the service
+			ConnectionService service = serviceReference.get();
+			if(service == null) return;
+			
+			//Updating the progress in the service
+			service.massRetrievalProgress = values[0];
+			
+			//Sending a broadcast
+			LocalBroadcastManager.getInstance(service).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress).putExtra(Constants.intentParamProgress, service.massRetrievalProgress));
+		}
+		
+		@Override
 		protected void onPostExecute(List<ConversationManager.ConversationInfo> conversations) {
 			//Getting the context
 			Context context = contextReference.get();
 			if(context == null) return;
 			
 			//Sending a broadcast
-			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamAction, false));
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalFinished));
 			
 			//Setting the conversations in memory
 			ArrayList<ConversationManager.ConversationInfo> sharedConversations = ConversationManager.getConversations();
@@ -2075,7 +2146,7 @@ public class ConnectionService extends Service {
 						//Recording the conversation details
 						transferredConversations.put(clientConversation, new TransferConversationStruct(availableConversation.getGuid(),
 								ConversationManager.ConversationInfo.ConversationState.READY,
-								availableConversation.getName(),
+								availableConversation.getStaticTitle(),
 								conversationItems));
 						
 						//Deleting the available conversation
@@ -2145,7 +2216,7 @@ public class ConnectionService extends Service {
 						TransferConversationStruct transferData = pair.getValue();
 						conversationInfo.setGuid(transferData.guid);
 						conversationInfo.setState(transferData.state);
-						conversationInfo.setName(context, transferData.name);
+						conversationInfo.setTitle(context, transferData.name);
 						for(ConversationManager.ConversationItem item : transferData.conversationItems) conversationInfo.addConversationItem(context, item);
 					}
 				}
@@ -2278,7 +2349,7 @@ public class ConnectionService extends Service {
 				//Finding the referenced item
 				ConversationManager.ConversationItem conversationItem;
 				ConversationManager.MessageInfo messageInfo = null;
-				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getLoadedConversations()) {
+				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getForegroundConversations()) {
 					conversationItem = loadedConversation.findConversationItem(sticker.getMessageID());
 					if(conversationItem == null) continue;
 					if(!(conversationItem instanceof ConversationManager.MessageInfo)) break;
@@ -2297,7 +2368,7 @@ public class ConnectionService extends Service {
 			for(ConversationManager.TapbackInfo tapback : tapbackModifiers) {
 				//Finding the referenced item
 				ConversationManager.MessageInfo messageInfo = null;
-				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getLoadedConversations()) {
+				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getForegroundConversations()) {
 					ConversationManager.ConversationItem conversationItem;
 					conversationItem = loadedConversation.findConversationItem(tapback.getMessageID());
 					if(conversationItem == null) continue;
@@ -2318,7 +2389,7 @@ public class ConnectionService extends Service {
 				//Finding the referenced item
 				ConversationManager.ConversationItem conversationItem;
 				ConversationManager.MessageInfo messageInfo = null;
-				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getLoadedConversations()) {
+				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getForegroundConversations()) {
 					conversationItem = loadedConversation.findConversationItem(tapback.message);
 					if(conversationItem == null) continue;
 					if(!(conversationItem instanceof ConversationManager.MessageInfo)) break;

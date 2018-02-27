@@ -27,16 +27,13 @@ public class ServerSetup extends Activity {
 	static final String intentExtraRequired = "isRequired";
 	
 	//Creating the regular expression string
-	private static final Pattern regExValidAddress = Pattern.compile("^(ws(s?):\\/\\/)?(((www\\.)?+[a-zA-Z0-9\\.\\-\\_]+(\\.[a-zA-Z]{2,3})+)|(\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b))(\\/[a-zA-Z0-9\\_\\-\\s\\.\\/\\?\\%\\#\\&\\=]*)?(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))?$");
-	private static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
-	private static final Pattern regExValidProtocol = Pattern.compile("^ws(s?)\\:\\/\\/");
-	private final InputFilter credentialInputFilter = new InputFilter() {
-		@Override
-		public CharSequence filter(CharSequence source, int start, int end, Spanned dest, int dstart, int dend) {
-			//Denying the input if it contains a space
-			if(source.toString().contains(" ")) return "";
-			return null;
-		}
+	private static final Pattern regExValidAddress = Pattern.compile("^(ws(s?)://)?(((www\\.)?+[a-zA-Z0-9\\.\\-\\_]+(\\.[a-zA-Z]{2,3})+)|(\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b))(/[a-zA-Z0-9_\\-\\s./?%#&=]*)?(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))?$");
+	//private static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
+	//private static final Pattern regExValidProtocol = Pattern.compile("^ws(s?)://");
+	private final InputFilter credentialInputFilter = (CharSequence source, int start, int end, Spanned dest, int dstart, int dend) -> {
+		//Denying the input if it contains a space
+		if(source.toString().contains(" ")) return "";
+		return null;
 	};
 	//Creating the view values
 	private EditText hostnameInputField;
@@ -199,14 +196,14 @@ public class ServerSetup extends Activity {
 		editor.putString(MainApplication.sharedPreferencesKeyPassword, newPassword);
 		editor.apply();
 		
-		//Finishing the activity
-		finish();
-		
 		//Starting the new activity
 		startActivity(new Intent(this, Conversations.class));
 		
 		//Enabling transitions
 		overridePendingTransition(R.anim.fade_in_light, R.anim.activity_slide_up);
+		
+		//Finishing the activity
+		finish();
 	}
 	
 	private void setPage(int newPage) {
@@ -373,49 +370,12 @@ public class ServerSetup extends Activity {
 	}
 	
 	private void deleteMessages(final boolean requestAfter) {
-		//Clearing all conversations
-		/* ConversationManager.getConversations().clear();
-		
-		//Updating the conversation activity list
-		for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks()) callbacks.updateList(false); */
-		
 		//Deleting / syncing the messages
-		if(requestAfter)
-			new Conversations.SyncMessagesTask(getApplicationContext(), null).execute();
+		if(requestAfter) new Conversations.SyncMessagesTask(getApplicationContext(), null).execute();
 		else new Conversations.DeleteMessagesTask(getApplicationContext(), null).execute();
 		
 		//Finishing the activity
-		finishSetup(); //This is OK because the context is provided from the application rather than the activity
-		
-		/* //Creating a new asynchronous task
-		new AsyncTask<Void, Void, Void>() {
-			@Override
-			protected Void doInBackground(Void... parameters) {
-				//Removing the messages from the database
-				DatabaseManager.deleteEverything(ServerSetup.this);
-				
-				//Clearing the attachments directory
-				MainApplication.clearAttachmentsDirectory(ServerSetup.this);
-				
-				//Returning null
-				return null;
-			}
-			
-			@Override
-			protected void onPostExecute(Void result) {
-				//Dismissing the dialog
-				progressDialog.dismiss();
-				
-				//Requesting the messages (if asked to)
-				if(requestAfter) {
-					boolean messageResult = ConnectionService.requestMassRetrieval();
-					if(!messageResult) Toast.makeText(ServerSetup.this, R.string.no_connection, Toast.LENGTH_SHORT).show();
-				}
-				
-				//Finishing the setup
-				finishSetup();
-			}
-		}.execute(); */
+		finishSetup();
 	}
 	
 	public void onClickLaunchServerGuide(View view) {
@@ -426,34 +386,4 @@ public class ServerSetup extends Activity {
 		else Toast.makeText(this, R.string.intent_nobrowser, Toast.LENGTH_SHORT).show();
 		startActivity(intent);
 	}
-	
-	/* @Override
-	public void onBackPressed() {
-		//Finishing the activity (if the server change isn't required)
-		if(!isRequired) { //TODO ensure that the user can't return to the conversation list activity
-			finish();
-			super.onBackPressed();
-		}
-	} */
-	
-	/**
-	 * Defines callbacks for service binding, passed to bindService()
-	 */
-	/* private ServiceConnection serviceConnection = new ServiceConnection() {
-		@Override
-		public void onServiceConnected(ComponentName className, IBinder service) {
-			// We've bound to LocalService, cast the IBinder and get LocalService instance
-			ConnectionService.ConnectionBinder binder = (ConnectionService.ConnectionBinder) service;
-			connectionService = binder.getService();
-			isServiceBound = true;
-			
-			//Connecting to the server
-			startConnection();
-		}
-		
-		@Override
-		public void onServiceDisconnected(ComponentName arg0) {
-			isServiceBound = false;
-		}
-	}; */
 }

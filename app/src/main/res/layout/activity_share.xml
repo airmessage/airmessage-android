@@ -66,14 +66,14 @@
 			android:orientation="vertical"
 			android:visibility="gone">
 			
-			<ImageView
+			<!-- <ImageView
 				android:id="@+id/syncview_icon"
 				android:layout_width="96dp"
 				android:layout_height="96dp"
 				android:layout_gravity="center"
 				android:scaleType="fitXY"
 				android:src="@drawable/sync"
-				android:tint="?android:attr/textColorSecondary" />
+				android:tint="?android:attr/textColorSecondary" /> -->
 			
 			<TextView
 				android:layout_width="wrap_content"
@@ -81,6 +81,15 @@
 				android:layout_gravity="center"
 				android:text="@string/syncing_messages"
 				android:tint="?android:attr/textColorSecondary" />
+			
+			<ProgressBar
+				android:id="@+id/syncview_progress"
+				android:layout_width="150dp"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="10dp"
+				style="?android:attr/progressBarStyleHorizontal"
+				android:progress="100"
+				android:indeterminate="true"/>
 		</LinearLayout>
 		
 		<!-- Error view -->

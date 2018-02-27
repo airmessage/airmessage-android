@@ -162,11 +162,11 @@ public class MainApplication extends Application {
 	public static class LoadFlagArrayList<E> extends ArrayList<E> {
 		private boolean isLoaded = false;
 		
-		public boolean isLoaded() {
+		boolean isLoaded() {
 			return isLoaded;
 		}
 		
-		public void setLoaded(boolean loaded) {
+		void setLoaded(boolean loaded) {
 			isLoaded = loaded;
 		}
 		
@@ -175,7 +175,7 @@ public class MainApplication extends Application {
 			this.isLoaded = isLoaded;
 		}
 		
-		public LoadFlagArrayList(boolean isLoaded) {
+		LoadFlagArrayList(boolean isLoaded) {
 			this.isLoaded = isLoaded;
 		}
 		
