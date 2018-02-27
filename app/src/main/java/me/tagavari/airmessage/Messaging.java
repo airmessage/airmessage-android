@@ -2095,6 +2095,161 @@ public class Messaging extends AppCompatActivity {
 		}
 	} */
 	
+	//private static class ScrollListHelper {
+		/* SCROLL LIST HELPER
+		Message index - Contains a list of the messages' local IDs in chronological order (loaded on-the-fly / strong reference)
+		Base messages - First 30 messages in chronological order (always loaded / strong reference)
+		Scan messages - Messages visible on-screen and 15 messages above and below (loaded on-the-fly / strong reference)
+		Cached messages - Discarded base and scan messages (lru cache)
+		 */
+		
+		/* //Creating the reference values
+		static final int baseCapacity = 30;
+		static final int chunkSize = 25;
+		static final int cacheCapacity = 100;
+		
+		//Creating the lists
+		private final ArrayList<ConversationManager.ConversationItem> baseChunk = new ArrayList<>(baseCapacity);
+		private final ArrayList<ConversationManager.ConversationItem> scanChunks = new ArrayList<>(chunkSize * 2);
+		private long scanChunksOffset = 1;
+		private final LruCache<Integer, List<ConversationManager.ConversationItem>> cachedChunks = new LruCache<>(cacheCapacity);
+		
+		//Creating the other values
+		private int scanAreaBottom, scanAreaTop = 0;
+		
+		void addBaseMessages(ArrayList<ConversationManager.ConversationItem> list) {
+			//Adding the messages
+			baseChunk.addAll(list);
+		}
+		
+		void add(ConversationManager.ConversationItem conversationItem) {
+			//Checking if the base messages list is empty
+			if(baseChunk.isEmpty()) {
+				//Adding the item to the base messages
+				baseChunk.add(conversationItem);
+				
+				//Returning
+				return;
+			}
+			
+			//Checking if the message should be part of the base messages
+			
+			//Organizing the available chunks
+			Map<Integer, List<ConversationManager.ConversationItem>> cacheSnapshot = cachedChunks.snapshot();
+			
+			//Iterating over the messages
+			ListIterator<Long> iterator = messageIdentifiers.listIterator();
+			while(iterator.hasPrevious()) {
+				//Skipping the remainder of the iteration if the current item is newer
+				if(get(iterator.previous()).getDate() > conversationItem.getDate()) continue;
+				
+				//Getting the item's index
+				int index = iterator.previousIndex() + 1;
+				
+				//Checking if the index is within the base capacity
+				if(index < baseCapacity) {
+					//Adding the item to the base messages
+					baseChunk.add(index, conversationItem);
+					
+					//Handling base overflow
+					handleBaseOverflow();
+				}
+				//Otherwise checking if the item is within scan range
+				else if(isWithinScanRange(index)) {
+					//Adding the item to the scan messages
+					scanChunks.add(conversationItem);
+				} else {
+					//Adding the item to the cache
+					cachedChunks.put(conversationItem.getLocalID(), conversationItem);
+				}
+				
+				//Indexing the item
+				messageIdentifiers.add(iterator.previousIndex() + 1, conversationItem.getLocalID());
+			}
+		}
+		
+		void updateScanArea(int bottom, int top) {
+			//Returning if the values didn't change
+			if(scanAreaBottom == bottom && scanAreaTop == top) return;
+			
+			//Calculating the scroll difference
+			int bottomDiff = bottom - scanAreaBottom;
+			int topDiff = top - scanAreaTop;
+			
+			//Iterating over the messages in the previous scan range
+			for(Iterator<ConversationManager.ConversationItem> iterator = scanChunks.iterator(); iterator.hasNext();) {
+				//Getting the item
+				ConversationManager.ConversationItem item = iterator.next();
+				
+				//Returning if the item is still within the scan range
+				if(isWithinScanRange(messageIdentifiers.indexOf(item.getLocalID()))) return;
+				
+				//Moving the item to the cache
+				iterator.remove();
+				cachedChunks.put(item.getLocalID(), item);
+			}
+			
+			//Adding new messages to the bottom
+			if(bottomDiff < 0) {
+				for(int i = scanAreaBottom; i > baseCapacity && i >= scanAreaBottom + bottomDiff; i--) {
+					//Returning if the message has not been indexed
+					//if(messageIdentifiers.size() >= i) return;
+					
+					//Fetching the item from the cache
+					ConversationManager.ConversationItem item = cachedChunks.get(messageIdentifiers.get(i));
+					
+					//Adding the item if it is valid
+					if(item != null) scanChunks.add(item);
+				}
+			}
+			
+			//Adding new messages to the top
+			if(topDiff > 0) {
+				for(int i = scanAreaTop; i < messageIdentifiers.size() && i <= scanAreaTop + topDiff; i++) {
+					//Fetching the item from the cache
+					ConversationManager.ConversationItem item = cachedChunks.get(messageIdentifiers.get(i));
+					
+					//Adding the item if it is valid
+					if(item != null) scanChunks.add(item);
+				}
+			}
+			
+			//Updating the scan area values
+			scanAreaBottom = bottom;
+			scanAreaTop = top;
+		}
+		
+		private void handleBaseOverflow() {
+			//Returning if there is no overflow
+			if(baseChunk.size() <= baseCapacity) return;
+			
+			//Getting the message
+			ConversationManager.ConversationItem item = baseChunk.get(baseCapacity);
+			
+			//Checking if the index is within the scan bounds
+			if(isWithinScanRange(baseCapacity)) {
+				//Adding the message to the scan messages
+				scanChunks.add(0, item);
+			} else {
+				//Adding the message to the cache
+				cachedChunks.put(item.getLocalID(), item);
+			}
+			
+			//Removing the message from the base messages
+			scanChunks.remove(baseCapacity);
+		}
+		
+		private boolean isWithinScanRange(int index) {
+			return index >= scanAreaBottom && index <= scanAreaTop;
+		}
+		
+		ConversationManager.ConversationItem get(long identifier) {
+			for(ConversationManager.ConversationItem item : baseChunk) if(item.getLocalID() == identifier) return item;
+			for(ConversationManager.ConversationItem item : scanChunks) if(item.getLocalID() == identifier) return item;
+			return cachedChunks.get(identifier);
+		}
+	} */
+	
 	class RecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 		//Creating the values
 		private final ArrayList<ConversationManager.ConversationItem> conversationItems;
