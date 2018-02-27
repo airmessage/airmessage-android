@@ -929,7 +929,7 @@ public class Messaging extends AppCompatActivity {
 		switch(state) {
 			case appBarStateSearch:
 				//Setting the view
-				actionBar.setCustomView(R.layout.appbar_search);
+				actionBar.setCustomView(getLayoutInflater().inflate(R.layout.appbar_search, null), new ActionBar.LayoutParams(ActionBar.LayoutParams.MATCH_PARENT, ActionBar.LayoutParams.MATCH_PARENT));
 				
 				//Configuring the listeners
 				((EditText) actionBar.getCustomView().findViewById(R.id.search_edittext)).addTextChangedListener(new TextWatcher() {
