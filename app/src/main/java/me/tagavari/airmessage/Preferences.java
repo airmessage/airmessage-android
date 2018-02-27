@@ -20,6 +20,7 @@ import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 import android.preference.RingtonePreference;
 import android.provider.Settings;
+import android.support.design.widget.Snackbar;
 import android.view.MenuItem;
 
 import static me.tagavari.airmessage.R.xml.preferences;
@@ -101,21 +102,34 @@ public class Preferences extends PreferenceActivity {
 		return true;
 	};
 	Preference.OnPreferenceClickListener resyncMessagesClickListener = preference -> {
+		//Checking if the service is ready
+		ConnectionService service = ConnectionService.getInstance();
+		if(service == null || !service.isConnected()) {
+			//Displaying a snackbar
+			Snackbar.make(getListView(), R.string.serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
+			
+			//Returning
+			return true;
+		}
+		
+		//Checking if there is already a mass retrieval in progress
+		if(service.isMassRetrievalInProgress()) {
+			//Displaying a snackbar
+			Snackbar.make(getListView(), R.string.dialog_resyncmessages_inprogress, Snackbar.LENGTH_LONG).show();
+			
+			//Returning
+			return true;
+		}
+		
 		//Creating a dialog
 		AlertDialog dialog = new AlertDialog.Builder(Preferences.this)
 				//Setting the text
 				.setTitle(R.string.dialog_resyncmessages_title)
 				.setMessage(R.string.dialog_resyncmessages_message)
 				//Setting the negative button
-				.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> {
-					//Dismissing the dialog
-					dialogInterface.dismiss();
-				})
+				.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> dialogInterface.dismiss())
 				//Setting the positive button
-				.setPositiveButton(R.string.button_resync, (DialogInterface dialogInterface, int which) -> {
-					//Starting the task
-					new Conversations.SyncMessagesTask(getApplicationContext(), getListView()).execute();
-				})
+				.setPositiveButton(R.string.button_resync, (DialogInterface dialogInterface, int which) -> new Conversations.SyncMessagesTask(getApplicationContext(), getListView()).execute())
 				//Creating the dialog
 				.create();
 		

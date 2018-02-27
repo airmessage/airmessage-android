@@ -31,17 +31,28 @@
 			android:contentDescription="@null"
 			android:src="@drawable/microphone" />
 	</RelativeLayout>
+	<!-- Toolbar -->
+	<android.support.v7.widget.Toolbar
+		android:id="@+id/toolbar"
+		android:layout_width="match_parent"
+		android:layout_height="?attr/actionBarSize"
+		android:layout_alignParentTop="true"
+		android:elevation="4dp"
+		android:theme="@style/SolidActionBar"
+		app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 	<!-- General layout -->
 	<RelativeLayout
+		android:id="@+id/content"
 		android:layout_width="match_parent"
-		android:layout_height="match_parent">
+		android:layout_height="match_parent"
+		android:layout_marginTop="?attr/actionBarSize">
 		<!-- Search result bar -->
 		<LinearLayout
 			android:id="@+id/searchresults"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:background="@android:color/white"
-			android:elevation="2dp"
+			android:elevation="4dp"
 			android:minHeight="48dp"
 			android:orientation="horizontal"
 			android:visibility="gone">

@@ -22,6 +22,8 @@ import android.text.style.URLSpan;
 import android.text.util.Linkify;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.Transformation;
 import android.webkit.MimeTypeMap;
 import android.widget.TextView;
 
@@ -58,7 +60,9 @@ class Constants {
 	static final String intentParamIsLast = "isLast";
 	static final String intentParamList = "list";
 	static final String intentParamAction = "action";
+	static final String intentParamState = "state";
 	static final String intentParamCurrent = "current";
+	static final String intentParamProgress = "progress";
 	
 	static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	
@@ -262,11 +266,10 @@ class Constants {
 		
 		//Attempting to pull the file name from the content resolver
 		if(uri.getScheme().equals("content")) {
-			Cursor cursor = context.getContentResolver().query(uri, null, null, null, null);
-			if(cursor != null) {
-				if(cursor.moveToFirst()) fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
-				cursor.close();
+			try(Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
+				if(cursor != null && cursor.moveToFirst()) fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
 			}
+			
 		}
 		
 		//Attempting to pull the file name from the URI path
@@ -542,4 +545,49 @@ class Constants {
 		//Returning the list
 		return result;
 	} */
+	
+	static class ResizeAnimation extends Animation {
+		//Creating the parameter values
+		private int startHeight;
+		private int deltaHeight; // distance between start and end height
+		
+		//Creating the view value
+		private final View view;
+		
+		/**
+		 * constructor, do not forget to use the setParams(int, int) method before
+		 * starting the animation
+		 * @param view the target view to animate
+		 * @param startHeight height in pixels
+		 * @param endHeight height in pixels
+		 */
+		ResizeAnimation(View view, int startHeight, int endHeight) {
+			//Setting the view
+			this.view = view;
+			
+			//Setting the parameters
+			this.startHeight = startHeight;
+			deltaHeight = endHeight - startHeight;
+		}
+		
+		@Override
+		protected void applyTransformation(float interpolatedTime, Transformation transformation) {
+			view.getLayoutParams().height = (int) (startHeight + deltaHeight * interpolatedTime);
+			view.requestLayout();
+		}
+		
+		/**
+		 * sets the duration for the animation
+		 * @param duration duration in millis
+		 */
+		@Override
+		public void setDuration(long duration) {
+			super.setDuration(duration);
+		}
+		
+		@Override
+		public boolean willChangeBounds() {
+			return true;
+		}
+	}
 }

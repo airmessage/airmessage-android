@@ -57,7 +57,7 @@
 			android:textColor="?android:textColorSecondary"
 			android:textSize="16sp" />
 		
-		<ImageButton
+		<!-- <ImageButton
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_gravity="center"
@@ -70,7 +70,7 @@
 			android:alpha="0.54"
 			android:tag="@string/tag_primarytint"
 			android:tint="@color/colorPrimary"
-			android:tooltipText="@string/button_refresh" />
+			android:tooltipText="@string/button_refresh" /> -->
 	</LinearLayout>
 	
 	<LinearLayout

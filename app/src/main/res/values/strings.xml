@@ -17,7 +17,7 @@
 	<string name="loading_messages">Loading messages&#8230;</string>
 	<string name="loading_messages_error">Failed to load messages</string>
 	<string name="loading">Loading&#8230;</string>
-	<string name="syncing_messages">Syncing messages&#8230;</string>
+	<string name="syncing_messages">Getting your messages&#8230;</string>
 	<string name="loading_contacts_error">Failed to load contacts</string>
 	<string name="no_conversations_start">Once you start a new conversation, you\'ll see it listed here</string>
 	<string name="no_conversations">No conversations</string>
@@ -105,6 +105,7 @@
 	<string name="serververification_serverguidelink">Take a look at the server guide</string>
 	<string name="serververification_connectionerror">Connection failed</string>
 	<string name="serververification_authentication">Password (if required)</string>
+	
 	<string name="serversync_download_title">Download message history?</string>
 	<string name="serversync_download_description">This will replace any messages currently stored on the device. If you choose not to, only new messages will appear on this device.</string>
 	<string name="serversync_download_button">Download messages</string>
@@ -112,6 +113,8 @@
 	<string name="serversync_delete_button">Delete messages</string>
 	<string name="serversync_warning_title">Skip clearing messages?</string>
 	<string name="serversync_warning_description">If you are switching the server\'s Apple account and you don\'t clear your messages, your old conversations may be incorrectly modified.</string>
+	<string name="serversync_failed">Couldn\'t sync messages</string>
+	
 	<string name="recording_cancel">Slide to cancel</string>
 	<string name="recording_instructions">Tap and hold to record</string>
 	<string name="preferences_deleteall_dialog">Delete all messages?</string>
@@ -121,6 +124,7 @@
 	<string name="dialog_resyncmessages_title">Resync messages?</string>
 	<string name="dialog_resyncmessages_message">This will replace any currently stored messages</string>
 	<string name="dialog_resyncmessages_finished">New messages are being downloaded</string>
+	<string name="dialog_resyncmessages_inprogress">New messages are already being downloaded</string>
 	<string name="notification_remoteinput_reply">Send message</string>
 	<string name="action_copytext">Copy text</string>
 	<string name="action_share">Share</string>

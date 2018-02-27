@@ -3,9 +3,10 @@
     <!-- <dimen name="activity_horizontal_margin">16dp</dimen>
     <dimen name="activity_vertical_margin">16dp</dimen> -->
     
-    <dimen name="profile_size">40dp</dimen>
-    <dimen name="image_size_min">50dp</dimen>
-    <dimen name="image_size_max">250dp</dimen>
+    <dimen name="profile_size">40dp</dimen> <!-- The width and height of profile images -->
+    <dimen name="image_size_min">50dp</dimen> <!-- The minimum width / height of media sent in conversations -->
+    <dimen name="image_size_max">250dp</dimen> <!-- The maximum width / height of media sent in conversations -->
     
-    <dimen name="contentwidth_max">1000dp</dimen>
+	<dimen name="conversationwindow_minheight">250dp</dimen> <!-- The minimum height of the conversation window before the app bar is hidden -->
+    <dimen name="contentwidth_max">1000dp</dimen> <!-- The maximum width of the screen content before side margins are added -->
 </resources>

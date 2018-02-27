@@ -36,6 +36,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.view.WindowManager;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.OvershootInterpolator;
@@ -176,7 +177,7 @@ class ConversationManager {
 	
 	AttachmentInfo findAttachmentInfoInActiveConversation(String message) {
 		//Returning a matching attachment info
-		for(long conversationLocalID : Messaging.getLoadedConversations())
+		for(long conversationLocalID : Messaging.getForegroundConversations())
 			for(ConversationItem conversationItem : findConversationInfo(conversationLocalID).getConversationItems())
 				if(conversationItem instanceof MessageInfo)
 					for(AttachmentInfo attachmentInfo : ((MessageInfo) conversationItem).getAttachments())
@@ -189,7 +190,7 @@ class ConversationManager {
 	
 	AttachmentInfo findAttachmentInfoInActiveConversation(long localID) {
 		//Returning a matching attachment info
-		for(long conversationLocalID : Messaging.getLoadedConversations())
+		for(long conversationLocalID : Messaging.getForegroundConversations())
 			for(ConversationItem conversationItem : findConversationInfo(conversationLocalID).getConversationItems())
 				if(conversationItem instanceof MessageInfo)
 					for(AttachmentInfo attachmentInfo : ((MessageInfo) conversationItem).getAttachments())
@@ -274,6 +275,21 @@ class ConversationManager {
 		return null;
 	}
 	
+	static ArrayList<ConversationInfo> getForegroundConversations() {
+		//Creating the list
+		ArrayList<ConversationInfo> list = new ArrayList<>();
+		
+		//Iterating over the loaded conversation IDs
+		for(long conversationID : Messaging.getForegroundConversations()) {
+			//Adding the conversation
+			ConversationInfo conversationInfo = findConversationInfo(conversationID);
+			if(conversationInfo != null) list.add(conversationInfo);
+		}
+		
+		//Returning the list
+		return list;
+	}
+	
 	static ArrayList<ConversationInfo> getLoadedConversations() {
 		//Creating the list
 		ArrayList<ConversationInfo> list = new ArrayList<>();
@@ -291,7 +307,7 @@ class ConversationManager {
 	
 	static ConversationManager.AttachmentInfo findAttachmentInfoInActiveConversation(String guid) {
 		//Finding the attachment info
-		for(long conversationID : Messaging.getLoadedConversations()) {
+		for(long conversationID : Messaging.getForegroundConversations()) {
 			ConversationManager.ConversationInfo conversationInfo = findConversationInfo(conversationID);
 			if(conversationInfo == null) continue;
 			ConversationManager.AttachmentInfo attachmentInfo = conversationInfo.findAttachmentInfo(guid);
@@ -325,6 +341,8 @@ class ConversationManager {
 	}
 	
 	static class ConversationInfo implements Serializable {
+		private static final long serialVersionUID = 0;
+		
 		//Creating the reference values
 		/* private static final String timeFormat = "h:mm a";
 		private static final String dayFormat = "MMM d";
@@ -366,7 +384,7 @@ class ConversationManager {
 		private transient AdapterUpdater adapterUpdater = null;
 		//private transient View view;
 		//private transient ViewGroup iconView = null;
-		private String name = null;
+		private String title = null;
 		private long timeLastViewed = 0;
 		private boolean isArchived = false;
 		private boolean isMuted = false;
@@ -403,14 +421,14 @@ class ConversationManager {
 			conversationMembers = new ArrayList<>();
 		}
 		
-		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String name, long timeLastViewed, int conversationColor) {
+		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String title, long timeLastViewed, int conversationColor) {
 			//Setting the values
 			this.guid = guid;
 			this.localID = localID;
 			this.conversationState = conversationState;
 			this.service = service;
 			this.conversationMembers = conversationMembers;
-			this.name = name;
+			this.title = title;
 			this.timeLastViewed = timeLastViewed;
 			this.conversationColor = conversationColor;
 		}
@@ -455,7 +473,7 @@ class ConversationManager {
 			final View finalView = convertView;
 			
 			//Setting the title
-			((TextView) convertView.findViewById(R.id.title)).setText(buildTitleDirect(context, name, getConversationMembersAsArray()));
+			((TextView) convertView.findViewById(R.id.title)).setText(buildTitleDirect(context, title, getConversationMembersAsArray()));
 			buildTitle(context, (title, wasTasked) -> {
 				//Setting the title
 				View view = wasTasked ? viewSource.get() : finalView;
@@ -486,7 +504,7 @@ class ConversationManager {
 		
 		private void updateView(Context context, View itemView) {
 			//Setting the title
-			((TextView) itemView.findViewById(R.id.title)).setText(buildTitleDirect(context, name, getConversationMembersAsArray()));
+			((TextView) itemView.findViewById(R.id.title)).setText(buildTitleDirect(context, title, getConversationMembersAsArray()));
 			updateUnreadStatus(itemView);
 			
 			buildTitle(context, (title, wasTasked) -> {
@@ -543,7 +561,7 @@ class ConversationManager {
 			//Returning if the conversation has no members
 			if(conversationMembers.isEmpty()) return;
 			
-			//Setting the name
+			//Setting the title
 			//((TextView) itemView.findViewById(R.id.title)).setText(buildTitle(context));
 			
 			//Getting the conversation icon view
@@ -574,7 +592,7 @@ class ConversationManager {
 				
 				//Assigning the user info
 				final int finalIndex = i;
-				MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(context, getConversationMembers().get(i).getName(), wasTasked -> {
+				MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(context, getConversationMembers().get(i).getStaticTitle(), wasTasked -> {
 					View view = wasTasked ? getView() : itemView;
 					if(view == null) return null;
 					
@@ -840,10 +858,10 @@ class ConversationManager {
 				if(messageInfo.isOutgoing() && messageInfo.getMessageState() != SharedValues.MessageInfo.stateCodeGhost) {
 					//Scanning the ghost items
 					if(messageInfo.getMessageText() != null && messageInfo.getAttachments().isEmpty()) {
-						ListIterator<MessageInfo> listIterator = ghostMessages.listIterator(ghostMessages.size());
-						while(listIterator.hasPrevious()) {
+						ListIterator<MessageInfo> listIterator = ghostMessages.listIterator();
+						while(listIterator.hasNext()) {
 							//Getting the item
-							MessageInfo ghostMessage = listIterator.previous();
+							MessageInfo ghostMessage = listIterator.next();
 							
 							//Skipping the remainder of the iteration if the item doesn't match
 							if(ghostMessage.getMessageText() == null || !messageInfo.getMessageText().equals(ghostMessage.getMessageText())) continue;
@@ -861,12 +879,17 @@ class ConversationManager {
 							{
 								int originalIndex = conversationItems.indexOf(ghostMessage);
 								conversationItems.remove(ghostMessage);
-								int newIndex = insertConversationItem(ghostMessage, context);
+								int newIndex = insertConversationItem(ghostMessage, context, false);
 								
 								//Updating the adapter
-								AdapterUpdater updater = getAdapterUpdater();
-								if(updater != null) updater.updateMove(originalIndex, newIndex);
+								if(originalIndex != newIndex) {
+									AdapterUpdater updater = getAdapterUpdater();
+									if(updater != null) updater.updateMove(originalIndex, newIndex);
+								}
 							}
+							
+							//Updating the item's relations
+							addConversationItemRelation(this, conversationItems, ghostMessage, context, true);
 							
 							//Setting the message as replaced
 							messageReplaced = true;
@@ -880,10 +903,10 @@ class ConversationManager {
 					} else if(messageInfo.getAttachments().size() == 1) {
 						AttachmentInfo attachmentInfo = messageInfo.getAttachments().get(0);
 						if(attachmentInfo.getFileChecksum() != null) {
-							ListIterator<MessageInfo> listIterator = ghostMessages.listIterator(ghostMessages.size());
-							while(listIterator.hasPrevious()) {
+							ListIterator<MessageInfo> listIterator = ghostMessages.listIterator();
+							while(listIterator.hasNext()) {
 								//Getting the item
-								MessageInfo ghostMessage = listIterator.previous();
+								MessageInfo ghostMessage = listIterator.next();
 								
 								//Skipping the remainder of the iteration if the item doesn't match
 								if(ghostMessage.getAttachments().isEmpty()) continue;
@@ -904,12 +927,17 @@ class ConversationManager {
 								{
 									int originalIndex = conversationItems.indexOf(ghostMessage);
 									conversationItems.remove(ghostMessage);
-									int newIndex = insertConversationItem(ghostMessage, context);
+									int newIndex = insertConversationItem(ghostMessage, context, false);
 									
 									//Updating the adapter
-									AdapterUpdater updater = getAdapterUpdater();
-									if(updater != null) updater.updateMove(originalIndex, newIndex);
+									if(originalIndex != newIndex) {
+										AdapterUpdater updater = getAdapterUpdater();
+										if(updater != null) updater.updateMove(originalIndex, newIndex);
+									}
 								}
+								
+								//Updating the item's relations
+								addConversationItemRelation(this, conversationItems, ghostMessage, context, true);
 								
 								//Setting the message as replaced
 								messageReplaced = true;
@@ -928,10 +956,10 @@ class ConversationManager {
 			//Checking if a message could not be replaced
 			if(!messageReplaced) {
 				//Inserting the item
-				int index = insertConversationItem(conversationItem, context);
+				int index = insertConversationItem(conversationItem, context, false);
 				
-				//Determining the item's relations
-				if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, false);
+				//Determining the item's relations if it is a message
+				if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
 				
 				//Updating the last item
 				updateLastItem(context);
@@ -946,7 +974,7 @@ class ConversationManager {
 			}
 		}
 		
-		private int insertConversationItem(ConversationItem conversationItem, Context context) {
+		private int insertConversationItem(ConversationItem conversationItem, Context context, boolean update) {
 			//Getting the list
 			ArrayList<ConversationItem> conversationItems = getConversationItems();
 			if(conversationItems == null) return -1;
@@ -957,7 +985,7 @@ class ConversationManager {
 				conversationItems.add(conversationItem);
 				
 				//Redetermining the relation
-				if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
+				if(update && conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
 				
 				//Returning the index
 				return 0;
@@ -973,7 +1001,7 @@ class ConversationManager {
 				conversationItems.add(addedIndex, conversationItem);
 				
 				//Redetermining the relation
-				if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
+				if(update && conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
 				
 				//Returning the index
 				return addedIndex;
@@ -983,7 +1011,7 @@ class ConversationManager {
 			conversationItems.add(0, conversationItem);
 			
 			//Redetermining the relation
-			if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
+			if(update && conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
 			
 			//Returning the index
 			return 0;
@@ -1229,11 +1257,11 @@ class ConversationManager {
 		
 		void buildTitle(Context context, Constants.TaskedResultCallback<String> resultCallback) {
 			//Returning the result of the static method
-			buildTitle(context, name, getConversationMembersAsArray(), resultCallback);
+			buildTitle(context, title, getConversationMembersAsArray(), resultCallback);
 		}
 		
 		static void buildTitle(Context context, String name, String[] members, Constants.TaskedResultCallback<String> resultCallback) {
-			//Returning the conversation name if it is valid
+			//Returning the conversation title if it is valid
 			if(name != null && !name.isEmpty()) {
 				resultCallback.onResult(name, false);
 				return;
@@ -1260,7 +1288,7 @@ class ConversationManager {
 				return;
 			}
 			
-			//Creating the named conversation name list
+			//Creating the named conversation title list
 			ArrayList<String> namedConversationMembers = new ArrayList<>();
 			
 			//Converting the list to named members
@@ -1297,7 +1325,7 @@ class ConversationManager {
 		}
 		
 		static String buildTitleDirect(Context context, String name, String[] members) {
-			//Returning the conversation name if it is valid
+			//Returning the conversation title if it is valid
 			if(name != null && !name.isEmpty()) return name;
 			
 			//Returning "unknown" if the conversation has no members
@@ -1324,16 +1352,16 @@ class ConversationManager {
 			return stringBuilder.toString();
 		}
 		
-		String getName() {
-			return name;
+		String getStaticTitle() {
+			return title;
 		}
 		
-		void setName(Context context, String value) {
+		void setTitle(Context context, String value) {
 			//Returning if the operation is invalid
-			if((name != null && name.equals(value))) return;
+			if((title != null && title.equals(value))) return;
 			
-			//Setting the new name
-			name = value;
+			//Setting the new title
+			title = value;
 			
 			//Calling the listeners
 			for(Runnable runnable : titleChangeListeners) runnable.run();
@@ -1512,6 +1540,8 @@ class ConversationManager {
 	}
 	
 	static class MemberInfo implements Serializable {
+		private static final long serialVersionUID = 0;
+		
 		private final String name;
 		private int color;
 		
@@ -1554,10 +1584,10 @@ class ConversationManager {
 		private float sendProgress = -1;
 		
 		//Creating the placement values
-		private boolean hasTimeDivider = false;
-		private boolean isAnchoredTop = false;
-		private boolean isAnchoredBottom = false;
-		private boolean isShowingMessageState = false;
+		private transient boolean hasTimeDivider = false;
+		private transient boolean isAnchoredTop = false;
+		private transient boolean isAnchoredBottom = false;
+		private transient boolean isShowingMessageState = false;
 		
 		MessageInfo(long localID, String guid, ConversationInfo conversationInfo, String sender, String messageText, ArrayList<AttachmentInfo> attachments, String sendEffect, long date, int messageState, int errorCode, long dateRead) {
 			//Calling the super constructor
@@ -1696,7 +1726,7 @@ class ConversationManager {
 		
 		private void prepareActivityStateDisplay(View itemView, Context context) {
 			//Getting the requested state
-			boolean requestedState = this == getConversationInfo().getActivityStateTarget() &&
+			isShowingMessageState = this == getConversationInfo().getActivityStateTarget() &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
 					messageState != SharedValues.MessageInfo.stateCodeIdle &&
 					messageState != SharedValues.MessageInfo.stateCodeSent;
@@ -1705,7 +1735,7 @@ class ConversationManager {
 			TextSwitcher label = itemView.findViewById(R.id.activitystatus);
 			
 			//Setting up the label
-			if(requestedState) {
+			if(isShowingMessageState) {
 				label.setVisibility(View.VISIBLE);
 				label.setCurrentText(getDeliveryStatusText(context));
 			} else {
@@ -1735,12 +1765,7 @@ class ConversationManager {
 			//Checking if the requested state matches the current state
 			if(requestedState == currentState) {
 				//Updating the text
-				if(requestedState) {
-					label.setVisibility(View.VISIBLE);
-					label.setText(getDeliveryStatusText(context));
-				} else {
-					label.setVisibility(View.GONE);
-				}
+				if(requestedState) label.setText(getDeliveryStatusText(context));
 			} else {
 				//Checking if the conversation should display its state
 				if(requestedState) {
@@ -1749,12 +1774,23 @@ class ConversationManager {
 					
 					//Showing the label
 					label.setVisibility(View.VISIBLE);
-					label.startAnimation(AnimationUtils.loadAnimation(context, R.anim.slide_in_top));
-					//label.animate().alpha(1).start();
+					label.startAnimation(AnimationUtils.loadAnimation(context, R.anim.messagestatus_slide_in_bottom));
+					
+					//Measuring the label
+					label.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+					
+					//Expanding the parent view
+					ViewGroup parentView = (ViewGroup) label.getParent();
+					parentView.getLayoutParams().height = parentView.getHeight(); //Freezing the parent view height (to prevent it from expanding for a few moments before the label's view pass)
+					ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) label.getLayoutParams();
+					Constants.ResizeAnimation parentAnim = new Constants.ResizeAnimation(parentView, parentView.getHeight(), parentView.getHeight() + (label.getMeasuredHeight() + layoutParams.topMargin + layoutParams.bottomMargin));
+					parentAnim.setDuration(context.getResources().getInteger(android.R.integer.config_shortAnimTime));
+					parentAnim.setInterpolator(new AccelerateDecelerateInterpolator());
+					parentView.startAnimation(parentAnim);
 				} else {
 					//Hiding the label
-					Animation anim = AnimationUtils.loadAnimation(context, R.anim.slide_out_top);
-					anim.setAnimationListener(new Animation.AnimationListener() {
+					Animation labelAnim = AnimationUtils.loadAnimation(context, R.anim.messagestatus_slide_out_top);
+					labelAnim.setAnimationListener(new Animation.AnimationListener() {
 						@Override
 						public void onAnimationStart(Animation animation) {}
 						
@@ -1768,12 +1804,15 @@ class ConversationManager {
 						@Override
 						public void onAnimationRepeat(Animation animation) {}
 					});
-					label.startAnimation(anim);
-					/* label.animate().alpha(0).withEndAction(() -> {
-						//Setting the label's visibility
-						View view = getView();
-						if(view != null) view.findViewById(R.id.activitystatus).setVisibility(View.GONE);
-					}).start(); */
+					label.startAnimation(labelAnim);
+					
+					//Collapsing the parent view
+					ViewGroup parentView = (ViewGroup) label.getParent();
+					ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) label.getLayoutParams();
+					Constants.ResizeAnimation parentAnim = new Constants.ResizeAnimation(parentView, parentView.getHeight(), parentView.getHeight() - (label.getMeasuredHeight() + layoutParams.topMargin + layoutParams.bottomMargin));
+					parentAnim.setDuration(context.getResources().getInteger(android.R.integer.config_shortAnimTime));
+					parentAnim.setInterpolator(new AccelerateDecelerateInterpolator());
+					parentView.startAnimation(parentAnim);
 				}
 			}
 		}
@@ -2080,6 +2119,9 @@ class ConversationManager {
 			//Getting the message part container
 			ViewGroup messagePartContainer = pViewHolder.getGroupMPC();
 			
+			//Setting the message part container's draw order
+			messagePartContainer.setZ(1);
+			
 			//Converting the view to a view group
 			LinearLayout view = pViewHolder.getView();
 			
@@ -2268,6 +2310,10 @@ class ConversationManager {
 				replayButton.setOnClickListener(clickedView -> getConversationInfo().requestScreenEffect(sendEffect));
 			}
 			
+			//Setting the text switcher's animations
+			pViewHolder.getLabelActivityStatus().setInAnimation(AnimationUtils.loadAnimation(context, R.anim.fade_in_delayed));
+			pViewHolder.getLabelActivityStatus().setOutAnimation(AnimationUtils.loadAnimation(context, R.anim.fade_out));
+			
 			//Setting the status
 			//((TextView) view.findViewById(R.id.status)).setText(ConversationInfo.getFormattedTime(getDate()));
 			
@@ -2342,12 +2388,10 @@ class ConversationManager {
 		}
 		
 		private static final float ghostAlpha = 0.50F;
-		
 		private void updateViewProgressState(View itemView, Context context) {
 			//Setting the message part container's alpha
 			ViewGroup messagePartContainer = itemView.findViewById(R.id.messagepart_container);
-			if(messageState == SharedValues.MessageInfo.stateCodeGhost)
-				messagePartContainer.setAlpha(ghostAlpha);
+			if(messageState == SharedValues.MessageInfo.stateCodeGhost) messagePartContainer.setAlpha(ghostAlpha);
 			else messagePartContainer.setAlpha(1);
 			
 			//Getting the send error warning
