@@ -35,10 +35,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.animation.AccelerateDecelerateInterpolator;
-import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
-import android.view.animation.LinearInterpolator;
-import android.view.animation.RotateAnimation;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
@@ -46,6 +43,7 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -55,8 +53,6 @@ import java.util.List;
 
 import me.tagavari.airmessage.common.SharedValues;
 
-//TODO implement launcher shortcuts
-//TODO implement Google Assistant integration
 public class Conversations extends AppCompatActivity {
 	//Creating the reference values
 	//static final String localBCRemoveConversation = "LocalMSG-Conversations-RemoveConversation";
@@ -69,8 +65,8 @@ public class Conversations extends AppCompatActivity {
 	
 	//Creating the view values
 	private ListView listView;
-	//private RecyclerView recyclerView;
 	private ViewGroup serverWarning;
+	private ProgressBar massRetrievalProgressBar;
 	
 	//Creating the menu values
 	private MenuItem searchMenuItem = null;
@@ -455,12 +451,60 @@ public class Conversations extends AppCompatActivity {
 			});
 		}
 	};
-	private final BroadcastReceiver syncStateBroadcastReceiver = new BroadcastReceiver() {
+	private final BroadcastReceiver massRetrievalStateBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			//Setting the state
-			if(intent.getBooleanExtra(Constants.intentParamAction, true)) setState(stateSyncing);
-			else setState(stateReady);
+			//Getting the state
+			switch(intent.getByteExtra(Constants.intentParamState, (byte) 0)) {
+				case ConnectionService.intentExtraStateMassRetrievalStarted:
+					//Setting the state to syncing
+					setState(stateSyncing);
+					
+					break;
+				case ConnectionService.intentExtraStateMassRetrievalProgress:
+					//Checking if there is a maximum value provided
+					if(intent.hasExtra(Constants.intentParamSize)) {
+						//Setting the progress bar's maximum
+						massRetrievalProgressBar.setMax(intent.getIntExtra(Constants.intentParamSize, 0));
+						
+						//Setting the progress bar as determinate
+						massRetrievalProgressBar.setIndeterminate(false);
+					}
+					
+					//Setting the progress bar's progress
+					if(intent.hasExtra(Constants.intentParamProgress)) {
+						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(intent.getIntExtra(Constants.intentParamProgress, 0), true);
+						else massRetrievalProgressBar.setProgress(intent.getIntExtra(Constants.intentParamProgress, 0));
+					}
+					
+					break;
+				case ConnectionService.intentExtraStateMassRetrievalFailed:
+					//Displaying a snackbar
+					Snackbar.make(findViewById(R.id.root), R.string.serversync_failed, Snackbar.LENGTH_LONG)
+							.setAction(R.string.button_retry, view -> {
+								//Getting the connection service
+								ConnectionService service = ConnectionService.getInstance();
+								if(service == null || !service.isConnected()) return;
+								
+								//Requesting another mass retrieval
+								service.requestMassRetrieval(Conversations.this);
+							})
+							.setActionTextColor(getResources().getColor(R.color.colorAccent, null))
+							.show();
+					
+					//Setting the state
+					setState(stateReady);
+					
+					break;
+					case ConnectionService.intentExtraStateMassRetrievalFinished:
+						//Filling the progress bar
+						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(massRetrievalProgressBar.getMax(), true);
+						else massRetrievalProgressBar.setProgress(massRetrievalProgressBar.getMax());
+						
+						//Setting the state
+						setState(stateReady);
+					break;
+			}
 		}
 	};
 	private final BroadcastReceiver updateConversationsBroadcastReceiver = new BroadcastReceiver() {
@@ -575,6 +619,7 @@ public class Conversations extends AppCompatActivity {
 		//Getting the views
 		listView = findViewById(R.id.list);
 		serverWarning = findViewById(R.id.serverwarning);
+		massRetrievalProgressBar = findViewById(R.id.syncview_progress);
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), listView);
@@ -611,7 +656,7 @@ public class Conversations extends AppCompatActivity {
 		//Adding the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionService.localBCResult));
-		localBroadcastManager.registerReceiver(syncStateBroadcastReceiver, new IntentFilter(ConnectionService.localBCMassRetrieval));
+		localBroadcastManager.registerReceiver(massRetrievalStateBroadcastReceiver, new IntentFilter(ConnectionService.localBCMassRetrieval));
 		localBroadcastManager.registerReceiver(updateConversationsBroadcastReceiver, new IntentFilter(localBCConversationUpdate));
 		
 		//Getting the conversations
@@ -651,47 +696,84 @@ public class Conversations extends AppCompatActivity {
 		
 		//Disabling the old state
 		switch(currentState) {
-			case stateLoading:
-				findViewById(R.id.loading_text).setVisibility(View.GONE);
-				break;
-			case stateSyncing: {
-				View syncView = findViewById(R.id.syncview);
-				syncView.setVisibility(View.GONE);
-				syncView.findViewById(R.id.syncview_icon).setAnimation(null);
+			case stateLoading: {
+				View loadingText = findViewById(R.id.loading_text);
+				loadingText.animate()
+						.alpha(0)
+						.withEndAction(() -> loadingText.setVisibility(View.GONE));
 				break;
 			}
-			case stateReady:
-				findViewById(R.id.list).setVisibility(View.GONE);
-				findViewById(R.id.no_conversations).setVisibility(View.GONE);
+			case stateSyncing: {
+				View syncView = findViewById(R.id.syncview);
+				syncView.animate()
+						.alpha(0)
+						.withEndAction(() -> syncView.setVisibility(View.GONE));
 				break;
+			}
+			case stateReady: {
+				listView.animate()
+						.alpha(0)
+						.withEndAction(() -> listView.setVisibility(View.GONE));
+				
+				View noConversations = findViewById(R.id.no_conversations);
+				if(noConversations.getVisibility() == View.VISIBLE) noConversations.animate()
+						.alpha(0)
+						.withEndAction(() -> noConversations.setVisibility(View.GONE));
+				break;
+			}
 			case stateLoadError:
-				findViewById(R.id.errorview).setVisibility(View.GONE);
+				View errorView = findViewById(R.id.errorview);
+				errorView.animate()
+						.alpha(0)
+						.withEndAction(() -> errorView.setVisibility(View.GONE));
 				break;
 		}
 		
 		//Enabling the new state
 		switch(state) {
 			case stateLoading:
-				findViewById(R.id.loading_text).setVisibility(View.VISIBLE);
+				View loadingView = findViewById(R.id.loading_text);
+				loadingView.animate()
+						.alpha(1)
+						.withStartAction(() -> loadingView.setVisibility(View.VISIBLE));
 				break;
 			case stateSyncing: {
 				View syncView = findViewById(R.id.syncview);
-				syncView.setVisibility(View.VISIBLE);
+				syncView.animate()
+						.alpha(1)
+						.withStartAction(() -> syncView.setVisibility(View.VISIBLE));
 				
-				RotateAnimation rotateAnimation = new RotateAnimation(0, -360, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
-				rotateAnimation.setInterpolator(new LinearInterpolator());
-				rotateAnimation.setDuration(2500);
-				rotateAnimation.setRepeatCount(Animation.INFINITE);
-				syncView.findViewById(R.id.syncview_icon).setAnimation(rotateAnimation);
+				int progress = ConnectionService.getInstance().getMassRetrievalProgress();
+				
+				if(progress == -1) {
+					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(0, false);
+					else massRetrievalProgressBar.setProgress(0);
+					
+					massRetrievalProgressBar.setIndeterminate(true);
+				} else {
+					massRetrievalProgressBar.setMax(ConnectionService.getInstance().getMassRetrievalProgressCount());
+					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(progress, true);
+					else massRetrievalProgressBar.setProgress(progress);
+				}
 				
 				break;
 			}
 			case stateReady:
-				findViewById(R.id.list).setVisibility(View.VISIBLE);
-				if(conversations.isEmpty()) findViewById(R.id.no_conversations).setVisibility(View.VISIBLE);
+				listView.animate()
+						.alpha(1)
+						.withStartAction(() -> listView.setVisibility(View.VISIBLE));
+				if(conversations.isEmpty()) {
+					View noConversations = findViewById(R.id.no_conversations);
+					noConversations.animate()
+							.alpha(1)
+							.withStartAction(() -> noConversations.setVisibility(View.VISIBLE));
+				}
 				break;
 			case stateLoadError:
-				findViewById(R.id.errorview).setVisibility(View.VISIBLE);
+				View errorView = findViewById(R.id.errorview);
+				errorView.animate()
+						.alpha(1)
+						.withStartAction(() -> errorView.setVisibility(View.VISIBLE));
 				break;
 		}
 		
@@ -963,7 +1045,7 @@ public class Conversations extends AppCompatActivity {
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
-		localBroadcastManager.unregisterReceiver(syncStateBroadcastReceiver);
+		localBroadcastManager.unregisterReceiver(massRetrievalStateBroadcastReceiver);
 		localBroadcastManager.unregisterReceiver(updateConversationsBroadcastReceiver);
 		
 		//Stopping the time updater

@@ -16,7 +16,7 @@
 	<string name="permission_rejected">Demande d\'autorisation rejetée</string>
 	<string name="loading_messages">Chargement des messages&#8230;</string>
 	<string name="loading">Chargment&#8230;</string>
-	<string name="syncing_messages">Synchronisation des messages&#8230;</string>
+	<string name="syncing_messages">Obtention de vos messages&#8230;</string>
 	<string name="loading_messages_error">Échec du chargement des messages</string>
 	<string name="loading_contacts_error">Échec du chargement des contacts</string>
 	<string name="no_conversations_start">Quand vous commencez une nouvelle conversation, vous la verrez listée ici</string>
@@ -104,6 +104,7 @@
 	<string name="serververification_serverguidelink">Lisez le guide du serveur</string>
 	<string name="serververification_connectionerror">La connexion a échoué</string>
 	<string name="serververification_authentication">Mot de passe (si nécessaire)</string>
+	
 	<string name="serversync_download_title">Télécharger l\'historique des messages?</string>
 	<string name="serversync_download_description">Cette option remplacera tous les messages actuellement stockés sur l\'appareil. Si vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil.</string>
 	<string name="serversync_download_button">Télécharger les messages</string>
@@ -111,6 +112,8 @@
 	<string name="serversync_delete_button">Supprimer les messages</string>
 	<string name="serversync_warning_title">Passer la suppression des messages?</string>
 	<string name="serversync_warning_description">Si vous changez le compte d\'Apple du serveur et n\'effacez pas vos messages, vos anciennes conversations peuvent être modifiées de manière incorrecte.</string>
+	<string name="serversync_failed">Échec du téléchargement des messages</string>
+	
 	<string name="recording_cancel">Glissez pour annuler</string>
 	<string name="recording_instructions">Tapez et maintenez pour enregistrer</string>
 	<string name="preferences_deleteall_dialog">Supprimer tous les messages?</string>
@@ -120,6 +123,7 @@
 	<string name="dialog_resyncmessages_title">Resynchroniser les messages?</string>
 	<string name="dialog_resyncmessages_message">Cette action remplacera tous les messages actuellement stockés</string>
 	<string name="dialog_resyncmessages_finished">Les nouveaux messages sont en cours de téléchargement</string>
+	<string name="dialog_resyncmessages_inprogress">Les nouveaux messages sont déjà en cours de téléchargement</string>
 	<string name="notification_remoteinput_reply">Répondre</string>
 	<string name="action_copytext">Copier le texte</string>
 	<string name="action_share">Partager</string>

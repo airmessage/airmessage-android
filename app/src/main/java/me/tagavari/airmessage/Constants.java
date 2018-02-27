@@ -60,7 +60,9 @@ class Constants {
 	static final String intentParamIsLast = "isLast";
 	static final String intentParamList = "list";
 	static final String intentParamAction = "action";
+	static final String intentParamState = "state";
 	static final String intentParamCurrent = "current";
+	static final String intentParamProgress = "progress";
 	
 	static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	
