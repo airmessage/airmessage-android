@@ -173,8 +173,8 @@ public class Messaging extends AppCompatActivity {
 		//Getting the height
 		int height = rootView.getHeight();
 		
-		//Checking if the window is smaller than the minimum height and the window isn't in multi-window mode
-		if(height < getResources().getDimensionPixelSize(R.dimen.conversationwindow_minheight) && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode())) {
+		//Checking if the window is smaller than the minimum height, the window isn't in multi-window mode and the app bar is in its default state
+		if(height < getResources().getDimensionPixelSize(R.dimen.conversationwindow_minheight) && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode()) && currentAppBarState == appBarStateDefault) {
 			//Hiding the app bar
 			hideToolbar();
 		} else {
@@ -911,8 +911,10 @@ public class Messaging extends AppCompatActivity {
 		if(state == appBarStateDefault) {
 			actionBar.setDisplayShowCustomEnabled(false);
 			actionBar.setDisplayShowTitleEnabled(true);
+		} else {
+			actionBar.setDisplayShowCustomEnabled(true);
+			actionBar.setDisplayShowTitleEnabled(false);
 		}
-		else actionBar.setDisplayShowCustomEnabled(true);
 		
 		//Cleaning up the old state
 		switch(currentAppBarState) {
@@ -943,6 +945,7 @@ public class Messaging extends AppCompatActivity {
 						if(s.length() == 0) {
 							//Hiding the result bar
 							findViewById(R.id.searchresults).setVisibility(View.GONE);
+							//getSupportActionBar().setElevation(Constants.dpToPx(4));
 							
 							//Hiding the clear text button
 							actionBar.getCustomView().findViewById(R.id.search_buttonclear).setVisibility(View.INVISIBLE);
@@ -954,6 +957,7 @@ public class Messaging extends AppCompatActivity {
 						//Showing the result bar
 						View searchResultBar = findViewById(R.id.searchresults);
 						searchResultBar.setVisibility(View.VISIBLE);
+						//getSupportActionBar().setElevation(Constants.dpToPx(0));
 						
 						//Showing the clear text button
 						actionBar.getCustomView().findViewById(R.id.search_buttonclear).setVisibility(View.VISIBLE);

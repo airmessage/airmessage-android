@@ -609,9 +609,8 @@ public class ConnectionService extends Service {
 			//Getting the code from the message
 			int code = -1;
 			String errorCodeString = reasonString.substring(reasonString.lastIndexOf(' ') + 1);
-			if(errorCodeString.matches("^\\d+$")) {
-				code = Integer.parseInt(errorCodeString);
-			}
+			if(errorCodeString.matches("^\\d+$")) code = Integer.parseInt(errorCodeString);
+			
 			
 			//Determining the broadcast value
 			byte clientReason;
@@ -659,6 +658,9 @@ public class ConnectionService extends Service {
 			
 			//Posting the disconnected notification
 			if(!isShuttingDown) postDisconnectedNotification(false);
+			
+			//Cancelling the mass retrieval if there is one in progress
+			if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
 			
 			//Removing the scheduled ping
 			//unschedulePing();
@@ -1338,6 +1340,17 @@ public class ConnectionService extends Service {
 		
 		//Returning true
 		return true;
+	}
+	
+	private void cancelMassRetrieval() {
+		//Setting the variable
+		massRetrievalInProgress = false;
+		
+		//Sending a broadcast
+		LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalFailed));
+		
+		//Stopping the timeout timer
+		massRetrievalTimeoutHandler.removeCallbacks(massRetrievalTimeoutRunnable);
 	}
 	
 	/* boolean sendFile(short requestID, int requestIndex, String chatGUID, byte[] fileBytes, String fileName, boolean isLast, MessageResponseManager responseListener) {
