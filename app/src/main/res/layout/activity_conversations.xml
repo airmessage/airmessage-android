@@ -32,7 +32,7 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
-			android:text="@string/loading_messages"
+			android:text="@string/progress_loadingmessages"
 			android:textColor="?android:textColorSecondary"
 			android:visibility="gone" />
 		<!-- Sync view -->
@@ -55,7 +55,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="@string/syncing_messages"
+				android:text="@string/progress_sync"
 				android:tint="?android:attr/textColorSecondary" />
 			
 			<ProgressBar
@@ -81,7 +81,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="@string/loading_messages_error"
+				android:text="@string/message_loaderror_messages"
 				android:tint="?android:attr/textColorSecondary" />
 			
 			<Button
@@ -89,7 +89,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="@string/button_retry"
+				android:text="@string/action_retry"
 				android:textColor="@color/colorPrimary" />
 		</LinearLayout>
 		<!-- No conversations view -->
@@ -101,10 +101,11 @@
 			android:layout_gravity="center"
 			android:layout_marginLeft="50dp"
 			android:layout_marginRight="50dp"
+			android:visibility="gone"
 			android:alpha="0"
 			android:drawableTint="?android:attr/textColorSecondary"
 			android:drawableTop="@drawable/chat"
-			android:text="@string/no_conversations_start"
+			android:text="@string/message_blankstate_conversations"
 			android:textAlignment="center"
 			android:textColor="?android:attr/textColorSecondary" />
 		
@@ -122,27 +123,38 @@
 				android:background="@color/colorPrimary"
 				android:elevation="4dp"
 				android:theme="@style/AppTheme.AppBar" /> -->
-			<!-- Connection Error Box -->
+			<!-- Info bar - Connection error -->
 			<LinearLayout
 				android:id="@+id/serverwarning"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:background="@android:color/white"
 				android:elevation="2dp"
+				android:gravity="center"
 				android:minHeight="48dp"
-				android:orientation="horizontal">
+				android:orientation="horizontal"
+				android:paddingLeft="10dp"
+				android:paddingRight="10dp">
+				
+				<ImageView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:alpha="0.54"
+					android:src="@drawable/disconnection"
+					android:tint="@android:color/black"
+					android:layout_marginLeft="8dp"
+					android:layout_marginRight="8dp"/>
 				
 				<TextView
 					android:id="@+id/serverwarning_message"
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
-					android:layout_gravity="center_vertical"
 					android:layout_marginBottom="12dp"
-					android:layout_marginLeft="16dp"
-					android:layout_marginRight="16dp"
+					android:layout_marginLeft="10dp"
+					android:layout_marginRight="10dp"
 					android:layout_marginTop="12dp"
 					android:layout_weight="1"
-					android:text="@string/serverstatus_noconnection"
+					android:text="@string/message_serverstatus_noconnection"
 					android:textColor="?android:attr/textColorSecondary" />
 				
 				<Button
@@ -150,39 +162,48 @@
 					style="?android:attr/borderlessButtonStyle"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_gravity="center_vertical"
-					android:text="@string/button_retry"
+					android:text="@string/action_retry"
 					android:textColor="@color/colorAccent" />
 			</LinearLayout>
-			<!-- Contact permission box -->
+			<!-- Info bar - Contacts permission -->
 			<LinearLayout
 				android:id="@+id/contactnotice"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:background="@android:color/white"
 				android:elevation="2dp"
+				android:gravity="center"
 				android:minHeight="48dp"
-				android:orientation="horizontal">
+				android:orientation="horizontal"
+				android:paddingLeft="10dp"
+				android:paddingRight="10dp">
+				
+				<ImageView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:alpha="0.54"
+					android:src="@drawable/contacts"
+					android:tint="@android:color/black"
+					android:layout_marginLeft="8dp"
+					android:layout_marginRight="8dp" />
 				
 				<TextView
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
-					android:layout_gravity="center_vertical"
 					android:layout_marginBottom="12dp"
-					android:layout_marginLeft="16dp"
-					android:layout_marginRight="16dp"
+					android:layout_marginLeft="10dp"
+					android:layout_marginRight="10dp"
 					android:layout_marginTop="12dp"
 					android:layout_weight="1"
-					android:text="@string/contactnotice_text"
+					android:text="@string/message_permissiondetails_contacts_listing"
 					android:textColor="?android:attr/textColorSecondary" />
 				
 				<Button
 					style="?android:attr/borderlessButtonStyle"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_gravity="center_vertical"
 					android:onClick="onRequestContactsClick"
-					android:text="@string/button_enable"
+					android:text="@string/action_enable"
 					android:textColor="@color/colorAccent" />
 			</LinearLayout>
 			<!-- Conversation List -->

@@ -494,7 +494,7 @@ public class MessagingInfo extends AppCompatActivity {
 		@Override
 		public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 			//Configuring the dialog
-			getDialog().setTitle(member == null ? R.string.edit_conversation_color : R.string.edit_contact_color);
+			getDialog().setTitle(member == null ? R.string.action_editconversationcolor : R.string.action_editcontactcolor);
 			
 			//Inflating the view
 			View dialogView = inflater.inflate(R.layout.dialog_colorpicker, container, false);

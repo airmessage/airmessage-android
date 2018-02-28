@@ -548,7 +548,7 @@ class ConversationManager {
 			//Setting the time
 			((TextView) itemView.findViewById(R.id.time)).setText(
 					System.currentTimeMillis() - lastItem.getDate() < conversationJustNowTimeMillis ?
-							context.getResources().getString(R.string.just_now) :
+							context.getResources().getString(R.string.time_now) :
 							DateUtils.getRelativeTimeSpanString(lastItem.getDate(), System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_ALL).toString());
 		}
 		
@@ -1269,7 +1269,7 @@ class ConversationManager {
 			
 			//Returning "unknown" if the conversation has no members
 			if(members.length == 0) {
-				resultCallback.onResult(context.getResources().getString(R.string.unknown), false);
+				resultCallback.onResult(context.getResources().getString(R.string.part_unknown), false);
 				return;
 			}
 			
@@ -1329,7 +1329,7 @@ class ConversationManager {
 			if(name != null && !name.isEmpty()) return name;
 			
 			//Returning "unknown" if the conversation has no members
-			if(members.length == 0) return context.getResources().getString(R.string.unknown);
+			if(members.length == 0) return context.getResources().getString(R.string.part_unknown);
 			
 			//Returning the member's name if there is only one member
 			if(members.length == 1) return members[0];
@@ -1823,7 +1823,7 @@ class ConversationManager {
 				default:
 					return null;
 				case SharedValues.MessageInfo.stateCodeDelivered:
-					return context.getResources().getString(R.string.delivered);
+					return context.getResources().getString(R.string.state_delivered);
 				case SharedValues.MessageInfo.stateCodeRead: {
 					//Creating the when variable
 					String when;
@@ -1840,7 +1840,7 @@ class ConversationManager {
 					//Otherwise formatting the when as the date
 					else when = DateFormat.getDateInstance(DateFormat.SHORT).format(dateRead);
 					
-					return Html.fromHtml("<b>" + context.getResources().getString(R.string.read) + "</b> " + when);
+					return Html.fromHtml("<b>" + context.getResources().getString(R.string.state_read) + "</b> " + when);
 				}
 			}
 		}
@@ -2091,12 +2091,12 @@ class ConversationManager {
 			if(sentCalendar.get(Calendar.YEAR) == nowCalendar.get(Calendar.YEAR)) {
 				//If the message was sent today
 				if(nowCalendar.get(Calendar.DAY_OF_YEAR) == sentCalendar.get(Calendar.DAY_OF_YEAR))
-					return context.getResources().getString(R.string.today) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
+					return context.getResources().getString(R.string.time_today) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
 					//If the message was sent yesterday
 				else {
 					nowCalendar.add(Calendar.DAY_OF_YEAR, -1); //Today (now) -> Yesterday
 					if(nowCalendar.get(Calendar.DAY_OF_YEAR) == sentCalendar.get(Calendar.DAY_OF_YEAR))
-						return context.getResources().getString(R.string.yesterday) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
+						return context.getResources().getString(R.string.time_yesterday) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
 				}
 			}
 			
@@ -2408,14 +2408,14 @@ class ConversationManager {
 			
 			//Configuring the dialog
 			AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(itemView.getContext())
-					.setTitle(R.string.dialog_messageerror_title)
-					.setNegativeButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss());
+					.setTitle(R.string.message_messageerror_title)
+					.setNegativeButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss());
 			boolean showRetryButton;
 			
 			switch(errorCode) {
 				default:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_unknown);
+					dialogBuilder.setMessage(R.string.message_unknownerror);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2424,7 +2424,7 @@ class ConversationManager {
 				
 				case Constants.messageErrorCodeAirInvalidContent:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_invalidcontent);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_invalidcontent);
 					
 					//Disabling the retry button
 					showRetryButton = false;
@@ -2432,7 +2432,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirFileTooLarge:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_filetoolarge);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_filetoolarge);
 					
 					//Disabling the retry button
 					showRetryButton = false;
@@ -2440,7 +2440,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirIO:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_io);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_io);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2448,7 +2448,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirNetwork:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_network);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_network);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2456,7 +2456,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirExternal:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_external);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_external);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2464,7 +2464,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirExpired:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_expired);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_expired);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2472,7 +2472,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirReferences:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_references);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_references);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2480,7 +2480,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAppleNetwork:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_apple_network);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_apple_network);
 					
 					//Disabling the retry button
 					showRetryButton = false;
@@ -2489,8 +2489,8 @@ class ConversationManager {
 				case Constants.messageErrorCodeAppleUnregistered:
 					//Setting the message
 					dialogBuilder.setMessage(getConversationInfo().getConversationMembers().isEmpty() ?
-							context.getResources().getString(R.string.dialog_messageerror_desc_apple_unregistered_generic) :
-							context.getResources().getString(R.string.dialog_messageerror_desc_apple_unregistered, getConversationInfo().getConversationMembers().get(0).getName()));
+							context.getResources().getString(R.string.message_messageerror_desc_apple_unregistered_generic) :
+							context.getResources().getString(R.string.message_messageerror_desc_apple_unregistered, getConversationInfo().getConversationMembers().get(0).getName()));
 					
 					//Disabling the retry button
 					showRetryButton = false;
@@ -2500,7 +2500,7 @@ class ConversationManager {
 			
 			//Showing the retry button (if requested)
 			if(showRetryButton)
-				dialogBuilder.setPositiveButton(R.string.button_retry, (dialog, which) -> sendMessage(MainApplication.getInstance()));
+				dialogBuilder.setPositiveButton(R.string.action_retry, (dialog, which) -> sendMessage(MainApplication.getInstance()));
 			
 			//Showing the dialog when the button is clicked
 			sendError.setOnClickListener(view -> dialogBuilder.create().show());
@@ -2567,7 +2567,7 @@ class ConversationManager {
 			
 			//Applying invisible ink
 			if(sendStyle.equals(Constants.appleSendStyleInvisibleInk))
-				modifiedMessage = context.getString(R.string.message_invisibleink);
+				modifiedMessage = context.getString(R.string.message_messageeffect_invisibleink);
 			
 			//Setting the text if there is text
 			if(messageText != null) return prefix + modifiedMessage;
@@ -2576,7 +2576,7 @@ class ConversationManager {
 			if(attachmentStringRes.size() == 1)
 				return prefix + context.getResources().getString(attachmentStringRes.get(0));
 			else if(attachmentStringRes.size() > 1)
-				return prefix + context.getResources().getQuantityString(R.plurals.contenttype_multiple, attachmentStringRes.size(), attachmentStringRes.size());
+				return prefix + context.getResources().getQuantityString(R.plurals.message_multipleattachments, attachmentStringRes.size(), attachmentStringRes.size());
 			
 			//Returning an empty string
 			return "";
@@ -3120,14 +3120,14 @@ class ConversationManager {
 					case R.id.action_details: {
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_type, context.getResources().getString(R.string.contenttype_text))).append('\n'); //Message type
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : context.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? context.getResources().getString(R.string.none) : getMessageInfo().getSendEffect())); //Send effect
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_type, context.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : context.getResources().getString(R.string.you))).append('\n'); //Sender
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? context.getResources().getString(R.string.part_none) : getMessageInfo().getSendEffect())); //Send effect
 						
 						//Showing a dialog
 						new AlertDialog.Builder(context)
-								.setTitle(R.string.messagedetails_title)
+								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()
 								.show();
@@ -3146,7 +3146,7 @@ class ConversationManager {
 						clipboardManager.setPrimaryClip(clipData);
 						
 						//Showing a confirmation toast
-						Toast.makeText(context, R.string.text_copied, Toast.LENGTH_SHORT).show();
+						Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show();
 						
 						//Returning true
 						return true;
@@ -3201,8 +3201,8 @@ class ConversationManager {
 			
 			//Getting the text
 			String text = name == null ?
-					context.getResources().getString(R.string.conversationitem_contextual_share_body_you, dateFormat.format(date), message) :
-					context.getResources().getString(R.string.conversationitem_contextual_share_body, dateFormat.format(date), name, message);
+					context.getResources().getString(R.string.message_shareable_text_you, dateFormat.format(date), message) :
+					context.getResources().getString(R.string.message_shareable_text, dateFormat.format(date), name, message);
 			
 			//Setting the text
 			intent.putExtra(Intent.EXTRA_TEXT, text);
@@ -3211,7 +3211,7 @@ class ConversationManager {
 			intent.setType("text/plain");
 			
 			//Starting the intent
-			context.startActivity(Intent.createChooser(intent, context.getResources().getString(R.string.conversationitem_contextual_share_title)));
+			context.startActivity(Intent.createChooser(intent, context.getResources().getString(R.string.action_sharemessage)));
 		}
 	}
 	
@@ -3380,7 +3380,7 @@ class ConversationManager {
 			ConnectionService connectionService = ConnectionService.getInstance();
 			if(connectionService == null) {
 				//Showing a toast
-				Toast.makeText(context, R.string.no_connection, Toast.LENGTH_SHORT).show();
+				Toast.makeText(context, R.string.message_connectionerrror, Toast.LENGTH_SHORT).show();
 				
 				//Returning
 				return;
@@ -3591,15 +3591,15 @@ class ConversationManager {
 					case R.id.action_details: {
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_type, context.getResources().getString(getContentType().getName()))).append('\n'); //Message type
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : context.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_size, file != null ? Formatter.formatShortFileSize(context, file.length()) : context.getResources().getString(R.string.no_data))).append('\n'); //Attachment size
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? context.getResources().getString(R.string.none) : getMessageInfo().getSendEffect())); //Send effect
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_type, context.getResources().getString(getContentType().getName()))).append('\n'); //Message type
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : context.getResources().getString(R.string.you))).append('\n'); //Sender
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_size, file != null ? Formatter.formatShortFileSize(context, file.length()) : context.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment size
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? context.getResources().getString(R.string.part_none) : getMessageInfo().getSendEffect())); //Send effect
 						
 						//Showing a dialog
 						new AlertDialog.Builder(context)
-								.setTitle(R.string.messagedetails_title)
+								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()
 								.show();
@@ -3634,7 +3634,7 @@ class ConversationManager {
 						intent.setType(mimeType);
 						
 						//Starting the activity
-						context.startActivity(Intent.createChooser(intent, context.getResources().getText(R.string.conversationitem_contextual_share_title)));
+						context.startActivity(Intent.createChooser(intent, context.getResources().getText(R.string.action_sharemessage)));
 						
 						//Returning true
 						return true;
@@ -4095,7 +4095,7 @@ class ConversationManager {
 			intent.setDataAndType(content, mimeType);
 			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 			if(intent.resolveActivity(activity.getPackageManager()) != null) activity.startActivity(intent);
-			else Toast.makeText(activity, R.string.intent_noactivity, Toast.LENGTH_SHORT).show();
+			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
 		}
 	}
 	
@@ -4660,7 +4660,7 @@ class ConversationManager {
 			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 			if(intent.resolveActivity(activity.getPackageManager()) != null)
 				activity.startActivity(intent);
-			else Toast.makeText(activity, R.string.intent_noactivity, Toast.LENGTH_SHORT).show();
+			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
 		}
 	}
 	
@@ -4834,7 +4834,7 @@ class ConversationManager {
 			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 			if(intent.resolveActivity(activity.getPackageManager()) != null)
 				activity.startActivity(intent);
-			else Toast.makeText(activity, R.string.intent_noactivity, Toast.LENGTH_SHORT).show();
+			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
 		}
 	}
 	
@@ -5061,27 +5061,27 @@ class ConversationManager {
 			//Returning the message based on the action type
 			if(actionType == Constants.groupActionInvite) {
 				if(Objects.equals(agent, other)) {
-					if(agent == null) return context.getString(R.string.eventtype_join_you);
-					else return context.getString(R.string.eventtype_join, agent);
+					if(agent == null) return context.getString(R.string.message_eventtype_join_you);
+					else return context.getString(R.string.message_eventtype_join, agent);
 				} else {
-					if(agent == null) return context.getString(R.string.eventtype_invite_you_agent, other);
-					else if(other == null) return context.getString(R.string.eventtype_invite_you_object, agent);
-					else return context.getString(R.string.eventtype_invite, agent, other);
+					if(agent == null) return context.getString(R.string.message_eventtype_invite_you_agent, other);
+					else if(other == null) return context.getString(R.string.message_eventtype_invite_you_object, agent);
+					else return context.getString(R.string.message_eventtype_invite, agent, other);
 				}
 			}
 			else if(actionType == Constants.groupActionLeave) {
 				if(Objects.equals(agent, other)) {
-					if(agent == null) return context.getString(R.string.eventtype_leave_you);
-					else return context.getString(R.string.eventtype_leave, agent);
+					if(agent == null) return context.getString(R.string.message_eventtype_leave_you);
+					else return context.getString(R.string.message_eventtype_leave, agent);
 				} else {
-					if(agent == null) return context.getString(R.string.eventtype_kick_you_agent, other);
-					else if(other == null) return context.getString(R.string.eventtype_kick_you_object, agent);
-					else return context.getString(R.string.eventtype_kick, agent, other);
+					if(agent == null) return context.getString(R.string.message_eventtype_kick_you_agent, other);
+					else if(other == null) return context.getString(R.string.message_eventtype_kick_you_object, agent);
+					else return context.getString(R.string.message_eventtype_kick, agent, other);
 				}
 			}
 			
 			//Returning an unknown message
-			return context.getString(R.string.eventtype_unknown);
+			return context.getString(R.string.message_eventtype_unknown);
 		}
 		
 		@Override
@@ -5181,11 +5181,11 @@ class ConversationManager {
 		
 		static String getDirectSummary(Context context, String agent, String title) {
 			if(agent == null) {
-				if(title == null) return context.getString(R.string.eventtype_chatrename_remove_you);
-				else return context.getString(R.string.eventtype_chatrename_change_you, title);
+				if(title == null) return context.getString(R.string.message_eventtype_chatrename_remove_you);
+				else return context.getString(R.string.message_eventtype_chatrename_change_you, title);
 			} else {
-				if(title == null) return context.getString(R.string.eventtype_chatrename_remove, agent);
-				else return context.getString(R.string.eventtype_chatrename_change, agent, title);
+				if(title == null) return context.getString(R.string.message_eventtype_chatrename_remove, agent);
+				else return context.getString(R.string.message_eventtype_chatrename_change, agent, title);
 			}
 		}
 		
@@ -5252,7 +5252,7 @@ class ConversationManager {
 		
 		private static String getDirectSummary(Context context) {
 			//Returning the string
-			return context.getResources().getString(R.string.conversation_created);
+			return context.getResources().getString(R.string.message_conversationcreated);
 		}
 		
 		@Override
@@ -5643,10 +5643,10 @@ class ConversationManager {
 	
 	enum ContentType {
 		//TEXT (0),
-		IMAGE(1, "image", R.string.contenttype_image),
-		VIDEO(2, "video", R.string.contenttype_video),
-		AUDIO(3, "audio", R.string.contenttype_audio),
-		OTHER(4, "other", R.string.contenttype_other);
+		IMAGE(1, "image", R.string.part_content_image),
+		VIDEO(2, "video", R.string.part_content_video),
+		AUDIO(3, "audio", R.string.part_content_audio),
+		OTHER(4, "other", R.string.part_content_other);
 		
 		//Creating the values
 		private final int identifier;

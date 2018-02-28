@@ -10,7 +10,7 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_centerInParent="true"
-		android:text="@string/loading_messages"
+		android:text="@string/progress_loadingmessages"
 		android:textColor="?android:textColorSecondary"
 		android:visibility="gone" />
 	<!-- Recording indicator -->
@@ -68,7 +68,7 @@
 				android:gravity="center_vertical"
 				android:paddingBottom="12dp"
 				android:paddingTop="12dp"
-				android:text="@string/search_results"
+				android:text="@string/message_searchresults"
 				android:textColor="?android:attr/textColorSecondary" />
 			
 			<ImageButton
@@ -115,7 +115,7 @@
 				android:gravity="center_vertical"
 				android:paddingBottom="12dp"
 				android:paddingTop="12dp"
-				android:text="@string/serverstatus_noconnection"
+				android:text="@string/message_serverstatus_noconnection"
 				android:textColor="?android:attr/textColorSecondary" />
 			
 			<Button
@@ -127,7 +127,7 @@
 				android:layout_margin="-5dp"
 				android:padding="5dp"
 				android:tag="@string/tag_primarytint"
-				android:text="@string/button_retry"
+				android:text="@string/action_retry"
 				android:textColor="@color/colorAccent" />
 		</LinearLayout>
 		<!-- Message List -->
@@ -189,12 +189,12 @@
 					android:layout_marginStart="15dp"
 					android:background="?android:attr/selectableItemBackgroundBorderless"
 					android:clickable="true"
-					android:contentDescription="@string/contentbar_open"
+					android:contentDescription="@string/action_addcontent"
 					android:focusable="true"
 					android:src="@drawable/add"
 					android:tag="@string/tag_primarytint"
 					android:tint="@color/colorPrimary"
-					android:tooltipText="@string/contentbar_open" />
+					android:tooltipText="@string/action_addcontent" />
 				<!-- Message box -->
 				<EditText
 					android:id="@+id/messagebox"
@@ -204,7 +204,7 @@
 					android:layout_marginRight="10dp"
 					android:layout_weight="1"
 					android:background="@null"
-					android:hint="@string/type_a_message"
+					android:hint="@string/imperative_messageinput"
 					android:imeOptions="flagNoExtractUi"
 					android:inputType="text|textMultiLine|textAutoCorrect|textCapSentences"
 					android:maxHeight="100dp"
@@ -223,11 +223,11 @@
 					android:layout_marginEnd="15dp"
 					android:background="?android:attr/selectableItemBackgroundBorderless"
 					android:clickable="true"
-					android:contentDescription="@string/button_send"
+					android:contentDescription="@string/action_send"
 					android:src="@drawable/push"
 					android:tag="@string/tag_primarytint"
 					android:tint="@color/colorPrimary"
-					android:tooltipText="@string/button_send" />
+					android:tooltipText="@string/action_send" />
 			</LinearLayout>
 			<!-- Content bar -->
 			<RelativeLayout
@@ -248,10 +248,10 @@
 					android:layout_marginStart="15dp"
 					android:background="?android:attr/selectableItemBackgroundBorderless"
 					android:clickable="true"
-					android:contentDescription="@string/contentbar_close"
+					android:contentDescription="@string/action_close"
 					android:src="@drawable/add"
 					android:tint="@android:color/white"
-					android:tooltipText="@string/contentbar_close" />
+					android:tooltipText="@string/action_close" />
 				<!-- Content buttons -->
 				<LinearLayout
 					android:layout_width="wrap_content"
@@ -269,10 +269,10 @@
 						android:layout_gravity="bottom"
 						android:background="?android:attr/selectableItemBackgroundBorderless"
 						android:clickable="true"
-						android:contentDescription="@string/contentbar_camera"
+						android:contentDescription="@string/action_takephoto"
 						android:src="@drawable/camera"
 						android:tint="@android:color/white"
-						android:tooltipText="@string/contentbar_camera" />
+						android:tooltipText="@string/action_takephoto" />
 					<!-- Gallery button -->
 					<ImageButton
 						android:id="@+id/button_gallery"
@@ -282,10 +282,10 @@
 						android:layout_marginStart="25dp"
 						android:background="?android:attr/selectableItemBackgroundBorderless"
 						android:clickable="true"
-						android:contentDescription="@string/contentbar_gallery"
+						android:contentDescription="@string/action_choosephoto"
 						android:src="@drawable/gallery"
 						android:tint="@android:color/white"
-						android:tooltipText="@string/contentbar_gallery" />
+						android:tooltipText="@string/action_choosephoto" />
 					<!-- Attach button -->
 					<ImageButton
 						android:id="@+id/button_attach"
@@ -295,10 +295,10 @@
 						android:layout_marginStart="25dp"
 						android:background="?android:attr/selectableItemBackgroundBorderless"
 						android:clickable="true"
-						android:contentDescription="@string/contentbar_attach"
+						android:contentDescription="@string/action_choosefile"
 						android:src="@drawable/attach"
 						android:tint="@android:color/white"
-						android:tooltipText="@string/contentbar_attach" />
+						android:tooltipText="@string/action_choosefile" />
 					<!-- Microphone button -->
 					<ImageButton
 						android:id="@+id/button_record"
@@ -308,10 +308,10 @@
 						android:layout_marginStart="25dp"
 						android:background="?android:attr/selectableItemBackgroundBorderless"
 						android:clickable="true"
-						android:contentDescription="@string/contentbar_record"
+						android:contentDescription="@string/action_recordaudio"
 						android:src="@drawable/microphone"
 						android:tint="@android:color/white"
-						android:tooltipText="@string/contentbar_record" />
+						android:tooltipText="@string/action_recordaudio" />
 				</LinearLayout>
 			</RelativeLayout>
 			<!-- Recording bar -->
@@ -359,7 +359,7 @@
 						android:layout_width="wrap_content"
 						android:layout_height="wrap_content"
 						android:layout_gravity="center_vertical"
-						android:text="@string/recording_cancel"
+						android:text="@string/imperative_recording_cancel"
 						android:textColor="?android:textColorSecondary" />
 				</LinearLayout>
 			</LinearLayout>

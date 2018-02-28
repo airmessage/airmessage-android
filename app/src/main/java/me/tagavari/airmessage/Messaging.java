@@ -10,7 +10,6 @@ import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
@@ -758,7 +757,7 @@ public class Messaging extends AppCompatActivity {
 					DatabaseManager.updateConversation(DatabaseManager.getWritableDatabase(Messaging.this), conversationInfo.getLocalID(), contentValues);
 					
 					//Showing a toast
-					Toast.makeText(Messaging.this, R.string.conversation_archived, Toast.LENGTH_SHORT).show();
+					Toast.makeText(Messaging.this, R.string.message_conversation_archived, Toast.LENGTH_SHORT).show();
 					
 					//Swapping out the menu buttons
 					archiveMenuItem.setVisible(false);
@@ -777,7 +776,7 @@ public class Messaging extends AppCompatActivity {
 					DatabaseManager.updateConversation(DatabaseManager.getWritableDatabase(Messaging.this), conversationInfo.getLocalID(), contentValues);
 					
 					//Showing a toast
-					Toast.makeText(Messaging.this, R.string.conversation_unarchived, Toast.LENGTH_SHORT).show();
+					Toast.makeText(Messaging.this, R.string.message_conversation_unarchived, Toast.LENGTH_SHORT).show();
 					
 					//Swapping out the menu buttons
 					archiveMenuItem.setVisible(true);
@@ -789,7 +788,7 @@ public class Messaging extends AppCompatActivity {
 				if(conversationInfo != null) {
 					//Creating a dialog
 					new AlertDialog.Builder(this)
-							.setMessage(R.string.dialog_deleteconversation_current)
+							.setMessage(R.string.message_confirm_deleteconversation_current)
 							.setNegativeButton(android.R.string.cancel, (dialog, which) -> {
 								dialog.dismiss();
 							})
@@ -802,7 +801,7 @@ public class Messaging extends AppCompatActivity {
 								DatabaseManager.deleteConversation(DatabaseManager.getReadableDatabase(Messaging.this), conversationInfo);
 								
 								//Showing a toast
-								Toast.makeText(Messaging.this, R.string.conversation_deleted, Toast.LENGTH_SHORT).show();
+								Toast.makeText(Messaging.this, R.string.message_conversation_deleted, Toast.LENGTH_SHORT).show();
 								
 								//Finishing the activity
 								finish();
@@ -979,7 +978,7 @@ public class Messaging extends AppCompatActivity {
 						//Updating the search result bar
 						searchCount = searchFilteredMessages.size();
 						searchIndex = searchCount - 1;
-						((TextView) searchResultBar.findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.search_results, searchIndex + 1, searchCount));
+						((TextView) searchResultBar.findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.message_searchresults, searchIndex + 1, searchCount));
 						
 						//Scrolling to the item
 						if(!searchListIndexes.isEmpty()) messageList.getLayoutManager().scrollToPosition(searchListIndexes.get(searchIndex));
@@ -1008,7 +1007,7 @@ public class Messaging extends AppCompatActivity {
 		
 		//Updating the search
 		searchIndex--;
-		((TextView) findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.search_results, searchIndex + 1, searchCount));
+		((TextView) findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.message_searchresults, searchIndex + 1, searchCount));
 		if(!searchListIndexes.isEmpty()) messageList.getLayoutManager().scrollToPosition(searchListIndexes.get(searchIndex));
 	}
 	
@@ -1018,7 +1017,7 @@ public class Messaging extends AppCompatActivity {
 		
 		//Updating the search
 		searchIndex++;
-		((TextView) findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.search_results, searchIndex + 1, searchCount));
+		((TextView) findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.message_searchresults, searchIndex + 1, searchCount));
 		if(!searchListIndexes.isEmpty()) messageList.getLayoutManager().scrollToPosition(searchListIndexes.get(searchIndex));
 	}
 	
@@ -1354,7 +1353,7 @@ public class Messaging extends AppCompatActivity {
 			retainedFragment.mediaRecorder.stop();
 		} catch(RuntimeException stopException) { //The media recorder couldn't capture any media
 			//Showing a toast
-			Toast.makeText(Messaging.this, R.string.recording_instructions, Toast.LENGTH_LONG).show();
+			Toast.makeText(Messaging.this, R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
 			
 			//Hiding the recording bar
 			int[] recordingButtonLocation = {0, 0};
@@ -1368,7 +1367,7 @@ public class Messaging extends AppCompatActivity {
 		//Checking if there was not enough time
 		if(retainedFragment.recordingDuration < 1) {
 			//Showing a toast
-			Toast.makeText(Messaging.this, R.string.recording_instructions, Toast.LENGTH_LONG).show();
+			Toast.makeText(Messaging.this, R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
 			
 			//Setting force discard to true
 			forceDiscard = true;
@@ -1411,7 +1410,7 @@ public class Messaging extends AppCompatActivity {
 		//Returning false if the required permissions have not been granted
 		if(Constants.requestPermission(this, new String[]{Manifest.permission.RECORD_AUDIO}, Constants.permissionRecordAudio)) {
 			//Notifying the user via a toast
-			Toast.makeText(Messaging.this, R.string.failed_recording_permission, Toast.LENGTH_SHORT).show();
+			Toast.makeText(Messaging.this, R.string.message_permissiondetails_microphone_missing, Toast.LENGTH_SHORT).show();
 			
 			//Returning false
 			return false;
@@ -1459,13 +1458,13 @@ public class Messaging extends AppCompatActivity {
 	private String getInputBarMessage() {
 		//Returning a generic message if the service is invalid
 		if(conversationInfo.getService() == null)
-			return getResources().getString(R.string.type_a_message);
+			return getResources().getString(R.string.imperative_messageinput);
 		
 		switch(conversationInfo.getService()) {
 			case Constants.serviceIDAppleMessage:
-				return getResources().getString(R.string.imessage);
+				return getResources().getString(R.string.proper_imessage);
 			case Constants.serviceIDSMS:
-				return getResources().getString(R.string.sms);
+				return getResources().getString(R.string.proper_sms);
 			default:
 				return conversationInfo.getService();
 		}
@@ -1487,8 +1486,8 @@ public class Messaging extends AppCompatActivity {
 		
 		switch(reason) {
 			case ConnectionService.intentResultValueInternalException:
-				message.setText(R.string.serverstatus_internalexception);
-				button.setText(R.string.button_retry);
+				message.setText(R.string.message_serverstatus_internalexception);
+				button.setText(R.string.action_retry);
 				button.setOnClickListener(view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
@@ -1504,8 +1503,8 @@ public class Messaging extends AppCompatActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueBadRequest:
-				message.setText(R.string.serverstatus_badrequest);
-				button.setText(R.string.button_retry);
+				message.setText(R.string.message_serverstatus_badrequest);
+				button.setText(R.string.action_retry);
 				button.setOnClickListener(view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
@@ -1521,8 +1520,8 @@ public class Messaging extends AppCompatActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueClientOutdated:
-				message.setText(R.string.serverstatus_clientoutdated);
-				button.setText(R.string.button_update);
+				message.setText(R.string.message_serverstatus_clientoutdated);
+				button.setText(R.string.action_update);
 				button.setOnClickListener(view -> {
 					//Launching the app's page in the market
 					Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()));
@@ -1530,8 +1529,8 @@ public class Messaging extends AppCompatActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueServerOutdated:
-				message.setText(R.string.serverstatus_serveroutdated);
-				button.setText(R.string.button_help);
+				message.setText(R.string.message_serverstatus_serveroutdated);
+				button.setText(R.string.screen_help);
 				button.setOnClickListener(view -> {
 					//Launching the server update URL
 					Intent intent = new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress);
@@ -1539,16 +1538,16 @@ public class Messaging extends AppCompatActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueUnauthorized:
-				message.setText(R.string.serverstatus_authfail);
-				button.setText(R.string.button_reconfigure);
+				message.setText(R.string.message_serverstatus_authfail);
+				button.setText(R.string.action_reconfigure);
 				button.setOnClickListener(view -> {
 					//Launching the connection wizard activity
 					startActivity(new Intent(Messaging.this, ServerSetup.class));
 				});
 				break;
 			case ConnectionService.intentResultValueConnection:
-				message.setText(R.string.serverstatus_noconnection);
-				button.setText(R.string.button_retry);
+				message.setText(R.string.message_serverstatus_noconnection);
+				button.setText(R.string.action_retry);
 				button.setOnClickListener(view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
@@ -1564,8 +1563,8 @@ public class Messaging extends AppCompatActivity {
 				});
 				break;
 			default:
-				message.setText(R.string.serverstatus_unknown);
-				button.setText(R.string.button_retry);
+				message.setText(R.string.message_serverstatus_unknown);
+				button.setText(R.string.action_retry);
 				button.setOnClickListener(view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
@@ -1709,37 +1708,25 @@ public class Messaging extends AppCompatActivity {
 			if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
 				//Creating a dialog
 				AlertDialog dialog = new AlertDialog.Builder(Messaging.this)
-						.setTitle(R.string.dialog_rejected)
-						.setMessage(R.string.dialog_audio_message)
-						.setPositiveButton(R.string.button_retry, new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog, int which) {
-								//Requesting microphone access
-								Constants.requestPermission(Messaging.this, new String[]{Manifest.permission.RECORD_AUDIO}, Constants.permissionRecordAudio);
-								
-								//Dismissing the dialog
-								dialog.dismiss();
-							}
+						.setTitle(R.string.message_permissionrejected)
+						.setMessage(R.string.message_permissiondetails_microphone_failedrequest)
+						.setPositiveButton(R.string.action_retry, (dialogInterface, which) -> {
+							//Requesting microphone access
+							Constants.requestPermission(Messaging.this, new String[]{Manifest.permission.RECORD_AUDIO}, Constants.permissionRecordAudio);
+							
+							//Dismissing the dialog
+							dialogInterface.dismiss();
 						})
-						.setNeutralButton(R.string.settings, new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog, int which) {
-								//Showing the application settings
-								Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-								intent.setData(Uri.parse("package:" + getPackageName()));
-								startActivity(intent);
-								
-								//Dismissing the dialog
-								dialog.dismiss();
-							}
+						.setNeutralButton(R.string.screen_settings, (dialogInterface, which) -> {
+							//Showing the application settings
+							Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+							intent.setData(Uri.parse("package:" + getPackageName()));
+							startActivity(intent);
+							
+							//Dismissing the dialog
+							dialogInterface.dismiss();
 						})
-						.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog, int which) {
-								//Dismissing the dialog
-								dialog.dismiss();
-							}
-						})
+						.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
 						.create();
 				
 				//Displaying the dialog
@@ -1755,7 +1742,7 @@ public class Messaging extends AppCompatActivity {
 		//Checking if there are no apps that can take the intent
 		if(takePictureIntent.resolveActivity(getPackageManager()) == null) {
 			//Telling the user via a toast
-			Toast.makeText(Messaging.this, R.string.intent_nocamera, Toast.LENGTH_SHORT).show();
+			Toast.makeText(Messaging.this, R.string.message_intenterror_camera, Toast.LENGTH_SHORT).show();
 			
 			//Returning
 			return;
@@ -1797,7 +1784,7 @@ public class Messaging extends AppCompatActivity {
 		intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
 		//intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.file_selector)), Constants.intentPickMediaFile);
+		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), Constants.intentPickMediaFile);
 	}
 	
 	private void requestAnyFile() {
@@ -1808,7 +1795,7 @@ public class Messaging extends AppCompatActivity {
 		//intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
 		//intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.file_selector)), Constants.intentPickAnyFile);
+		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), Constants.intentPickAnyFile);
 	}
 	
 	private static boolean stringHasChar(String string) {

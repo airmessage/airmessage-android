@@ -78,8 +78,8 @@ public class ShareHandler extends Activity {
 					break;
 				case ConnectionService.intentExtraStateMassRetrievalFailed:
 					//Displaying a snackbar
-					Snackbar.make(findViewById(R.id.root), R.string.serversync_failed, Snackbar.LENGTH_LONG)
-							.setAction(R.string.button_retry, view -> {
+					Snackbar.make(findViewById(R.id.root), R.string.message_syncerror, Snackbar.LENGTH_LONG)
+							.setAction(R.string.action_retry, view -> {
 								//Getting the connection service
 								ConnectionService service = ConnectionService.getInstance();
 								if(service == null || !service.isConnected()) return;

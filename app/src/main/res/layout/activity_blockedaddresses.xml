@@ -13,20 +13,20 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_centerInParent="true"
-		android:text="@string/loading_blocked_error"
+		android:text="@string/message_loaderror_blocked"
 		android:visibility="gone"/>
 	<TextView
 		android:id="@+id/label_loading"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_centerInParent="true"
-		android:text="@string/loading"
+		android:text="@string/progress_loading"
 		android:visibility="gone"/>
 	<TextView
 		android:id="@+id/label_error"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_centerInParent="true"
-		android:text="@string/loading_blocked_error"
+		android:text="@string/message_loaderror_blocked"
 		android:visibility="gone"/>
 </RelativeLayout>

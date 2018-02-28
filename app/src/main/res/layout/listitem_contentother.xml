@@ -43,7 +43,7 @@
 				android:layout_gravity="center_vertical"
 				android:layout_marginStart="15dp"
 				android:layout_weight="1"
-				android:text="@string/contenttype_other"
+				android:text="@string/part_content_other"
 				android:textColor="@color/colorMessageOutgoingText" />
 			
 			<ImageView
@@ -75,7 +75,7 @@
 				android:layout_gravity="center_vertical"
 				android:layout_marginStart="15dp"
 				android:layout_weight="1"
-				android:text="@string/contenttype_other"
+				android:text="@string/part_content_other"
 				android:textColor="@color/colorMessageOutgoingText" />
 			
 			<ImageView
@@ -106,7 +106,7 @@
 				android:layout_gravity="center_vertical"
 				android:layout_marginStart="15dp"
 				android:layout_weight="1"
-				android:text="@string/contenttype_image"
+				android:text="@string/part_content_image"
 				android:textColor="@color/colorMessageOutgoingText" />
 			
 			<ImageView

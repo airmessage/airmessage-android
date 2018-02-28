@@ -67,6 +67,7 @@ public class Conversations extends AppCompatActivity {
 	private ListView listView;
 	private ViewGroup serverWarning;
 	private ProgressBar massRetrievalProgressBar;
+	private TextView noConversationsLabel;
 	
 	//Creating the menu values
 	private MenuItem searchMenuItem = null;
@@ -83,7 +84,7 @@ public class Conversations extends AppCompatActivity {
 	static final byte stateReady = 3;
 	static final byte stateLoadError = 4;
 	private byte currentState = stateIdle;
-	private boolean conversationsExist = false;
+	private boolean conversationsAvailable = false;
 	private boolean listingArchived = false;
 	
 	//Creating the state values
@@ -133,7 +134,7 @@ public class Conversations extends AppCompatActivity {
 			else nonArchivedConversations += checked ? 1 : -1;
 			
 			//Setting the name
-			SpannableString title = new SpannableString(getResources().getQuantityString(R.plurals.conversationsselected, selectedConversations, Integer.toString(selectedConversations)));
+			SpannableString title = new SpannableString(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, Integer.toString(selectedConversations)));
 			title.setSpan(new ForegroundColorSpan(Color.WHITE), 0, title.length(), 0);
 			actionMode.setTitle(title);
 			
@@ -263,7 +264,7 @@ public class Conversations extends AppCompatActivity {
 				//Checking if there are conversations to update in the database
 				if(!updatedConversations.isEmpty()) {
 					//Updating the list
-					updateList();
+					updateList(false);
 					
 					//Creating the content values
 					ContentValues contentValues = new ContentValues();
@@ -277,7 +278,7 @@ public class Conversations extends AppCompatActivity {
 					
 					//Creating a snackbar
 					int affectedCount = updatedConversations.size();
-					Snackbar snackbar = Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.dialog_conversationarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.button_undo, view -> {
+					Snackbar snackbar = Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
 						//Creating the content values
 						ContentValues undoContentValues = new ContentValues();
 						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
@@ -295,7 +296,7 @@ public class Conversations extends AppCompatActivity {
 						}
 						
 						//Updating the list
-						updateList();
+						updateList(false);
 					});
 					
 					//Setting the snackbar's action button's color
@@ -331,7 +332,7 @@ public class Conversations extends AppCompatActivity {
 				//Checking if there are conversations to update in the database
 				if(!updatedConversations.isEmpty()) {
 					//Updating the list
-					updateList();
+					updateList(false);
 					
 					//Creating the content values
 					ContentValues contentValues = new ContentValues();
@@ -345,7 +346,7 @@ public class Conversations extends AppCompatActivity {
 					
 					//Creating a snackbar
 					int affectedCount = updatedConversations.size();
-					Snackbar snackbar = Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.dialog_conversationunarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.button_undo, view -> {
+					Snackbar snackbar = Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationunarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
 						//Creating the content values
 						ContentValues undoContentValues = new ContentValues();
 						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
@@ -360,7 +361,7 @@ public class Conversations extends AppCompatActivity {
 						}
 						
 						//Updating the list
-						updateList();
+						updateList(false);
 					});
 					
 					//Setting the snackbar's action button's color
@@ -382,10 +383,10 @@ public class Conversations extends AppCompatActivity {
 				//Displaying a dialog warning about the message types
 				new AlertDialog.Builder(Conversations.this)
 						//Setting the message
-						.setMessage(getResources().getQuantityString(R.plurals.dialog_deleteconversation, selectedConversations))
+						.setMessage(getResources().getQuantityString(R.plurals.message_confirm_deleteconversation, selectedConversations))
 						//Setting the button
 						.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
-						.setPositiveButton(R.string.button_delete, (dialog, which) -> {
+						.setPositiveButton(R.string.action_delete, (dialog, which) -> {
 							//Creating the to remove list
 							ArrayList<ConversationManager.ConversationInfo> toRemove = new ArrayList<>();
 							
@@ -401,7 +402,7 @@ public class Conversations extends AppCompatActivity {
 							LocalBroadcastManager.getInstance(Conversations.this).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
 							
 							//Updating the list
-							updateList();
+							updateList(false);
 							
 							//Dismissing the dialog
 							dialog.dismiss();
@@ -480,8 +481,8 @@ public class Conversations extends AppCompatActivity {
 					break;
 				case ConnectionService.intentExtraStateMassRetrievalFailed:
 					//Displaying a snackbar
-					Snackbar.make(findViewById(R.id.root), R.string.serversync_failed, Snackbar.LENGTH_LONG)
-							.setAction(R.string.button_retry, view -> {
+					Snackbar.make(findViewById(R.id.root), R.string.message_syncerror, Snackbar.LENGTH_LONG)
+							.setAction(R.string.action_retry, view -> {
 								//Getting the connection service
 								ConnectionService service = ConnectionService.getInstance();
 								if(service == null || !service.isConnected()) return;
@@ -510,7 +511,7 @@ public class Conversations extends AppCompatActivity {
 	private final BroadcastReceiver updateConversationsBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			updateList();
+			updateList(false);
 		}
 	};
 	
@@ -620,6 +621,7 @@ public class Conversations extends AppCompatActivity {
 		listView = findViewById(R.id.list);
 		serverWarning = findViewById(R.id.serverwarning);
 		massRetrievalProgressBar = findViewById(R.id.syncview_progress);
+		noConversationsLabel = findViewById(R.id.no_conversations);
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), listView);
@@ -729,6 +731,9 @@ public class Conversations extends AppCompatActivity {
 				break;
 		}
 		
+		//Setting the new state
+		currentState = state;
+		
 		//Enabling the new state
 		switch(state) {
 			case stateLoading:
@@ -762,12 +767,14 @@ public class Conversations extends AppCompatActivity {
 				listView.animate()
 						.alpha(1)
 						.withStartAction(() -> listView.setVisibility(View.VISIBLE));
-				if(conversations.isEmpty()) {
+				
+				updateList(true);
+				/* if(conversations.isEmpty()) {
 					View noConversations = findViewById(R.id.no_conversations);
 					noConversations.animate()
 							.alpha(1)
 							.withStartAction(() -> noConversations.setVisibility(View.VISIBLE));
-				}
+				} */
 				break;
 			case stateLoadError:
 				View errorView = findViewById(R.id.errorview);
@@ -776,9 +783,6 @@ public class Conversations extends AppCompatActivity {
 						.withStartAction(() -> errorView.setVisibility(View.VISIBLE));
 				break;
 		}
-		
-		//Setting the new state
-		currentState = state;
 	}
 	
 	void conversationLoadFinished(ArrayList<ConversationManager.ConversationInfo> result) {
@@ -789,12 +793,11 @@ public class Conversations extends AppCompatActivity {
 			conversations.setLoaded(true);
 		}
 		
+		//Setting the list adapter
+		listView.setAdapter(new ListAdapter(conversations));
+		
 		//Setting the state
 		setState(stateReady);
-		
-		//Updating the list
-		listView.setAdapter(new ListAdapter(conversations));
-		updateList();
 		
 		//Updating the views
 		//for(ConversationManager.ConversationInfo conversationInfo : ConversationManager.getConversations()) conversationInfo.updateView(Conversations.this);
@@ -1004,7 +1007,7 @@ public class Conversations extends AppCompatActivity {
 		findViewById(R.id.contactnotice).setVisibility(MainApplication.canUseContacts(this) ? View.GONE : View.VISIBLE);
 		
 		//Refreshing the list
-		updateList();
+		updateList(false);
 	}
 	
 	public void onRequestContactsClick(View view) {
@@ -1024,8 +1027,8 @@ public class Conversations extends AppCompatActivity {
 			//Otherwise checking if the result is a denial
 			else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
 				//Showing a snackbar
-				Snackbar.make(findViewById(R.id.root), R.string.permission_rejected, Snackbar.LENGTH_LONG)
-						.setAction(R.string.settings, view -> {
+				Snackbar.make(findViewById(R.id.root), R.string.message_permissionrejected, Snackbar.LENGTH_LONG)
+						.setAction(R.string.screen_settings, view -> {
 							//Opening the application settings
 							Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
 							intent.setData(Uri.parse("package:" + getPackageName()));
@@ -1092,9 +1095,9 @@ public class Conversations extends AppCompatActivity {
 			case R.id.action_feedback: //Send feedback
 				//Showing a dialog
 				new AlertDialog.Builder(this)
-						.setTitle(R.string.feedback)
-						.setMessage(R.string.feedback_message)
-						.setNeutralButton(R.string.feedback_email, (dialog, which) -> {
+						.setTitle(R.string.action_sendfeedback)
+						.setMessage(R.string.dialog_feedback_message)
+						.setNeutralButton(R.string.dialog_feedback_email, (dialog, which) -> {
 							//Creating the intent
 							Intent intent = new Intent(Intent.ACTION_SENDTO);
 							intent.setData(Uri.parse("mailto:"));
@@ -1111,16 +1114,16 @@ public class Conversations extends AppCompatActivity {
 							
 							//Launching the intent
 							if(intent.resolveActivity(getPackageManager()) != null) startActivity(intent);
-							else Toast.makeText(this, R.string.intent_noemail, Toast.LENGTH_SHORT).show();
+							else Toast.makeText(this, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
 						})
-						.setPositiveButton(R.string.feedback_googleplus, (dialog, which) -> {
+						.setPositiveButton(R.string.dialog_feedback_googleplus, (dialog, which) -> {
 							//Creating the intent
 							Intent intent = new Intent(Intent.ACTION_VIEW, Constants.googlePlusCommunityAddress);
 							intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 							
 							//Launching the intent
 							if(intent.resolveActivity(getPackageManager()) != null) startActivity(intent);
-							else Toast.makeText(this, R.string.intent_nobrowser, Toast.LENGTH_SHORT).show();
+							else Toast.makeText(this, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
 						})
 						.create().show();
 				
@@ -1183,8 +1186,8 @@ public class Conversations extends AppCompatActivity {
 		
 		switch(reason) {
 			case ConnectionService.intentResultValueInternalException:
-				message.setText(getResources().getString(R.string.serverstatus_limitedfunctionality, getResources().getString(R.string.serverstatus_internalexception)));
-				button.setText(R.string.button_retry);
+				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_internalexception)));
+				button.setText(R.string.action_retry);
 				button.setOnClickListener(view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
@@ -1200,8 +1203,8 @@ public class Conversations extends AppCompatActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueBadRequest:
-				message.setText(getResources().getString(R.string.serverstatus_limitedfunctionality, getResources().getString(R.string.serverstatus_badrequest)));
-				button.setText(R.string.button_retry);
+				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_badrequest)));
+				button.setText(R.string.action_retry);
 				button.setOnClickListener(view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
@@ -1217,23 +1220,23 @@ public class Conversations extends AppCompatActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueClientOutdated:
-				message.setText(getResources().getString(R.string.serverstatus_limitedfunctionality, getResources().getString(R.string.serverstatus_clientoutdated)));
-				button.setText(R.string.button_update);
+				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_clientoutdated)));
+				button.setText(R.string.action_update);
 				button.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))));
 				break;
 			case ConnectionService.intentResultValueServerOutdated:
-				message.setText(getResources().getString(R.string.serverstatus_limitedfunctionality, getResources().getString(R.string.serverstatus_serveroutdated)));
-				button.setText(R.string.button_help);
+				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_serveroutdated)));
+				button.setText(R.string.screen_help);
 				button.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)));
 				break;
 			case ConnectionService.intentResultValueUnauthorized:
-				message.setText(getResources().getString(R.string.serverstatus_limitedfunctionality, getResources().getString(R.string.serverstatus_authfail)));
-				button.setText(R.string.button_reconfigure);
+				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_authfail)));
+				button.setText(R.string.action_reconfigure);
 				button.setOnClickListener(view -> startActivity(new Intent(Conversations.this, ServerSetup.class)));
 				break;
 			case ConnectionService.intentResultValueConnection:
-				message.setText(getResources().getString(R.string.serverstatus_limitedfunctionality, getResources().getString(R.string.serverstatus_noconnection)));
-				button.setText(R.string.button_retry);
+				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_noconnection)));
+				button.setText(R.string.action_retry);
 				button.setOnClickListener(view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
@@ -1249,8 +1252,8 @@ public class Conversations extends AppCompatActivity {
 				});
 				break;
 			default:
-				message.setText(getResources().getString(R.string.serverstatus_limitedfunctionality, getResources().getString(R.string.serverstatus_unknown)));
-				button.setText(R.string.button_retry);
+				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_unknown)));
+				button.setText(R.string.action_retry);
 				button.setOnClickListener(view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
@@ -1282,7 +1285,7 @@ public class Conversations extends AppCompatActivity {
 		serverWarning.findViewById(R.id.serverwarning_button).setEnabled(false);
 	}
 	
-	public void updateList() {
+	public void updateList(boolean forceUpdate) {
 		//Returning if the conversations aren't ready
 		if(conversations == null || !conversations.isLoaded()) return;
 		
@@ -1296,13 +1299,25 @@ public class Conversations extends AppCompatActivity {
 		if(currentState != stateReady) return;
 		
 		//Getting and checking if there are conversations
-		boolean newConversationsExist = listAdapter.filteredItems.isEmpty();
-		if(newConversationsExist != conversationsExist) {
-			//Setting "no conversations" view state
-			(findViewById(R.id.no_conversations)).animate().alpha(newConversationsExist ? 1 : 0).start();
+		boolean newConversationsAvailable = !listAdapter.filteredItems.isEmpty();
+		if(forceUpdate || newConversationsAvailable != conversationsAvailable) {
+			//Checking if there are conversations to display
+			if(newConversationsAvailable) {
+				//Hiding the label
+				noConversationsLabel.animate().alpha(0).withEndAction(() -> noConversationsLabel.setVisibility(View.GONE)).start();
+			} else {
+				//Showing the label
+				noConversationsLabel.animate().alpha(1).withStartAction(() -> noConversationsLabel.setVisibility(View.VISIBLE)).start();
+			}
 			
 			//Setting the new state
-			conversationsExist = newConversationsExist;
+			conversationsAvailable = newConversationsAvailable;
+		}
+		
+		//Checking if conversations are unavailable
+		if(!newConversationsAvailable) {
+			//Updating the label's text
+			noConversationsLabel.setText(!listingArchived ? R.string.message_blankstate_conversations : R.string.message_blankstate_conversations_archived);
 		}
 	}
 	
@@ -1443,14 +1458,14 @@ public class Conversations extends AppCompatActivity {
 		ActionBar actionBar = getSupportActionBar();
 		if(state) {
 			actionBar.setDisplayHomeAsUpEnabled(true);
-			actionBar.setTitle(R.string.archived_conversations);
+			actionBar.setTitle(R.string.screen_archived);
 		} else {
 			actionBar.setDisplayHomeAsUpEnabled(false);
 			actionBar.setTitle(R.string.app_name);
 		}
 		
 		//Updating the list adapter
-		updateList();
+		updateList(false);
 		//((ListAdapter) listView.getAdapter()).filterAndUpdate();
 	}
 	
@@ -1511,12 +1526,10 @@ public class Conversations extends AppCompatActivity {
 	static class DeleteAttachmentsTask extends AsyncTask<Void, Void, Void> {
 		//Creating the values
 		private final WeakReference<Context> contextReference;
-		private final WeakReference<View> snackbarParentReference;
 		
-		DeleteAttachmentsTask(Context context, View snackbarParent) {
+		DeleteAttachmentsTask(Context context) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
-			snackbarParentReference = new WeakReference<>(snackbarParent);
 		}
 		
 		@Override
@@ -1531,33 +1544,15 @@ public class Conversations extends AppCompatActivity {
 			//Returning
 			return null;
 		}
-		
-		@Override
-		protected void onPostExecute(Void result) {
-			//Getting the snackbar parent view
-			View parentView = snackbarParentReference.get();
-			if(parentView == null) return;
-			
-			//Showing a snackbar
-			Snackbar snackbar = Snackbar.make(parentView, R.string.preferences_deleteattachments_finished, Snackbar.LENGTH_LONG);
-			
-			//Setting the snackbar's action button's color
-			snackbar.setActionTextColor(parentView.getContext().getResources().getColor(R.color.colorAccent, null));
-			
-			//Showing the snackbar
-			snackbar.show();
-		}
 	}
 	
 	static class DeleteMessagesTask extends AsyncTask<Void, Void, Void> {
 		//Creating the values
 		private final WeakReference<Context> contextReference;
-		private final WeakReference<View> snackbarParentReference;
 		
-		DeleteMessagesTask(Context context, View snackbarParent) {
+		DeleteMessagesTask(Context context) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
-			snackbarParentReference = new WeakReference<>(snackbarParent);
 		}
 		
 		@Override
@@ -1585,22 +1580,6 @@ public class Conversations extends AppCompatActivity {
 			
 			//Returning
 			return null;
-		}
-		
-		@Override
-		protected void onPostExecute(Void result) {
-			//Getting the snackbar parent view
-			View parentView = snackbarParentReference.get();
-			if(parentView == null) return;
-			
-			//Showing a snackbar
-			Snackbar snackbar = Snackbar.make(parentView, R.string.preferences_deleteall_finished, Snackbar.LENGTH_LONG);
-			
-			//Setting the snackbar text to white
-			((TextView) snackbar.getView().findViewById(android.support.design.R.id.snackbar_text)).setTextColor(Color.WHITE);
-			
-			//Showing the snackbar
-			snackbar.show();
 		}
 	}
 	
@@ -1654,7 +1633,7 @@ public class Conversations extends AppCompatActivity {
 			ConnectionService connectionService = ConnectionService.getInstance();
 			boolean messageResult = connectionService != null && connectionService.requestMassRetrieval(context);
 			if(!messageResult) {
-				Toast.makeText(context, R.string.no_connection, Toast.LENGTH_SHORT).show();
+				Toast.makeText(context, R.string.message_connectionerrror, Toast.LENGTH_SHORT).show();
 				return;
 			}
 			
@@ -1663,7 +1642,7 @@ public class Conversations extends AppCompatActivity {
 			if(parentView == null) return;
 			
 			//Showing a snackbar
-			Snackbar snackbar = Snackbar.make(parentView, R.string.dialog_resyncmessages_finished, Snackbar.LENGTH_LONG);
+			Snackbar snackbar = Snackbar.make(parentView, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_LONG);
 			
 			//Setting the snackbar text to white
 			((TextView) snackbar.getView().findViewById(android.support.design.R.id.snackbar_text)).setTextColor(Color.WHITE);

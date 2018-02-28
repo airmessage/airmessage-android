@@ -13,7 +13,7 @@
 		android:layout_marginLeft="24dp"
 		android:layout_marginRight="24dp"
 		android:layout_marginTop="24dp"
-		android:text="@string/select_conversation"
+		android:text="@string/imperative_selectconversation"
 		android:textSize="20sp"
 		android:fontFamily="sans-serif-medium"
 		android:textColor="?android:attr/textColorPrimary"/>
@@ -42,7 +42,7 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
-			android:text="@string/loading"
+			android:text="@string/progress_loading"
 			android:textColor="?android:textColorSecondary"
 			android:textAlignment="center"
 			android:visibility="gone" />
@@ -53,8 +53,9 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
-			android:text="@string/no_conversations"
+			android:text="@string/message_blankstate_conversations_basic"
 			android:textAlignment="center"
+			android:alpha="0"
 			android:visibility="gone"/>
 		
 		<!-- Sync view -->
@@ -79,7 +80,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="@string/syncing_messages"
+				android:text="@string/progress_sync"
 				android:tint="?android:attr/textColorSecondary" />
 			
 			<ProgressBar
@@ -105,7 +106,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="@string/loading_messages_error"
+				android:text="@string/message_loaderror_messages"
 				android:tint="?android:attr/textColorSecondary" />
 			
 			<Button
@@ -113,7 +114,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="@string/button_retry"
+				android:text="@string/action_retry"
 				android:textColor="@color/colorPrimary" />
 		</LinearLayout>
 		
@@ -135,7 +136,7 @@
 				android:layout_marginLeft="16dp"
 				android:layout_marginRight="16dp"
 				android:layout_marginTop="12dp"
-				android:text="@string/serverstatus_noconnection"
+				android:text="@string/message_serverstatus_noconnection"
 				android:textColor="?android:attr/textColorSecondary" />
 			
 			<Button
@@ -144,7 +145,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="@string/button_retry"
+				android:text="@string/action_retry"
 				android:textColor="@color/colorAccent" />
 		</LinearLayout>
 	</RelativeLayout>
@@ -181,7 +182,7 @@
 			android:layout_height="wrap_content"
 			android:layout_gravity="center"
 			android:minWidth="64dp"
-			android:text="@string/new_message"
+			android:text="@string/screen_newmessage"
 			android:textColor="@color/colorPrimary"
 			android:onClick="createNewConversation"/>
 	</LinearLayout>

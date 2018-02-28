@@ -20,7 +20,8 @@
 		<activity
 			android:label="@string/app_name"
 			android:launchMode="singleTop"
-			android:name=".Conversations">
+			android:name=".Conversations"
+			android:windowSoftInputMode="adjustResize">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />
@@ -36,20 +37,20 @@
 		<!-- New Message -->
 		<activity
 			android:exported="false"
-			android:label="@string/new_conversation"
+			android:label="@string/screen_newconversation"
 			android:name=".NewMessage"
 			android:parentActivityName=".Conversations"
-			android:windowSoftInputMode="stateVisible" />
+			android:windowSoftInputMode="adjustResize|stateVisible" />
 		<!-- Conversation information -->
 		<activity
 			android:exported="false"
-			android:label="@string/conversation_details"
+			android:label="@string/screen_conversationdetails"
 			android:name=".MessagingInfo"
 			android:parentActivityName=".Messaging" />
 		<!-- Preferences -->
 		<activity
 			android:exported="false"
-			android:label="@string/settings"
+			android:label="@string/screen_settings"
 			android:name=".Preferences"
 			android:parentActivityName=".Conversations"
 			android:theme="@style/AppTheme.AppCompat">
@@ -96,7 +97,7 @@
 			android:name=".NotificationUtils$NotificationResponse" />
 		<!-- Server connection manager service -->
 		<service
-			android:description="@string/serverservice_description"
+			android:description="@string/servicedesc_connectionservice"
 			android:exported="false"
 			android:name=".ConnectionService" />
 		<provider

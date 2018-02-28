@@ -56,16 +56,16 @@ public class Preferences extends PreferenceActivity {
 		//Creating a dialog
 		AlertDialog dialog = new AlertDialog.Builder(Preferences.this)
 				//Setting the name
-				.setMessage(R.string.preferences_deleteattachments_dialog)
+				.setMessage(R.string.message_confirm_deleteattachments)
 				//Setting the negative button
 				.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> {
 					//Dismissing the dialog
 					dialogInterface.dismiss();
 				})
 				//Setting the positive button
-				.setPositiveButton(R.string.button_delete, (DialogInterface dialogInterface, int which) -> {
+				.setPositiveButton(R.string.action_delete, (DialogInterface dialogInterface, int which) -> {
 							//Deleting the attachments
-							new Conversations.DeleteAttachmentsTask(getApplicationContext(), getListView()).execute();
+							new Conversations.DeleteAttachmentsTask(getApplicationContext()).execute();
 						}
 				)
 				//Creating the dialog
@@ -81,16 +81,16 @@ public class Preferences extends PreferenceActivity {
 		//Creating a dialog
 		AlertDialog dialog = new AlertDialog.Builder(Preferences.this)
 				//Setting the name
-				.setMessage(R.string.preferences_deleteall_dialog)
+				.setMessage(R.string.message_confirm_deletemessages)
 				//Setting the negative button
 				.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> {
 					//Dismissing the dialog
 					dialogInterface.dismiss();
 				})
 				//Setting the positive button
-				.setPositiveButton(R.string.button_delete, (DialogInterface dialogInterface, int which) -> {
+				.setPositiveButton(R.string.action_delete, (DialogInterface dialogInterface, int which) -> {
 					//Deleting the messages
-					new Conversations.DeleteMessagesTask(getApplicationContext(), getListView()).execute();
+					new Conversations.DeleteMessagesTask(getApplicationContext()).execute();
 				})
 				//Creating the dialog
 				.create();
@@ -106,7 +106,7 @@ public class Preferences extends PreferenceActivity {
 		ConnectionService service = ConnectionService.getInstance();
 		if(service == null || !service.isConnected()) {
 			//Displaying a snackbar
-			Snackbar.make(getListView(), R.string.serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
+			Snackbar.make(getListView(), R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
 			
 			//Returning
 			return true;
@@ -115,7 +115,7 @@ public class Preferences extends PreferenceActivity {
 		//Checking if there is already a mass retrieval in progress
 		if(service.isMassRetrievalInProgress()) {
 			//Displaying a snackbar
-			Snackbar.make(getListView(), R.string.dialog_resyncmessages_inprogress, Snackbar.LENGTH_LONG).show();
+			Snackbar.make(getListView(), R.string.message_confirm_resyncmessages_inprogress, Snackbar.LENGTH_LONG).show();
 			
 			//Returning
 			return true;
@@ -124,12 +124,12 @@ public class Preferences extends PreferenceActivity {
 		//Creating a dialog
 		AlertDialog dialog = new AlertDialog.Builder(Preferences.this)
 				//Setting the text
-				.setTitle(R.string.dialog_resyncmessages_title)
-				.setMessage(R.string.dialog_resyncmessages_message)
+				.setTitle(R.string.message_confirm_resyncmessages)
+				.setMessage(R.string.message_confirm_resyncmessages_description)
 				//Setting the negative button
 				.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> dialogInterface.dismiss())
 				//Setting the positive button
-				.setPositiveButton(R.string.button_resync, (DialogInterface dialogInterface, int which) -> new Conversations.SyncMessagesTask(getApplicationContext(), getListView()).execute())
+				.setPositiveButton(R.string.action_resync, (DialogInterface dialogInterface, int which) -> new Conversations.SyncMessagesTask(getApplicationContext(), getListView()).execute())
 				//Creating the dialog
 				.create();
 		
@@ -247,7 +247,7 @@ public class Preferences extends PreferenceActivity {
 				summary = getResources().getString(R.string.notificationchannelimportance_5);
 				break; */
 			default:
-				summary = getResources().getString(android.R.string.unknownName);
+				summary = getResources().getString(R.string.part_unknown);
 				break;
 		}
 		

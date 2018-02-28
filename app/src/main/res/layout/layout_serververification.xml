@@ -16,7 +16,7 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:labelFor="@+id/input_address"
-			android:text="@string/serververification_title"
+			android:text="@string/message_setup_connect_title"
 			android:textSize="24sp"
 			android:textStyle="bold" />
 		<!-- Address Box -->
@@ -34,14 +34,14 @@
 		<TextView
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:text="@string/serververification_noserver"
+			android:text="@string/message_setup_connect_noserver"
 			android:textColor="?android:textColorSecondary"
 			android:textSize="18sp" />
 		<!-- Server guide link -->
 		<TextView
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:text="@string/serververification_serverguidelink"
+			android:text="@string/message_setup_connect_serverguidelink"
 			android:textColor="@color/colorPrimary"
 			android:textSize="18sp"
 			android:textStyle="bold"
@@ -52,7 +52,7 @@
 			android:layout_height="wrap_content"
 			android:layout_marginTop="30dp"
 			android:labelFor="@+id/input_username"
-			android:text="@string/serververification_authentication"
+			android:text="@string/message_setup_connect_authentication"
 			android:textSize="18sp"
 			android:textStyle="bold" />
 		<!-- <EditText

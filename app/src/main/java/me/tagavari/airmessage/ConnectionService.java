@@ -376,8 +376,8 @@ public class ConnectionService extends Service {
 		//Building the notification
 		Notification notification = new NotificationCompat.Builder(this, MainApplication.notificationChannelStatus)
 				.setSmallIcon(R.drawable.push)
-				.setContentTitle(isConnected ? getResources().getString(R.string.servicenotification_connected) : getResources().getString(R.string.servicenotification_connecting))
-				.setContentText(getResources().getString(R.string.servicenotification_description))
+				.setContentTitle(isConnected ? getResources().getString(R.string.message_connection_connected) : getResources().getString(R.string.progress_connectingtoserver))
+				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
 				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT))
 				.addAction(-1, getResources().getString(R.string.action_disconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionDisconnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.addAction(-1, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
@@ -397,8 +397,8 @@ public class ConnectionService extends Service {
 		//Building and returning the notification
 		return new NotificationCompat.Builder(this, MainApplication.notificationChannelStatus)
 				.setSmallIcon(R.drawable.warning)
-				.setContentTitle(getResources().getString(R.string.servicenotification_disconnected))
-				.setContentText(getResources().getString(R.string.servicenotification_description))
+				.setContentTitle(getResources().getString(R.string.message_connection_disconnected))
+				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
 				.setColor(getResources().getColor(R.color.colorServerDisconnected))
 				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT))
 				.addAction(-1, getResources().getString(R.string.action_reconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))

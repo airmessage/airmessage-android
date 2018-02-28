@@ -133,7 +133,7 @@ class NotificationUtils {
 		
 		//Creating the remote input
 		RemoteInput remoteInput = new RemoteInput.Builder(Constants.notificationReplyKey)
-				.setLabel(context.getResources().getString(R.string.notification_remoteinput_reply))
+				.setLabel(context.getResources().getString(R.string.action_sendmessage))
 				.build();
 		
 		//Creating the reply intent
@@ -144,7 +144,7 @@ class NotificationUtils {
 		PendingIntent replyPendingIntent = PendingIntent.getBroadcast(context.getApplicationContext(), (int) conversationInfo.getLocalID(), replyIntent, 0);
 		
 		//Getting a notification action from the remote input
-		NotificationCompat.Action action = new NotificationCompat.Action.Builder(R.drawable.reply, context.getResources().getString(R.string.button_reply), replyPendingIntent).setAllowGeneratedReplies(true).addRemoteInput(remoteInput).build();
+		NotificationCompat.Action action = new NotificationCompat.Action.Builder(R.drawable.reply, context.getResources().getString(R.string.action_reply), replyPendingIntent).setAllowGeneratedReplies(true).addRemoteInput(remoteInput).build();
 		
 		//Adding the action
 		notificationBuilder.addAction(action);

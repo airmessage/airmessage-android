@@ -177,10 +177,10 @@ public class ServerSetup extends Activity {
 			if(ConversationManager.getConversations() != null) {
 				//Showing a warning
 				new AlertDialog.Builder(this)
-						.setTitle(R.string.serversync_warning_title)
-						.setMessage(R.string.serversync_warning_description)
-						.setNegativeButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
-						.setPositiveButton(R.string.button_skip, (dialog, which) -> finishSetup())
+						.setTitle(R.string.message_setup_sync_warning_title)
+						.setMessage(R.string.message_setup_sync_description)
+						.setNegativeButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
+						.setPositiveButton(R.string.action_skip, (dialog, which) -> finishSetup())
 						.create().show();
 			} else {
 				//Finishing the setup
@@ -221,7 +221,7 @@ public class ServerSetup extends Activity {
 				layoutSync.animate().translationX(layoutSync.getWidth());
 				
 				//Setting the "NEXT" button
-				((TextView) findViewById(R.id.nextbuttonlabel)).setText(R.string.button_next);
+				((TextView) findViewById(R.id.nextbuttonlabel)).setText(R.string.action_next);
 				if(isRequired) findViewById(R.id.backbutton).setVisibility(View.GONE);
 				
 				//Enabling the input fields
@@ -251,7 +251,7 @@ public class ServerSetup extends Activity {
 				layoutSync.setVisibility(View.VISIBLE);
 				
 				//Setting the "SKIP" button
-				((TextView) findViewById(R.id.nextbuttonlabel)).setText(R.string.button_skip);
+				((TextView) findViewById(R.id.nextbuttonlabel)).setText(R.string.action_skip);
 				findViewById(R.id.backbutton).setVisibility(View.VISIBLE);
 				
 				break;
@@ -311,46 +311,46 @@ public class ServerSetup extends Activity {
 		switch(reason) {
 			case ConnectionService.intentResultValueInternalException: //Internal exception
 				alertDialog = new AlertDialog.Builder(this)
-						.setTitle(R.string.serververification_connectionerror)
-						.setMessage(R.string.serverstatus_internalexception)
-						.setPositiveButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.setTitle(R.string.message_setup_connect_connectionerror)
+						.setMessage(R.string.message_serverstatus_internalexception)
+						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultValueBadRequest: //Bad request
 				alertDialog = new AlertDialog.Builder(this)
-						.setTitle(R.string.serververification_connectionerror)
-						.setMessage(R.string.serverstatus_badrequest)
-						.setPositiveButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.setTitle(R.string.message_setup_connect_connectionerror)
+						.setMessage(R.string.message_serverstatus_badrequest)
+						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultValueConnection: //Connection failed
 				alertDialog = new AlertDialog.Builder(this)
-						.setTitle(R.string.serververification_connectionerror)
-						.setMessage(R.string.no_connection)
-						.setPositiveButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.setTitle(R.string.message_setup_connect_connectionerror)
+						.setMessage(R.string.message_connectionerrror)
+						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultValueUnauthorized: //Authentication failed
 				alertDialog = new AlertDialog.Builder(this)
-						.setTitle(R.string.serververification_connectionerror)
-						.setMessage(R.string.serverstatus_authfail)
-						.setPositiveButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.setTitle(R.string.message_setup_connect_connectionerror)
+						.setMessage(R.string.message_serverstatus_authfail)
+						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultValueClientOutdated: //Client outdated
 				alertDialog = new AlertDialog.Builder(this)
-						.setTitle(R.string.serververification_connectionerror)
-						.setMessage(R.string.serverstatus_clientoutdated)
-						.setPositiveButton(R.string.button_update, (dialog, which) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))))
-						.setNegativeButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.setTitle(R.string.message_setup_connect_connectionerror)
+						.setMessage(R.string.message_serverstatus_clientoutdated)
+						.setPositiveButton(R.string.action_update, (dialog, which) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))))
+						.setNegativeButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultValueServerOutdated: //Server outdated
 				alertDialog = new AlertDialog.Builder(this)
-						.setTitle(R.string.serververification_connectionerror)
-						.setMessage(R.string.serverstatus_serveroutdated)
-						.setPositiveButton(R.string.button_help, (dialog, which) -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)))
-						.setNegativeButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss())
+						.setTitle(R.string.message_setup_connect_connectionerror)
+						.setMessage(R.string.message_serverstatus_serveroutdated)
+						.setPositiveButton(R.string.screen_help, (dialog, which) -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)))
+						.setNegativeButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 		}
@@ -372,7 +372,7 @@ public class ServerSetup extends Activity {
 	private void deleteMessages(final boolean requestAfter) {
 		//Deleting / syncing the messages
 		if(requestAfter) new Conversations.SyncMessagesTask(getApplicationContext(), null).execute();
-		else new Conversations.DeleteMessagesTask(getApplicationContext(), null).execute();
+		else new Conversations.DeleteMessagesTask(getApplicationContext()).execute();
 		
 		//Finishing the activity
 		finishSetup();
@@ -383,7 +383,7 @@ public class ServerSetup extends Activity {
 		intent.setData(Constants.serverSetupAddress);
 		
 		if(intent.resolveActivity(getPackageManager()) != null) startActivity(intent);
-		else Toast.makeText(this, R.string.intent_nobrowser, Toast.LENGTH_SHORT).show();
+		else Toast.makeText(this, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
 		startActivity(intent);
 	}
 }

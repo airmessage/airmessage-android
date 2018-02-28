@@ -777,7 +777,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				return new ConversationManager.LightConversationItem(summary, date);
 			case ConversationManager.ChatCreationMessage.itemType: //Chat creation
 				//Returning the light conversation item
-				return new ConversationManager.LightConversationItem(context.getString(R.string.conversation_created), date);
+				return new ConversationManager.LightConversationItem(context.getString(R.string.message_conversationcreated), date);
 		}
 		
 		//Returning the light message info

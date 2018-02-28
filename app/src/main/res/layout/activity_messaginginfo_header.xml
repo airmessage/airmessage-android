@@ -53,7 +53,7 @@
 			android:layout_height="wrap_content"
 			android:layout_gravity="center"
 			android:layout_weight="1"
-			android:text="@string/conversationmembers"
+			android:text="@string/title_conversation_members"
 			android:textColor="?android:textColorSecondary"
 			android:textSize="16sp" />
 		
@@ -98,7 +98,7 @@
 			android:layout_height="wrap_content"
 			android:layout_gravity="center"
 			android:layout_weight="1"
-			android:text="@string/conversationcontent"
+			android:text="@string/title_conversation_files"
 			android:textColor="?android:textColorSecondary"
 			android:textSize="16sp" />
 		
@@ -108,10 +108,10 @@
 			android:layout_gravity="center"
 			android:layout_weight="0"
 			android:background="?android:attr/selectableItemBackgroundBorderless"
-			android:contentDescription="@string/button_delete"
+			android:contentDescription="@string/action_delete"
 			android:src="@drawable/delete"
 			android:tag="@string/tag_primarytint"
 			android:tint="@color/colorPrimary"
-			android:tooltipText="@string/button_delete" />
+			android:tooltipText="@string/action_delete" />
 	</LinearLayout>
 </LinearLayout>

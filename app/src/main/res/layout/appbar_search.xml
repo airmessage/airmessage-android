@@ -11,7 +11,7 @@
 		android:layout_gravity="center_vertical"
 		android:layout_weight="1"
 		android:background="@null"
-		android:hint="@string/search"
+		android:hint="@string/action_search"
 		android:imeOptions="flagNoExtractUi|actionDone"
 		android:inputType="text|none"
 		android:maxLines="1"
