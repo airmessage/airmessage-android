@@ -371,8 +371,8 @@ public class ServerSetup extends Activity {
 	
 	private void deleteMessages(final boolean requestAfter) {
 		//Deleting / syncing the messages
-		if(requestAfter) new Conversations.SyncMessagesTask(getApplicationContext(), null).execute();
-		else new Conversations.DeleteMessagesTask(getApplicationContext()).execute();
+		if(requestAfter) new ConversationsBase.SyncMessagesTask(getApplicationContext(), null).execute();
+		else new ConversationsBase.DeleteMessagesTask(getApplicationContext()).execute();
 		
 		//Finishing the activity
 		finishSetup();

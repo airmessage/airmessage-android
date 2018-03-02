@@ -72,6 +72,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.zip.DataFormatException;
 
 import me.tagavari.airmessage.common.SharedValues;
@@ -1154,7 +1155,10 @@ class ConversationManager {
 			else return leastUsedColors.get(Constants.getRandom().nextInt(leastUsedColors.size()));
 		}
 		
-		static int[] getMassUserColors(int userCount) {
+		int[] getMassUserColors(int userCount) {
+			//Creating a random generator based on the GUID
+			Random random = new Random(guid.hashCode());
+			
 			//Creating the color array
 			int[] array = new int[userCount];
 			
@@ -1165,7 +1169,7 @@ class ConversationManager {
 				if(colors.isEmpty()) colors.addAll(Arrays.asList(standardUserColors));
 				
 				//Picking a color
-				Integer color = colors.get(Constants.getRandom().nextInt(colors.size()));
+				Integer color = colors.get(random.nextInt(colors.size()));
 				
 				//Setting the color
 				array[i] = color;
@@ -1417,6 +1421,10 @@ class ConversationManager {
 		void setConversationColor(int conversationColor) {
 			//Setting the color
 			this.conversationColor = conversationColor;
+		}
+		
+		static int getDefaultConversationColor(String guid) {
+			return standardUserColors[new Random(guid.hashCode()).nextInt(standardUserColors.length)];
 		}
 		
 		static String getFormattedTime(long date) {
@@ -3503,7 +3511,10 @@ class ConversationManager {
 				//Showing the standard download content view
 				view.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
 				view.findViewById(R.id.content).setVisibility(View.GONE);
-				view.findViewById(R.id.failedcontent).setVisibility(View.GONE);
+				{
+					View failedContent = view.findViewById(R.id.failedcontent);
+					if(failedContent != null) failedContent.setVisibility(View.GONE);
+				}
 				view.findViewById(R.id.processingcontent).setVisibility(View.GONE);
 				
 				view.findViewById(R.id.download_label).setVisibility(View.VISIBLE);

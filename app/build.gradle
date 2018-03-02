@@ -48,23 +48,27 @@ android {
 }
 
 dependencies {
+	def supportLibraryVersion = "27.1.0"
+	def firebaseVersion = "11.8.0"
+
 	compile fileTree(include: ['*.jar'], dir: 'libs')
-	testCompile 'junit:junit:4.12'
-	compile 'com.android.support:appcompat-v7:27.0.2'
-	compile 'com.android.support:design:27.0.2'
-	compile 'com.android.support:cardview-v7:27.0.2'
-	compile 'com.android.support:customtabs:27.0.2'
+	testCompile "junit:junit:4.12"
+	compile "com.android.support:appcompat-v7:$supportLibraryVersion"
+	compile "com.android.support:design:$supportLibraryVersion"
+	compile "com.android.support:cardview-v7:$supportLibraryVersion"
+	compile "com.android.support:customtabs:$supportLibraryVersion"
 	compile 'com.google.android:flexbox:0.3.1'
 
 	//classpath 'com.google.gms:google-services:3.1.0'
-	releaseCompile 'com.google.firebase:firebase-core:11.8.0'
-	releaseCompile 'com.google.firebase:firebase-crash:11.8.0'
+	releaseCompile "com.google.firebase:firebase-core:$firebaseVersion"
+	releaseCompile "com.google.firebase:firebase-crash:$firebaseVersion"
 
-	compile 'org.java-websocket:Java-WebSocket:1.3.7'
-	compile 'com.pnikosis:materialish-progress:1.7'
-	compile 'in.srain.cube:grid-view-with-header-footer:1.0.12'
-	compile 'de.hdodenhof:circleimageview:2.2.0'
-	compile 'nl.dionsegijn:konfetti:1.1.1'
+	compile "com.pascalwelsch.compositeandroid:activity:27.0.0"
+	compile "org.java-websocket:Java-WebSocket:1.3.7"
+	compile "com.pnikosis:materialish-progress:1.7"
+	compile "in.srain.cube:grid-view-with-header-footer:1.0.12"
+	compile "de.hdodenhof:circleimageview:2.2.0"
+	compile "nl.dionsegijn:konfetti:1.1.1"
 
 	compile "org.jetbrains.kotlin:kotlin-stdlib:1.1.60"
 }

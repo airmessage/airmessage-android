@@ -536,7 +536,7 @@ public class NewMessage extends AppCompatActivity {
 					ConversationManager.addConversation(result);
 					
 					//Updating the conversation activity list
-					LocalBroadcastManager.getInstance(activity).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
+					LocalBroadcastManager.getInstance(activity).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 						/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
 							callbacks.updateList(true); */
 				}

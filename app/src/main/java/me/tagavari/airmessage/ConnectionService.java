@@ -729,7 +729,8 @@ public class ConnectionService extends Service {
 					//Setting the conversation details
 					request.conversationInfo.setService(structConversationInfo.service);
 					request.conversationInfo.setTitle(ConnectionService.this, structConversationInfo.name);
-					request.conversationInfo.setConversationColor(ConversationManager.ConversationInfo.getRandomColor());
+					//request.conversationInfo.setConversationColor(ConversationManager.ConversationInfo.getRandomColor());
+					request.conversationInfo.setConversationColor(ConversationManager.ConversationInfo.getDefaultConversationColor(request.conversationInfo.getGuid()));
 					request.conversationInfo.setConversationMembersCreateColors(structConversationInfo.members);
 					request.conversationInfo.setState(ConversationManager.ConversationInfo.ConversationState.READY);
 					
@@ -1953,7 +1954,7 @@ public class ConnectionService extends Service {
 			}
 			
 			//Updating the conversation activity list
-			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 			/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
 				callbacks.updateList(true); */
 			
@@ -2087,7 +2088,7 @@ public class ConnectionService extends Service {
 			if(service != null) service.massRetrievalInProgress = false;
 			
 			//Updating the conversation activity list
-			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 			/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
 				callbacks.updateList(false); */
 		}
@@ -2223,7 +2224,7 @@ public class ConnectionService extends Service {
 			}
 			
 			//Updating the conversation activity list
-			if(context != null) LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
+			if(context != null) LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 			/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
 				callbacks.updateList(true); */
 			

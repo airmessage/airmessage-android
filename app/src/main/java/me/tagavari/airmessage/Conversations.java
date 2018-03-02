@@ -9,24 +9,17 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.graphics.ColorUtils;
 import android.support.v7.app.ActionBar;
-import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
-import android.text.SpannableString;
 import android.text.TextWatcher;
-import android.text.style.ForegroundColorSpan;
 import android.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -39,35 +32,25 @@ import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
-import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.lang.ref.WeakReference;
+import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import me.tagavari.airmessage.common.SharedValues;
 
-public class Conversations extends AppCompatActivity {
-	//Creating the reference values
-	//static final String localBCRemoveConversation = "LocalMSG-Conversations-RemoveConversation";
-	//static final String localBCPurgeConversations = "LocalMSG-Conversations-PurgeConversations";
-	//static final String localBCAttachmentFragmentFailed = "LocalMSG-Conversations-Attachment-Failed";
-	//static final String localBCAttachmentFragmentConfirmed = "LocalMSG-Conversations-Attachment-Confirmed";
-	//static final String localBCAttachmentFragmentData = "LocalMSG-Conversations-Attachment-Data";
-	//static final String localBCUpdateConversationViews = "LocalMSG-Conversations-UpdateUserViews";
-	static final String localBCConversationUpdate = "LocalMSG-Conversations-ConversationUpdate";
+public class Conversations extends CompositeActivity {
+	//Creating the plugin values
+	private ConversationsBase conversationsBasePlugin = null;
 	
 	//Creating the view values
-	private ListView listView;
 	private ViewGroup serverWarning;
-	private ProgressBar massRetrievalProgressBar;
-	private TextView noConversationsLabel;
 	
 	//Creating the menu values
 	private MenuItem searchMenuItem = null;
@@ -78,13 +61,6 @@ public class Conversations extends AppCompatActivity {
 	private boolean serverWarningFirst = true;
 	
 	//Creating the state values
-	static final byte stateIdle = 0;
-	static final byte stateLoading = 1;
-	static final byte stateSyncing = 2;
-	static final byte stateReady = 3;
-	static final byte stateLoadError = 4;
-	private byte currentState = stateIdle;
-	private boolean conversationsAvailable = false;
 	private boolean listingArchived = false;
 	
 	//Creating the state values
@@ -93,21 +69,18 @@ public class Conversations extends AppCompatActivity {
 	private byte currentAppBarState = appBarStateDefault;
 	
 	//Creating the listener values
-	private final AdapterView.OnItemClickListener onListItemClickListener = new AdapterView.OnItemClickListener() {
-		@Override
-		public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-			//Creating the intent
-			Intent launchMessaging = new Intent(Conversations.this, Messaging.class);
-			
-			//Setting the extra
-			launchMessaging.putExtra(Constants.intentParamTargetID, ((ConversationManager.ConversationInfo) listView.getItemAtPosition(position)).getLocalID());
-			
-			//Launching the intent
-			startActivity(launchMessaging);
-			
-			//Enabling transitions
-			//overridePendingTransition(R.anim.slide_in, R.anim.fade_out_light);
-		}
+	private final AdapterView.OnItemClickListener onListItemClickListener = (AdapterView<?> parent, View view, int position, long id) -> {
+		//Creating the intent
+		Intent launchMessaging = new Intent(Conversations.this, Messaging.class);
+		
+		//Setting the extra
+		launchMessaging.putExtra(Constants.intentParamTargetID, ((ConversationManager.ConversationInfo) conversationsBasePlugin.listView.getItemAtPosition(position)).getLocalID());
+		
+		//Launching the intent
+		startActivity(launchMessaging);
+		
+		//Enabling transitions
+		//overridePendingTransition(R.anim.slide_in, R.anim.fade_out_light);
 	};
 	private final AbsListView.MultiChoiceModeListener listMultiChoiceModeListener = new AbsListView.MultiChoiceModeListener() {
 		//Creating the selected conversations variable
@@ -120,7 +93,7 @@ public class Conversations extends AppCompatActivity {
 		@Override
 		public void onItemCheckedStateChanged(ActionMode actionMode, int position, long id, boolean checked) {
 			//Getting the conversation info
-			ConversationManager.ConversationInfo conversationInfo = ((ConversationManager.ConversationInfo) listView.getItemAtPosition(position));
+			ConversationManager.ConversationInfo conversationInfo = ((ConversationManager.ConversationInfo) conversationsBasePlugin.listView.getItemAtPosition(position));
 			
 			//Setting the item's checked state
 			conversationInfo.setSelected(checked);
@@ -134,9 +107,7 @@ public class Conversations extends AppCompatActivity {
 			else nonArchivedConversations += checked ? 1 : -1;
 			
 			//Setting the name
-			SpannableString title = new SpannableString(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, Integer.toString(selectedConversations)));
-			title.setSpan(new ForegroundColorSpan(Color.WHITE), 0, title.length(), 0);
-			actionMode.setTitle(title);
+			actionMode.setTitle(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, Integer.toString(selectedConversations)));
 			
 			//Showing or hiding the mute / unmute buttons
 			if(mutedConversations > 0) actionMode.getMenu().findItem(R.id.action_unmute).setVisible(true);
@@ -174,7 +145,7 @@ public class Conversations extends AppCompatActivity {
 				final ArrayList<Long> updatedConversations = new ArrayList<>();
 				
 				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversations) {
+				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
 					//Skipping the remainder of the iteration if the conversation is not selected
 					if(!conversationInfo.isSelected()) continue;
 					
@@ -211,7 +182,7 @@ public class Conversations extends AppCompatActivity {
 				ArrayList<Long> updatedConversations = new ArrayList<>();
 				
 				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversations) {
+				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
 					//Skipping the remainder of the iteration if the conversation is not selected
 					if(!conversationInfo.isSelected()) continue;
 					
@@ -250,7 +221,7 @@ public class Conversations extends AppCompatActivity {
 				ArrayList<ConversationManager.ConversationInfo> updatedConversations = new ArrayList<>();
 				
 				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversations) {
+				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
 					//Skipping the remainder of the iteration if the conversation is not selected
 					if(!conversationInfo.isSelected()) continue;
 					
@@ -264,7 +235,7 @@ public class Conversations extends AppCompatActivity {
 				//Checking if there are conversations to update in the database
 				if(!updatedConversations.isEmpty()) {
 					//Updating the list
-					updateList(false);
+					conversationsBasePlugin.updateList(false);
 					
 					//Creating the content values
 					ContentValues contentValues = new ContentValues();
@@ -296,7 +267,7 @@ public class Conversations extends AppCompatActivity {
 						}
 						
 						//Updating the list
-						updateList(false);
+						conversationsBasePlugin.updateList(false);
 					});
 					
 					//Setting the snackbar's action button's color
@@ -318,7 +289,7 @@ public class Conversations extends AppCompatActivity {
 				ArrayList<ConversationManager.ConversationInfo> updatedConversations = new ArrayList<>();
 				
 				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversations) {
+				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
 					//Skipping the remainder of the iteration if the conversation is not selected
 					if(!conversationInfo.isSelected()) continue;
 					
@@ -332,7 +303,7 @@ public class Conversations extends AppCompatActivity {
 				//Checking if there are conversations to update in the database
 				if(!updatedConversations.isEmpty()) {
 					//Updating the list
-					updateList(false);
+					conversationsBasePlugin.updateList(false);
 					
 					//Creating the content values
 					ContentValues contentValues = new ContentValues();
@@ -361,7 +332,7 @@ public class Conversations extends AppCompatActivity {
 						}
 						
 						//Updating the list
-						updateList(false);
+						conversationsBasePlugin.updateList(false);
 					});
 					
 					//Setting the snackbar's action button's color
@@ -391,7 +362,7 @@ public class Conversations extends AppCompatActivity {
 							ArrayList<ConversationManager.ConversationInfo> toRemove = new ArrayList<>();
 							
 							//Marking all selected conversations for removal
-							for(ConversationManager.ConversationInfo conversationInfo : conversations)
+							for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations)
 								if(conversationInfo.isSelected())
 									toRemove.add(conversationInfo);
 							
@@ -399,10 +370,10 @@ public class Conversations extends AppCompatActivity {
 							for(ConversationManager.ConversationInfo conversationInfo : toRemove) conversationInfo.delete(Conversations.this);
 							
 							//Updating the conversation activity list
-							LocalBroadcastManager.getInstance(Conversations.this).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
+							LocalBroadcastManager.getInstance(Conversations.this).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 							
 							//Updating the list
-							updateList(false);
+							conversationsBasePlugin.updateList(false);
 							
 							//Dismissing the dialog
 							dialog.dismiss();
@@ -426,7 +397,7 @@ public class Conversations extends AppCompatActivity {
 		@Override
 		public void onDestroyActionMode(ActionMode actionMode) {
 			//Setting all items as unchecked
-			for(ConversationManager.ConversationInfo conversationInfo : conversations) {
+			for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
 				conversationInfo.setSelected(false);
 				conversationInfo.updateSelected();
 			}
@@ -452,133 +423,15 @@ public class Conversations extends AppCompatActivity {
 			});
 		}
 	};
-	private final BroadcastReceiver massRetrievalStateBroadcastReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			//Getting the state
-			switch(intent.getByteExtra(Constants.intentParamState, (byte) 0)) {
-				case ConnectionService.intentExtraStateMassRetrievalStarted:
-					//Setting the state to syncing
-					setState(stateSyncing);
-					
-					break;
-				case ConnectionService.intentExtraStateMassRetrievalProgress:
-					//Checking if there is a maximum value provided
-					if(intent.hasExtra(Constants.intentParamSize)) {
-						//Setting the progress bar's maximum
-						massRetrievalProgressBar.setMax(intent.getIntExtra(Constants.intentParamSize, 0));
-						
-						//Setting the progress bar as determinate
-						massRetrievalProgressBar.setIndeterminate(false);
-					}
-					
-					//Setting the progress bar's progress
-					if(intent.hasExtra(Constants.intentParamProgress)) {
-						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(intent.getIntExtra(Constants.intentParamProgress, 0), true);
-						else massRetrievalProgressBar.setProgress(intent.getIntExtra(Constants.intentParamProgress, 0));
-					}
-					
-					break;
-				case ConnectionService.intentExtraStateMassRetrievalFailed:
-					//Displaying a snackbar
-					Snackbar.make(findViewById(R.id.root), R.string.message_syncerror, Snackbar.LENGTH_LONG)
-							.setAction(R.string.action_retry, view -> {
-								//Getting the connection service
-								ConnectionService service = ConnectionService.getInstance();
-								if(service == null || !service.isConnected()) return;
-								
-								//Requesting another mass retrieval
-								service.requestMassRetrieval(Conversations.this);
-							})
-							.setActionTextColor(getResources().getColor(R.color.colorAccent, null))
-							.show();
-					
-					//Setting the state
-					setState(stateReady);
-					
-					break;
-					case ConnectionService.intentExtraStateMassRetrievalFinished:
-						//Filling the progress bar
-						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(massRetrievalProgressBar.getMax(), true);
-						else massRetrievalProgressBar.setProgress(massRetrievalProgressBar.getMax());
-						
-						//Setting the state
-						setState(stateReady);
-					break;
-			}
-		}
-	};
-	private final BroadcastReceiver updateConversationsBroadcastReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			updateList(false);
-		}
-	};
 	
-	/* private final BroadcastReceiver fileFragmentBroadcastReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			//Getting the request data
-			String message = intent.getStringExtra(Constants.intentParamGuid);
-			long requestTime = intent.getLongExtra(Constants.intentParamTime, -1);
-			
-			switch(intent.getAction()) {
-				case Conversations.localBCAttachmentFragmentConfirmed:
-					//Processing the message
-					processFileFragmentConfirmed(message, requestTime);
-					break;
-				case Conversations.localBCAttachmentFragmentFailed:
-					//Processing the message
-					processFileFragmentFailed(message, requestTime);
-					break;
-				case Conversations.localBCAttachmentFragmentData:
-					//Getting the data
-					byte[] compressedBytes = intent.getByteArrayExtra(Constants.intentParamData);
-					int index = intent.getIntExtra(Constants.intentParamIndex, -1);
-					boolean isLast = intent.getBooleanExtra(Constants.intentParamIsLast, false);
-					long fileSize = intent.getLongExtra(Constants.intentParamSize, -1);
-					
-					//Processing the message
-					processFileFragmentData(context, message, requestTime, compressedBytes, index, isLast, fileSize);
-					break;
-			}
-		}
-	}; */
-	//static final int updateConversationViewsActionRefresh = 0;
-	//static final int updateConversationViewsActionClear = 1;
-	/* private final BroadcastReceiver updateConversationViewsBroadcastReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			switch(intent.getIntExtra(Constants.intentParamAction, 0)) {
-				case updateConversationViewsActionRefresh:
-					UserCacheHelper.refreshUsers(context, ConversationManager.getConversations().toArray(new ConversationManager.ConversationInfo[0]));
-					break;
-				case updateConversationViewsActionClear:
-					UserCacheHelper.clearUsers(context, ConversationManager.getConversations().toArray(new ConversationManager.ConversationInfo[0]));
-					break;
-			}
-		}
-	}; */
-	
-	//Creating the timer values
-	static final long timeUpdateHandlerDelay = 60 * 1000; //1 minute
-	private Handler timeUpdateHandler = new Handler(Looper.getMainLooper());
-	private Runnable timeUpdateHandlerRunnable = new Runnable() {
-		@Override
-		public void run() {
-			//Updating the time
-			if(conversations != null) for(ConversationManager.ConversationInfo conversationInfo : conversations) conversationInfo.updateTime(Conversations.this);
-			
-			//Running again
-			timeUpdateHandler.postDelayed(this, timeUpdateHandlerDelay);
-		}
-	};
-	
-	//Creating the other values
-	private MainApplication.LoadFlagArrayList<ConversationManager.ConversationInfo> conversations;
+	public Conversations() {
+		//Setting the plugins
+		conversationsBasePlugin = new ConversationsBase(() -> new ListAdapter(conversationsBasePlugin.conversations));
+		addPlugin(conversationsBasePlugin);
+	}
 	
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	public void onCreate(Bundle savedInstanceState) {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
 		
@@ -607,10 +460,6 @@ public class Conversations extends AppCompatActivity {
 			startActivity(new Intent(this, Conversations.class));
 		} */
 		
-		//Enabling transitions
-		//getWindow().requestFeature(Window.FEATURE_CONTENT_TRANSITIONS);
-		//getWindow().setExitTransition(new Slide());
-		
 		//Setting the content view
 		setContentView(R.layout.activity_conversations);
 		
@@ -618,13 +467,13 @@ public class Conversations extends AppCompatActivity {
 		//setSupportActionBar(findViewById(R.id.toolbar));
 		
 		//Getting the views
-		listView = findViewById(R.id.list);
 		serverWarning = findViewById(R.id.serverwarning);
-		massRetrievalProgressBar = findViewById(R.id.syncview_progress);
-		noConversationsLabel = findViewById(R.id.no_conversations);
+		
+		//Setting the plugin views
+		conversationsBasePlugin.setViews(findViewById(R.id.list), findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
 		
 		//Enforcing the maximum content width
-		Constants.enforceContentWidth(getResources(), listView);
+		Constants.enforceContentWidth(getResources(), conversationsBasePlugin.listView);
 		
 		//Getting the server warning height
 		serverWarning.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
@@ -642,170 +491,25 @@ public class Conversations extends AppCompatActivity {
 		});
 		
 		//Configuring the list
-		listView.setOnItemClickListener(onListItemClickListener);
-		listView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE_MODAL);
-		listView.setMultiChoiceModeListener(listMultiChoiceModeListener);
+		conversationsBasePlugin.listView.setOnItemClickListener(onListItemClickListener);
+		conversationsBasePlugin.listView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE_MODAL);
+		conversationsBasePlugin.listView.setMultiChoiceModeListener(listMultiChoiceModeListener);
 		
 		//Setting the listeners
 		findViewById(R.id.fab).setOnClickListener(view -> startActivity(new Intent(Conversations.this, NewMessage.class)));
 	}
 	
 	@Override
-	protected void onStart() {
+	public void onStart() {
 		//Calling the super method
 		super.onStart();
 		
 		//Adding the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionService.localBCResult));
-		localBroadcastManager.registerReceiver(massRetrievalStateBroadcastReceiver, new IntentFilter(ConnectionService.localBCMassRetrieval));
-		localBroadcastManager.registerReceiver(updateConversationsBroadcastReceiver, new IntentFilter(localBCConversationUpdate));
-		
-		//Getting the conversations
-		conversations = ConversationManager.getConversations();
-		
-		//Setting the conversations to an empty list if they are invalid
-		if(conversations == null) {
-			conversations = new MainApplication.LoadFlagArrayList<>(false);
-			((MainApplication) getApplication()).setConversations(conversations);
-		}
-		
-		//Getting the connection service
-		ConnectionService connectionService = ConnectionService.getInstance();
-		
-		//Checking if a mass retrieval is in progress
-		if(connectionService != null && connectionService.isMassRetrievalInProgress()) setState(stateSyncing);
-		//Otherwise checking if the conversations are loaded
-		else if(conversations != null && conversations.isLoaded()) conversationLoadFinished(null);
-		else {
-			//Setting the state to loading
-			setState(stateLoading);
-			
-			//Loading the messages
-			new LoadConversationsTask(this).execute();
-		}
 		
 		//Starting the service
 		startService(new Intent(Conversations.this, ConnectionService.class));
-		
-		//Starting the time updater
-		timeUpdateHandler.postDelayed(timeUpdateHandlerRunnable, timeUpdateHandlerDelay);
-	}
-	
-	private void setState(byte state) {
-		//Returning if the current state matches the requested state
-		if(currentState == state) return;
-		
-		//Disabling the old state
-		switch(currentState) {
-			case stateLoading: {
-				View loadingText = findViewById(R.id.loading_text);
-				loadingText.animate()
-						.alpha(0)
-						.withEndAction(() -> loadingText.setVisibility(View.GONE));
-				break;
-			}
-			case stateSyncing: {
-				View syncView = findViewById(R.id.syncview);
-				syncView.animate()
-						.alpha(0)
-						.withEndAction(() -> syncView.setVisibility(View.GONE));
-				break;
-			}
-			case stateReady: {
-				listView.animate()
-						.alpha(0)
-						.withEndAction(() -> listView.setVisibility(View.GONE));
-				
-				View noConversations = findViewById(R.id.no_conversations);
-				if(noConversations.getVisibility() == View.VISIBLE) noConversations.animate()
-						.alpha(0)
-						.withEndAction(() -> noConversations.setVisibility(View.GONE));
-				break;
-			}
-			case stateLoadError:
-				View errorView = findViewById(R.id.errorview);
-				errorView.animate()
-						.alpha(0)
-						.withEndAction(() -> errorView.setVisibility(View.GONE));
-				break;
-		}
-		
-		//Setting the new state
-		currentState = state;
-		
-		//Enabling the new state
-		switch(state) {
-			case stateLoading:
-				View loadingView = findViewById(R.id.loading_text);
-				loadingView.animate()
-						.alpha(1)
-						.withStartAction(() -> loadingView.setVisibility(View.VISIBLE));
-				break;
-			case stateSyncing: {
-				View syncView = findViewById(R.id.syncview);
-				syncView.animate()
-						.alpha(1)
-						.withStartAction(() -> syncView.setVisibility(View.VISIBLE));
-				
-				int progress = ConnectionService.getInstance().getMassRetrievalProgress();
-				
-				if(progress == -1) {
-					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(0, false);
-					else massRetrievalProgressBar.setProgress(0);
-					
-					massRetrievalProgressBar.setIndeterminate(true);
-				} else {
-					massRetrievalProgressBar.setMax(ConnectionService.getInstance().getMassRetrievalProgressCount());
-					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(progress, true);
-					else massRetrievalProgressBar.setProgress(progress);
-				}
-				
-				break;
-			}
-			case stateReady:
-				listView.animate()
-						.alpha(1)
-						.withStartAction(() -> listView.setVisibility(View.VISIBLE));
-				
-				updateList(true);
-				/* if(conversations.isEmpty()) {
-					View noConversations = findViewById(R.id.no_conversations);
-					noConversations.animate()
-							.alpha(1)
-							.withStartAction(() -> noConversations.setVisibility(View.VISIBLE));
-				} */
-				break;
-			case stateLoadError:
-				View errorView = findViewById(R.id.errorview);
-				errorView.animate()
-						.alpha(1)
-						.withStartAction(() -> errorView.setVisibility(View.VISIBLE));
-				break;
-		}
-	}
-	
-	void conversationLoadFinished(ArrayList<ConversationManager.ConversationInfo> result) {
-		//Replacing the conversations
-		if(result != null) {
-			conversations.clear();
-			conversations.addAll(result);
-			conversations.setLoaded(true);
-		}
-		
-		//Setting the list adapter
-		listView.setAdapter(new ListAdapter(conversations));
-		
-		//Setting the state
-		setState(stateReady);
-		
-		//Updating the views
-		//for(ConversationManager.ConversationInfo conversationInfo : ConversationManager.getConversations()) conversationInfo.updateView(Conversations.this);
-	}
-	
-	void conversationLoadFailed() {
-		//Setting the state to failed
-		setState(stateLoadError);
 	}
 	
 	@Override
@@ -818,7 +522,7 @@ public class Conversations extends AppCompatActivity {
 		return true;
 	}
 	
-	private class ListAdapter extends BaseAdapter {
+	private class ListAdapter extends ConversationsBase.ListAdapter {
 		//Creating the list values
 		private final List<ConversationManager.ConversationInfo> originalItems;
 		private final List<ConversationManager.ConversationInfo> filteredItems = new ArrayList<>();
@@ -847,8 +551,7 @@ public class Conversations extends AppCompatActivity {
 		}
 		
 		@Override
-		@NonNull
-		public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+		public View getView(int position, View convertView, ViewGroup parent) {
 			//Getting the view
 			View view = convertView;
 			
@@ -862,12 +565,13 @@ public class Conversations extends AppCompatActivity {
 			view = conversationInfo.createView(Conversations.this, convertView, parent);
 			
 			//Setting the view source
-			conversationInfo.setViewSource(() -> listView.getChildAt(filteredItems.indexOf(conversationInfo) - listView.getFirstVisiblePosition()));
+			conversationInfo.setViewSource(() -> conversationsBasePlugin.listView.getChildAt(filteredItems.indexOf(conversationInfo) - conversationsBasePlugin.listView.getFirstVisiblePosition()));
 			
 			//Returning the view
 			return view;
 		}
 		
+		@Override
 		void filterAndUpdate() {
 			//Clearing the filtered data
 			filteredItems.clear();
@@ -883,6 +587,13 @@ public class Conversations extends AppCompatActivity {
 			
 			//Notifying the adapter
 			notifyDataSetChanged();
+			
+			System.out.println("Filtered items count: " + filteredItems.size());
+		}
+		
+		@Override
+		boolean isListEmpty() {
+			return filteredItems.isEmpty();
 		}
 	}
 	
@@ -1005,9 +716,6 @@ public class Conversations extends AppCompatActivity {
 		
 		//Checking if the contacts permission has been granted
 		findViewById(R.id.contactnotice).setVisibility(MainApplication.canUseContacts(this) ? View.GONE : View.VISIBLE);
-		
-		//Refreshing the list
-		updateList(false);
 	}
 	
 	public void onRequestContactsClick(View view) {
@@ -1041,18 +749,13 @@ public class Conversations extends AppCompatActivity {
 	}
 	
 	@Override
-	protected void onStop() {
+	public void onStop() {
 		//Calling the super method
 		super.onStop();
 		
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
-		localBroadcastManager.unregisterReceiver(massRetrievalStateBroadcastReceiver);
-		localBroadcastManager.unregisterReceiver(updateConversationsBroadcastReceiver);
-		
-		//Stopping the time updater
-		timeUpdateHandler.removeCallbacks(timeUpdateHandlerRunnable);
 	}
 	
 	@Override
@@ -1075,7 +778,7 @@ public class Conversations extends AppCompatActivity {
 				return true;
 			case R.id.action_search:
 				//Setting the state to search
-				if(currentState == stateReady) setAppBarState(appBarStateSearch);
+				if(conversationsBasePlugin.currentState == ConversationsBase.stateReady) setAppBarState(appBarStateSearch);
 				
 				return true;
 			case R.id.action_archived: //Archived conversations
@@ -1285,42 +988,6 @@ public class Conversations extends AppCompatActivity {
 		serverWarning.findViewById(R.id.serverwarning_button).setEnabled(false);
 	}
 	
-	public void updateList(boolean forceUpdate) {
-		//Returning if the conversations aren't ready
-		if(conversations == null || !conversations.isLoaded()) return;
-		
-		//Updating the list
-		//if(sort) Collections.sort(ConversationManager.getConversations(), ConversationManager.conversationComparator);
-		ListAdapter listAdapter = ((ListAdapter) listView.getAdapter());
-		if(listAdapter == null) return;
-		listAdapter.filterAndUpdate();
-		
-		//Returning if the state is not ready
-		if(currentState != stateReady) return;
-		
-		//Getting and checking if there are conversations
-		boolean newConversationsAvailable = !listAdapter.filteredItems.isEmpty();
-		if(forceUpdate || newConversationsAvailable != conversationsAvailable) {
-			//Checking if there are conversations to display
-			if(newConversationsAvailable) {
-				//Hiding the label
-				noConversationsLabel.animate().alpha(0).withEndAction(() -> noConversationsLabel.setVisibility(View.GONE)).start();
-			} else {
-				//Showing the label
-				noConversationsLabel.animate().alpha(1).withStartAction(() -> noConversationsLabel.setVisibility(View.VISIBLE)).start();
-			}
-			
-			//Setting the new state
-			conversationsAvailable = newConversationsAvailable;
-		}
-		
-		//Checking if conversations are unavailable
-		if(!newConversationsAvailable) {
-			//Updating the label's text
-			noConversationsLabel.setText(!listingArchived ? R.string.message_blankstate_conversations : R.string.message_blankstate_conversations_archived);
-		}
-	}
-	
 	void setAppBarState(byte state) {
 		//Returning if the requested state matches the current state
 		if(currentAppBarState == state) return;
@@ -1465,7 +1132,7 @@ public class Conversations extends AppCompatActivity {
 		}
 		
 		//Updating the list adapter
-		updateList(false);
+		conversationsBasePlugin.updateList(false);
 		//((ListAdapter) listView.getAdapter()).filterAndUpdate();
 	}
 	
@@ -1486,169 +1153,4 @@ public class Conversations extends AppCompatActivity {
 			isServiceBound = false;
 		}
 	}; */
-	
-	private static class LoadConversationsTask extends AsyncTask<Void, Void, MainApplication.LoadFlagArrayList<ConversationManager.ConversationInfo>> {
-		private final WeakReference<Conversations> superclassReference;
-		
-		//Creating the values
-		LoadConversationsTask(Conversations superclass) {
-			//Setting the references
-			superclassReference = new WeakReference<>(superclass);
-		}
-		
-		@Override
-		protected MainApplication.LoadFlagArrayList<ConversationManager.ConversationInfo> doInBackground(Void... params) {
-			//Getting the context
-			Context context = superclassReference.get();
-			if(context == null) return null;
-			
-			//Loading the conversations
-			return DatabaseManager.fetchSummaryConversations(DatabaseManager.getReadableDatabase(context), context);
-		}
-		
-		@Override
-		protected void onPostExecute(MainApplication.LoadFlagArrayList<ConversationManager.ConversationInfo> result) {
-			//Checking if the result is a fail
-			if(result == null) {
-				//Telling the superclass
-				Conversations superclass = superclassReference.get();
-				if(superclass != null) superclass.conversationLoadFailed();
-			} else {
-				//Telling the superclass
-				Conversations superclass = superclassReference.get();
-				if(superclass != null) {
-					superclass.conversationLoadFinished(result);
-				}
-			}
-		}
-	}
-	
-	static class DeleteAttachmentsTask extends AsyncTask<Void, Void, Void> {
-		//Creating the values
-		private final WeakReference<Context> contextReference;
-		
-		DeleteAttachmentsTask(Context context) {
-			//Setting the references
-			contextReference = new WeakReference<>(context);
-		}
-		
-		@Override
-		protected Void doInBackground(Void... parameters) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return null;
-			
-			//Clearing the attachments directory
-			MainApplication.clearAttachmentsDirectory(context);
-			
-			//Returning
-			return null;
-		}
-	}
-	
-	static class DeleteMessagesTask extends AsyncTask<Void, Void, Void> {
-		//Creating the values
-		private final WeakReference<Context> contextReference;
-		
-		DeleteMessagesTask(Context context) {
-			//Setting the references
-			contextReference = new WeakReference<>(context);
-		}
-		
-		@Override
-		protected void onPreExecute() {
-			//Clearing all conversations
-			ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-			if(conversations != null) conversations.clear();
-			
-			//Updating the conversation activity list
-			Context context = contextReference.get();
-			if(context != null) LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
-		}
-		
-		@Override
-		protected Void doInBackground(Void... parameters) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return null;
-			
-			//Removing the messages from the database
-			DatabaseManager.deleteEverything(context);
-			
-			//Clearing the attachments directory
-			MainApplication.clearAttachmentsDirectory(context);
-			
-			//Returning
-			return null;
-		}
-	}
-	
-	static class SyncMessagesTask extends AsyncTask<Void, Void, Void> {
-		//Creating the values
-		private final WeakReference<Context> contextReference;
-		private final WeakReference<View> snackbarParentReference;
-		
-		SyncMessagesTask(Context context, View snackbarParent) {
-			//Setting the references
-			contextReference = new WeakReference<>(context);
-			snackbarParentReference = new WeakReference<>(snackbarParent);
-		}
-		
-		@Override
-		protected void onPreExecute() {
-			//Clearing all conversations
-			ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-			if(conversations != null) conversations.clear();
-			
-			//Updating the conversation activity list
-			Context context = contextReference.get();
-			if(context != null) LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
-			/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
-				callbacks.updateList(false); */
-		}
-		
-		@Override
-		protected Void doInBackground(Void... parameters) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return null;
-			
-			//Removing the messages from the database
-			DatabaseManager.deleteEverything(context);
-			
-			//Clearing the attachments directory
-			MainApplication.clearAttachmentsDirectory(context);
-			
-			//Returning
-			return null;
-		}
-		
-		@Override
-		protected void onPostExecute(Void result) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return;
-			
-			//Syncing the messages
-			ConnectionService connectionService = ConnectionService.getInstance();
-			boolean messageResult = connectionService != null && connectionService.requestMassRetrieval(context);
-			if(!messageResult) {
-				Toast.makeText(context, R.string.message_connectionerrror, Toast.LENGTH_SHORT).show();
-				return;
-			}
-			
-			//Getting the snackbar parent view
-			View parentView = snackbarParentReference.get();
-			if(parentView == null) return;
-			
-			//Showing a snackbar
-			Snackbar snackbar = Snackbar.make(parentView, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_LONG);
-			
-			//Setting the snackbar text to white
-			((TextView) snackbar.getView().findViewById(android.support.design.R.id.snackbar_text)).setTextColor(Color.WHITE);
-			
-			//Showing the snackbar
-			snackbar.show();
-		}
-	}
 }

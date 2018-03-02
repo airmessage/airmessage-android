@@ -65,7 +65,7 @@ public class Preferences extends PreferenceActivity {
 				//Setting the positive button
 				.setPositiveButton(R.string.action_delete, (DialogInterface dialogInterface, int which) -> {
 							//Deleting the attachments
-							new Conversations.DeleteAttachmentsTask(getApplicationContext()).execute();
+							new ConversationsBase.DeleteAttachmentsTask(getApplicationContext()).execute();
 						}
 				)
 				//Creating the dialog
@@ -90,7 +90,7 @@ public class Preferences extends PreferenceActivity {
 				//Setting the positive button
 				.setPositiveButton(R.string.action_delete, (DialogInterface dialogInterface, int which) -> {
 					//Deleting the messages
-					new Conversations.DeleteMessagesTask(getApplicationContext()).execute();
+					new ConversationsBase.DeleteMessagesTask(getApplicationContext()).execute();
 				})
 				//Creating the dialog
 				.create();
@@ -129,7 +129,7 @@ public class Preferences extends PreferenceActivity {
 				//Setting the negative button
 				.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> dialogInterface.dismiss())
 				//Setting the positive button
-				.setPositiveButton(R.string.action_resync, (DialogInterface dialogInterface, int which) -> new Conversations.SyncMessagesTask(getApplicationContext(), getListView()).execute())
+				.setPositiveButton(R.string.action_resync, (DialogInterface dialogInterface, int which) -> new ConversationsBase.SyncMessagesTask(getApplicationContext(), getListView()).execute())
 				//Creating the dialog
 				.create();
 		

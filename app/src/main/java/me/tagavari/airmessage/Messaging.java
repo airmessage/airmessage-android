@@ -787,12 +787,10 @@ public class Messaging extends AppCompatActivity {
 				//Checking if the conversation is valid
 				if(conversationInfo != null) {
 					//Creating a dialog
-					new AlertDialog.Builder(this)
+					AlertDialog dialog = new AlertDialog.Builder(this)
 							.setMessage(R.string.message_confirm_deleteconversation_current)
-							.setNegativeButton(android.R.string.cancel, (dialog, which) -> {
-								dialog.dismiss();
-							})
-							.setPositiveButton(R.string.action_delete, (dialog, which) -> {
+							.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
+							.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
 								//Removing the conversation from memory
 								ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
 								if(conversations != null) conversations.remove(conversationInfo);
@@ -806,8 +804,18 @@ public class Messaging extends AppCompatActivity {
 								//Finishing the activity
 								finish();
 							})
-							.create()
-							.show();
+							.create();
+					
+					//Configuring the dialog's listener
+					dialog.setOnShowListener(dialogInterface -> {
+						//Setting the button's colors
+						int color = conversationInfo.getConversationColor();
+						dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
+						dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
+					});
+					
+					//Showing the dialog
+					dialog.show();
 				}
 				return true;
 		}
@@ -1728,6 +1736,15 @@ public class Messaging extends AppCompatActivity {
 						})
 						.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
 						.create();
+				
+				//Configuring the dialog's listener
+				dialog.setOnShowListener(dialogInterface -> {
+					//Setting the button's colors
+					int color = conversationInfo.getConversationColor();
+					dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
+					dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(color);
+					dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
+				});
 				
 				//Displaying the dialog
 				dialog.show();

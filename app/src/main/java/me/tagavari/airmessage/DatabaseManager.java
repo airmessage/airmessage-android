@@ -870,7 +870,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		cursor.close();
 		
 		//Picking a color
-		int conversationColor = ConversationManager.ConversationInfo.getRandomColor();
+		int conversationColor = ConversationManager.ConversationInfo.getDefaultConversationColor(structConversationInfo.guid);
 		
 		//Setting the content values
 		ContentValues contentValues = new ContentValues();
