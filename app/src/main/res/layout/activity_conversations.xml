@@ -7,10 +7,25 @@
 	android:layout_height="match_parent"
 	tools:context=".Conversations">
 	<!-- App bar -->
-	<android.support.v7.widget.Toolbar
-		android:id="@+id/toolbar"
+	<android.support.design.widget.AppBarLayout
 		android:layout_width="match_parent"
-		android:layout_height="?android:attr/actionBarSize" />
+		android:layout_height="wrap_content">
+		<!-- Toolbar -->
+		<android.support.v7.widget.Toolbar
+			android:id="@+id/toolbar"
+			android:layout_width="match_parent"
+			android:layout_height="?attr/actionBarSize"
+			android:theme="@style/SolidActionBar"
+			app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+		<!-- Info bar container -->
+		<LinearLayout
+			android:id="@+id/infobar_container"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="vertical"
+			android:animateLayoutChanges="true"
+			android:background="@color/colorForegroundLight" />
+	</android.support.design.widget.AppBarLayout>
 	<!-- Floating Action Button -->
 	<android.support.design.widget.FloatingActionButton
 		android:id="@+id/fab"
@@ -107,111 +122,15 @@
 			android:textAlignment="center"
 			android:textColor="?android:attr/textColorSecondary" />
 		
-		<LinearLayout
+		<!-- Conversation list -->
+		<ListView
+			android:id="@+id/list"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:layout_alignParentStart="true"
 			android:layout_alignParentTop="true"
-			android:orientation="vertical">
-			<!-- Toolbar -->
-			<!-- <Toolbar
-				android:id="@+id/toolbar"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:background="@color/colorPrimary"
-				android:elevation="4dp"
-				android:theme="@style/AppTheme.AppBar" /> -->
-			<!-- Info bar - Connection error -->
-			<LinearLayout
-				android:id="@+id/serverwarning"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:background="@android:color/white"
-				android:elevation="2dp"
-				android:gravity="center"
-				android:minHeight="48dp"
-				android:orientation="horizontal"
-				android:paddingLeft="10dp"
-				android:paddingRight="10dp">
-				
-				<ImageView
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:alpha="0.54"
-					android:src="@drawable/disconnection"
-					android:tint="@android:color/black"
-					android:layout_marginLeft="8dp"
-					android:layout_marginRight="8dp"/>
-				
-				<TextView
-					android:id="@+id/serverwarning_message"
-					android:layout_width="0dp"
-					android:layout_height="wrap_content"
-					android:layout_marginBottom="12dp"
-					android:layout_marginLeft="10dp"
-					android:layout_marginRight="10dp"
-					android:layout_marginTop="12dp"
-					android:layout_weight="1"
-					android:textColor="?android:attr/textColorSecondary" />
-				
-				<Button
-					android:id="@+id/serverwarning_button"
-					style="?android:attr/borderlessButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:text="@string/action_retry"
-					android:textColor="@color/colorAccent" />
-			</LinearLayout>
-			<!-- Info bar - Contacts permission -->
-			<LinearLayout
-				android:id="@+id/contactnotice"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:background="@android:color/white"
-				android:elevation="2dp"
-				android:gravity="center"
-				android:minHeight="48dp"
-				android:orientation="horizontal"
-				android:paddingLeft="10dp"
-				android:paddingRight="10dp">
-				
-				<ImageView
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:alpha="0.54"
-					android:src="@drawable/contacts"
-					android:tint="@android:color/black"
-					android:layout_marginLeft="8dp"
-					android:layout_marginRight="8dp" />
-				
-				<TextView
-					android:layout_width="0dp"
-					android:layout_height="wrap_content"
-					android:layout_marginBottom="12dp"
-					android:layout_marginLeft="10dp"
-					android:layout_marginRight="10dp"
-					android:layout_marginTop="12dp"
-					android:layout_weight="1"
-					android:text="@string/message_permissiondetails_contacts_listing"
-					android:textColor="?android:attr/textColorSecondary" />
-				
-				<Button
-					style="?android:attr/borderlessButtonStyle"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:onClick="onRequestContactsClick"
-					android:text="@string/action_enable"
-					android:textColor="@color/colorAccent" />
-			</LinearLayout>
-			<!-- Conversation List -->
-			<ListView
-				android:id="@+id/list"
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:layout_gravity="center"
-				android:divider="@null"
-				android:dividerHeight="0dp"
-				android:theme="@style/OverscrollNeutralizer" />
-		</LinearLayout>
+			android:divider="@null"
+			android:dividerHeight="0dp"
+			android:theme="@style/OverscrollNeutralizer" />
 	</RelativeLayout>
 </android.support.design.widget.CoordinatorLayout>

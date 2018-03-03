@@ -2,8 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:layout_width="match_parent"
-	android:layout_height="match_parent"
-	android:clipToPadding="false">
+	android:layout_height="match_parent">
 	<!-- Loading Text -->
 	<TextView
 		android:id="@+id/loading_text"
@@ -31,21 +30,33 @@
 			android:contentDescription="@null"
 			android:src="@drawable/microphone" />
 	</RelativeLayout>
-	<!-- Toolbar -->
-	<android.support.v7.widget.Toolbar
-		android:id="@+id/toolbar"
-		android:layout_width="match_parent"
-		android:layout_height="?attr/actionBarSize"
-		android:layout_alignParentTop="true"
-		android:elevation="4dp"
-		android:theme="@style/SolidActionBar"
-		app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 	<!-- General layout -->
-	<RelativeLayout
+	<LinearLayout
 		android:id="@+id/content"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		android:layout_marginTop="?attr/actionBarSize">
+		android:orientation="vertical">
+		<!-- App bar -->
+		<android.support.design.widget.AppBarLayout
+			android:id="@+id/app_bar"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content">
+			<!-- Toolbar -->
+			<android.support.v7.widget.Toolbar
+				android:id="@+id/toolbar"
+				android:layout_width="match_parent"
+				android:layout_height="?attr/actionBarSize"
+				android:theme="@style/SolidActionBar"
+				app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+			<!-- Info bar container -->
+			<LinearLayout
+				android:id="@+id/infobar_container"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:animateLayoutChanges="true"
+				android:background="@color/colorForegroundLight"
+				android:orientation="vertical" />
+		</android.support.design.widget.AppBarLayout>
 		<!-- Search result bar -->
 		<LinearLayout
 			android:id="@+id/searchresults"
@@ -79,7 +90,7 @@
 				android:background="?android:attr/selectableItemBackgroundBorderless"
 				android:onClick="onClickSearchPrevious"
 				android:padding="5dp"
-				android:src="@drawable/arrow_left"
+				android:src="@drawable/chevron_left"
 				android:tint="?android:attr/textColorSecondary" />
 			
 			<ImageButton
@@ -90,75 +101,56 @@
 				android:background="?android:attr/selectableItemBackgroundBorderless"
 				android:onClick="onClickSearchNext"
 				android:padding="5dp"
-				android:src="@drawable/arrow_right"
+				android:src="@drawable/chevron_right"
 				android:tint="?android:attr/textColorSecondary" />
 		</LinearLayout>
-		<!-- Connection warning bar -->
-		<LinearLayout
-			android:id="@+id/serverwarning"
+		<!-- Message view -->
+		<RelativeLayout
 			android:layout_width="match_parent"
 			android:layout_height="0dp"
-			android:layout_below="@id/searchresults"
-			android:background="@android:color/white"
-			android:elevation="2dp"
-			android:minHeight="48dp"
-			android:orientation="horizontal">
+			android:layout_weight="1">
+			<!-- Message list -->
+			<android.support.v7.widget.RecyclerView
+				android:id="@+id/list_messages"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:layout_above="@id/inputbar"
+				android:layout_below="@id/serverwarning"
+				android:clipToPadding="false"
+				android:divider="@null"
+				android:dividerHeight="0dp"
+				android:listSelector="@android:color/transparent"
+				android:paddingBottom="5dp"
+				android:paddingTop="5dp"
+				android:theme="@style/OverscrollNeutralizer"
+				app:layoutManager=".Messaging$SpeedyLinearLayoutManager"
+				app:stackFromEnd="true" />
+			<!-- Konfetti view -->
+			<nl.dionsegijn.konfetti.KonfettiView
+				android:id="@+id/konfetti"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:layout_above="@id/inputbar"
+				android:layout_below="@id/serverwarning" />
 			
-			<TextView
-				android:id="@+id/serverwarning_message"
-				android:layout_width="0dp"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:layout_marginLeft="16dp"
-				android:layout_marginRight="16dp"
-				android:layout_weight="1"
-				android:gravity="center_vertical"
-				android:paddingBottom="12dp"
-				android:paddingTop="12dp"
-				android:text="@string/message_serverstatus_noconnection"
-				android:textColor="?android:attr/textColorSecondary" />
-			
-			<Button
-				android:id="@+id/serverwarning_button"
-				style="?android:attr/borderlessButtonStyle"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:layout_margin="-5dp"
-				android:padding="5dp"
-				android:tag="@string/tag_primarytint"
-				android:text="@string/action_retry"
-				android:textColor="@color/colorAccent" />
-		</LinearLayout>
-		<!-- Message List -->
-		<android.support.v7.widget.RecyclerView
-			android:id="@+id/list_messages"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:layout_above="@id/inputbar"
-			android:layout_below="@id/serverwarning"
-			android:clipToPadding="false"
-			android:divider="@null"
-			android:dividerHeight="0dp"
-			android:listSelector="@android:color/transparent"
-			android:paddingBottom="5dp"
-			android:paddingTop="5dp"
-			android:theme="@style/OverscrollNeutralizer"
-			app:layoutManager=".Messaging$SpeedyLinearLayoutManager"
-			app:stackFromEnd="true" />
-		<!-- Konfetti view -->
-		<nl.dionsegijn.konfetti.KonfettiView
-			android:id="@+id/konfetti"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:layout_above="@id/inputbar"
-			android:layout_below="@id/serverwarning" />
+			<!-- Floating Action Button -->
+			<android.support.design.widget.FloatingActionButton
+				android:id="@+id/fab"
+				android:layout_width="40dp"
+				android:layout_height="40dp"
+				android:layout_alignParentBottom="true"
+				android:layout_alignParentEnd="true"
+				android:layout_margin="16dp"
+				android:src="@drawable/chevron_down"
+				app:backgroundTint="@android:color/white"
+				app:tint="@android:color/black"
+				app:fabSize="mini" />
+		</RelativeLayout>
 		<!-- Input bar -->
 		<RelativeLayout
 			android:id="@+id/inputbar"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:layout_alignParentBottom="true"
 			android:background="@color/colorForegroundLight"
 			android:clipToPadding="false"
 			android:elevation="8dp"
@@ -352,7 +344,7 @@
 						android:layout_height="wrap_content"
 						android:layout_gravity="center_vertical"
 						android:layout_marginStart="22dp"
-						android:src="@drawable/arrow_left"
+						android:src="@drawable/chevron_left"
 						android:tint="?android:textColorSecondary" />
 					
 					<TextView
@@ -364,5 +356,5 @@
 				</LinearLayout>
 			</LinearLayout>
 		</RelativeLayout>
-	</RelativeLayout>
+	</LinearLayout>
 </RelativeLayout>

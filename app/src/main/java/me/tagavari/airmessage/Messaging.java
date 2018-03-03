@@ -27,10 +27,10 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.design.widget.AppBarLayout;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBar;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.RecyclerView;
@@ -38,7 +38,6 @@ import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.transition.ChangeBounds;
-import android.transition.Transition;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
@@ -62,6 +61,8 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -74,10 +75,16 @@ import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
 
-public class Messaging extends AppCompatActivity {
+public class Messaging extends CompositeActivity {
 	//Creating the static values
 	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
 	private static final List<WeakReference<Messaging>> loadedConversations = new ArrayList<>();
+	
+	//Creating the plugin values
+	private MessageBarPlugin messageBarPlugin = null;
+	
+	//Creating the info bar values
+	private MessageBarPlugin.InfoBar infoBarConnection;
 	
 	//Creating the activity values
 	private ConversationManager.ConversationInfo conversationInfo;
@@ -126,18 +133,16 @@ public class Messaging extends AppCompatActivity {
 			//Getting the result
 			final byte result = intent.getByteExtra(Constants.intentParamResult, ConnectionService.intentResultValueConnection);
 			
-			//Showing the server warning
-			serverWarningBar.post(() -> {
-				//Hiding the server warning bar if the connection is successful
-				if(result == ConnectionService.intentResultValueSuccess) hideServerWarning();
-					//Otherwise showing the warning
-				else showServerWarning(result);
-			});
+			//Hiding the server warning bar if the connection is successful
+			if(result == ConnectionService.intentResultValueSuccess) hideServerWarning();
+			//Otherwise showing the warning
+			else showServerWarning(result);
 		}
 	};
 	
 	//Creating the view values
 	private View rootView;
+	private AppBarLayout appBar;
 	private Toolbar toolbar;
 	private RecyclerView messageList;
 	private View inputBar;
@@ -152,7 +157,6 @@ public class Messaging extends AppCompatActivity {
 	private ImageButton contentRecordButton;
 	private View recordingIndicator;
 	private TextView recordingTimeLabel;
-	private ViewGroup serverWarningBar;
 	
 	//Creating the menu values
 	private boolean menuLoaded = false;
@@ -161,7 +165,6 @@ public class Messaging extends AppCompatActivity {
 	
 	//Creating the other values
 	private RecyclerAdapter messageListAdapter = null;
-	private boolean serverWarningVisible = false;
 	private boolean messageBoxHasText = false;
 	private ActivityManager.TaskDescription lastTaskDescription;
 	
@@ -259,8 +262,13 @@ public class Messaging extends AppCompatActivity {
 		}
 	};
 	
+	public Messaging() {
+		//Setting the plugins;
+		addPlugin(messageBarPlugin = new MessageBarPlugin());
+	}
+	
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	public void onCreate(Bundle savedInstanceState) {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
 		
@@ -273,6 +281,7 @@ public class Messaging extends AppCompatActivity {
 		//Getting the views
 		rootView = findViewById(android.R.id.content);
 		toolbar = findViewById(R.id.toolbar);
+		appBar = findViewById(R.id.app_bar);
 		messageList = findViewById(R.id.list_messages);
 		inputBar = findViewById(R.id.inputbar);
 		messageSendButton = inputBar.findViewById(R.id.button_send);
@@ -286,7 +295,9 @@ public class Messaging extends AppCompatActivity {
 		contentRecordButton = inputBar.findViewById(R.id.button_record);
 		recordingIndicator = findViewById(R.id.recordingindicator);
 		recordingTimeLabel = inputBar.findViewById(R.id.recordingtime);
-		serverWarningBar = findViewById(R.id.serverwarning);
+		
+		//Setting the plugin views
+		messageBarPlugin.setParentView(findViewById(R.id.infobar_container));
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), messageList);
@@ -339,6 +350,9 @@ public class Messaging extends AppCompatActivity {
 		
 		//Adding the conversation as a loaded conversation
 		loadedConversations.add(new WeakReference<>(this));
+		
+		//Creating the info bars
+		infoBarConnection = messageBarPlugin.create(R.drawable.disconnection, null);
 	}
 	
 	private void prepareRetainedFragment() {
@@ -448,7 +462,7 @@ public class Messaging extends AppCompatActivity {
 	}
 	
 	@Override
-	protected void onStart() {
+	public void onStart() {
 		//Calling the super method
 		super.onStart();
 		
@@ -458,7 +472,7 @@ public class Messaging extends AppCompatActivity {
 	}
 	
 	@Override
-	protected void onResume() {
+	public void onResume() {
 		//Calling the super method
 		super.onResume();
 		
@@ -491,7 +505,7 @@ public class Messaging extends AppCompatActivity {
 	}
 	
 	@Override
-	protected void onPause() {
+	public void onPause() {
 		//Calling the super method
 		super.onPause();
 		
@@ -517,7 +531,7 @@ public class Messaging extends AppCompatActivity {
 	}
 	
 	@Override
-	protected void onStop() {
+	public void onStop() {
 		//Calling the super method
 		super.onStop();
 		
@@ -566,7 +580,7 @@ public class Messaging extends AppCompatActivity {
 	}
 	
 	@Override
-	protected void onDestroy() {
+	public void onDestroy() {
 		//Calling the super method
 		super.onDestroy();
 		
@@ -1479,24 +1493,10 @@ public class Messaging extends AppCompatActivity {
 	}
 	
 	void showServerWarning(byte reason) {
-		//Returning if the server warning bar is already visible
-		if(serverWarningVisible) return;
-		
-		//Setting the new state
-		serverWarningVisible = true;
-		
-		//Setting the current state
-		serverWarningVisible = true;
-		
-		//Getting the warning box components
-		TextView message = serverWarningBar.findViewById(R.id.serverwarning_message);
-		Button button = serverWarningBar.findViewById(R.id.serverwarning_button);
-		
 		switch(reason) {
 			case ConnectionService.intentResultValueInternalException:
-				message.setText(R.string.message_serverstatus_internalexception);
-				button.setText(R.string.action_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(R.string.message_serverstatus_internalexception);
+				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -1511,9 +1511,8 @@ public class Messaging extends AppCompatActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueBadRequest:
-				message.setText(R.string.message_serverstatus_badrequest);
-				button.setText(R.string.action_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(R.string.message_serverstatus_badrequest);
+				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -1528,35 +1527,20 @@ public class Messaging extends AppCompatActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueClientOutdated:
-				message.setText(R.string.message_serverstatus_clientoutdated);
-				button.setText(R.string.action_update);
-				button.setOnClickListener(view -> {
-					//Launching the app's page in the market
-					Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()));
-					startActivity(intent);
-				});
+				infoBarConnection.setText(R.string.message_serverstatus_clientoutdated);
+				infoBarConnection.setButton(R.string.action_update, view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))));
 				break;
 			case ConnectionService.intentResultValueServerOutdated:
-				message.setText(R.string.message_serverstatus_serveroutdated);
-				button.setText(R.string.screen_help);
-				button.setOnClickListener(view -> {
-					//Launching the server update URL
-					Intent intent = new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress);
-					startActivity(intent);
-				});
+				infoBarConnection.setText(R.string.message_serverstatus_serveroutdated);
+				infoBarConnection.setButton(R.string.screen_help, view -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)));
 				break;
 			case ConnectionService.intentResultValueUnauthorized:
-				message.setText(R.string.message_serverstatus_authfail);
-				button.setText(R.string.action_reconfigure);
-				button.setOnClickListener(view -> {
-					//Launching the connection wizard activity
-					startActivity(new Intent(Messaging.this, ServerSetup.class));
-				});
+				infoBarConnection.setText(R.string.message_serverstatus_authfail);
+				infoBarConnection.setButton(R.string.action_reconfigure, view -> startActivity(new Intent(Messaging.this, ServerSetup.class)));
 				break;
 			case ConnectionService.intentResultValueConnection:
-				message.setText(R.string.message_serverstatus_noconnection);
-				button.setText(R.string.action_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(R.string.message_serverstatus_noconnection);
+				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -1571,9 +1555,8 @@ public class Messaging extends AppCompatActivity {
 				});
 				break;
 			default:
-				message.setText(R.string.message_serverstatus_unknown);
-				button.setText(R.string.action_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(R.string.message_serverstatus_unknown);
+				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -1589,77 +1572,12 @@ public class Messaging extends AppCompatActivity {
 				break;
 		}
 		
-		//Showing the warning bar
-		serverWarningBar.setVisibility(View.VISIBLE);
-		
-		//Enabling the button
-		button.setEnabled(true);
-		
-		//Animating the server warning
-		//serverWarningBar.measure(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-		//int wrapSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-		//serverWarningBar.measure(wrapSpec, wrapSpec);
-		//int barHeight = serverWarningBar.getMeasuredHeight();
-		
-		//Constants.ResizeAnimation resizeAnimation = new Constants.ResizeAnimation(serverWarningBar, serverWarningBar.getHeight(), barHeight);
-		//resizeAnimation.setDuration(noticeBarAnimationDuration);
-		//serverWarningBar.startAnimation(resizeAnimation);
-		TransitionManager.beginDelayedTransition(serverWarningBar, new ChangeBounds());
-		serverWarningBar.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+		//Showing the info bar
+		infoBarConnection.show();
 	}
 	
 	void hideServerWarning() {
-		//Returning if the server warning bar is already invisible
-		if(!serverWarningVisible) return;
-		
-		//Setting the new state
-		serverWarningVisible = false;
-		
-		//Animating the server warning
-		/* Constants.ResizeAnimation resizeAnimation = new Constants.ResizeAnimation(serverWarningBar, serverWarningBar.getHeight(), 0);
-		resizeAnimation.setDuration(noticeBarAnimationDuration);
-		resizeAnimation.setAnimationListener(new Animation.AnimationListener() {
-			@Override
-			public void onAnimationStart(Animation animation) {
-			
-			}
-			
-			@Override
-			public void onAnimationEnd(Animation animation) {
-				//Setting the visibility
-				serverWarningBar.setVisibility(View.GONE);
-			}
-			
-			@Override
-			public void onAnimationRepeat(Animation animation) {
-			
-			}
-		});
-		serverWarningBar.startAnimation(resizeAnimation); */
-		ChangeBounds anim = new ChangeBounds();
-		anim.addListener(new Transition.TransitionListener() {
-			@Override
-			public void onTransitionStart(Transition transition) {}
-			
-			@Override
-			public void onTransitionEnd(Transition transition) {
-				serverWarningBar.setVisibility(View.GONE);
-			}
-			
-			@Override
-			public void onTransitionCancel(Transition transition) {}
-			
-			@Override
-			public void onTransitionPause(Transition transition) {}
-			
-			@Override
-			public void onTransitionResume(Transition transition) {}
-		});
-		TransitionManager.beginDelayedTransition(serverWarningBar, anim);
-		serverWarningBar.getLayoutParams().height = 0;
-		
-		//Disabling the action button
-		serverWarningBar.findViewById(R.id.serverwarning_button).setEnabled(false);
+		infoBarConnection.hide();
 	}
 	
 	void hideToolbar() {
@@ -1669,13 +1587,8 @@ public class Messaging extends AppCompatActivity {
 		//Setting the toolbar as invisible
 		toolbarVisible = false;
 		
-		//Animating the toolbar
-		((ViewGroup.MarginLayoutParams) findViewById(R.id.content).getLayoutParams()).topMargin = 0;
-		findViewById(R.id.content).requestLayout();
-		toolbar.animate()
-				.y(-toolbar.getHeight())
-				.withEndAction(() -> getSupportActionBar().hide())
-				.start();
+		//Hiding the app bar
+		appBar.setVisibility(View.GONE);
 	}
 	
 	void showToolbar() {
@@ -1685,25 +1598,9 @@ public class Messaging extends AppCompatActivity {
 		//Setting the toolbar as visible
 		toolbarVisible = true;
 		
-		//Animating the toolbar
-		getSupportActionBar().show();
-		toolbar.animate()
-				.y(0)
-				.withEndAction(() -> {
-					View contentView = findViewById(R.id.content);
-					((ViewGroup.MarginLayoutParams) contentView.getLayoutParams()).topMargin = toolbar.getHeight();
-					contentView.requestLayout();
-				})
-				.start();
+		//Showing the app bar
+		appBar.setVisibility(View.VISIBLE);
 	}
-	
-	/* private int getToolbarHeight() {
-		//Getting the toolbar height
-		TypedArray typedArray = obtainStyledAttributes(new TypedValue().data, new int[]{R.attr.actionBarSize});
-		int size = typedArray.getDimensionPixelSize(0, -1);
-		typedArray.recycle();
-		return size;
-	} */
 	
 	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {

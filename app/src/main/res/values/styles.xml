@@ -33,7 +33,15 @@
 		<item name="actionModeCloseDrawable">@drawable/arrow_back</item>
 	</style>
 	
-	<style name="AppTheme.AppCompat.Messaging" parent="@style/Theme.AppCompat.Light.NoActionBar">
+	<style name="AppTheme.AppCompat.NoActionBar" parent="@style/Theme.AppCompat.Light.NoActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="android:colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimary</item>
+		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorPrimary</item>
+		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="android:colorBackground">@color/colorBackgroundLight</item>
+		
 		<item name="android:actionBarTheme">@style/SolidActionBar</item>
 	</style>
 	

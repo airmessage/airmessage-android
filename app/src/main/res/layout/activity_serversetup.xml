@@ -68,7 +68,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center_vertical"
-				android:src="@drawable/arrow_right"
+				android:src="@drawable/chevron_right"
 				android:visibility="visible" />
 		</LinearLayout>
 		
@@ -87,7 +87,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center_vertical"
-				android:src="@drawable/arrow_left" />
+				android:src="@drawable/chevron_left" />
 			
 			<TextView
 				android:layout_width="wrap_content"

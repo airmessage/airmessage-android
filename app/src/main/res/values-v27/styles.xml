@@ -34,7 +34,7 @@
 		<item name="android:navigationBarColor">@color/colorAccentDark</item>
 	</style>
 	
-	<style name="AppTheme.AppCompat.Messaging" parent="@style/Theme.AppCompat.Light.NoActionBar">
+	<style name="AppTheme.AppCompat.NoActionBar" parent="@style/Theme.AppCompat.Light.NoActionBar">
 		<item name="android:actionBarTheme">@style/SolidActionBar</item>
 		
 		<item name="android:windowLightNavigationBar">true</item>

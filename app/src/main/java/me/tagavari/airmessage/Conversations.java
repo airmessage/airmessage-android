@@ -26,16 +26,12 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
-import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
@@ -48,17 +44,13 @@ import me.tagavari.airmessage.common.SharedValues;
 public class Conversations extends CompositeActivity {
 	//Creating the plugin values
 	private ConversationsBase conversationsBasePlugin = null;
+	private MessageBarPlugin messageBarPlugin = null;
 	
-	//Creating the view values
-	private ViewGroup serverWarning;
+	//Creating the info bar values
+	private MessageBarPlugin.InfoBar infoBarConnection, infoBarContacts;
 	
 	//Creating the menu values
 	private MenuItem searchMenuItem = null;
-	
-	//Creating the server warning animation values
-	private int serverWarningHeight;
-	private boolean serverWarningVisible = false;
-	private boolean serverWarningFirst = true;
 	
 	//Creating the state values
 	private boolean listingArchived = false;
@@ -416,18 +408,16 @@ public class Conversations extends CompositeActivity {
 			//Getting the result
 			final byte result = intent.getByteExtra(Constants.intentParamResult, ConnectionService.intentResultValueConnection);
 			
-			//Showing the server warning
-			serverWarning.post(() -> {
-				if(result == ConnectionService.intentResultValueSuccess) hideServerWarning();
-				else showServerWarning(result);
-			});
+			//Updating the server warning
+			if(result == ConnectionService.intentResultValueSuccess) hideServerWarning();
+			else showServerWarning(result);
 		}
 	};
 	
 	public Conversations() {
-		//Setting the plugins
-		conversationsBasePlugin = new ConversationsBase(() -> new ListAdapter(conversationsBasePlugin.conversations));
-		addPlugin(conversationsBasePlugin);
+		//Setting the plugins;
+		addPlugin(conversationsBasePlugin = new ConversationsBase(() -> new ListAdapter(conversationsBasePlugin.conversations)));
+		addPlugin(messageBarPlugin = new MessageBarPlugin());
 	}
 	
 	@Override
@@ -464,31 +454,14 @@ public class Conversations extends CompositeActivity {
 		setContentView(R.layout.activity_conversations);
 		
 		//Enabling the toolbar
-		//setSupportActionBar(findViewById(R.id.toolbar));
-		
-		//Getting the views
-		serverWarning = findViewById(R.id.serverwarning);
+		setSupportActionBar(findViewById(R.id.toolbar));
 		
 		//Setting the plugin views
 		conversationsBasePlugin.setViews(findViewById(R.id.list), findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
+		messageBarPlugin.setParentView(findViewById(R.id.infobar_container));
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), conversationsBasePlugin.listView);
-		
-		//Getting the server warning height
-		serverWarning.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-			@Override
-			public void onGlobalLayout() {
-				//Setting the height
-				serverWarningHeight = serverWarning.getHeight();
-				
-				//Setting the visibility to gone
-				serverWarning.setVisibility(View.GONE);
-				
-				//Removing the listener
-				serverWarning.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-			}
-		});
 		
 		//Configuring the list
 		conversationsBasePlugin.listView.setOnItemClickListener(onListItemClickListener);
@@ -497,6 +470,11 @@ public class Conversations extends CompositeActivity {
 		
 		//Setting the listeners
 		findViewById(R.id.fab).setOnClickListener(view -> startActivity(new Intent(Conversations.this, NewMessage.class)));
+		
+		//Creating the info bars
+		infoBarConnection = messageBarPlugin.create(R.drawable.disconnection, null);
+		infoBarContacts = messageBarPlugin.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
+		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts));
 	}
 	
 	@Override
@@ -587,8 +565,6 @@ public class Conversations extends CompositeActivity {
 			
 			//Notifying the adapter
 			notifyDataSetChanged();
-			
-			System.out.println("Filtered items count: " + filteredItems.size());
 		}
 		
 		@Override
@@ -711,16 +687,13 @@ public class Conversations extends CompositeActivity {
 		
 		//Showing the server warning if necessary
 		ConnectionService connectionService = ConnectionService.getInstance();
-		if(connectionService == null || (!connectionService.isConnected() && !connectionService.isConnecting() && ConnectionService.lastConnectionResult != -1)) showServerWarning(ConnectionService.lastConnectionResult);
+		if(connectionService == null) showServerWarning(ConnectionService.intentResultValueConnection);
+		else if(!connectionService.isConnected() && !connectionService.isConnecting() && ConnectionService.lastConnectionResult != -1) showServerWarning(ConnectionService.lastConnectionResult);
 		else hideServerWarning();
 		
-		//Checking if the contacts permission has been granted
-		findViewById(R.id.contactnotice).setVisibility(MainApplication.canUseContacts(this) ? View.GONE : View.VISIBLE);
-	}
-	
-	public void onRequestContactsClick(View view) {
-		//Requesting the permission
-		requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts);
+		//Updating the contacts info bar
+		if(MainApplication.canUseContacts(this)) infoBarContacts.hide();
+		else infoBarContacts.show();
 	}
 	
 	@Override
@@ -729,8 +702,8 @@ public class Conversations extends CompositeActivity {
 		if(requestCode == Constants.permissionReadContacts) {
 			//Checking if the result is a success
 			if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-				//Hiding the request box
-				findViewById(R.id.contactnotice).setVisibility(View.GONE);
+				//Hiding the contact request info bar
+				infoBarContacts.hide();
 			}
 			//Otherwise checking if the result is a denial
 			else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
@@ -856,42 +829,10 @@ public class Conversations extends CompositeActivity {
 	}
 	
 	void showServerWarning(byte reason) {
-		//Showing the warning box
-		serverWarning.setVisibility(View.VISIBLE);
-		
-		//Resetting the view's position if it is the first animation
-		if(serverWarningFirst) {
-			//Setting the Y to below the app bar
-			serverWarning.setY(getSupportActionBar().getHeight() - serverWarningHeight);
-			
-			//Unflagging the first view position
-			serverWarningFirst = false;
-		}
-		
-		//Checking if the warning not visible
-		if(!serverWarningVisible) {
-			//Showing the warning box
-			serverWarning.setVisibility(View.VISIBLE);
-			
-			//Animating the warning box downwards
-			serverWarning.animate().translationY(0).setInterpolator(new AccelerateDecelerateInterpolator()).setDuration(300).start();
-			
-			//Setting the server warning as visible
-			serverWarningVisible = true;
-		}
-		
-		//Getting the warning box components
-		TextView message = serverWarning.findViewById(R.id.serverwarning_message);
-		Button button = serverWarning.findViewById(R.id.serverwarning_button);
-		
-		//Enabling the button
-		button.setEnabled(true);
-		
 		switch(reason) {
 			case ConnectionService.intentResultValueInternalException:
-				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_internalexception)));
-				button.setText(R.string.action_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_internalexception)));
+				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -906,9 +847,8 @@ public class Conversations extends CompositeActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueBadRequest:
-				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_badrequest)));
-				button.setText(R.string.action_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_badrequest)));
+				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -923,24 +863,20 @@ public class Conversations extends CompositeActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueClientOutdated:
-				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_clientoutdated)));
-				button.setText(R.string.action_update);
-				button.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))));
+				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_clientoutdated)));
+				infoBarConnection.setButton(R.string.action_update, view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))));
 				break;
 			case ConnectionService.intentResultValueServerOutdated:
-				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_serveroutdated)));
-				button.setText(R.string.screen_help);
-				button.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)));
+				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_serveroutdated)));
+				infoBarConnection.setButton(R.string.screen_help, view -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)));
 				break;
 			case ConnectionService.intentResultValueUnauthorized:
-				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_authfail)));
-				button.setText(R.string.action_reconfigure);
-				button.setOnClickListener(view -> startActivity(new Intent(Conversations.this, ServerSetup.class)));
+				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_authfail)));
+				infoBarConnection.setButton(R.string.action_reconfigure, view -> startActivity(new Intent(Conversations.this, ServerSetup.class)));
 				break;
 			case ConnectionService.intentResultValueConnection:
-				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_noconnection)));
-				button.setText(R.string.action_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_noconnection)));
+				infoBarConnection.setButton(R.string.action_reconnect, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -955,9 +891,8 @@ public class Conversations extends CompositeActivity {
 				});
 				break;
 			default:
-				message.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_unknown)));
-				button.setText(R.string.action_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_unknown)));
+				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -972,20 +907,13 @@ public class Conversations extends CompositeActivity {
 				});
 				break;
 		}
+		
+		//Showing the info bar
+		infoBarConnection.show();
 	}
 	
 	void hideServerWarning() {
-		//Checking if the server warning is visible
-		if(serverWarningVisible) {
-			//Animating the warning box upwards
-			serverWarning.animate().translationY(-serverWarningHeight).setInterpolator(new AccelerateDecelerateInterpolator()).setDuration(300).withEndAction(() -> serverWarning.setVisibility(View.GONE)).start();
-			
-			//Setting the server warning as invisible
-			serverWarningVisible = false;
-		}
-		
-		//Disabling the action button
-		serverWarning.findViewById(R.id.serverwarning_button).setEnabled(false);
+		infoBarConnection.hide();
 	}
 	
 	void setAppBarState(byte state) {
