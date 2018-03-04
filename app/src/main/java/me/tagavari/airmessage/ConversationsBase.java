@@ -646,25 +646,18 @@ class ConversationsBase extends ActivityPlugin {
 			
 			//Getting the snackbar parent view
 			View parentView = snackbarParentReference.get();
-			if(parentView == null) return;
 			
 			//Syncing the messages
 			ConnectionService connectionService = ConnectionService.getInstance();
 			boolean messageResult = connectionService != null && connectionService.requestMassRetrieval(context);
 			if(!messageResult) {
 				//Displaying a snackbar
-				Snackbar.make(parentView, R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
+				if(parentView != null) Snackbar.make(parentView, R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
 				return;
 			}
 			
 			//Showing a snackbar
-			Snackbar snackbar = Snackbar.make(parentView, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_LONG);
-			
-			//Setting the snackbar text to white
-			//((TextView) snackbar.getView().getActivity().findViewById(android.support.design.R.id.snackbar_text)).setTextColor(Color.WHITE);
-			
-			//Showing the snackbar
-			snackbar.show();
+			if(parentView != null) Snackbar.make(parentView, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_LONG).show();
 		}
 	}
 	

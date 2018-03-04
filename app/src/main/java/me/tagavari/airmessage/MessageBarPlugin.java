@@ -41,16 +41,18 @@ class MessageBarPlugin extends ActivityPlugin {
 		private View.OnClickListener buttonClickListener;
 		
 		//Creating the view values
+		private View view = null;
+		
 		private ImageView iconView;
 		private TextView textView;
 		private Button buttonView;
 		
-		//Creating the view
-		private View view = null;
-		
 		//Creating the state values
 		private int infoBarIndex;
 		private boolean infoBarVisible = false;
+		
+		//Creating the other values
+		private int infoBarColor = -1;
 		
 		InfoBar(int index, int icon, String text) {
 			//Setting the values
@@ -85,6 +87,11 @@ class MessageBarPlugin extends ActivityPlugin {
 			buttonText = null;
 		}
 		
+		void setColor(int color) {
+			if(view == null) infoBarColor = color;
+			else buttonView.setTextColor(color);
+		}
+		
 		private void prepareView() {
 			//Checking if the view is invalid
 			if(view == null) {
@@ -111,6 +118,7 @@ class MessageBarPlugin extends ActivityPlugin {
 				iconView = view.findViewById(R.id.icon);
 				textView = view.findViewById(R.id.text);
 				buttonView = view.findViewById(R.id.button);
+				if(infoBarColor != -1) buttonView.setTextColor(infoBarColor);
 			}
 			
 			//Filling in the view details

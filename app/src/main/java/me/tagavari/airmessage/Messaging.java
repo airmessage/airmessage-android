@@ -28,6 +28,7 @@ import android.os.Looper;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.design.widget.AppBarLayout;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBar;
@@ -50,6 +51,8 @@ import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.OvershootInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -57,7 +60,6 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -76,6 +78,9 @@ import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
 
 public class Messaging extends CompositeActivity {
+	//Creating the reference values
+	private static final int quickScrollFABThreshold = 3;
+	
 	//Creating the static values
 	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
 	private static final List<WeakReference<Messaging>> loadedConversations = new ArrayList<>();
@@ -107,6 +112,8 @@ public class Messaging extends CompositeActivity {
 		}
 	};
 	
+	private final Runnable conversationUnreadCountChangeListener = this::updateUnreadIndicator;
+	
 	//Creating the send values
 	private File currentSendFile;
 	
@@ -126,7 +133,7 @@ public class Messaging extends CompositeActivity {
 	private static final String retainedFragmentTag = RetainedFragment.class.getName();
 	private RetainedFragment retainedFragment;
 	
-	//Creating the broadcast values
+	//Creating the listener values
 	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
@@ -137,6 +144,21 @@ public class Messaging extends CompositeActivity {
 			if(result == ConnectionService.intentResultValueSuccess) hideServerWarning();
 			//Otherwise showing the warning
 			else showServerWarning(result);
+		}
+	};
+	private final RecyclerView.OnScrollListener messageListScrollListener = new RecyclerView.OnScrollListener() {
+		@Override
+		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+			//Getting the layout manager
+			LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+			int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - 1 - linearLayoutManager.findLastVisibleItemPosition();
+			
+			//Showing the FAB if the user has scrolled more than the threshold items
+			if(itemsScrolledFromBottom > quickScrollFABThreshold) setFABVisibility(true);
+			else setFABVisibility(false);
+			
+			//Marking viewed items as read
+			if(itemsScrolledFromBottom < conversationInfo.getUnreadMessageCount()) conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
 		}
 	};
 	
@@ -157,6 +179,8 @@ public class Messaging extends CompositeActivity {
 	private ImageButton contentRecordButton;
 	private View recordingIndicator;
 	private TextView recordingTimeLabel;
+	private FloatingActionButton bottomFAB;
+	private TextView bottomFABBadge;
 	
 	//Creating the menu values
 	private boolean menuLoaded = false;
@@ -232,7 +256,7 @@ public class Messaging extends CompositeActivity {
 			
 			//Clearing the message box
 			messageInputField.setText("");
-			messageInputField.invalidate(); //Height of input field doesn't update otherwise
+			messageInputField.requestLayout(); //Height of input field doesn't update otherwise
 			messageBoxHasText = false;
 			
 			//Scrolling to the bottom of the chat
@@ -295,6 +319,8 @@ public class Messaging extends CompositeActivity {
 		contentRecordButton = inputBar.findViewById(R.id.button_record);
 		recordingIndicator = findViewById(R.id.recordingindicator);
 		recordingTimeLabel = inputBar.findViewById(R.id.recordingtime);
+		bottomFAB = findViewById(R.id.fab_bottom);
+		bottomFABBadge = findViewById(R.id.fab_bottom_badge);
 		
 		//Setting the plugin views
 		messageBarPlugin.setParentView(findViewById(R.id.infobar_container));
@@ -324,6 +350,7 @@ public class Messaging extends CompositeActivity {
 		inputBar.findViewById(R.id.button_gallery).setOnClickListener(view -> requestMediaFile());
 		inputBar.findViewById(R.id.button_attach).setOnClickListener(view -> requestAnyFile());
 		contentRecordButton.setOnTouchListener(recordingTouchListener);
+		bottomFAB.setOnClickListener(view -> messageListAdapter.scrollToBottom());
 		
 		//Getting the conversation info
 		retainedFragment.conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
@@ -399,9 +426,11 @@ public class Messaging extends CompositeActivity {
 		messageListAdapter = new RecyclerAdapter(retainedFragment.conversationItemList);
 		conversationInfo.setAdapterUpdater(new AdapterUpdater(this));
 		messageList.setAdapter(messageListAdapter);
+		messageList.addOnScrollListener(messageListScrollListener);
 		
-		//Setting the title listener
+		//Setting the conversation listeners
 		conversationInfo.addTitleChangeListener(conversationTitleChangeListener);
+		conversationInfo.addUnreadCountChangeListener(conversationUnreadCountChangeListener);
 		
 		//Setting the conversation effect callbacks
 		conversationInfo.setEffectCallbacks(new EffectCallbacks(this));
@@ -427,7 +456,7 @@ public class Messaging extends CompositeActivity {
 			ConversationManager.ConversationItem conversationItem = retainedFragment.conversationItemList.get(i);
 			
 			//Breaking from the loop if the item has already been viewed
-			if(conversationItem.getDate() < conversationInfo.getTimeLastViewed()) break;
+			if(retainedFragment.conversationItemList.size() - 1 >= conversationInfo.getUnreadMessageCount()) break;
 			
 			//Skipping the remainder of the iteration if the item is not a message
 			if(!(conversationItem instanceof ConversationManager.MessageInfo)) continue;
@@ -447,6 +476,21 @@ public class Messaging extends CompositeActivity {
 		
 		//Playing the send effect if there is one
 		if(!currentScreenEffect.isEmpty()) playCurrentSendEffect();
+		
+		//Setting the last message count
+		retainedFragment.lastUnreadCount = conversationInfo.getUnreadMessageCount();
+		
+		{
+			//Getting the layout manager
+			LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
+			int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
+			
+			//Showing the FAB if the user has scrolled more than 3 items
+			if(itemsScrolledFromBottom > quickScrollFABThreshold) {
+				bottomFAB.show();
+				restoreUnreadIndicator();
+			}
+		}
 	}
 	
 	/* void onMessagesFailed() {
@@ -560,14 +604,9 @@ public class Messaging extends CompositeActivity {
 				//Clearing the messages
 				conversationInfo.clearMessages();
 				
-				//Setting the conversation as unloaded
-				foregroundConversations.remove(conversationInfo.getLocalID());
-				
-				//Updating the conversation's last view time
-				long lastViewTime = System.currentTimeMillis();
-				conversationInfo.setTimeLastViewed(lastViewTime);
+				//Updating the conversation's unread message count
 				conversationInfo.updateUnreadStatus();
-				new UpdateLastViewTimeTask(getApplicationContext(), conversationInfo.getLocalID(), lastViewTime).execute();
+				new UpdateUnreadMessageCount(getApplicationContext(), conversationInfo.getLocalID(), conversationInfo.getUnreadMessageCount()).execute();
 			}
 		} else {
 			//Setting the restarting from config change variable to true
@@ -604,8 +643,11 @@ public class Messaging extends CompositeActivity {
 			break;
 		}
 		
-		//Removing the conversation title change listener
-		if(conversationInfo != null) conversationInfo.removeTitleChangeListener(conversationTitleChangeListener);
+		//Removing the conversation listeners
+		if(conversationInfo != null) {
+			conversationInfo.removeTitleChangeListener(conversationTitleChangeListener);
+			conversationInfo.removeUnreadCountChangeListener(conversationUnreadCountChangeListener);
+		}
 	}
 	
 	long getConversationID() {
@@ -619,6 +661,7 @@ public class Messaging extends CompositeActivity {
 				messageContentButton.setEnabled(false);
 				messageInputField.setEnabled(false);
 				messageSendButton.setEnabled(false);
+				messageBar.getLayoutParams().height = referenceBar.getHeight();
 				
 				//Showing the content bar
 				contentCloseButton.setRotation(45);
@@ -900,25 +943,36 @@ public class Messaging extends CompositeActivity {
 	private void colorUI(ViewGroup root) {
 		//Getting the color
 		int color = conversationInfo.getConversationColor();
+		int darkerColor = ColorHelper.darkenColor(color);
+		int lighterColor = ColorHelper.lightenColor(color);
 		
 		//Coloring the app and status bar
 		getSupportActionBar().setBackgroundDrawable(new ColorDrawable(color));
-		getWindow().setStatusBarColor(ColorHelper.darkenColor(color));
+		getWindow().setStatusBarColor(darkerColor);
 		
 		//Updating the task description
 		if(lastTaskDescription != null) setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(lastTaskDescription.getLabel(), lastTaskDescription.getIcon(), color));
 		
-		//Coloring parts of the UI
+		//Coloring tagged parts of the UI
 		for(View view : Constants.getViewsByTag(root, getResources().getString(R.string.tag_primarytint))) {
 			if(view instanceof ImageView) ((ImageView) view).setColorFilter(color, android.graphics.PorterDuff.Mode.MULTIPLY);
 			else if(view instanceof Button) ((Button) view).setTextColor(color);
 			else if(view instanceof RelativeLayout) view.setBackground(new ColorDrawable(color));
-			else if(view instanceof Switch) {
+			/* else if(view instanceof Switch) {
 				Switch switchView = (Switch) view;
 				switchView.setThumbTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0xFFFAFAFA, color}));
 				switchView.setTrackTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0x61000000, color}));
-			}
+			} */
 		}
+		
+		//Coloring the unique UI components
+		if(retainedFragment.lastUnreadCount == 0) bottomFAB.setImageTintList(ColorStateList.valueOf(color));
+		else bottomFAB.setBackgroundTintList(ColorStateList.valueOf(color));
+		bottomFABBadge.setBackgroundTintList(ColorStateList.valueOf(darkerColor));
+		findViewById(R.id.fab_bottom_splash).setBackgroundTintList(ColorStateList.valueOf(lighterColor));
+		
+		//Coloring the info bars
+		infoBarConnection.setColor(color);
 	}
 	
 	void setAppBarState(byte state) {
@@ -1071,7 +1125,7 @@ public class Messaging extends CompositeActivity {
 		retainedFragment.inputState = InputState.CONTENT;
 		
 		//Disabling the message bar
-		TransitionManager.beginDelayedTransition((ViewGroup) messageBar, new ChangeBounds());
+		TransitionManager.beginDelayedTransition(messageBar, new ChangeBounds());
 		messageBar.getLayoutParams().height = referenceBar.getHeight();
 		
 		messageContentButton.setEnabled(false);
@@ -1600,6 +1654,119 @@ public class Messaging extends CompositeActivity {
 		
 		//Showing the app bar
 		appBar.setVisibility(View.VISIBLE);
+	}
+	
+	void setFABVisibility(boolean visible) {
+		//Returning if the current state matches the requested state
+		if(bottomFAB.isShown() == visible) return;
+		
+		if(visible) {
+			//Showing the FAB
+			bottomFAB.show();
+			
+			//Checking if there are unread messages
+			if(conversationInfo.getUnreadMessageCount() > 0) {
+				//Animating the badge (to go with the FAB appearance)
+				bottomFABBadge.setVisibility(View.VISIBLE);
+				bottomFABBadge.animate()
+						.scaleX(1)
+						.scaleY(1)
+						.setInterpolator(new OvershootInterpolator())
+						.start();
+			}
+		} else {
+			//Hiding the FAB
+			bottomFAB.hide();
+			
+			//Checking if there are unread messages
+			if(conversationInfo.getUnreadMessageCount() > 0) {
+				//Hiding the badge (to go with the FAB disappearance)
+				bottomFABBadge.animate()
+						.scaleX(0)
+						.scaleY(0)
+						.withEndAction(() -> bottomFABBadge.setVisibility(View.GONE))
+						.start();
+			}
+		}
+	}
+	
+	void restoreUnreadIndicator() {
+		//Returning if the indicator shouldn't be visible
+		if(conversationInfo.getUnreadMessageCount() == 0) return;
+		
+		//Coloring the FAB
+		bottomFAB.setBackgroundTintList(ColorStateList.valueOf(conversationInfo.getConversationColor()));
+		bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
+		
+		//Updating the badge
+		bottomFABBadge.setText(Integer.toString(conversationInfo.getUnreadMessageCount()));
+		bottomFABBadge.setVisibility(View.VISIBLE);
+		bottomFABBadge.setScaleX(1);
+		bottomFABBadge.setScaleY(1);
+	}
+	
+	void updateUnreadIndicator() {
+		System.out.println("Fab shown: " + bottomFAB.isShown());
+		//Returning if the value has not changed
+		if(retainedFragment.lastUnreadCount == conversationInfo.getUnreadMessageCount()) return;
+		
+		//Getting the color
+		int colorTint = conversationInfo.getConversationColor();
+		
+		//Checking if there are any unread messages
+		if(conversationInfo.getUnreadMessageCount() > 0) {
+			//Coloring the FAB
+			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(conversationInfo.getConversationColor()));
+			bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
+			
+			//Updating the badge text
+			bottomFABBadge.setText(Integer.toString(conversationInfo.getUnreadMessageCount()));
+			
+			//Animating the badge
+			if(bottomFAB.isShown()) {
+				bottomFABBadge.setVisibility(View.VISIBLE);
+				bottomFABBadge.setScaleX(0);
+				bottomFABBadge.setScaleY(0);
+				bottomFABBadge.animate()
+						.scaleX(1)
+						.scaleY(1)
+						.setInterpolator(new OvershootInterpolator())
+						.start();
+			}
+			System.out.println("Animating badge!");
+			
+			//Checking if there were previously no unread messages and the FAB is visible
+			if(retainedFragment.lastUnreadCount == 0 && bottomFAB.isShown()) {
+				//Animating the splash
+				View bottomSplash = findViewById(R.id.fab_bottom_splash);
+				bottomSplash.setScaleX(1);
+				bottomSplash.setScaleY(1);
+				bottomSplash.setAlpha(1);
+				bottomSplash.setVisibility(View.VISIBLE);
+				bottomSplash.animate()
+						.scaleX(2.5F)
+						.scaleY(2.5F)
+						.alpha(0)
+						.setDuration(1000)
+						.setInterpolator(new DecelerateInterpolator())
+						.withEndAction(() -> bottomSplash.setVisibility(View.GONE))
+						.start();
+			}
+		} else {
+			//Restoring the FAB color
+			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
+			bottomFAB.setImageTintList(ColorStateList.valueOf(colorTint));
+			
+			//Hiding the badge
+			if(bottomFAB.isShown()) bottomFABBadge.animate()
+					.scaleX(0)
+					.scaleY(0)
+					.withEndAction(() -> bottomFABBadge.setVisibility(View.GONE))
+					.start();
+		}
+		
+		//Setting the last unread message count
+		retainedFragment.lastUnreadCount = conversationInfo.getUnreadMessageCount();
 	}
 	
 	@Override
@@ -2286,6 +2453,8 @@ public class Messaging extends CompositeActivity {
 		private static final byte messagesStateFailed = 3;
 		byte messagesState = messagesStateUnloaded;
 		
+		int lastUnreadCount = 0;
+		
 		private long conversationID;
 		private ArrayList<ConversationManager.ConversationItem> conversationItemList = new ArrayList<>();
 		private ArrayList<ConversationManager.MessageInfo> conversationGhostList = new ArrayList<>();
@@ -2458,6 +2627,9 @@ public class Messaging extends CompositeActivity {
 				//Replacing the conversation items
 				conversationInfo.replaceConversationItems(retainedFragment.getContext(), messages);
 				
+				//Marking all messages as read (list will always be scrolled to the bottom)
+				conversationInfo.setUnreadMessageCount(0);
+				
 				//Telling the callbacks
 				retainedFragment.parentActivity.onMessagesLoaded();
 			}
@@ -2607,16 +2779,16 @@ public class Messaging extends CompositeActivity {
 		}
 	}
 	
-	private static class UpdateLastViewTimeTask extends AsyncTask<Void, Void, Void> {
+	private static class UpdateUnreadMessageCount extends AsyncTask<Void, Void, Void> {
 		private final WeakReference<Context> contextReference;
 		private final long conversationID;
-		private final long time;
+		private final int count;
 		
-		UpdateLastViewTimeTask(Context context, long conversationID, long time) {
+		UpdateUnreadMessageCount(Context context, long conversationID, int count) {
 			contextReference = new WeakReference<>(context);
 			
 			this.conversationID = conversationID;
-			this.time = time;
+			this.count = count;
 		}
 		
 		@Override
@@ -2626,7 +2798,7 @@ public class Messaging extends CompositeActivity {
 			if(context == null) return null;
 			
 			//Updating the time
-			DatabaseManager.setConversationLastViewTime(DatabaseManager.getWritableDatabase(context), conversationID, time);
+			DatabaseManager.setUnreadMessageCount(DatabaseManager.getWritableDatabase(context), conversationID, count);
 			
 			//Returning
 			return null;

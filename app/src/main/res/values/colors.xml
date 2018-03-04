@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#2196F3</color>
-    <color name="colorPrimaryDark">#1976D2</color>
+    <color name="colorPrimary">#448AFF</color>
+    <color name="colorPrimaryDark">#366ECC</color>
     <color name="colorAccent">@color/colorPrimary</color>
-    <color name="colorAccentDark">@color/colorPrimaryDark</color>
+	<color name="colorAccentDark">@color/colorPrimaryDark</color>
+	
+	<color name="textColorPrimary">#DE000000</color>
+	<color name="textColorSecondary">#8A000000</color>
+	
+	<color name="colorAppIcon">#4A99F5</color>
 	
 	<color name="navbarDivider">#FFE0E0E0</color>
 	

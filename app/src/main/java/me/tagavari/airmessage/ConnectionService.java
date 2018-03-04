@@ -1732,6 +1732,13 @@ public class ConnectionService extends Service {
 		private final List<SharedValues.ConversationItem> structConversationItems;
 		private final boolean sendNotifications;
 		
+		//Creating the conversation lists
+		private final ArrayList<ConversationManager.ConversationItem> newCompleteConversationItems = new ArrayList<>();
+		private final ArrayList<ConversationManager.ConversationInfo> completeConversations = new ArrayList<>();
+		
+		//Creating the caches
+		private ArrayList<Long> loadedConversationsCache;
+		
 		MessageUpdateAsyncTask(ConnectionService serviceInstance, Context context, List<SharedValues.ConversationItem> structConversationItems, boolean sendNotifications) {
 			//Setting the references
 			serviceReference = new WeakReference<>(serviceInstance);
@@ -1742,9 +1749,11 @@ public class ConnectionService extends Service {
 			this.sendNotifications = sendNotifications;
 		}
 		
-		//Creating the conversation lists
-		private final ArrayList<ConversationManager.ConversationItem> newCompleteConversationItems = new ArrayList<>();
-		private final ArrayList<ConversationManager.ConversationInfo> completeConversations = new ArrayList<>();
+		@Override
+		protected void onPreExecute() {
+			//Getting the caches
+			loadedConversationsCache = new ArrayList<>(Messaging.getLoadedConversations());
+		}
 		
 		@Override
 		protected Void doInBackground(Void... params) {
@@ -1839,10 +1848,12 @@ public class ConnectionService extends Service {
 				//Adding the conversation item to the conversation and the list if the conversation is complete
 				if(parentConversation.getState() == ConversationManager.ConversationInfo.ConversationState.READY)
 					newCompleteConversationItems.add(conversationItem);
-					//Otherwise updating the last conversation item
+				//Otherwise updating the last conversation item
 				else if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
 					parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context));
 				
+				//Incrementing the unread count
+				if(!loadedConversationsCache.contains(parentConversation.getLocalID())) DatabaseManager.incrementUnreadMessageCount(writableDatabase, parentConversation.getLocalID());
 			}
 			
 			{
@@ -1932,6 +1943,10 @@ public class ConnectionService extends Service {
 						//Updating the parent conversation's latest item
 						parentConversation.setLastItem(context, conversationItem);
 					}
+					
+					//Incrementing the conversation's unread count
+					parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
+					parentConversation.updateUnreadStatus();
 					
 					//Sending notifications
 					if(conversationItem instanceof ConversationManager.MessageInfo)

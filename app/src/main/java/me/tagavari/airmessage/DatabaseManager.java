@@ -18,7 +18,7 @@ import me.tagavari.airmessage.common.SharedValues;
 
 class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
-	private static final int DATABASE_VERSION = 2;
+	private static final int DATABASE_VERSION = 3;
 	private static final String DATABASE_NAME = "messages.db";
 	
 	//Creating the fetch statements
@@ -49,7 +49,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.ConversationEntry.COLUMN_NAME_STATE,
 			Contract.ConversationEntry.COLUMN_NAME_SERVICE,
 			Contract.ConversationEntry.COLUMN_NAME_NAME,
-			Contract.ConversationEntry.COLUMN_NAME_LASTVIEWED,
+			Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT,
 			Contract.ConversationEntry.COLUMN_NAME_ARCHIVED,
 			Contract.ConversationEntry.COLUMN_NAME_MUTED,
 			Contract.ConversationEntry.COLUMN_NAME_COLOR
@@ -78,7 +78,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.ConversationEntry.COLUMN_NAME_STATE + " INTEGER NOT NULL, " +
 			Contract.ConversationEntry.COLUMN_NAME_SERVICE + " TEXT, " +
 			Contract.ConversationEntry.COLUMN_NAME_NAME + " TEXT, " +
-			Contract.ConversationEntry.COLUMN_NAME_LASTVIEWED + " INTEGER DEFAULT 0, " +
+			Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER DEFAULT 0, " +
 			Contract.ConversationEntry.COLUMN_NAME_ARCHIVED + " INTEGER DEFAULT 0, " +
 			Contract.ConversationEntry.COLUMN_NAME_MUTED + " INTEGER DEFAULT 0," +
 			Contract.ConversationEntry.COLUMN_NAME_COLOR + " INTEGER DEFAULT " + 0xFF000000 + //Black
@@ -148,6 +148,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Adding the sticker and tapback table
 				db.execSQL(SQL_CREATE_TABLE_STICKER);
 				db.execSQL(SQL_CREATE_TABLE_TAPBACK);
+			case 2:
+				//Adding the "unread messages" column
+				db.execSQL("ALTER TABLE " + Contract.ConversationEntry.TABLE_NAME + " ADD " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER;");
 		}
 		
 		//Checking if the version is
@@ -199,10 +202,11 @@ class DatabaseManager extends SQLiteOpenHelper {
 			static final String COLUMN_NAME_STATE = "state";
 			static final String COLUMN_NAME_SERVICE = "service";
 			static final String COLUMN_NAME_NAME = "name";
+			//static final String COLUMN_NAME_LASTVIEWED = "last_viewed";
+			static final String COLUMN_NAME_UNREADMESSAGECOUNT = "unread_message_count";
 			static final String COLUMN_NAME_ARCHIVED = "archived";
 			static final String COLUMN_NAME_MUTED = "muted";
 			static final String COLUMN_NAME_COLOR = "color";
-			static final String COLUMN_NAME_LASTVIEWED = "last_viewed";
 		}
 		
 		static class MemberEntry implements BaseColumns {
@@ -276,7 +280,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		int indexChatGUID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_GUID);
 		int indexChatService = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICE);
 		int indexChatName = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_NAME);
-		int indexChatLastViewed = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_LASTVIEWED);
+		int indexChatUnreadMessages = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT);
 		int indexChatArchived = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED);
 		int indexChatMuted = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED);
 		int indexChatColor = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR);
@@ -288,7 +292,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			String chatGUID = cursor.getString(indexChatGUID);
 			String service = cursor.getString(indexChatService);
 			String chatTitle = cursor.getString(indexChatName);
-			long chatLastViewed = cursor.getLong(indexChatLastViewed);
+			int chatUnreadMessages = cursor.getInt(indexChatUnreadMessages);
 			boolean chatArchived = cursor.getInt(indexChatArchived) == 1;
 			boolean chatMuted = cursor.getInt(indexChatMuted) == 1;
 			int chatColor = cursor.getInt(indexChatColor);
@@ -306,7 +310,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			memberCursor.close();
 			
 			//Creating and adding the conversation info
-			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatTitle, chatLastViewed, chatColor);
+			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor);
 			conversationInfo.setArchived(chatArchived);
 			conversationInfo.setMuted(chatMuted);
 			conversationInfo.setLastItem(lightItem);
@@ -335,7 +339,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		int indexChatState = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_STATE);
 		int indexChatService = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICE);
 		int indexChatName = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_NAME);
-		int indexChatLastViewed = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_LASTVIEWED);
+		int indexChatUnreadMessages = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT);
 		int indexChatArchived = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED);
 		int indexChatMuted = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED);
 		int indexChatColor = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR);
@@ -348,7 +352,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			ConversationManager.ConversationInfo.ConversationState conversationState = ConversationManager.ConversationInfo.ConversationState.fromIdentifier(cursor.getInt(indexChatState));
 			String service = cursor.getString(indexChatService);
 			String chatName = cursor.getString(indexChatName);
-			long chatLastViewed = cursor.getLong(indexChatLastViewed);
+			int chatUnreadMessages = cursor.getInt(indexChatUnreadMessages);
 			boolean chatArchived = cursor.getInt(indexChatArchived) == 1;
 			boolean chatMuted = cursor.getInt(indexChatMuted) == 1;
 			int chatColor = cursor.getInt(indexChatColor);
@@ -366,7 +370,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			memberCursor.close();
 			
 			//Creating and adding the conversation info
-			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatName, chatLastViewed, chatColor);
+			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatName, chatUnreadMessages, chatColor);
 			conversationInfo.setArchived(chatArchived);
 			conversationInfo.setMuted(chatMuted);
 			conversationInfo.setLastItem(lightItem);
@@ -857,9 +861,6 @@ class DatabaseManager extends SQLiteOpenHelper {
 	}
 	
 	static ConversationManager.ConversationInfo addReadyConversationInfo(SQLiteDatabase writableDatabase, Context context, SharedValues.ConversationInfo structConversationInfo) {
-		//Getting the current time
-		long currentTime = System.currentTimeMillis();
-		
 		//Deleting the conversation if it exists in the database
 		long existingLocalID = -1;
 		Cursor cursor = writableDatabase.query(Contract.ConversationEntry.TABLE_NAME, new String[]{Contract.ConversationEntry._ID}, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{structConversationInfo.guid}, null, null, null, "1");
@@ -879,7 +880,6 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, structConversationInfo.service);
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_NAME, structConversationInfo.name);
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationColor);
-		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_LASTVIEWED, currentTime);
 		
 		//Inserting the conversation into the database
 		long localID;
@@ -899,7 +899,6 @@ class DatabaseManager extends SQLiteOpenHelper {
 		conversationInfo.setConversationColor(conversationColor);
 		conversationInfo.setTitle(context, structConversationInfo.name);
 		conversationInfo.setConversationMembersCreateColors(structConversationInfo.members);
-		conversationInfo.setTimeLastViewed(currentTime);
 		
 		//Adding the members
 		if(existingLocalID != -1) writableDatabase.delete(Contract.MemberEntry.TABLE_NAME, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(existingLocalID)}); //Deleting the existing members
@@ -1028,7 +1027,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		ConversationManager.ConversationInfo.ConversationState conversationState = ConversationManager.ConversationInfo.ConversationState.fromIdentifier(cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_STATE)));
 		String service = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICE));
 		String chatTitle = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_NAME));
-		long chatLastViewed = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_LASTVIEWED));
+		int chatUnreadMessages = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT));
 		boolean chatArchived = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED)) == 1;
 		boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) == 1;
 		int chatColor = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR));
@@ -1050,7 +1049,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		memberCursor.close();
 		
 		//Creating the conversation info
-		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, conversationGUID, conversationState, service, conversationMembers, chatTitle, chatLastViewed, chatColor);
+		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, conversationGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor);
 		conversationInfo.setArchived(chatArchived);
 		conversationInfo.setMuted(chatMuted);
 		conversationInfo.setLastItem(lightItem);
@@ -1066,7 +1065,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				Contract.ConversationEntry.COLUMN_NAME_STATE,
 				Contract.ConversationEntry.COLUMN_NAME_SERVICE,
 				Contract.ConversationEntry.COLUMN_NAME_NAME,
-				Contract.ConversationEntry.COLUMN_NAME_LASTVIEWED,
+				Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT,
 				Contract.ConversationEntry.COLUMN_NAME_ARCHIVED,
 				Contract.ConversationEntry.COLUMN_NAME_MUTED,
 				Contract.ConversationEntry.COLUMN_NAME_COLOR}, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(localID)}, null, null, null)) {
@@ -1078,7 +1077,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			ConversationManager.ConversationInfo.ConversationState conversationState = ConversationManager.ConversationInfo.ConversationState.fromIdentifier(cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_STATE)));
 			String service = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICE));
 			String chatTitle = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_NAME));
-			long chatLastViewed = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_LASTVIEWED));
+			int chatUnreadMessages = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT));
 			boolean chatArchived = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED)) == 1;
 			boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) == 1;
 			int chatColor = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR));
@@ -1097,7 +1096,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			memberCursor.close();
 			
 			//Creating the conversation info
-			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, conversationGUID, conversationState, service, conversationMembers, chatTitle, chatLastViewed, chatColor);
+			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, conversationGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor);
 			conversationInfo.setArchived(chatArchived);
 			conversationInfo.setMuted(chatMuted);
 			conversationInfo.setLastItem(lightItem);
@@ -1490,6 +1489,19 @@ class DatabaseManager extends SQLiteOpenHelper {
 		conversationItem.setLocalID(itemLocalID);
 	}
 	
+	static void setUnreadMessageCount(SQLiteDatabase writableDatabase, long conversationID, int count) {
+		//Creating the content values
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT, count);
+		
+		//Updating the database
+		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
+	}
+	
+	static void incrementUnreadMessageCount(SQLiteDatabase writableDatabase, long conversationID) {
+		writableDatabase.execSQL("UPDATE " + Contract.ConversationEntry.TABLE_NAME + " SET " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " = " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " + 1 WHERE " + Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
+	}
+	
 	private static ArrayList<ConversationManager.StickerInfo> addMessageStickers(SQLiteDatabase writableDatabase, long messageID, ArrayList<SharedValues.StickerModifierInfo> stickers) {
 		//Creating the list
 		ArrayList<ConversationManager.StickerInfo> list = new ArrayList<>();
@@ -1759,14 +1771,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	}
 	
-	static void setConversationLastViewTime(SQLiteDatabase writableDatabase, long conversationID, long lastViewTime) {
+	/* static void setConversationLastViewTime(SQLiteDatabase writableDatabase, long conversationID, long lastViewTime) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_LASTVIEWED, lastViewTime);
 		
 		//Updating the database
 		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
-	}
+	} */
 	
 	static void updateMessageErrorCode(SQLiteDatabase writableDatabase, long messageID, int errorCode) {
 		//Creating the content values

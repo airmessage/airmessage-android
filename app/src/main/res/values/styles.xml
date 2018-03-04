@@ -28,9 +28,6 @@
 		<item name="android:colorControlActivated">?android:attr/colorAccent</item>
 		<item name="android:actionBarTheme">@style/SolidActionBar</item>
 		<item name="android:windowBackground">@color/colorBackgroundLight</item>
-		<item name="android:actionModeBackground">@android:color/transparent</item>
-		<item name="android:actionModeCloseDrawable">@drawable/arrow_back</item>
-		<item name="actionModeCloseDrawable">@drawable/arrow_back</item>
 	</style>
 	
 	<style name="AppTheme.AppCompat.NoActionBar" parent="@style/Theme.AppCompat.Light.NoActionBar">
@@ -41,6 +38,10 @@
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorAccent">@color/colorAccent</item>
 		<item name="android:colorBackground">@color/colorBackgroundLight</item>
+		
+		<item name="windowActionModeOverlay">true</item>
+		<item name="android:actionModeBackground">@color/colorPrimary</item>
+		<item name="android:actionModeCloseDrawable">@drawable/arrow_back</item>
 		
 		<item name="android:actionBarTheme">@style/SolidActionBar</item>
 	</style>

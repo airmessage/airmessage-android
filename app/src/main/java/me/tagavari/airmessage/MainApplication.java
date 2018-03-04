@@ -47,6 +47,8 @@ public class MainApplication extends Application {
 		//Calling the super method
 		super.onCreate();
 		
+		System.out.println("Color: " + ColorHelper.darkenColor(0x448AFF));
+		
 		//Setting the instance
 		instanceReference = new WeakReference<>(this);
 		

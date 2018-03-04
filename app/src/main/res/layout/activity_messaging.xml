@@ -13,7 +13,7 @@
 		android:textColor="?android:textColorSecondary"
 		android:visibility="gone" />
 	<!-- Recording indicator -->
-	<RelativeLayout
+	<FrameLayout
 		android:id="@+id/recordingindicator"
 		android:layout_width="80dp"
 		android:layout_height="80dp"
@@ -26,10 +26,10 @@
 		<ImageView
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:layout_centerInParent="true"
+			android:layout_gravity="center"
 			android:contentDescription="@null"
 			android:src="@drawable/microphone" />
-	</RelativeLayout>
+	</FrameLayout>
 	<!-- General layout -->
 	<LinearLayout
 		android:id="@+id/content"
@@ -105,7 +105,7 @@
 				android:tint="?android:attr/textColorSecondary" />
 		</LinearLayout>
 		<!-- Message view -->
-		<RelativeLayout
+		<android.support.constraint.ConstraintLayout
 			android:layout_width="match_parent"
 			android:layout_height="0dp"
 			android:layout_weight="1">
@@ -114,8 +114,6 @@
 				android:id="@+id/list_messages"
 				android:layout_width="match_parent"
 				android:layout_height="match_parent"
-				android:layout_above="@id/inputbar"
-				android:layout_below="@id/serverwarning"
 				android:clipToPadding="false"
 				android:divider="@null"
 				android:dividerHeight="0dp"
@@ -129,23 +127,55 @@
 			<nl.dionsegijn.konfetti.KonfettiView
 				android:id="@+id/konfetti"
 				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:layout_above="@id/inputbar"
-				android:layout_below="@id/serverwarning" />
+				android:layout_height="match_parent" />
 			
 			<!-- Floating Action Button -->
 			<android.support.design.widget.FloatingActionButton
-				android:id="@+id/fab"
+				android:id="@+id/fab_bottom"
 				android:layout_width="40dp"
 				android:layout_height="40dp"
-				android:layout_alignParentBottom="true"
-				android:layout_alignParentEnd="true"
 				android:layout_margin="16dp"
+				app:layout_constraintEnd_toEndOf="parent"
+				app:layout_constraintBottom_toBottomOf="parent"
 				android:src="@drawable/chevron_down"
 				app:backgroundTint="@android:color/white"
-				app:tint="@android:color/black"
+				app:tint="@color/colorPrimary"
+				android:visibility="gone"
 				app:fabSize="mini" />
-		</RelativeLayout>
+			<TextView
+				android:id="@+id/fab_bottom_badge"
+				android:layout_width="wrap_content"
+				android:layout_height="19dp"
+				android:minWidth="19dp"
+				android:maxLines="1"
+				android:text="1"
+				android:background="@drawable/rounded_circle"
+				android:backgroundTint="@color/colorPrimaryDark"
+				android:paddingLeft="6dp"
+				android:paddingRight="6dp"
+				android:gravity="center"
+				android:textColor="?android:attr/textColorPrimaryInverse"
+				android:textSize="12sp"
+				android:translationX="-6dp"
+				android:translationY="6dp"
+				android:translationZ="12dp"
+				app:layout_constraintTop_toTopOf="@+id/fab_bottom"
+				app:layout_constraintBottom_toTopOf="@+id/fab_bottom"
+				app:layout_constraintStart_toEndOf="@+id/fab_bottom"
+				app:layout_constraintEnd_toEndOf="@+id/fab_bottom"
+				android:scaleX="0"
+				android:scaleY="0"
+				android:visibility="gone"/>
+			<View
+				android:id="@+id/fab_bottom_splash"
+				android:layout_width="40dp"
+				android:layout_height="40dp"
+				android:background="@drawable/circle"
+				android:alpha="0.5"
+				app:layout_constraintLeft_toLeftOf="@+id/fab_bottom"
+				app:layout_constraintTop_toTopOf="@+id/fab_bottom"
+				android:visibility="gone"/>
+		</android.support.constraint.ConstraintLayout>
 		<!-- Input bar -->
 		<RelativeLayout
 			android:id="@+id/inputbar"

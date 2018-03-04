@@ -386,7 +386,7 @@ class ConversationManager {
 		//private transient View view;
 		//private transient ViewGroup iconView = null;
 		private String title = null;
-		private long timeLastViewed = 0;
+		private transient int unreadMessageCount = 0;
 		private boolean isArchived = false;
 		private boolean isMuted = false;
 		private transient boolean isSelected = false;
@@ -402,6 +402,7 @@ class ConversationManager {
 		
 		//Creating the listeners
 		private transient ArrayList<Runnable> titleChangeListeners = new ArrayList<>();
+		private transient ArrayList<Runnable> unreadCountChangeListeners = new ArrayList<>();
 		
 		ConversationInfo(long localID, ConversationState conversationState) {
 			//Setting the local ID and state
@@ -422,7 +423,7 @@ class ConversationManager {
 			conversationMembers = new ArrayList<>();
 		}
 		
-		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String title, long timeLastViewed, int conversationColor) {
+		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String title, int unreadMessageCount, int conversationColor) {
 			//Setting the values
 			this.guid = guid;
 			this.localID = localID;
@@ -430,7 +431,7 @@ class ConversationManager {
 			this.service = service;
 			this.conversationMembers = conversationMembers;
 			this.title = title;
-			this.timeLastViewed = timeLastViewed;
+			this.unreadMessageCount = unreadMessageCount;
 			this.conversationColor = conversationColor;
 		}
 		
@@ -445,7 +446,7 @@ class ConversationManager {
 				convertView = LayoutInflater.from(context).inflate(R.layout.listitem_conversation, parent, false);
 			
 			//Setting the flags
-			convertView.findViewById(R.id.muted_icon).setVisibility(isMuted ? View.VISIBLE : View.GONE);
+			convertView.findViewById(R.id.flag_muted).setVisibility(isMuted ? View.VISIBLE : View.GONE);
 			
 			//Returning if the conversation has no members
 			if(conversationMembers.isEmpty())
@@ -531,9 +532,29 @@ class ConversationManager {
 		}
 		
 		private void updateUnreadStatus(View itemView) {
-			//Updating the title's typeface
+			//Getting the views
 			TextView titleText = itemView.findViewById(R.id.title);
-			titleText.setTypeface(Typeface.DEFAULT, lastItem != null && lastItem.getDate() > timeLastViewed ? Typeface.BOLD : Typeface.NORMAL);
+			TextView messageText = itemView.findViewById(R.id.message);
+			TextView unreadCount = itemView.findViewById(R.id.unread);
+			
+			if(unreadMessageCount > 0) {
+				titleText.setTypeface(titleText.getTypeface(), Typeface.BOLD);
+				titleText.setTextColor(itemView.getResources().getColor(R.color.colorPrimary, null));
+				
+				messageText.setTypeface(messageText.getTypeface(), Typeface.BOLD);
+				messageText.setTextColor(itemView.getResources().getColor(android.R.color.primary_text_light, null));
+				
+				unreadCount.setVisibility(View.VISIBLE);
+				unreadCount.setText(Integer.toString(unreadMessageCount));
+			} else {
+				titleText.setTypeface(titleText.getTypeface(), Typeface.NORMAL);
+				titleText.setTextColor(itemView.getResources().getColor(android.R.color.primary_text_light, null));
+				
+				messageText.setTypeface(messageText.getTypeface(), Typeface.NORMAL);
+				messageText.setTextColor(itemView.getResources().getColor(R.color.textColorSecondary, null));
+				
+				unreadCount.setVisibility(View.GONE);
+			}
 		}
 		
 		void updateTime(Context context) {
@@ -721,12 +742,16 @@ class ConversationManager {
 			this.service = service;
 		}
 		
-		long getTimeLastViewed() {
-			return timeLastViewed;
+		int getUnreadMessageCount() {
+			return unreadMessageCount;
 		}
 		
-		void setTimeLastViewed(long timeLastViewed) {
-			this.timeLastViewed = timeLastViewed;
+		void setUnreadMessageCount(int unreadMessageCount) {
+			//Setting the value
+			this.unreadMessageCount = unreadMessageCount;
+			
+			//Calling the listeners
+			for(Runnable listener : unreadCountChangeListeners) listener.run();
 		}
 		
 		boolean isArchived() {
@@ -750,8 +775,8 @@ class ConversationManager {
 			if(view == null) return;
 			
 			//Updating the view
-			if(isMuted) view.findViewById(R.id.muted_icon).setVisibility(View.VISIBLE);
-			else view.findViewById(R.id.muted_icon).setVisibility(View.GONE);
+			if(isMuted) view.findViewById(R.id.flag_muted).setVisibility(View.VISIBLE);
+			else view.findViewById(R.id.flag_muted).setVisibility(View.GONE);
 		}
 		
 		MessageInfo getActivityStateTarget() {
@@ -1438,6 +1463,14 @@ class ConversationManager {
 		
 		void removeTitleChangeListener(Runnable runnable) {
 			titleChangeListeners.remove(runnable);
+		}
+		
+		void addUnreadCountChangeListener(Runnable runnable) {
+			unreadCountChangeListeners.add(runnable);
+		}
+		
+		void removeUnreadCountChangeListener(Runnable runnable) {
+			unreadCountChangeListeners.remove(runnable);
 		}
 		
 		ConversationItem findConversationItem(long localID) {
@@ -2942,6 +2975,8 @@ class ConversationManager {
 			if(tapbacks.isEmpty()) return;
 			
 			//Counting the associated tapbacks
+			/* SparseIntArray tapbackCounts = new SparseIntArray();
+			for(TapbackInfo tapback : tapbacks) tapbackCounts.put(tapback.getCode(), tapbackCounts.get(tapback.getCode(), 1)); */
 			Map<Integer, Integer> tapbackCounts = new HashMap<>();
 			for(TapbackInfo tapback : tapbacks) {
 				if(tapbackCounts.containsKey(tapback.getCode())) tapbackCounts.put(tapback.getCode(), tapbackCounts.get(tapback.getCode()) + 1);
