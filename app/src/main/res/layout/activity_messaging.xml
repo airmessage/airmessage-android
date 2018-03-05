@@ -111,8 +111,8 @@
 			<!-- Message list -->
 			<android.support.v7.widget.RecyclerView
 				android:id="@+id/list_messages"
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
+				android:layout_width="0px"
+				android:layout_height="0px"
 				android:clipToPadding="false"
 				android:divider="@null"
 				android:dividerHeight="0dp"
@@ -120,6 +120,10 @@
 				android:paddingBottom="5dp"
 				android:paddingTop="5dp"
 				android:theme="@style/OverscrollNeutralizer"
+				app:layout_constraintBottom_toBottomOf="parent"
+				app:layout_constraintTop_toTopOf="parent"
+				app:layout_constraintLeft_toLeftOf="parent"
+				app:layout_constraintRight_toRightOf="parent"
 				app:layoutManager=".Messaging$SpeedyLinearLayoutManager"
 				app:stackFromEnd="true" />
 			<!-- Konfetti view -->
