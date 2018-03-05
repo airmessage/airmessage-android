@@ -3123,7 +3123,7 @@ class ConversationManager {
 			} else {
 				MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
 				backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColor = itemView.getResources().getColor(android.R.color.primary_text_dark, null);
+				textColor = itemView.getResources().getColor(android.R.color.white, null);
 			}
 			
 			//Assigning the colors
@@ -3946,7 +3946,7 @@ class ConversationManager {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 				
-				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.primary_text_dark, null));
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
 				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
@@ -4204,7 +4204,7 @@ class ConversationManager {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 				
-				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.primary_text_dark, null));
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
 				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
@@ -4518,7 +4518,7 @@ class ConversationManager {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 				
-				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.primary_text_dark, null));
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
 				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
@@ -4762,7 +4762,7 @@ class ConversationManager {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 				
-				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.primary_text_dark, null));
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
 				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
