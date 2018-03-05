@@ -227,8 +227,18 @@
 	<plurals name="message_multipleattachments">
 		<item quantity="other">%d pièces jointes</item>
 	</plurals>
+	
+	<string-array name="preference_appearance_theme_entries">
+		<item>Assortir le système</item>
+		<item>Automatique</item>
+		<item>Toujours clair</item>
+		<item>Toujours foncé</item>
+	</string-array>
+	
 	<string name="message_serverstatus_authfail">Le mot de passe a été rejeté</string>
 	<string name="action_reconfigure">Reconfigurer</string>
 	<string name="preference_server_dropreconnect_description">Essayer de vous reconnecter immédiatement après la perte du connexion</string>
 	<string name="preference_server_dropreconnect_title">Reconnexion de connexion perdue</string>
+	<string name="preferencegroup_appearance_name">Apparence</string>
+	<string name="preference_appearance_theme_title">Thème</string>
 </resources>

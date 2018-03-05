@@ -1,19 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- <string name="preference_none_groupchatsend_key">pref_key_none_groupchatsend</string>
-    <string name="preference_none_groupchatsend_title">Group chat sending</string>
-    <string-array name="preference_none_groupchatsend_entries">
-        <item>Mass messaging</item>
-        <item>Best match</item>
-    </string-array>
-    <string-array name="preference_none_groupchatsend_entryvalues">
-        <item>mass_message</item>
-        <item>best_match</item>
-    </string-array> -->
-    
     <string name="preference_messagenotifications_key" translatable="false">pref_messagenotifications</string>
     <string name="preference_messagenotifications_name">Message notifications</string>
-    
+	
+	<string name="preferencegroup_appearance_key" translatable="false">pref_group_appearance</string>
+	<string name="preferencegroup_appearance_name">Appearance</string>
+	<string name="preference_appearance_theme_key" translatable="false">pref_key_appearance_theme</string>
+	<string name="preference_appearance_theme_title">Theme</string>
+	<string-array name="preference_appearance_theme_entries">
+		<item>Follow system</item>
+		<item>Automatic</item>
+		<item>Always light</item>
+		<item>Always dark</item>
+	</string-array>
+	<string-array name="preference_appearance_theme_values">
+		<item>follow_system</item>
+		<item>auto</item>
+		<item>off</item>
+		<item>on</item>
+	</string-array>
+	
     <string name="preferencegroup_messagenotifications_key" translatable="false">pref_group_notifications</string>
     <string name="preferencegroup_messagenotifications_name">Notifications</string>
     <string name="preference_messagenotifications_getnotifications_key" translatable="false">pref_key_notifications_getnotifications</string>
@@ -53,4 +59,6 @@
 	<string name="preference_server_networkreconnect_description">Attempt to reconnect when the device connects to a new network (ex. Wi-Fi to Cellular)</string>
     <string name="preference_server_help_key" translatable="false">pref_key_server_help</string>
     <string name="preference_server_help_title">Get help</string>
+	
+	
 </resources>

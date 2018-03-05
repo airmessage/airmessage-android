@@ -13,10 +13,9 @@
 		android:id="@+id/icon"
 		android:layout_width="24dp"
 		android:layout_height="24dp"
-		android:alpha="0.54"
-		android:tint="@android:color/black"
 		android:layout_marginLeft="10dp"
-		android:layout_marginRight="10dp" />
+		android:layout_marginRight="10dp"
+		android:tint="?android:colorControlNormal"/>
 	
 	<TextView
 		android:id="@+id/text"

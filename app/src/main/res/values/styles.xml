@@ -1,6 +1,5 @@
 <resources>
-	
-	<style name="AppTheme" parent="@android:style/Theme.Material.Light.DarkActionBar">
+	<!-- <style name="AppTheme" parent="@android:style/Theme.Material.Light.DarkActionBar">
 		<item name="android:colorPrimary">@color/colorPrimary</item>
 		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="android:colorAccent">@color/colorAccent</item>
@@ -8,45 +7,55 @@
 		<item name="android:actionModeCloseDrawable">@drawable/arrow_back</item>
 		<item name="android:actionBarTheme">@style/SolidActionBar</item>
 		<item name="android:windowBackground">@color/colorBackgroundLight</item>
-	</style>
+	</style> -->
 	
-	<style name="SolidActionBar">
+	<style name="SolidActionBar" parent="@style/ThemeOverlay.AppCompat.ActionBar">
 		<item name="android:colorControlNormal">@android:color/white</item>
-		<item name="android:titleTextColor">@android:color/primary_text_dark</item>
-		<item name="android:textColorPrimary">@android:color/primary_text_dark</item>
+		<item name="android:textColorPrimary">@android:color/white</item>
+		<item name="popupTheme">@style/ThemeOverlay.AppCompat.Light</item>
 	</style>
 	
-	<style name="AppTheme.AppCompat" parent="@style/Theme.AppCompat.Light.DarkActionBar">
+	<style name="AppTheme.AppCompat" parent="@style/Theme.AppCompat.DayNight.DarkActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="android:colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimary</item>
 		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorAccent">@color/colorAccent</item>
-		<item name="android:colorBackground">@color/colorBackgroundLight</item>
+		<!-- <item name="android:colorBackground">@color/colorBackgroundLight</item> -->
 		
-		<item name="android:colorControlActivated">?android:attr/colorAccent</item>
-		<item name="android:actionBarTheme">@style/SolidActionBar</item>
-		<item name="android:windowBackground">@color/colorBackgroundLight</item>
+		<!-- <item name="android:colorControlActivated">?android:attr/colorAccent</item>
+		<item name="android:actionBarTheme">@style/SolidActionBar</item> -->
 	</style>
 	
-	<style name="AppTheme.AppCompat.NoActionBar" parent="@style/Theme.AppCompat.Light.NoActionBar">
+	<style name="AppTheme.AppCompat.NoActionBar" parent="@style/Theme.AppCompat.DayNight.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="android:colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimary</item>
 		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorAccent">@color/colorAccent</item>
-		<item name="android:colorBackground">@color/colorBackgroundLight</item>
+		<!-- <item name="android:colorBackground">@color/colorBackgroundLight</item> -->
 		
 		<item name="windowActionModeOverlay">true</item>
 		<item name="android:actionModeBackground">@color/colorPrimary</item>
-		<item name="android:actionModeCloseDrawable">@drawable/arrow_back</item>
+		<!-- <item name="android:actionModeCloseDrawable">@drawable/arrow_back</item> -->
 		
-		<item name="android:actionBarTheme">@style/SolidActionBar</item>
+		<!-- <item name="android:actionBarTheme">@style/SolidActionBar</item> -->
 	</style>
 	
-	<style name="DialogTheme" parent="@style/Theme.AppCompat.Light.Dialog"> <!-- @android:style/Theme.Material.Light.Dialog.NoActionBar -->
+	<style name="AppTheme.Setup" parent="@style/Theme.AppCompat.DayNight.NoActionBar">
+		<item name="android:colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="colorAccent">@color/colorAccent</item>
+		<item name="android:navigationBarColor">@color/colorPrimaryDark</item>
+		
+		<item name="android:statusBarColor">#F5F5F5</item>
+		<item name="android:windowLightStatusBar">true</item>
+	</style>
+	
+	<style name="DialogTheme" parent="@style/Theme.AppCompat.DayNight.Dialog"> <!-- @android:style/Theme.Material.Light.Dialog.NoActionBar -->
 		<!-- <item name="colorPrimary">@color/colorPrimary</item>
 		<item name="android:colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
@@ -74,23 +83,6 @@
 		<item name="android:titleTextColor">@android:color/white</item>
 		<item name="android:background">@color/colorPrimary</item>
 		<item name="colorControlNormal">@android:color/white</item>
-	</style>
-	
-	<style name="AppTheme.Setup" parent="@style/Theme.AppCompat.Light.NoActionBar">
-		<item name="android:statusBarColor">#F5F5F5</item>
-		<item name="android:windowLightStatusBar">true</item>
-		<item name="android:colorPrimary">@color/colorPrimary</item>
-		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="android:colorAccent">@color/colorAccent</item>
-		<item name="android:colorBackground">@color/colorBackgroundLight</item>
-		<item name="colorControlActivated">@color/colorAccent</item>
-		<item name="colorControlHighlight">#60FFFFFF</item>
-	</style>
-	
-	<style name="AppTheme.AppCompat.Transparent" parent="AppTheme.AppCompat">
-		<item name="android:windowIsTranslucent">true</item>
-		<item name="android:windowBackground">@android:color/transparent</item>
-		<item name="android:windowDrawsSystemBarBackgrounds">true</item>
 	</style>
 	
 	<!-- <style name="AppTheme.Dialog" parent="@android:style/Theme.Material.Light.Dialog.Alert" >

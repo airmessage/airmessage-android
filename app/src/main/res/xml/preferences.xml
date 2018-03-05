@@ -1,26 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-    <PreferenceCategory
-        android:key="@string/preferencegroup_messagenotifications_key"
-        android:title="@string/preferencegroup_messagenotifications_name" >
-        <SwitchPreference
-            android:key="@string/preference_messagenotifications_getnotifications_key"
-            android:title="@string/preference_messagenotifications_getnotifications_title"
-            android:defaultValue="true" />
-        <RingtonePreference
-            android:key="@string/preference_messagenotifications_sound_key"
-            android:dependency="@string/preference_messagenotifications_getnotifications_key"
-            android:title="@string/preference_messagenotifications_sound_title"
-            android:ringtoneType="notification"
-            android:showSilent="true"
-            android:showDefault="true"
-            android:defaultValue="content://settings/system/notification_sound" />
-        <SwitchPreference
-            android:key="@string/preference_messagenotifications_vibrate_key"
-            android:dependency="@string/preference_messagenotifications_getnotifications_key"
-            android:title="@string/preference_messagenotifications_vibrate_title"
-            android:defaultValue="true" />
-    </PreferenceCategory>
+	<PreferenceCategory
+		android:key="@string/preferencegroup_messagenotifications_key"
+		android:title="@string/preferencegroup_messagenotifications_name" >
+		<SwitchPreference
+			android:key="@string/preference_messagenotifications_getnotifications_key"
+			android:title="@string/preference_messagenotifications_getnotifications_title"
+			android:defaultValue="true" />
+		<RingtonePreference
+			android:key="@string/preference_messagenotifications_sound_key"
+			android:dependency="@string/preference_messagenotifications_getnotifications_key"
+			android:title="@string/preference_messagenotifications_sound_title"
+			android:ringtoneType="notification"
+			android:showSilent="true"
+			android:showDefault="true"
+			android:defaultValue="content://settings/system/notification_sound" />
+		<SwitchPreference
+			android:key="@string/preference_messagenotifications_vibrate_key"
+			android:dependency="@string/preference_messagenotifications_getnotifications_key"
+			android:title="@string/preference_messagenotifications_vibrate_title"
+			android:defaultValue="true" />
+	</PreferenceCategory>
+	
+	<PreferenceCategory
+		android:key="@string/preferencegroup_appearance_key"
+		android:title="@string/preferencegroup_appearance_name" >
+		<ListPreference
+			android:key="@string/preference_appearance_theme_key"
+			android:title="@string/preference_appearance_theme_title"
+			android:entries="@array/preference_appearance_theme_entries"
+			android:entryValues="@array/preference_appearance_theme_values"
+			android:defaultValue="follow_system"
+			android:summary="%s" />
+	</PreferenceCategory>
 
     <PreferenceCategory
         android:key="@string/preferencegroup_storage_key"

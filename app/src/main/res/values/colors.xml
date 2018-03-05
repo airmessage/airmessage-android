@@ -5,34 +5,21 @@
     <color name="colorAccent">@color/colorPrimary</color>
 	<color name="colorAccentDark">@color/colorPrimaryDark</color>
 	
-	<color name="textColorPrimary">#DE000000</color>
-	<color name="textColorSecondary">#8A000000</color>
-	
 	<color name="colorAppIcon">#4A99F5</color>
+	
+	<color name="colorDivider">#1F000000</color>
 	
 	<color name="navbarDivider">#FFE0E0E0</color>
 	
-	<color name="colorBackgroundLight">#FAFAFA</color>
-	<color name="colorForegroundLight">#FFFFFF</color>
-	
-	<color name="colorBackgroundDark">#303030</color>
-	<color name="colorForegroundDark">#424242</color>
-	
-	<color name="colorBGMessagingLight">#EEEEEE</color>
-	<color name="colorBGChipLight">#F5F5F5</color>
+	<color name="colorBGChip">#F5F5F5</color>
 
     <color name="colorMessageOutgoing">#E0E0E0</color>
 	<color name="colorMessageOutgoingAccent">#9E9E9E</color>
-	
-    <color name="colorMessageOutgoingText">#DE000000</color>
-	<color name="colorMessageIncomingText">#FFFFFFFF</color>
 	
 	<color name="colorImageUnloaded">#E0E0E0</color>
 	
 	<color name="colorArchived">#607D8B</color>
 	<color name="colorArchivedDark">#455A64</color>
-	
-	<color name="colorRipple">#66999999</color>
 	
 	<color name="colorError">#F44336</color>
 	

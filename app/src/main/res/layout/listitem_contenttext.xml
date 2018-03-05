@@ -23,8 +23,8 @@
 			android:paddingRight="14dp"
 			android:paddingTop="10dp"
 			android:text="@string/placeholder_message"
-			android:textColor="@android:color/black"
-			android:textColorLink="@android:color/black" />
+			android:textColor="?android:attr/textColorPrimary"
+			android:textColorLink="?android:attr/colorBackgroundFloating" />
 		
 		<include layout="@layout/layout_tapbackcontainer" />
 	</LinearLayout>

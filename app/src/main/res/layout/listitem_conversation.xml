@@ -87,7 +87,6 @@
 			android:layout_height="16dp"
 			android:layout_marginEnd="6dp"
 			android:src="@drawable/notifications_off"
-			android:tint="?android:textColorSecondary"
 			app:layout_constraintBottom_toBottomOf="@+id/time"
 			app:layout_constraintEnd_toStartOf="@+id/time"
 			app:layout_constraintTop_toTopOf="@+id/time" />
@@ -99,7 +98,7 @@
 			android:ellipsize="end"
 			android:maxLines="1"
 			android:text="@string/placeholder_time"
-			android:textColor="?android:textColorSecondary"
+			android:textColor="?android:attr/textColorSecondary"
 			app:layout_constraintEnd_toEndOf="parent" />
 		
 		<TextView
@@ -114,7 +113,7 @@
 			android:paddingLeft="6dp"
 			android:paddingRight="6dp"
 			android:gravity="center"
-			android:textColor="?android:attr/textColorPrimaryInverse"
+			android:textColor="@android:color/primary_text_dark"
 			android:textSize="12sp"
 			app:layout_constraintBottom_toBottomOf="@+id/message"
 			app:layout_constraintEnd_toEndOf="parent"

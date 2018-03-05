@@ -7,8 +7,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatDelegate;
 
 import java.io.File;
 import java.lang.ref.SoftReference;
@@ -47,8 +49,6 @@ public class MainApplication extends Application {
 		//Calling the super method
 		super.onCreate();
 		
-		System.out.println("Color: " + ColorHelper.darkenColor(0x448AFF));
-		
 		//Setting the instance
 		instanceReference = new WeakReference<>(this);
 		
@@ -84,6 +84,9 @@ public class MainApplication extends Application {
 		//Creating the cache helpers
 		bitmapCacheHelper = new BitmapCacheHelper();
 		userCacheHelper = new UserCacheHelper();
+		
+		//Applying the dark mode
+		applyDarkMode(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.preference_appearance_theme_key), null));
 	}
 	
 	public static MainApplication getInstance() {
@@ -184,6 +187,31 @@ public class MainApplication extends Application {
 		public LoadFlagArrayList(@NonNull Collection<? extends E> c, boolean isLoaded) {
 			super(c);
 			this.isLoaded = isLoaded;
+		}
+	}
+	
+	void applyDarkMode(String method) {
+		//Getting the values
+		String[] values = getResources().getStringArray(R.array.preference_appearance_theme_values);
+		
+		//Iterating over the values
+		for(int i = 0; i < values.length; i++) {
+			if(!values[i].equals(method)) continue;
+			
+			switch(i) {
+				case 0: //Follow system
+					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+					break;
+				case 1: //Automatic
+					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO);
+					break;
+				case 2: //Always light
+					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+					break;
+				case 3: //Always dark
+					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+					break;
+			}
 		}
 	}
 }

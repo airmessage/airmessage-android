@@ -13,5 +13,5 @@
 		android:layout_marginRight="10dp"
 		android:text="@string/placeholder_action"
 		android:textAlignment="center"
-		android:textColor="?android:textColorSecondary" />
+		android:textColor="?android:attr/textColorSecondary" />
 </RelativeLayout>

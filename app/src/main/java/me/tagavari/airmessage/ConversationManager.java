@@ -7,7 +7,6 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -542,16 +541,16 @@ class ConversationManager {
 				titleText.setTextColor(itemView.getResources().getColor(R.color.colorPrimary, null));
 				
 				messageText.setTypeface(messageText.getTypeface(), Typeface.BOLD);
-				messageText.setTextColor(itemView.getResources().getColor(android.R.color.primary_text_light, null));
+				messageText.setTextColor(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
 				
 				unreadCount.setVisibility(View.VISIBLE);
 				unreadCount.setText(Integer.toString(unreadMessageCount));
 			} else {
 				titleText.setTypeface(titleText.getTypeface(), Typeface.NORMAL);
-				titleText.setTextColor(itemView.getResources().getColor(android.R.color.primary_text_light, null));
+				titleText.setTextColor(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
 				
 				messageText.setTypeface(messageText.getTypeface(), Typeface.NORMAL);
-				messageText.setTextColor(itemView.getResources().getColor(R.color.textColorSecondary, null));
+				messageText.setTextColor(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorSecondary));
 				
 				unreadCount.setVisibility(View.GONE);
 			}
@@ -2365,7 +2364,7 @@ class ConversationManager {
 			prepareActivityStateDisplay(view, context);
 			
 			//Updating the view color
-			updateViewColor(context.getResources(), view, false);
+			updateViewColor(view, false);
 			
 			//Updating the view state
 			updateViewProgressState(view, context);
@@ -2387,26 +2386,21 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources) {
+		void updateViewColor() {
 			//Calling the overload method
 			View view = getView();
-			if(view != null) updateViewColor(resources, view, true);
+			if(view != null) updateViewColor(view, true);
 		}
 		
-		private void updateViewColor(Resources resources, View itemView, boolean updateAttachments) {
-			//Getting the colors
-			int backgroundColor;
-			if(isOutgoing()) {
-				backgroundColor = resources.getColor(R.color.colorMessageOutgoing, null);
-			} else {
-				MemberInfo memberInfo = getConversationInfo().findConversationMember(sender);
-				backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-			}
-			
+		private void updateViewColor(View itemView, boolean updateAttachments) {
 			//Setting the user tint
-			if(!isOutgoing())
+			if(!isOutgoing()) {
+				MemberInfo memberInfo = getConversationInfo().findConversationMember(sender);
+				int backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
+				
 				((ImageView) itemView.findViewById(R.id.profile).findViewById(R.id.profile_default))
-						.setColorFilter(backgroundColor, android.graphics.PorterDuff.Mode.MULTIPLY);
+							.setColorFilter(backgroundColor, android.graphics.PorterDuff.Mode.MULTIPLY);
+			}
 			
 			//Setting the upload spinner tint
 			((ProgressWheel) itemView.findViewById(R.id.send_progress)).setBarColor(getConversationInfo().getConversationColor());
@@ -2415,11 +2409,11 @@ class ConversationManager {
 			ViewGroup messagePartContainer = itemView.findViewById(R.id.messagepart_container);
 			
 			//Updating the message colors
-			if(messageText != null) messageText.updateViewColor(resources, messagePartContainer.findViewById(R.id.content_text));
+			if(messageText != null) messageText.updateViewColor(messagePartContainer.findViewById(R.id.content_text));
 			
 			//Updating the attachment colors
 			if(updateAttachments) for(int i = 0; i < attachments.size(); i++)
-				attachments.get(i).updateViewColor(resources, messagePartContainer.getChildAt((messageText == null ? 0 : 1) + i));
+				attachments.get(i).updateViewColor(messagePartContainer.getChildAt((messageText == null ? 0 : 1) + i));
 		}
 		
 		void updateViewProgressState(Context context) {
@@ -2789,7 +2783,7 @@ class ConversationManager {
 			buildTapbackView(view);
 		}
 		
-		abstract void updateViewColor(Resources resources, View itemView);
+		abstract void updateViewColor(View itemView);
 		
 		abstract void updateViewEdges(View itemView, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored);
 		
@@ -3097,13 +3091,7 @@ class ConversationManager {
 			//Setting the touch listener
 			textView.setOnTouchListener((View view, MotionEvent event) -> {
 				if(event.getAction() == MotionEvent.ACTION_UP) {
-					new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-						@Override
-						public void run() {
-							//Enabling link clicks
-							((TextView) view).setLinksClickable(true);
-						}
-					}, 0);
+					new Handler(Looper.getMainLooper()).postDelayed(() -> ((TextView) view).setLinksClickable(true), 0);
 				}
 				
 				return view.onTouchEvent(event);
@@ -3120,7 +3108,7 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources, View itemView) {
+		void updateViewColor(View itemView) {
 			//Getting the message text
 			TextView messageTextView = itemView.findViewById(R.id.message);
 			
@@ -3129,12 +3117,13 @@ class ConversationManager {
 			int textColor;
 			
 			if(getMessageInfo().isOutgoing()) {
-				backgroundColor = resources.getColor(R.color.colorMessageOutgoing, null);
-				textColor = resources.getColor(R.color.colorMessageOutgoingText, null);
+				//backgroundColor = resources.getColor(R.color.colorMessageOutgoing, null);
+				backgroundColor = itemView.getResources().getColor(R.color.colorMessageOutgoing, null);
+				textColor = Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary);
 			} else {
 				MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
 				backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColor = resources.getColor(R.color.colorMessageIncomingText, null);
+				textColor = itemView.getResources().getColor(android.R.color.primary_text_dark, null);
 			}
 			
 			//Assigning the colors
@@ -3926,7 +3915,7 @@ class ConversationManager {
 			convertView.setLayoutParams(layoutParams);
 			
 			//Setting the view color
-			updateViewColor(context.getResources(), convertView);
+			updateViewColor(convertView);
 			
 			//Updating the content view
 			updateContentView(convertView);
@@ -3942,29 +3931,29 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources, View itemView) {
+		void updateViewColor(View itemView) {
 			//Creating the color values
 			ColorStateList textColorStateList;
-			ColorStateList colorStateList;
+			ColorStateList backgroundColorStateList;
 			ColorStateList accentColorStateList;
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
-				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
+				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
+				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageIncomingText, null));
-				colorStateList = ColorStateList.valueOf(bubbleColor);
+				
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.primary_text_dark, null));
+				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
 			
 			//Coloring the views
 			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			//Constants.printViewHierarchy((ViewGroup) downloadView, "Download view");
-			downloadView.setBackgroundTintList(colorStateList);
+			downloadView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
 			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
 			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
@@ -3973,9 +3962,10 @@ class ConversationManager {
 			progressBar.setProgressBackgroundTintList(accentColorStateList);
 			
 			View failedView = itemView.findViewById(R.id.failedcontent);
-			failedView.setBackgroundTintList(colorStateList);
+			failedView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) failedView.findViewById(R.id.failedcontent_label)).setTextColor(textColorStateList);
 			((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
+			//System.out.println("Download view: " + downloadView.getId() + " / Failed view: " + failedView.getId());
 		}
 		
 		@Override
@@ -4106,8 +4096,8 @@ class ConversationManager {
 			
 			//Assigning the drawable
 			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content).findViewById(R.id.content_background).setBackground(drawable);
-			itemView.findViewById(R.id.failedcontent).setBackground(drawable);
+			itemView.findViewById(R.id.content).findViewById(R.id.content_background).setBackground(drawable.getConstantState().newDrawable());
+			itemView.findViewById(R.id.failedcontent).setBackground(drawable.getConstantState().newDrawable());
 			
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
@@ -4183,7 +4173,7 @@ class ConversationManager {
 			convertView.setLayoutParams(layoutParams);
 			
 			//Setting the view color
-			updateViewColor(context.getResources(), convertView);
+			updateViewColor(convertView);
 			
 			//Updating the content view
 			updateContentView(convertView);
@@ -4199,28 +4189,29 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources, View itemView) {
+		void updateViewColor(View itemView) {
 			//Creating the color values
 			ColorStateList textColorStateList;
-			ColorStateList colorStateList;
+			ColorStateList backgroundColorStateList;
 			ColorStateList accentColorStateList;
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
-				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
+				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
+				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageIncomingText, null));
-				colorStateList = ColorStateList.valueOf(bubbleColor);
+				
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.primary_text_dark, null));
+				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
 			
 			//Coloring the views
 			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			downloadView.setBackgroundTintList(colorStateList);
+			downloadView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
 			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
 			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
@@ -4228,15 +4219,15 @@ class ConversationManager {
 			progressBar.setIndeterminateTintList(accentColorStateList);
 			progressBar.setProgressBackgroundTintList(accentColorStateList);
 			
-			itemView.findViewById(R.id.content).setBackgroundTintList(colorStateList);
+			itemView.findViewById(R.id.content).setBackgroundTintList(backgroundColorStateList);
 			((ImageView) itemView.findViewById(R.id.button_play_pause_toggle)).setImageTintList(textColorStateList);
 			((TextView) itemView.findViewById(R.id.audio_duration)).setTextColor(textColorStateList);
 			ProgressBar audioProgressBar = itemView.findViewById(R.id.audio_progress_bar);
-			audioProgressBar.setBackgroundTintList(colorStateList);
+			audioProgressBar.setBackgroundTintList(backgroundColorStateList);
 			audioProgressBar.setProgressTintList(textColorStateList);
 			
 			View failedView = itemView.findViewById(R.id.failedcontent);
-			failedView.setBackgroundTintList(colorStateList);
+			failedView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) failedView.findViewById(R.id.failedcontent_label)).setTextColor(textColorStateList);
 			((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
 		}
@@ -4372,7 +4363,7 @@ class ConversationManager {
 			
 			//Assigning the drawable
 			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content).setBackground(drawable);
+			itemView.findViewById(R.id.content).setBackground(drawable.getConstantState().newDrawable());
 			itemView.findViewById(R.id.failedcontent).setBackground(drawable);
 		}
 		
@@ -4496,7 +4487,7 @@ class ConversationManager {
 			convertView.setLayoutParams(layoutParams);
 			
 			//Setting the view color
-			updateViewColor(context.getResources(), convertView);
+			updateViewColor(convertView);
 			
 			//Updating the content view
 			updateContentView(convertView);
@@ -4512,31 +4503,29 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources, View itemView) {
+		void updateViewColor(View itemView) {
 			//Creating the color values
 			ColorStateList textColorStateList;
-			ColorStateList colorStateList;
+			ColorStateList backgroundColorStateList;
 			ColorStateList accentColorStateList;
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
-				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
+				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
+				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageIncomingText, null));
-				colorStateList = ColorStateList.valueOf(bubbleColor);
+				
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.primary_text_dark, null));
+				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
 			
 			//Coloring the views
 			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			if(itemView.findViewById(R.id.downloadcontent) == null) {
-				Constants.printViewHierarchy((ViewGroup) itemView, "Item view");
-			}
-			downloadView.setBackgroundTintList(colorStateList);
+			downloadView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
 			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
 			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
@@ -4545,7 +4534,7 @@ class ConversationManager {
 			progressBar.setProgressBackgroundTintList(accentColorStateList);
 			
 			View failedView = itemView.findViewById(R.id.failedcontent);
-			failedView.setBackgroundTintList(colorStateList);
+			failedView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) failedView.findViewById(R.id.failedcontent_label)).setTextColor(textColorStateList);
 			((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
 		}
@@ -4674,8 +4663,8 @@ class ConversationManager {
 			
 			//Assigning the drawable
 			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content_background).setBackground(drawable);
-			itemView.findViewById(R.id.failedcontent).setBackground(drawable);
+			itemView.findViewById(R.id.content_background).setBackground(drawable.getConstantState().newDrawable());
+			itemView.findViewById(R.id.failedcontent).setBackground(drawable.getConstantState().newDrawable());
 			
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
@@ -4742,7 +4731,7 @@ class ConversationManager {
 			convertView.setLayoutParams(layoutParams);
 			
 			//Setting the view color
-			updateViewColor(context.getResources(), convertView);
+			updateViewColor(convertView);
 			
 			//Updating the content view
 			updateContentView(convertView);
@@ -4758,28 +4747,29 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources, View itemView) {
+		void updateViewColor(View itemView) {
 			//Creating the color values
 			ColorStateList textColorStateList;
-			ColorStateList colorStateList;
+			ColorStateList backgroundColorStateList;
 			ColorStateList accentColorStateList;
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
-				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
+				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
+				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageIncomingText, null));
-				colorStateList = ColorStateList.valueOf(bubbleColor);
+				
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.primary_text_dark, null));
+				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
 			
 			//Coloring the views
 			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			downloadView.setBackgroundTintList(colorStateList);
+			downloadView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
 			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
 			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
@@ -4788,7 +4778,7 @@ class ConversationManager {
 			progressBar.setProgressBackgroundTintList(accentColorStateList);
 			
 			View contentView = itemView.findViewById(R.id.content);
-			contentView.setBackgroundTintList(colorStateList);
+			contentView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) contentView.findViewById(R.id.content_label)).setTextColor(textColorStateList);
 			((ImageView) contentView.findViewById(R.id.content_button)).setImageTintList(textColorStateList);
 		}
@@ -4856,7 +4846,7 @@ class ConversationManager {
 			
 			//Assigning the drawable
 			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content).setBackground(drawable);
+			itemView.findViewById(R.id.content).setBackground(drawable.getConstantState().newDrawable());
 		}
 		
 		@Override
@@ -5438,35 +5428,35 @@ class ConversationManager {
 				return view;
 			}
 			
-			public TextView getLabelTimeDivider() {
+			TextView getLabelTimeDivider() {
 				return labelTimeDivider;
 			}
 			
-			public TextView getLabelSender() {
+			TextView getLabelSender() {
 				return labelSender;
 			}
 			
-			public ViewGroup getGroupMPC() {
+			ViewGroup getGroupMPC() {
 				return groupMPC;
 			}
 			
-			public TextSwitcher getLabelActivityStatus() {
+			TextSwitcher getLabelActivityStatus() {
 				return labelActivityStatus;
 			}
 			
-			public ViewGroup getGroupEffectReplay() {
+			ViewGroup getGroupEffectReplay() {
 				return groupEffectReplay;
 			}
 			
-			public ProgressWheel getProgressSend() {
+			ProgressWheel getProgressSend() {
 				return progressSend;
 			}
 			
-			public ImageButton getButtonSendError() {
+			ImageButton getButtonSendError() {
 				return buttonSendError;
 			}
 			
-			public void inflateProfile() {
+			void inflateProfile() {
 				//Returning if the profile already exists
 				if(groupProfile != null) return;
 				
@@ -5478,20 +5468,20 @@ class ConversationManager {
 				imageProfileImage = groupProfile.findViewById(R.id.profile_image);
 			}
 			
-			public ViewGroup getProfile() {
+			ViewGroup getProfile() {
 				return groupProfile;
 			}
 			
-			public ImageView getImageProfileDefault() {
+			ImageView getImageProfileDefault() {
 				return imageProfileDefault;
 			}
 			
-			public ImageView getImageProfileImage() {
+			ImageView getImageProfileImage() {
 				return imageProfileImage;
 			}
 		}
 		
-		void updateViewColor(Resources resources) {}
+		void updateViewColor() {}
 		
 		abstract void getSummary(Context context, Constants.ResultCallback<String> resultCallback);
 		

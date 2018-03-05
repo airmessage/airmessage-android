@@ -6,6 +6,7 @@ https://stackoverflow.com/questions/36320781/android-custom-popup-menu-with-swit
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:baselineAligned="false"
+	android:background="?android:attr/colorBackgroundFloating"
 	android:orientation="horizontal" >
 	<!-- Conversation Icon -->
 	<RelativeLayout

@@ -15,8 +15,7 @@
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
 			android:layout_height="?attr/actionBarSize"
-			android:theme="@style/SolidActionBar"
-			app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+			android:theme="@style/SolidActionBar" />
 		<!-- Info bar container -->
 		<LinearLayout
 			android:id="@+id/infobar_container"
@@ -24,7 +23,7 @@
 			android:layout_height="wrap_content"
 			android:orientation="vertical"
 			android:animateLayoutChanges="true"
-			android:background="@color/colorForegroundLight" />
+			android:background="?android:attr/colorBackgroundFloating" />
 	</android.support.design.widget.AppBarLayout>
 	<!-- Floating Action Button -->
 	<android.support.design.widget.FloatingActionButton
@@ -34,7 +33,6 @@
 		android:layout_gravity="bottom|end"
 		android:layout_margin="16dp"
 		android:src="@drawable/add"
-		app:backgroundTint="@color/colorAccent"
 		app:fabSize="normal" />
 	<!-- Content layout -->
 	<RelativeLayout

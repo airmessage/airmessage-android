@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<style name="AppTheme.AppCompat" parent="@style/Theme.AppCompat.DayNight.DarkActionBar">
+	<style name="AppTheme.AppCompat" parent="@style/Theme.AppCompat">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="android:colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimary</item>
@@ -10,28 +10,30 @@
 		<!-- <item name="android:colorBackground">@color/colorBackgroundLight</item> -->
 		
 		<!-- <item name="android:colorControlActivated">?android:attr/colorAccent</item>
-		<item name="android:actionBarTheme">@style/SolidActionBar</item> -->
+		<item name="android:actionBarTheme">@style/SolidActionBar</item>
+		<item name="android:windowBackground">@color/colorBackgroundLight</item> -->
 		
-		<item name="android:windowLightNavigationBar">true</item>
-		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
-		<item name="android:navigationBarColor">@android:color/white</item>
+		<item name="android:windowLightNavigationBar">false</item>
+		<item name="android:navigationBarDividerColor">@null</item>
+		<item name="android:navigationBarColor">@android:color/black</item>
 	</style>
 	
-	<style name="AppTheme.AppCompat.NoActionBar" parent="@style/Theme.AppCompat.Light.NoActionBar">
+	<style name="AppTheme.AppCompat.NoActionBar" parent="@style/Theme.AppCompat.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="android:colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimary</item>
 		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorAccent">@color/colorAccent</item>
-		<!-- <item name="android:colorBackground">@color/colorBackgroundLight</item> -->
 		
 		<item name="windowActionModeOverlay">true</item>
 		<item name="android:actionModeBackground">@color/colorPrimary</item>
-		<!-- <item name="android:actionModeCloseDrawable">@drawable/arrow_back</item> -->
+		<item name="android:actionModeCloseDrawable">@drawable/arrow_back</item>
 		
-		<item name="android:windowLightNavigationBar">true</item>
-		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
-		<item name="android:navigationBarColor">?android:attr/colorBackgroundFloating</item>
+		<!-- <item name="android:actionBarTheme">@style/SolidActionBar</item> -->
+		
+		<item name="android:windowLightNavigationBar">false</item>
+		<item name="android:navigationBarDividerColor">@null</item>
+		<item name="android:navigationBarColor">@android:color/black</item>
 	</style>
 </resources>

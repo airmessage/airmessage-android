@@ -44,10 +44,10 @@ import me.tagavari.airmessage.common.SharedValues;
 public class Conversations extends CompositeActivity {
 	//Creating the plugin values
 	private ConversationsBase conversationsBasePlugin = null;
-	private MessageBarPlugin messageBarPlugin = null;
+	private PluginMessageBar pluginMessageBar = null;
 	
 	//Creating the info bar values
-	private MessageBarPlugin.InfoBar infoBarConnection, infoBarContacts;
+	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts;
 	
 	//Creating the menu values
 	private MenuItem searchMenuItem = null;
@@ -417,7 +417,8 @@ public class Conversations extends CompositeActivity {
 	public Conversations() {
 		//Setting the plugins;
 		addPlugin(conversationsBasePlugin = new ConversationsBase(() -> new ListAdapter(conversationsBasePlugin.conversations)));
-		addPlugin(messageBarPlugin = new MessageBarPlugin());
+		addPlugin(pluginMessageBar = new PluginMessageBar());
+		addPlugin(new PluginThemeUpdater());
 	}
 	
 	@Override
@@ -458,7 +459,7 @@ public class Conversations extends CompositeActivity {
 		
 		//Setting the plugin views
 		conversationsBasePlugin.setViews(findViewById(R.id.list), findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
-		messageBarPlugin.setParentView(findViewById(R.id.infobar_container));
+		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), conversationsBasePlugin.listView);
@@ -472,8 +473,8 @@ public class Conversations extends CompositeActivity {
 		findViewById(R.id.fab).setOnClickListener(view -> startActivity(new Intent(Conversations.this, NewMessage.class)));
 		
 		//Creating the info bars
-		infoBarConnection = messageBarPlugin.create(R.drawable.disconnection, null);
-		infoBarContacts = messageBarPlugin.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
+		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
+		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
 		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts));
 	}
 	

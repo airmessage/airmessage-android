@@ -21,7 +21,7 @@
 		android:layout_marginTop="15dp"
 		android:text="@string/placeholder_timedivider"
 		android:textAlignment="center"
-		android:textColor="?android:textColorSecondary"
+		android:textColor="?android:attr/textColorSecondary"
 		android:visibility="gone" />
 	
 	<TextView

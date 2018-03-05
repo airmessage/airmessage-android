@@ -9,7 +9,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -654,22 +653,19 @@ public class NewMessage extends AppCompatActivity {
 						Constants.dpToPx(300),
 						Constants.dpToPx(56));
 				
-				popupWindow.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.colorForegroundLight, null)));
+				//popupWindow.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.colorForegroundLight, null)));
 				popupWindow.setOutsideTouchable(true);
 				popupWindow.setElevation(Constants.dpToPx(2));
 				popupWindow.setEnterTransition(new ChangeBounds());
 				popupWindow.setExitTransition(new Fade());
 				
 				//Setting the remove listener
-				popupView.findViewById(R.id.button_remove).setOnClickListener(new View.OnClickListener() {
-					@Override
-					public void onClick(View view) {
-						//Removing this chip
-						removeChip(Chip.this);
-						
-						//Dismissing the popup
-						popupWindow.dismiss();
-					}
+				popupView.findViewById(R.id.button_remove).setOnClickListener(view -> {
+					//Removing this chip
+					removeChip(Chip.this);
+					
+					//Dismissing the popup
+					popupWindow.dismiss();
 				});
 				
 				//Showing the popup
@@ -997,9 +993,9 @@ public class NewMessage extends AppCompatActivity {
 		public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 			switch(viewType) {
 				case TYPE_HEADER:
-					return new HeaderViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_contact_sendheader, parent, false));
+					return new HeaderViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_contact_sendheader, parent, false));
 				case TYPE_ITEM:
-					return new ItemViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_contact, parent, false));
+					return new ItemViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_contact, parent, false));
 				default:
 					return null;
 			}

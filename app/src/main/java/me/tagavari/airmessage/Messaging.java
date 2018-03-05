@@ -65,6 +65,8 @@ import android.widget.Toast;
 
 import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -86,10 +88,10 @@ public class Messaging extends CompositeActivity {
 	private static final List<WeakReference<Messaging>> loadedConversations = new ArrayList<>();
 	
 	//Creating the plugin values
-	private MessageBarPlugin messageBarPlugin = null;
+	private PluginMessageBar pluginMessageBar = null;
 	
 	//Creating the info bar values
-	private MessageBarPlugin.InfoBar infoBarConnection;
+	private PluginMessageBar.InfoBar infoBarConnection;
 	
 	//Creating the activity values
 	private ConversationManager.ConversationInfo conversationInfo;
@@ -288,7 +290,7 @@ public class Messaging extends CompositeActivity {
 	
 	public Messaging() {
 		//Setting the plugins;
-		addPlugin(messageBarPlugin = new MessageBarPlugin());
+		addPlugin(pluginMessageBar = new PluginMessageBar());
 	}
 	
 	@Override
@@ -323,7 +325,7 @@ public class Messaging extends CompositeActivity {
 		bottomFABBadge = findViewById(R.id.fab_bottom_badge);
 		
 		//Setting the plugin views
-		messageBarPlugin.setParentView(findViewById(R.id.infobar_container));
+		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), messageList);
@@ -379,7 +381,7 @@ public class Messaging extends CompositeActivity {
 		loadedConversations.add(new WeakReference<>(this));
 		
 		//Creating the info bars
-		infoBarConnection = messageBarPlugin.create(R.drawable.disconnection, null);
+		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
 	}
 	
 	private void prepareRetainedFragment() {
@@ -532,7 +534,7 @@ public class Messaging extends CompositeActivity {
 			colorUI(findViewById(android.R.id.content));
 			
 			//Coloring the messages
-			if(retainedFragment.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : retainedFragment.conversationItemList) conversationItem.updateViewColor(getResources());
+			if(retainedFragment.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : retainedFragment.conversationItemList) conversationItem.updateViewColor();
 			
 			//Checking if the title is static
 			
@@ -1706,7 +1708,6 @@ public class Messaging extends CompositeActivity {
 	}
 	
 	void updateUnreadIndicator() {
-		System.out.println("Fab shown: " + bottomFAB.isShown());
 		//Returning if the value has not changed
 		if(retainedFragment.lastUnreadCount == conversationInfo.getUnreadMessageCount()) return;
 		
@@ -1733,7 +1734,6 @@ public class Messaging extends CompositeActivity {
 						.setInterpolator(new OvershootInterpolator())
 						.start();
 			}
-			System.out.println("Animating badge!");
 			
 			//Checking if there were previously no unread messages and the FAB is visible
 			if(retainedFragment.lastUnreadCount == 0 && bottomFAB.isShown()) {
@@ -1754,7 +1754,7 @@ public class Messaging extends CompositeActivity {
 			}
 		} else {
 			//Restoring the FAB color
-			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
+			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(Constants.resolveColorAttr(this, android.R.attr.colorBackgroundFloating)));
 			bottomFAB.setImageTintList(ColorStateList.valueOf(colorTint));
 			
 			//Hiding the badge
@@ -2327,16 +2327,16 @@ public class Messaging extends CompositeActivity {
 			conversationItems = items;
 		}
 		
-		@Override
-		public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+		@Override @NonNull
+		public RecyclerView.ViewHolder onCreateViewHolder(@NotNull ViewGroup parent, int viewType) {
 			//Returning the correct view holder
 			switch(viewType) {
 				case ConversationManager.MessageInfo.itemType:
-					return new ConversationManager.ConversationItem.MessageViewHolder((LinearLayout) LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_conversationitem, parent, false));
+					return new ConversationManager.ConversationItem.MessageViewHolder((LinearLayout) LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_conversationitem, parent, false));
 				case ConversationManager.GroupActionInfo.itemType:
 				case ConversationManager.ChatRenameActionInfo.itemType:
 				case ConversationManager.ChatCreationMessage.itemType:
-					return new ConversationManager.ActionLineViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_action, parent, false));
+					return new ConversationManager.ActionLineViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_action, parent, false));
 				default:
 					return null;
 			}

@@ -11,7 +11,7 @@ import com.pascalwelsch.compositeandroid.activity.ActivityPlugin;
 
 import org.jetbrains.annotations.NotNull;
 
-class MessageBarPlugin extends ActivityPlugin {
+class PluginMessageBar extends ActivityPlugin {
 	//Creating the view values
 	private ViewGroup parentView;
 	

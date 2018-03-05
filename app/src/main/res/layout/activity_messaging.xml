@@ -46,15 +46,14 @@
 				android:id="@+id/toolbar"
 				android:layout_width="match_parent"
 				android:layout_height="?attr/actionBarSize"
-				android:theme="@style/SolidActionBar"
-				app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+				android:theme="@style/SolidActionBar" />
 			<!-- Info bar container -->
 			<LinearLayout
 				android:id="@+id/infobar_container"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:animateLayoutChanges="true"
-				android:background="@color/colorForegroundLight"
+				android:background="?android:attr/colorBackgroundFloating"
 				android:orientation="vertical" />
 		</android.support.design.widget.AppBarLayout>
 		<!-- Search result bar -->
@@ -62,7 +61,7 @@
 			android:id="@+id/searchresults"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:background="@android:color/white"
+			android:background="?android:attr/colorBackgroundFloating"
 			android:elevation="4dp"
 			android:minHeight="48dp"
 			android:orientation="horizontal"
@@ -138,7 +137,7 @@
 				app:layout_constraintEnd_toEndOf="parent"
 				app:layout_constraintBottom_toBottomOf="parent"
 				android:src="@drawable/chevron_down"
-				app:backgroundTint="@android:color/white"
+				app:backgroundTint="?android:attr/colorBackgroundFloating"
 				app:tint="@color/colorPrimary"
 				android:visibility="gone"
 				app:fabSize="mini" />
@@ -154,7 +153,7 @@
 				android:paddingLeft="6dp"
 				android:paddingRight="6dp"
 				android:gravity="center"
-				android:textColor="?android:attr/textColorPrimaryInverse"
+				android:textColor="@android:color/primary_text_dark"
 				android:textSize="12sp"
 				android:translationX="-6dp"
 				android:translationY="6dp"
@@ -181,7 +180,7 @@
 			android:id="@+id/inputbar"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:background="@color/colorForegroundLight"
+			android:background="?android:attr/colorBackgroundFloating"
 			android:clipToPadding="false"
 			android:elevation="8dp"
 			android:minHeight="45dp"
@@ -342,15 +341,17 @@
 				android:layout_width="match_parent"
 				android:layout_height="45dp"
 				android:layout_gravity="bottom"
-				android:background="@android:color/white"
+				android:background="?android:attr/colorBackgroundFloating"
+				android:gravity="center_vertical"
+				android:paddingLeft="15dp"
+				android:paddingRight="15dp"
 				android:orientation="horizontal"
 				android:visibility="gone">
 				<!-- Recording dot -->
 				<View
+					android:id="@+id/recordingtime_dot"
 					android:layout_width="10dp"
 					android:layout_height="10dp"
-					android:layout_gravity="center_vertical"
-					android:layout_marginStart="22dp"
 					android:background="@drawable/circle"
 					android:backgroundTint="@color/colorRecording" />
 				<!-- Recording time -->
@@ -359,31 +360,25 @@
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:layout_gravity="center_vertical"
-					android:layout_marginStart="13dp"
+					android:layout_marginStart="8dp"
 					android:text="@string/placeholder_recordingtime"
-					android:textColor="@android:color/black"
+					android:textColor="?android:attr/textColorPrimary"
 					android:textSize="15sp" />
-				<!-- Cancel name -->
-				<LinearLayout
-					android:id="@+id/recording_canceltext"
+				<!-- Cancel text -->
+				<TextView
 					android:layout_width="wrap_content"
-					android:layout_height="match_parent">
-					
-					<ImageView
-						android:layout_width="wrap_content"
-						android:layout_height="wrap_content"
-						android:layout_gravity="center_vertical"
-						android:layout_marginStart="22dp"
-						android:src="@drawable/chevron_left"
-						android:tint="?android:textColorSecondary" />
-					
-					<TextView
-						android:layout_width="wrap_content"
-						android:layout_height="wrap_content"
-						android:layout_gravity="center_vertical"
-						android:text="@string/imperative_recording_cancel"
-						android:textColor="?android:textColorSecondary" />
-				</LinearLayout>
+					android:layout_height="wrap_content"
+					android:layout_gravity="center_vertical"
+					android:drawableStart="@drawable/chevron_left"
+					android:drawableTint="?android:attr/textColorSecondary"
+					android:layout_marginStart="60dp"
+					android:gravity="center"
+					app:layout_constraintTop_toTopOf="parent"
+					app:layout_constraintBottom_toBottomOf="parent"
+					app:layout_constraintLeft_toLeftOf="parent"
+					app:layout_constraintRight_toRightOf="parent"
+					android:text="@string/imperative_recording_cancel"
+					android:textColor="?android:attr/textColorSecondary" />
 			</LinearLayout>
 		</RelativeLayout>
 	</LinearLayout>

@@ -5,6 +5,18 @@
 		android:title="@string/preference_messagenotifications_name" />
 	
 	<PreferenceCategory
+		android:key="@string/preferencegroup_appearance_key"
+		android:title="@string/preferencegroup_appearance_name">
+		<ListPreference
+			android:key="@string/preference_appearance_theme_key"
+			android:title="@string/preference_appearance_theme_title"
+			android:entries="@array/preference_appearance_theme_entries"
+			android:entryValues="@array/preference_appearance_theme_values"
+			android:defaultValue="follow_system"
+			android:summary="%s" />
+	</PreferenceCategory>
+	
+	<PreferenceCategory
 		android:key="@string/preferencegroup_storage_key"
 		android:title="@string/preferencegroup_storage_name" >
 		<SwitchPreference
