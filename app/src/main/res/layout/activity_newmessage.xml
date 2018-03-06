@@ -1,75 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
+	android:orientation="vertical"
 	tools:context=".NewMessage">
-	<!-- Recipient input -->
-	<RelativeLayout
-		android:id="@+id/user_input"
+	<!-- App bar -->
+	<android.support.design.widget.AppBarLayout
 		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:background="?android:attr/colorBackgroundFloating"
-		android:elevation="2dp"
-		android:minHeight="50dp"
-		android:orientation="horizontal">
-		
-		<TextView
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_alignParentStart="true"
-			android:layout_marginStart="16dp"
-			android:layout_marginTop="15dp"
-			android:text="@string/to"
-			android:textColor="?android:attr/textColorSecondary"
-			android:textSize="14sp" />
-		
-		<com.google.android.flexbox.FlexboxLayout
-			android:id="@+id/viewgroup_recipients"
+		android:layout_height="wrap_content">
+		<!-- Toolbar -->
+		<android.support.v7.widget.Toolbar
+			android:id="@+id/toolbar"
+			android:layout_width="match_parent"
+			android:layout_height="?attr/actionBarSize"
+			android:theme="@style/SolidActionBar" />
+		<!-- Recipient input -->
+		<RelativeLayout
+			android:id="@+id/user_input"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:layout_marginBottom="5dp"
-			android:layout_marginEnd="56dp"
-			android:layout_marginStart="72dp"
-			android:layout_marginTop="8dp"
-			app:alignContent="flex_start"
-			app:alignItems="flex_start"
-			app:dividerDrawable="@drawable/user_divider"
-			app:flexWrap="wrap"
-			app:showDivider="middle">
+			android:background="?android:attr/colorBackgroundFloating"
+			android:minHeight="50dp"
+			android:orientation="horizontal">
 			
-			<EditText
-				android:id="@+id/recipients_input"
+			<TextView
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:background="@null"
-				android:hint="@string/imperative_userinput"
-				android:imeOptions="actionDone|flagNoExtractUi"
-				android:inputType="textEmailAddress"
-				android:maxLines="1"
-				android:minHeight="32dp"
-				android:minWidth="50dp"
+				android:layout_alignParentStart="true"
+				android:layout_marginStart="16dp"
+				android:layout_marginTop="15dp"
+				android:text="@string/to"
+				android:textColor="?android:attr/textColorSecondary"
 				android:textSize="14sp" />
-		</com.google.android.flexbox.FlexboxLayout>
-		
-		<ImageButton
-			android:id="@+id/recipients_inputtoggle"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_alignParentEnd="true"
-			android:layout_marginEnd="16dp"
-			android:layout_marginTop="12dp"
-			android:background="?android:attr/selectableItemBackgroundBorderless"
-			android:onClick="toggleInputType"
-			android:src="@drawable/dialpad"
-			android:tint="?android:attr/textColorSecondary" />
-	</RelativeLayout>
+			
+			<com.google.android.flexbox.FlexboxLayout
+				android:id="@+id/viewgroup_recipients"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginBottom="5dp"
+				android:layout_marginEnd="56dp"
+				android:layout_marginStart="72dp"
+				android:layout_marginTop="8dp"
+				app:alignContent="flex_start"
+				app:alignItems="flex_start"
+				app:dividerDrawable="@drawable/user_divider"
+				app:flexWrap="wrap" >
+				
+				<EditText
+					android:id="@+id/recipients_input"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:background="@null"
+					android:hint="@string/imperative_userinput"
+					android:imeOptions="actionDone|flagNoExtractUi"
+					android:inputType="textEmailAddress"
+					android:maxLines="1"
+					android:minHeight="32dp"
+					android:minWidth="50dp"
+					android:textSize="14sp" />
+			</com.google.android.flexbox.FlexboxLayout>
+			
+			<ImageButton
+				android:id="@+id/recipients_inputtoggle"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_alignParentEnd="true"
+				android:layout_marginEnd="16dp"
+				android:layout_marginTop="12dp"
+				android:background="?android:attr/selectableItemBackgroundBorderless"
+				android:onClick="toggleInputType"
+				android:src="@drawable/dialpad"
+				android:tint="?android:attr/textColorSecondary" />
+		</RelativeLayout>
+	</android.support.design.widget.AppBarLayout>
+	
 	<!-- Contact list -->
 	<RelativeLayout
 		android:layout_width="match_parent"
-		android:layout_height="match_parent"
-		android:layout_below="@id/user_input">
+		android:layout_height="match_parent" >
 		<!-- Contacts list -->
 		<!-- <ListView
 			android:id="@+id/list_contacts"
@@ -132,4 +142,4 @@
 			android:textColor="?android:attr/textColorSecondary"
 			android:visibility="gone" />
 	</RelativeLayout>
-</RelativeLayout>
+</LinearLayout>

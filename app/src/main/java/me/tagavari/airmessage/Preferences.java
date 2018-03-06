@@ -1,5 +1,6 @@
 package me.tagavari.airmessage;
 
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.NotificationManager;
@@ -19,9 +20,12 @@ import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.RingtonePreference;
+import android.preference.SwitchPreference;
 import android.provider.Settings;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.MenuItem;
 
@@ -63,6 +67,11 @@ public class Preferences extends AppCompatActivity {
 		//Returning false
 		return false;
 	}
+	
+	/* @Override
+	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+	} */
 	
 	public static class SettingsFragment extends PreferenceFragment {
 		//Creating the listeners
@@ -210,15 +219,56 @@ public class Preferences extends AppCompatActivity {
 				//Applying the dark mode
 				((MainApplication) getActivity().getApplication()).applyDarkMode((String) newValue);
 				
-				//Restarting the activity
+				//Recreating the activity
 				getActivity().recreate();
 				
 				//Accepting the change
 				return true;
 			});
 			
+			{
+				SwitchPreference locationSwitch = (SwitchPreference) findPreference(getResources().getString(R.string.preference_appearance_location_key));
+				locationSwitch.setChecked(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED);
+				
+				ListPreference darkModePreference = (ListPreference) findPreference(getResources().getString(R.string.preference_appearance_theme_key));
+				locationSwitch.setEnabled(darkModePreference.getValue().equals(MainApplication.darkModeAutomatic));
+				
+				locationSwitch.setOnPreferenceChangeListener((preference, value) -> {
+					//Opening the application settings if the permission has been granted
+					if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
+					//Otherwise requesting the permission
+					else requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, Constants.permissionAccessCoarseLocation);
+					//else Constants.requestPermission(getActivity(), new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, Constants.permissionAccessCoarseLocation);
+					
+					//Returning false (to prevent the system from changing the option)
+					return false;
+				});
+			}
+			
 			//Setting the intents
 			findPreference(getResources().getString(R.string.preference_server_help_key)).setIntent(new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress));
+		}
+		
+		@Override
+		public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+			//Checking if the request code is contacts access
+			if(requestCode == Constants.permissionAccessCoarseLocation) {
+				//Checking if the result is a success
+				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+					//Enabling the toggle
+					((SwitchPreference) findPreference(getResources().getString(R.string.preference_appearance_location_key))).setChecked(true);
+					
+					//Recreating the activity
+					getActivity().recreate();
+				}
+				//Otherwise checking if the result is a denial
+				else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
+					//Showing a snackbar
+					Snackbar.make(getView(), R.string.message_permissionrejected, Snackbar.LENGTH_LONG)
+							.setAction(R.string.screen_settings, view -> startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName()))))
+							.show();
+				}
+			}
 		}
 		
 		@Override

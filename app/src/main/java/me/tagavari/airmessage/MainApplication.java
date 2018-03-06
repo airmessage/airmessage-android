@@ -190,28 +190,28 @@ public class MainApplication extends Application {
 		}
 	}
 	
+	boolean isServerConfigured() {
+		return !getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE).getString(MainApplication.sharedPreferencesKeyHostname, "").isEmpty();
+	}
+	
+	static final String darkModeFollowSystem = "follow_system";
+	static final String darkModeAutomatic = "auto";
+	static final String darkModeAlwaysLight = "off";
+	static final String darkModeAlwaysDark = "on";
 	void applyDarkMode(String method) {
-		//Getting the values
-		String[] values = getResources().getStringArray(R.array.preference_appearance_theme_values);
-		
-		//Iterating over the values
-		for(int i = 0; i < values.length; i++) {
-			if(!values[i].equals(method)) continue;
-			
-			switch(i) {
-				case 0: //Follow system
-					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
-					break;
-				case 1: //Automatic
-					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO);
-					break;
-				case 2: //Always light
-					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-					break;
-				case 3: //Always dark
-					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-					break;
-			}
+		switch(method) {
+			case darkModeFollowSystem: //Follow system
+				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+				break;
+			case darkModeAutomatic: //Automatic
+				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO);
+				break;
+			case darkModeAlwaysLight: //Always light
+				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+				break;
+			case darkModeAlwaysDark: //Always dark
+				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+				break;
 		}
 	}
 }

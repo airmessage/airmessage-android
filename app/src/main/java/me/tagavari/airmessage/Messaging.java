@@ -2321,11 +2321,20 @@ public class Messaging extends CompositeActivity {
 	class RecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 		//Creating the values
 		private final ArrayList<ConversationManager.ConversationItem> conversationItems;
+		private RecyclerView recyclerView;
 		
 		RecyclerAdapter(ArrayList<ConversationManager.ConversationItem> items) {
 			//Setting the conversation items
 			conversationItems = items;
 		}
+		
+		@Override
+		public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
+			super.onAttachedToRecyclerView(recyclerView);
+			
+			this.recyclerView = recyclerView;
+		}
+		
 		
 		@Override @NonNull
 		public RecyclerView.ViewHolder onCreateViewHolder(@NotNull ViewGroup parent, int viewType) {
@@ -2351,7 +2360,7 @@ public class Messaging extends CompositeActivity {
 			conversationItem.bindView(Messaging.this, holder);
 			
 			//Setting the view source
-			LinearLayoutManager layout = (LinearLayoutManager) messageList.getLayoutManager();
+			LinearLayoutManager layout = (LinearLayoutManager) recyclerView.getLayoutManager();
 			conversationItem.setViewSource(() -> layout.findViewByPosition(conversationItems.indexOf(conversationItem)));
 		}
 		
@@ -2376,7 +2385,7 @@ public class Messaging extends CompositeActivity {
 			if(conversationItems.isEmpty()) return;
 			
 			//Getting if the list is currently scrolled to the bottom
-			boolean scrolledToBottom = ((LinearLayoutManager) messageList.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 2; //-2 because the item was already added to the list
+			boolean scrolledToBottom = ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 2; //-2 because the item was already added to the list
 			
 			//Calling the original method
 			notifyItemInserted(position);
@@ -2384,12 +2393,15 @@ public class Messaging extends CompositeActivity {
 			//Checking if the list is scrolled to the end and the new item is at the bottom
 			if(scrolledToBottom && position == getItemCount() - 1) {
 				//Scrolling to the bottom
-				messageList.smoothScrollToPosition(getItemCount() - 1);
+				recyclerView.smoothScrollToPosition(getItemCount() - 1);
 			}
+			
+			//Notifying the scroll listener
+			messageListScrollListener.onScrolled(recyclerView, 0, 0);
 		}
 		
 		boolean isScrolledToBottom() {
-			return ((LinearLayoutManager) messageList.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
+			return ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
 		}
 		
 		void scrollToBottom() {
@@ -2397,7 +2409,7 @@ public class Messaging extends CompositeActivity {
 			if(isScrolledToBottom()) return;
 			
 			//Scrolling to the bottom
-			messageList.smoothScrollToPosition(getItemCount() - 1);
+			recyclerView.smoothScrollToPosition(getItemCount() - 1);
 		}
 	}
 	

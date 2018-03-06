@@ -130,6 +130,8 @@ public class ConnectionService extends Service {
 	private final List<FileSendRequest> fileSendRequestQueue = new ArrayList<>();
 	private Thread fileSendRequestThread = null;
 	
+	private static byte nextLaunchID = 0;
+	
 	//Creating the broadcast receivers
 	private final BroadcastReceiver pingBroadcastReceiver = new BroadcastReceiver() {
 		@Override
@@ -168,13 +170,17 @@ public class ConnectionService extends Service {
 		return serviceReference == null ? null : serviceReference.get();
 	}
 	
-	public static int getActiveCommunicationsVersion() {
+	static int getActiveCommunicationsVersion() {
 		//Getting the instance
 		ConnectionService connectionService = getInstance();
 		if(connectionService == null) return -1;
 		
 		//Returning the active communications version
 		return connectionService.activeCommunicationsVersion;
+	}
+	
+	static byte getNextLaunchID() {
+		return nextLaunchID++;
 	}
 	
 	@Override
@@ -198,8 +204,8 @@ public class ConnectionService extends Service {
 		//Getting the intent action
 		String intentAction = intent == null ? null : intent.getAction();
 		
-		//Checking if a stop has been requested
-		if(selfIntentActionStop.equals(intentAction)) {
+		//Checking if a stop has been requested or the connection address is invalid
+		if(selfIntentActionStop.equals(intentAction) || (hostname == null || hostname.isEmpty())) {
 			//Denying the existence of the connection for reconnection
 			connectionEstablishedForReconnect = false;
 			
@@ -225,7 +231,7 @@ public class ConnectionService extends Service {
 			postDisconnectedNotification(true);
 		}
 		//Reconnecting the client if requested
-		else if(wsClient == null || wsClient.isClosed() || selfIntentActionConnect.equals(intentAction)) connect();
+		else if(wsClient == null || wsClient.isClosed() || selfIntentActionConnect.equals(intentAction)) connect(intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : getNextLaunchID());
 		
 		//Setting the service as not shutting down
 		isShuttingDown = false;
@@ -265,7 +271,7 @@ public class ConnectionService extends Service {
 		return hostname;
 	}
 	
-	private void connect() {
+	private void connect(byte launchID) {
 		//Checking if there is no hostname
 		if(hostname == null || hostname.isEmpty()) {
 			//Retrieving the data from the shared preferences
@@ -277,8 +283,14 @@ public class ConnectionService extends Service {
 		//Preparing the hostname
 		hostname = prepareHostname(hostname);
 		
-		//Disconnecting the client if it is valid
-		if(wsClient != null) wsClient.close();
+		//Checking if the client is valid
+		if(wsClient != null) {
+			//Denying the existence of the connection for reconnection
+			connectionEstablishedForReconnect = false;
+			
+			//Closing the client
+			wsClient.close();
+		}
 		
 		//Preparing the WS client
 		try {
@@ -286,8 +298,8 @@ public class ConnectionService extends Service {
 			URI target = new URI(hostname);
 			
 			//Creating the WS client
-			wsClient = new MMWebSocketClient(target, new DraftMMS());
-			wsClient.setConnectionLostTimeout(0); //Disabled, as we are using a custom Android-friendly approach
+			wsClient = new MMWebSocketClient(launchID, target, new DraftMMS());
+			wsClient.setConnectionLostTimeout(0);
 			
 			//Checking if the scheme is WSS (secure)
 			if(target.getScheme().equals("wss")) {
@@ -314,8 +326,13 @@ public class ConnectionService extends Service {
 				wsClient.setSocket(sslContext.getSocketFactory().createSocket());
 			}
 		} catch(Exception exception) {
+			//Printing the stack trace
+			exception.printStackTrace();
+			
 			//Notifying the connection listeners
-			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult).putExtra(Constants.intentParamResult, intentResultValueInternalException));
+			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult)
+					.putExtra(Constants.intentParamResult, intentResultValueInternalException)
+					.putExtra(Constants.intentParamLaunchID, launchID));
 			
 			//Updating the notification state
 			postDisconnectedNotification(false);
@@ -335,11 +352,18 @@ public class ConnectionService extends Service {
 	}
 	
 	public void disconnect() {
-		if(wsClient != null && !wsClient.isClosed()) wsClient.close();
+		//Returning if the client is not open
+		if(wsClient == null || wsClient.isClosed()) return;
+		
+		//Denying the existence of the connection for reconnection
+		connectionEstablishedForReconnect = false;
+		
+		//Closing the connection
+		wsClient.close();
 	}
 	
 	public void reconnect() {
-		connect();
+		connect(getNextLaunchID());
 	}
 	
 	private void postConnectedNotification(boolean isConnected) {
@@ -428,12 +452,17 @@ public class ConnectionService extends Service {
 	} */
 	
 	private class MMWebSocketClient extends WebSocketClient {
-		MMWebSocketClient(URI serverUri) {
+		//Creating the values
+		private final byte launchID;
+		
+		MMWebSocketClient(byte launchID, URI serverUri) {
 			super(serverUri);
+			this.launchID = launchID;
 		}
 		
-		MMWebSocketClient(URI serverUri, Draft draft) {
+		MMWebSocketClient(byte launchID, URI serverUri, Draft draft) {
 			super(serverUri, draft);
+			this.launchID = launchID;
 		}
 		
 		@Override
@@ -442,7 +471,9 @@ public class ConnectionService extends Service {
 			lastConnectionResult = intentResultValueSuccess;
 			
 			//Notifying the connection listeners
-			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult).putExtra(Constants.intentParamResult, intentResultValueSuccess));
+			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult)
+					.putExtra(Constants.intentParamResult, intentResultValueSuccess)
+					.putExtra(Constants.intentParamLaunchID, launchID));
 			
 			//Recording the server versions
 			{
@@ -611,7 +642,6 @@ public class ConnectionService extends Service {
 			String errorCodeString = reasonString.substring(reasonString.lastIndexOf(' ') + 1);
 			if(errorCodeString.matches("^\\d+$")) code = Integer.parseInt(errorCodeString);
 			
-			
 			//Determining the broadcast value
 			byte clientReason;
 			switch(code) {
@@ -635,7 +665,9 @@ public class ConnectionService extends Service {
 			lastConnectionResult = clientReason;
 			
 			//Notifying the connection listeners
-			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult).putExtra(Constants.intentParamResult, clientReason));
+			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult)
+					.putExtra(Constants.intentParamResult, clientReason)
+					.putExtra(Constants.intentParamLaunchID, launchID));
 			
 			//Checking if a connection existed for retrieval
 			if(connectionEstablishedForRetrieval) {
@@ -650,7 +682,7 @@ public class ConnectionService extends Service {
 			//Checking if a connection existed for reconnection and the preference is enabled
 			if(connectionEstablishedForReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
 				//Reconnecting
-				ConnectionService.this.connect();
+				ConnectionService.this.connect(getNextLaunchID());
 			}
 			
 			//Setting the connection as nonexistent

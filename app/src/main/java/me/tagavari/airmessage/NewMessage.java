@@ -173,7 +173,8 @@ public class NewMessage extends AppCompatActivity {
 		//Setting the content view
 		setContentView(R.layout.activity_newmessage);
 		
-		//Enabling the up button
+		//Configuring the toolbar
+		setSupportActionBar(findViewById(R.id.toolbar));
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 		
 		//Getting the views
@@ -355,7 +356,6 @@ public class NewMessage extends AppCompatActivity {
 							intent.setData(Uri.parse("package:" + getPackageName()));
 							startActivity(intent);
 						})
-						.setActionTextColor(getResources().getColor(R.color.colorAccent, null))
 						.show();
 				/* //Showing a dialog
 				new AlertDialog.Builder(this)
@@ -473,7 +473,7 @@ public class NewMessage extends AppCompatActivity {
 	
 	public void onClickRequestContacts(View view) {
 		//Requesting the permission
-		requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts);
+		Constants.requestPermission(this, new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts);
 	}
 	
 	private static class ConfirmParticipantsTask extends AsyncTask<Void, Void, ConversationManager.ConversationInfo> {

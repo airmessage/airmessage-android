@@ -3965,7 +3965,6 @@ class ConversationManager {
 			failedView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) failedView.findViewById(R.id.failedcontent_label)).setTextColor(textColorStateList);
 			((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
-			//System.out.println("Download view: " + downloadView.getId() + " / Failed view: " + failedView.getId());
 		}
 		
 		@Override

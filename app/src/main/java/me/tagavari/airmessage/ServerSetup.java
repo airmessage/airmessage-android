@@ -76,9 +76,13 @@ public class ServerSetup extends Activity {
 	1 - Message copy confirmation
 	 */
 	private int page = 0;
+	private byte connectionLaunchID;
 	private BroadcastReceiver serviceBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
+			//Ignoring the broadcast if the launch ID doesn't match
+			if(intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) != connectionLaunchID) return;
+			
 			//Unregistering the receiver
 			LocalBroadcastManager.getInstance(ServerSetup.this).unregisterReceiver(this);
 			
@@ -271,7 +275,7 @@ public class ServerSetup extends Activity {
 		ConnectionService.password = newPassword;
 		
 		//Telling the service to connect
-		startService(new Intent(this, ConnectionService.class).setAction(ConnectionService.selfIntentActionConnect));
+		startService(new Intent(this, ConnectionService.class).setAction(ConnectionService.selfIntentActionConnect).putExtra(Constants.intentParamLaunchID, connectionLaunchID = ConnectionService.getNextLaunchID()));
 		
 		//Adding the broadcast listener
 		LocalBroadcastManager.getInstance(this).registerReceiver(serviceBroadcastReceiver, new IntentFilter(ConnectionService.localBCResult));
@@ -289,8 +293,8 @@ public class ServerSetup extends Activity {
 				setPage(0);
 				
 				//Disconnecting from the server
-				ConnectionService connectionService = ConnectionService.getInstance();
-				if(connectionService != null) connectionService.disconnect();
+				/* ConnectionService connectionService = ConnectionService.getInstance();
+				if(connectionService != null) connectionService.disconnect(); */
 				
 				break;
 		}

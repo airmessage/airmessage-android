@@ -5,7 +5,8 @@
 	android:layout_height="wrap_content"
 	android:orientation="vertical"
 	android:padding="20dp"
-	tools:context=".ServerSetup">
+	tools:context=".ServerSetup"
+	android:clipToPadding="false">
 	
 	<TextView
 		android:layout_width="wrap_content"

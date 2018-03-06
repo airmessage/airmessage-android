@@ -241,7 +241,7 @@ public class Conversations extends CompositeActivity {
 					
 					//Creating a snackbar
 					int affectedCount = updatedConversations.size();
-					Snackbar snackbar = Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
+					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
 						//Creating the content values
 						ContentValues undoContentValues = new ContentValues();
 						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
@@ -260,13 +260,7 @@ public class Conversations extends CompositeActivity {
 						
 						//Updating the list
 						conversationsBasePlugin.updateList(false);
-					});
-					
-					//Setting the snackbar's action button's color
-					snackbar.setActionTextColor(getResources().getColor(R.color.colorAccent, null));
-					
-					//Showing the snackbar
-					snackbar.show();
+					}).show();
 				}
 				
 				//Finishing the action mode
@@ -309,7 +303,7 @@ public class Conversations extends CompositeActivity {
 					
 					//Creating a snackbar
 					int affectedCount = updatedConversations.size();
-					Snackbar snackbar = Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationunarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
+					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationunarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
 						//Creating the content values
 						ContentValues undoContentValues = new ContentValues();
 						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
@@ -325,13 +319,7 @@ public class Conversations extends CompositeActivity {
 						
 						//Updating the list
 						conversationsBasePlugin.updateList(false);
-					});
-					
-					//Setting the snackbar's action button's color
-					snackbar.setActionTextColor(getResources().getColor(R.color.colorAccent, null));
-					
-					//Showing the snackbar
-					snackbar.show();
+					}).show();
 				}
 				
 				//Finishing the action mode
@@ -427,7 +415,7 @@ public class Conversations extends CompositeActivity {
 		super.onCreate(savedInstanceState);
 		
 		//Checking if there is no hostname
-		if(getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE).getString(MainApplication.sharedPreferencesKeyHostname, "").isEmpty()) {
+		if(!((MainApplication) getApplication()).isServerConfigured()) {
 			//Creating the intent
 			Intent launchServerSetup = new Intent(this, ServerSetup.class);
 			
@@ -716,7 +704,6 @@ public class Conversations extends CompositeActivity {
 							intent.setData(Uri.parse("package:" + getPackageName()));
 							startActivity(intent);
 						})
-						.setActionTextColor(getResources().getColor(R.color.colorAccent, null))
 						.show();
 			}
 		}

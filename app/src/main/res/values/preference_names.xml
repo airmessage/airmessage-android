@@ -19,6 +19,9 @@
 		<item>off</item>
 		<item>on</item>
 	</string-array>
+	<string name="preference_appearance_location_key" translatable="false">pref_key_appearance_location</string>
+	<string name="preference_appearance_location_title">Enhanced night detection</string>
+	<string name="preference_appearance_location_description">Use your current location to detect sunrise and sunset times for a more accurate night mode</string>
 	
     <string name="preferencegroup_messagenotifications_key" translatable="false">pref_group_notifications</string>
     <string name="preferencegroup_messagenotifications_name">Notifications</string>

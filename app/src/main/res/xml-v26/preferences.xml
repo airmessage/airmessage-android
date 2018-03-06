@@ -14,6 +14,11 @@
 			android:entryValues="@array/preference_appearance_theme_values"
 			android:defaultValue="follow_system"
 			android:summary="%s" />
+		<SwitchPreference
+			android:key="@string/preference_appearance_location_key"
+			android:title="@string/preference_appearance_location_title"
+			android:summary="@string/preference_appearance_location_description"
+			android:persistent="false" />
 	</PreferenceCategory>
 	
 	<PreferenceCategory

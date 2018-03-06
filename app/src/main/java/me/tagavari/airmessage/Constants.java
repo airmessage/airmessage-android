@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.database.Cursor;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -50,6 +51,7 @@ class Constants {
 	static final int intentTakePicture = 3;
 	static final int permissionRecordAudio = 4;
 	static final int permissionReadContacts = 5;
+	static final int permissionAccessCoarseLocation = 6;
 	
 	static final int intentDisconnectService = 6;
 	
@@ -68,6 +70,8 @@ class Constants {
 	static final String intentParamState = "state";
 	static final String intentParamCurrent = "current";
 	static final String intentParamProgress = "progress";
+	static final String intentParamRequestID = "requestID";
+	static final String intentParamLaunchID = "launchID";
 	
 	static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	
@@ -564,6 +568,13 @@ class Constants {
 		// resourceId is used if it's a ColorStateList, and data if it's a color reference or a hex color
 		int colorRes = resolvedAttr.resourceId != 0 ? resolvedAttr.resourceId : resolvedAttr.data;
 		return ContextCompat.getColor(context, colorRes);
+	}
+	
+	static float resolveFloatAttr(Context context, @AttrRes int floatAttr) {
+		TypedArray typedArray = context.obtainStyledAttributes(new TypedValue().data, new int[]{floatAttr});
+		float value = typedArray.getFloat(0, -1);
+		typedArray.recycle();
+		return value;
 	}
 	
 	static boolean isNightMode(Resources resources) {

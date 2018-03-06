@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.AdapterView;
+import android.widget.Button;
 
 import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
 
@@ -79,6 +80,7 @@ public class ShareHandler extends CompositeActivity {
 			return;
 		}
 		
+		//Setting the window flags
 		getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
 		//getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
 		
@@ -97,6 +99,13 @@ public class ShareHandler extends CompositeActivity {
 		
 		//Preventing the activity from finishing if the user touches outside of its bounds
 		this.setFinishOnTouchOutside(false);
+		
+		//Checking if the server is not configured
+		if(!((MainApplication) getApplication()).isServerConfigured()) {
+			Button button = findViewById(R.id.button_new);
+			button.setEnabled(false);
+			button.setAlpha(Constants.resolveFloatAttr(this, android.R.attr.disabledAlpha));
+		}
 	}
 	
 	public void closeDialog(View view) {

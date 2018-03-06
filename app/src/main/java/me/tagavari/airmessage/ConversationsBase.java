@@ -86,7 +86,6 @@ class ConversationsBase extends ActivityPlugin {
 								//Requesting another mass retrieval
 								service.requestMassRetrieval(getApplicationContext());
 							})
-							.setActionTextColor(context.getResources().getColor(R.color.colorAccent, null))
 							.show();
 					
 					//Advancing the conversation state
@@ -190,7 +189,6 @@ class ConversationsBase extends ActivityPlugin {
 			
 			//Loading the messages
 			new LoadConversationsTask(getActivity(), this).execute();
-			System.out.println("Loading messages...");
 		}
 	}
 	
@@ -241,21 +239,15 @@ class ConversationsBase extends ActivityPlugin {
 		switch(state) {
 			case stateLoading:
 				View loadingView = getActivity().findViewById(R.id.loading_text);
-				loadingView.animate()
-						.alpha(1)
-						.withStartAction(() -> {
-							loadingView.setAlpha(0);
-							loadingView.setVisibility(View.VISIBLE);
-						});
+				loadingView.setAlpha(0);
+				loadingView.setVisibility(View.VISIBLE);
+				loadingView.animate().alpha(1);
 				break;
 			case stateSyncing: {
 				View syncView = getActivity().findViewById(R.id.syncview);
-				syncView.animate()
-						.alpha(1)
-						.withStartAction(() -> {
-							syncView.setAlpha(0);
-							syncView.setVisibility(View.VISIBLE);
-						});
+				syncView.setAlpha(0);
+				syncView.setVisibility(View.VISIBLE);
+				syncView.animate().alpha(1);
 				
 				int progress = ConnectionService.getInstance().getMassRetrievalProgress();
 				
@@ -275,12 +267,10 @@ class ConversationsBase extends ActivityPlugin {
 				break;
 			}
 			case stateReady:
+				listView.setAlpha(0);
+				listView.setVisibility(View.VISIBLE);
 				listView.animate()
-						.alpha(1)
-						.withStartAction(() -> {
-							listView.setAlpha(0);
-							listView.setVisibility(View.VISIBLE);
-						});
+						.alpha(1);
 				
 				updateList(true);
 				/* if(conversations.isEmpty()) {
@@ -292,12 +282,10 @@ class ConversationsBase extends ActivityPlugin {
 				break;
 			case stateLoadError:
 				View errorView = getActivity().findViewById(R.id.errorview);
+				errorView.setAlpha(0);
+				errorView.setVisibility(View.VISIBLE);
 				errorView.animate()
-						.alpha(1)
-						.withStartAction(() -> {
-							errorView.setAlpha(0);
-							errorView.setVisibility(View.VISIBLE);
-						});
+						.alpha(1);
 				break;
 		}
 	}

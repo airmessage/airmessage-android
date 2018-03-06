@@ -7,6 +7,7 @@
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.READ_CONTACTS" />
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 	
 	<application
 		android:allowBackup="true"
@@ -40,6 +41,7 @@
 			android:exported="false"
 			android:label="@string/screen_newconversation"
 			android:name=".NewMessage"
+			android:theme="@style/AppTheme.AppCompat.NoActionBar"
 			android:parentActivityName=".Conversations"
 			android:windowSoftInputMode="adjustResize|stateVisible" />
 		<!-- Conversation information -->
