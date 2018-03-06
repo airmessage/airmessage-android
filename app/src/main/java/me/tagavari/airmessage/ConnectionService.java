@@ -1938,6 +1938,10 @@ public class ConnectionService extends Service {
 					
 					//if(parentConversation.getState() != ConversationManager.ConversationInfo.ConversationState.READY) continue;
 					
+					//Incrementing the conversation's unread count
+					parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
+					parentConversation.updateUnreadStatus();
+					
 					//Checking if the conversation is loaded
 					if(loadedConversations.contains(parentConversation.getLocalID())) {
 						//Adding the conversation item to its parent conversation
@@ -1975,10 +1979,6 @@ public class ConnectionService extends Service {
 						//Updating the parent conversation's latest item
 						parentConversation.setLastItem(context, conversationItem);
 					}
-					
-					//Incrementing the conversation's unread count
-					parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
-					parentConversation.updateUnreadStatus();
 					
 					//Sending notifications
 					if(conversationItem instanceof ConversationManager.MessageInfo)

@@ -2395,9 +2395,6 @@ public class Messaging extends CompositeActivity {
 				//Scrolling to the bottom
 				recyclerView.smoothScrollToPosition(getItemCount() - 1);
 			}
-			
-			//Notifying the scroll listener
-			messageListScrollListener.onScrolled(recyclerView, 0, 0);
 		}
 		
 		boolean isScrolledToBottom() {
@@ -2901,6 +2898,16 @@ public class Messaging extends CompositeActivity {
 			//Updating the adapter
 			activity.messageListAdapter.notifyItemChanged(from);
 			activity.messageListAdapter.notifyItemMoved(from, to);
+		}
+		
+		@Override
+		void updateUnread() {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Notifying the scroll listener
+			activity.messageListScrollListener.onScrolled(activity.messageList, 0, 0);
 		}
 	}
 }

@@ -875,6 +875,9 @@ class ConversationManager {
 			ArrayList<MessageInfo> ghostMessages = getGhostMessages();
 			if(ghostMessages == null) return;
 			
+			//Getting the adapter updater
+			AdapterUpdater updater = getAdapterUpdater();
+			
 			boolean messageReplaced = false;
 			//Checking if the item is a message
 			if(conversationItem instanceof MessageInfo) {
@@ -908,7 +911,6 @@ class ConversationManager {
 								
 								//Updating the adapter
 								if(originalIndex != newIndex) {
-									AdapterUpdater updater = getAdapterUpdater();
 									if(updater != null) updater.updateMove(originalIndex, newIndex);
 								}
 							}
@@ -956,7 +958,6 @@ class ConversationManager {
 									
 									//Updating the adapter
 									if(originalIndex != newIndex) {
-										AdapterUpdater updater = getAdapterUpdater();
 										if(updater != null) updater.updateMove(originalIndex, newIndex);
 									}
 								}
@@ -990,13 +991,15 @@ class ConversationManager {
 				updateLastItem(context);
 				
 				//Updating the adapter
-				AdapterUpdater updater = getAdapterUpdater();
 				if(updater != null) updater.updateScroll(index);
 				
 				//Updating the view
 				View view = getView();
 				if(view != null) updateView(context, view);
 			}
+			
+			//Updating the adapter's unread messages
+			if(updater != null) updater.updateUnread();
 		}
 		
 		private int insertConversationItem(ConversationItem conversationItem, Context context, boolean update) {
@@ -1139,6 +1142,7 @@ class ConversationManager {
 			abstract void updateFully();
 			abstract void updateScroll(int index);
 			abstract void updateMove(int from, int to);
+			abstract void updateUnread();
 		}
 		
 		int getNextUserColor() {
