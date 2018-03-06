@@ -237,12 +237,13 @@ class ConversationsBase extends ActivityPlugin {
 		
 		//Enabling the new state
 		switch(state) {
-			case stateLoading:
+			case stateLoading: {
 				View loadingView = getActivity().findViewById(R.id.loading_text);
 				loadingView.setAlpha(0);
 				loadingView.setVisibility(View.VISIBLE);
 				loadingView.animate().alpha(1);
 				break;
+			}
 			case stateSyncing: {
 				View syncView = getActivity().findViewById(R.id.syncview);
 				syncView.setAlpha(0);
@@ -280,13 +281,14 @@ class ConversationsBase extends ActivityPlugin {
 							.withStartAction(() -> noConversations.setVisibility(View.VISIBLE));
 				} */
 				break;
-			case stateLoadError:
+			case stateLoadError: {
 				View errorView = getActivity().findViewById(R.id.errorview);
 				errorView.setAlpha(0);
 				errorView.setVisibility(View.VISIBLE);
 				errorView.animate()
 						.alpha(1);
 				break;
+			}
 		}
 	}
 	

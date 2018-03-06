@@ -55,8 +55,7 @@
 			android:exported="false"
 			android:label="@string/screen_settings"
 			android:name=".Preferences"
-			android:parentActivityName=".Conversations"
-			android:theme="@style/AppTheme.AppCompat">
+			android:parentActivityName=".Conversations" >
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.NOTIFICATION_PREFERENCES" />

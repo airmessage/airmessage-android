@@ -2,6 +2,9 @@
 <resources>
 	<color name="colorDivider">#1FFFFFFF</color>
 	
+	<color name="navbarDivider">#000000</color>
+	<color name="navbarBackground">#000000</color>
+	
 	<color name="colorBGChip">#212121</color>
 	
 	<color name="colorMessageOutgoing">#1F1F1F</color>

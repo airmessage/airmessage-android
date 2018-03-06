@@ -10,6 +10,7 @@
 	<color name="colorDivider">#1F000000</color>
 	
 	<color name="navbarDivider">#FFE0E0E0</color>
+	<color name="navbarBackground">#FFFFFF</color>
 	
 	<color name="colorBGChip">#F5F5F5</color>
 

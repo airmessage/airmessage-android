@@ -1,6 +1,10 @@
 package me.tagavari.airmessage;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 
@@ -22,7 +26,12 @@ public class PluginThemeUpdater extends ActivityPlugin {
 		super.onResume();
 		
 		//Recreating the activity if night mode has changed
-		if(currentNightMode != getCurrentNightMode()) getActivity().recreate();
+		if(currentNightMode != getCurrentNightMode()) {
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+				((AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE)).set(AlarmManager.RTC, System.currentTimeMillis() + 100, PendingIntent.getActivity(getActivity(), 123456, getActivity().getIntent(), PendingIntent.FLAG_CANCEL_CURRENT));
+				System.exit(0);
+			} else getActivity().recreate();
+		}
 	}
 	
 	private int getCurrentNightMode() {

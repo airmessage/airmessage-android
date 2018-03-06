@@ -86,7 +86,7 @@ public class MainApplication extends Application {
 		userCacheHelper = new UserCacheHelper();
 		
 		//Applying the dark mode
-		applyDarkMode(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.preference_appearance_theme_key), null));
+		applyDarkMode(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.preference_appearance_theme_key), ""));
 	}
 	
 	public static MainApplication getInstance() {
