@@ -769,7 +769,7 @@ public class Conversations extends CompositeActivity {
 							intent.putExtra(Intent.EXTRA_EMAIL, new String[]{Constants.feedbackEmail});
 							intent.putExtra(Intent.EXTRA_SUBJECT, "AirMessage Feedback");
 							intent.putExtra(Intent.EXTRA_TEXT, "\r\n\r\n" +
-									"---------- DEVICE INFORMATION----------" + "\r\n" +
+									"---------- DEVICE INFORMATION ----------" + "\r\n" +
 									"Device model: " + Build.MODEL + "\r\n" +
 									"Android version: " + Build.VERSION.RELEASE + "\r\n" +
 									"Client version: " + BuildConfig.VERSION_NAME + "\r\n" +
