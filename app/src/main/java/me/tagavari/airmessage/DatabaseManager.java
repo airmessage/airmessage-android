@@ -173,7 +173,17 @@ class DatabaseManager extends SQLiteOpenHelper {
 	
 	@Override
 	public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-	
+		//Wiping the database
+		Cursor cursor = db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'", null);
+		
+		List<String> tables = new ArrayList<>();
+		while (cursor.moveToNext()) tables.add(cursor.getString(0));
+		cursor.close();
+		
+		for(String table : tables) db.execSQL("DROP TABLE IF EXISTS " + table);
+		
+		//Rebuilding the database
+		onCreate(db);
 	}
 	
 	static final class Contract {

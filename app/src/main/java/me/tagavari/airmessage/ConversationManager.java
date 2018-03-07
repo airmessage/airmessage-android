@@ -448,8 +448,7 @@ class ConversationManager {
 			convertView.findViewById(R.id.flag_muted).setVisibility(isMuted ? View.VISIBLE : View.GONE);
 			
 			//Returning if the conversation has no members
-			if(conversationMembers.isEmpty())
-				return convertView; //TODO add support for empty conversations
+			if(conversationMembers.isEmpty()) return convertView;
 			
 			//Setting the profile
 			currentUserViewIndex = -1;
@@ -4625,7 +4624,7 @@ class ConversationManager {
 					@Override
 					public void onImageDecoded(Bitmap bitmap, boolean wasTasked) {
 						//Getting the item view
-						View itemView = viewSource.get(true);
+						View itemView = viewSource.get(wasTasked);
 						if(itemView == null) return;
 						
 						//Checking if the bitmap is invalid
