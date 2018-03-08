@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	xmlns:app="http://schemas.android.com/apk/res-auto">
+	android:orientation="vertical">
 	<!-- Root layout -->
 	<FrameLayout
 		android:id="@+id/content"
 		android:layout_width="match_parent"
-		android:layout_height="match_parent"
-		android:layout_above="@+id/stepperbar"
-		android:layout_centerHorizontal="true" >
+		android:layout_height="0dp"
+		android:layout_weight="1"
+		android:clipToPadding="false" >
 		<!-- Server verification -->
 		<include
 			android:id="@+id/layout_serververification"
@@ -23,10 +23,8 @@
 	</FrameLayout>
 	<!-- Bottom Bar -->
 	<RelativeLayout
-		android:id="@id/stepperbar"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:layout_alignParentBottom="true"
 		android:background="@color/colorAccent"
 		android:padding="5dp">
 		
@@ -37,7 +35,9 @@
 			android:layout_alignParentEnd="true"
 			android:alpha="0.38"
 			android:background="?attr/selectableItemBackground"
+			android:focusable="true"
 			android:clickable="false"
+			android:gravity="center"
 			android:onClick="onNextButtonClick"
 			android:padding="5dp">
 			
@@ -45,8 +45,7 @@
 				android:id="@+id/nextbuttonlabel"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:text="@string/button_next"
+				android:text="@string/action_next"
 				android:textAlignment="center"
 				android:textAllCaps="true"
 				android:textColor="@android:color/white"
@@ -58,7 +57,6 @@
 				style="?android:attr/progressBarStyleSmall"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
 				android:layout_marginStart="6dp"
 				android:indeterminateTint="@android:color/white"
 				android:visibility="gone" />
@@ -67,9 +65,8 @@
 				android:id="@+id/nextbuttonarrow"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:src="@drawable/arrow_right"
-				android:visibility="visible" />
+				android:src="@drawable/chevron_right"
+				android:tint="@android:color/white" />
 		</LinearLayout>
 		
 		<LinearLayout
@@ -78,6 +75,8 @@
 			android:layout_height="wrap_content"
 			android:layout_alignParentStart="true"
 			android:background="?attr/selectableItemBackground"
+			android:gravity="center"
+			android:focusable="true"
 			android:clickable="true"
 			android:onClick="onBackButtonClick"
 			android:padding="5dp"
@@ -86,14 +85,13 @@
 			<ImageView
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:src="@drawable/arrow_left" />
+				android:src="@drawable/chevron_left"
+				android:tint="@android:color/white" />
 			
 			<TextView
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:text="@string/button_back"
+				android:text="@string/action_back"
 				android:textAlignment="center"
 				android:textAllCaps="true"
 				android:textColor="@android:color/white"
@@ -101,4 +99,4 @@
 				android:textStyle="bold" />
 		</LinearLayout>
 	</RelativeLayout>
-</RelativeLayout>
+</LinearLayout>

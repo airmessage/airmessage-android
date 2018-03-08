@@ -1,5 +1,4 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
-
     <item android:id="@+id/action_mute"
         android:icon="@drawable/notifications_off"
         android:title="@string/action_mute" />

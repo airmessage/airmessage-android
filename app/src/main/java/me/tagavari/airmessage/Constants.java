@@ -3,7 +3,9 @@ package me.tagavari.airmessage;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.database.Cursor;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -11,6 +13,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Parcel;
 import android.provider.OpenableColumns;
+import android.support.annotation.AttrRes;
+import android.support.annotation.ColorInt;
 import android.support.customtabs.CustomTabsIntent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -20,12 +24,14 @@ import android.text.format.DateUtils;
 import android.text.method.TransformationMethod;
 import android.text.style.URLSpan;
 import android.text.util.Linkify;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.Transformation;
 import android.webkit.MimeTypeMap;
 import android.widget.TextView;
+import android.widget.Toolbar;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -45,6 +51,7 @@ class Constants {
 	static final int intentTakePicture = 3;
 	static final int permissionRecordAudio = 4;
 	static final int permissionReadContacts = 5;
+	static final int permissionAccessCoarseLocation = 6;
 	
 	static final int intentDisconnectService = 6;
 	
@@ -63,6 +70,8 @@ class Constants {
 	static final String intentParamState = "state";
 	static final String intentParamCurrent = "current";
 	static final String intentParamProgress = "progress";
+	static final String intentParamRequestID = "requestID";
+	static final String intentParamLaunchID = "launchID";
 	
 	static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	
@@ -545,6 +554,46 @@ class Constants {
 		//Returning the list
 		return result;
 	} */
+	
+	static TypedValue resolveThemeAttr(Context context, @AttrRes int attrRes) {
+		Resources.Theme theme = context.getTheme();
+		TypedValue typedValue = new TypedValue();
+		theme.resolveAttribute(attrRes, typedValue, true);
+		return typedValue;
+	}
+	
+	@ColorInt
+	static int resolveColorAttr(Context context, @AttrRes int colorAttr) {
+		TypedValue resolvedAttr = resolveThemeAttr(context, colorAttr);
+		// resourceId is used if it's a ColorStateList, and data if it's a color reference or a hex color
+		int colorRes = resolvedAttr.resourceId != 0 ? resolvedAttr.resourceId : resolvedAttr.data;
+		return ContextCompat.getColor(context, colorRes);
+	}
+	
+	static float resolveFloatAttr(Context context, @AttrRes int floatAttr) {
+		TypedArray typedArray = context.obtainStyledAttributes(new TypedValue().data, new int[]{floatAttr});
+		float value = typedArray.getFloat(0, -1);
+		typedArray.recycle();
+		return value;
+	}
+	
+	static boolean isNightMode(Resources resources) {
+		switch (resources.getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) {
+			case Configuration.UI_MODE_NIGHT_YES:
+				return true;
+			case Configuration.UI_MODE_NIGHT_NO:
+				return false;
+			case Configuration.UI_MODE_NIGHT_UNDEFINED:
+				return false;
+			default:
+				return false;
+		}
+	}
+	
+	static void themeToolbar(Toolbar toolbar) {
+		if(isNightMode(toolbar.getResources())) return;
+		toolbar.setPopupTheme(R.style.ThemeOverlay_AppCompat_Dark);
+	}
 	
 	static class ResizeAnimation extends Animation {
 		//Creating the parameter values

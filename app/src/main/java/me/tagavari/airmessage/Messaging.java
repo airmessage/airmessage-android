@@ -10,7 +10,6 @@ import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
@@ -28,10 +27,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.design.widget.AppBarLayout;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBar;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.RecyclerView;
@@ -39,7 +39,6 @@ import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.transition.ChangeBounds;
-import android.transition.Transition;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
@@ -52,6 +51,8 @@ import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.OvershootInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -59,9 +60,12 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -75,10 +79,19 @@ import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
 
-public class Messaging extends AppCompatActivity {
+public class Messaging extends CompositeActivity {
+	//Creating the reference values
+	private static final int quickScrollFABThreshold = 3;
+	
 	//Creating the static values
 	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
 	private static final List<WeakReference<Messaging>> loadedConversations = new ArrayList<>();
+	
+	//Creating the plugin values
+	private PluginMessageBar pluginMessageBar = null;
+	
+	//Creating the info bar values
+	private PluginMessageBar.InfoBar infoBarConnection;
 	
 	//Creating the activity values
 	private ConversationManager.ConversationInfo conversationInfo;
@@ -101,6 +114,8 @@ public class Messaging extends AppCompatActivity {
 		}
 	};
 	
+	private final Runnable conversationUnreadCountChangeListener = this::updateUnreadIndicator;
+	
 	//Creating the send values
 	private File currentSendFile;
 	
@@ -120,25 +135,38 @@ public class Messaging extends AppCompatActivity {
 	private static final String retainedFragmentTag = RetainedFragment.class.getName();
 	private RetainedFragment retainedFragment;
 	
-	//Creating the broadcast values
+	//Creating the listener values
 	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Getting the result
 			final byte result = intent.getByteExtra(Constants.intentParamResult, ConnectionService.intentResultValueConnection);
 			
-			//Showing the server warning
-			serverWarningBar.post(() -> {
-				//Hiding the server warning bar if the connection is successful
-				if(result == ConnectionService.intentResultValueSuccess) hideServerWarning();
-					//Otherwise showing the warning
-				else showServerWarning(result);
-			});
+			//Hiding the server warning bar if the connection is successful
+			if(result == ConnectionService.intentResultValueSuccess) hideServerWarning();
+			//Otherwise showing the warning
+			else showServerWarning(result);
+		}
+	};
+	private final RecyclerView.OnScrollListener messageListScrollListener = new RecyclerView.OnScrollListener() {
+		@Override
+		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+			//Getting the layout manager
+			LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+			int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - 1 - linearLayoutManager.findLastVisibleItemPosition();
+			
+			//Showing the FAB if the user has scrolled more than the threshold items
+			if(itemsScrolledFromBottom > quickScrollFABThreshold) setFABVisibility(true);
+			else setFABVisibility(false);
+			
+			//Marking viewed items as read
+			if(itemsScrolledFromBottom < conversationInfo.getUnreadMessageCount()) conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
 		}
 	};
 	
 	//Creating the view values
 	private View rootView;
+	private AppBarLayout appBar;
 	private Toolbar toolbar;
 	private RecyclerView messageList;
 	private View inputBar;
@@ -153,7 +181,8 @@ public class Messaging extends AppCompatActivity {
 	private ImageButton contentRecordButton;
 	private View recordingIndicator;
 	private TextView recordingTimeLabel;
-	private ViewGroup serverWarningBar;
+	private FloatingActionButton bottomFAB;
+	private TextView bottomFABBadge;
 	
 	//Creating the menu values
 	private boolean menuLoaded = false;
@@ -162,7 +191,6 @@ public class Messaging extends AppCompatActivity {
 	
 	//Creating the other values
 	private RecyclerAdapter messageListAdapter = null;
-	private boolean serverWarningVisible = false;
 	private boolean messageBoxHasText = false;
 	private ActivityManager.TaskDescription lastTaskDescription;
 	
@@ -230,7 +258,7 @@ public class Messaging extends AppCompatActivity {
 			
 			//Clearing the message box
 			messageInputField.setText("");
-			messageInputField.invalidate(); //Height of input field doesn't update otherwise
+			messageInputField.requestLayout(); //Height of input field doesn't update otherwise
 			messageBoxHasText = false;
 			
 			//Scrolling to the bottom of the chat
@@ -260,8 +288,13 @@ public class Messaging extends AppCompatActivity {
 		}
 	};
 	
+	public Messaging() {
+		//Setting the plugins;
+		addPlugin(pluginMessageBar = new PluginMessageBar());
+	}
+	
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	public void onCreate(Bundle savedInstanceState) {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
 		
@@ -274,6 +307,7 @@ public class Messaging extends AppCompatActivity {
 		//Getting the views
 		rootView = findViewById(android.R.id.content);
 		toolbar = findViewById(R.id.toolbar);
+		appBar = findViewById(R.id.app_bar);
 		messageList = findViewById(R.id.list_messages);
 		inputBar = findViewById(R.id.inputbar);
 		messageSendButton = inputBar.findViewById(R.id.button_send);
@@ -287,7 +321,11 @@ public class Messaging extends AppCompatActivity {
 		contentRecordButton = inputBar.findViewById(R.id.button_record);
 		recordingIndicator = findViewById(R.id.recordingindicator);
 		recordingTimeLabel = inputBar.findViewById(R.id.recordingtime);
-		serverWarningBar = findViewById(R.id.serverwarning);
+		bottomFAB = findViewById(R.id.fab_bottom);
+		bottomFABBadge = findViewById(R.id.fab_bottom_badge);
+		
+		//Setting the plugin views
+		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), messageList);
@@ -314,6 +352,7 @@ public class Messaging extends AppCompatActivity {
 		inputBar.findViewById(R.id.button_gallery).setOnClickListener(view -> requestMediaFile());
 		inputBar.findViewById(R.id.button_attach).setOnClickListener(view -> requestAnyFile());
 		contentRecordButton.setOnTouchListener(recordingTouchListener);
+		bottomFAB.setOnClickListener(view -> messageListAdapter.scrollToBottom());
 		
 		//Getting the conversation info
 		retainedFragment.conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
@@ -340,6 +379,9 @@ public class Messaging extends AppCompatActivity {
 		
 		//Adding the conversation as a loaded conversation
 		loadedConversations.add(new WeakReference<>(this));
+		
+		//Creating the info bars
+		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
 	}
 	
 	private void prepareRetainedFragment() {
@@ -386,9 +428,11 @@ public class Messaging extends AppCompatActivity {
 		messageListAdapter = new RecyclerAdapter(retainedFragment.conversationItemList);
 		conversationInfo.setAdapterUpdater(new AdapterUpdater(this));
 		messageList.setAdapter(messageListAdapter);
+		messageList.addOnScrollListener(messageListScrollListener);
 		
-		//Setting the title listener
+		//Setting the conversation listeners
 		conversationInfo.addTitleChangeListener(conversationTitleChangeListener);
+		conversationInfo.addUnreadCountChangeListener(conversationUnreadCountChangeListener);
 		
 		//Setting the conversation effect callbacks
 		conversationInfo.setEffectCallbacks(new EffectCallbacks(this));
@@ -414,7 +458,7 @@ public class Messaging extends AppCompatActivity {
 			ConversationManager.ConversationItem conversationItem = retainedFragment.conversationItemList.get(i);
 			
 			//Breaking from the loop if the item has already been viewed
-			if(conversationItem.getDate() < conversationInfo.getTimeLastViewed()) break;
+			if(retainedFragment.conversationItemList.size() - 1 >= conversationInfo.getUnreadMessageCount()) break;
 			
 			//Skipping the remainder of the iteration if the item is not a message
 			if(!(conversationItem instanceof ConversationManager.MessageInfo)) continue;
@@ -434,6 +478,21 @@ public class Messaging extends AppCompatActivity {
 		
 		//Playing the send effect if there is one
 		if(!currentScreenEffect.isEmpty()) playCurrentSendEffect();
+		
+		//Setting the last message count
+		retainedFragment.lastUnreadCount = conversationInfo.getUnreadMessageCount();
+		
+		{
+			//Getting the layout manager
+			LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
+			int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
+			
+			//Showing the FAB if the user has scrolled more than 3 items
+			if(itemsScrolledFromBottom > quickScrollFABThreshold) {
+				bottomFAB.show();
+				restoreUnreadIndicator();
+			}
+		}
 	}
 	
 	/* void onMessagesFailed() {
@@ -449,7 +508,7 @@ public class Messaging extends AppCompatActivity {
 	}
 	
 	@Override
-	protected void onStart() {
+	public void onStart() {
 		//Calling the super method
 		super.onStart();
 		
@@ -459,7 +518,7 @@ public class Messaging extends AppCompatActivity {
 	}
 	
 	@Override
-	protected void onResume() {
+	public void onResume() {
 		//Calling the super method
 		super.onResume();
 		
@@ -475,7 +534,7 @@ public class Messaging extends AppCompatActivity {
 			colorUI(findViewById(android.R.id.content));
 			
 			//Coloring the messages
-			if(retainedFragment.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : retainedFragment.conversationItemList) conversationItem.updateViewColor(getResources());
+			if(retainedFragment.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : retainedFragment.conversationItemList) conversationItem.updateViewColor();
 			
 			//Checking if the title is static
 			
@@ -492,7 +551,7 @@ public class Messaging extends AppCompatActivity {
 	}
 	
 	@Override
-	protected void onPause() {
+	public void onPause() {
 		//Calling the super method
 		super.onPause();
 		
@@ -518,7 +577,7 @@ public class Messaging extends AppCompatActivity {
 	}
 	
 	@Override
-	protected void onStop() {
+	public void onStop() {
 		//Calling the super method
 		super.onStop();
 		
@@ -547,14 +606,9 @@ public class Messaging extends AppCompatActivity {
 				//Clearing the messages
 				conversationInfo.clearMessages();
 				
-				//Setting the conversation as unloaded
-				foregroundConversations.remove(conversationInfo.getLocalID());
-				
-				//Updating the conversation's last view time
-				long lastViewTime = System.currentTimeMillis();
-				conversationInfo.setTimeLastViewed(lastViewTime);
+				//Updating the conversation's unread message count
 				conversationInfo.updateUnreadStatus();
-				new UpdateLastViewTimeTask(getApplicationContext(), conversationInfo.getLocalID(), lastViewTime).execute();
+				new UpdateUnreadMessageCount(getApplicationContext(), conversationInfo.getLocalID(), conversationInfo.getUnreadMessageCount()).execute();
 			}
 		} else {
 			//Setting the restarting from config change variable to true
@@ -567,7 +621,7 @@ public class Messaging extends AppCompatActivity {
 	}
 	
 	@Override
-	protected void onDestroy() {
+	public void onDestroy() {
 		//Calling the super method
 		super.onDestroy();
 		
@@ -591,8 +645,11 @@ public class Messaging extends AppCompatActivity {
 			break;
 		}
 		
-		//Removing the conversation title change listener
-		if(conversationInfo != null) conversationInfo.removeTitleChangeListener(conversationTitleChangeListener);
+		//Removing the conversation listeners
+		if(conversationInfo != null) {
+			conversationInfo.removeTitleChangeListener(conversationTitleChangeListener);
+			conversationInfo.removeUnreadCountChangeListener(conversationUnreadCountChangeListener);
+		}
 	}
 	
 	long getConversationID() {
@@ -606,6 +663,7 @@ public class Messaging extends AppCompatActivity {
 				messageContentButton.setEnabled(false);
 				messageInputField.setEnabled(false);
 				messageSendButton.setEnabled(false);
+				messageBar.getLayoutParams().height = referenceBar.getHeight();
 				
 				//Showing the content bar
 				contentCloseButton.setRotation(45);
@@ -758,7 +816,7 @@ public class Messaging extends AppCompatActivity {
 					DatabaseManager.updateConversation(DatabaseManager.getWritableDatabase(Messaging.this), conversationInfo.getLocalID(), contentValues);
 					
 					//Showing a toast
-					Toast.makeText(Messaging.this, R.string.conversation_archived, Toast.LENGTH_SHORT).show();
+					Toast.makeText(Messaging.this, R.string.message_conversation_archived, Toast.LENGTH_SHORT).show();
 					
 					//Swapping out the menu buttons
 					archiveMenuItem.setVisible(false);
@@ -777,7 +835,7 @@ public class Messaging extends AppCompatActivity {
 					DatabaseManager.updateConversation(DatabaseManager.getWritableDatabase(Messaging.this), conversationInfo.getLocalID(), contentValues);
 					
 					//Showing a toast
-					Toast.makeText(Messaging.this, R.string.conversation_unarchived, Toast.LENGTH_SHORT).show();
+					Toast.makeText(Messaging.this, R.string.message_conversation_unarchived, Toast.LENGTH_SHORT).show();
 					
 					//Swapping out the menu buttons
 					archiveMenuItem.setVisible(true);
@@ -788,12 +846,10 @@ public class Messaging extends AppCompatActivity {
 				//Checking if the conversation is valid
 				if(conversationInfo != null) {
 					//Creating a dialog
-					new AlertDialog.Builder(this)
-							.setMessage(R.string.dialog_deleteconversation_current)
-							.setNegativeButton(android.R.string.cancel, (dialog, which) -> {
-								dialog.dismiss();
-							})
-							.setPositiveButton(R.string.action_delete, (dialog, which) -> {
+					AlertDialog dialog = new AlertDialog.Builder(this)
+							.setMessage(R.string.message_confirm_deleteconversation_current)
+							.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
+							.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
 								//Removing the conversation from memory
 								ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
 								if(conversations != null) conversations.remove(conversationInfo);
@@ -802,13 +858,23 @@ public class Messaging extends AppCompatActivity {
 								DatabaseManager.deleteConversation(DatabaseManager.getReadableDatabase(Messaging.this), conversationInfo);
 								
 								//Showing a toast
-								Toast.makeText(Messaging.this, R.string.conversation_deleted, Toast.LENGTH_SHORT).show();
+								Toast.makeText(Messaging.this, R.string.message_conversation_deleted, Toast.LENGTH_SHORT).show();
 								
 								//Finishing the activity
 								finish();
 							})
-							.create()
-							.show();
+							.create();
+					
+					//Configuring the dialog's listener
+					dialog.setOnShowListener(dialogInterface -> {
+						//Setting the button's colors
+						int color = conversationInfo.getConversationColor();
+						dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
+						dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
+					});
+					
+					//Showing the dialog
+					dialog.show();
 				}
 				return true;
 		}
@@ -879,25 +945,36 @@ public class Messaging extends AppCompatActivity {
 	private void colorUI(ViewGroup root) {
 		//Getting the color
 		int color = conversationInfo.getConversationColor();
+		int darkerColor = ColorHelper.darkenColor(color);
+		int lighterColor = ColorHelper.lightenColor(color);
 		
 		//Coloring the app and status bar
 		getSupportActionBar().setBackgroundDrawable(new ColorDrawable(color));
-		getWindow().setStatusBarColor(ColorHelper.darkenColor(color));
+		getWindow().setStatusBarColor(darkerColor);
 		
 		//Updating the task description
 		if(lastTaskDescription != null) setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(lastTaskDescription.getLabel(), lastTaskDescription.getIcon(), color));
 		
-		//Coloring parts of the UI
+		//Coloring tagged parts of the UI
 		for(View view : Constants.getViewsByTag(root, getResources().getString(R.string.tag_primarytint))) {
 			if(view instanceof ImageView) ((ImageView) view).setColorFilter(color, android.graphics.PorterDuff.Mode.MULTIPLY);
 			else if(view instanceof Button) ((Button) view).setTextColor(color);
 			else if(view instanceof RelativeLayout) view.setBackground(new ColorDrawable(color));
-			else if(view instanceof Switch) {
+			/* else if(view instanceof Switch) {
 				Switch switchView = (Switch) view;
 				switchView.setThumbTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0xFFFAFAFA, color}));
 				switchView.setTrackTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0x61000000, color}));
-			}
+			} */
 		}
+		
+		//Coloring the unique UI components
+		if(retainedFragment.lastUnreadCount == 0) bottomFAB.setImageTintList(ColorStateList.valueOf(color));
+		else bottomFAB.setBackgroundTintList(ColorStateList.valueOf(color));
+		bottomFABBadge.setBackgroundTintList(ColorStateList.valueOf(darkerColor));
+		findViewById(R.id.fab_bottom_splash).setBackgroundTintList(ColorStateList.valueOf(lighterColor));
+		
+		//Coloring the info bars
+		infoBarConnection.setColor(color);
 	}
 	
 	void setAppBarState(byte state) {
@@ -979,7 +1056,7 @@ public class Messaging extends AppCompatActivity {
 						//Updating the search result bar
 						searchCount = searchFilteredMessages.size();
 						searchIndex = searchCount - 1;
-						((TextView) searchResultBar.findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.search_results, searchIndex + 1, searchCount));
+						((TextView) searchResultBar.findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.message_searchresults, searchIndex + 1, searchCount));
 						
 						//Scrolling to the item
 						if(!searchListIndexes.isEmpty()) messageList.getLayoutManager().scrollToPosition(searchListIndexes.get(searchIndex));
@@ -1008,7 +1085,7 @@ public class Messaging extends AppCompatActivity {
 		
 		//Updating the search
 		searchIndex--;
-		((TextView) findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.search_results, searchIndex + 1, searchCount));
+		((TextView) findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.message_searchresults, searchIndex + 1, searchCount));
 		if(!searchListIndexes.isEmpty()) messageList.getLayoutManager().scrollToPosition(searchListIndexes.get(searchIndex));
 	}
 	
@@ -1018,7 +1095,7 @@ public class Messaging extends AppCompatActivity {
 		
 		//Updating the search
 		searchIndex++;
-		((TextView) findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.search_results, searchIndex + 1, searchCount));
+		((TextView) findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.message_searchresults, searchIndex + 1, searchCount));
 		if(!searchListIndexes.isEmpty()) messageList.getLayoutManager().scrollToPosition(searchListIndexes.get(searchIndex));
 	}
 	
@@ -1050,7 +1127,7 @@ public class Messaging extends AppCompatActivity {
 		retainedFragment.inputState = InputState.CONTENT;
 		
 		//Disabling the message bar
-		TransitionManager.beginDelayedTransition((ViewGroup) messageBar, new ChangeBounds());
+		TransitionManager.beginDelayedTransition(messageBar, new ChangeBounds());
 		messageBar.getLayoutParams().height = referenceBar.getHeight();
 		
 		messageContentButton.setEnabled(false);
@@ -1354,7 +1431,7 @@ public class Messaging extends AppCompatActivity {
 			retainedFragment.mediaRecorder.stop();
 		} catch(RuntimeException stopException) { //The media recorder couldn't capture any media
 			//Showing a toast
-			Toast.makeText(Messaging.this, R.string.recording_instructions, Toast.LENGTH_LONG).show();
+			Toast.makeText(Messaging.this, R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
 			
 			//Hiding the recording bar
 			int[] recordingButtonLocation = {0, 0};
@@ -1368,7 +1445,7 @@ public class Messaging extends AppCompatActivity {
 		//Checking if there was not enough time
 		if(retainedFragment.recordingDuration < 1) {
 			//Showing a toast
-			Toast.makeText(Messaging.this, R.string.recording_instructions, Toast.LENGTH_LONG).show();
+			Toast.makeText(Messaging.this, R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
 			
 			//Setting force discard to true
 			forceDiscard = true;
@@ -1411,7 +1488,7 @@ public class Messaging extends AppCompatActivity {
 		//Returning false if the required permissions have not been granted
 		if(Constants.requestPermission(this, new String[]{Manifest.permission.RECORD_AUDIO}, Constants.permissionRecordAudio)) {
 			//Notifying the user via a toast
-			Toast.makeText(Messaging.this, R.string.failed_recording_permission, Toast.LENGTH_SHORT).show();
+			Toast.makeText(Messaging.this, R.string.message_permissiondetails_microphone_missing, Toast.LENGTH_SHORT).show();
 			
 			//Returning false
 			return false;
@@ -1459,37 +1536,23 @@ public class Messaging extends AppCompatActivity {
 	private String getInputBarMessage() {
 		//Returning a generic message if the service is invalid
 		if(conversationInfo.getService() == null)
-			return getResources().getString(R.string.type_a_message);
+			return getResources().getString(R.string.imperative_messageinput);
 		
 		switch(conversationInfo.getService()) {
 			case Constants.serviceIDAppleMessage:
-				return getResources().getString(R.string.imessage);
+				return getResources().getString(R.string.proper_imessage);
 			case Constants.serviceIDSMS:
-				return getResources().getString(R.string.sms);
+				return getResources().getString(R.string.proper_sms);
 			default:
 				return conversationInfo.getService();
 		}
 	}
 	
 	void showServerWarning(byte reason) {
-		//Returning if the server warning bar is already visible
-		if(serverWarningVisible) return;
-		
-		//Setting the new state
-		serverWarningVisible = true;
-		
-		//Setting the current state
-		serverWarningVisible = true;
-		
-		//Getting the warning box components
-		TextView message = serverWarningBar.findViewById(R.id.serverwarning_message);
-		Button button = serverWarningBar.findViewById(R.id.serverwarning_button);
-		
 		switch(reason) {
 			case ConnectionService.intentResultValueInternalException:
-				message.setText(R.string.serverstatus_internalexception);
-				button.setText(R.string.button_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(R.string.message_serverstatus_internalexception);
+				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -1504,9 +1567,8 @@ public class Messaging extends AppCompatActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueBadRequest:
-				message.setText(R.string.serverstatus_badrequest);
-				button.setText(R.string.button_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(R.string.message_serverstatus_badrequest);
+				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -1521,35 +1583,20 @@ public class Messaging extends AppCompatActivity {
 				});
 				break;
 			case ConnectionService.intentResultValueClientOutdated:
-				message.setText(R.string.serverstatus_clientoutdated);
-				button.setText(R.string.button_update);
-				button.setOnClickListener(view -> {
-					//Launching the app's page in the market
-					Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()));
-					startActivity(intent);
-				});
+				infoBarConnection.setText(R.string.message_serverstatus_clientoutdated);
+				infoBarConnection.setButton(R.string.action_update, view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))));
 				break;
 			case ConnectionService.intentResultValueServerOutdated:
-				message.setText(R.string.serverstatus_serveroutdated);
-				button.setText(R.string.button_help);
-				button.setOnClickListener(view -> {
-					//Launching the server update URL
-					Intent intent = new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress);
-					startActivity(intent);
-				});
+				infoBarConnection.setText(R.string.message_serverstatus_serveroutdated);
+				infoBarConnection.setButton(R.string.screen_help, view -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)));
 				break;
 			case ConnectionService.intentResultValueUnauthorized:
-				message.setText(R.string.serverstatus_authfail);
-				button.setText(R.string.button_reconfigure);
-				button.setOnClickListener(view -> {
-					//Launching the connection wizard activity
-					startActivity(new Intent(Messaging.this, ServerSetup.class));
-				});
+				infoBarConnection.setText(R.string.message_serverstatus_authfail);
+				infoBarConnection.setButton(R.string.action_reconfigure, view -> startActivity(new Intent(Messaging.this, ServerSetup.class)));
 				break;
 			case ConnectionService.intentResultValueConnection:
-				message.setText(R.string.serverstatus_noconnection);
-				button.setText(R.string.button_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(R.string.message_serverstatus_noconnection);
+				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -1564,9 +1611,8 @@ public class Messaging extends AppCompatActivity {
 				});
 				break;
 			default:
-				message.setText(R.string.serverstatus_unknown);
-				button.setText(R.string.button_retry);
-				button.setOnClickListener(view -> {
+				infoBarConnection.setText(R.string.message_serverstatus_unknown);
+				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService == null) {
 						//Starting the service
@@ -1582,77 +1628,12 @@ public class Messaging extends AppCompatActivity {
 				break;
 		}
 		
-		//Showing the warning bar
-		serverWarningBar.setVisibility(View.VISIBLE);
-		
-		//Enabling the button
-		button.setEnabled(true);
-		
-		//Animating the server warning
-		//serverWarningBar.measure(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-		//int wrapSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-		//serverWarningBar.measure(wrapSpec, wrapSpec);
-		//int barHeight = serverWarningBar.getMeasuredHeight();
-		
-		//Constants.ResizeAnimation resizeAnimation = new Constants.ResizeAnimation(serverWarningBar, serverWarningBar.getHeight(), barHeight);
-		//resizeAnimation.setDuration(noticeBarAnimationDuration);
-		//serverWarningBar.startAnimation(resizeAnimation);
-		TransitionManager.beginDelayedTransition(serverWarningBar, new ChangeBounds());
-		serverWarningBar.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+		//Showing the info bar
+		infoBarConnection.show();
 	}
 	
 	void hideServerWarning() {
-		//Returning if the server warning bar is already invisible
-		if(!serverWarningVisible) return;
-		
-		//Setting the new state
-		serverWarningVisible = false;
-		
-		//Animating the server warning
-		/* Constants.ResizeAnimation resizeAnimation = new Constants.ResizeAnimation(serverWarningBar, serverWarningBar.getHeight(), 0);
-		resizeAnimation.setDuration(noticeBarAnimationDuration);
-		resizeAnimation.setAnimationListener(new Animation.AnimationListener() {
-			@Override
-			public void onAnimationStart(Animation animation) {
-			
-			}
-			
-			@Override
-			public void onAnimationEnd(Animation animation) {
-				//Setting the visibility
-				serverWarningBar.setVisibility(View.GONE);
-			}
-			
-			@Override
-			public void onAnimationRepeat(Animation animation) {
-			
-			}
-		});
-		serverWarningBar.startAnimation(resizeAnimation); */
-		ChangeBounds anim = new ChangeBounds();
-		anim.addListener(new Transition.TransitionListener() {
-			@Override
-			public void onTransitionStart(Transition transition) {}
-			
-			@Override
-			public void onTransitionEnd(Transition transition) {
-				serverWarningBar.setVisibility(View.GONE);
-			}
-			
-			@Override
-			public void onTransitionCancel(Transition transition) {}
-			
-			@Override
-			public void onTransitionPause(Transition transition) {}
-			
-			@Override
-			public void onTransitionResume(Transition transition) {}
-		});
-		TransitionManager.beginDelayedTransition(serverWarningBar, anim);
-		serverWarningBar.getLayoutParams().height = 0;
-		
-		//Disabling the action button
-		serverWarningBar.findViewById(R.id.serverwarning_button).setEnabled(false);
+		infoBarConnection.hide();
 	}
 	
 	void hideToolbar() {
@@ -1662,13 +1643,8 @@ public class Messaging extends AppCompatActivity {
 		//Setting the toolbar as invisible
 		toolbarVisible = false;
 		
-		//Animating the toolbar
-		((ViewGroup.MarginLayoutParams) findViewById(R.id.content).getLayoutParams()).topMargin = 0;
-		findViewById(R.id.content).requestLayout();
-		toolbar.animate()
-				.y(-toolbar.getHeight())
-				.withEndAction(() -> getSupportActionBar().hide())
-				.start();
+		//Hiding the app bar
+		appBar.setVisibility(View.GONE);
 	}
 	
 	void showToolbar() {
@@ -1678,25 +1654,120 @@ public class Messaging extends AppCompatActivity {
 		//Setting the toolbar as visible
 		toolbarVisible = true;
 		
-		//Animating the toolbar
-		getSupportActionBar().show();
-		toolbar.animate()
-				.y(0)
-				.withEndAction(() -> {
-					View contentView = findViewById(R.id.content);
-					((ViewGroup.MarginLayoutParams) contentView.getLayoutParams()).topMargin = toolbar.getHeight();
-					contentView.requestLayout();
-				})
-				.start();
+		//Showing the app bar
+		appBar.setVisibility(View.VISIBLE);
 	}
 	
-	/* private int getToolbarHeight() {
-		//Getting the toolbar height
-		TypedArray typedArray = obtainStyledAttributes(new TypedValue().data, new int[]{R.attr.actionBarSize});
-		int size = typedArray.getDimensionPixelSize(0, -1);
-		typedArray.recycle();
-		return size;
-	} */
+	void setFABVisibility(boolean visible) {
+		//Returning if the current state matches the requested state
+		if(bottomFAB.isShown() == visible) return;
+		
+		if(visible) {
+			//Showing the FAB
+			bottomFAB.show();
+			
+			//Checking if there are unread messages
+			if(conversationInfo.getUnreadMessageCount() > 0) {
+				//Animating the badge (to go with the FAB appearance)
+				bottomFABBadge.setVisibility(View.VISIBLE);
+				bottomFABBadge.animate()
+						.scaleX(1)
+						.scaleY(1)
+						.setInterpolator(new OvershootInterpolator())
+						.start();
+			}
+		} else {
+			//Hiding the FAB
+			bottomFAB.hide();
+			
+			//Checking if there are unread messages
+			if(conversationInfo.getUnreadMessageCount() > 0) {
+				//Hiding the badge (to go with the FAB disappearance)
+				bottomFABBadge.animate()
+						.scaleX(0)
+						.scaleY(0)
+						.withEndAction(() -> bottomFABBadge.setVisibility(View.GONE))
+						.start();
+			}
+		}
+	}
+	
+	void restoreUnreadIndicator() {
+		//Returning if the indicator shouldn't be visible
+		if(conversationInfo.getUnreadMessageCount() == 0) return;
+		
+		//Coloring the FAB
+		bottomFAB.setBackgroundTintList(ColorStateList.valueOf(conversationInfo.getConversationColor()));
+		bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
+		
+		//Updating the badge
+		bottomFABBadge.setText(Integer.toString(conversationInfo.getUnreadMessageCount()));
+		bottomFABBadge.setVisibility(View.VISIBLE);
+		bottomFABBadge.setScaleX(1);
+		bottomFABBadge.setScaleY(1);
+	}
+	
+	void updateUnreadIndicator() {
+		//Returning if the value has not changed
+		if(retainedFragment.lastUnreadCount == conversationInfo.getUnreadMessageCount()) return;
+		
+		//Getting the color
+		int colorTint = conversationInfo.getConversationColor();
+		
+		//Checking if there are any unread messages
+		if(conversationInfo.getUnreadMessageCount() > 0) {
+			//Coloring the FAB
+			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(conversationInfo.getConversationColor()));
+			bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
+			
+			//Updating the badge text
+			bottomFABBadge.setText(Integer.toString(conversationInfo.getUnreadMessageCount()));
+			
+			//Animating the badge
+			if(bottomFAB.isShown()) {
+				bottomFABBadge.setVisibility(View.VISIBLE);
+				bottomFABBadge.setScaleX(0);
+				bottomFABBadge.setScaleY(0);
+				bottomFABBadge.animate()
+						.scaleX(1)
+						.scaleY(1)
+						.setInterpolator(new OvershootInterpolator())
+						.start();
+			}
+			
+			//Checking if there were previously no unread messages and the FAB is visible
+			if(retainedFragment.lastUnreadCount == 0 && bottomFAB.isShown()) {
+				//Animating the splash
+				View bottomSplash = findViewById(R.id.fab_bottom_splash);
+				bottomSplash.setScaleX(1);
+				bottomSplash.setScaleY(1);
+				bottomSplash.setAlpha(1);
+				bottomSplash.setVisibility(View.VISIBLE);
+				bottomSplash.animate()
+						.scaleX(2.5F)
+						.scaleY(2.5F)
+						.alpha(0)
+						.setDuration(1000)
+						.setInterpolator(new DecelerateInterpolator())
+						.withEndAction(() -> bottomSplash.setVisibility(View.GONE))
+						.start();
+			}
+		} else {
+			//Restoring the FAB color
+			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(Constants.resolveColorAttr(this, android.R.attr.colorBackgroundFloating)));
+			bottomFAB.setImageTintList(ColorStateList.valueOf(colorTint));
+			
+			//Hiding the badge
+			if(bottomFAB.isShown()) bottomFABBadge.animate()
+					.scaleX(0)
+					.scaleY(0)
+					.withEndAction(() -> bottomFABBadge.setVisibility(View.GONE))
+					.start();
+		}
+		
+		//Setting the last unread message count
+		retainedFragment.lastUnreadCount = conversationInfo.getUnreadMessageCount();
+	}
 	
 	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
@@ -1709,38 +1780,35 @@ public class Messaging extends AppCompatActivity {
 			if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
 				//Creating a dialog
 				AlertDialog dialog = new AlertDialog.Builder(Messaging.this)
-						.setTitle(R.string.dialog_rejected)
-						.setMessage(R.string.dialog_audio_message)
-						.setPositiveButton(R.string.button_retry, new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog, int which) {
-								//Requesting microphone access
-								Constants.requestPermission(Messaging.this, new String[]{Manifest.permission.RECORD_AUDIO}, Constants.permissionRecordAudio);
-								
-								//Dismissing the dialog
-								dialog.dismiss();
-							}
+						.setTitle(R.string.message_permissionrejected)
+						.setMessage(R.string.message_permissiondetails_microphone_failedrequest)
+						.setPositiveButton(R.string.action_retry, (dialogInterface, which) -> {
+							//Requesting microphone access
+							Constants.requestPermission(Messaging.this, new String[]{Manifest.permission.RECORD_AUDIO}, Constants.permissionRecordAudio);
+							
+							//Dismissing the dialog
+							dialogInterface.dismiss();
 						})
-						.setNeutralButton(R.string.settings, new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog, int which) {
-								//Showing the application settings
-								Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-								intent.setData(Uri.parse("package:" + getPackageName()));
-								startActivity(intent);
-								
-								//Dismissing the dialog
-								dialog.dismiss();
-							}
+						.setNeutralButton(R.string.screen_settings, (dialogInterface, which) -> {
+							//Showing the application settings
+							Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+							intent.setData(Uri.parse("package:" + getPackageName()));
+							startActivity(intent);
+							
+							//Dismissing the dialog
+							dialogInterface.dismiss();
 						})
-						.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog, int which) {
-								//Dismissing the dialog
-								dialog.dismiss();
-							}
-						})
+						.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
 						.create();
+				
+				//Configuring the dialog's listener
+				dialog.setOnShowListener(dialogInterface -> {
+					//Setting the button's colors
+					int color = conversationInfo.getConversationColor();
+					dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
+					dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(color);
+					dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
+				});
 				
 				//Displaying the dialog
 				dialog.show();
@@ -1755,7 +1823,7 @@ public class Messaging extends AppCompatActivity {
 		//Checking if there are no apps that can take the intent
 		if(takePictureIntent.resolveActivity(getPackageManager()) == null) {
 			//Telling the user via a toast
-			Toast.makeText(Messaging.this, R.string.intent_nocamera, Toast.LENGTH_SHORT).show();
+			Toast.makeText(Messaging.this, R.string.message_intenterror_camera, Toast.LENGTH_SHORT).show();
 			
 			//Returning
 			return;
@@ -1797,7 +1865,7 @@ public class Messaging extends AppCompatActivity {
 		intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
 		//intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.file_selector)), Constants.intentPickMediaFile);
+		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), Constants.intentPickMediaFile);
 	}
 	
 	private void requestAnyFile() {
@@ -1808,7 +1876,7 @@ public class Messaging extends AppCompatActivity {
 		//intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
 		//intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.file_selector)), Constants.intentPickAnyFile);
+		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), Constants.intentPickAnyFile);
 	}
 	
 	private static boolean stringHasChar(String string) {
@@ -2253,6 +2321,7 @@ public class Messaging extends AppCompatActivity {
 	class RecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 		//Creating the values
 		private final ArrayList<ConversationManager.ConversationItem> conversationItems;
+		private RecyclerView recyclerView;
 		
 		RecyclerAdapter(ArrayList<ConversationManager.ConversationItem> items) {
 			//Setting the conversation items
@@ -2260,15 +2329,23 @@ public class Messaging extends AppCompatActivity {
 		}
 		
 		@Override
-		public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+		public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
+			super.onAttachedToRecyclerView(recyclerView);
+			
+			this.recyclerView = recyclerView;
+		}
+		
+		
+		@Override @NonNull
+		public RecyclerView.ViewHolder onCreateViewHolder(@NotNull ViewGroup parent, int viewType) {
 			//Returning the correct view holder
 			switch(viewType) {
 				case ConversationManager.MessageInfo.itemType:
-					return new ConversationManager.ConversationItem.MessageViewHolder((LinearLayout) LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_conversationitem, parent, false));
+					return new ConversationManager.ConversationItem.MessageViewHolder((LinearLayout) LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_conversationitem, parent, false));
 				case ConversationManager.GroupActionInfo.itemType:
 				case ConversationManager.ChatRenameActionInfo.itemType:
 				case ConversationManager.ChatCreationMessage.itemType:
-					return new ConversationManager.ActionLineViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_action, parent, false));
+					return new ConversationManager.ActionLineViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_action, parent, false));
 				default:
 					return null;
 			}
@@ -2283,7 +2360,7 @@ public class Messaging extends AppCompatActivity {
 			conversationItem.bindView(Messaging.this, holder);
 			
 			//Setting the view source
-			LinearLayoutManager layout = (LinearLayoutManager) messageList.getLayoutManager();
+			LinearLayoutManager layout = (LinearLayoutManager) recyclerView.getLayoutManager();
 			conversationItem.setViewSource(() -> layout.findViewByPosition(conversationItems.indexOf(conversationItem)));
 		}
 		
@@ -2308,7 +2385,7 @@ public class Messaging extends AppCompatActivity {
 			if(conversationItems.isEmpty()) return;
 			
 			//Getting if the list is currently scrolled to the bottom
-			boolean scrolledToBottom = ((LinearLayoutManager) messageList.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 2; //-2 because the item was already added to the list
+			boolean scrolledToBottom = ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 2; //-2 because the item was already added to the list
 			
 			//Calling the original method
 			notifyItemInserted(position);
@@ -2316,12 +2393,12 @@ public class Messaging extends AppCompatActivity {
 			//Checking if the list is scrolled to the end and the new item is at the bottom
 			if(scrolledToBottom && position == getItemCount() - 1) {
 				//Scrolling to the bottom
-				messageList.smoothScrollToPosition(getItemCount() - 1);
+				recyclerView.smoothScrollToPosition(getItemCount() - 1);
 			}
 		}
 		
 		boolean isScrolledToBottom() {
-			return ((LinearLayoutManager) messageList.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
+			return ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
 		}
 		
 		void scrollToBottom() {
@@ -2329,7 +2406,7 @@ public class Messaging extends AppCompatActivity {
 			if(isScrolledToBottom()) return;
 			
 			//Scrolling to the bottom
-			messageList.smoothScrollToPosition(getItemCount() - 1);
+			recyclerView.smoothScrollToPosition(getItemCount() - 1);
 		}
 	}
 	
@@ -2384,6 +2461,8 @@ public class Messaging extends AppCompatActivity {
 		private static final byte messagesStateLoaded = 2;
 		private static final byte messagesStateFailed = 3;
 		byte messagesState = messagesStateUnloaded;
+		
+		int lastUnreadCount = 0;
 		
 		private long conversationID;
 		private ArrayList<ConversationManager.ConversationItem> conversationItemList = new ArrayList<>();
@@ -2557,6 +2636,9 @@ public class Messaging extends AppCompatActivity {
 				//Replacing the conversation items
 				conversationInfo.replaceConversationItems(retainedFragment.getContext(), messages);
 				
+				//Marking all messages as read (list will always be scrolled to the bottom)
+				conversationInfo.setUnreadMessageCount(0);
+				
 				//Telling the callbacks
 				retainedFragment.parentActivity.onMessagesLoaded();
 			}
@@ -2706,16 +2788,16 @@ public class Messaging extends AppCompatActivity {
 		}
 	}
 	
-	private static class UpdateLastViewTimeTask extends AsyncTask<Void, Void, Void> {
+	private static class UpdateUnreadMessageCount extends AsyncTask<Void, Void, Void> {
 		private final WeakReference<Context> contextReference;
 		private final long conversationID;
-		private final long time;
+		private final int count;
 		
-		UpdateLastViewTimeTask(Context context, long conversationID, long time) {
+		UpdateUnreadMessageCount(Context context, long conversationID, int count) {
 			contextReference = new WeakReference<>(context);
 			
 			this.conversationID = conversationID;
-			this.time = time;
+			this.count = count;
 		}
 		
 		@Override
@@ -2725,7 +2807,7 @@ public class Messaging extends AppCompatActivity {
 			if(context == null) return null;
 			
 			//Updating the time
-			DatabaseManager.setConversationLastViewTime(DatabaseManager.getWritableDatabase(context), conversationID, time);
+			DatabaseManager.setUnreadMessageCount(DatabaseManager.getWritableDatabase(context), conversationID, count);
 			
 			//Returning
 			return null;
@@ -2816,6 +2898,16 @@ public class Messaging extends AppCompatActivity {
 			//Updating the adapter
 			activity.messageListAdapter.notifyItemChanged(from);
 			activity.messageListAdapter.notifyItemMoved(from, to);
+		}
+		
+		@Override
+		void updateUnread() {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Notifying the scroll listener
+			activity.messageListScrollListener.onScrolled(activity.messageList, 0, 0);
 		}
 	}
 }

@@ -7,8 +7,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatDelegate;
 
 import java.io.File;
 import java.lang.ref.SoftReference;
@@ -82,6 +84,9 @@ public class MainApplication extends Application {
 		//Creating the cache helpers
 		bitmapCacheHelper = new BitmapCacheHelper();
 		userCacheHelper = new UserCacheHelper();
+		
+		//Applying the dark mode
+		applyDarkMode(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.preference_appearance_theme_key), ""));
 	}
 	
 	public static MainApplication getInstance() {
@@ -182,6 +187,31 @@ public class MainApplication extends Application {
 		public LoadFlagArrayList(@NonNull Collection<? extends E> c, boolean isLoaded) {
 			super(c);
 			this.isLoaded = isLoaded;
+		}
+	}
+	
+	boolean isServerConfigured() {
+		return !getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE).getString(MainApplication.sharedPreferencesKeyHostname, "").isEmpty();
+	}
+	
+	static final String darkModeFollowSystem = "follow_system";
+	static final String darkModeAutomatic = "auto";
+	static final String darkModeAlwaysLight = "off";
+	static final String darkModeAlwaysDark = "on";
+	void applyDarkMode(String method) {
+		switch(method) {
+			case darkModeFollowSystem: //Follow system
+				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+				break;
+			case darkModeAutomatic: //Automatic
+				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO);
+				break;
+			case darkModeAlwaysLight: //Always light
+				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+				break;
+			case darkModeAlwaysDark: //Always dark
+				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+				break;
 		}
 	}
 }

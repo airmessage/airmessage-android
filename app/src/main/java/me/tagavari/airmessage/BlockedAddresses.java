@@ -132,14 +132,14 @@ public class BlockedAddresses extends AppCompatActivity {
 			if(blockedAddress != null) {
 				//Filling in the view text
 				((TextView) convertView.findViewById(R.id.label_address)).setText(blockedAddress.address);
-				((TextView) convertView.findViewById(R.id.label_count)).setText(getResources().getQuantityString(R.plurals.blocked_messages, blockedAddress.blockCount, blockedAddress.blockCount));
+				((TextView) convertView.findViewById(R.id.label_count)).setText(getResources().getQuantityString(R.plurals.message_blockedmessagecount, blockedAddress.blockCount, blockedAddress.blockCount));
 				
 				//Setting the listeners
 				convertView.findViewById(R.id.button_remove).setOnClickListener(view -> {
 					//Showing a dialog
 					new AlertDialog.Builder(BlockedAddresses.this)
-							.setMessage(R.string.unblock_confirm)
-							.setPositiveButton(R.string.button_unblock, (dialog, which) -> removeBlockedAddress(blockedAddress.normalizedAddress))
+							.setMessage(R.string.message_confirm_unblock)
+							.setPositiveButton(R.string.action_unblock, (dialog, which) -> removeBlockedAddress(blockedAddress.normalizedAddress))
 							.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
 							.create().show();
 				});

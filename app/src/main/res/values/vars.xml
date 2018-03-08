@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <bool name="is_left_to_right">true</bool>
+    <bool name="is_theme_light">true</bool>
 </resources>

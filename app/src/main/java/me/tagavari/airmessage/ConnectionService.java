@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.regex.Pattern;
+import java.util.zip.DataFormatException;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -130,6 +131,8 @@ public class ConnectionService extends Service {
 	private final List<FileSendRequest> fileSendRequestQueue = new ArrayList<>();
 	private Thread fileSendRequestThread = null;
 	
+	private static byte nextLaunchID = 0;
+	
 	//Creating the broadcast receivers
 	private final BroadcastReceiver pingBroadcastReceiver = new BroadcastReceiver() {
 		@Override
@@ -168,13 +171,17 @@ public class ConnectionService extends Service {
 		return serviceReference == null ? null : serviceReference.get();
 	}
 	
-	public static int getActiveCommunicationsVersion() {
+	static int getActiveCommunicationsVersion() {
 		//Getting the instance
 		ConnectionService connectionService = getInstance();
 		if(connectionService == null) return -1;
 		
 		//Returning the active communications version
 		return connectionService.activeCommunicationsVersion;
+	}
+	
+	static byte getNextLaunchID() {
+		return nextLaunchID++;
 	}
 	
 	@Override
@@ -198,8 +205,8 @@ public class ConnectionService extends Service {
 		//Getting the intent action
 		String intentAction = intent == null ? null : intent.getAction();
 		
-		//Checking if a stop has been requested
-		if(selfIntentActionStop.equals(intentAction)) {
+		//Checking if a stop has been requested or the connection address is invalid
+		if(selfIntentActionStop.equals(intentAction) || (hostname == null || hostname.isEmpty())) {
 			//Denying the existence of the connection for reconnection
 			connectionEstablishedForReconnect = false;
 			
@@ -225,7 +232,7 @@ public class ConnectionService extends Service {
 			postDisconnectedNotification(true);
 		}
 		//Reconnecting the client if requested
-		else if(wsClient == null || wsClient.isClosed() || selfIntentActionConnect.equals(intentAction)) connect();
+		else if(wsClient == null || wsClient.isClosed() || selfIntentActionConnect.equals(intentAction)) connect(intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : getNextLaunchID());
 		
 		//Setting the service as not shutting down
 		isShuttingDown = false;
@@ -265,7 +272,7 @@ public class ConnectionService extends Service {
 		return hostname;
 	}
 	
-	private void connect() {
+	private void connect(byte launchID) {
 		//Checking if there is no hostname
 		if(hostname == null || hostname.isEmpty()) {
 			//Retrieving the data from the shared preferences
@@ -277,8 +284,14 @@ public class ConnectionService extends Service {
 		//Preparing the hostname
 		hostname = prepareHostname(hostname);
 		
-		//Disconnecting the client if it is valid
-		if(wsClient != null) wsClient.close();
+		//Checking if the client is valid
+		if(wsClient != null) {
+			//Denying the existence of the connection for reconnection
+			connectionEstablishedForReconnect = false;
+			
+			//Closing the client
+			wsClient.close();
+		}
 		
 		//Preparing the WS client
 		try {
@@ -286,8 +299,8 @@ public class ConnectionService extends Service {
 			URI target = new URI(hostname);
 			
 			//Creating the WS client
-			wsClient = new MMWebSocketClient(target, new DraftMMS());
-			wsClient.setConnectionLostTimeout(0); //Disabled, as we are using a custom Android-friendly approach
+			wsClient = new MMWebSocketClient(launchID, target, new DraftMMS());
+			wsClient.setConnectionLostTimeout(0);
 			
 			//Checking if the scheme is WSS (secure)
 			if(target.getScheme().equals("wss")) {
@@ -314,8 +327,13 @@ public class ConnectionService extends Service {
 				wsClient.setSocket(sslContext.getSocketFactory().createSocket());
 			}
 		} catch(Exception exception) {
+			//Printing the stack trace
+			exception.printStackTrace();
+			
 			//Notifying the connection listeners
-			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult).putExtra(Constants.intentParamResult, intentResultValueInternalException));
+			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult)
+					.putExtra(Constants.intentParamResult, intentResultValueInternalException)
+					.putExtra(Constants.intentParamLaunchID, launchID));
 			
 			//Updating the notification state
 			postDisconnectedNotification(false);
@@ -335,11 +353,18 @@ public class ConnectionService extends Service {
 	}
 	
 	public void disconnect() {
-		if(wsClient != null && !wsClient.isClosed()) wsClient.close();
+		//Returning if the client is not open
+		if(wsClient == null || wsClient.isClosed()) return;
+		
+		//Denying the existence of the connection for reconnection
+		connectionEstablishedForReconnect = false;
+		
+		//Closing the connection
+		wsClient.close();
 	}
 	
 	public void reconnect() {
-		connect();
+		connect(getNextLaunchID());
 	}
 	
 	private void postConnectedNotification(boolean isConnected) {
@@ -376,8 +401,8 @@ public class ConnectionService extends Service {
 		//Building the notification
 		Notification notification = new NotificationCompat.Builder(this, MainApplication.notificationChannelStatus)
 				.setSmallIcon(R.drawable.push)
-				.setContentTitle(isConnected ? getResources().getString(R.string.servicenotification_connected) : getResources().getString(R.string.servicenotification_connecting))
-				.setContentText(getResources().getString(R.string.servicenotification_description))
+				.setContentTitle(isConnected ? getResources().getString(R.string.message_connection_connected) : getResources().getString(R.string.progress_connectingtoserver))
+				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
 				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT))
 				.addAction(-1, getResources().getString(R.string.action_disconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionDisconnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.addAction(-1, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
@@ -397,8 +422,8 @@ public class ConnectionService extends Service {
 		//Building and returning the notification
 		return new NotificationCompat.Builder(this, MainApplication.notificationChannelStatus)
 				.setSmallIcon(R.drawable.warning)
-				.setContentTitle(getResources().getString(R.string.servicenotification_disconnected))
-				.setContentText(getResources().getString(R.string.servicenotification_description))
+				.setContentTitle(getResources().getString(R.string.message_connection_disconnected))
+				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
 				.setColor(getResources().getColor(R.color.colorServerDisconnected))
 				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT))
 				.addAction(-1, getResources().getString(R.string.action_reconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
@@ -428,12 +453,17 @@ public class ConnectionService extends Service {
 	} */
 	
 	private class MMWebSocketClient extends WebSocketClient {
-		MMWebSocketClient(URI serverUri) {
+		//Creating the values
+		private final byte launchID;
+		
+		MMWebSocketClient(byte launchID, URI serverUri) {
 			super(serverUri);
+			this.launchID = launchID;
 		}
 		
-		MMWebSocketClient(URI serverUri, Draft draft) {
+		MMWebSocketClient(byte launchID, URI serverUri, Draft draft) {
 			super(serverUri, draft);
+			this.launchID = launchID;
 		}
 		
 		@Override
@@ -442,7 +472,9 @@ public class ConnectionService extends Service {
 			lastConnectionResult = intentResultValueSuccess;
 			
 			//Notifying the connection listeners
-			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult).putExtra(Constants.intentParamResult, intentResultValueSuccess));
+			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult)
+					.putExtra(Constants.intentParamResult, intentResultValueSuccess)
+					.putExtra(Constants.intentParamLaunchID, launchID));
 			
 			//Recording the server versions
 			{
@@ -611,7 +643,6 @@ public class ConnectionService extends Service {
 			String errorCodeString = reasonString.substring(reasonString.lastIndexOf(' ') + 1);
 			if(errorCodeString.matches("^\\d+$")) code = Integer.parseInt(errorCodeString);
 			
-			
 			//Determining the broadcast value
 			byte clientReason;
 			switch(code) {
@@ -635,7 +666,9 @@ public class ConnectionService extends Service {
 			lastConnectionResult = clientReason;
 			
 			//Notifying the connection listeners
-			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult).putExtra(Constants.intentParamResult, clientReason));
+			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCResult)
+					.putExtra(Constants.intentParamResult, clientReason)
+					.putExtra(Constants.intentParamLaunchID, launchID));
 			
 			//Checking if a connection existed for retrieval
 			if(connectionEstablishedForRetrieval) {
@@ -650,7 +683,7 @@ public class ConnectionService extends Service {
 			//Checking if a connection existed for reconnection and the preference is enabled
 			if(connectionEstablishedForReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
 				//Reconnecting
-				ConnectionService.this.connect();
+				ConnectionService.this.connect(getNextLaunchID());
 			}
 			
 			//Setting the connection as nonexistent
@@ -729,7 +762,8 @@ public class ConnectionService extends Service {
 					//Setting the conversation details
 					request.conversationInfo.setService(structConversationInfo.service);
 					request.conversationInfo.setTitle(ConnectionService.this, structConversationInfo.name);
-					request.conversationInfo.setConversationColor(ConversationManager.ConversationInfo.getRandomColor());
+					//request.conversationInfo.setConversationColor(ConversationManager.ConversationInfo.getRandomColor());
+					request.conversationInfo.setConversationColor(ConversationManager.ConversationInfo.getDefaultConversationColor(request.conversationInfo.getGuid()));
 					request.conversationInfo.setConversationMembersCreateColors(structConversationInfo.members);
 					request.conversationInfo.setState(ConversationManager.ConversationInfo.ConversationState.READY);
 					
@@ -1731,6 +1765,13 @@ public class ConnectionService extends Service {
 		private final List<SharedValues.ConversationItem> structConversationItems;
 		private final boolean sendNotifications;
 		
+		//Creating the conversation lists
+		private final ArrayList<ConversationManager.ConversationItem> newCompleteConversationItems = new ArrayList<>();
+		private final ArrayList<ConversationManager.ConversationInfo> completeConversations = new ArrayList<>();
+		
+		//Creating the caches
+		private ArrayList<Long> loadedConversationsCache;
+		
 		MessageUpdateAsyncTask(ConnectionService serviceInstance, Context context, List<SharedValues.ConversationItem> structConversationItems, boolean sendNotifications) {
 			//Setting the references
 			serviceReference = new WeakReference<>(serviceInstance);
@@ -1741,9 +1782,11 @@ public class ConnectionService extends Service {
 			this.sendNotifications = sendNotifications;
 		}
 		
-		//Creating the conversation lists
-		private final ArrayList<ConversationManager.ConversationItem> newCompleteConversationItems = new ArrayList<>();
-		private final ArrayList<ConversationManager.ConversationInfo> completeConversations = new ArrayList<>();
+		@Override
+		protected void onPreExecute() {
+			//Getting the caches
+			loadedConversationsCache = new ArrayList<>(Messaging.getLoadedConversations());
+		}
 		
 		@Override
 		protected Void doInBackground(Void... params) {
@@ -1838,10 +1881,12 @@ public class ConnectionService extends Service {
 				//Adding the conversation item to the conversation and the list if the conversation is complete
 				if(parentConversation.getState() == ConversationManager.ConversationInfo.ConversationState.READY)
 					newCompleteConversationItems.add(conversationItem);
-					//Otherwise updating the last conversation item
+				//Otherwise updating the last conversation item
 				else if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
 					parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context));
 				
+				//Incrementing the unread count
+				if(!loadedConversationsCache.contains(parentConversation.getLocalID())) DatabaseManager.incrementUnreadMessageCount(writableDatabase, parentConversation.getLocalID());
 			}
 			
 			{
@@ -1893,6 +1938,10 @@ public class ConnectionService extends Service {
 					conversationItem.setConversationInfo(parentConversation);
 					
 					//if(parentConversation.getState() != ConversationManager.ConversationInfo.ConversationState.READY) continue;
+					
+					//Incrementing the conversation's unread count
+					parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
+					parentConversation.updateUnreadStatus();
 					
 					//Checking if the conversation is loaded
 					if(loadedConversations.contains(parentConversation.getLocalID())) {
@@ -1953,7 +2002,7 @@ public class ConnectionService extends Service {
 			}
 			
 			//Updating the conversation activity list
-			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 			/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
 				callbacks.updateList(true); */
 			
@@ -2087,7 +2136,7 @@ public class ConnectionService extends Service {
 			if(service != null) service.massRetrievalInProgress = false;
 			
 			//Updating the conversation activity list
-			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 			/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
 				callbacks.updateList(false); */
 		}
@@ -2223,7 +2272,7 @@ public class ConnectionService extends Service {
 			}
 			
 			//Updating the conversation activity list
-			if(context != null) LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
+			if(context != null) LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 			/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
 				callbacks.updateList(true); */
 			
@@ -2274,8 +2323,14 @@ public class ConnectionService extends Service {
 				//Otherwise checking if the modifier is a sticker update
 				else if(modifierInfo instanceof SharedValues.StickerModifierInfo) {
 					//Updating the modifier in the database
-					ConversationManager.StickerInfo sticker = DatabaseManager.addMessageSticker(writableDatabase, (SharedValues.StickerModifierInfo) modifierInfo);
-					if(sticker != null) stickerModifiers.add(sticker);
+					SharedValues.StickerModifierInfo stickerInfo = (SharedValues.StickerModifierInfo) modifierInfo;
+					try {
+						stickerInfo.image = SharedValues.decompress(stickerInfo.image);
+						ConversationManager.StickerInfo sticker = DatabaseManager.addMessageSticker(writableDatabase, stickerInfo);
+						if(sticker != null) stickerModifiers.add(sticker);
+					} catch(IOException | DataFormatException exception) {
+						exception.printStackTrace();
+					}
 				}
 				//Otherwise checking if the modifier is a tapback update
 				else if(modifierInfo instanceof SharedValues.TapbackModifierInfo) {

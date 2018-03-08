@@ -5,13 +5,13 @@
 		android:id="@+id/action_details"
 		android:icon="@drawable/info"
 		android:showAsAction="never"
-		android:title="@string/details"
+		android:title="@string/screen_details"
 		app:showAsAction="never" />
 	<item
 		android:id="@+id/action_search"
 		android:icon="@drawable/search"
 		android:showAsAction="never"
-		android:title="@string/search"
+		android:title="@string/action_search"
 		app:showAsAction="never" />
 	<item
 		android:id="@+id/action_archive"

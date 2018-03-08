@@ -7,7 +7,7 @@
         app:showAsAction="ifRoom"/> -->
 
     <item android:id="@+id/action_archived"
-        android:title="@string/archived_conversations"
+        android:title="@string/screen_archived"
 		android:showAsAction="never"
         app:showAsAction="never" />
 
@@ -18,11 +18,11 @@
 		app:showAsAction="never" /> -->
 	
 	<item android:id="@+id/action_settings"
-		android:title="@string/settings"
+		android:title="@string/screen_settings"
 		android:showAsAction="never"
 		app:showAsAction="never" />
 	<item android:id="@+id/action_feedback"
-		android:title="@string/feedback"
+		android:title="@string/action_sendfeedback"
 		android:showAsAction="never"
 		app:showAsAction="never" />
 </menu>

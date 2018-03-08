@@ -9,7 +9,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -174,7 +173,8 @@ public class NewMessage extends AppCompatActivity {
 		//Setting the content view
 		setContentView(R.layout.activity_newmessage);
 		
-		//Enabling the up button
+		//Configuring the toolbar
+		setSupportActionBar(findViewById(R.id.toolbar));
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 		
 		//Getting the views
@@ -244,7 +244,7 @@ public class NewMessage extends AppCompatActivity {
 		//Restoring the chips
 		if(retainedFragment.userChips.isEmpty()) {
 			//Setting the hint
-			recipientInput.setHint(R.string.userinput_hint);
+			recipientInput.setHint(R.string.imperative_userinput);
 		} else {
 			//Removing the hint
 			recipientInput.setHint("");
@@ -302,7 +302,7 @@ public class NewMessage extends AppCompatActivity {
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		//Creating the "confirm participants" menu button
-		confirmMenuItem = menu.add(Menu.NONE, menuIdentifierConfirmParticipants, Menu.NONE, R.string.confirm_participants);
+		confirmMenuItem = menu.add(Menu.NONE, menuIdentifierConfirmParticipants, Menu.NONE, R.string.action_confirmparticipants);
 		confirmMenuItem.setIcon(R.drawable.next);
 		confirmMenuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 		
@@ -349,14 +349,13 @@ public class NewMessage extends AppCompatActivity {
 			//Otherwise checking if the result is a denial
 			else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
 				//Showing a snackbar
-				Snackbar.make(findViewById(android.R.id.content), R.string.permission_rejected, Snackbar.LENGTH_LONG)
-						.setAction(R.string.settings, view -> {
+				Snackbar.make(findViewById(android.R.id.content), R.string.message_permissionrejected, Snackbar.LENGTH_LONG)
+						.setAction(R.string.screen_settings, view -> {
 							//Opening the application settings
 							Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
 							intent.setData(Uri.parse("package:" + getPackageName()));
 							startActivity(intent);
 						})
-						.setActionTextColor(getResources().getColor(R.color.colorAccent, null))
 						.show();
 				/* //Showing a dialog
 				new AlertDialog.Builder(this)
@@ -474,7 +473,7 @@ public class NewMessage extends AppCompatActivity {
 	
 	public void onClickRequestContacts(View view) {
 		//Requesting the permission
-		requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts);
+		Constants.requestPermission(this, new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts);
 	}
 	
 	private static class ConfirmParticipantsTask extends AsyncTask<Void, Void, ConversationManager.ConversationInfo> {
@@ -527,7 +526,7 @@ public class NewMessage extends AppCompatActivity {
 				activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 				
 				//Showing an error toast
-				Toast.makeText(activity, R.string.serverstatus_internalexception, Toast.LENGTH_SHORT).show();
+				Toast.makeText(activity, R.string.message_serverstatus_internalexception, Toast.LENGTH_SHORT).show();
 			} else {
 				//Checking if the conversations exist
 				ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
@@ -536,7 +535,7 @@ public class NewMessage extends AppCompatActivity {
 					ConversationManager.addConversation(result);
 					
 					//Updating the conversation activity list
-					LocalBroadcastManager.getInstance(activity).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
+					LocalBroadcastManager.getInstance(activity).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 						/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
 							callbacks.updateList(true); */
 				}
@@ -599,7 +598,7 @@ public class NewMessage extends AppCompatActivity {
 		//Checking if there are no more chips
 		if(retainedFragment.userChips.isEmpty()) {
 			//Setting the hint
-			recipientInput.setHint(R.string.userinput_hint);
+			recipientInput.setHint(R.string.imperative_userinput);
 			
 			//Setting the confirm button as invisible
 			confirmMenuItem.setVisible(false);
@@ -654,22 +653,19 @@ public class NewMessage extends AppCompatActivity {
 						Constants.dpToPx(300),
 						Constants.dpToPx(56));
 				
-				popupWindow.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.colorForegroundLight, null)));
+				//popupWindow.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.colorForegroundLight, null)));
 				popupWindow.setOutsideTouchable(true);
 				popupWindow.setElevation(Constants.dpToPx(2));
 				popupWindow.setEnterTransition(new ChangeBounds());
 				popupWindow.setExitTransition(new Fade());
 				
 				//Setting the remove listener
-				popupView.findViewById(R.id.button_remove).setOnClickListener(new View.OnClickListener() {
-					@Override
-					public void onClick(View view) {
-						//Removing this chip
-						removeChip(Chip.this);
-						
-						//Dismissing the popup
-						popupWindow.dismiss();
-					}
+				popupView.findViewById(R.id.button_remove).setOnClickListener(view -> {
+					//Removing this chip
+					removeChip(Chip.this);
+					
+					//Dismissing the popup
+					popupWindow.dismiss();
 				});
 				
 				//Showing the popup
@@ -997,9 +993,9 @@ public class NewMessage extends AppCompatActivity {
 		public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 			switch(viewType) {
 				case TYPE_HEADER:
-					return new HeaderViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_contact_sendheader, parent, false));
+					return new HeaderViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_contact_sendheader, parent, false));
 				case TYPE_ITEM:
-					return new ItemViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_contact, parent, false));
+					return new ItemViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_contact, parent, false));
 				default:
 					return null;
 			}
@@ -1013,7 +1009,7 @@ public class NewMessage extends AppCompatActivity {
 					HeaderViewHolder headerViewHolder = (HeaderViewHolder) viewHolder;
 					
 					//Setting the label
-					headerViewHolder.label.setText(getResources().getString(R.string.contact_address_fill, lastFilterText));
+					headerViewHolder.label.setText(getResources().getString(R.string.action_sendto, lastFilterText));
 					
 					//Setting the click listener
 					headerViewHolder.itemView.setOnClickListener(view -> {
@@ -1040,7 +1036,7 @@ public class NewMessage extends AppCompatActivity {
 					int addressCount = contactInfo.addresses.size();
 					String firstAddress = contactInfo.addresses.get(0);
 					if(addressCount == 1) itemViewHolder.contactAddress.setText(firstAddress);
-					else itemViewHolder.contactAddress.setText(getResources().getQuantityString(R.plurals.contact_address_multiple, addressCount, firstAddress, addressCount - 1));
+					else itemViewHolder.contactAddress.setText(getResources().getQuantityString(R.plurals.message_multipledestinations, addressCount, firstAddress, addressCount - 1));
 					
 					//Showing / hiding the section header
 					boolean showHeader;
@@ -1105,7 +1101,7 @@ public class NewMessage extends AppCompatActivity {
 						} else {
 							//Showing a dialog
 							new AlertDialog.Builder(NewMessage.this)
-									.setTitle(R.string.contact_address_select)
+									.setTitle(R.string.imperative_selectdestination)
 									.setItems(contactInfo.addresses.toArray(new String[0]), ((dialogInterface, index) -> {
 										//Adding the selected chip
 										addChip(new Chip(contactInfo.addresses.get(index)));

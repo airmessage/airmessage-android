@@ -29,7 +29,7 @@
 			android:ellipsize="end"
 			android:maxLines="1"
 			android:text="@string/placeholder_name"
-			android:textColor="?android:textColorPrimary"
+			android:textColor="?android:attr/textColorPrimary"
 			android:textSize="16sp" />
 		
 		<TextView
@@ -39,7 +39,7 @@
 			android:ellipsize="end"
 			android:maxLines="1"
 			android:text="@string/placeholder_address"
-			android:textColor="?android:textColorSecondary"
+			android:textColor="?android:attr/textColorSecondary"
 			android:textSize="14sp"
 			android:visibility="gone" />
 	</LinearLayout>
@@ -52,8 +52,8 @@
 		android:layout_marginLeft="16dp"
 		android:layout_marginRight="16dp"
 		android:background="?android:selectableItemBackgroundBorderless"
-		android:contentDescription="@string/edit_contact_color"
+		android:contentDescription="@string/action_editcontactcolor"
 		android:src="@drawable/palette"
 		android:tint="@color/colorPrimary"
-		android:tooltipText="@string/edit_contact_color" />
+		android:tooltipText="@string/action_editcontactcolor" />
 </LinearLayout>

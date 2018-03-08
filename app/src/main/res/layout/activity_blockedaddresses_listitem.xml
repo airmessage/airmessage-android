@@ -35,8 +35,8 @@
 		android:layout_gravity="center"
 		android:layout_marginStart="16dp"
 		android:background="?android:selectableItemBackgroundBorderless"
-		android:contentDescription="@string/edit_contact_color"
+		android:contentDescription="@string/action_editcontactcolor"
 		android:src="@drawable/close"
 		android:tint="@android:color/black"
-		android:tooltipText="@string/button_remove" />
+		android:tooltipText="@string/action_remove" />
 </LinearLayout>

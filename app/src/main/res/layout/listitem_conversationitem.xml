@@ -21,7 +21,7 @@
 		android:layout_marginTop="15dp"
 		android:text="@string/placeholder_timedivider"
 		android:textAlignment="center"
-		android:textColor="?android:textColorSecondary"
+		android:textColor="?android:attr/textColorSecondary"
 		android:visibility="gone" />
 	
 	<TextView
@@ -103,7 +103,7 @@
 					android:layout_marginLeft="11.5dp"
 					android:layout_marginRight="11.5dp"
 					android:layout_marginTop="2.5dp"
-					android:background="@drawable/ripple_rounded"
+					android:background="?attr/selectableItemBackground"
 					android:clickable="true"
 					android:focusable="true"
 					android:orientation="horizontal"
@@ -121,7 +121,7 @@
 						android:layout_width="wrap_content"
 						android:layout_height="wrap_content"
 						android:layout_gravity="center"
-						android:text="@string/button_replay"
+						android:text="@string/action_replay"
 						android:textColor="@color/colorPrimary" />
 				</LinearLayout>
 			</LinearLayout>

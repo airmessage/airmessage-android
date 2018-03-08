@@ -43,8 +43,8 @@
 				android:layout_gravity="center_vertical"
 				android:layout_marginStart="15dp"
 				android:layout_weight="1"
-				android:text="@string/contenttype_video"
-				android:textColor="@color/colorMessageOutgoingText" />
+				android:text="@string/part_content_video"
+				android:textColor="?android:attr/textColorPrimary" />
 			
 			<ImageView
 				android:id="@+id/download_button"
@@ -54,7 +54,7 @@
 				android:layout_marginLeft="8dp"
 				android:layout_marginRight="8dp"
 				android:src="@drawable/download"
-				android:tint="@color/colorMessageOutgoingText" />
+				android:tint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		
 		<RelativeLayout
@@ -104,8 +104,8 @@
 				android:layout_gravity="center_vertical"
 				android:layout_marginStart="15dp"
 				android:layout_weight="1"
-				android:text="@string/contenttype_video"
-				android:textColor="@color/colorMessageOutgoingText" />
+				android:text="@string/part_content_video"
+				android:textColor="?android:attr/textColorPrimary" />
 			
 			<ImageView
 				android:id="@+id/failedcontent_button"
@@ -115,7 +115,7 @@
 				android:layout_marginLeft="8dp"
 				android:layout_marginRight="8dp"
 				android:src="@drawable/open"
-				android:tint="@color/colorMessageOutgoingText" />
+				android:tint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		
 		<LinearLayout
@@ -135,8 +135,8 @@
 				android:layout_gravity="center_vertical"
 				android:layout_marginStart="15dp"
 				android:layout_weight="1"
-				android:text="@string/contenttype_image"
-				android:textColor="@color/colorMessageOutgoingText" />
+				android:text="@string/part_content_video"
+				android:textColor="?android:attr/textColorPrimary" />
 			
 			<ImageView
 				android:layout_width="wrap_content"
@@ -145,7 +145,7 @@
 				android:layout_marginLeft="8dp"
 				android:layout_marginRight="8dp"
 				android:src="@drawable/upload"
-				android:tint="@color/colorMessageOutgoingText" />
+				android:tint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		
 		<include layout="@layout/layout_tapbackcontainer" />

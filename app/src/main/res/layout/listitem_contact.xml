@@ -15,6 +15,7 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
+			android:textColor="?android:attr/textColorSecondary"
 			android:text="A"
 			android:textSize="20dp" />
 	</RelativeLayout>
@@ -53,7 +54,7 @@
 				android:ellipsize="end"
 				android:maxLines="1"
 				android:text="@string/placeholder_name"
-				android:textColor="?android:textColorPrimary"
+				android:textColor="?android:attr/textColorPrimary"
 				android:textSize="16sp" />
 			
 			<LinearLayout
@@ -70,7 +71,7 @@
 					android:ellipsize="end"
 					android:maxLines="1"
 					android:text="@string/placeholder_address"
-					android:textColor="?android:textColorSecondary"
+					android:textColor="?android:attr/textColorSecondary"
 					android:textSize="14sp" />
 				<!-- <TextView
 					android:id="@+id/label_addresstype"

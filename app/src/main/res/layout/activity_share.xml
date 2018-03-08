@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	xmlns:tools="http://schemas.android.com/tools"
 	android:orientation="vertical"
-	tools:context=".ShareHandler">
-	
+	tools:context=".ShareHandler" >
 	<TextView
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
@@ -13,50 +12,51 @@
 		android:layout_marginLeft="24dp"
 		android:layout_marginRight="24dp"
 		android:layout_marginTop="24dp"
-		android:text="@string/select_conversation"
-		android:textSize="20sp"
 		android:fontFamily="sans-serif-medium"
-		android:textColor="?android:attr/textColorPrimary"/>
+		android:text="@string/imperative_selectconversation"
+		android:textColor="?android:attr/textColorPrimary"
+		android:textSize="20sp" />
 	
 	<View
 		android:layout_width="match_parent"
 		android:layout_height="1dp"
-		android:background="@android:color/darker_gray"/>
+		android:background="@color/colorDivider" />
 	
 	<RelativeLayout
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:minHeight="50dp"
-		android:layout_weight="1">
+		android:layout_weight="1"
+		android:minHeight="50dp">
 		<!-- List view -->
 		<ListView
 			android:id="@+id/list"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
+			android:divider="@null"
+			android:dividerHeight="0dp"
 			android:minHeight="100dp"
-			android:visibility="gone"/>
-		
+			android:theme="@style/OverscrollNeutralizer"
+			android:visibility="gone" />
 		<!-- Loading text -->
 		<TextView
 			android:id="@+id/loading_text"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
-			android:text="@string/loading"
-			android:textColor="?android:textColorSecondary"
+			android:text="@string/progress_loading"
 			android:textAlignment="center"
+			android:textColor="?android:attr/textColorSecondary"
 			android:visibility="gone" />
-		
 		<!-- No conversations text -->
 		<TextView
 			android:id="@+id/no_conversations"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
-			android:text="@string/no_conversations"
+			android:alpha="0"
+			android:text="@string/message_blankstate_conversations_basic"
 			android:textAlignment="center"
-			android:visibility="gone"/>
-		
+			android:visibility="gone" />
 		<!-- Sync view -->
 		<LinearLayout
 			android:id="@+id/syncview"
@@ -65,7 +65,6 @@
 			android:layout_centerInParent="true"
 			android:orientation="vertical"
 			android:visibility="gone">
-			
 			<!-- <ImageView
 				android:id="@+id/syncview_icon"
 				android:layout_width="96dp"
@@ -74,24 +73,21 @@
 				android:scaleType="fitXY"
 				android:src="@drawable/sync"
 				android:tint="?android:attr/textColorSecondary" /> -->
-			
 			<TextView
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="@string/syncing_messages"
+				android:text="@string/progress_sync"
 				android:tint="?android:attr/textColorSecondary" />
 			
 			<ProgressBar
 				android:id="@+id/syncview_progress"
+				style="?android:attr/progressBarStyleHorizontal"
 				android:layout_width="150dp"
 				android:layout_height="wrap_content"
 				android:layout_marginTop="10dp"
-				style="?android:attr/progressBarStyleHorizontal"
-				android:progress="100"
-				android:indeterminate="true"/>
+				android:progressBackgroundTint="@color/colorPrimary" />
 		</LinearLayout>
-		
 		<!-- Error view -->
 		<LinearLayout
 			android:id="@+id/errorview"
@@ -105,7 +101,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="@string/loading_messages_error"
+				android:text="@string/message_loaderror_messages"
 				android:tint="?android:attr/textColorSecondary" />
 			
 			<Button
@@ -113,10 +109,8 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="@string/button_retry"
-				android:textColor="@color/colorPrimary" />
+				android:text="@string/action_retry" />
 		</LinearLayout>
-		
 		<!-- Connection view -->
 		<LinearLayout
 			android:id="@+id/serverwarning"
@@ -125,17 +119,18 @@
 			android:layout_centerInParent="true"
 			android:orientation="vertical"
 			android:visibility="gone">
+			
 			<TextView
 				android:id="@+id/serverwarning_message"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:textAlignment="center"
 				android:layout_marginBottom="12dp"
 				android:layout_marginLeft="16dp"
 				android:layout_marginRight="16dp"
 				android:layout_marginTop="12dp"
-				android:text="@string/serverstatus_noconnection"
+				android:text="@string/message_serverstatus_noconnection"
+				android:textAlignment="center"
 				android:textColor="?android:attr/textColorSecondary" />
 			
 			<Button
@@ -144,24 +139,23 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
-				android:text="@string/button_retry"
-				android:textColor="@color/colorAccent" />
+				android:text="@string/action_retry" />
 		</LinearLayout>
 	</RelativeLayout>
 	
 	<View
 		android:layout_width="match_parent"
 		android:layout_height="1dp"
-		android:background="@android:color/darker_gray" />
+		android:background="@color/colorDivider" />
 	
 	<LinearLayout
 		android:layout_width="wrap_content"
 		android:layout_height="52dp"
 		android:layout_gravity="end"
 		android:layout_marginBottom="8dp"
-		android:layout_marginTop="8dp"
-		android:layout_marginStart="24dp"
 		android:layout_marginEnd="8dp"
+		android:layout_marginStart="24dp"
+		android:layout_marginTop="8dp"
 		android:orientation="horizontal">
 		
 		<Button
@@ -171,18 +165,19 @@
 			android:layout_gravity="center"
 			android:layout_marginEnd="8dp"
 			android:minWidth="64dp"
+			android:onClick="closeDialog"
 			android:text="@android:string/cancel"
-			android:textColor="@color/colorPrimary"
-			android:onClick="closeDialog" />
+			android:textColor="@color/colorPrimary" />
 		
 		<Button
+			android:id="@+id/button_new"
 			style="?android:attr/borderlessButtonStyle"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_gravity="center"
 			android:minWidth="64dp"
-			android:text="@string/new_message"
-			android:textColor="@color/colorPrimary"
-			android:onClick="createNewConversation"/>
+			android:onClick="createNewConversation"
+			android:text="@string/screen_newmessage"
+			android:textColor="@color/colorPrimary" />
 	</LinearLayout>
 </LinearLayout>

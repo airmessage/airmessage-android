@@ -7,13 +7,13 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
@@ -72,6 +72,11 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.DataFormatException;
 
 import me.tagavari.airmessage.common.SharedValues;
@@ -385,7 +390,7 @@ class ConversationManager {
 		//private transient View view;
 		//private transient ViewGroup iconView = null;
 		private String title = null;
-		private long timeLastViewed = 0;
+		private transient int unreadMessageCount = 0;
 		private boolean isArchived = false;
 		private boolean isMuted = false;
 		private transient boolean isSelected = false;
@@ -401,6 +406,7 @@ class ConversationManager {
 		
 		//Creating the listeners
 		private transient ArrayList<Runnable> titleChangeListeners = new ArrayList<>();
+		private transient ArrayList<Runnable> unreadCountChangeListeners = new ArrayList<>();
 		
 		ConversationInfo(long localID, ConversationState conversationState) {
 			//Setting the local ID and state
@@ -421,7 +427,7 @@ class ConversationManager {
 			conversationMembers = new ArrayList<>();
 		}
 		
-		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String title, long timeLastViewed, int conversationColor) {
+		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String title, int unreadMessageCount, int conversationColor) {
 			//Setting the values
 			this.guid = guid;
 			this.localID = localID;
@@ -429,7 +435,7 @@ class ConversationManager {
 			this.service = service;
 			this.conversationMembers = conversationMembers;
 			this.title = title;
-			this.timeLastViewed = timeLastViewed;
+			this.unreadMessageCount = unreadMessageCount;
 			this.conversationColor = conversationColor;
 		}
 		
@@ -444,11 +450,10 @@ class ConversationManager {
 				convertView = LayoutInflater.from(context).inflate(R.layout.listitem_conversation, parent, false);
 			
 			//Setting the flags
-			convertView.findViewById(R.id.muted_icon).setVisibility(isMuted ? View.VISIBLE : View.GONE);
+			convertView.findViewById(R.id.flag_muted).setVisibility(isMuted ? View.VISIBLE : View.GONE);
 			
 			//Returning if the conversation has no members
-			if(conversationMembers.isEmpty())
-				return convertView; //TODO add support for empty conversations
+			if(conversationMembers.isEmpty()) return convertView;
 			
 			//Setting the profile
 			currentUserViewIndex = -1;
@@ -530,9 +535,29 @@ class ConversationManager {
 		}
 		
 		private void updateUnreadStatus(View itemView) {
-			//Updating the title's typeface
+			//Getting the views
 			TextView titleText = itemView.findViewById(R.id.title);
-			titleText.setTypeface(Typeface.DEFAULT, lastItem != null && lastItem.getDate() > timeLastViewed ? Typeface.BOLD : Typeface.NORMAL);
+			TextView messageText = itemView.findViewById(R.id.message);
+			TextView unreadCount = itemView.findViewById(R.id.unread);
+			
+			if(unreadMessageCount > 0) {
+				titleText.setTypeface(titleText.getTypeface(), Typeface.BOLD);
+				titleText.setTextColor(itemView.getResources().getColor(R.color.colorPrimary, null));
+				
+				messageText.setTypeface(messageText.getTypeface(), Typeface.BOLD);
+				messageText.setTextColor(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				
+				unreadCount.setVisibility(View.VISIBLE);
+				unreadCount.setText(Integer.toString(unreadMessageCount));
+			} else {
+				titleText.setTypeface(titleText.getTypeface(), Typeface.NORMAL);
+				titleText.setTextColor(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				
+				messageText.setTypeface(messageText.getTypeface(), Typeface.NORMAL);
+				messageText.setTextColor(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorSecondary));
+				
+				unreadCount.setVisibility(View.GONE);
+			}
 		}
 		
 		void updateTime(Context context) {
@@ -548,7 +573,7 @@ class ConversationManager {
 			//Setting the time
 			((TextView) itemView.findViewById(R.id.time)).setText(
 					System.currentTimeMillis() - lastItem.getDate() < conversationJustNowTimeMillis ?
-							context.getResources().getString(R.string.just_now) :
+							context.getResources().getString(R.string.time_now) :
 							DateUtils.getRelativeTimeSpanString(lastItem.getDate(), System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_ALL).toString());
 		}
 		
@@ -720,12 +745,16 @@ class ConversationManager {
 			this.service = service;
 		}
 		
-		long getTimeLastViewed() {
-			return timeLastViewed;
+		int getUnreadMessageCount() {
+			return unreadMessageCount;
 		}
 		
-		void setTimeLastViewed(long timeLastViewed) {
-			this.timeLastViewed = timeLastViewed;
+		void setUnreadMessageCount(int unreadMessageCount) {
+			//Setting the value
+			this.unreadMessageCount = unreadMessageCount;
+			
+			//Calling the listeners
+			for(Runnable listener : unreadCountChangeListeners) listener.run();
 		}
 		
 		boolean isArchived() {
@@ -749,8 +778,8 @@ class ConversationManager {
 			if(view == null) return;
 			
 			//Updating the view
-			if(isMuted) view.findViewById(R.id.muted_icon).setVisibility(View.VISIBLE);
-			else view.findViewById(R.id.muted_icon).setVisibility(View.GONE);
+			if(isMuted) view.findViewById(R.id.flag_muted).setVisibility(View.VISIBLE);
+			else view.findViewById(R.id.flag_muted).setVisibility(View.GONE);
 		}
 		
 		MessageInfo getActivityStateTarget() {
@@ -850,6 +879,9 @@ class ConversationManager {
 			ArrayList<MessageInfo> ghostMessages = getGhostMessages();
 			if(ghostMessages == null) return;
 			
+			//Getting the adapter updater
+			AdapterUpdater updater = getAdapterUpdater();
+			
 			boolean messageReplaced = false;
 			//Checking if the item is a message
 			if(conversationItem instanceof MessageInfo) {
@@ -883,7 +915,6 @@ class ConversationManager {
 								
 								//Updating the adapter
 								if(originalIndex != newIndex) {
-									AdapterUpdater updater = getAdapterUpdater();
 									if(updater != null) updater.updateMove(originalIndex, newIndex);
 								}
 							}
@@ -931,7 +962,6 @@ class ConversationManager {
 									
 									//Updating the adapter
 									if(originalIndex != newIndex) {
-										AdapterUpdater updater = getAdapterUpdater();
 										if(updater != null) updater.updateMove(originalIndex, newIndex);
 									}
 								}
@@ -965,13 +995,15 @@ class ConversationManager {
 				updateLastItem(context);
 				
 				//Updating the adapter
-				AdapterUpdater updater = getAdapterUpdater();
 				if(updater != null) updater.updateScroll(index);
 				
 				//Updating the view
 				View view = getView();
 				if(view != null) updateView(context, view);
 			}
+			
+			//Updating the adapter's unread messages
+			if(updater != null) updater.updateUnread();
 		}
 		
 		private int insertConversationItem(ConversationItem conversationItem, Context context, boolean update) {
@@ -1114,6 +1146,7 @@ class ConversationManager {
 			abstract void updateFully();
 			abstract void updateScroll(int index);
 			abstract void updateMove(int from, int to);
+			abstract void updateUnread();
 		}
 		
 		int getNextUserColor() {
@@ -1154,7 +1187,10 @@ class ConversationManager {
 			else return leastUsedColors.get(Constants.getRandom().nextInt(leastUsedColors.size()));
 		}
 		
-		static int[] getMassUserColors(int userCount) {
+		int[] getMassUserColors(int userCount) {
+			//Creating a random generator based on the GUID
+			Random random = new Random(guid.hashCode());
+			
 			//Creating the color array
 			int[] array = new int[userCount];
 			
@@ -1165,7 +1201,7 @@ class ConversationManager {
 				if(colors.isEmpty()) colors.addAll(Arrays.asList(standardUserColors));
 				
 				//Picking a color
-				Integer color = colors.get(Constants.getRandom().nextInt(colors.size()));
+				Integer color = colors.get(random.nextInt(colors.size()));
 				
 				//Setting the color
 				array[i] = color;
@@ -1269,7 +1305,7 @@ class ConversationManager {
 			
 			//Returning "unknown" if the conversation has no members
 			if(members.length == 0) {
-				resultCallback.onResult(context.getResources().getString(R.string.unknown), false);
+				resultCallback.onResult(context.getResources().getString(R.string.part_unknown), false);
 				return;
 			}
 			
@@ -1329,7 +1365,7 @@ class ConversationManager {
 			if(name != null && !name.isEmpty()) return name;
 			
 			//Returning "unknown" if the conversation has no members
-			if(members.length == 0) return context.getResources().getString(R.string.unknown);
+			if(members.length == 0) return context.getResources().getString(R.string.part_unknown);
 			
 			//Returning the member's name if there is only one member
 			if(members.length == 1) return members[0];
@@ -1419,6 +1455,10 @@ class ConversationManager {
 			this.conversationColor = conversationColor;
 		}
 		
+		static int getDefaultConversationColor(String guid) {
+			return standardUserColors[new Random(guid.hashCode()).nextInt(standardUserColors.length)];
+		}
+		
 		static String getFormattedTime(long date) {
 			//Returning the formatting
 			return DateUtils.getRelativeTimeSpanString(date, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, 0).toString();
@@ -1430,6 +1470,14 @@ class ConversationManager {
 		
 		void removeTitleChangeListener(Runnable runnable) {
 			titleChangeListeners.remove(runnable);
+		}
+		
+		void addUnreadCountChangeListener(Runnable runnable) {
+			unreadCountChangeListeners.add(runnable);
+		}
+		
+		void removeUnreadCountChangeListener(Runnable runnable) {
+			unreadCountChangeListeners.remove(runnable);
 		}
 		
 		ConversationItem findConversationItem(long localID) {
@@ -1823,7 +1871,7 @@ class ConversationManager {
 				default:
 					return null;
 				case SharedValues.MessageInfo.stateCodeDelivered:
-					return context.getResources().getString(R.string.delivered);
+					return context.getResources().getString(R.string.state_delivered);
 				case SharedValues.MessageInfo.stateCodeRead: {
 					//Creating the when variable
 					String when;
@@ -1840,7 +1888,7 @@ class ConversationManager {
 					//Otherwise formatting the when as the date
 					else when = DateFormat.getDateInstance(DateFormat.SHORT).format(dateRead);
 					
-					return Html.fromHtml("<b>" + context.getResources().getString(R.string.read) + "</b> " + when);
+					return Html.fromHtml("<b>" + context.getResources().getString(R.string.state_read) + "</b> " + when);
 				}
 			}
 		}
@@ -2091,12 +2139,12 @@ class ConversationManager {
 			if(sentCalendar.get(Calendar.YEAR) == nowCalendar.get(Calendar.YEAR)) {
 				//If the message was sent today
 				if(nowCalendar.get(Calendar.DAY_OF_YEAR) == sentCalendar.get(Calendar.DAY_OF_YEAR))
-					return context.getResources().getString(R.string.today) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
+					return context.getResources().getString(R.string.time_today) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
 					//If the message was sent yesterday
 				else {
 					nowCalendar.add(Calendar.DAY_OF_YEAR, -1); //Today (now) -> Yesterday
 					if(nowCalendar.get(Calendar.DAY_OF_YEAR) == sentCalendar.get(Calendar.DAY_OF_YEAR))
-						return context.getResources().getString(R.string.yesterday) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
+						return context.getResources().getString(R.string.time_yesterday) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
 				}
 			}
 			
@@ -2324,7 +2372,7 @@ class ConversationManager {
 			prepareActivityStateDisplay(view, context);
 			
 			//Updating the view color
-			updateViewColor(context.getResources(), view, false);
+			updateViewColor(view, false);
 			
 			//Updating the view state
 			updateViewProgressState(view, context);
@@ -2346,26 +2394,21 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources) {
+		void updateViewColor() {
 			//Calling the overload method
 			View view = getView();
-			if(view != null) updateViewColor(resources, view, true);
+			if(view != null) updateViewColor(view, true);
 		}
 		
-		private void updateViewColor(Resources resources, View itemView, boolean updateAttachments) {
-			//Getting the colors
-			int backgroundColor;
-			if(isOutgoing()) {
-				backgroundColor = resources.getColor(R.color.colorMessageOutgoing, null);
-			} else {
-				MemberInfo memberInfo = getConversationInfo().findConversationMember(sender);
-				backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-			}
-			
+		private void updateViewColor(View itemView, boolean updateAttachments) {
 			//Setting the user tint
-			if(!isOutgoing())
+			if(!isOutgoing()) {
+				MemberInfo memberInfo = getConversationInfo().findConversationMember(sender);
+				int backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
+				
 				((ImageView) itemView.findViewById(R.id.profile).findViewById(R.id.profile_default))
-						.setColorFilter(backgroundColor, android.graphics.PorterDuff.Mode.MULTIPLY);
+							.setColorFilter(backgroundColor, android.graphics.PorterDuff.Mode.MULTIPLY);
+			}
 			
 			//Setting the upload spinner tint
 			((ProgressWheel) itemView.findViewById(R.id.send_progress)).setBarColor(getConversationInfo().getConversationColor());
@@ -2374,11 +2417,11 @@ class ConversationManager {
 			ViewGroup messagePartContainer = itemView.findViewById(R.id.messagepart_container);
 			
 			//Updating the message colors
-			if(messageText != null) messageText.updateViewColor(resources, messagePartContainer.findViewById(R.id.content_text));
+			if(messageText != null) messageText.updateViewColor(messagePartContainer.findViewById(R.id.content_text));
 			
 			//Updating the attachment colors
 			if(updateAttachments) for(int i = 0; i < attachments.size(); i++)
-				attachments.get(i).updateViewColor(resources, messagePartContainer.getChildAt((messageText == null ? 0 : 1) + i));
+				attachments.get(i).updateViewColor(messagePartContainer.getChildAt((messageText == null ? 0 : 1) + i));
 		}
 		
 		void updateViewProgressState(Context context) {
@@ -2408,14 +2451,14 @@ class ConversationManager {
 			
 			//Configuring the dialog
 			AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(itemView.getContext())
-					.setTitle(R.string.dialog_messageerror_title)
-					.setNegativeButton(R.string.button_dismiss, (dialog, which) -> dialog.dismiss());
+					.setTitle(R.string.message_messageerror_title)
+					.setNegativeButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss());
 			boolean showRetryButton;
 			
 			switch(errorCode) {
 				default:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_unknown);
+					dialogBuilder.setMessage(R.string.message_unknownerror);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2424,7 +2467,7 @@ class ConversationManager {
 				
 				case Constants.messageErrorCodeAirInvalidContent:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_invalidcontent);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_invalidcontent);
 					
 					//Disabling the retry button
 					showRetryButton = false;
@@ -2432,7 +2475,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirFileTooLarge:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_filetoolarge);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_filetoolarge);
 					
 					//Disabling the retry button
 					showRetryButton = false;
@@ -2440,7 +2483,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirIO:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_io);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_io);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2448,7 +2491,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirNetwork:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_network);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_network);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2456,7 +2499,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirExternal:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_external);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_external);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2464,7 +2507,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirExpired:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_expired);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_expired);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2472,7 +2515,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAirReferences:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_air_references);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_references);
 					
 					//Enabling the retry button
 					showRetryButton = true;
@@ -2480,7 +2523,7 @@ class ConversationManager {
 					break;
 				case Constants.messageErrorCodeAppleNetwork:
 					//Setting the message
-					dialogBuilder.setMessage(R.string.dialog_messageerror_desc_apple_network);
+					dialogBuilder.setMessage(R.string.message_messageerror_desc_apple_network);
 					
 					//Disabling the retry button
 					showRetryButton = false;
@@ -2489,8 +2532,8 @@ class ConversationManager {
 				case Constants.messageErrorCodeAppleUnregistered:
 					//Setting the message
 					dialogBuilder.setMessage(getConversationInfo().getConversationMembers().isEmpty() ?
-							context.getResources().getString(R.string.dialog_messageerror_desc_apple_unregistered_generic) :
-							context.getResources().getString(R.string.dialog_messageerror_desc_apple_unregistered, getConversationInfo().getConversationMembers().get(0).getName()));
+							context.getResources().getString(R.string.message_messageerror_desc_apple_unregistered_generic) :
+							context.getResources().getString(R.string.message_messageerror_desc_apple_unregistered, getConversationInfo().getConversationMembers().get(0).getName()));
 					
 					//Disabling the retry button
 					showRetryButton = false;
@@ -2500,7 +2543,7 @@ class ConversationManager {
 			
 			//Showing the retry button (if requested)
 			if(showRetryButton)
-				dialogBuilder.setPositiveButton(R.string.button_retry, (dialog, which) -> sendMessage(MainApplication.getInstance()));
+				dialogBuilder.setPositiveButton(R.string.action_retry, (dialog, which) -> sendMessage(MainApplication.getInstance()));
 			
 			//Showing the dialog when the button is clicked
 			sendError.setOnClickListener(view -> dialogBuilder.create().show());
@@ -2567,7 +2610,7 @@ class ConversationManager {
 			
 			//Applying invisible ink
 			if(sendStyle.equals(Constants.appleSendStyleInvisibleInk))
-				modifiedMessage = context.getString(R.string.message_invisibleink);
+				modifiedMessage = context.getString(R.string.message_messageeffect_invisibleink);
 			
 			//Setting the text if there is text
 			if(messageText != null) return prefix + modifiedMessage;
@@ -2576,7 +2619,7 @@ class ConversationManager {
 			if(attachmentStringRes.size() == 1)
 				return prefix + context.getResources().getString(attachmentStringRes.get(0));
 			else if(attachmentStringRes.size() > 1)
-				return prefix + context.getResources().getQuantityString(R.plurals.contenttype_multiple, attachmentStringRes.size(), attachmentStringRes.size());
+				return prefix + context.getResources().getQuantityString(R.plurals.message_multipleattachments, attachmentStringRes.size(), attachmentStringRes.size());
 			
 			//Returning an empty string
 			return "";
@@ -2748,7 +2791,7 @@ class ConversationManager {
 			buildTapbackView(view);
 		}
 		
-		abstract void updateViewColor(Resources resources, View itemView);
+		abstract void updateViewColor(View itemView);
 		
 		abstract void updateViewEdges(View itemView, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored);
 		
@@ -2759,7 +2802,7 @@ class ConversationManager {
 			//Iterating over the stickers
 			for(StickerInfo sticker : stickers) {
 				//Decoding the sticker
-				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromCompressedBytes(sticker.guid, sticker.compressedData, new BitmapCacheHelper.ImageDecodeResult() {
+				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromDBSticker(sticker.guid, sticker.localID, new BitmapCacheHelper.ImageDecodeResult() {
 					@Override
 					void onImageMeasured(int width, int height) {}
 					
@@ -2808,7 +2851,7 @@ class ConversationManager {
 			stickers.add(sticker);
 			
 			//Decoding the sticker
-			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromCompressedBytes(sticker.guid, sticker.compressedData, new BitmapCacheHelper.ImageDecodeResult() {
+			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromDBSticker(sticker.guid, sticker.localID, new BitmapCacheHelper.ImageDecodeResult() {
 				@Override
 				void onImageMeasured(int width, int height) {}
 				
@@ -2934,6 +2977,8 @@ class ConversationManager {
 			if(tapbacks.isEmpty()) return;
 			
 			//Counting the associated tapbacks
+			/* SparseIntArray tapbackCounts = new SparseIntArray();
+			for(TapbackInfo tapback : tapbacks) tapbackCounts.put(tapback.getCode(), tapbackCounts.get(tapback.getCode(), 1)); */
 			Map<Integer, Integer> tapbackCounts = new HashMap<>();
 			for(TapbackInfo tapback : tapbacks) {
 				if(tapbackCounts.containsKey(tapback.getCode())) tapbackCounts.put(tapback.getCode(), tapbackCounts.get(tapback.getCode()) + 1);
@@ -3054,13 +3099,7 @@ class ConversationManager {
 			//Setting the touch listener
 			textView.setOnTouchListener((View view, MotionEvent event) -> {
 				if(event.getAction() == MotionEvent.ACTION_UP) {
-					new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-						@Override
-						public void run() {
-							//Enabling link clicks
-							((TextView) view).setLinksClickable(true);
-						}
-					}, 0);
+					new Handler(Looper.getMainLooper()).postDelayed(() -> ((TextView) view).setLinksClickable(true), 0);
 				}
 				
 				return view.onTouchEvent(event);
@@ -3077,7 +3116,7 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources, View itemView) {
+		void updateViewColor(View itemView) {
 			//Getting the message text
 			TextView messageTextView = itemView.findViewById(R.id.message);
 			
@@ -3086,12 +3125,13 @@ class ConversationManager {
 			int textColor;
 			
 			if(getMessageInfo().isOutgoing()) {
-				backgroundColor = resources.getColor(R.color.colorMessageOutgoing, null);
-				textColor = resources.getColor(R.color.colorMessageOutgoingText, null);
+				//backgroundColor = resources.getColor(R.color.colorMessageOutgoing, null);
+				backgroundColor = itemView.getResources().getColor(R.color.colorMessageOutgoing, null);
+				textColor = Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary);
 			} else {
 				MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
 				backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColor = resources.getColor(R.color.colorMessageIncomingText, null);
+				textColor = itemView.getResources().getColor(android.R.color.white, null);
 			}
 			
 			//Assigning the colors
@@ -3120,14 +3160,14 @@ class ConversationManager {
 					case R.id.action_details: {
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_type, context.getResources().getString(R.string.contenttype_text))).append('\n'); //Message type
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : context.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? context.getResources().getString(R.string.none) : getMessageInfo().getSendEffect())); //Send effect
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_type, context.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : context.getResources().getString(R.string.you))).append('\n'); //Sender
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? context.getResources().getString(R.string.part_none) : getMessageInfo().getSendEffect())); //Send effect
 						
 						//Showing a dialog
 						new AlertDialog.Builder(context)
-								.setTitle(R.string.messagedetails_title)
+								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()
 								.show();
@@ -3146,7 +3186,7 @@ class ConversationManager {
 						clipboardManager.setPrimaryClip(clipData);
 						
 						//Showing a confirmation toast
-						Toast.makeText(context, R.string.text_copied, Toast.LENGTH_SHORT).show();
+						Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show();
 						
 						//Returning true
 						return true;
@@ -3201,8 +3241,8 @@ class ConversationManager {
 			
 			//Getting the text
 			String text = name == null ?
-					context.getResources().getString(R.string.conversationitem_contextual_share_body_you, dateFormat.format(date), message) :
-					context.getResources().getString(R.string.conversationitem_contextual_share_body, dateFormat.format(date), name, message);
+					context.getResources().getString(R.string.message_shareable_text_you, dateFormat.format(date), message) :
+					context.getResources().getString(R.string.message_shareable_text, dateFormat.format(date), name, message);
 			
 			//Setting the text
 			intent.putExtra(Intent.EXTRA_TEXT, text);
@@ -3211,7 +3251,7 @@ class ConversationManager {
 			intent.setType("text/plain");
 			
 			//Starting the intent
-			context.startActivity(Intent.createChooser(intent, context.getResources().getString(R.string.conversationitem_contextual_share_title)));
+			context.startActivity(Intent.createChooser(intent, context.getResources().getString(R.string.action_sharemessage)));
 		}
 	}
 	
@@ -3301,9 +3341,6 @@ class ConversationManager {
 				if(isLast) {
 					//Stopping the timer
 					stopTimer(false);
-					
-					//Filling the progress bar
-					((ProgressBar) view.findViewById(R.id.progressBar)).setProgress(100);
 				} else {
 					//Restarting the timer
 					stopTimer(true);
@@ -3318,15 +3355,21 @@ class ConversationManager {
 			//Checking if there is no save thread
 			if(attachmentWriterThread == null) {
 				//Creating and starting the attachment writer thread
-				attachmentWriterThread = new AttachmentWriter(context.getApplicationContext());
+				attachmentWriterThread = new AttachmentWriter(context.getApplicationContext(), this);
 				attachmentWriterThread.execute();
 			}
 			
 			//Adding the data struct
-			synchronized(attachmentWriterThread.dataStructsLock) {
+			attachmentWriterThread.dataStructsLock.lock();
+			try {
 				attachmentWriterThread.dataStructs.add(new AttachmentWriterDataStruct(compressedBytes, isLast));
-				attachmentWriterThread.dataStructsLock.notifyAll();
+				attachmentWriterThread.dataStructsCondition.signal();
+			} finally {
+				attachmentWriterThread.dataStructsLock.unlock();
 			}
+			/* synchronized(attachmentWriterThread.dataStructsLock) {
+				attachmentWriterThread.dataStructsLock.notifyAll();
+			} */
 			
 			/* //Launching a new asynchronous task
 			new AsyncTask<Context, Void, File>() {
@@ -3380,7 +3423,7 @@ class ConversationManager {
 			ConnectionService connectionService = ConnectionService.getInstance();
 			if(connectionService == null) {
 				//Showing a toast
-				Toast.makeText(context, R.string.no_connection, Toast.LENGTH_SHORT).show();
+				Toast.makeText(context, R.string.message_connectionerrror, Toast.LENGTH_SHORT).show();
 				
 				//Returning
 				return;
@@ -3425,8 +3468,8 @@ class ConversationManager {
 				
 				//Getting and preparing the progress bar
 				ProgressBar progressBar = view.findViewById(R.id.progressBar);
-				progressBar.setIndeterminate(true);
 				progressBar.setProgress(0);
+				progressBar.setIndeterminate(true);
 				progressBar.setVisibility(View.VISIBLE);
 			}
 		}
@@ -3503,7 +3546,10 @@ class ConversationManager {
 				//Showing the standard download content view
 				view.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
 				view.findViewById(R.id.content).setVisibility(View.GONE);
-				view.findViewById(R.id.failedcontent).setVisibility(View.GONE);
+				{
+					View failedContent = view.findViewById(R.id.failedcontent);
+					if(failedContent != null) failedContent.setVisibility(View.GONE);
+				}
 				view.findViewById(R.id.processingcontent).setVisibility(View.GONE);
 				
 				view.findViewById(R.id.download_label).setVisibility(View.VISIBLE);
@@ -3591,15 +3637,15 @@ class ConversationManager {
 					case R.id.action_details: {
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_type, context.getResources().getString(getContentType().getName()))).append('\n'); //Message type
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : context.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_size, file != null ? Formatter.formatShortFileSize(context, file.length()) : context.getResources().getString(R.string.no_data))).append('\n'); //Attachment size
-						stringBuilder.append(context.getResources().getString(R.string.messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? context.getResources().getString(R.string.none) : getMessageInfo().getSendEffect())); //Send effect
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_type, context.getResources().getString(getContentType().getName()))).append('\n'); //Message type
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : context.getResources().getString(R.string.you))).append('\n'); //Sender
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_size, file != null ? Formatter.formatShortFileSize(context, file.length()) : context.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment size
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? context.getResources().getString(R.string.part_none) : getMessageInfo().getSendEffect())); //Send effect
 						
 						//Showing a dialog
 						new AlertDialog.Builder(context)
-								.setTitle(R.string.messagedetails_title)
+								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()
 								.show();
@@ -3634,7 +3680,7 @@ class ConversationManager {
 						intent.setType(mimeType);
 						
 						//Starting the activity
-						context.startActivity(Intent.createChooser(intent, context.getResources().getText(R.string.conversationitem_contextual_share_title)));
+						context.startActivity(Intent.createChooser(intent, context.getResources().getText(R.string.action_sharemessage)));
 						
 						//Returning true
 						return true;
@@ -3699,30 +3745,35 @@ class ConversationManager {
 			}
 		}
 		
-		//TODO convert to static class to avoid reference leaking
-		private class AttachmentWriter extends AsyncTask<Void, Integer, Boolean> {
+		private static class AttachmentWriter extends AsyncTask<Void, Integer, Boolean> {
 			//Creating the references
 			final WeakReference<Context> contextReference;
+			final WeakReference<AttachmentInfo> superReference;
 			
-			final Object dataStructsLock = new Object();
+			final Lock dataStructsLock = new ReentrantLock();
+			final Condition dataStructsCondition = dataStructsLock.newCondition();
 			ArrayList<AttachmentWriterDataStruct> dataStructs = new ArrayList<>();
 			
 			//Creating the process values
 			File targetFile;
 			
-			AttachmentWriter(Context context) {
+			AttachmentWriter(Context context, AttachmentInfo superclass) {
 				//Setting the references
 				contextReference = new WeakReference<>(context);
+				superReference = new WeakReference<>(superclass);
 			}
 			
 			@Override
 			protected Boolean doInBackground(Void... params) {
-				//Getting the context
+				//Getting the references
 				Context context = contextReference.get();
 				if(context == null) return false;
 				
+				AttachmentInfo attachmentInfo = superReference.get();
+				if(attachmentInfo == null) return false;
+				
 				//Getting the file path
-				File directory = new File(MainApplication.getDownloadDirectory(context), Long.toString(localID));
+				File directory = new File(MainApplication.getDownloadDirectory(context), Long.toString(attachmentInfo.localID));
 				if(!directory.exists()) directory.mkdir();
 				else if(directory.isFile()) {
 					Constants.recursiveDelete(directory);
@@ -3730,7 +3781,7 @@ class ConversationManager {
 				}
 				
 				//Preparing to write to the file
-				targetFile = new File(directory, fileName);
+				targetFile = new File(directory, attachmentInfo.fileName);
 				try(FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 					while(true) {
 						//Returning if the task has been cancelled
@@ -3738,11 +3789,14 @@ class ConversationManager {
 						
 						//Moving the structs (to be able to release the lock sooner)
 						ArrayList<AttachmentWriterDataStruct> localDataStructs = new ArrayList<>();
-						synchronized(dataStructsLock) {
+						dataStructsLock.lock();
+						try {
 							if(!dataStructs.isEmpty()) {
 								localDataStructs = dataStructs;
 								dataStructs = new ArrayList<>();
 							}
+						} finally {
+							dataStructsLock.unlock();
 						}
 						
 						//Iterating over the data structs
@@ -3754,10 +3808,10 @@ class ConversationManager {
 							outputStream.write(bytes);
 							
 							//Adding to the bytes written
-							bytesWritten += bytes.length;
+							attachmentInfo.bytesWritten += bytes.length;
 							
 							//Updating the progress
-							publishProgress((int) ((double) bytesWritten / (double) fileSize * 100D));
+							publishProgress((int) ((float) attachmentInfo.bytesWritten / (float) attachmentInfo.fileSize * 100F));
 							
 							//Checking if the file is the last one
 							if(dataStruct.isLast) {
@@ -3765,7 +3819,7 @@ class ConversationManager {
 								//cleanThread();
 								
 								//Saving to the database
-								DatabaseManager.updateAttachmentFile(DatabaseManager.getWritableDatabase(context), localID, targetFile);
+								DatabaseManager.updateAttachmentFile(DatabaseManager.getWritableDatabase(context), attachmentInfo.localID, targetFile);
 								
 								//Returning true
 								return true;
@@ -3773,10 +3827,9 @@ class ConversationManager {
 						}
 						
 						//Waiting for entries to appear
+						dataStructsLock.lock();
 						try {
-							synchronized(dataStructsLock) {
-								dataStructsLock.wait(10 * 1000); //10-second timeout
-							}
+							if(dataStructs.isEmpty()) dataStructsCondition.await(5, TimeUnit.SECONDS);
 						} catch(InterruptedException exception) {
 							//Returning
 							return null;
@@ -3785,6 +3838,8 @@ class ConversationManager {
 							
 							//Returning
 							//return null;
+						} finally {
+							dataStructsLock.unlock();
 						}
 					}
 				} catch(IOException | DataFormatException exception) {
@@ -3802,12 +3857,15 @@ class ConversationManager {
 			@Override
 			protected void onProgressUpdate(Integer... values) {
 				//Getting the view
-				View view = getView();
+				AttachmentInfo attachmentInfo = superReference.get();
+				if(attachmentInfo == null) return;
+				View view = attachmentInfo.getView();
 				if(view == null) return;
 				
 				//Updating the progress bar
 				ProgressBar progressBar = view.findViewById(R.id.progressBar);
-				progressBar.setProgress(values[0]);
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) progressBar.setProgress(values[0], true);
+				else progressBar.setProgress(values[0]);
 			}
 			
 			@Override
@@ -3815,9 +3873,13 @@ class ConversationManager {
 				//Returning if the result is invalid (the task was cancelled)
 				if(result == null) return;
 				
+				//Getting the attachment info
+				AttachmentInfo attachmentInfo = superReference.get();
+				if(attachmentInfo == null) return;
+				
 				//Forwarding the result
-				if(result) onDownloadFinished(targetFile);
-				else onDownloadFailed();
+				if(result) attachmentInfo.onDownloadFinished(targetFile);
+				else attachmentInfo.onDownloadFailed();
 			}
 		}
 		
@@ -3880,7 +3942,7 @@ class ConversationManager {
 			convertView.setLayoutParams(layoutParams);
 			
 			//Setting the view color
-			updateViewColor(context.getResources(), convertView);
+			updateViewColor(convertView);
 			
 			//Updating the content view
 			updateContentView(convertView);
@@ -3896,29 +3958,29 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources, View itemView) {
+		void updateViewColor(View itemView) {
 			//Creating the color values
 			ColorStateList textColorStateList;
-			ColorStateList colorStateList;
+			ColorStateList backgroundColorStateList;
 			ColorStateList accentColorStateList;
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
-				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
+				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
+				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageIncomingText, null));
-				colorStateList = ColorStateList.valueOf(bubbleColor);
+				
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
+				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
 			
 			//Coloring the views
 			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			//Constants.printViewHierarchy((ViewGroup) downloadView, "Download view");
-			downloadView.setBackgroundTintList(colorStateList);
+			downloadView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
 			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
 			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
@@ -3927,7 +3989,7 @@ class ConversationManager {
 			progressBar.setProgressBackgroundTintList(accentColorStateList);
 			
 			View failedView = itemView.findViewById(R.id.failedcontent);
-			failedView.setBackgroundTintList(colorStateList);
+			failedView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) failedView.findViewById(R.id.failedcontent_label)).setTextColor(textColorStateList);
 			((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
 		}
@@ -4060,8 +4122,8 @@ class ConversationManager {
 			
 			//Assigning the drawable
 			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content).findViewById(R.id.content_background).setBackground(drawable);
-			itemView.findViewById(R.id.failedcontent).setBackground(drawable);
+			itemView.findViewById(R.id.content).findViewById(R.id.content_background).setBackground(drawable.getConstantState().newDrawable());
+			itemView.findViewById(R.id.failedcontent).setBackground(drawable.getConstantState().newDrawable());
 			
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
@@ -4095,7 +4157,7 @@ class ConversationManager {
 			intent.setDataAndType(content, mimeType);
 			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 			if(intent.resolveActivity(activity.getPackageManager()) != null) activity.startActivity(intent);
-			else Toast.makeText(activity, R.string.intent_noactivity, Toast.LENGTH_SHORT).show();
+			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
 		}
 	}
 	
@@ -4137,7 +4199,7 @@ class ConversationManager {
 			convertView.setLayoutParams(layoutParams);
 			
 			//Setting the view color
-			updateViewColor(context.getResources(), convertView);
+			updateViewColor(convertView);
 			
 			//Updating the content view
 			updateContentView(convertView);
@@ -4153,28 +4215,29 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources, View itemView) {
+		void updateViewColor(View itemView) {
 			//Creating the color values
 			ColorStateList textColorStateList;
-			ColorStateList colorStateList;
+			ColorStateList backgroundColorStateList;
 			ColorStateList accentColorStateList;
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
-				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
+				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
+				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageIncomingText, null));
-				colorStateList = ColorStateList.valueOf(bubbleColor);
+				
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
+				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
 			
 			//Coloring the views
 			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			downloadView.setBackgroundTintList(colorStateList);
+			downloadView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
 			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
 			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
@@ -4182,15 +4245,15 @@ class ConversationManager {
 			progressBar.setIndeterminateTintList(accentColorStateList);
 			progressBar.setProgressBackgroundTintList(accentColorStateList);
 			
-			itemView.findViewById(R.id.content).setBackgroundTintList(colorStateList);
+			itemView.findViewById(R.id.content).setBackgroundTintList(backgroundColorStateList);
 			((ImageView) itemView.findViewById(R.id.button_play_pause_toggle)).setImageTintList(textColorStateList);
 			((TextView) itemView.findViewById(R.id.audio_duration)).setTextColor(textColorStateList);
 			ProgressBar audioProgressBar = itemView.findViewById(R.id.audio_progress_bar);
-			audioProgressBar.setBackgroundTintList(colorStateList);
+			audioProgressBar.setBackgroundTintList(backgroundColorStateList);
 			audioProgressBar.setProgressTintList(textColorStateList);
 			
 			View failedView = itemView.findViewById(R.id.failedcontent);
-			failedView.setBackgroundTintList(colorStateList);
+			failedView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) failedView.findViewById(R.id.failedcontent_label)).setTextColor(textColorStateList);
 			((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
 		}
@@ -4326,7 +4389,7 @@ class ConversationManager {
 			
 			//Assigning the drawable
 			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content).setBackground(drawable);
+			itemView.findViewById(R.id.content).setBackground(drawable.getConstantState().newDrawable());
 			itemView.findViewById(R.id.failedcontent).setBackground(drawable);
 		}
 		
@@ -4450,7 +4513,7 @@ class ConversationManager {
 			convertView.setLayoutParams(layoutParams);
 			
 			//Setting the view color
-			updateViewColor(context.getResources(), convertView);
+			updateViewColor(convertView);
 			
 			//Updating the content view
 			updateContentView(convertView);
@@ -4466,31 +4529,29 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources, View itemView) {
+		void updateViewColor(View itemView) {
 			//Creating the color values
 			ColorStateList textColorStateList;
-			ColorStateList colorStateList;
+			ColorStateList backgroundColorStateList;
 			ColorStateList accentColorStateList;
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
-				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
+				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
+				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageIncomingText, null));
-				colorStateList = ColorStateList.valueOf(bubbleColor);
+				
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
+				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
 			
 			//Coloring the views
 			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			if(itemView.findViewById(R.id.downloadcontent) == null) {
-				Constants.printViewHierarchy((ViewGroup) itemView, "Item view");
-			}
-			downloadView.setBackgroundTintList(colorStateList);
+			downloadView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
 			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
 			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
@@ -4499,7 +4560,7 @@ class ConversationManager {
 			progressBar.setProgressBackgroundTintList(accentColorStateList);
 			
 			View failedView = itemView.findViewById(R.id.failedcontent);
-			failedView.setBackgroundTintList(colorStateList);
+			failedView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) failedView.findViewById(R.id.failedcontent_label)).setTextColor(textColorStateList);
 			((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
 		}
@@ -4587,7 +4648,7 @@ class ConversationManager {
 					@Override
 					public void onImageDecoded(Bitmap bitmap, boolean wasTasked) {
 						//Getting the item view
-						View itemView = viewSource.get(true);
+						View itemView = viewSource.get(wasTasked);
 						if(itemView == null) return;
 						
 						//Checking if the bitmap is invalid
@@ -4628,8 +4689,8 @@ class ConversationManager {
 			
 			//Assigning the drawable
 			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content_background).setBackground(drawable);
-			itemView.findViewById(R.id.failedcontent).setBackground(drawable);
+			itemView.findViewById(R.id.content_background).setBackground(drawable.getConstantState().newDrawable());
+			itemView.findViewById(R.id.failedcontent).setBackground(drawable.getConstantState().newDrawable());
 			
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
@@ -4660,7 +4721,7 @@ class ConversationManager {
 			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 			if(intent.resolveActivity(activity.getPackageManager()) != null)
 				activity.startActivity(intent);
-			else Toast.makeText(activity, R.string.intent_noactivity, Toast.LENGTH_SHORT).show();
+			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
 		}
 	}
 	
@@ -4696,7 +4757,7 @@ class ConversationManager {
 			convertView.setLayoutParams(layoutParams);
 			
 			//Setting the view color
-			updateViewColor(context.getResources(), convertView);
+			updateViewColor(convertView);
 			
 			//Updating the content view
 			updateContentView(convertView);
@@ -4712,28 +4773,29 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(Resources resources, View itemView) {
+		void updateViewColor(View itemView) {
 			//Creating the color values
 			ColorStateList textColorStateList;
-			ColorStateList colorStateList;
+			ColorStateList backgroundColorStateList;
 			ColorStateList accentColorStateList;
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingText, null));
-				colorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageOutgoingAccent, null));
+				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
+				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColorStateList = ColorStateList.valueOf(resources.getColor(R.color.colorMessageIncomingText, null));
-				colorStateList = ColorStateList.valueOf(bubbleColor);
+				
+				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
+				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
 				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
 			
 			//Coloring the views
 			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			downloadView.setBackgroundTintList(colorStateList);
+			downloadView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
 			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
 			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
@@ -4742,7 +4804,7 @@ class ConversationManager {
 			progressBar.setProgressBackgroundTintList(accentColorStateList);
 			
 			View contentView = itemView.findViewById(R.id.content);
-			contentView.setBackgroundTintList(colorStateList);
+			contentView.setBackgroundTintList(backgroundColorStateList);
 			((TextView) contentView.findViewById(R.id.content_label)).setTextColor(textColorStateList);
 			((ImageView) contentView.findViewById(R.id.content_button)).setImageTintList(textColorStateList);
 		}
@@ -4810,7 +4872,7 @@ class ConversationManager {
 			
 			//Assigning the drawable
 			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content).setBackground(drawable);
+			itemView.findViewById(R.id.content).setBackground(drawable.getConstantState().newDrawable());
 		}
 		
 		@Override
@@ -4834,7 +4896,7 @@ class ConversationManager {
 			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 			if(intent.resolveActivity(activity.getPackageManager()) != null)
 				activity.startActivity(intent);
-			else Toast.makeText(activity, R.string.intent_noactivity, Toast.LENGTH_SHORT).show();
+			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
 		}
 	}
 	
@@ -4846,16 +4908,14 @@ class ConversationManager {
 		private int messageIndex;
 		private String sender;
 		private long date;
-		private byte[] compressedData;
 		
-		StickerInfo(long localID, String guid, long messageID, int messageIndex, String sender, long date, byte[] compressedData) {
+		StickerInfo(long localID, String guid, long messageID, int messageIndex, String sender, long date) {
 			this.localID = localID;
 			this.guid = guid;
 			this.messageID = messageID;
 			this.messageIndex = messageIndex;
 			this.sender = sender;
 			this.date = date;
-			this.compressedData = compressedData;
 		}
 		
 		long getMessageID() {
@@ -5061,27 +5121,27 @@ class ConversationManager {
 			//Returning the message based on the action type
 			if(actionType == Constants.groupActionInvite) {
 				if(Objects.equals(agent, other)) {
-					if(agent == null) return context.getString(R.string.eventtype_join_you);
-					else return context.getString(R.string.eventtype_join, agent);
+					if(agent == null) return context.getString(R.string.message_eventtype_join_you);
+					else return context.getString(R.string.message_eventtype_join, agent);
 				} else {
-					if(agent == null) return context.getString(R.string.eventtype_invite_you_agent, other);
-					else if(other == null) return context.getString(R.string.eventtype_invite_you_object, agent);
-					else return context.getString(R.string.eventtype_invite, agent, other);
+					if(agent == null) return context.getString(R.string.message_eventtype_invite_you_agent, other);
+					else if(other == null) return context.getString(R.string.message_eventtype_invite_you_object, agent);
+					else return context.getString(R.string.message_eventtype_invite, agent, other);
 				}
 			}
 			else if(actionType == Constants.groupActionLeave) {
 				if(Objects.equals(agent, other)) {
-					if(agent == null) return context.getString(R.string.eventtype_leave_you);
-					else return context.getString(R.string.eventtype_leave, agent);
+					if(agent == null) return context.getString(R.string.message_eventtype_leave_you);
+					else return context.getString(R.string.message_eventtype_leave, agent);
 				} else {
-					if(agent == null) return context.getString(R.string.eventtype_kick_you_agent, other);
-					else if(other == null) return context.getString(R.string.eventtype_kick_you_object, agent);
-					else return context.getString(R.string.eventtype_kick, agent, other);
+					if(agent == null) return context.getString(R.string.message_eventtype_kick_you_agent, other);
+					else if(other == null) return context.getString(R.string.message_eventtype_kick_you_object, agent);
+					else return context.getString(R.string.message_eventtype_kick, agent, other);
 				}
 			}
 			
 			//Returning an unknown message
-			return context.getString(R.string.eventtype_unknown);
+			return context.getString(R.string.message_eventtype_unknown);
 		}
 		
 		@Override
@@ -5181,11 +5241,11 @@ class ConversationManager {
 		
 		static String getDirectSummary(Context context, String agent, String title) {
 			if(agent == null) {
-				if(title == null) return context.getString(R.string.eventtype_chatrename_remove_you);
-				else return context.getString(R.string.eventtype_chatrename_change_you, title);
+				if(title == null) return context.getString(R.string.message_eventtype_chatrename_remove_you);
+				else return context.getString(R.string.message_eventtype_chatrename_change_you, title);
 			} else {
-				if(title == null) return context.getString(R.string.eventtype_chatrename_remove, agent);
-				else return context.getString(R.string.eventtype_chatrename_change, agent, title);
+				if(title == null) return context.getString(R.string.message_eventtype_chatrename_remove, agent);
+				else return context.getString(R.string.message_eventtype_chatrename_change, agent, title);
 			}
 		}
 		
@@ -5252,7 +5312,7 @@ class ConversationManager {
 		
 		private static String getDirectSummary(Context context) {
 			//Returning the string
-			return context.getResources().getString(R.string.conversation_created);
+			return context.getResources().getString(R.string.message_conversationcreated);
 		}
 		
 		@Override
@@ -5392,35 +5452,35 @@ class ConversationManager {
 				return view;
 			}
 			
-			public TextView getLabelTimeDivider() {
+			TextView getLabelTimeDivider() {
 				return labelTimeDivider;
 			}
 			
-			public TextView getLabelSender() {
+			TextView getLabelSender() {
 				return labelSender;
 			}
 			
-			public ViewGroup getGroupMPC() {
+			ViewGroup getGroupMPC() {
 				return groupMPC;
 			}
 			
-			public TextSwitcher getLabelActivityStatus() {
+			TextSwitcher getLabelActivityStatus() {
 				return labelActivityStatus;
 			}
 			
-			public ViewGroup getGroupEffectReplay() {
+			ViewGroup getGroupEffectReplay() {
 				return groupEffectReplay;
 			}
 			
-			public ProgressWheel getProgressSend() {
+			ProgressWheel getProgressSend() {
 				return progressSend;
 			}
 			
-			public ImageButton getButtonSendError() {
+			ImageButton getButtonSendError() {
 				return buttonSendError;
 			}
 			
-			public void inflateProfile() {
+			void inflateProfile() {
 				//Returning if the profile already exists
 				if(groupProfile != null) return;
 				
@@ -5432,20 +5492,20 @@ class ConversationManager {
 				imageProfileImage = groupProfile.findViewById(R.id.profile_image);
 			}
 			
-			public ViewGroup getProfile() {
+			ViewGroup getProfile() {
 				return groupProfile;
 			}
 			
-			public ImageView getImageProfileDefault() {
+			ImageView getImageProfileDefault() {
 				return imageProfileDefault;
 			}
 			
-			public ImageView getImageProfileImage() {
+			ImageView getImageProfileImage() {
 				return imageProfileImage;
 			}
 		}
 		
-		void updateViewColor(Resources resources) {}
+		void updateViewColor() {}
 		
 		abstract void getSummary(Context context, Constants.ResultCallback<String> resultCallback);
 		
@@ -5643,10 +5703,10 @@ class ConversationManager {
 	
 	enum ContentType {
 		//TEXT (0),
-		IMAGE(1, "image", R.string.contenttype_image),
-		VIDEO(2, "video", R.string.contenttype_video),
-		AUDIO(3, "audio", R.string.contenttype_audio),
-		OTHER(4, "other", R.string.contenttype_other);
+		IMAGE(1, "image", R.string.part_content_image),
+		VIDEO(2, "video", R.string.part_content_video),
+		AUDIO(3, "audio", R.string.part_content_audio),
+		OTHER(4, "other", R.string.part_content_other);
 		
 		//Creating the values
 		private final int identifier;
