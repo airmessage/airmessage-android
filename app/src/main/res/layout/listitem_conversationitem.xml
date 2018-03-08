@@ -103,7 +103,7 @@
 					android:layout_marginLeft="11.5dp"
 					android:layout_marginRight="11.5dp"
 					android:layout_marginTop="2.5dp"
-					android:background="@drawable/ripple_rounded"
+					android:background="?attr/selectableItemBackground"
 					android:clickable="true"
 					android:focusable="true"
 					android:orientation="horizontal"
