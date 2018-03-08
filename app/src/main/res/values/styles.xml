@@ -47,7 +47,7 @@
 		<item name="android:windowLightStatusBar">true</item>
 	</style>
 	
-	<style name="DialogTheme" parent="@style/Theme.AppCompat.DayNight.Dialog"> <!-- @android:style/Theme.Material.Light.Dialog.NoActionBar -->
+	<style name="ActivityDialogTheme" parent="@style/Theme.AppCompat.DayNight.Dialog"> <!-- @android:style/Theme.Material.Light.Dialog.NoActionBar -->
 		<!-- <item name="colorPrimary">@color/colorPrimary</item>
 		<item name="android:colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>

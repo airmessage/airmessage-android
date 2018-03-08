@@ -13,6 +13,7 @@ import android.graphics.drawable.Drawable;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
@@ -72,6 +73,10 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.DataFormatException;
 
 import me.tagavari.airmessage.common.SharedValues;
@@ -2797,7 +2802,7 @@ class ConversationManager {
 			//Iterating over the stickers
 			for(StickerInfo sticker : stickers) {
 				//Decoding the sticker
-				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromCompressedBytes(sticker.guid, sticker.compressedData, new BitmapCacheHelper.ImageDecodeResult() {
+				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromDBSticker(sticker.guid, sticker.localID, new BitmapCacheHelper.ImageDecodeResult() {
 					@Override
 					void onImageMeasured(int width, int height) {}
 					
@@ -2846,7 +2851,7 @@ class ConversationManager {
 			stickers.add(sticker);
 			
 			//Decoding the sticker
-			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromCompressedBytes(sticker.guid, sticker.compressedData, new BitmapCacheHelper.ImageDecodeResult() {
+			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromDBSticker(sticker.guid, sticker.localID, new BitmapCacheHelper.ImageDecodeResult() {
 				@Override
 				void onImageMeasured(int width, int height) {}
 				
@@ -3336,9 +3341,6 @@ class ConversationManager {
 				if(isLast) {
 					//Stopping the timer
 					stopTimer(false);
-					
-					//Filling the progress bar
-					((ProgressBar) view.findViewById(R.id.progressBar)).setProgress(100);
 				} else {
 					//Restarting the timer
 					stopTimer(true);
@@ -3353,15 +3355,21 @@ class ConversationManager {
 			//Checking if there is no save thread
 			if(attachmentWriterThread == null) {
 				//Creating and starting the attachment writer thread
-				attachmentWriterThread = new AttachmentWriter(context.getApplicationContext());
+				attachmentWriterThread = new AttachmentWriter(context.getApplicationContext(), this);
 				attachmentWriterThread.execute();
 			}
 			
 			//Adding the data struct
-			synchronized(attachmentWriterThread.dataStructsLock) {
+			attachmentWriterThread.dataStructsLock.lock();
+			try {
 				attachmentWriterThread.dataStructs.add(new AttachmentWriterDataStruct(compressedBytes, isLast));
-				attachmentWriterThread.dataStructsLock.notifyAll();
+				attachmentWriterThread.dataStructsCondition.signal();
+			} finally {
+				attachmentWriterThread.dataStructsLock.unlock();
 			}
+			/* synchronized(attachmentWriterThread.dataStructsLock) {
+				attachmentWriterThread.dataStructsLock.notifyAll();
+			} */
 			
 			/* //Launching a new asynchronous task
 			new AsyncTask<Context, Void, File>() {
@@ -3460,8 +3468,8 @@ class ConversationManager {
 				
 				//Getting and preparing the progress bar
 				ProgressBar progressBar = view.findViewById(R.id.progressBar);
-				progressBar.setIndeterminate(true);
 				progressBar.setProgress(0);
+				progressBar.setIndeterminate(true);
 				progressBar.setVisibility(View.VISIBLE);
 			}
 		}
@@ -3737,30 +3745,35 @@ class ConversationManager {
 			}
 		}
 		
-		//TODO convert to static class to avoid reference leaking
-		private class AttachmentWriter extends AsyncTask<Void, Integer, Boolean> {
+		private static class AttachmentWriter extends AsyncTask<Void, Integer, Boolean> {
 			//Creating the references
 			final WeakReference<Context> contextReference;
+			final WeakReference<AttachmentInfo> superReference;
 			
-			final Object dataStructsLock = new Object();
+			final Lock dataStructsLock = new ReentrantLock();
+			final Condition dataStructsCondition = dataStructsLock.newCondition();
 			ArrayList<AttachmentWriterDataStruct> dataStructs = new ArrayList<>();
 			
 			//Creating the process values
 			File targetFile;
 			
-			AttachmentWriter(Context context) {
+			AttachmentWriter(Context context, AttachmentInfo superclass) {
 				//Setting the references
 				contextReference = new WeakReference<>(context);
+				superReference = new WeakReference<>(superclass);
 			}
 			
 			@Override
 			protected Boolean doInBackground(Void... params) {
-				//Getting the context
+				//Getting the references
 				Context context = contextReference.get();
 				if(context == null) return false;
 				
+				AttachmentInfo attachmentInfo = superReference.get();
+				if(attachmentInfo == null) return false;
+				
 				//Getting the file path
-				File directory = new File(MainApplication.getDownloadDirectory(context), Long.toString(localID));
+				File directory = new File(MainApplication.getDownloadDirectory(context), Long.toString(attachmentInfo.localID));
 				if(!directory.exists()) directory.mkdir();
 				else if(directory.isFile()) {
 					Constants.recursiveDelete(directory);
@@ -3768,7 +3781,7 @@ class ConversationManager {
 				}
 				
 				//Preparing to write to the file
-				targetFile = new File(directory, fileName);
+				targetFile = new File(directory, attachmentInfo.fileName);
 				try(FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 					while(true) {
 						//Returning if the task has been cancelled
@@ -3776,11 +3789,14 @@ class ConversationManager {
 						
 						//Moving the structs (to be able to release the lock sooner)
 						ArrayList<AttachmentWriterDataStruct> localDataStructs = new ArrayList<>();
-						synchronized(dataStructsLock) {
+						dataStructsLock.lock();
+						try {
 							if(!dataStructs.isEmpty()) {
 								localDataStructs = dataStructs;
 								dataStructs = new ArrayList<>();
 							}
+						} finally {
+							dataStructsLock.unlock();
 						}
 						
 						//Iterating over the data structs
@@ -3792,10 +3808,10 @@ class ConversationManager {
 							outputStream.write(bytes);
 							
 							//Adding to the bytes written
-							bytesWritten += bytes.length;
+							attachmentInfo.bytesWritten += bytes.length;
 							
 							//Updating the progress
-							publishProgress((int) ((double) bytesWritten / (double) fileSize * 100D));
+							publishProgress((int) ((float) attachmentInfo.bytesWritten / (float) attachmentInfo.fileSize * 100F));
 							
 							//Checking if the file is the last one
 							if(dataStruct.isLast) {
@@ -3803,7 +3819,7 @@ class ConversationManager {
 								//cleanThread();
 								
 								//Saving to the database
-								DatabaseManager.updateAttachmentFile(DatabaseManager.getWritableDatabase(context), localID, targetFile);
+								DatabaseManager.updateAttachmentFile(DatabaseManager.getWritableDatabase(context), attachmentInfo.localID, targetFile);
 								
 								//Returning true
 								return true;
@@ -3811,10 +3827,9 @@ class ConversationManager {
 						}
 						
 						//Waiting for entries to appear
+						dataStructsLock.lock();
 						try {
-							synchronized(dataStructsLock) {
-								dataStructsLock.wait(10 * 1000); //10-second timeout
-							}
+							if(dataStructs.isEmpty()) dataStructsCondition.await(5, TimeUnit.SECONDS);
 						} catch(InterruptedException exception) {
 							//Returning
 							return null;
@@ -3823,6 +3838,8 @@ class ConversationManager {
 							
 							//Returning
 							//return null;
+						} finally {
+							dataStructsLock.unlock();
 						}
 					}
 				} catch(IOException | DataFormatException exception) {
@@ -3840,12 +3857,15 @@ class ConversationManager {
 			@Override
 			protected void onProgressUpdate(Integer... values) {
 				//Getting the view
-				View view = getView();
+				AttachmentInfo attachmentInfo = superReference.get();
+				if(attachmentInfo == null) return;
+				View view = attachmentInfo.getView();
 				if(view == null) return;
 				
 				//Updating the progress bar
 				ProgressBar progressBar = view.findViewById(R.id.progressBar);
-				progressBar.setProgress(values[0]);
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) progressBar.setProgress(values[0], true);
+				else progressBar.setProgress(values[0]);
 			}
 			
 			@Override
@@ -3853,9 +3873,13 @@ class ConversationManager {
 				//Returning if the result is invalid (the task was cancelled)
 				if(result == null) return;
 				
+				//Getting the attachment info
+				AttachmentInfo attachmentInfo = superReference.get();
+				if(attachmentInfo == null) return;
+				
 				//Forwarding the result
-				if(result) onDownloadFinished(targetFile);
-				else onDownloadFailed();
+				if(result) attachmentInfo.onDownloadFinished(targetFile);
+				else attachmentInfo.onDownloadFailed();
 			}
 		}
 		
@@ -4884,16 +4908,14 @@ class ConversationManager {
 		private int messageIndex;
 		private String sender;
 		private long date;
-		private byte[] compressedData;
 		
-		StickerInfo(long localID, String guid, long messageID, int messageIndex, String sender, long date, byte[] compressedData) {
+		StickerInfo(long localID, String guid, long messageID, int messageIndex, String sender, long date) {
 			this.localID = localID;
 			this.guid = guid;
 			this.messageID = messageID;
 			this.messageIndex = messageIndex;
 			this.sender = sender;
 			this.date = date;
-			this.compressedData = compressedData;
 		}
 		
 		long getMessageID() {

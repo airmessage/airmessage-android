@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.regex.Pattern;
+import java.util.zip.DataFormatException;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -2322,8 +2323,14 @@ public class ConnectionService extends Service {
 				//Otherwise checking if the modifier is a sticker update
 				else if(modifierInfo instanceof SharedValues.StickerModifierInfo) {
 					//Updating the modifier in the database
-					ConversationManager.StickerInfo sticker = DatabaseManager.addMessageSticker(writableDatabase, (SharedValues.StickerModifierInfo) modifierInfo);
-					if(sticker != null) stickerModifiers.add(sticker);
+					SharedValues.StickerModifierInfo stickerInfo = (SharedValues.StickerModifierInfo) modifierInfo;
+					try {
+						stickerInfo.image = SharedValues.decompress(stickerInfo.image);
+						ConversationManager.StickerInfo sticker = DatabaseManager.addMessageSticker(writableDatabase, stickerInfo);
+						if(sticker != null) stickerModifiers.add(sticker);
+					} catch(IOException | DataFormatException exception) {
+						exception.printStackTrace();
+					}
 				}
 				//Otherwise checking if the modifier is a tapback update
 				else if(modifierInfo instanceof SharedValues.TapbackModifierInfo) {

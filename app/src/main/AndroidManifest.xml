@@ -85,7 +85,7 @@
 			android:exported="true"
 			android:name=".ShareHandler"
 			android:noHistory="true"
-			android:theme="@style/DialogTheme">
+			android:theme="@style/ActivityDialogTheme">
 			<intent-filter>
 				<action android:name="android.intent.action.SEND" />
 				<category android:name="android.intent.category.DEFAULT" />

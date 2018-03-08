@@ -26,11 +26,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.DataFormatException;
-
-import me.tagavari.airmessage.common.SharedValues;
 
 class BitmapCacheHelper {
+	//Creating the reference values
+	private static final String cachePrefixAttachment = "attachment-";
+	private static final String cachePrefixContact = "contact-";
+	private static final String cachePrefixSticker = "sticker-";
 	//Creating the values
 	private LruCache<String, Bitmap> bitmapCache;
 	private List<String> failedBitmapCache = new ArrayList<>();
@@ -108,6 +109,9 @@ class BitmapCacheHelper {
 	}
 	
 	void getBitmapFromImageFile(String id, File file, ImageDecodeResult callbacks, boolean resize, int pxMinX, int pxMinY) {
+		//Prefixing the identifier
+		id = cachePrefixAttachment + id;
+		
 		//Checking if there is an entry in the cache
 		Bitmap bitmap = bitmapCache.get(id);
 		
@@ -135,6 +139,9 @@ class BitmapCacheHelper {
 			callbacks.onImageDecoded(null, false);
 			return;
 		}
+		
+		//Prefixing the identifier
+		id = cachePrefixContact + id;
 		
 		//Checking if there is an entry in the cache
 		Bitmap bitmap = bitmapCache.get(id);
@@ -164,6 +171,9 @@ class BitmapCacheHelper {
 			return;
 		}
 		
+		//Prefixing the identifier
+		id = cachePrefixContact + id;
+		
 		//Checking if there is an entry in the cache
 		Bitmap bitmap = bitmapCache.get(id);
 		
@@ -186,6 +196,9 @@ class BitmapCacheHelper {
 	}
 	
 	void getBitmapFromVideoFile(String id, File file, ImageDecodeResult callbacks) {
+		//Prefixing the identifier
+		id = cachePrefixAttachment + id;
+		
 		//Checking if there is an entry in the cache
 		Bitmap bitmap = bitmapCache.get(id);
 		
@@ -207,7 +220,10 @@ class BitmapCacheHelper {
 		else callbacks.onImageDecoded(bitmap, false);
 	}
 	
-	void getBitmapFromCompressedBytes(String id, byte[] bytes, ImageDecodeResult callbacks) {
+	void getBitmapFromDBSticker(String id, long identifier, ImageDecodeResult callbacks) {
+		//Prefixing the identifier
+		id = cachePrefixSticker + id;
+		
 		//Checking if there is an entry in the cache
 		Bitmap bitmap = bitmapCache.get(id);
 		
@@ -223,7 +239,7 @@ class BitmapCacheHelper {
 			}
 			
 			//Starting the task
-			new DecodeBytesTask(id, this).execute(bytes);
+			new DecodeStickerTask(MainApplication.getInstance(), id, this).execute(identifier);
 		}
 		//Otherwise immediately telling the callback listener
 		else callbacks.onImageDecoded(bitmap, false);
@@ -547,35 +563,33 @@ class BitmapCacheHelper {
 		}
 	}
 	
-	private static class DecodeBytesTask extends AsyncTask<byte[], Integer, Bitmap> {
-		//Creating the values
-		private final String requestKey;
+	private static class DecodeStickerTask extends AsyncTask<Long, Integer, Bitmap> {
+		//Creating the references
+		private final WeakReference<Context> contextReference;
 		private final WeakReference<BitmapCacheHelper> superclassReference;
 		
-		DecodeBytesTask(String requestKey, BitmapCacheHelper superclass) {
+		//Creating the values
+		private final String requestKey;
+		
+		DecodeStickerTask(Context context, String requestKey, BitmapCacheHelper superclass) {
 			//Setting the values
+			contextReference = new WeakReference<>(context);
 			this.requestKey = requestKey;
 			superclassReference = new WeakReference<>(superclass);
 		}
 		
 		@Override
-		protected Bitmap doInBackground(byte[]... parameters) {
-			//Getting the bytes
-			byte[] bytes = parameters[0];
+		protected Bitmap doInBackground(Long... parameters) {
+			//Getting the context
+			Context context = contextReference.get();
+			if(context == null) return null;
 			
-			try {
-				//Decompressing the bytes
-				bytes = SharedValues.decompress(bytes);
-			} catch(IOException | DataFormatException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				
-				//Returning null
-				return null;
-			}
+			//Fetching the bytes from the database
+			byte[] imageBlob = DatabaseManager.getStickerBlob(DatabaseManager.getReadableDatabase(context), parameters[0]);
+			if(imageBlob == null) return null;
 			
 			//Returning the bitmap
-			return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+			return BitmapFactory.decodeByteArray(imageBlob, 0, imageBlob.length);
 		}
 		
 		@Override

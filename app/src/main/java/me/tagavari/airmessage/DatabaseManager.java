@@ -10,9 +10,11 @@ import android.provider.BaseColumns;
 import android.util.Base64;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.zip.DataFormatException;
 
 import me.tagavari.airmessage.common.SharedValues;
 
@@ -145,45 +147,52 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Adding the "date read" column
 				db.execSQL("ALTER TABLE " + Contract.MessageEntry.TABLE_NAME + " ADD " + Contract.MessageEntry.COLUMN_NAME_DATEREAD + " INTEGER;");
 				
-				//Adding the sticker and tapback table
+				//Adding the sticker and tapback tables
 				db.execSQL(SQL_CREATE_TABLE_STICKER);
 				db.execSQL(SQL_CREATE_TABLE_TAPBACK);
 			case 2:
+				//Obsolete columns: "last_viewed"
+				
+				//Removing the "last viewed" column
+				//dropColumn(db, Contract.ConversationEntry.TABLE_NAME, "last_viewed");
+				
 				//Adding the "unread messages" column
-				db.execSQL("ALTER TABLE " + Contract.ConversationEntry.TABLE_NAME + " ADD " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER;");
+				db.execSQL("ALTER TABLE " + Contract.ConversationEntry.TABLE_NAME + " ADD " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER DEFAULT 0;");
+				
+				//Decompressing the sticker data
+				{
+					Cursor cursor = db.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_DATA}, null, null, null, null, null);
+					int indexID = cursor.getColumnIndex(Contract.StickerEntry._ID);
+					int indexData = cursor.getColumnIndex(Contract.StickerEntry.COLUMN_NAME_DATA);
+					
+					ContentValues contentValues;
+					while(cursor.moveToNext()) {
+						contentValues = new ContentValues();
+						try {
+							contentValues.put(Contract.StickerEntry.COLUMN_NAME_DATA, SharedValues.decompress(cursor.getBlob(indexData)));
+						} catch(IOException | DataFormatException exception) {
+							exception.printStackTrace();
+							continue;
+						}
+						db.update(Contract.StickerEntry.TABLE_NAME, contentValues, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(cursor.getLong(indexID))});
+					}
+					
+					cursor.close();
+				}
 		}
-		
-		//Checking if the version is
-		/* //Querying all tables
-		Cursor cursor = db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'", null);
-		
-		//Adding all tables to the list
-		List<String> tables = new ArrayList<>();
-		while(cursor.moveToNext()) tables.add(cursor.getString(0));
-		
-		//Closing the cursor
-		cursor.close();
-		
-		//Dropping the tables
-		for(String table : tables) db.execSQL("DROP TABLE IF EXISTS " + table);
-		
-		//Creating the database
-		onCreate(db); */
 	}
 	
 	@Override
 	public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-		//Wiping the database
-		Cursor cursor = db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'", null);
-		
-		List<String> tables = new ArrayList<>();
-		while (cursor.moveToNext()) tables.add(cursor.getString(0));
-		cursor.close();
-		
-		for(String table : tables) db.execSQL("DROP TABLE IF EXISTS " + table);
+		//Dropping all tables
+		String[] tableNames = getTableNames(db);
+		for(String table : tableNames) db.execSQL("DROP TABLE IF EXISTS " + table);
 		
 		//Rebuilding the database
 		onCreate(db);
+		
+		//Shrinking the database
+		//db.execSQL("VACUUM;");
 	}
 	
 	static final class Contract {
@@ -270,6 +279,42 @@ class DatabaseManager extends SQLiteOpenHelper {
 	static SQLiteDatabase getWritableDatabase(Context context) {
 		//Getting the readable database
 		return getInstance(context).getWritableDatabase();
+	}
+	
+	//DO NOT USE, CAUSES ISSUES
+	static void dropColumn(SQLiteDatabase writableDatabase, String tableName, String columnName) {
+		//Fetching the column names of the table
+		String columnNames[] = getColumnNames(writableDatabase, tableName);
+		StringBuilder columnTargetSB = new StringBuilder();
+		for(String column : columnNames) if(!column.equals(columnName)) columnTargetSB.append(',').append(column);
+		String columnTarget = columnTargetSB.toString();
+		
+		//Dropping the column
+		writableDatabase.execSQL(
+				"BEGIN TRANSACTION;" +
+						"CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnTarget + ");" +
+						"INSERT INTO " + tableName + "_backup SELECT " + columnTarget + " FROM " + tableName + ";" +
+						"DROP TABLE " + tableName + ";" +
+						"CREATE TABLE " + tableName + "(" + columnTarget + ");" +
+						"INSERT INTO " + tableName + " SELECT " + columnTarget + " FROM " + tableName + "_backup;" +
+						"DROP TABLE " + tableName + "_backup;" +
+						"COMMIT;"
+		);
+	}
+	
+	static String[] getTableNames(SQLiteDatabase readableDatabase) {
+		List<String> tableNames = new ArrayList<>();
+		Cursor cursor = readableDatabase.rawQuery("SELECT name FROM sqlite_master WHERE type='table'", null);
+		//int indexName = cursor.getColumnIndex("name");
+		while(cursor.moveToNext()) tableNames.add(cursor.getString(0));
+		cursor.close();
+		return tableNames.toArray(new String[0]);
+	}
+	
+	static String[] getColumnNames(SQLiteDatabase readableDatabase, String tableName) {
+		try(Cursor cursor = readableDatabase.query(tableName, null, null, null, null, null, null)) {
+			return cursor.getColumnNames();
+		}
 	}
 	
 	static ArrayList<ConversationManager.ConversationInfo> fetchConversationsWithState(Context context, ConversationManager.ConversationInfo.ConversationState conversationState) {
@@ -510,7 +555,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				{
 					//Querying the database for stickers
-					Cursor stickerCursor = readableDatabase.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX, Contract.StickerEntry.COLUMN_NAME_GUID, Contract.StickerEntry.COLUMN_NAME_SENDER, Contract.StickerEntry.COLUMN_NAME_DATE, Contract.StickerEntry.COLUMN_NAME_DATA},
+					Cursor stickerCursor = readableDatabase.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX, Contract.StickerEntry.COLUMN_NAME_GUID, Contract.StickerEntry.COLUMN_NAME_SENDER, Contract.StickerEntry.COLUMN_NAME_DATE},
 							Contract.StickerEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
 					
 					//Getting the indexes
@@ -519,10 +564,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 					int sIdentifierGuid = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_GUID);
 					int sIdentifierSender = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_SENDER);
 					int sIdentifierDate = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_DATE);
-					int sIdentifierData = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_DATA);
 					
 					//Adding the results to the message
-					while(stickerCursor.moveToNext()) messageInfo.addSticker(new ConversationManager.StickerInfo(stickerCursor.getLong(sIdentifierIndex), stickerCursor.getString(sIdentifierGuid), identifier, stickerCursor.getInt(sIdentifierMessageIndex), stickerCursor.getString(sIdentifierSender), stickerCursor.getLong(sIdentifierDate), stickerCursor.getBlob(sIdentifierData)));
+					while(stickerCursor.moveToNext()) messageInfo.addSticker(new ConversationManager.StickerInfo(stickerCursor.getLong(sIdentifierIndex), stickerCursor.getString(sIdentifierGuid), identifier, stickerCursor.getInt(sIdentifierMessageIndex), stickerCursor.getString(sIdentifierSender), stickerCursor.getLong(sIdentifierDate)));
 					
 					//Closing the sticker cursor
 					stickerCursor.close();
@@ -1541,7 +1585,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			}
 			
 			//Adding the sticker to the list
-			list.add(new ConversationManager.StickerInfo(rowID, sticker.fileGuid, messageID, sticker.messageIndex, sticker.sender, sticker.date, sticker.image));
+			list.add(new ConversationManager.StickerInfo(rowID, sticker.fileGuid, messageID, sticker.messageIndex, sticker.sender, sticker.date));
 		}
 		
 		//Returning the list
@@ -1765,15 +1809,19 @@ class DatabaseManager extends SQLiteOpenHelper {
 		//Getting the writable database
 		SQLiteDatabase database = getInstance(context).getWritableDatabase();
 		
-		//Deleting all items
-		/* database.execSQL("DELETE FROM " + Contract.MessageEntry.TABLE_NAME + ";");
-		database.execSQL("DELETE FROM " + Contract.ConversationEntry.TABLE_NAME + ";");
-		database.execSQL("DELETE FROM " + Contract.MemberEntry.TABLE_NAME + ";");
-		database.execSQL("DELETE FROM " + Contract.AttachmentEntry.TABLE_NAME + ";"); */
-		database.delete(Contract.MessageEntry.TABLE_NAME, null, null);
+		//Clearing the tables
+		String tableNames[] = getTableNames(database);
+		for(String table : tableNames) database.delete(table, null, null);
+		
+		//Shrinking the database
+		//database.execSQL("VACUUM;");
+		
+		/* database.delete(Contract.MessageEntry.TABLE_NAME, null, null);
 		database.delete(Contract.ConversationEntry.TABLE_NAME, null, null);
 		database.delete(Contract.MemberEntry.TABLE_NAME, null, null);
 		database.delete(Contract.AttachmentEntry.TABLE_NAME, null, null);
+		database.delete(Contract.StickerEntry.TABLE_NAME, null, null);
+		database.delete(Contract.TapbackEntry.TABLE_NAME, null, null); */
 	}
 	
 	static void updateConversation(SQLiteDatabase writableDatabase, long conversationID, ContentValues contentValues) {
@@ -1846,7 +1894,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		//Returning the sticker info
-		return new ConversationManager.StickerInfo(localID, sticker.fileGuid, messageID, sticker.messageIndex, sticker.sender, sticker.date, sticker.image);
+		return new ConversationManager.StickerInfo(localID, sticker.fileGuid, messageID, sticker.messageIndex, sticker.sender, sticker.date);
+	}
+	
+	static byte[] getStickerBlob(SQLiteDatabase readableDatabase, long identifier) {
+		try(Cursor cursor = readableDatabase.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry.COLUMN_NAME_DATA}, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(identifier)}, null, null, null, "1")) {
+			if(cursor.moveToNext()) return cursor.getBlob(0);
+			return null;
+		}
 	}
 	
 	static ConversationManager.TapbackInfo addMessageTapback(SQLiteDatabase writableDatabase, SharedValues.TapbackModifierInfo tapback) {
