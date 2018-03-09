@@ -14,7 +14,6 @@ import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.DrawableRes;
@@ -55,8 +54,6 @@ import android.widget.Toast;
 import com.pnikosis.materialishprogress.ProgressWheel;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
 import java.text.DateFormat;
@@ -73,11 +70,6 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.zip.DataFormatException;
 
 import me.tagavari.airmessage.common.SharedValues;
 
@@ -308,41 +300,6 @@ class ConversationManager {
 		
 		//Returning the list
 		return list;
-	}
-	
-	static ConversationManager.AttachmentInfo findAttachmentInfoInActiveConversation(String guid) {
-		//Finding the attachment info
-		for(long conversationID : Messaging.getForegroundConversations()) {
-			ConversationManager.ConversationInfo conversationInfo = findConversationInfo(conversationID);
-			if(conversationInfo == null) continue;
-			ConversationManager.AttachmentInfo attachmentInfo = conversationInfo.findAttachmentInfo(guid);
-			if(attachmentInfo != null) return attachmentInfo;
-		}
-		
-		//Returning null
-		return null;
-	}
-	
-	static void processFileFragmentConfirmed(String guid, short requestID) {
-		//Finding the attachment info
-		ConversationManager.AttachmentInfo attachmentInfo = findAttachmentInfoInActiveConversation(guid);
-		if(attachmentInfo == null || !attachmentInfo.compareRequestID(requestID)) return;
-		attachmentInfo.stopTimer(true);
-	}
-	
-	static void processFileFragmentFailed(String guid, short requestID) {
-		//Finding the attachment info
-		ConversationManager.AttachmentInfo attachmentInfo = findAttachmentInfoInActiveConversation(guid);
-		if(attachmentInfo == null || !attachmentInfo.compareRequestID(requestID)) return;
-		attachmentInfo.onDownloadFailed();
-	}
-	
-	static void processFileFragmentData(Context context, String guid, short requestID, byte[] compressedBytes, int index, boolean isLast, long fileSize) {
-		//Finding the attachment info
-		ConversationManager.AttachmentInfo attachmentInfo = findAttachmentInfoInActiveConversation(guid);
-		if(attachmentInfo == null || !attachmentInfo.compareRequestID(requestID)) return;
-		if(fileSize != -1) attachmentInfo.setFileSize(fileSize);
-		attachmentInfo.onFileFragmentReceived(context, compressedBytes, index, isLast);
 	}
 	
 	static class ConversationInfo implements Serializable {
@@ -581,50 +538,6 @@ class ConversationManager {
 			View view = getView();
 			if(view != null) updateViewUser(context, view);
 		}
-		
-		/* private void updateViewUser(Context context, View itemView) {
-			//Returning if the conversation has no members
-			if(conversationMembers.isEmpty()) return;
-			
-			//Setting the title
-			//((TextView) itemView.findViewById(R.id.title)).setText(buildTitle(context));
-			
-			//Getting the conversation icon view
-			ViewGroup conversationIcons = itemView.findViewById(R.id.conversationicon);
-			
-			//Getting the view data
-			currentUserViewIndex = Math.min(conversationMembers.size() - 1, maxUsersToDisplay - 1);
-			View viewAtIndex = conversationIcons.getChildAt(currentUserViewIndex);
-			ViewGroup iconView;
-			if(viewAtIndex instanceof ViewStub)
-				iconView = (ViewGroup) ((ViewStub) viewAtIndex).inflate();
-			else iconView = (ViewGroup) viewAtIndex;
-			
-			//Hiding the other views
-			for(int i = 0; i < maxUsersToDisplay; i++)
-				conversationIcons.getChildAt(i).setVisibility(i == currentUserViewIndex ? View.VISIBLE : View.GONE);
-			
-			//Setting the icons
-			for(int i = 0; i < iconView.getChildCount(); i++) {
-				//Getting the child view
-				View child = iconView.getChildAt(i);
-				
-				//Resetting the contact image
-				((ImageView) child.findViewById(R.id.profile_image)).setImageBitmap(null);
-				
-				//Setting the default profile tint
-				((ImageView) child.findViewById(R.id.profile_default)).setColorFilter(getConversationMembers().get(i).getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
-				
-				//Assigning the user info
-				final int finalIndex = i;
-				MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(context, getConversationMembers().get(i).getStaticTitle(), wasTasked -> {
-					View view = wasTasked ? getView() : itemView;
-					if(view == null) return null;
-					
-					return ((ViewGroup) ((ViewGroup) view.findViewById(R.id.conversationicon)).getChildAt(currentUserViewIndex)).getChildAt(finalIndex).findViewById(R.id.profile_image);
-				});
-			}
-		} */
 		
 		private void updateViewUser(Context context, View itemView) {
 			//Returning if the conversation has no members
@@ -1049,20 +962,6 @@ class ConversationManager {
 			return 0;
 		}
 		
-		/* void updateLastItem(Context context) {
-			//Sorting the conversation items
-			sortConversationItems();
-			
-			//Getting the last conversation item
-			ConversationItem conversationItem = conversationItems.get(conversationItems.size() - 1);
-			
-			//Setting the summary in memory
-			lastItem = conversationItem.toLightConversationItem(context);
-			
-			//Updating the view
-			updateView(context);
-		} */
-		
 		void addGhostMessage(Context context, MessageInfo message) {
 			//Getting the lists
 			ArrayList<ConversationItem> conversationItems = getConversationItems();
@@ -1124,15 +1023,6 @@ class ConversationManager {
 				return null;
 			}
 		}
-		
-		/* void setListAdapter(Messaging.RecyclerAdapter arrayAdapter) {
-			//Setting the adapter
-			arrayAdapterReference = new WeakReference<>(arrayAdapter);
-		}
-		
-		Messaging.RecyclerAdapter getListAdapter() {
-			return arrayAdapterReference == null ? null : arrayAdapterReference.get();
-		} */
 		
 		void setAdapterUpdater(AdapterUpdater adapterUpdater) {
 			this.adapterUpdater = adapterUpdater;
@@ -3259,17 +3149,80 @@ class ConversationManager {
 		//Creating the values
 		final String fileName;
 		File file = null;
-		long fileSize = -1;
 		byte[] fileChecksum = null;
 		Uri fileUri = null;
 		
 		//Creating the attachment request values
-		private AttachmentWriter attachmentWriterThread = null;
-		private CountDownTimer countdownTimer = null;
-		private short requestID = -1;
-		private int lastIndex = -1;
-		private long bytesWritten = 0;
 		boolean isFetching = false;
+		boolean isFetchWaiting = false;
+		float fetchProgress = 0;
+		
+		//Creating the listener values
+		private final ConnectionService.FileDownloadRequestCallbacks fileDownloadRequestCallbacks = new ConnectionService.FileDownloadRequestCallbacks() {
+			@Override
+			public void onResponseReceived() {
+				//Getting the view
+				View view = getView();
+				if(view == null) return;
+				
+				//Setting the progress bar as determinate
+				((ProgressBar) view.findViewById(R.id.progressBar)).setIndeterminate(false);
+			}
+			
+			@Override
+			public void onStart() {}
+			
+			@Override
+			public void onProgress(float progress) {
+				//Getting the view
+				View view = getView();
+				if(view == null) return;
+				
+				//Updating the progress bar's progress
+				ProgressBar progressBar = view.findViewById(R.id.progressBar);
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) progressBar.setProgress((int) (progress * progressBar.getMax()), true);
+				else progressBar.setProgress((int) (progress * progressBar.getMax()));
+			}
+			
+			@Override
+			public void onFinish(File file) {
+				//Getting the view
+				View view = getView();
+				if(view == null) return;
+				
+				//Setting the file in memory
+				AttachmentInfo.this.file = file;
+				
+				//Updating the content view
+				updateContentView();
+				
+				//Swapping to the content view
+				/* view.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
+				view.findViewById(R.id.content).setVisibility(View.VISIBLE); */
+				
+				//Setting the attachment as not fetching
+				isFetching = false;
+			}
+			
+			@Override
+			public void onFail() {
+				//Getting the view
+				View view = getView();
+				if(view == null) return;
+				
+				//Enabling the download button visually
+				view.findViewById(R.id.download_button).setAlpha(1);
+				
+				//Showing the content type
+				view.findViewById(R.id.download_label).setVisibility(View.VISIBLE);
+				
+				//Hiding the progress bar
+				view.findViewById(R.id.progressBar).setVisibility(View.GONE);
+				
+				//Setting the attachment as not fetching
+				isFetching = false;
+			}
+		};
 		
 		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName) {
 			//Calling the super constructor
@@ -3309,109 +3262,20 @@ class ConversationManager {
 		
 		abstract void onClick(Messaging activity);
 		
-		void stopTimer(boolean restart) {
-			countdownTimer.cancel();
-			if(restart) countdownTimer.start();
-		}
-		
-		void setFileSize(long fileSize) {
-			this.fileSize = fileSize;
-		}
-		
-		void onFileFragmentReceived(Context context, final byte[] compressedBytes, int index, boolean isLast) {
-			//Returning if the attachment is not fetching
-			if(!isFetching) return;
-			
-			//Checking if the index doesn't line up
-			if(lastIndex + 1 != index) {
-				//Failing the download
-				onDownloadFailed();
-				
-				//Returning
-				return;
-			}
-			
-			//Setting the last index
-			lastIndex = index;
-			
-			//Getting the view
-			View view = getView();
-			if(view != null) {
-				//Checking if this is the last message
-				if(isLast) {
-					//Stopping the timer
-					stopTimer(false);
-				} else {
-					//Restarting the timer
-					stopTimer(true);
-					
-					//Updating the progress bar
-					ProgressBar progressBar = view.findViewById(R.id.progressBar);
-					if(progressBar.isIndeterminate()) progressBar.setIndeterminate(false);
-					//progressBar.setProgress((int) (((double) bytesWritten + (double) (ConnectionService.attachmentChunkSize / 2)) / (double) fileSize * 100D));
+		@Override
+		View createView(Context context, View convertView, ViewGroup parent) {
+			//Getting the attachment request data
+			ConnectionService connectionService = ConnectionService.getInstance();
+			if(connectionService != null) {
+				ConnectionService.FileDownloadRequest.ProgressStruct progress = connectionService.updateDownloadRequestAttachment(localID, fileDownloadRequestCallbacks);
+				if(progress != null) {
+					isFetching = true;
+					isFetchWaiting = progress.isWaiting;
+					fetchProgress = progress.progress;
 				}
 			}
 			
-			//Checking if there is no save thread
-			if(attachmentWriterThread == null) {
-				//Creating and starting the attachment writer thread
-				attachmentWriterThread = new AttachmentWriter(context.getApplicationContext(), this);
-				attachmentWriterThread.execute();
-			}
-			
-			//Adding the data struct
-			attachmentWriterThread.dataStructsLock.lock();
-			try {
-				attachmentWriterThread.dataStructs.add(new AttachmentWriterDataStruct(compressedBytes, isLast));
-				attachmentWriterThread.dataStructsCondition.signal();
-			} finally {
-				attachmentWriterThread.dataStructsLock.unlock();
-			}
-			/* synchronized(attachmentWriterThread.dataStructsLock) {
-				attachmentWriterThread.dataStructsLock.notifyAll();
-			} */
-			
-			/* //Launching a new asynchronous task
-			new AsyncTask<Context, Void, File>() {
-				@Override
-				protected File doInBackground(Context... context) {
-					//Finding the path
-					File directory = new File(MainApplication.getDownloadDirectory(context[0]), message);
-					if(!directory.exists()) directory.mkdir();
-					else if(directory.isFile()) {
-						directory.delete();
-						directory.mkdir();
-					}
-					File saveFile = new File(directory, fileName);
-					
-					//Writing the file to disk
-					try(RandomAccessFile randomAccessFile = new RandomAccessFile(saveFile, "wr")) {
-						randomAccessFile.write(bytes, offset, bytes.length);
-					} catch(IOException exception) {
-						//Printing the stack trace
-						exception.printStackTrace();
-						
-						//Returning null
-						return null;
-					}
-					
-					//Saving to the database
-					if(isEnd)
-						DatabaseManager.updateAttachmentFile(context[0], localID, saveFile.getPath());
-					
-					//Returning the save file
-					return saveFile;
-				}
-				
-				@Override
-				protected void onPostExecute(File saveFile) {
-					//Calling the failed method and returning if the result failed
-					if(saveFile == null) {
-						onDownloadFailed();
-						return;
-					}
-				}
-			}.execute(context); */
+			return null;
 		}
 		
 		void downloadContent(Context context) {
@@ -3420,7 +3284,7 @@ class ConversationManager {
 			
 			//Checking if the service isn't running
 			ConnectionService connectionService = ConnectionService.getInstance();
-			if(connectionService == null) {
+			if(connectionService == null || !connectionService.isConnected()) {
 				//Showing a toast
 				Toast.makeText(context, R.string.message_connectionerrror, Toast.LENGTH_SHORT).show();
 				
@@ -3428,33 +3292,11 @@ class ConversationManager {
 				return;
 			}
 			
-			//Setting the request ID
-			requestID = connectionService.getNextRequestID();
+			//Making a download request
+			boolean result = connectionService.addDownloadRequest(fileDownloadRequestCallbacks, localID, guid, fileName);
 			
-			//Requesting the attachment info
-			boolean result = connectionService.requestAttachmentInfo(guid, requestID);
-			
-			//Returning if the request was unsuccessful
+			//Returning if the request couldn't be placed
 			if(!result) return;
-			
-			//Setting isFetching to true
-			isFetching = true;
-			
-			//Resetting the last index and bytes written
-			lastIndex = -1;
-			bytesWritten = 0;
-			
-			//Creating and starting the timer
-			if(countdownTimer == null) {
-				countdownTimer = new CountDownTimer(10 * 1000, 10 * 1000) { //10-second timer
-					public void onTick(long millisUntilFinished) {}
-					
-					public void onFinish() {
-						onDownloadFailed();
-					}
-				};
-			}
-			countdownTimer.start();
 			
 			//Getting the view
 			View view = getView();
@@ -3470,65 +3312,6 @@ class ConversationManager {
 				progressBar.setProgress(0);
 				progressBar.setIndeterminate(true);
 				progressBar.setVisibility(View.VISIBLE);
-			}
-		}
-		
-		void onDownloadFinished(File saveFile) {
-			//Returning if the attachment info is no longer relevant
-			if(!messageInfo.getAttachments().contains(this)) return;
-			
-			//Removing the attachment writer thread
-			//if(attachmentWriterThread != null) attachmentWriterThread.cancel(false); //This can only be called when the thread has finished itself
-			attachmentWriterThread = null;
-			
-			//Setting isFetching to false
-			isFetching = false;
-			
-			//Setting the file in memory
-			file = saveFile;
-			
-			//Setting the view data
-			updateContentView();
-			
-			//Getting the view
-			View view = getView();
-			if(view != null) {
-				//Hiding the download view
-				(view.findViewById(R.id.downloadcontent)).setVisibility(View.GONE);
-				
-				//Showing the content
-				view.findViewById(R.id.content).setVisibility(View.VISIBLE);
-				
-				//Notifying the list of a view resize
-				//getMessageInfo().getConversationInfo().notifyListOfViewResize(view);
-			}
-		}
-		
-		void onDownloadFailed() {
-			//Returning if the attachment is not fetching
-			if(!isFetching) return;
-			
-			//Returning if the attachment info is no longer relevant
-			if(!messageInfo.getAttachments().contains(AttachmentInfo.this)) return;
-			
-			//Removing the attachment writer thread
-			if(attachmentWriterThread != null) attachmentWriterThread.cancel(false);
-			attachmentWriterThread = null;
-			
-			//Setting isFetching to false
-			isFetching = false;
-			
-			//Getting the view
-			View view = getView();
-			if(view != null) {
-				//Enabling the download button visually
-				view.findViewById(R.id.download_button).setAlpha(1);
-				
-				//Showing the content type
-				view.findViewById(R.id.download_label).setVisibility(View.VISIBLE);
-				
-				//Hiding the progress bar
-				view.findViewById(R.id.progressBar).setVisibility(View.GONE);
 			}
 		}
 		
@@ -3594,21 +3377,6 @@ class ConversationManager {
 				return true;
 			});
 		}
-		
-		/* void resetToDownloadView() {
-			//Getting the view
-			View view = getView();
-			if(view == null) return;
-			
-			//Showing the download view
-			view.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
-			view.findViewById(R.id.download_button).setAlpha(1);
-			view.findViewById(R.id.download_label).setVisibility(View.VISIBLE);
-			view.findViewById(R.id.progressBar).setVisibility(View.GONE);
-			
-			//Hiding the content
-			view.findViewById(R.id.content).setVisibility(View.GONE);
-		} */
 		
 		private void displayContextMenu(View view, final Context context) {
 			//Returning if there is no view
@@ -3744,168 +3512,6 @@ class ConversationManager {
 			}
 		}
 		
-		private static class AttachmentWriter extends AsyncTask<Void, Integer, Boolean> {
-			//Creating the references
-			final WeakReference<Context> contextReference;
-			final WeakReference<AttachmentInfo> superReference;
-			
-			final Lock dataStructsLock = new ReentrantLock();
-			final Condition dataStructsCondition = dataStructsLock.newCondition();
-			ArrayList<AttachmentWriterDataStruct> dataStructs = new ArrayList<>();
-			
-			//Creating the process values
-			File targetFile;
-			
-			AttachmentWriter(Context context, AttachmentInfo superclass) {
-				//Setting the references
-				contextReference = new WeakReference<>(context);
-				superReference = new WeakReference<>(superclass);
-			}
-			
-			@Override
-			protected Boolean doInBackground(Void... params) {
-				//Getting the references
-				Context context = contextReference.get();
-				if(context == null) return false;
-				
-				AttachmentInfo attachmentInfo = superReference.get();
-				if(attachmentInfo == null) return false;
-				
-				//Getting the file path
-				File directory = new File(MainApplication.getDownloadDirectory(context), Long.toString(attachmentInfo.localID));
-				if(!directory.exists()) directory.mkdir();
-				else if(directory.isFile()) {
-					Constants.recursiveDelete(directory);
-					directory.mkdir();
-				}
-				
-				//Preparing to write to the file
-				targetFile = new File(directory, attachmentInfo.fileName);
-				try(FileOutputStream outputStream = new FileOutputStream(targetFile)) {
-					while(true) {
-						//Checking if the task has been cancelled
-						if(isCancelled()) {
-							//Cleaning up the file
-							Constants.recursiveDelete(directory);
-							
-							//Returning
-							return null;
-						}
-						
-						//Moving the structs (to be able to release the lock sooner)
-						ArrayList<AttachmentWriterDataStruct> localDataStructs = new ArrayList<>();
-						dataStructsLock.lock();
-						try {
-							if(!dataStructs.isEmpty()) {
-								localDataStructs = dataStructs;
-								dataStructs = new ArrayList<>();
-							}
-						} finally {
-							dataStructsLock.unlock();
-						}
-						
-						//Iterating over the data structs
-						for(AttachmentWriterDataStruct dataStruct : localDataStructs) {
-							//Decompressing the bytes
-							byte[] bytes = SharedValues.decompress(dataStruct.compressedBytes);
-							
-							//Writing the bytes
-							outputStream.write(bytes);
-							
-							//Adding to the bytes written
-							attachmentInfo.bytesWritten += bytes.length;
-							
-							//Updating the progress
-							publishProgress((int) ((float) attachmentInfo.bytesWritten / (float) attachmentInfo.fileSize * 100F));
-							
-							//Checking if the file is the last one
-							if(dataStruct.isLast) {
-								//Cleaning the thread
-								//cleanThread();
-								
-								//Saving to the database
-								DatabaseManager.updateAttachmentFile(DatabaseManager.getWritableDatabase(context), attachmentInfo.localID, targetFile);
-								
-								//Returning true
-								return true;
-							}
-						}
-						
-						//Waiting for entries to appear
-						dataStructsLock.lock();
-						try {
-							if(dataStructs.isEmpty()) dataStructsCondition.await(5, TimeUnit.SECONDS);
-						} catch(InterruptedException exception) {
-							//Returning
-							return null;
-							//Cleaning up the thread
-							//cleanThread();
-							
-							//Returning
-							//return null;
-						} finally {
-							dataStructsLock.unlock();
-						}
-					}
-				} catch(IOException | DataFormatException exception) {
-					//Printing the stack trace
-					exception.printStackTrace();
-					
-					//Deleting the file
-					targetFile.delete();
-					
-					//Returning false
-					return false;
-				}
-			}
-			
-			@Override
-			protected void onProgressUpdate(Integer... values) {
-				//Getting the view
-				AttachmentInfo attachmentInfo = superReference.get();
-				if(attachmentInfo == null) return;
-				View view = attachmentInfo.getView();
-				if(view == null) return;
-				
-				//Updating the progress bar
-				ProgressBar progressBar = view.findViewById(R.id.progressBar);
-				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) progressBar.setProgress(values[0], true);
-				else progressBar.setProgress(values[0]);
-			}
-			
-			@Override
-			protected void onPostExecute(Boolean result) {
-				//Returning if the result is invalid (the task was cancelled)
-				if(result == null) return;
-				
-				//Getting the attachment info
-				AttachmentInfo attachmentInfo = superReference.get();
-				if(attachmentInfo == null) return;
-				
-				//Forwarding the result
-				if(result) attachmentInfo.onDownloadFinished(targetFile);
-				else attachmentInfo.onDownloadFailed();
-			}
-		}
-		
-		static class AttachmentWriterDataStruct {
-			final byte[] compressedBytes;
-			final boolean isLast;
-			
-			AttachmentWriterDataStruct(byte[] compressedBytes, boolean isLast) {
-				this.compressedBytes = compressedBytes;
-				this.isLast = isLast;
-			}
-		}
-		
-		/* long getRequestID() {
-			return requestID;
-		} */
-		
-		boolean compareRequestID(short value) {
-			return isFetching && requestID == value;
-		}
-		
 		byte[] getFileChecksum() {
 			return fileChecksum;
 		}
@@ -3935,6 +3541,9 @@ class ConversationManager {
 		
 		@Override
 		View createView(Context context, View convertView, ViewGroup parent) {
+			//Calling the super method
+			super.createView(context, convertView, parent);
+			
 			//Checking if the view needs to be inflated
 			if(convertView == null) {
 				//Creating the view
@@ -4025,8 +3634,8 @@ class ConversationManager {
 					
 					//Getting and preparing the progress bar
 					ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
-					progressBar.setIndeterminate(true);
-					progressBar.setProgress(0);
+					progressBar.setIndeterminate(isFetchWaiting);
+					progressBar.setProgress((int) (fetchProgress * progressBar.getMax()));
 					progressBar.setVisibility(View.VISIBLE);
 				}
 				//Otherwise checking if the attachment is being uploaded
@@ -4192,6 +3801,9 @@ class ConversationManager {
 		
 		@Override
 		View createView(Context context, View convertView, ViewGroup parent) {
+			//Calling the super method
+			super.createView(context, convertView, parent);
+			
 			//Checking if the view needs to be inflated
 			if(convertView == null) {
 				//Creating the view
@@ -4292,8 +3904,8 @@ class ConversationManager {
 					
 					//Getting and preparing the progress bar
 					ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
-					progressBar.setIndeterminate(true);
-					progressBar.setProgress(0);
+					progressBar.setIndeterminate(isFetchWaiting);
+					progressBar.setProgress((int) (fetchProgress * progressBar.getMax()));
 					progressBar.setVisibility(View.VISIBLE);
 				}
 				//Otherwise checking if the attachment is being uploaded
@@ -4506,6 +4118,9 @@ class ConversationManager {
 		
 		@Override
 		View createView(Context context, View convertView, ViewGroup parent) {
+			//Calling the super method
+			super.createView(context, convertView, parent);
+			
 			//Checking if the view needs to be inflated
 			if(convertView == null) {
 				//Creating the view
@@ -4596,8 +4211,8 @@ class ConversationManager {
 					
 					//Getting and preparing the progress bar
 					ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
-					progressBar.setIndeterminate(true);
-					progressBar.setProgress(0);
+					progressBar.setIndeterminate(isFetchWaiting);
+					progressBar.setProgress((int) (fetchProgress * progressBar.getMax()));
 					progressBar.setVisibility(View.VISIBLE);
 				}
 				//Otherwise checking if the attachment is being uploaded
@@ -4750,6 +4365,9 @@ class ConversationManager {
 		
 		@Override
 		View createView(Context context, View convertView, ViewGroup parent) {
+			//Calling the super method
+			super.createView(context, convertView, parent);
+			
 			//Checking if the view needs to be inflated
 			if(convertView == null) {
 				//Creating the view
@@ -4839,8 +4457,8 @@ class ConversationManager {
 					
 					//Getting and preparing the progress bar
 					ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
-					progressBar.setIndeterminate(true);
-					progressBar.setProgress(0);
+					progressBar.setIndeterminate(isFetchWaiting);
+					progressBar.setProgress((int) (fetchProgress * progressBar.getMax()));
 					progressBar.setVisibility(View.VISIBLE);
 				}
 				//Otherwise checking if the attachment is being uploaded

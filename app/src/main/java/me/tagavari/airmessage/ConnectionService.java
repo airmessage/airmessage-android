@@ -15,7 +15,6 @@ import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -61,6 +60,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
@@ -127,14 +130,13 @@ public class ConnectionService extends Service {
 		//Sending a broadcast
 		LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalFailed));
 	};
-	//private static final long massRetrievalTimeout = 2 * 1000; //2 seconds
 	private static final long massRetrievalTimeout = 60 * 1000; //1 minute
 	private int activeCommunicationsVersion = -1;
 	
 	private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
 	private Thread fileUploadRequestThread = null;
 	
-	//private final List<>
+	private final List<FileDownloadRequest> fileDownloadRequests = new ArrayList<>();
 	
 	private static byte nextLaunchID = 0;
 	
@@ -573,7 +575,6 @@ public class ConnectionService extends Service {
 						break;
 					}
 					case SharedValues.wsFrameAttachmentReq: { //Attachment data received
-						//Reading the data
 						final String guid = in.readUTF();
 						final short requestID = in.readShort();
 						final int requestIndex = in.readInt();
@@ -583,12 +584,15 @@ public class ConnectionService extends Service {
 						else fileSize = -1;
 						final boolean isLast = in.readBoolean();
 						
-						//Running in the UI thread
-						mainHandler.post(new Runnable() {
-							@Override
-							public void run() {
-								//Processing the message update
-								ConversationManager.processFileFragmentData(ConnectionService.this, guid, requestID, compressedBytes, requestIndex, isLast, fileSize);
+						//Running on the UI thread
+						mainHandler.post(() -> {
+							//Searching for a matching request
+							for(FileDownloadRequest request : fileDownloadRequests) {
+								if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
+								if(requestIndex != 0) request.setFileSize(fileSize);
+								request.processFileFragment(ConnectionService.this, compressedBytes, requestIndex, isLast);
+								if(isLast) fileDownloadRequests.remove(request);
+								break;
 							}
 						});
 						
@@ -598,16 +602,32 @@ public class ConnectionService extends Service {
 						final short requestID = in.readShort();
 						final String guid = in.readUTF();
 						
-						//Running in the UI thread
-						mainHandler.post(() -> ConversationManager.processFileFragmentConfirmed(guid, requestID));
+						//Running on the UI thread
+						mainHandler.post(() -> {
+							//Searching for a matching request
+							for(FileDownloadRequest request : fileDownloadRequests) {
+								if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
+								request.stopTimer(true);
+								request.onResponseReceived();
+								break;
+							}
+						});
 						break;
 					}
 					case SharedValues.wsFrameAttachmentReqFailed: { //Attachment data request failed
 						final short requestID = in.readShort();
 						final String guid = in.readUTF();
 						
-						//Running in the UI thread
-						mainHandler.post(() -> ConversationManager.processFileFragmentFailed(guid, requestID));
+						//Running on the UI thread
+						mainHandler.post(() -> {
+							//Searching for a matching request
+							for(FileDownloadRequest request : fileDownloadRequests) {
+								if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
+								request.stopTimer(false);
+								request.callbacks.onFail();
+								break;
+							}
+						});
 						break;
 					}
 					case SharedValues.wsFrameSendResult: {
@@ -893,7 +913,7 @@ public class ConnectionService extends Service {
 		notifyUploadQueue();
 	}
 	
-	boolean queueDownloadRequest(FileDownloadRequestCallbacks callbacks, String guid) {
+	boolean addDownloadRequest(FileDownloadRequestCallbacks callbacks, long attachmentID, String attachmentGUID, String attachmentName) {
 		//Getting the request ID
 		short requestID = getNextRequestID();
 		
@@ -902,7 +922,7 @@ public class ConnectionService extends Service {
 			//Adding the data
 			out.writeByte(SharedValues.wsFrameAttachmentReq); //Message type - attachment request
 			out.writeShort(requestID); //Request ID
-			out.writeUTF(guid); //File GUID
+			out.writeUTF(attachmentGUID); //File GUID
 			out.writeInt(attachmentChunkSize); //Chunk size
 			out.flush();
 			
@@ -917,8 +937,21 @@ public class ConnectionService extends Service {
 			return false;
 		}
 		
+		//Recording the request
+		FileDownloadRequest request = new FileDownloadRequest(callbacks, requestID, attachmentID, attachmentGUID, attachmentName, fileDownloadRequests);
+		fileDownloadRequests.add(request);
+		request.startTimer();
+		
 		//Returning true
 		return true;
+	}
+	
+	FileDownloadRequest.ProgressStruct updateDownloadRequestAttachment(long attachmentID, FileDownloadRequestCallbacks callbacks) {
+		for(FileDownloadRequest request : fileDownloadRequests) if(request.attachmentID == attachmentID) {
+			request.callbacks = callbacks;
+			return request.getProgress();
+		}
+		return null;
 	}
 	
 	void notifyUploadQueue() {
@@ -931,34 +964,32 @@ public class ConnectionService extends Service {
 	}
 	
 	interface FileUploadRequestCallbacks {
+		void onResponseReceived();
+		
 		void onStart();
+		
+		void onProgress(float progress);
 		
 		void onCopyFinished(File location);
 		
 		void onUploadFinished(byte[] checksum);
 		
-		void onResponseReceived();
-		
 		void onFail(byte reason);
-		
-		void onProgress(float progress);
 	}
 	
 	interface FileDownloadRequestCallbacks {
-		void onStart();
-		
-		void onCopyFinished(File location);
-		
-		void onUploadFinished(byte[] checksum);
-		
 		void onResponseReceived();
 		
-		void onFail(byte reason);
+		void onStart();
 		
 		void onProgress(float progress);
+		
+		void onFinish(File file);
+		
+		void onFail();
 	}
 	
-	static class FileUploadRequest {
+	private static class FileUploadRequest {
 		//Creating the callbacks
 		final FileUploadRequestCallbacks callbacks;
 		
@@ -998,43 +1029,288 @@ public class ConnectionService extends Service {
 	
 	static class FileDownloadRequest {
 		//Creating the callbacks
-		final FileUploadRequestCallbacks callbacks;
+		FileDownloadRequestCallbacks callbacks;
 		
 		//Creating the request values
-		final ConversationManager.ConversationInfo conversationInfo;
+		final short requestID;
+		final String attachmentGUID;
 		final long attachmentID;
-		File sendFile;
-		Uri sendUri;
+		final String fileName;
+		long fileSize = 0;
+		private List<FileDownloadRequest> removalList;
 		
-		private FileDownloadRequest(FileUploadRequestCallbacks callbacks, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+		FileDownloadRequest(FileDownloadRequestCallbacks callbacks, short requestID, long attachmentID, String attachmentGUID, String fileName, List<FileDownloadRequest> removalList) {
 			//Setting the callbacks
 			this.callbacks = callbacks;
 			
 			//Setting the request values
-			this.conversationInfo = conversationInfo;
+			this.requestID = requestID;
 			this.attachmentID = attachmentID;
+			this.attachmentGUID = attachmentGUID;
+			this.fileName = fileName;
+			
+			this.removalList = removalList;
 		}
 		
-		FileDownloadRequest(FileUploadRequestCallbacks callbacks, File file, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
-			//Calling the main constructor
-			this(callbacks, conversationInfo, attachmentID);
+		private static final long timeoutDelay = 20 * 1000; //20-second delay
+		private final Handler handler = new Handler(Looper.getMainLooper());
+		private final Runnable timeoutRunnable = () -> {
+			//Removing the request from the list
+			removalList.remove(FileDownloadRequest.this);
 			
-			//Setting the source values
-			sendFile = file;
-			sendUri = null;
+			//Calling the fail method
+			callbacks.onFail();
+		};
+		
+		void startTimer() {
+			handler.postDelayed(timeoutRunnable, timeoutDelay);
 		}
 		
-		FileDownloadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
-			//Calling the main constructor
-			this(callbacks, conversationInfo, attachmentID);
+		void stopTimer(boolean restart) {
+			handler.removeCallbacks(timeoutRunnable);
+			if(restart) handler.postDelayed(timeoutRunnable, timeoutDelay);
+		}
+		
+		void failDownload() {
+			stopTimer(false);
+			if(attachmentWriterThread != null) attachmentWriterThread.stopThread();
+			callbacks.onFail();
 			
-			//Setting the source values
-			sendFile = null;
-			sendUri = uri;
+			removalList.remove(this);
+		}
+		
+		void finishDownload(File file) {
+			callbacks.onFinish(file);
+			removalList.remove(this);
+		}
+		
+		void setFileSize(long value) {
+			fileSize = value;
+		}
+		
+		void onResponseReceived() {
+			isWaiting = false;
+			callbacks.onResponseReceived();
+		}
+		
+		ProgressStruct getProgress() {
+			return new ProgressStruct(isWaiting, lastProgress);
+		}
+		
+		private void updateProgress(float progress) {
+			lastProgress = 0;
+			callbacks.onProgress(progress);
+		}
+		
+		AttachmentWriter attachmentWriterThread = null;
+		boolean isWaiting = true;
+		int lastIndex = -1;
+		float lastProgress = 0;
+		private void processFileFragment(Context context, final byte[] compressedBytes, int index, boolean isLast) {
+			//Checking if the index doesn't line up
+			if(lastIndex + 1 != index) {
+				//Failing the download
+				failDownload();
+				
+				//Returning
+				return;
+			}
+			
+			//Resetting the timer
+			stopTimer(!isLast);
+			
+			//Setting the last index
+			lastIndex = index;
+			
+			//Checking if there is no save thread
+			if(attachmentWriterThread == null) {
+				//Creating and starting the attachment writer thread
+				attachmentWriterThread = new AttachmentWriter(context.getApplicationContext(), attachmentID, fileName, fileSize);
+				attachmentWriterThread.start();
+			}
+			
+			//Adding the data struct
+			attachmentWriterThread.dataStructsLock.lock();
+			try {
+				attachmentWriterThread.dataStructs.add(new AttachmentWriterDataStruct(compressedBytes, isLast));
+				attachmentWriterThread.dataStructsCondition.signal();
+			} finally {
+				attachmentWriterThread.dataStructsLock.unlock();
+			}
+		}
+		
+		static class ProgressStruct {
+			final boolean isWaiting;
+			final float progress;
+			
+			ProgressStruct(boolean isWaiting, float progress) {
+				this.isWaiting = isWaiting;
+				this.progress = progress;
+			}
+		}
+		
+		private class AttachmentWriter extends Thread {
+			//Creating the references
+			private final WeakReference<Context> contextReference;
+			
+			//Creating the lock
+			private final Lock dataStructsLock = new ReentrantLock();
+			private final Condition dataStructsCondition = dataStructsLock.newCondition();
+			ArrayList<AttachmentWriterDataStruct> dataStructs = new ArrayList<>();
+			
+			//Creating the request values
+			private final long attachmentID;
+			private final String fileName;
+			private final long fileSize;
+			
+			//Creating the process values
+			private long bytesWritten;
+			private boolean isRunning = true;
+			
+			AttachmentWriter(Context context, long attachmentID, String fileName, long fileSize) {
+				//Setting the references
+				contextReference = new WeakReference<>(context);
+				
+				//Creating the request values
+				this.attachmentID = attachmentID;
+				this.fileName = fileName;
+				this.fileSize = fileSize;
+			}
+			
+			@Override
+			public void run() {
+				//Getting the references
+				Context context = contextReference.get();
+				if(context == null) {
+					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+					return;
+				};
+				
+				//Getting the file path
+				File directory = new File(MainApplication.getDownloadDirectory(context), Long.toString(attachmentID));
+				if(!directory.exists()) directory.mkdir();
+				else if(directory.isFile()) {
+					Constants.recursiveDelete(directory);
+					directory.mkdir();
+				}
+				
+				//Preparing to write to the file
+				File targetFile = new File(directory, fileName);
+				try(FileOutputStream outputStream = new FileOutputStream(targetFile)) {
+					while(isRunning) {
+						/* //Checking if the task has been cancelled
+						if(isCancelled()) {
+							//Cleaning up the file
+							Constants.recursiveDelete(directory);
+							
+							//Returning
+							return null;
+						} */
+						
+						//Moving the structs (to be able to release the lock sooner)
+						ArrayList<AttachmentWriterDataStruct> localDataStructs = new ArrayList<>();
+						dataStructsLock.lock();
+						try {
+							if(!dataStructs.isEmpty()) {
+								localDataStructs = dataStructs;
+								dataStructs = new ArrayList<>();
+							}
+						} finally {
+							dataStructsLock.unlock();
+						}
+						
+						//Iterating over the data structs
+						for(AttachmentWriterDataStruct dataStruct : localDataStructs) {
+							//Decompressing the bytes
+							byte[] bytes = SharedValues.decompress(dataStruct.compressedBytes);
+							
+							//Writing the bytes
+							outputStream.write(bytes);
+							
+							//Adding to the bytes written
+							bytesWritten += bytes.length;
+							
+							//Checking if the file is the last one
+							if(dataStruct.isLast) {
+								//Cleaning the thread
+								//cleanThread();
+								
+								//Saving to the database
+								DatabaseManager.updateAttachmentFile(DatabaseManager.getWritableDatabase(context), attachmentID, targetFile);
+								
+								//Updating the state
+								new Handler(Looper.getMainLooper()).post(() -> finishDownload(targetFile));
+								
+								//Returning
+								return;
+							} else {
+								//Updating the progress
+								new Handler(Looper.getMainLooper()).post(() -> updateProgress(((float) bytesWritten / fileSize)));
+							}
+						}
+						
+						//Checking if the thread is still running
+						if(isRunning) {
+							dataStructsLock.lock();
+							try {
+								//Waiting for entries to appear
+								if(dataStructs.isEmpty()) dataStructsCondition.await(timeoutDelay, TimeUnit.MILLISECONDS);
+								
+								//Checking if there are still no new items
+								if(isRunning && dataStructs.isEmpty()) {
+									//Stopping the thread
+									isRunning = false;
+									
+									//Failing the download
+									new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+								}
+							} catch(InterruptedException exception) {
+								//Stopping the thread
+								isRunning = false;
+								
+								//Returning
+								//return;
+							} finally {
+								dataStructsLock.unlock();
+							}
+						}
+					}
+				} catch(IOException | DataFormatException exception) {
+					//Printing the stack trace
+					exception.printStackTrace();
+					Crashlytics.logException(exception);
+					
+					//Failing the download
+					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+				}
+				
+				//Checking if the thread was stopped
+				if(!isRunning) {
+					//Cleaning up
+					Constants.recursiveDelete(directory);
+				}
+			}
+			
+			void stopThread() {
+				isRunning = false;
+			}
+		}
+		
+		static class AttachmentWriterDataStruct {
+			final byte[] compressedBytes;
+			final boolean isLast;
+			
+			AttachmentWriterDataStruct(byte[] compressedBytes, boolean isLast) {
+				this.compressedBytes = compressedBytes;
+				this.isLast = isLast;
+			}
 		}
 	}
 	
 	static class FileUploadRequestThread extends Thread {
+		//Creating the constants
+		private final float copyProgressValue = 0.2F;
+		
 		//Creating the reference values
 		private final WeakReference<Context> contextReference;
 		private final WeakReference<ConnectionService> superclassReference;
@@ -1053,7 +1329,9 @@ public class ConnectionService extends Service {
 			//Looping while there are requests in the queue
 			FileUploadRequest request;
 			while((request = pushQueue()) != null) {
-				final FileUploadRequestCallbacks finalCallbacks = request.callbacks;
+				//Getting the callbacks
+				FileUploadRequestCallbacks finalCallbacks = request.callbacks;
+				
 				//Telling the callbacks that the process has started
 				handler.post(request.callbacks::onStart);
 				
@@ -1130,7 +1408,7 @@ public class ConnectionService extends Service {
 							
 							//Updating the progress
 							final int finalTotalBytesRead = totalBytesRead;
-							handler.post(() -> finalCallbacks.onProgress((float) finalTotalBytesRead / (float) totalLength * 0.5F));
+							handler.post(() -> finalCallbacks.onProgress((float) finalTotalBytesRead / (float) totalLength * copyProgressValue));
 						}
 						
 						//Flushing the output stream
@@ -1260,7 +1538,7 @@ public class ConnectionService extends Service {
 						//Updating the progress
 						final int finalTotalBytesRead = totalBytesRead;
 						handler.post(() -> finalCallbacks.onProgress(copyFile ?
-								0.5F + (float) finalTotalBytesRead / (float) totalLength * 0.5F :
+								1 - copyProgressValue + (float) finalTotalBytesRead / (float) totalLength * copyProgressValue :
 								(float) finalTotalBytesRead / (float) totalLength));
 						
 						//Adding to the request index
@@ -1652,36 +1930,32 @@ public class ConnectionService extends Service {
 		
 		abstract void onFail(byte resultCode);
 		
-		private CountDownTimer timer = new CountDownTimer(30 * 1000, 30 * 1000) { //30 seconds
-			@Override
-			public void onTick(long l) {}
+		private static final long timeoutDelay = 20 * 1000; //20-second delay
+		private final Handler handler = new Handler(Looper.getMainLooper());
+		private final Runnable timeoutRunnable = () -> {
+			//Calling the fail method
+			onFail(messageSendRequestExpired);
 			
-			@Override
-			public void onFinish() {
-				//Calling the fail method
-				onFail(messageSendRequestExpired);
-				
-				//Getting the connection service
-				ConnectionService connectionService = getInstance();
-				if(connectionService == null) return;
-				
-				//Removing the item
-				for(int i = 0; i < connectionService.messageSendRequests.size(); i++) {
-					if(!connectionService.messageSendRequests.valueAt(i).equals(MessageResponseManager.this))
-						continue;
-					connectionService.messageSendRequests.removeAt(i);
-					break;
-				}
+			//Getting the connection service
+			ConnectionService connectionService = getInstance();
+			if(connectionService == null) return;
+			
+			//Removing the item
+			for(int i = 0; i < connectionService.messageSendRequests.size(); i++) {
+				if(!connectionService.messageSendRequests.valueAt(i).equals(MessageResponseManager.this))
+					continue;
+				connectionService.messageSendRequests.removeAt(i);
+				break;
 			}
 		};
 		
 		void startTimer() {
-			timer.start();
+			handler.postDelayed(timeoutRunnable, timeoutDelay);
 		}
 		
 		void stopTimer(boolean restart) {
-			timer.cancel();
-			if(restart) timer.start();
+			handler.removeCallbacks(timeoutRunnable);
+			if(restart) handler.postDelayed(timeoutRunnable, timeoutDelay);
 		}
 	}
 	
