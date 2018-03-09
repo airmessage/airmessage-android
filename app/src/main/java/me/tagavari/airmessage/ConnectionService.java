@@ -26,6 +26,8 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.LongSparseArray;
 import android.util.SparseArray;
 
+import com.crashlytics.android.Crashlytics;
+
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.drafts.Draft_6455;
@@ -46,6 +48,7 @@ import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.channels.NotYetConnectedException;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -128,8 +131,10 @@ public class ConnectionService extends Service {
 	private static final long massRetrievalTimeout = 60 * 1000; //1 minute
 	private int activeCommunicationsVersion = -1;
 	
-	private final List<FileSendRequest> fileSendRequestQueue = new ArrayList<>();
-	private Thread fileSendRequestThread = null;
+	private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
+	private Thread fileUploadRequestThread = null;
+	
+	//private final List<>
 	
 	private static byte nextLaunchID = 0;
 	
@@ -785,9 +790,6 @@ public class ConnectionService extends Service {
 	}
 	
 	boolean requestAttachmentInfo(String fileGuid, short requestID) {
-		//Returning if the client isn't ready
-		if(wsClient == null || !wsClient.isOpen()) return false;
-		
 		//Preparing to serialize the request
 		try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
 			//Adding the data
@@ -799,9 +801,10 @@ public class ConnectionService extends Service {
 			
 			//Sending the message
 			wsClient.send(bos.toByteArray());
-		} catch(Exception exception) {
+		} catch(IOException | NotYetConnectedException exception) {
 			//Printing the stack trace
 			exception.printStackTrace();
+			Crashlytics.logException(exception);
 			
 			//Returning false
 			return false;
@@ -870,36 +873,64 @@ public class ConnectionService extends Service {
 	
 	private static final int largestFileSize = 1024 * 1024 * 100; //100 MB
 	
-	void queueUploadRequest(FileSendRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+	void queueUploadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 		//Adding the request
-		synchronized(fileSendRequestQueue) {
-			fileSendRequestQueue.add(new FileSendRequest(callbacks, uri, conversationInfo, attachmentID));
+		synchronized(fileUploadRequestQueue) {
+			fileUploadRequestQueue.add(new FileUploadRequest(callbacks, uri, conversationInfo, attachmentID));
 		}
 		
 		//Notifying the queue
-		notifyQueue();
+		notifyUploadQueue();
 	}
 	
-	void queueUploadRequest(FileSendRequestCallbacks callbacks, File file, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+	void queueUploadRequest(FileUploadRequestCallbacks callbacks, File file, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 		//Adding the request
-		synchronized(fileSendRequestQueue) {
-			fileSendRequestQueue.add(new FileSendRequest(callbacks, file, conversationInfo, attachmentID));
+		synchronized(fileUploadRequestQueue) {
+			fileUploadRequestQueue.add(new FileUploadRequest(callbacks, file, conversationInfo, attachmentID));
 		}
 		
 		//Notifying the queue
-		notifyQueue();
+		notifyUploadQueue();
 	}
 	
-	void notifyQueue() {
-		//Returning if the thread isn't running
-		if(fileSendRequestThread != null && fileSendRequestThread.getState() != Thread.State.TERMINATED) return;
+	boolean queueDownloadRequest(FileDownloadRequestCallbacks callbacks, String guid) {
+		//Getting the request ID
+		short requestID = getNextRequestID();
+		
+		//Preparing to serialize the request
+		try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+			//Adding the data
+			out.writeByte(SharedValues.wsFrameAttachmentReq); //Message type - attachment request
+			out.writeShort(requestID); //Request ID
+			out.writeUTF(guid); //File GUID
+			out.writeInt(attachmentChunkSize); //Chunk size
+			out.flush();
+			
+			//Sending the message
+			wsClient.send(bos.toByteArray());
+		} catch(IOException | NotYetConnectedException exception) {
+			//Printing the stack trace
+			exception.printStackTrace();
+			Crashlytics.logException(exception);
+			
+			//Returning false
+			return false;
+		}
+		
+		//Returning true
+		return true;
+	}
+	
+	void notifyUploadQueue() {
+		//Returning if the thread is running
+		if(fileUploadRequestThread != null && fileUploadRequestThread.getState() != Thread.State.TERMINATED) return;
 		
 		//Creating and starting the thread
-		fileSendRequestThread = new FileSendRequestThread(getApplicationContext(), this);
-		fileSendRequestThread.start();
+		fileUploadRequestThread = new FileUploadRequestThread(getApplicationContext(), this);
+		fileUploadRequestThread.start();
 	}
 	
-	interface FileSendRequestCallbacks {
+	interface FileUploadRequestCallbacks {
 		void onStart();
 		
 		void onCopyFinished(File location);
@@ -913,9 +944,23 @@ public class ConnectionService extends Service {
 		void onProgress(float progress);
 	}
 	
-	static class FileSendRequest {
+	interface FileDownloadRequestCallbacks {
+		void onStart();
+		
+		void onCopyFinished(File location);
+		
+		void onUploadFinished(byte[] checksum);
+		
+		void onResponseReceived();
+		
+		void onFail(byte reason);
+		
+		void onProgress(float progress);
+	}
+	
+	static class FileUploadRequest {
 		//Creating the callbacks
-		final FileSendRequestCallbacks callbacks;
+		final FileUploadRequestCallbacks callbacks;
 		
 		//Creating the request values
 		final ConversationManager.ConversationInfo conversationInfo;
@@ -923,7 +968,7 @@ public class ConnectionService extends Service {
 		File sendFile;
 		Uri sendUri;
 		
-		private FileSendRequest(FileSendRequestCallbacks callbacks, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+		private FileUploadRequest(FileUploadRequestCallbacks callbacks, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 			//Setting the callbacks
 			this.callbacks = callbacks;
 			
@@ -932,7 +977,7 @@ public class ConnectionService extends Service {
 			this.attachmentID = attachmentID;
 		}
 		
-		FileSendRequest(FileSendRequestCallbacks callbacks, File file, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+		FileUploadRequest(FileUploadRequestCallbacks callbacks, File file, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 			//Calling the main constructor
 			this(callbacks, conversationInfo, attachmentID);
 			
@@ -941,7 +986,7 @@ public class ConnectionService extends Service {
 			sendUri = null;
 		}
 		
-		FileSendRequest(FileSendRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+		FileUploadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 			//Calling the main constructor
 			this(callbacks, conversationInfo, attachmentID);
 			
@@ -951,7 +996,45 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	static class FileSendRequestThread extends Thread {
+	static class FileDownloadRequest {
+		//Creating the callbacks
+		final FileUploadRequestCallbacks callbacks;
+		
+		//Creating the request values
+		final ConversationManager.ConversationInfo conversationInfo;
+		final long attachmentID;
+		File sendFile;
+		Uri sendUri;
+		
+		private FileDownloadRequest(FileUploadRequestCallbacks callbacks, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+			//Setting the callbacks
+			this.callbacks = callbacks;
+			
+			//Setting the request values
+			this.conversationInfo = conversationInfo;
+			this.attachmentID = attachmentID;
+		}
+		
+		FileDownloadRequest(FileUploadRequestCallbacks callbacks, File file, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+			//Calling the main constructor
+			this(callbacks, conversationInfo, attachmentID);
+			
+			//Setting the source values
+			sendFile = file;
+			sendUri = null;
+		}
+		
+		FileDownloadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+			//Calling the main constructor
+			this(callbacks, conversationInfo, attachmentID);
+			
+			//Setting the source values
+			sendFile = null;
+			sendUri = uri;
+		}
+	}
+	
+	static class FileUploadRequestThread extends Thread {
 		//Creating the reference values
 		private final WeakReference<Context> contextReference;
 		private final WeakReference<ConnectionService> superclassReference;
@@ -959,7 +1042,7 @@ public class ConnectionService extends Service {
 		//Creating the other values
 		private final Handler handler = new Handler(Looper.getMainLooper());
 		
-		FileSendRequestThread(Context context, ConnectionService superclass) {
+		FileUploadRequestThread(Context context, ConnectionService superclass) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
 			superclassReference = new WeakReference<>(superclass);
@@ -968,9 +1051,9 @@ public class ConnectionService extends Service {
 		@Override
 		public void run() {
 			//Looping while there are requests in the queue
-			FileSendRequest request;
+			FileUploadRequest request;
 			while((request = pushQueue()) != null) {
-				final FileSendRequestCallbacks finalCallbacks = request.callbacks;
+				final FileUploadRequestCallbacks finalCallbacks = request.callbacks;
 				//Telling the callbacks that the process has started
 				handler.post(request.callbacks::onStart);
 				
@@ -1177,8 +1260,8 @@ public class ConnectionService extends Service {
 						//Updating the progress
 						final int finalTotalBytesRead = totalBytesRead;
 						handler.post(() -> finalCallbacks.onProgress(copyFile ?
-								(float) finalTotalBytesRead / (float) totalLength * 100F :
-								0.5F + (float) finalTotalBytesRead / (float) totalLength * 0.5F));
+								0.5F + (float) finalTotalBytesRead / (float) totalLength * 0.5F :
+								(float) finalTotalBytesRead / (float) totalLength));
 						
 						//Adding to the request index
 						requestIndex++;
@@ -1229,19 +1312,19 @@ public class ConnectionService extends Service {
 			}
 		}
 		
-		private FileSendRequest pushQueue() {
+		private FileUploadRequest pushQueue() {
 			//Getting the service
 			ConnectionService connectionService = superclassReference.get();
 			if(connectionService == null) return null;
 			
 			//Locking the queue
-			synchronized(connectionService.fileSendRequestQueue) {
+			synchronized(connectionService.fileUploadRequestQueue) {
 				//Returning null if the queue is empty
-				if(connectionService.fileSendRequestQueue.isEmpty()) return null;
+				if(connectionService.fileUploadRequestQueue.isEmpty()) return null;
 				
 				//Removing the first item from the queue and returning it
-				FileSendRequest request = connectionService.fileSendRequestQueue.get(0);
-				connectionService.fileSendRequestQueue.remove(0);
+				FileUploadRequest request = connectionService.fileUploadRequestQueue.get(0);
+				connectionService.fileUploadRequestQueue.remove(0);
 				return request;
 			}
 		}

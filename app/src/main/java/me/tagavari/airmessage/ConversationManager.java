@@ -1972,7 +1972,7 @@ class ConversationManager {
 				sendProgress = -1;
 				
 				//Creating the callbacks
-				ConnectionService.FileSendRequestCallbacks callbacks = new ConnectionService.FileSendRequestCallbacks() {
+				ConnectionService.FileUploadRequestCallbacks callbacks = new ConnectionService.FileUploadRequestCallbacks() {
 					@Override
 					public void onStart() {
 						//Getting the view
@@ -3416,8 +3416,7 @@ class ConversationManager {
 		
 		void downloadContent(Context context) {
 			//Returning if the content has already been fetched is being fetched, or the message is in a ghost state
-			if(file != null || isFetching || messageInfo.getMessageState() == SharedValues.MessageInfo.stateCodeGhost)
-				return;
+			if(file != null || isFetching || messageInfo.getMessageState() == SharedValues.MessageInfo.stateCodeGhost) return;
 			
 			//Checking if the service isn't running
 			ConnectionService connectionService = ConnectionService.getInstance();
@@ -3784,8 +3783,14 @@ class ConversationManager {
 				targetFile = new File(directory, attachmentInfo.fileName);
 				try(FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 					while(true) {
-						//Returning if the task has been cancelled
-						if(isCancelled()) return null;
+						//Checking if the task has been cancelled
+						if(isCancelled()) {
+							//Cleaning up the file
+							Constants.recursiveDelete(directory);
+							
+							//Returning
+							return null;
+						}
 						
 						//Moving the structs (to be able to release the lock sooner)
 						ArrayList<AttachmentWriterDataStruct> localDataStructs = new ArrayList<>();

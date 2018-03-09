@@ -4,6 +4,18 @@ def keystoreProperties = new Properties()
 keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
 apply plugin: 'com.android.application'
+apply plugin: 'io.fabric'
+
+buildscript {
+	repositories {
+		maven {
+			url 'https://maven.fabric.io/public'
+		}
+	}
+	dependencies {
+		classpath 'io.fabric.tools:gradle:1.25.1'
+	}
+}
 
 android {
 	signingConfigs {
@@ -28,6 +40,9 @@ android {
 			proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
 			signingConfig signingConfigs.config
 		}
+		debug {
+			ext.enableCrashlytics = false
+		}
 	}
 	lintOptions {
 		abortOnError false
@@ -49,7 +64,6 @@ android {
 
 dependencies {
 	def supportLibraryVersion = "27.1.0"
-	def firebaseVersion = "11.8.0"
 
 	compile fileTree(include: ['*.jar'], dir: 'libs')
 	testCompile "junit:junit:4.12"
@@ -61,8 +75,11 @@ dependencies {
 	compile 'com.google.android:flexbox:0.3.1'
 
 	//classpath 'com.google.gms:google-services:3.1.0'
-	releaseCompile "com.google.firebase:firebase-core:$firebaseVersion"
-	releaseCompile "com.google.firebase:firebase-crash:$firebaseVersion"
+	compile "com.google.firebase:firebase-core:11.8.0"
+	compile("com.crashlytics.sdk.android:crashlytics:2.9.1@aar") {
+		transitive = true
+	}
+	//releaseCompile "com.google.firebase:firebase-crash:$firebaseVersion"
 
 	compile "com.pascalwelsch.compositeandroid:activity:27.0.0"
 	compile "org.java-websocket:Java-WebSocket:1.3.7"
