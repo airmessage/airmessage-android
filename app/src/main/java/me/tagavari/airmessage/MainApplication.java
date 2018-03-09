@@ -12,11 +12,16 @@ import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatDelegate;
 
+import com.crashlytics.android.Crashlytics;
+import com.crashlytics.android.core.CrashlyticsCore;
+
 import java.io.File;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
+
+import io.fabric.sdk.android.Fabric;
 
 public class MainApplication extends Application {
 	//Creating the reference values
@@ -48,6 +53,9 @@ public class MainApplication extends Application {
 	public void onCreate() {
 		//Calling the super method
 		super.onCreate();
+		
+		//Configuring crash reporting
+		configureCrashReporting();
 		
 		//Setting the instance
 		instanceReference = new WeakReference<>(this);
@@ -91,6 +99,17 @@ public class MainApplication extends Application {
 	
 	public static MainApplication getInstance() {
 		return instanceReference == null ? null : instanceReference.get();
+	}
+	
+	private void configureCrashReporting() {
+		System.out.println("CCR debug " + BuildConfig.DEBUG);
+		// Set up Crashlytics, disabled for debug builds
+		Crashlytics crashlyticsKit = new Crashlytics.Builder()
+				.core(new CrashlyticsCore.Builder().disabled(BuildConfig.DEBUG).build())
+				.build();
+		
+		// Initialize Fabric with the debug-disabled crashlytics
+		Fabric.with(this, crashlyticsKit);
 	}
 	
 	static File getAttachmentDirectory(Context context) {

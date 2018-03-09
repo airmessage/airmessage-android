@@ -120,5 +120,8 @@
 				<action android:name="android.intent.action.BOOT_COMPLETED" />
 			</intent-filter>
 		</receiver>
+		
+		<!-- Disables automatic Crashlytics initialization -->
+		<meta-data android:name="firebase_crashlytics_collection_enabled" android:value="false" />
 	</application>
 </manifest>
