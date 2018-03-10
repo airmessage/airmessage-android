@@ -102,7 +102,6 @@ public class MainApplication extends Application {
 	}
 	
 	private void configureCrashReporting() {
-		System.out.println("CCR debug " + BuildConfig.DEBUG);
 		// Set up Crashlytics, disabled for debug builds
 		Crashlytics crashlyticsKit = new Crashlytics.Builder()
 				.core(new CrashlyticsCore.Builder().disabled(BuildConfig.DEBUG).build())

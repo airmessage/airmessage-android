@@ -931,6 +931,16 @@ class ConversationManager {
 			if(updater != null) updater.updateUnread();
 		}
 		
+		void addChunk(List<ConversationItem> list) {
+			//Adding the items
+			List<ConversationItem> conversationItems = getConversationItems();
+			conversationItems.addAll(0, list);
+			
+			//Updating the adapter
+			AdapterUpdater updater = getAdapterUpdater();
+			//if(updater != null) updater.updateRangeInserted(0, list.size());
+		}
+		
 		private int insertConversationItem(ConversationItem conversationItem, Context context, boolean update) {
 			//Getting the list
 			ArrayList<ConversationItem> conversationItems = getConversationItems();
@@ -1048,6 +1058,7 @@ class ConversationManager {
 			abstract void updateFully();
 			abstract void updateScroll(int index);
 			abstract void updateMove(int from, int to);
+			abstract void updateRangeInserted(int start, int size);
 			abstract void updateUnread();
 		}
 		
@@ -5175,7 +5186,7 @@ class ConversationManager {
 		}
 	}
 	
-	static void setupConversationItemRelations(ArrayList<ConversationItem> conversationItems, ConversationInfo conversationInfo) {
+	static void setupConversationItemRelations(List<ConversationItem> conversationItems, ConversationInfo conversationInfo) {
 		//Iterating over the items
 		for(int i = 0; i < conversationItems.size(); i++) {
 			//Getting the item
@@ -5247,7 +5258,7 @@ class ConversationManager {
 		}
 	}
 	
-	static void addConversationItemRelation(ConversationInfo conversation, ArrayList<ConversationItem> conversationItems, MessageInfo messageInfo, Context context, boolean update) {
+	static void addConversationItemRelation(ConversationInfo conversation, List<ConversationItem> conversationItems, MessageInfo messageInfo, Context context, boolean update) {
 		//Getting the index
 		int index = conversationItems.indexOf(messageInfo);
 		
@@ -5336,7 +5347,7 @@ class ConversationManager {
 		} */
 	}
 	
-	static void addConversationItemRelations(ConversationInfo conversation, ArrayList<ConversationItem> conversationItems, List<ConversationItem> newConversationItems, Context context, boolean update) {
+	static void addConversationItemRelations(ConversationInfo conversation, List<ConversationItem> conversationItems, List<ConversationItem> newConversationItems, Context context, boolean update) {
 		//Iterating over the new items
 		for(ConversationItem conversationItem : newConversationItems) {
 			//Skipping the remainder of the iteration if the item is not a message

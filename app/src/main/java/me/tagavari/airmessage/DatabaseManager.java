@@ -640,11 +640,11 @@ class DatabaseManager extends SQLiteOpenHelper {
 		String selection;
 		String[] selectionArgs;
 		if(useFirstDate) {
-			selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?";
-			selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID())};
-		} else {
 			selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_DATE + " < ?";
 			selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID()), Long.toString(firstMessageDate)};
+		} else {
+			selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?";
+			selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID())};
 		}
 		Cursor cursor = readableDatabase.query(Contract.MessageEntry.TABLE_NAME, null, selection, selectionArgs, null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " DESC", Integer.toString(Messaging.messageChunkSize));
 		//Cursor cursor = database.rawQuery(SQL_FETCH_CONVERSATION_MESSAGES, new String[]{Long.toString(conversationInfo.getLocalID())});
