@@ -809,7 +809,7 @@ public class ConnectionService extends Service {
 		new ModifierUpdateAsyncTask(getApplicationContext(), structModifiers).execute();
 	}
 	
-	boolean requestAttachmentInfo(String fileGuid, short requestID) {
+	/* boolean requestAttachmentInfo(String fileGuid, short requestID) {
 		//Preparing to serialize the request
 		try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
 			//Adding the data
@@ -832,7 +832,7 @@ public class ConnectionService extends Service {
 		
 		//Returning true
 		return true;
-	}
+	} */
 	
 	void retrievePendingConversationInfo() {
 		//Locking the pending conversations
@@ -2283,72 +2283,91 @@ public class ConnectionService extends Service {
 			//Checking if the conversations are loaded in memory
 			ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
 			if(conversations != null) {
-				//Iterating over the new conversation items
+				//Sorting the conversation items by conversation
+				LongSparseArray<List<ConversationManager.ConversationItem>> newCompleteConversationGroups = new LongSparseArray<>();
 				for(ConversationManager.ConversationItem conversationItem : newCompleteConversationItems) {
+					List<ConversationManager.ConversationItem> list = newCompleteConversationGroups.get(conversationItem.getConversationInfo().getLocalID());
+					if(list == null) {
+						list = new ArrayList<>();
+						list.add(conversationItem);
+						newCompleteConversationGroups.put(conversationItem.getConversationInfo().getLocalID(), list);
+					} else list.add(conversationItem);
+				}
+				
+				//Iterating over the conversation groups
+				for(int i = 0; i < newCompleteConversationGroups.size(); i++) {
 					//Attempting to find the associated parent conversation
-					ConversationManager.ConversationInfo parentConversation = findConversationInMemory(conversationItem.getConversationInfo().getLocalID());
+					ConversationManager.ConversationInfo parentConversation = findConversationInMemory(newCompleteConversationGroups.keyAt(i));
 					
 					//Skipping the remainder of the iteration if no parent conversation could be found
 					if(parentConversation == null) continue;
 					
-					//Setting the conversation item's parent conversation to the found one (the one provided from the DB is not the same as the one in memory)
-					conversationItem.setConversationInfo(parentConversation);
+					//Getting the conversation items
+					List<ConversationManager.ConversationItem> conversationItems = newCompleteConversationGroups.valueAt(i);
 					
-					//if(parentConversation.getState() != ConversationManager.ConversationInfo.ConversationState.READY) continue;
+					//Adding the conversation items if the conversation is loaded
+					if(loadedConversations.contains(parentConversation.getLocalID())) parentConversation.addConversationItems(context, conversationItems);
 					
-					//Incrementing the conversation's unread count
-					parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
-					parentConversation.updateUnreadStatus();
-					
-					//Checking if the conversation is loaded
-					if(loadedConversations.contains(parentConversation.getLocalID())) {
-						//Adding the conversation item to its parent conversation
-						parentConversation.addConversationItem(context, conversationItem);
+					//Iterating over the conversation items
+					for(ConversationManager.ConversationItem conversationItem : newCompleteConversationGroups.valueAt(i)) {
+						//Setting the conversation item's parent conversation to the found one (the one provided from the DB is not the same as the one in memory)
+						conversationItem.setConversationInfo(parentConversation);
 						
-						//Renaming the conversation
-						if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) parentConversation.setTitle(context, ((ConversationManager.ChatRenameActionInfo) conversationItem).title);
-						else if(conversationItem instanceof ConversationManager.GroupActionInfo) {
-							//Converting the item to a group action info
-							ConversationManager.GroupActionInfo groupActionInfo = (ConversationManager.GroupActionInfo) conversationItem;
+						//if(parentConversation.getState() != ConversationManager.ConversationInfo.ConversationState.READY) continue;
+						
+						//Incrementing the conversation's unread count
+						parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
+						parentConversation.updateUnreadStatus();
+						
+						//Checking if the conversation is loaded
+						if(loadedConversations.contains(parentConversation.getLocalID())) {
+							//Adding the conversation item to its parent conversation
+							//parentConversation.addConversationItem(context, conversationItem);
 							
-							//Finding the conversation member
-							ConversationManager.MemberInfo member = parentConversation.findConversationMember(groupActionInfo.other);
-							
-							if(groupActionInfo.actionType == Constants.groupActionInvite) {
-								//Adding the member in memory
-								if(member == null) {
-									member = new ConversationManager.MemberInfo(groupActionInfo.other, groupActionInfo.color);
-									parentConversation.getConversationMembers().add(member);
+							//Renaming the conversation
+							if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) parentConversation.setTitle(context, ((ConversationManager.ChatRenameActionInfo) conversationItem).title);
+							else if(conversationItem instanceof ConversationManager.GroupActionInfo) {
+								//Converting the item to a group action info
+								ConversationManager.GroupActionInfo groupActionInfo = (ConversationManager.GroupActionInfo) conversationItem;
+								
+								//Finding the conversation member
+								ConversationManager.MemberInfo member = parentConversation.findConversationMember(groupActionInfo.other);
+								
+								if(groupActionInfo.actionType == Constants.groupActionInvite) {
+									//Adding the member in memory
+									if(member == null) {
+										member = new ConversationManager.MemberInfo(groupActionInfo.other, groupActionInfo.color);
+										parentConversation.getConversationMembers().add(member);
+									}
+								} else if(groupActionInfo.actionType == Constants.groupActionLeave) {
+									//Removing the member in memory
+									if(member != null && parentConversation.getConversationMembers().contains(member))
+										parentConversation.getConversationMembers().remove(member);
 								}
-							} else if(groupActionInfo.actionType == Constants.groupActionLeave) {
-								//Removing the member in memory
-								if(member != null && parentConversation.getConversationMembers().contains(member))
-									parentConversation.getConversationMembers().remove(member);
 							}
+							
+							//Checking if the conversation is in the foreground
+							if(foregroundConversations.contains(parentConversation.getLocalID())) {
+								//Displaying the send effect
+								if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).getSendEffect().isEmpty())
+									parentConversation.requestScreenEffect(((ConversationManager.MessageInfo) conversationItem).getSendEffect());
+							}
+						} else {
+							//Updating the parent conversation's latest item
+							parentConversation.setLastItem(context, conversationItem);
 						}
 						
-						//Checking if the conversation is in the foreground
-						if(foregroundConversations.contains(parentConversation.getLocalID())) {
-							//Displaying the send effect
-							if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).getSendEffect().isEmpty())
-								parentConversation.requestScreenEffect(((ConversationManager.MessageInfo) conversationItem).getSendEffect());
+						//Sending notifications
+						if(conversationItem instanceof ConversationManager.MessageInfo)
+							NotificationUtils.sendNotification(context, (ConversationManager.MessageInfo) conversationItem);
+						
+						//Downloading the items automatically (if requested)
+						if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_storage_autodownload_key), false) &&
+								conversationItem instanceof ConversationManager.MessageInfo) {
+							for(ConversationManager.AttachmentInfo attachmentInfo : ((ConversationManager.MessageInfo) conversationItem).getAttachments())
+								attachmentInfo.downloadContent(context);
 						}
-					} else {
-						//Updating the parent conversation's latest item
-						parentConversation.setLastItem(context, conversationItem);
 					}
-					
-					//Sending notifications
-					if(conversationItem instanceof ConversationManager.MessageInfo)
-						NotificationUtils.sendNotification(context, (ConversationManager.MessageInfo) conversationItem);
-					
-					//Downloading the items automatically (if requested)
-					if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_storage_autodownload_key), false) &&
-							conversationItem instanceof ConversationManager.MessageInfo) {
-						for(ConversationManager.AttachmentInfo attachmentInfo : ((ConversationManager.MessageInfo) conversationItem).getAttachments())
-							attachmentInfo.downloadContent(context);
-					}
-					
 				}
 			}
 			
@@ -2623,7 +2642,7 @@ public class ConnectionService extends Service {
 						conversationInfo.setGuid(transferData.guid);
 						conversationInfo.setState(transferData.state);
 						conversationInfo.setTitle(context, transferData.name);
-						for(ConversationManager.ConversationItem item : transferData.conversationItems) conversationInfo.addConversationItem(context, item);
+						conversationInfo.addConversationItems(context, transferData.conversationItems);
 					}
 				}
 			}
@@ -2687,6 +2706,7 @@ public class ConnectionService extends Service {
 						if(sticker != null) stickerModifiers.add(sticker);
 					} catch(IOException | DataFormatException exception) {
 						exception.printStackTrace();
+						Crashlytics.logException(exception);
 					}
 				}
 				//Otherwise checking if the modifier is a tapback update

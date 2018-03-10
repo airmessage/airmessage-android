@@ -520,8 +520,8 @@ class BitmapCacheHelper {
 				bitmap.recycle();
 				return bmRotated;
 			}
-			catch (OutOfMemoryError e) {
-				e.printStackTrace();
+			catch (OutOfMemoryError exception) {
+				exception.printStackTrace();
 				return null;
 			}
 		}

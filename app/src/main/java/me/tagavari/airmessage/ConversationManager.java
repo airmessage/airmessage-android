@@ -785,7 +785,7 @@ class ConversationManager {
 			lastConversationItem.getSummary(context, (wasTasked, result) -> lastItem.setMessage(result));
 		}
 		
-		void addConversationItem(Context context, ConversationItem conversationItem) {
+		void addConversationItems(Context context, List<ConversationItem> list) {
 			//Getting the lists
 			ArrayList<ConversationItem> conversationItems = getConversationItems();
 			if(conversationItems == null) return;
@@ -795,77 +795,35 @@ class ConversationManager {
 			//Getting the adapter updater
 			AdapterUpdater updater = getAdapterUpdater();
 			
-			boolean messageReplaced = false;
-			//Checking if the item is a message
-			if(conversationItem instanceof MessageInfo) {
-				MessageInfo messageInfo = (MessageInfo) conversationItem;
-				
-				if(messageInfo.isOutgoing() && messageInfo.getMessageState() != SharedValues.MessageInfo.stateCodeGhost) {
-					//Scanning the ghost items
-					if(messageInfo.getMessageText() != null && messageInfo.getAttachments().isEmpty()) {
-						ListIterator<MessageInfo> listIterator = ghostMessages.listIterator();
-						while(listIterator.hasNext()) {
-							//Getting the item
-							MessageInfo ghostMessage = listIterator.next();
-							
-							//Skipping the remainder of the iteration if the item doesn't match
-							if(ghostMessage.getMessageText() == null || !messageInfo.getMessageText().equals(ghostMessage.getMessageText())) continue;
-							
-							//Updating the ghost item
-							ghostMessage.setDate(messageInfo.getDate());
-							ghostMessage.setGuid(messageInfo.getGuid());
-							ghostMessage.setMessageState(messageInfo.getMessageState());
-							ghostMessage.setErrorCode(messageInfo.getErrorCode());
-							ghostMessage.setDateRead(messageInfo.getDateRead());
-							ghostMessage.updateViewProgressState(context);
-							ghostMessage.animateGhostStateChanges();
-							
-							//Re-sorting the item
-							{
-								int originalIndex = conversationItems.indexOf(ghostMessage);
-								conversationItems.remove(ghostMessage);
-								int newIndex = insertConversationItem(ghostMessage, context, false);
-								
-								//Updating the adapter
-								if(originalIndex != newIndex) {
-									if(updater != null) updater.updateMove(originalIndex, newIndex);
-								}
-							}
-							
-							//Updating the item's relations
-							addConversationItemRelation(this, conversationItems, ghostMessage, context, true);
-							
-							//Setting the message as replaced
-							messageReplaced = true;
-							
-							//Removing the item from the ghost list
-							listIterator.remove();
-							
-							//Breaking from the loop
-							break;
-						}
-					} else if(messageInfo.getAttachments().size() == 1) {
-						AttachmentInfo attachmentInfo = messageInfo.getAttachments().get(0);
-						if(attachmentInfo.getFileChecksum() != null) {
+			//Creating the update list
+			List<ConversationItem> updateList = new ArrayList<>(list);
+			
+			//Iterating over the conversation items
+			for(ConversationItem conversationItem : list) {
+				boolean messageReplaced = false;
+				//Checking if the item is a message
+				if(conversationItem instanceof MessageInfo) {
+					MessageInfo messageInfo = (MessageInfo) conversationItem;
+					
+					if(messageInfo.isOutgoing() && messageInfo.getMessageState() != SharedValues.MessageInfo.stateCodeGhost) {
+						//Scanning the ghost items
+						if(messageInfo.getMessageText() != null && messageInfo.getAttachments().isEmpty()) {
 							ListIterator<MessageInfo> listIterator = ghostMessages.listIterator();
 							while(listIterator.hasNext()) {
 								//Getting the item
 								MessageInfo ghostMessage = listIterator.next();
 								
 								//Skipping the remainder of the iteration if the item doesn't match
-								if(ghostMessage.getAttachments().isEmpty()) continue;
-								AttachmentInfo firstAttachment = ghostMessage.getAttachments().get(0);
-								if(attachmentInfo.getFileChecksum() == null || !Arrays.equals(attachmentInfo.getFileChecksum(), firstAttachment.getFileChecksum())) continue;
+								if(ghostMessage.getMessageText() == null || !messageInfo.getMessageText().equals(ghostMessage.getMessageText())) continue;
 								
 								//Updating the ghost item
 								ghostMessage.setDate(messageInfo.getDate());
 								ghostMessage.setGuid(messageInfo.getGuid());
-								ghostMessage.setErrorCode(messageInfo.getErrorCode());
 								ghostMessage.setMessageState(messageInfo.getMessageState());
+								ghostMessage.setErrorCode(messageInfo.getErrorCode());
+								ghostMessage.setDateRead(messageInfo.getDateRead());
 								ghostMessage.updateViewProgressState(context);
 								ghostMessage.animateGhostStateChanges();
-								
-								firstAttachment.setGuid(attachmentInfo.getGuid());
 								
 								//Re-sorting the item
 								{
@@ -879,8 +837,11 @@ class ConversationManager {
 									}
 								}
 								
+								//Replacing the item
+								updateList.set(list.indexOf(conversationItem), ghostMessage);
+								
 								//Updating the item's relations
-								addConversationItemRelation(this, conversationItems, ghostMessage, context, true);
+								//addConversationItemRelation(this, conversationItems, ghostMessage, context, true);
 								
 								//Setting the message as replaced
 								messageReplaced = true;
@@ -891,29 +852,80 @@ class ConversationManager {
 								//Breaking from the loop
 								break;
 							}
+						} else if(messageInfo.getAttachments().size() == 1) {
+							AttachmentInfo attachmentInfo = messageInfo.getAttachments().get(0);
+							if(attachmentInfo.getFileChecksum() != null) {
+								ListIterator<MessageInfo> listIterator = ghostMessages.listIterator();
+								while(listIterator.hasNext()) {
+									//Getting the item
+									MessageInfo ghostMessage = listIterator.next();
+									
+									//Skipping the remainder of the iteration if the item doesn't match
+									if(ghostMessage.getAttachments().isEmpty()) continue;
+									AttachmentInfo firstAttachment = ghostMessage.getAttachments().get(0);
+									if(attachmentInfo.getFileChecksum() == null || !Arrays.equals(attachmentInfo.getFileChecksum(), firstAttachment.getFileChecksum())) continue;
+									
+									//Updating the ghost item
+									ghostMessage.setDate(messageInfo.getDate());
+									ghostMessage.setGuid(messageInfo.getGuid());
+									ghostMessage.setErrorCode(messageInfo.getErrorCode());
+									ghostMessage.setMessageState(messageInfo.getMessageState());
+									ghostMessage.updateViewProgressState(context);
+									ghostMessage.animateGhostStateChanges();
+									
+									firstAttachment.setGuid(attachmentInfo.getGuid());
+									
+									//Re-sorting the item
+									{
+										int originalIndex = conversationItems.indexOf(ghostMessage);
+										conversationItems.remove(ghostMessage);
+										int newIndex = insertConversationItem(ghostMessage, context, false);
+										
+										//Updating the adapter
+										if(originalIndex != newIndex) {
+											if(updater != null) updater.updateMove(originalIndex, newIndex);
+										}
+									}
+									
+									//Replacing the item
+									updateList.set(list.indexOf(conversationItem), ghostMessage);
+									
+									//Setting the message as replaced
+									messageReplaced = true;
+									
+									//Removing the item from the ghost list
+									listIterator.remove();
+									
+									//Breaking from the loop
+									break;
+								}
+							}
 						}
 					}
 				}
+				
+				//Checking if a message could not be replaced
+				if(!messageReplaced) {
+					//Inserting the item
+					int index = insertConversationItem(conversationItem, context, false);
+					
+					//Determining the item's relations if it is a message
+					//if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
+					
+					//Updating the last item
+					updateLastItem(context);
+					
+					//Updating the adapter
+					if(updater != null) updater.updateScroll(index);
+					
+					//Updating the view
+					View view = getView();
+					if(view != null) updateView(context, view);
+				}
 			}
 			
-			//Checking if a message could not be replaced
-			if(!messageReplaced) {
-				//Inserting the item
-				int index = insertConversationItem(conversationItem, context, false);
-				
-				//Determining the item's relations if it is a message
-				if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
-				
-				//Updating the last item
-				updateLastItem(context);
-				
-				//Updating the adapter
-				if(updater != null) updater.updateScroll(index);
-				
-				//Updating the view
-				View view = getView();
-				if(view != null) updateView(context, view);
-			}
+			//Updating the conversation items' relations
+			addConversationItemRelations(this, conversationItems, updateList, MainApplication.getInstance(), true);
 			
 			//Updating the adapter's unread messages
 			if(updater != null) updater.updateUnread();
@@ -5322,6 +5334,82 @@ class ConversationManager {
 				}
 			}
 		} */
+	}
+	
+	static void addConversationItemRelations(ConversationInfo conversation, ArrayList<ConversationItem> conversationItems, List<ConversationItem> newConversationItems, Context context, boolean update) {
+		//Iterating over the new items
+		for(ConversationItem conversationItem : newConversationItems) {
+			//Skipping the remainder of the iteration if the item is not a message
+			if(!(conversationItem instanceof MessageInfo)) continue;
+			
+			//Getting the message info
+			MessageInfo messageInfo = (MessageInfo) conversationItem;
+			
+			//Getting the item's positioning
+			int index = conversationItems.indexOf(messageInfo);
+			
+			//Used to skip updating other items in the chunk, as they will be iterated over too
+			int chunkIndex = newConversationItems.indexOf(conversationItem);
+			boolean isOldestInChunk = chunkIndex == 0;
+			boolean isNewestInChunk = chunkIndex == newConversationItems.size() - 1;
+			
+			//Checking if there is a less recent item
+			if(index > 0) {
+				//Getting the item
+				ConversationManager.ConversationItem adjacentItem = conversationItems.get(index - 1);
+				
+				//Checking if the item is a valid anchor point (is a message and is within the burst time)
+				if(adjacentItem instanceof ConversationManager.MessageInfo && Math.abs(messageInfo.getDate() - adjacentItem.getDate()) < ConversationManager.conversationBurstTimeMillis) {
+					//Updating the anchorage
+					boolean isAnchored = messageInfo.getSender() == null ? ((ConversationManager.MessageInfo) adjacentItem).getSender() == null : messageInfo.getSender().equals(((ConversationManager.MessageInfo) adjacentItem).getSender());
+					messageInfo.setAnchoredTop(isAnchored);
+					((MessageInfo) adjacentItem).setAnchoredBottom(isAnchored);
+					
+					//Updating the views
+					if(update) {
+						messageInfo.updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
+						if(isOldestInChunk) ((MessageInfo) adjacentItem).updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
+					}
+				}
+				
+				//Finding the last message
+				int currentIndex = index - 1;
+				while(!(adjacentItem instanceof ConversationManager.MessageInfo)) {
+					currentIndex--;
+					if(currentIndex < 0) break;
+					adjacentItem = conversationItems.get(currentIndex);
+				}
+				
+				if(currentIndex >= 0) messageInfo.setHasTimeDivider(Math.abs(messageInfo.getDate() - adjacentItem.getDate()) >= ConversationManager.conversationSessionTimeMillis);
+				else messageInfo.setHasTimeDivider(true); //The item is the first message (not conversation item)
+			} else messageInfo.setHasTimeDivider(true); //The item is at the beginning of the conversation
+			
+			//Updating the view
+			if(update) messageInfo.updateTimeDivider(context);
+			
+			//Checking if there is a more recent item
+			if(index < conversationItems.size() - 1) {
+				//Getting the item
+				ConversationManager.ConversationItem adjacentItem = conversationItems.get(index + 1);
+				
+				//Checking if the item is a valid anchor point (is a message and is within the burst time)
+				if(adjacentItem instanceof ConversationManager.MessageInfo && Math.abs(messageInfo.getDate() - adjacentItem.getDate()) < ConversationManager.conversationBurstTimeMillis) {
+					//Updating the anchorage
+					boolean isAnchored = messageInfo.getSender() == null ? ((ConversationManager.MessageInfo) adjacentItem).getSender() == null : messageInfo.getSender().equals(((ConversationManager.MessageInfo) adjacentItem).getSender());
+					messageInfo.setAnchoredBottom(isAnchored);
+					((MessageInfo) adjacentItem).setAnchoredTop(isAnchored);
+					
+					//Updating the views
+					if(update) {
+						messageInfo.updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
+						if(isNewestInChunk) ((MessageInfo) adjacentItem).updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
+					}
+				}
+			}
+			
+			//Comparing (and replacing) the activity state target
+			if(isNewestInChunk) conversation.tryActivityStateTarget(messageInfo, update, context);
+		}
 	}
 	
 	enum ContentType {
