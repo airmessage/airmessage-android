@@ -62,6 +62,4 @@
 	<string name="preference_server_networkreconnect_description">Attempt to reconnect when the device connects to a new network (ex. Wi-Fi to Cellular)</string>
     <string name="preference_server_help_key" translatable="false">pref_key_server_help</string>
     <string name="preference_server_help_title">Get help</string>
-	
-	
 </resources>

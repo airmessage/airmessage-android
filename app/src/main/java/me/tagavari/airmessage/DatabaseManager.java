@@ -632,6 +632,197 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return conversationItems;
 	}
 	
+	static ArrayList<ConversationManager.ConversationItem> loadConversationChunk(SQLiteDatabase readableDatabase, ConversationManager.ConversationInfo conversationInfo, boolean useFirstDate, long firstMessageDate) {
+		//Creating the message list
+		ArrayList<ConversationManager.ConversationItem> conversationItems = new ArrayList<>();
+		
+		//Querying the database
+		String selection;
+		String[] selectionArgs;
+		if(useFirstDate) {
+			selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_DATE + " < ?";
+			selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID()), Long.toString(firstMessageDate)};
+		} else {
+			selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?";
+			selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID())};
+		}
+		Cursor cursor = readableDatabase.query(Contract.MessageEntry.TABLE_NAME, null, selection, selectionArgs, null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " DESC", Integer.toString(Messaging.messageChunkSize));
+		//Cursor cursor = database.rawQuery(SQL_FETCH_CONVERSATION_MESSAGES, new String[]{Long.toString(conversationInfo.getLocalID())});
+		
+		//Getting the indexes
+		int identifierIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID);
+		int guidIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_GUID);
+		int senderColumnIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDER);
+		int itemTypeIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE);
+		int dateIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATE);
+		int stateIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_STATE);
+		int errorIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ERROR);
+		int dateReadIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATEREAD);
+		int sendStyleIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
+		int messageTextIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
+		int otherIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER);
+		
+		//Looping while there are items (backwards, since the items are sorted in descending order of date for chunk limiting purposes)
+		cursor.moveToLast();
+		while(cursor.moveToPrevious()) {
+			//Getting the general message info
+			long identifier = cursor.getLong(identifierIndex);
+			String guid = cursor.getString(guidIndex);
+			String sender = cursor.isNull(senderColumnIndex) ? null : cursor.getString(senderColumnIndex);
+			int itemType = cursor.getInt(itemTypeIndex);
+			long date = cursor.getLong(dateIndex);
+			
+			//Checking if the item is a message
+			if(itemType == ConversationManager.MessageInfo.itemType) {
+				//Getting the general message info
+				int stateCode = cursor.getInt(stateIndex);
+				int errorCode = cursor.getInt(errorIndex);
+				long dateRead = cursor.getLong(dateReadIndex);
+				String sendStyle = cursor.getString(sendStyleIndex);
+				String message = cursor.getString(messageTextIndex);
+				
+				//Creating the conversation item
+				ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(identifier, guid, conversationInfo, sender, message, sendStyle, date, stateCode, errorCode, dateRead);
+				
+				{
+					//Querying the database for attachments
+					Cursor attachmentCursor = readableDatabase.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry._ID, Contract.AttachmentEntry.COLUMN_NAME_GUID, Contract.AttachmentEntry.COLUMN_NAME_TYPE, Contract.AttachmentEntry.COLUMN_NAME_FILENAME, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM},
+							Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
+					
+					//Getting the indexes
+					int aIdentifierIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry._ID);
+					int aGuidIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_GUID);
+					int aFilePathIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
+					int aContentTypeIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_TYPE);
+					int aFileNameIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILENAME);
+					int aChecksumIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM);
+					
+					//Iterating over the results
+					while(attachmentCursor.moveToNext()) {
+						//Getting the attachment data
+						File file = attachmentCursor.isNull(aFilePathIndex) ? null : new File(attachmentCursor.getString(aFilePathIndex));
+						ConversationManager.ContentType contentType = ConversationManager.ContentType.fromIdentifier(attachmentCursor.getInt(aContentTypeIndex));
+						String fileName = attachmentCursor.getString(aFileNameIndex);
+						String stringChecksum = attachmentCursor.getString(aChecksumIndex);
+						byte[] fileChecksum = stringChecksum == null ? null : Base64.decode(stringChecksum, Base64.NO_WRAP);
+						
+						//Getting the identifiers
+						long fileID = attachmentCursor.getLong(aIdentifierIndex);
+						String fileGuid = attachmentCursor.getString(aGuidIndex);
+						
+						//Checking if the attachment has data
+						if(file != null && file.exists() && file.isFile()) {
+							//Creating the attachment
+							ConversationManager.AttachmentInfo attachment;
+							if(contentType == ConversationManager.ContentType.IMAGE) attachment = new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
+							else if(contentType == ConversationManager.ContentType.AUDIO) attachment = new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
+							else if(contentType == ConversationManager.ContentType.VIDEO) attachment = new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
+							else attachment = new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
+							
+							//Adding the attachment to the message
+							messageInfo.addAttachment(attachment);
+						} else {
+							//Deleting the file if it is a directory
+							if(file != null && file.exists() && file.isDirectory())
+								Constants.recursiveDelete(file);
+							
+							//Creating the attachment
+							ConversationManager.AttachmentInfo attachment;
+							if(contentType == ConversationManager.ContentType.IMAGE) attachment = new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
+							else if(contentType == ConversationManager.ContentType.VIDEO) attachment = new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
+							else if(contentType == ConversationManager.ContentType.AUDIO) attachment = new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
+							else attachment = new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
+							if(fileChecksum != null) attachment.setFileChecksum(fileChecksum);
+							
+							//Adding the attachment to the message
+							attachment.setLocalID(fileID);
+							messageInfo.addAttachment(attachment);
+						}
+					}
+					
+					//Closing the attachment cursor
+					attachmentCursor.close();
+				}
+				
+				{
+					//Querying the database for stickers
+					Cursor stickerCursor = readableDatabase.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX, Contract.StickerEntry.COLUMN_NAME_GUID, Contract.StickerEntry.COLUMN_NAME_SENDER, Contract.StickerEntry.COLUMN_NAME_DATE},
+							Contract.StickerEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
+					
+					//Getting the indexes
+					int sIdentifierIndex = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry._ID);
+					int sIdentifierMessageIndex = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX);
+					int sIdentifierGuid = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_GUID);
+					int sIdentifierSender = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_SENDER);
+					int sIdentifierDate = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_DATE);
+					
+					//Adding the results to the message
+					while(stickerCursor.moveToNext()) messageInfo.addSticker(new ConversationManager.StickerInfo(stickerCursor.getLong(sIdentifierIndex), stickerCursor.getString(sIdentifierGuid), identifier, stickerCursor.getInt(sIdentifierMessageIndex), stickerCursor.getString(sIdentifierSender), stickerCursor.getLong(sIdentifierDate)));
+					
+					//Closing the sticker cursor
+					stickerCursor.close();
+				}
+				
+				{
+					//Querying the database for tapbacks
+					Cursor tapbackCursor = readableDatabase.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID, Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX, Contract.TapbackEntry.COLUMN_NAME_SENDER, Contract.TapbackEntry.COLUMN_NAME_CODE},
+							Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
+					
+					//Getting the indexes
+					int tIdentifierIndex = tapbackCursor.getColumnIndexOrThrow(Contract.TapbackEntry._ID);
+					int tIdentifierMessageIndex = tapbackCursor.getColumnIndexOrThrow(Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX);
+					int tIdentifierSender = tapbackCursor.getColumnIndexOrThrow(Contract.TapbackEntry.COLUMN_NAME_SENDER);
+					int tIdentifierCode = tapbackCursor.getColumnIndexOrThrow(Contract.TapbackEntry.COLUMN_NAME_CODE);
+					
+					//Adding the results to the message
+					while(tapbackCursor.moveToNext()) messageInfo.addTapback(new ConversationManager.TapbackInfo(tapbackCursor.getLong(tIdentifierIndex), identifier, tapbackCursor.getInt(tIdentifierMessageIndex), tapbackCursor.getString(tIdentifierSender), tapbackCursor.getInt(tIdentifierCode)));
+					
+					//Closing the tapback cursor
+					tapbackCursor.close();
+				}
+				
+				//Adding the conversation item
+				conversationItems.add(messageInfo);
+			}
+			//Otherwise checking if the item is a group action
+			else if(itemType == ConversationManager.GroupActionInfo.itemType) {
+				//Getting the other
+				String other = cursor.getString(otherIndex);
+				
+				//Getting the action type
+				int subtype = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ITEMSUBTYPE));
+				
+				//Creating the conversation item
+				ConversationManager.GroupActionInfo conversationItem = new ConversationManager.GroupActionInfo(identifier, guid, conversationInfo, subtype, sender, other, date);
+				
+				//Adding the conversation item
+				conversationItems.add(conversationItem);
+			}
+			//Otherwise checking if the item is a chat rename
+			else if(itemType == ConversationManager.ChatRenameActionInfo.itemType) {
+				//Getting the name
+				String title = cursor.getString(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER));
+				
+				//Creating the conversation item
+				ConversationManager.ChatRenameActionInfo conversationItem = new ConversationManager.ChatRenameActionInfo(identifier, guid, conversationInfo, sender, title, date);
+				
+				//Adding the conversation item
+				conversationItems.add(conversationItem);
+			}
+			//Otherwise checking if the item is a chat creation message
+			else if(itemType == ConversationManager.ChatCreationMessage.itemType) {
+				//Adding the conversation item
+				conversationItems.add(new ConversationManager.ChatCreationMessage(identifier, date, conversationInfo));
+			}
+		}
+		
+		//Closing the cursor
+		cursor.close();
+		
+		//Returning the conversation items
+		return conversationItems;
+	}
+	
 	static void invalidateAttachment(SQLiteDatabase writableDatabase, long localID) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();

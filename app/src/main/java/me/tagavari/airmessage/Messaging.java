@@ -59,6 +59,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -82,6 +83,8 @@ import nl.dionsegijn.konfetti.models.Size;
 public class Messaging extends CompositeActivity {
 	//Creating the reference values
 	private static final int quickScrollFABThreshold = 3;
+	static final int messageChunkSize = 50;
+	static final int progressiveLoadThreshold = 10;
 	
 	//Creating the static values
 	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
@@ -93,22 +96,19 @@ public class Messaging extends CompositeActivity {
 	//Creating the info bar values
 	private PluginMessageBar.InfoBar infoBarConnection;
 	
-	//Creating the activity values
-	private ConversationManager.ConversationInfo conversationInfo;
-	
 	private final Runnable conversationTitleChangeListener = new Runnable() {
 		@Override
 		public void run() {
 			//Returning if the conversation info is invalid
-			if(conversationInfo == null) return;
+			if(retainedFragment.conversationInfo == null) return;
 			
 			//Building the conversation title
-			conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
+			retainedFragment.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
 				//Setting the title in the app bar
 				getSupportActionBar().setTitle(result);
 				
 				//Updating the task description
-				lastTaskDescription = new ActivityManager.TaskDescription(result, lastTaskDescription.getIcon(), conversationInfo.getConversationColor());
+				lastTaskDescription = new ActivityManager.TaskDescription(result, lastTaskDescription.getIcon(), retainedFragment.conversationInfo.getConversationColor());
 				setTaskDescription(lastTaskDescription);
 			});
 		}
@@ -160,7 +160,10 @@ public class Messaging extends CompositeActivity {
 			else setFABVisibility(false);
 			
 			//Marking viewed items as read
-			if(itemsScrolledFromBottom < conversationInfo.getUnreadMessageCount()) conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
+			if(itemsScrolledFromBottom < retainedFragment.conversationInfo.getUnreadMessageCount()) retainedFragment.conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
+			
+			//Loading chunks if the user is scrolled to the top
+			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !retainedFragment.progressiveLoadInProgress && !retainedFragment.progressiveLoadReachedLimit) recyclerView.post(retainedFragment::loadNextChunk);
 		}
 	};
 	
@@ -245,13 +248,13 @@ public class Messaging extends CompositeActivity {
 			if(message.isEmpty()) return;
 			
 			//Creating a message
-			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, conversationInfo, null, message, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, retainedFragment.conversationInfo, null, message, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 			
 			//Writing the message to the database
 			new AddGhostMessageTask(getApplicationContext(), messageInfo).execute();
 			
 			//Adding the message to the conversation in memory
-			conversationInfo.addGhostMessage(this, messageInfo);
+			retainedFragment.conversationInfo.addGhostMessage(this, messageInfo);
 			
 			//Sending the message
 			messageInfo.sendMessage(this);
@@ -354,23 +357,30 @@ public class Messaging extends CompositeActivity {
 		contentRecordButton.setOnTouchListener(recordingTouchListener);
 		bottomFAB.setOnClickListener(view -> messageListAdapter.scrollToBottom());
 		
-		//Getting the conversation info
-		retainedFragment.conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
-		ConversationManager.ConversationInfo conversationInfo = ConversationManager.findConversationInfo(retainedFragment.conversationID);
-		
-		//Checking if the conversation info is invalid
-		if(conversationInfo == null) {
-			//Disabling the message bar
-			setMessageBarState(false);
-			
-			//Showing the loading text
-			findViewById(R.id.loading_text).setVisibility(View.VISIBLE);
-			
-			//Loading the conversation
-			retainedFragment.loadConversation(getApplicationContext());
-		} else {
+		//Checking if there is already a conversation info available
+		if(retainedFragment.conversationInfo != null) {
 			//Applying the conversation
-			applyConversation(conversationInfo);
+			applyConversation();
+		} else {
+			//Getting the conversation info
+			retainedFragment.conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
+			ConversationManager.ConversationInfo conversationInfo = ConversationManager.findConversationInfo(retainedFragment.conversationID);
+			
+			//Checking if the conversation info is invalid
+			if(conversationInfo == null) {
+				//Disabling the message bar
+				setMessageBarState(false);
+				
+				//Showing the loading text
+				findViewById(R.id.loading_text).setVisibility(View.VISIBLE);
+				
+				//Loading the conversation
+				retainedFragment.loadConversation(getApplicationContext());
+			} else {
+				//Applying the conversation
+				retainedFragment.conversationInfo = conversationInfo;
+				applyConversation();
+			}
 		}
 		
 		//Setting the filler data
@@ -397,8 +407,8 @@ public class Messaging extends CompositeActivity {
 		}
 	}
 	
-	void applyConversation(ConversationManager.ConversationInfo conversationInfo) {
-		//Checking if the conversation info is invalid
+	void applyConversation() {
+		/* //Checking if the conversation info is invalid
 		if(conversationInfo == null) {
 			//Finishing the activity
 			finish();
@@ -406,36 +416,36 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		//Setting the conversation info
-		this.conversationInfo = conversationInfo;
+		retainedFragment.conversationInfo = conversationInfo; */
 		
 		//Enabling the messaging bar
 		setMessageBarState(true);
 		
 		//Setting the conversation title
-		conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
+		retainedFragment.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
 			getSupportActionBar().setTitle(result);
-			setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), conversationInfo.getConversationColor()));
+			setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), retainedFragment.conversationInfo.getConversationColor()));
 		});
 		
 		//Setting up the menu buttons
 		if(menuLoaded) {
-			if(conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
+			if(retainedFragment.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
 			else archiveMenuItem.setVisible(true);
 		}
 		
 		//Setting the list adapter
 		//messageList.setLayoutManager(new SpeedyLinearLayoutManager(this));
 		messageListAdapter = new RecyclerAdapter(retainedFragment.conversationItemList);
-		conversationInfo.setAdapterUpdater(new AdapterUpdater(this));
+		retainedFragment.conversationInfo.setAdapterUpdater(new AdapterUpdater(this));
 		messageList.setAdapter(messageListAdapter);
 		messageList.addOnScrollListener(messageListScrollListener);
 		
 		//Setting the conversation listeners
-		conversationInfo.addTitleChangeListener(conversationTitleChangeListener);
-		conversationInfo.addUnreadCountChangeListener(conversationUnreadCountChangeListener);
+		retainedFragment.conversationInfo.addTitleChangeListener(conversationTitleChangeListener);
+		retainedFragment.conversationInfo.addUnreadCountChangeListener(conversationUnreadCountChangeListener);
 		
 		//Setting the conversation effect callbacks
-		conversationInfo.setEffectCallbacks(new EffectCallbacks(this));
+		retainedFragment.conversationInfo.setEffectCallbacks(new EffectCallbacks(this));
 		
 		//Setting the message input field hint
 		messageInputField.setHint(getInputBarMessage());
@@ -448,6 +458,11 @@ public class Messaging extends CompositeActivity {
 		else loadMessages();
 	}
 	
+	void onConversationLoadFailed() {
+		//Finishing the activity
+		finish();
+	}
+	
 	void onMessagesLoaded() {
 		//Hiding the loading text
 		findViewById(R.id.loading_text).setVisibility(View.GONE);
@@ -458,7 +473,7 @@ public class Messaging extends CompositeActivity {
 			ConversationManager.ConversationItem conversationItem = retainedFragment.conversationItemList.get(i);
 			
 			//Breaking from the loop if the item has already been viewed
-			if(retainedFragment.conversationItemList.size() - 1 >= conversationInfo.getUnreadMessageCount()) break;
+			if(retainedFragment.conversationItemList.size() - 1 >= retainedFragment.conversationInfo.getUnreadMessageCount()) break;
 			
 			//Skipping the remainder of the iteration if the item is not a message
 			if(!(conversationItem instanceof ConversationManager.MessageInfo)) continue;
@@ -480,7 +495,7 @@ public class Messaging extends CompositeActivity {
 		if(!currentScreenEffect.isEmpty()) playCurrentSendEffect();
 		
 		//Setting the last message count
-		retainedFragment.lastUnreadCount = conversationInfo.getUnreadMessageCount();
+		retainedFragment.lastUnreadCount = retainedFragment.conversationInfo.getUnreadMessageCount();
 		
 		{
 			//Getting the layout manager
@@ -526,9 +541,9 @@ public class Messaging extends CompositeActivity {
 		foregroundConversations.add(new WeakReference<>(this));
 		
 		//Checking if the conversation is valid
-		if(conversationInfo != null) {
+		if(retainedFragment.conversationInfo != null) {
 			//Clearing the notifications
-			((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel((int) conversationInfo.getLocalID());
+			((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel((int) retainedFragment.conversationInfo.getLocalID());
 			
 			//Coloring the UI
 			colorUI(findViewById(android.R.id.content));
@@ -602,13 +617,13 @@ public class Messaging extends CompositeActivity {
 			getAudioMessageManager().release();
 			
 			//Checking if the conversation is valid
-			if(conversationInfo != null) {
+			if(retainedFragment.conversationInfo != null) {
 				//Clearing the messages
-				conversationInfo.clearMessages();
+				retainedFragment.conversationInfo.clearMessages();
 				
 				//Updating the conversation's unread message count
-				conversationInfo.updateUnreadStatus();
-				new UpdateUnreadMessageCount(getApplicationContext(), conversationInfo.getLocalID(), conversationInfo.getUnreadMessageCount()).execute();
+				retainedFragment.conversationInfo.updateUnreadStatus();
+				new UpdateUnreadMessageCount(getApplicationContext(), retainedFragment.conversationInfo.getLocalID(), retainedFragment.conversationInfo.getUnreadMessageCount()).execute();
 			}
 		} else {
 			//Setting the restarting from config change variable to true
@@ -646,9 +661,9 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		//Removing the conversation listeners
-		if(conversationInfo != null) {
-			conversationInfo.removeTitleChangeListener(conversationTitleChangeListener);
-			conversationInfo.removeUnreadCountChangeListener(conversationUnreadCountChangeListener);
+		if(retainedFragment.conversationInfo != null) {
+			retainedFragment.conversationInfo.removeTitleChangeListener(conversationTitleChangeListener);
+			retainedFragment.conversationInfo.removeUnreadCountChangeListener(conversationUnreadCountChangeListener);
 		}
 	}
 	
@@ -719,7 +734,7 @@ public class Messaging extends CompositeActivity {
 		findViewById(R.id.loading_text).setVisibility(View.VISIBLE);
 		
 		//Telling the retained fragment to load the messages
-		retainedFragment.loadMessages(conversationInfo);
+		retainedFragment.loadMessages();
 	}
 	
 	@Override
@@ -762,8 +777,8 @@ public class Messaging extends CompositeActivity {
 		unarchiveMenuItem = menu.findItem(R.id.action_unarchive);
 		
 		//Showing the correct "archive" menu item
-		if(conversationInfo != null) {
-			if(conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
+		if(retainedFragment.conversationInfo != null) {
+			if(retainedFragment.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
 			else archiveMenuItem.setVisible(true);
 		}
 		
@@ -790,15 +805,15 @@ public class Messaging extends CompositeActivity {
 				return true;
 			case R.id.action_details:
 				//Checking if the conversation is valid
-				if(conversationInfo != null) {
+				if(retainedFragment.conversationInfo != null) {
 					//Launching the details activity
-					startActivity(new Intent(this, MessagingInfo.class).putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID()));
+					startActivity(new Intent(this, MessagingInfo.class).putExtra(Constants.intentParamTargetID, retainedFragment.conversationInfo.getLocalID()));
 				}
 				
 				return true;
 			case R.id.action_search:
 				//Checking if the conversation is valid
-				if(conversationInfo != null) {
+				if(retainedFragment.conversationInfo != null) {
 					//Setting the state to search
 					setAppBarState(appBarStateSearch);
 				}
@@ -806,14 +821,14 @@ public class Messaging extends CompositeActivity {
 				return true;
 			case R.id.action_archive:
 				//Checking if the conversation is valid
-				if(conversationInfo != null) {
+				if(retainedFragment.conversationInfo != null) {
 					//Archiving the conversation
-					conversationInfo.setArchived(true);
+					retainedFragment.conversationInfo.setArchived(true);
 					
 					//Updating the conversation's database entry
 					ContentValues contentValues = new ContentValues();
 					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-					DatabaseManager.updateConversation(DatabaseManager.getWritableDatabase(Messaging.this), conversationInfo.getLocalID(), contentValues);
+					DatabaseManager.updateConversation(DatabaseManager.getWritableDatabase(Messaging.this), retainedFragment.conversationInfo.getLocalID(), contentValues);
 					
 					//Showing a toast
 					Toast.makeText(Messaging.this, R.string.message_conversation_archived, Toast.LENGTH_SHORT).show();
@@ -825,14 +840,14 @@ public class Messaging extends CompositeActivity {
 				return true;
 			case R.id.action_unarchive:
 				//Checking if the conversation is valid
-				if(conversationInfo != null) {
+				if(retainedFragment.conversationInfo != null) {
 					//Unarchiving the conversation
-					conversationInfo.setArchived(false);
+					retainedFragment.conversationInfo.setArchived(false);
 					
 					//Updating the conversation's database entry
 					ContentValues contentValues = new ContentValues();
 					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-					DatabaseManager.updateConversation(DatabaseManager.getWritableDatabase(Messaging.this), conversationInfo.getLocalID(), contentValues);
+					DatabaseManager.updateConversation(DatabaseManager.getWritableDatabase(Messaging.this), retainedFragment.conversationInfo.getLocalID(), contentValues);
 					
 					//Showing a toast
 					Toast.makeText(Messaging.this, R.string.message_conversation_unarchived, Toast.LENGTH_SHORT).show();
@@ -844,7 +859,7 @@ public class Messaging extends CompositeActivity {
 				return true;
 			case R.id.action_delete:
 				//Checking if the conversation is valid
-				if(conversationInfo != null) {
+				if(retainedFragment.conversationInfo != null) {
 					//Creating a dialog
 					AlertDialog dialog = new AlertDialog.Builder(this)
 							.setMessage(R.string.message_confirm_deleteconversation_current)
@@ -852,10 +867,10 @@ public class Messaging extends CompositeActivity {
 							.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
 								//Removing the conversation from memory
 								ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-								if(conversations != null) conversations.remove(conversationInfo);
+								if(conversations != null) conversations.remove(retainedFragment.conversationInfo);
 								
 								//Deleting the conversation from the database
-								DatabaseManager.deleteConversation(DatabaseManager.getReadableDatabase(Messaging.this), conversationInfo);
+								DatabaseManager.deleteConversation(DatabaseManager.getReadableDatabase(Messaging.this), retainedFragment.conversationInfo);
 								
 								//Showing a toast
 								Toast.makeText(Messaging.this, R.string.message_conversation_deleted, Toast.LENGTH_SHORT).show();
@@ -868,7 +883,7 @@ public class Messaging extends CompositeActivity {
 					//Configuring the dialog's listener
 					dialog.setOnShowListener(dialogInterface -> {
 						//Setting the button's colors
-						int color = conversationInfo.getConversationColor();
+						int color = retainedFragment.conversationInfo.getConversationColor();
 						dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
 						dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
 					});
@@ -944,7 +959,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void colorUI(ViewGroup root) {
 		//Getting the color
-		int color = conversationInfo.getConversationColor();
+		int color = retainedFragment.conversationInfo.getConversationColor();
 		int darkerColor = ColorHelper.darkenColor(color);
 		int lighterColor = ColorHelper.lightenColor(color);
 		
@@ -1016,7 +1031,7 @@ public class Messaging extends CompositeActivity {
 					@Override
 					public void onTextChanged(CharSequence s, int start, int before, int count) {
 						//Returning if the conversation details are invalid
-						if(conversationInfo == null || retainedFragment.conversationItemList == null) return;
+						if(retainedFragment.conversationInfo == null || retainedFragment.conversationItemList == null) return;
 						
 						//Checking if there is no search text
 						if(s.length() == 0) {
@@ -1352,7 +1367,7 @@ public class Messaging extends CompositeActivity {
 		retainedFragment.recordingDuration = 0;
 		
 		//Setting the recording time text
-		recordingTimeLabel.setText(RetainedFragment.getFormattedDuration(0));
+		recordingTimeLabel.setText(Constants.getFormattedDuration(0));
 		
 		//Showing the cancel text
 		//recordingBar.findViewById(R.id.recording_canceltext).setVisibility(View.VISIBLE);
@@ -1535,16 +1550,16 @@ public class Messaging extends CompositeActivity {
 	
 	private String getInputBarMessage() {
 		//Returning a generic message if the service is invalid
-		if(conversationInfo.getService() == null)
+		if(retainedFragment.conversationInfo.getService() == null)
 			return getResources().getString(R.string.imperative_messageinput);
 		
-		switch(conversationInfo.getService()) {
+		switch(retainedFragment.conversationInfo.getService()) {
 			case Constants.serviceIDAppleMessage:
 				return getResources().getString(R.string.proper_imessage);
 			case Constants.serviceIDSMS:
 				return getResources().getString(R.string.proper_sms);
 			default:
-				return conversationInfo.getService();
+				return retainedFragment.conversationInfo.getService();
 		}
 	}
 	
@@ -1667,7 +1682,7 @@ public class Messaging extends CompositeActivity {
 			bottomFAB.show();
 			
 			//Checking if there are unread messages
-			if(conversationInfo.getUnreadMessageCount() > 0) {
+			if(retainedFragment.conversationInfo.getUnreadMessageCount() > 0) {
 				//Animating the badge (to go with the FAB appearance)
 				bottomFABBadge.setVisibility(View.VISIBLE);
 				bottomFABBadge.animate()
@@ -1681,7 +1696,7 @@ public class Messaging extends CompositeActivity {
 			bottomFAB.hide();
 			
 			//Checking if there are unread messages
-			if(conversationInfo.getUnreadMessageCount() > 0) {
+			if(retainedFragment.conversationInfo.getUnreadMessageCount() > 0) {
 				//Hiding the badge (to go with the FAB disappearance)
 				bottomFABBadge.animate()
 						.scaleX(0)
@@ -1694,14 +1709,14 @@ public class Messaging extends CompositeActivity {
 	
 	void restoreUnreadIndicator() {
 		//Returning if the indicator shouldn't be visible
-		if(conversationInfo.getUnreadMessageCount() == 0) return;
+		if(retainedFragment.conversationInfo.getUnreadMessageCount() == 0) return;
 		
 		//Coloring the FAB
-		bottomFAB.setBackgroundTintList(ColorStateList.valueOf(conversationInfo.getConversationColor()));
+		bottomFAB.setBackgroundTintList(ColorStateList.valueOf(retainedFragment.conversationInfo.getConversationColor()));
 		bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
 		
 		//Updating the badge
-		bottomFABBadge.setText(Integer.toString(conversationInfo.getUnreadMessageCount()));
+		bottomFABBadge.setText(Integer.toString(retainedFragment.conversationInfo.getUnreadMessageCount()));
 		bottomFABBadge.setVisibility(View.VISIBLE);
 		bottomFABBadge.setScaleX(1);
 		bottomFABBadge.setScaleY(1);
@@ -1709,19 +1724,19 @@ public class Messaging extends CompositeActivity {
 	
 	void updateUnreadIndicator() {
 		//Returning if the value has not changed
-		if(retainedFragment.lastUnreadCount == conversationInfo.getUnreadMessageCount()) return;
+		if(retainedFragment.lastUnreadCount == retainedFragment.conversationInfo.getUnreadMessageCount()) return;
 		
 		//Getting the color
-		int colorTint = conversationInfo.getConversationColor();
+		int colorTint = retainedFragment.conversationInfo.getConversationColor();
 		
 		//Checking if there are any unread messages
-		if(conversationInfo.getUnreadMessageCount() > 0) {
+		if(retainedFragment.conversationInfo.getUnreadMessageCount() > 0) {
 			//Coloring the FAB
-			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(conversationInfo.getConversationColor()));
+			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(retainedFragment.conversationInfo.getConversationColor()));
 			bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
 			
 			//Updating the badge text
-			bottomFABBadge.setText(Integer.toString(conversationInfo.getUnreadMessageCount()));
+			bottomFABBadge.setText(Integer.toString(retainedFragment.conversationInfo.getUnreadMessageCount()));
 			
 			//Animating the badge
 			if(bottomFAB.isShown()) {
@@ -1766,7 +1781,7 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		//Setting the last unread message count
-		retainedFragment.lastUnreadCount = conversationInfo.getUnreadMessageCount();
+		retainedFragment.lastUnreadCount = retainedFragment.conversationInfo.getUnreadMessageCount();
 	}
 	
 	@Override
@@ -1804,7 +1819,7 @@ public class Messaging extends CompositeActivity {
 				//Configuring the dialog's listener
 				dialog.setOnShowListener(dialogInterface -> {
 					//Setting the button's colors
-					int color = conversationInfo.getConversationColor();
+					int color = retainedFragment.conversationInfo.getConversationColor();
 					dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
 					dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(color);
 					dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
@@ -1939,7 +1954,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void sendFile(File file) {
 		//Creating a message
-		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, retainedFragment.conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 		
 		//Starting the task
 		new SendFilePreparationTask(this, messageInfo, file).execute();
@@ -1947,7 +1962,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void sendFile(Uri uri) {
 		//Creating a message
-		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, retainedFragment.conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 		
 		//Starting the task
 		new SendFilePreparationTask(this, messageInfo, uri).execute();
@@ -2118,6 +2133,16 @@ public class Messaging extends CompositeActivity {
 		}
 	}
 	
+	void onProgressiveLoadStart() {
+		//Updating the recycler adapter (to show the loading spinner)
+		messageListAdapter.notifyItemInserted(0);
+	}
+	
+	void onProgressiveLoadFinish(int itemCount) {
+		messageListAdapter.notifyItemRemoved(0); //Removing the loading spinner
+		messageListAdapter.notifyItemRangeInserted(0, itemCount); //Inserting the new items
+	}
+	
 	public RetainedFragment.AudioMessageManager getAudioMessageManager() {
 		return retainedFragment.audioMessageManager;
 	}
@@ -2128,197 +2153,10 @@ public class Messaging extends CompositeActivity {
 		RECORDING
 	}
 	
-	/* private class ListAdapter extends ArrayAdapter<ConversationManager.ConversationItem> {
-		//Creating the values
-		private final ListView listView;
-		
-		ListAdapter(Context context, int resource, List<ConversationManager.ConversationItem> items, ListView listView) {
-			//Calling the super method
-			super(context, resource, items);
-			
-			//Setting the list view
-			this.listView = listView;
-		}
-		
-		@Override
-		@NonNull
-		public View getView(final int position, View convertView, @NonNull ViewGroup parent) {
-			//Getting the view
-			View view = convertView;
-			
-			//Getting the conversation item
-			ConversationManager.ConversationItem conversationItem = getItem(position);
-			
-			//Returning if the message info is invalid
-			if(conversationItem == null) return view;
-			
-			//Getting the view
-			view = conversationItem.createView(Messaging.this, convertView, parent);
-			
-			//Setting the view source
-			conversationItem.setViewSource(() -> listView.getChildAt(position - listView.getFirstVisiblePosition()));
-			
-			//Returning the view
-			return view;
-		}
-	} */
-	
-	//private static class ScrollListHelper {
-		/* SCROLL LIST HELPER
-		Message index - Contains a list of the messages' local IDs in chronological order (loaded on-the-fly / strong reference)
-		Base messages - First 30 messages in chronological order (always loaded / strong reference)
-		Scan messages - Messages visible on-screen and 15 messages above and below (loaded on-the-fly / strong reference)
-		Cached messages - Discarded base and scan messages (lru cache)
-		 */
-		
-		/* //Creating the reference values
-		static final int baseCapacity = 30;
-		static final int chunkSize = 25;
-		static final int cacheCapacity = 100;
-		
-		//Creating the lists
-		private final ArrayList<ConversationManager.ConversationItem> baseChunk = new ArrayList<>(baseCapacity);
-		private final ArrayList<ConversationManager.ConversationItem> scanChunks = new ArrayList<>(chunkSize * 2);
-		private long scanChunksOffset = 1;
-		private final LruCache<Integer, List<ConversationManager.ConversationItem>> cachedChunks = new LruCache<>(cacheCapacity);
-		
-		//Creating the other values
-		private int scanAreaBottom, scanAreaTop = 0;
-		
-		void addBaseMessages(ArrayList<ConversationManager.ConversationItem> list) {
-			//Adding the messages
-			baseChunk.addAll(list);
-		}
-		
-		void add(ConversationManager.ConversationItem conversationItem) {
-			//Checking if the base messages list is empty
-			if(baseChunk.isEmpty()) {
-				//Adding the item to the base messages
-				baseChunk.add(conversationItem);
-				
-				//Returning
-				return;
-			}
-			
-			//Checking if the message should be part of the base messages
-			
-			//Organizing the available chunks
-			Map<Integer, List<ConversationManager.ConversationItem>> cacheSnapshot = cachedChunks.snapshot();
-			
-			//Iterating over the messages
-			ListIterator<Long> iterator = messageIdentifiers.listIterator();
-			while(iterator.hasPrevious()) {
-				//Skipping the remainder of the iteration if the current item is newer
-				if(get(iterator.previous()).getDate() > conversationItem.getDate()) continue;
-				
-				//Getting the item's index
-				int index = iterator.previousIndex() + 1;
-				
-				//Checking if the index is within the base capacity
-				if(index < baseCapacity) {
-					//Adding the item to the base messages
-					baseChunk.add(index, conversationItem);
-					
-					//Handling base overflow
-					handleBaseOverflow();
-				}
-				//Otherwise checking if the item is within scan range
-				else if(isWithinScanRange(index)) {
-					//Adding the item to the scan messages
-					scanChunks.add(conversationItem);
-				} else {
-					//Adding the item to the cache
-					cachedChunks.put(conversationItem.getLocalID(), conversationItem);
-				}
-				
-				//Indexing the item
-				messageIdentifiers.add(iterator.previousIndex() + 1, conversationItem.getLocalID());
-			}
-		}
-		
-		void updateScanArea(int bottom, int top) {
-			//Returning if the values didn't change
-			if(scanAreaBottom == bottom && scanAreaTop == top) return;
-			
-			//Calculating the scroll difference
-			int bottomDiff = bottom - scanAreaBottom;
-			int topDiff = top - scanAreaTop;
-			
-			//Iterating over the messages in the previous scan range
-			for(Iterator<ConversationManager.ConversationItem> iterator = scanChunks.iterator(); iterator.hasNext();) {
-				//Getting the item
-				ConversationManager.ConversationItem item = iterator.next();
-				
-				//Returning if the item is still within the scan range
-				if(isWithinScanRange(messageIdentifiers.indexOf(item.getLocalID()))) return;
-				
-				//Moving the item to the cache
-				iterator.remove();
-				cachedChunks.put(item.getLocalID(), item);
-			}
-			
-			//Adding new messages to the bottom
-			if(bottomDiff < 0) {
-				for(int i = scanAreaBottom; i > baseCapacity && i >= scanAreaBottom + bottomDiff; i--) {
-					//Returning if the message has not been indexed
-					//if(messageIdentifiers.size() >= i) return;
-					
-					//Fetching the item from the cache
-					ConversationManager.ConversationItem item = cachedChunks.get(messageIdentifiers.get(i));
-					
-					//Adding the item if it is valid
-					if(item != null) scanChunks.add(item);
-				}
-			}
-			
-			//Adding new messages to the top
-			if(topDiff > 0) {
-				for(int i = scanAreaTop; i < messageIdentifiers.size() && i <= scanAreaTop + topDiff; i++) {
-					//Fetching the item from the cache
-					ConversationManager.ConversationItem item = cachedChunks.get(messageIdentifiers.get(i));
-					
-					//Adding the item if it is valid
-					if(item != null) scanChunks.add(item);
-				}
-			}
-			
-			//Updating the scan area values
-			scanAreaBottom = bottom;
-			scanAreaTop = top;
-		}
-		
-		private void handleBaseOverflow() {
-			//Returning if there is no overflow
-			if(baseChunk.size() <= baseCapacity) return;
-			
-			//Getting the message
-			ConversationManager.ConversationItem item = baseChunk.get(baseCapacity);
-			
-			//Checking if the index is within the scan bounds
-			if(isWithinScanRange(baseCapacity)) {
-				//Adding the message to the scan messages
-				scanChunks.add(0, item);
-			} else {
-				//Adding the message to the cache
-				cachedChunks.put(item.getLocalID(), item);
-			}
-			
-			//Removing the message from the base messages
-			scanChunks.remove(baseCapacity);
-		}
-		
-		private boolean isWithinScanRange(int index) {
-			return index >= scanAreaBottom && index <= scanAreaTop;
-		}
-		
-		ConversationManager.ConversationItem get(long identifier) {
-			for(ConversationManager.ConversationItem item : baseChunk) if(item.getLocalID() == identifier) return item;
-			for(ConversationManager.ConversationItem item : scanChunks) if(item.getLocalID() == identifier) return item;
-			return cachedChunks.get(identifier);
-		}
-	} */
-	
 	class RecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+		//Creating the reference values
+		private static final int itemTypeLoadingBar = -1;
+		
 		//Creating the values
 		private final ArrayList<ConversationManager.ConversationItem> conversationItems;
 		private RecyclerView recyclerView;
@@ -2335,7 +2173,6 @@ public class Messaging extends CompositeActivity {
 			this.recyclerView = recyclerView;
 		}
 		
-		
 		@Override @NonNull
 		public RecyclerView.ViewHolder onCreateViewHolder(@NotNull ViewGroup parent, int viewType) {
 			//Returning the correct view holder
@@ -2346,38 +2183,55 @@ public class Messaging extends CompositeActivity {
 				case ConversationManager.ChatRenameActionInfo.itemType:
 				case ConversationManager.ChatCreationMessage.itemType:
 					return new ConversationManager.ActionLineViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_action, parent, false));
+				case itemTypeLoadingBar: {
+					View loadingView = LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_loading, parent, false);
+					((ProgressBar) loadingView.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(retainedFragment.conversationInfo.getConversationColor()));
+					return new RecyclerView.ViewHolder(loadingView) {};
+				}
 				default:
-					return null;
+					throw new IllegalArgumentException();
 			}
 		}
 		
 		@Override
-		public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+			//Returning if the item is the loading spinner
+			if(getItemViewType(position) == itemTypeLoadingBar) return;
+			
 			//Getting the item
-			ConversationManager.ConversationItem conversationItem = conversationItems.get(position);
+			ConversationManager.ConversationItem conversationItem;
+			if(retainedFragment.progressiveLoadInProgress) conversationItem = conversationItems.get(position - 1);
+			else conversationItem = conversationItems.get(position);
 			
 			//Creating the view
 			conversationItem.bindView(Messaging.this, holder);
 			
 			//Setting the view source
 			LinearLayoutManager layout = (LinearLayoutManager) recyclerView.getLayoutManager();
-			conversationItem.setViewSource(() -> layout.findViewByPosition(conversationItems.indexOf(conversationItem)));
+			conversationItem.setViewSource(() -> layout.findViewByPosition(conversationItems.indexOf(conversationItem) + (retainedFragment.progressiveLoadInProgress ? 1 : 0)));
 		}
 		
 		@Override
-		public void onViewDetachedFromWindow(RecyclerView.ViewHolder holder) {
+		public void onViewDetachedFromWindow(@NonNull RecyclerView.ViewHolder holder) {
 			//Clearing the view's animation
 			holder.itemView.clearAnimation();
 		}
 		
 		@Override
 		public int getItemCount() {
-			return conversationItems.size();
+			int size = conversationItems.size();
+			if(retainedFragment.progressiveLoadInProgress) size += 1;
+			return size;
 		}
 		
 		@Override
 		public int getItemViewType(int position) {
-			return conversationItems.get(position).getItemType();
+			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
+			return conversationItems.get(position - (retainedFragment.progressiveLoadInProgress ? 1 : 0)).getItemType();
+		}
+		
+		private boolean isViewLoadingSpinner(int position) {
+			return retainedFragment.progressiveLoadInProgress && position == 0;
 		}
 		
 		void scrollNotifyItemInserted(int position) {
@@ -2461,10 +2315,13 @@ public class Messaging extends CompositeActivity {
 		private static final byte messagesStateLoaded = 2;
 		private static final byte messagesStateFailed = 3;
 		byte messagesState = messagesStateUnloaded;
+		boolean progressiveLoadInProgress = false;
+		boolean progressiveLoadReachedLimit = false;
 		
 		int lastUnreadCount = 0;
 		
 		private long conversationID;
+		private ConversationManager.ConversationInfo conversationInfo;
 		private ArrayList<ConversationManager.ConversationItem> conversationItemList = new ArrayList<>();
 		private ArrayList<ConversationManager.MessageInfo> conversationGhostList = new ArrayList<>();
 		
@@ -2531,9 +2388,21 @@ public class Messaging extends CompositeActivity {
 			new LoadConversationTask(context, this, conversationID).execute();
 		}
 		
-		void loadMessages(ConversationManager.ConversationInfo conversationInfo) {
+		void loadMessages() {
 			//Starting the task
 			new LoadMessagesTask(this, conversationInfo).execute();
+		}
+		
+		void loadNextChunk() {
+			//Returning if the conversation isn't ready, a load is already in progress or there are no conversation items
+			if(messagesState != messagesStateLoaded || progressiveLoadInProgress || progressiveLoadReachedLimit || conversationInfo.getConversationItems().isEmpty()) return;
+			
+			//Setting the flags
+			progressiveLoadInProgress = true;
+			parentActivity.onProgressiveLoadStart();
+			
+			//Loading a chunk
+			new LoadChunkTask(this, conversationInfo).execute();
 		}
 		
 		private static class LoadConversationTask extends AsyncTask<Void, Void, ConversationManager.ConversationInfo> {
@@ -2565,8 +2434,14 @@ public class Messaging extends CompositeActivity {
 				RetainedFragment superclass = superclassReference.get();
 				if(superclass == null) return;
 				
-				//Applying the conversation
-				superclass.parentActivity.applyConversation(conversationInfo);
+				//Setting the conversation
+				superclass.conversationInfo = conversationInfo;
+				
+				//Updating the activity
+				if(superclass.parentActivity != null) {
+					if(conversationInfo == null) superclass.parentActivity.onConversationLoadFailed();
+					else superclass.parentActivity.applyConversation();
+				}
 			}
 		}
 		
@@ -2597,7 +2472,8 @@ public class Messaging extends CompositeActivity {
 				if(retainedFragment == null) return null;
 				
 				//Loading the conversation items
-				ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.loadConversationItems(DatabaseManager.getReadableDatabase(retainedFragment.getContext()), conversationInfo);
+				ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.loadConversationChunk(DatabaseManager.getReadableDatabase(retainedFragment.getContext()), conversationInfo, false, 0);
+				//ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.loadConversationItems(DatabaseManager.getReadableDatabase(retainedFragment.getContext()), conversationInfo);
 				
 				//Setting up the conversation item relations
 				ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
@@ -2641,6 +2517,67 @@ public class Messaging extends CompositeActivity {
 				
 				//Telling the callbacks
 				retainedFragment.parentActivity.onMessagesLoaded();
+			}
+		}
+		
+		private static class LoadChunkTask extends AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationItem>> {
+			//Creating the values
+			private final WeakReference<RetainedFragment> fragmentReference;
+			
+			private final ConversationManager.ConversationInfo conversationInfo;
+			private final long lastMessageDate;
+			
+			LoadChunkTask(RetainedFragment retainedFragment, ConversationManager.ConversationInfo conversationInfo) {
+				//Setting the references
+				fragmentReference = new WeakReference<>(retainedFragment);
+				
+				//Setting the values
+				this.conversationInfo = conversationInfo;
+				lastMessageDate = conversationInfo.getConversationItems().get(0).getDate();
+			}
+			
+			@Override
+			protected ArrayList<ConversationManager.ConversationItem> doInBackground(Void... params) {
+				//Getting the fragment
+				RetainedFragment retainedFragment = fragmentReference.get();
+				if(retainedFragment == null) return null;
+				
+				//Loading the conversation items
+				return DatabaseManager.loadConversationChunk(DatabaseManager.getReadableDatabase(retainedFragment.getContext()), conversationInfo, true, lastMessageDate);
+			}
+			
+			@Override
+			protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> conversationItems) {
+				//Getting the fragment
+				RetainedFragment retainedFragment = fragmentReference.get();
+				if(retainedFragment == null) return;
+				
+				//Updating the activity
+				if(retainedFragment.parentActivity != null) retainedFragment.parentActivity.onProgressiveLoadFinish(conversationItems.size());
+				
+				//Checking if there are no new conversation items
+				if(conversationItems.isEmpty()) {
+					//Finishing the progressive load
+					retainedFragment.progressiveLoadInProgress = false;
+					
+					//Disabling the progressive load (there are no more items to load)
+					retainedFragment.progressiveLoadReachedLimit = true;
+					
+					//Returning
+					return;
+				}
+				
+				//Loading the items
+				List<ConversationManager.ConversationItem> allItems = conversationInfo.getConversationItems();
+				if(allItems == null) return;
+				
+				//Adding the items
+				conversationInfo.addChunk(conversationItems);
+				
+				//Updating the items' relations
+				ConversationManager.addConversationItemRelations(conversationInfo, allItems, conversationItems, retainedFragment.getContext(), true);
+				
+				retainedFragment.progressiveLoadInProgress = false;
 			}
 		}
 		
@@ -2760,32 +2697,6 @@ public class Messaging extends CompositeActivity {
 				if(attachment != null) attachment.setMediaPlaying(mediaPlayer.isPlaying());
 			}
 		}
-		
-		private static String getFormattedDuration(int seconds) {
-			//Getting the values
-			int minutes = seconds / 60;
-			seconds %= 60;
-			int hours = minutes / 60;
-			minutes %= 60;
-			
-			//Getting the values as string
-			String hourString = Integer.toString(hours);
-			String minuteString = Integer.toString(minutes);
-			String secondString = Integer.toString(seconds);
-			
-			//Adding an extra 0 if the number is only 1 digit
-			if(minuteString.length() <= 1) minuteString = "0" + minuteString;
-			if(secondString.length() <= 1) secondString = "0" + secondString;
-			
-			//Checking if the duration is more than an hour
-			if(hours >= 1f) {
-				//Returning the time with hours
-				return hourString + ":" + minuteString + ":" + secondString;
-			} else {
-				//Returning the time without hours
-				return minuteString + ":" + secondString;
-			}
-		}
 	}
 	
 	private static class UpdateUnreadMessageCount extends AsyncTask<Void, Void, Void> {
@@ -2898,6 +2809,16 @@ public class Messaging extends CompositeActivity {
 			//Updating the adapter
 			activity.messageListAdapter.notifyItemChanged(from);
 			activity.messageListAdapter.notifyItemMoved(from, to);
+		}
+		
+		@Override
+		public void updateRangeInserted(int start, int size) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the adapter
+			activity.messageListAdapter.notifyItemRangeInserted(start, size);
 		}
 		
 		@Override

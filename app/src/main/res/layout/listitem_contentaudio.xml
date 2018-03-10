@@ -23,6 +23,7 @@
 			<ProgressBar
 				android:id="@+id/progressBar"
 				style="?android:attr/progressBarStyleHorizontal"
+				android:theme="@style/Theme.AppCompat.Light"
 				android:layout_width="80dp"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center_vertical"
@@ -90,6 +91,7 @@
 			<ProgressBar
 				android:id="@+id/audio_progress_bar"
 				style="?android:attr/progressBarStyleHorizontal"
+				android:theme="@style/Theme.AppCompat.Light"
 				android:layout_width="80dp"
 				android:layout_height="5dp"
 				android:width="0dip"
