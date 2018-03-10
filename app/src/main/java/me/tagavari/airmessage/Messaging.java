@@ -163,7 +163,7 @@ public class Messaging extends CompositeActivity {
 			if(itemsScrolledFromBottom < retainedFragment.conversationInfo.getUnreadMessageCount()) retainedFragment.conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
 			
 			//Loading chunks if the user is scrolled to the top
-			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !retainedFragment.progressiveLoadInProgress) recyclerView.post(retainedFragment::loadNextChunk);
+			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !retainedFragment.progressiveLoadInProgress && !retainedFragment.progressiveLoadReachedLimit) recyclerView.post(retainedFragment::loadNextChunk);
 		}
 	};
 	
@@ -2196,7 +2196,7 @@ public class Messaging extends CompositeActivity {
 		@Override
 		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
 			//Returning if the item is the loading spinner
-			if(isViewLoadingSpinner(position)) return;
+			if(getItemViewType(position) == itemTypeLoadingBar) return;
 			
 			//Getting the item
 			ConversationManager.ConversationItem conversationItem;
@@ -2227,7 +2227,7 @@ public class Messaging extends CompositeActivity {
 		@Override
 		public int getItemViewType(int position) {
 			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
-			return conversationItems.get(position).getItemType();
+			return conversationItems.get(position - (retainedFragment.progressiveLoadInProgress ? 1 : 0)).getItemType();
 		}
 		
 		private boolean isViewLoadingSpinner(int position) {
@@ -2316,6 +2316,7 @@ public class Messaging extends CompositeActivity {
 		private static final byte messagesStateFailed = 3;
 		byte messagesState = messagesStateUnloaded;
 		boolean progressiveLoadInProgress = false;
+		boolean progressiveLoadReachedLimit = false;
 		
 		int lastUnreadCount = 0;
 		
@@ -2394,7 +2395,7 @@ public class Messaging extends CompositeActivity {
 		
 		void loadNextChunk() {
 			//Returning if the conversation isn't ready, a load is already in progress or there are no conversation items
-			if(messagesState != messagesStateLoaded || progressiveLoadInProgress || conversationInfo.getConversationItems().isEmpty()) return;
+			if(messagesState != messagesStateLoaded || progressiveLoadInProgress || progressiveLoadReachedLimit || conversationInfo.getConversationItems().isEmpty()) return;
 			
 			//Setting the flags
 			progressiveLoadInProgress = true;
@@ -2554,9 +2555,15 @@ public class Messaging extends CompositeActivity {
 				//Updating the activity
 				if(retainedFragment.parentActivity != null) retainedFragment.parentActivity.onProgressiveLoadFinish(conversationItems.size());
 				
-				//Returning if there are no new conversation items
+				//Checking if there are no new conversation items
 				if(conversationItems.isEmpty()) {
+					//Finishing the progressive load
 					retainedFragment.progressiveLoadInProgress = false;
+					
+					//Disabling the progressive load (there are no more items to load)
+					retainedFragment.progressiveLoadReachedLimit = true;
+					
+					//Returning
 					return;
 				}
 				

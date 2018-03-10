@@ -11,6 +11,7 @@
 		android:id="@+id/action_search"
 		android:icon="@drawable/search"
 		android:showAsAction="never"
+		android:visible="false"
 		android:title="@string/action_search"
 		app:showAsAction="never" />
 	<item

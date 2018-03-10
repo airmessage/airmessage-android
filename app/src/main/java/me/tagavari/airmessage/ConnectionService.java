@@ -589,7 +589,7 @@ public class ConnectionService extends Service {
 							//Searching for a matching request
 							for(FileDownloadRequest request : fileDownloadRequests) {
 								if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
-								if(requestIndex != 0) request.setFileSize(fileSize);
+								if(requestIndex == 0) request.setFileSize(fileSize);
 								request.processFileFragment(ConnectionService.this, compressedBytes, requestIndex, isLast);
 								if(isLast) fileDownloadRequests.remove(request);
 								break;
@@ -1127,6 +1127,7 @@ public class ConnectionService extends Service {
 				//Creating and starting the attachment writer thread
 				attachmentWriterThread = new AttachmentWriter(context.getApplicationContext(), attachmentID, fileName, fileSize);
 				attachmentWriterThread.start();
+				callbacks.onStart();
 			}
 			
 			//Adding the data struct

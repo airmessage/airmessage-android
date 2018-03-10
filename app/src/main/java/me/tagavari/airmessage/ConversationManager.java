@@ -3184,6 +3184,8 @@ class ConversationManager {
 		private final ConnectionService.FileDownloadRequestCallbacks fileDownloadRequestCallbacks = new ConnectionService.FileDownloadRequestCallbacks() {
 			@Override
 			public void onResponseReceived() {
+				isFetchWaiting = false;
+				
 				//Getting the view
 				View view = getView();
 				if(view == null) return;
@@ -3209,6 +3211,9 @@ class ConversationManager {
 			
 			@Override
 			public void onFinish(File file) {
+				//Setting the attachment as not fetching
+				isFetching = false;
+				
 				//Getting the view
 				View view = getView();
 				if(view == null) return;
@@ -3222,13 +3227,13 @@ class ConversationManager {
 				//Swapping to the content view
 				/* view.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
 				view.findViewById(R.id.content).setVisibility(View.VISIBLE); */
-				
-				//Setting the attachment as not fetching
-				isFetching = false;
 			}
 			
 			@Override
 			public void onFail() {
+				//Setting the attachment as not fetching
+				isFetching = false;
+				
 				//Getting the view
 				View view = getView();
 				if(view == null) return;
@@ -3241,9 +3246,6 @@ class ConversationManager {
 				
 				//Hiding the progress bar
 				view.findViewById(R.id.progressBar).setVisibility(View.GONE);
-				
-				//Setting the attachment as not fetching
-				isFetching = false;
 			}
 		};
 		
@@ -3320,6 +3322,10 @@ class ConversationManager {
 			
 			//Returning if the request couldn't be placed
 			if(!result) return;
+			
+			//Updating the fetch state
+			isFetching = true;
+			isFetchWaiting = false;
 			
 			//Getting the view
 			View view = getView();
