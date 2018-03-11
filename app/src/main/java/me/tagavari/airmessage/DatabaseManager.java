@@ -12,6 +12,7 @@ import android.util.Base64;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.zip.DataFormatException;
@@ -663,8 +664,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		int otherIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER);
 		
 		//Looping while there are items (backwards, since the items are sorted in descending order of date for chunk limiting purposes)
-		cursor.moveToLast();
-		while(cursor.moveToPrevious()) {
+		for(cursor.moveToLast(); !cursor.isBeforeFirst(); cursor.moveToPrevious()) {
 			//Getting the general message info
 			long identifier = cursor.getLong(identifierIndex);
 			String guid = cursor.getString(guidIndex);
@@ -815,6 +815,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				conversationItems.add(new ConversationManager.ChatCreationMessage(identifier, date, conversationInfo));
 			}
 		}
+		cursor.moveToLast();
 		
 		//Closing the cursor
 		cursor.close();
@@ -1210,7 +1211,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		//Adding the conversation created message
 		ConversationManager.ConversationItem createdMessage = new ConversationManager.ChatCreationMessage(localID, System.currentTimeMillis(), conversationInfo);
 		conversationInfo.setLastItem(createdMessage.toLightConversationItemSync(context));
-		//conversationInfo.addConversationItem(context, createdMessage);
+		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
 		
 		contentValues = new ContentValues();
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
