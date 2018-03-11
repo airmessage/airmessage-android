@@ -2649,7 +2649,7 @@ public class ConnectionService extends Service {
 						conversationInfo.setGuid(transferData.guid);
 						conversationInfo.setState(transferData.state);
 						conversationInfo.setTitle(context, transferData.name);
-						conversationInfo.addConversationItems(context, transferData.conversationItems);
+						if(Messaging.getLoadedConversations().contains(conversationInfo.getLocalID())) conversationInfo.addConversationItems(context, transferData.conversationItems);
 					}
 				}
 			}
