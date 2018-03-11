@@ -2158,7 +2158,7 @@ public class ConnectionService extends Service {
 			//Iterating over the conversations from the received messages
 			Collections.sort(structConversationItems, (value1, value2) -> Long.compare(value1.date, value2.date));
 			ArrayList<String> processedConversations = new ArrayList<>();
-			ArrayList<ConversationManager.ConversationInfo> incompleteConversations = new ArrayList<>();
+			ArrayList<ConversationManager.ConversationInfo> incompleteServerConversations = new ArrayList<>();
 			for(SharedValues.ConversationItem conversationItemStruct : structConversationItems) {
 				//Cleaning the conversation item
 				cleanConversationItem(conversationItemStruct);
@@ -2188,7 +2188,7 @@ public class ConnectionService extends Service {
 							break;
 						}
 				if(parentConversation == null)
-					for(ConversationManager.ConversationInfo conversationInfo : incompleteConversations)
+					for(ConversationManager.ConversationInfo conversationInfo : incompleteServerConversations)
 						if(conversationItemStruct.chatGuid.equals(conversationInfo.getGuid())) {
 							parentConversation = conversationInfo;
 							break;
@@ -2212,7 +2212,7 @@ public class ConnectionService extends Service {
 					
 					//Sorting the conversation
 					if(parentConversation.getState() == ConversationManager.ConversationInfo.ConversationState.READY) completeConversations.add(parentConversation);
-					else incompleteConversations.add(parentConversation);
+					else if(parentConversation.getState() == ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_SERVER) incompleteServerConversations.add(parentConversation);
 				}
 				
 				//Adding the conversation item to the database
@@ -2236,28 +2236,27 @@ public class ConnectionService extends Service {
 					DatabaseManager.updateConversationTitle(writableDatabase, ((ConversationManager.ChatRenameActionInfo) conversationItem).title, parentConversation.getLocalID());
 				}
 				
-				//Adding the conversation item to the conversation and the list if the conversation is complete
-				if(parentConversation.getState() == ConversationManager.ConversationInfo.ConversationState.READY)
+				//Checking if the conversation is complete
+				if(parentConversation.getState() == ConversationManager.ConversationInfo.ConversationState.READY) {
+					//Recording the conversation item
 					newCompleteConversationItems.add(conversationItem);
+					
+					//Incrementing the unread count
+					if(!loadedConversationsCache.contains(parentConversation.getLocalID())) DatabaseManager.incrementUnreadMessageCount(writableDatabase, parentConversation.getLocalID());
+				}
 				//Otherwise updating the last conversation item
 				else if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
 					parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context));
-				
-				//Incrementing the unread count
-				if(!loadedConversationsCache.contains(parentConversation.getLocalID())) DatabaseManager.incrementUnreadMessageCount(writableDatabase, parentConversation.getLocalID());
 			}
 			
 			{
 				ConnectionService service = serviceReference.get();
 				if(service != null) {
-					//Loading the users
-					//service.loadUsersSync(structConversationItems);
-					
 					//Checking if there are incomplete conversations
-					if(!incompleteConversations.isEmpty()) {
+					if(!incompleteServerConversations.isEmpty()) {
 						//Adding the incomplete conversations to the pending conversations
 						synchronized(service.pendingConversations) {
-							for(ConversationManager.ConversationInfo conversation : incompleteConversations)
+							for(ConversationManager.ConversationInfo conversation : incompleteServerConversations)
 								service.pendingConversations.add(new ConversationInfoRequest(conversation, sendNotifications));
 						}
 					}
@@ -2383,7 +2382,7 @@ public class ConnectionService extends Service {
 			/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
 				callbacks.updateList(true); */
 			
-			//Contacting the server for the pending conversation info
+			//Contacting the server for the pending conversations
 			ConnectionService service = serviceReference.get();
 			if(service != null && !service.pendingConversations.isEmpty())
 				service.retrievePendingConversationInfo();
@@ -2546,13 +2545,13 @@ public class ConnectionService extends Service {
 			//Getting the database
 			SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(context);
 			
-			//Deleting the unavailable conversations from the database
+			//Removing the unavailable conversations from the database
 			for(ConversationManager.ConversationInfo conversation : unavailableConversations) DatabaseManager.deleteConversation(writableDatabase, conversation);
 			
 			//Checking if there are any available conversations
 			if(!availableConversations.isEmpty()) {
 				//Iterating over the conversations
-				for(Iterator<ConversationInfoRequest> iterator = availableConversations.iterator(); iterator.hasNext(); ) {
+				for(Iterator<ConversationInfoRequest> iterator = availableConversations.iterator(); iterator.hasNext();) {
 					//Getting the conversation
 					ConversationManager.ConversationInfo availableConversation = iterator.next().conversationInfo;
 					
@@ -2624,11 +2623,16 @@ public class ConnectionService extends Service {
 			ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
 			if(conversations != null) {
 				//Removing the unavailable conversations from memory
-				for(ConversationManager.ConversationInfo unavailableConversation : unavailableConversations)
-					if(conversations.contains(unavailableConversation))
-						conversations.remove(unavailableConversation);
+				for(ConversationManager.ConversationInfo unavailableConversation : unavailableConversations) {
+					for(Iterator<ConversationManager.ConversationInfo> iterator = conversations.iterator(); iterator.hasNext();) {
+						if(unavailableConversation.getGuid().equals(iterator.next().getGuid())) {
+							iterator.remove();
+							break;
+						}
+					}
+				}
 				
-				//Adding the available conversations in memory and updating their views
+				//Adding the available conversations in memory
 				for(ConversationInfoRequest conversationInfoRequest : availableConversations) {
 					ConversationManager.addConversation(conversationInfoRequest.conversationInfo);
 					//availableConversation.updateView(ConnectionService.this);
@@ -2638,12 +2642,14 @@ public class ConnectionService extends Service {
 				if(context != null) {
 					for(Map.Entry<ConversationManager.ConversationInfo, TransferConversationStruct> pair : transferredConversations.entrySet()) {
 						//Retrieving the pair values
-						ConversationManager.ConversationInfo conversationInfo = pair.getKey();
+						ConversationManager.ConversationInfo conversationInfo = findConversationInMemory(pair.getKey().getLocalID());
+						if(conversationInfo == null) continue;
+						
 						TransferConversationStruct transferData = pair.getValue();
 						conversationInfo.setGuid(transferData.guid);
 						conversationInfo.setState(transferData.state);
 						conversationInfo.setTitle(context, transferData.name);
-						conversationInfo.addConversationItems(context, transferData.conversationItems);
+						if(Messaging.getLoadedConversations().contains(conversationInfo.getLocalID())) conversationInfo.addConversationItems(context, transferData.conversationItems);
 					}
 				}
 			}

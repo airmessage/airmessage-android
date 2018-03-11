@@ -815,7 +815,6 @@ class DatabaseManager extends SQLiteOpenHelper {
 				conversationItems.add(new ConversationManager.ChatCreationMessage(identifier, date, conversationInfo));
 			}
 		}
-		cursor.moveToLast();
 		
 		//Closing the cursor
 		cursor.close();
@@ -1367,6 +1366,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				contentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, messageStruct.stateCode);
 				contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, messageStruct.errorCode);
 				contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, messageStruct.dateRead);
+				contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, conversationInfo.getLocalID());
 				
 				//Checking if the message is a text message
 				if(messageStruct.text != null && messageStruct.attachments.isEmpty()) {
