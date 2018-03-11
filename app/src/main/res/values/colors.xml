@@ -5,7 +5,7 @@
     <color name="colorAccent">@color/colorPrimary</color>
 	<color name="colorAccentDark">@color/colorPrimaryDark</color>
 	
-	<color name="colorAppIcon">#4A99F5</color>
+	<color name="colorAppIcon">#FAFAFA</color>
 	
 	<color name="colorDivider">#1F000000</color>
 	
