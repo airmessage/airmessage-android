@@ -801,6 +801,7 @@ class ConversationManager {
 			//Iterating over the conversation items
 			for(ConversationItem conversationItem : list) {
 				boolean messageReplaced = false;
+				
 				//Checking if the item is a message
 				if(conversationItem instanceof MessageInfo) {
 					MessageInfo messageInfo = (MessageInfo) conversationItem;
@@ -808,8 +809,7 @@ class ConversationManager {
 					if(messageInfo.isOutgoing() && messageInfo.getMessageState() != SharedValues.MessageInfo.stateCodeGhost) {
 						//Scanning the ghost items
 						if(messageInfo.getMessageText() != null && messageInfo.getAttachments().isEmpty()) {
-							ListIterator<MessageInfo> listIterator = ghostMessages.listIterator();
-							while(listIterator.hasNext()) {
+							for(ListIterator<MessageInfo> listIterator = ghostMessages.listIterator(); listIterator.hasNext();) {
 								//Getting the item
 								MessageInfo ghostMessage = listIterator.next();
 								
@@ -855,8 +855,7 @@ class ConversationManager {
 						} else if(messageInfo.getAttachments().size() == 1) {
 							AttachmentInfo attachmentInfo = messageInfo.getAttachments().get(0);
 							if(attachmentInfo.getFileChecksum() != null) {
-								ListIterator<MessageInfo> listIterator = ghostMessages.listIterator();
-								while(listIterator.hasNext()) {
+								for(ListIterator<MessageInfo> listIterator = ghostMessages.listIterator(); listIterator.hasNext();) {
 									//Getting the item
 									MessageInfo ghostMessage = listIterator.next();
 									
