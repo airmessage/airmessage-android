@@ -244,6 +244,9 @@ public class ConnectionService extends Service {
 		//Setting the service as not shutting down
 		isShuttingDown = false;
 		
+		//Starting the service as a foreground service
+		startForeground(-1, getBackgroundNotification(false));
+		
 		//Calling the listeners
 		//for(ServiceStartCallback callback : startCallbacks) callback.onServiceStarted(this);
 		//startCallbacks.clear();
@@ -356,7 +359,7 @@ public class ConnectionService extends Service {
 		wsClient.connect();
 		
 		//Starting the service as a foreground service
-		startForeground(-1, getBackgroundNotification(false));
+		postConnectedNotification(false);
 	}
 	
 	public void disconnect() {
@@ -2242,7 +2245,7 @@ public class ConnectionService extends Service {
 					newCompleteConversationItems.add(conversationItem);
 					
 					//Incrementing the unread count
-					if(!loadedConversationsCache.contains(parentConversation.getLocalID())) DatabaseManager.incrementUnreadMessageCount(writableDatabase, parentConversation.getLocalID());
+					if(!loadedConversationsCache.contains(parentConversation.getLocalID()) && (conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing())) DatabaseManager.incrementUnreadMessageCount(writableDatabase, parentConversation.getLocalID());
 				}
 				//Otherwise updating the last conversation item
 				else if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
@@ -2316,7 +2319,7 @@ public class ConnectionService extends Service {
 						//if(parentConversation.getState() != ConversationManager.ConversationInfo.ConversationState.READY) continue;
 						
 						//Incrementing the conversation's unread count
-						parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
+						if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing()) parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
 						parentConversation.updateUnreadStatus();
 						
 						//Checking if the conversation is loaded
@@ -2772,14 +2775,17 @@ public class ConnectionService extends Service {
 					//Getting the parent conversation
 					ConversationManager.ConversationInfo parentConversation = messageInfo.getConversationInfo();
 					
-					//Checking if the message is the activity state target
+					//Updating the activity state target
+					parentConversation.tryActivityStateTarget(messageInfo, true, context);
+					
+					/* //Checking if the message is the activity state target
 					if(parentConversation.getActivityStateTarget() == messageInfo) {
 						//Updating the message's activity state display
 						messageInfo.updateActivityStateDisplay(context);
 					} else {
 						//Comparing (and replacing) the conversation's activity state target
 						parentConversation.tryActivityStateTarget(messageInfo, true, context);
-					}
+					} */
 				}
 			}
 			
