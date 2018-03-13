@@ -205,6 +205,9 @@ public class ConnectionService extends Service {
 		
 		//Setting the reference values
 		pingPendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(BCPingTimer), PendingIntent.FLAG_UPDATE_CURRENT);
+		
+		//Starting the service as a foreground service
+		startForeground(-1, getBackgroundNotification(false));
 	}
 	
 	@Override
@@ -226,9 +229,6 @@ public class ConnectionService extends Service {
 			//Returning not sticky
 			return START_NOT_STICKY;
 		}
-		
-		//Starting the service as a foreground service
-		startForeground(-1, getBackgroundNotification(false));
 		
 		//Checking if a disconnect has been requested
 		if(selfIntentActionDisconnect.equals(intentAction)) {
