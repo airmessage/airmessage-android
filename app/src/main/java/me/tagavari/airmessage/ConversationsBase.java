@@ -84,7 +84,7 @@ class ConversationsBase extends ActivityPlugin {
 								if(service == null || !service.isConnected()) return;
 								
 								//Requesting another mass retrieval
-								service.requestMassRetrieval(getApplicationContext());
+								service.requestMassRetrieval(getActivity().getApplicationContext());
 							})
 							.show();
 					

@@ -227,6 +227,9 @@ public class ConnectionService extends Service {
 			return START_NOT_STICKY;
 		}
 		
+		//Starting the service as a foreground service
+		startForeground(-1, getBackgroundNotification(false));
+		
 		//Checking if a disconnect has been requested
 		if(selfIntentActionDisconnect.equals(intentAction)) {
 			//Denying the existence of the connection for reconnection
@@ -243,9 +246,6 @@ public class ConnectionService extends Service {
 		
 		//Setting the service as not shutting down
 		isShuttingDown = false;
-		
-		//Starting the service as a foreground service
-		startForeground(-1, getBackgroundNotification(false));
 		
 		//Calling the listeners
 		//for(ServiceStartCallback callback : startCallbacks) callback.onServiceStarted(this);
