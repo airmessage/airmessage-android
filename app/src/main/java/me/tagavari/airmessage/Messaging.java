@@ -2208,7 +2208,7 @@ public class Messaging extends CompositeActivity {
 			
 			//Setting the view source
 			LinearLayoutManager layout = (LinearLayoutManager) recyclerView.getLayoutManager();
-			conversationItem.setViewSource(() -> layout.findViewByPosition(conversationItems.indexOf(conversationItem) + (retainedFragment.progressiveLoadInProgress ? 1 : 0)));
+			conversationItem.setViewSource(() -> conversationItems.contains(conversationItem) ? layout.findViewByPosition(conversationItems.indexOf(conversationItem) + (retainedFragment.progressiveLoadInProgress ? 1 : 0)) : null);
 		}
 		
 		@Override

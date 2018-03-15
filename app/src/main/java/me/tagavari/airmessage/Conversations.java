@@ -32,6 +32,7 @@ import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
@@ -460,6 +461,12 @@ public class Conversations extends CompositeActivity {
 		//Setting the listeners
 		findViewById(R.id.fab).setOnClickListener(view -> startActivity(new Intent(Conversations.this, NewMessage.class)));
 		
+		conversationsBasePlugin.addUpdateListListener(() -> {
+			TextView noConversations = findViewById(R.id.no_conversations);
+			if(listingArchived) noConversations.setText(R.string.message_blankstate_conversations_archived);
+			else noConversations.setText(R.string.message_blankstate_conversations);
+		});
+		
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
 		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
@@ -532,7 +539,7 @@ public class Conversations extends CompositeActivity {
 			view = conversationInfo.createView(Conversations.this, convertView, parent);
 			
 			//Setting the view source
-			conversationInfo.setViewSource(() -> conversationsBasePlugin.listView.getChildAt(filteredItems.indexOf(conversationInfo) - conversationsBasePlugin.listView.getFirstVisiblePosition()));
+			conversationInfo.setViewSource(() -> filteredItems.contains(conversationInfo) ? conversationsBasePlugin.listView.getChildAt(filteredItems.indexOf(conversationInfo) - conversationsBasePlugin.listView.getFirstVisiblePosition()) : null);
 			
 			//Returning the view
 			return view;
