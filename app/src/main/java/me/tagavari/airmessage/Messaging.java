@@ -2791,7 +2791,17 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		@Override
-		public void updateScroll(int index) {
+		void updateInserted(int index) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the adapter
+			activity.messageListAdapter.notifyItemInserted(index);
+		}
+		
+		@Override
+		public void updateInsertedScroll(int index) {
 			//Getting the activity
 			Messaging activity = activityReference.get();
 			if(activity == null) return;
