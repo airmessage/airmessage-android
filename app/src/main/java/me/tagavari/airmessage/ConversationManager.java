@@ -863,7 +863,7 @@ class ConversationManager {
 			List<ConversationItem> sortQueue = new ArrayList<>();
 			List<ConversationItemMoveRecord> movedList = new ArrayList<>();
 			List<ConversationItem> newMessages = new ArrayList<>(); //New messages that aren't replacing ghost messages
-			ConversationItem latestNewMessage = null; //Most recent message that isn't replacing a ghost message
+			//ConversationItem latestNewMessage = null; //Most recent message that isn't replacing a ghost message
 			
 			//Iterating over the conversation items
 			boolean messageReplaced;
@@ -1016,10 +1016,7 @@ class ConversationManager {
 			}
 			
 			//Inserting the new items
-			for(ConversationItem item : newMessages) {
-				insertConversationItem(item, context, false);
-				if(latestNewMessage == null || latestNewMessage.getDate() < item.getDate()) latestNewMessage = item;
-			}
+			for(ConversationItem item : newMessages) insertConversationItem(item, context, false);
 			
 			//Updating the conversation items' relations
 			addConversationItemRelations(this, conversationItems, updateList, MainApplication.getInstance(), true);
@@ -1033,15 +1030,9 @@ class ConversationManager {
 				}
 				
 				//Updating the new messages
-				for(ConversationItem item : newMessages) {
-					if(item == latestNewMessage) {
-						updater.updateInsertedScroll(conversationItems.indexOf(item));
-						System.out.println("UIS: " + conversationItems.indexOf(item));
-					}
-					else {
-						updater.updateInserted(conversationItems.indexOf(item));
-						System.out.println("INS: " + conversationItems.indexOf(item));
-					}
+				if(!newMessages.isEmpty()) {
+					for(ConversationItem item : newMessages) updater.updateInserted(conversationItems.indexOf(item));
+					updater.scrollToBottom();
 				}
 				
 				//Updating the unread messages
@@ -1131,7 +1122,10 @@ class ConversationManager {
 			
 			//Updating the adapter
 			AdapterUpdater updater = getAdapterUpdater();
-			if(updater != null) updater.updateInsertedScroll(conversationItems.size() - 1);
+			if(updater != null) {
+				updater.updateInserted(conversationItems.size() - 1);
+				updater.scrollToBottom();
+			}
 			
 			//Updating the view
 			View view = getView();
@@ -1185,10 +1179,12 @@ class ConversationManager {
 		static abstract class AdapterUpdater {
 			abstract void updateFully();
 			abstract void updateInserted(int index);
-			abstract void updateInsertedScroll(int index);
+			//abstract void updateInsertedScroll(int index);
 			abstract void updateMove(int from, int to);
 			abstract void updateRangeInserted(int start, int size);
 			abstract void updateUnread();
+			
+			abstract void scrollToBottom();
 		}
 		
 		int getNextUserColor() {

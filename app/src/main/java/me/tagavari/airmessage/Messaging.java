@@ -2811,7 +2811,7 @@ public class Messaging extends CompositeActivity {
 			activity.messageListAdapter.notifyItemInserted(index);
 		}
 		
-		@Override
+		/* @Override
 		public void updateInsertedScroll(int index) {
 			//Getting the activity
 			Messaging activity = activityReference.get();
@@ -2820,7 +2820,7 @@ public class Messaging extends CompositeActivity {
 			//Updating the adapter
 			activity.messageListAdapter.notifyItemInserted(index);
 			activity.messageListAdapter.scrollToBottom();
-		}
+		} */
 		
 		@Override
 		public void updateMove(int from, int to) {
@@ -2851,6 +2851,16 @@ public class Messaging extends CompositeActivity {
 			
 			//Notifying the scroll listener
 			activity.messageListScrollListener.onScrolled(activity.messageList, 0, 0);
+		}
+		
+		@Override
+		void scrollToBottom() {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the adapter
+			activity.messageListAdapter.scrollToBottom();
 		}
 	}
 }
