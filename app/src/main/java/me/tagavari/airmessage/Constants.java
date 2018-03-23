@@ -79,6 +79,8 @@ class Constants {
 	static final String appleSendStyleConfetti = "com.apple.messages.effect.CKConfettiEffect";
 	static final String appleSendStyleFireworks = "com.apple.messages.effect.CKFireworksEffect";
 	
+	static final String defaultNotificationSound = "content://settings/system/notification_sound";
+	
 	static final int messageErrorCodeOK = 0; //No error
 	
 	static final int messageErrorCodeAppleNetwork = 3; //Network error

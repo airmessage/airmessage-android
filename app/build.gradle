@@ -68,8 +68,10 @@ dependencies {
 	compile fileTree(include: ['*.jar'], dir: 'libs')
 	testCompile "junit:junit:4.12"
 	compile "com.android.support:appcompat-v7:$supportLibraryVersion"
-	compile "com.android.support:design:$supportLibraryVersion"
+	compile "com.android.support:preference-v7:$supportLibraryVersion"
+	compile "com.android.support:preference-v14:$supportLibraryVersion"
 	compile "com.android.support:cardview-v7:$supportLibraryVersion"
+	compile "com.android.support:design:$supportLibraryVersion"
 	compile "com.android.support:customtabs:$supportLibraryVersion"
 	compile "com.android.support.constraint:constraint-layout:1.0.2"
 	compile 'com.google.android:flexbox:0.3.1'
@@ -87,6 +89,7 @@ dependencies {
 	compile "in.srain.cube:grid-view-with-header-footer:1.0.12"
 	compile "de.hdodenhof:circleimageview:2.2.0"
 	compile "nl.dionsegijn:konfetti:1.1.1"
+	compile 'com.takisoft.fix:preference-v7-ringtone:27.1.0.0'
 
 	compile "org.jetbrains.kotlin:kotlin-stdlib:1.1.60"
 }

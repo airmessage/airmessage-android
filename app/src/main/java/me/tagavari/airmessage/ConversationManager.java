@@ -1850,8 +1850,8 @@ class ConversationManager {
 			//Checking if the requested state matches the current state
 			if(requestedState == currentState) {
 				//Updating the text
-				CharSequence text = getDeliveryStatusText(context).toString();
-				if(requestedState && !text.equals(((TextView) label.getCurrentView()).getText().toString())) label.setText(getDeliveryStatusText(context));
+				CharSequence text = getDeliveryStatusText(context);
+				if(requestedState && text != null && !text.toString().equals(((TextView) label.getCurrentView()).getText().toString())) label.setText(getDeliveryStatusText(context));
 			} else {
 				//Checking if the conversation should display its state
 				if(requestedState) {
