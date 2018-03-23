@@ -22,6 +22,7 @@
 		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
 	</style>
 	
 	<style name="AppTheme.AppCompat.NoActionBar" parent="@style/Theme.AppCompat.DayNight.NoActionBar">

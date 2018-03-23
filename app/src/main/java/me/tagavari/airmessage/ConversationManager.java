@@ -81,36 +81,27 @@ class ConversationManager {
 	//Just now - A message sent just now
 	static final long conversationJustNowTimeMillis = 60 * 1000; //1 minute
 	
-	static final Comparator<ConversationInfo> conversationComparator = new Comparator<ConversationInfo>() {
-		@Override
-		public int compare(ConversationInfo info1, ConversationInfo info2) {
-			//Getting the last conversation item times
-			long lastTime1 = info1.getLastItem() == null ? Long.MIN_VALUE : info1.getLastItem().getDate();
-			long lastTime2 = info2.getLastItem() == null ? Long.MIN_VALUE : info2.getLastItem().getDate();
-			
-			//Returning the comparison
-			return Long.compare(lastTime2, lastTime1);
-		}
+	static final Comparator<ConversationInfo> conversationComparator = (conversation1, conversation2) -> {
+		//Getting the last conversation item times
+		long lastTime1 = conversation1.getLastItem() == null ? Long.MIN_VALUE : conversation1.getLastItem().getDate();
+		long lastTime2 = conversation2.getLastItem() == null ? Long.MIN_VALUE : conversation2.getLastItem().getDate();
+		
+		//Returning the comparison
+		return Long.compare(lastTime2, lastTime1);
 	};
-	static final Comparator<ConversationItem> conversationItemComparator = new Comparator<ConversationItem>() {
-		@Override
-		public int compare(ConversationItem message1, ConversationItem message2) {
-			//Returning 0 if either of the values are invalid
-			if(message1 == null || message2 == null) return 0;
-			
-			//Returning the comparison
-			return Long.compare(message1.getDate(), message2.getDate());
-		}
+	static final Comparator<ConversationItem> conversationItemComparator = (message1, message2) -> {
+		//Returning 0 if either of the values are invalid
+		if(message1 == null || message2 == null) return 0;
+		
+		//Returning the comparison
+		return Long.compare(message1.getDate(), message2.getDate());
 	};
-	static final Comparator<MemberInfo> memberInfoComparator = new Comparator<MemberInfo>() {
-		@Override
-		public int compare(MemberInfo member1, MemberInfo member2) {
-			//Returning 0 if either of the values are invalid
-			if(member1 == null || member2 == null) return 0;
-			
-			//Returning the comparison (lexicographic comparison)
-			return member1.name.compareTo(member2.name);
-		}
+	static final Comparator<MemberInfo> memberInfoComparator = (member1, member2) -> {
+		//Returning 0 if either of the values are invalid
+		if(member1 == null || member2 == null) return 0;
+		
+		//Returning the comparison (lexicographic comparison)
+		return member1.name.compareTo(member2.name);
 	};
 	
 	//Creating the conversation list
@@ -352,7 +343,8 @@ class ConversationManager {
 		private boolean isMuted = false;
 		private transient boolean isSelected = false;
 		private int conversationColor = 0xFF000000; //Black
-		private transient WeakReference<MessageInfo> activityStateTargetReference = null;
+		private transient WeakReference<MessageInfo> activityStateTargetReadReference = null;
+		private transient WeakReference<MessageInfo> activityStateTargetLatestReference = null;
 		private transient int currentUserViewIndex;
 		private transient LightConversationItem lastItem;
 		
@@ -623,7 +615,8 @@ class ConversationManager {
 			conversationItems.clear();
 			
 			//Resetting the active message info state listing
-			activityStateTargetReference = null;
+			activityStateTargetReadReference = null;
+			activityStateTargetLatestReference = null;
 			
 			//Updating the adapter
 			AdapterUpdater updater = getAdapterUpdater();
@@ -695,22 +688,92 @@ class ConversationManager {
 			else view.findViewById(R.id.flag_muted).setVisibility(View.GONE);
 		}
 		
-		MessageInfo getActivityStateTarget() {
-			if(activityStateTargetReference == null) return null;
-			return activityStateTargetReference.get();
+		MessageInfo getActivityStateTargetRead() {
+			if(activityStateTargetReadReference == null) return null;
+			return activityStateTargetReadReference.get();
 		}
 		
-		void setActivityStateTarget(MessageInfo activityStateTarget) {
-			activityStateTargetReference = new WeakReference<>(activityStateTarget);
+		void setActivityStateTargetRead(MessageInfo activityStateTarget) {
+			activityStateTargetReadReference = new WeakReference<>(activityStateTarget);
+		}
+		
+		MessageInfo getActivityStateTargetLatest() {
+			if(activityStateTargetLatestReference == null) return null;
+			return activityStateTargetLatestReference.get();
+		}
+		
+		void setActivityStateTargetLatest(MessageInfo activityStateTarget) {
+			activityStateTargetLatestReference = new WeakReference<>(activityStateTarget);
 		}
 		
 		void tryActivityStateTarget(MessageInfo activityStateTarget, boolean update, Context context) {
+			//Returning if the item is incoming
+			if(!activityStateTarget.isOutgoing()) return;
+			
+			//Checking if the item is delivered
+			if(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered) {
+				//Getting the current item
+				MessageInfo activeMessage = getActivityStateTargetLatest();
+				
+				//Replacing the item if it is invalid
+				if(activeMessage == null) {
+					setActivityStateTargetLatest(activityStateTarget);
+					
+					//Updating the view
+					if(update) activityStateTarget.updateActivityStateDisplay(context);
+				} else {
+					//Replacing the item if the new one is more recent
+					if(activityStateTarget.getDate() >= activeMessage.getDate()) {
+						setActivityStateTargetLatest(activityStateTarget);
+						
+						//Updating the views
+						if(update) {
+							activityStateTarget.updateActivityStateDisplay(context);
+							activeMessage.updateActivityStateDisplay(context);
+						}
+					}
+				}
+			}
+			//Otherwise checking if the item is read
+			else if(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead) {
+				//Getting the current item
+				MessageInfo activeMessageRead = getActivityStateTargetRead();
+				//MessageInfo activeMessageLatest = getActivityStateTargetLatest();
+				
+				//Replacing the item if it is invalid
+				if(activeMessageRead == null) {
+					setActivityStateTargetRead(activityStateTarget);
+					setActivityStateTargetLatest(activityStateTarget);
+					
+					//Updating the view
+					if(update) {
+						activityStateTarget.updateActivityStateDisplay(context);
+						//if(activeMessageRead != null) activeMessageRead.updateActivityStateDisplay(context);
+					}
+				} else {
+					//Replacing the item if the new one is more recent
+					if(activityStateTarget.getDate() >= activeMessageRead.getDate() &&
+							(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
+						setActivityStateTargetRead(activityStateTarget);
+						setActivityStateTargetLatest(activityStateTarget);
+						
+						//Updating the views
+						if(update) {
+							activityStateTarget.updateActivityStateDisplay(context);
+							activeMessageRead.updateActivityStateDisplay(context);
+						}
+					}
+				}
+			}
+		}
+		
+		void tryActivityStateTargetRead(MessageInfo activityStateTarget, boolean update, Context context) {
 			//Getting the current item
-			MessageInfo activeMessage = getActivityStateTarget();
+			MessageInfo activeMessage = getActivityStateTargetRead();
 			
 			//Replacing the item if it is invalid
 			if(activeMessage == null) {
-				setActivityStateTarget(activityStateTarget);
+				setActivityStateTargetRead(activityStateTarget);
 				
 				//Updating the view
 				if(update) activityStateTarget.updateActivityStateDisplay(context);
@@ -719,7 +782,7 @@ class ConversationManager {
 				if(activityStateTarget.isOutgoing() &&
 						activityStateTarget.getDate() >= activeMessage.getDate() &&
 						(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
-					setActivityStateTarget(activityStateTarget);
+					setActivityStateTargetRead(activityStateTarget);
 					
 					//Updating the views
 					if(update) {
@@ -795,12 +858,18 @@ class ConversationManager {
 			//Getting the adapter updater
 			AdapterUpdater updater = getAdapterUpdater();
 			
-			//Creating the update list
+			//Creating the tracking lists
 			List<ConversationItem> updateList = new ArrayList<>(list);
+			List<ConversationItem> sortQueue = new ArrayList<>();
+			List<ConversationItemMoveRecord> movedList = new ArrayList<>();
+			List<ConversationItem> newMessages = new ArrayList<>(); //New messages that aren't replacing ghost messages
+			//ConversationItem latestNewMessage = null; //Most recent message that isn't replacing a ghost message
 			
 			//Iterating over the conversation items
+			boolean messageReplaced;
 			for(ConversationItem conversationItem : list) {
-				boolean messageReplaced = false;
+				//Defaulting to the message as not replaced
+				messageReplaced = false;
 				
 				//Checking if the item is a message
 				if(conversationItem instanceof MessageInfo) {
@@ -825,7 +894,10 @@ class ConversationManager {
 								ghostMessage.updateViewProgressState(context);
 								ghostMessage.animateGhostStateChanges();
 								
-								//Re-sorting the item
+								//Adding the item to the reinsert queue
+								sortQueue.add(ghostMessage);
+								
+								/* //Re-sorting the item
 								{
 									int originalIndex = conversationItems.indexOf(ghostMessage);
 									conversationItems.remove(ghostMessage);
@@ -833,11 +905,12 @@ class ConversationManager {
 									
 									//Updating the adapter
 									if(originalIndex != newIndex) {
-										if(updater != null) updater.updateMove(originalIndex, newIndex);
+										//if(updater != null) updater.updateMove(originalIndex, newIndex);
+										movedList.add(new ConversationItemMoveRecord(originalIndex, ghostMessage));
 									}
-								}
+								} */
 								
-								//Replacing the item
+								//Replacing the item in the final list
 								updateList.set(list.indexOf(conversationItem), ghostMessage);
 								
 								//Updating the item's relations
@@ -874,7 +947,10 @@ class ConversationManager {
 									
 									firstAttachment.setGuid(attachmentInfo.getGuid());
 									
-									//Re-sorting the item
+									//Adding the item to the reinsert queue
+									sortQueue.add(ghostMessage);
+									
+									/* //Re-sorting the item
 									{
 										int originalIndex = conversationItems.indexOf(ghostMessage);
 										conversationItems.remove(ghostMessage);
@@ -882,11 +958,12 @@ class ConversationManager {
 										
 										//Updating the adapter
 										if(originalIndex != newIndex) {
-											if(updater != null) updater.updateMove(originalIndex, newIndex);
+											//if(updater != null) updater.updateMove(originalIndex, newIndex);
+											movedList.add(new ConversationItemMoveRecord(originalIndex, ghostMessage));
 										}
-									}
+									} */
 									
-									//Replacing the item
+									//Replacing the item in the final list
 									updateList.set(list.indexOf(conversationItem), ghostMessage);
 									
 									//Setting the message as replaced
@@ -905,29 +982,72 @@ class ConversationManager {
 				
 				//Checking if a message could not be replaced
 				if(!messageReplaced) {
+					//Marking the item as a new item
+					newMessages.add(conversationItem);
+					
 					//Inserting the item
-					int index = insertConversationItem(conversationItem, context, false);
+					//int index = insertConversationItem(conversationItem, context, false);
 					
 					//Determining the item's relations if it is a message
 					//if(conversationItem instanceof MessageInfo) addConversationItemRelation(this, conversationItems, (MessageInfo) conversationItem, context, true);
 					
 					//Updating the last item
-					updateLastItem(context);
+					//updateLastItem(context);
 					
-					//Updating the adapter
-					if(updater != null) updater.updateScroll(index);
+					//Setting the target scroll index
+					//if(latestNewMessage == null || latestNewMessage.getDate() < conversationItem.getDate()) latestNewMessage = conversationItem;
+					//if(updater != null) updater.updateInsertedScroll(index);
 					
 					//Updating the view
-					View view = getView();
-					if(view != null) updateView(context, view);
+					//View view = getView();
+					//if(view != null) updateView(context, view);
 				}
 			}
+			
+			//Re-sorting the queued items
+			ArrayList<Integer> originalIndices = new ArrayList<>();
+			for(ConversationItem item : sortQueue) originalIndices.add(conversationItems.indexOf(item));
+			for(ListIterator<ConversationItem> iterator = sortQueue.listIterator(); iterator.hasNext();) {
+				int oldIndex = originalIndices.get(iterator.nextIndex());
+				ConversationItem item = iterator.next();
+				conversationItems.remove(item);
+				insertConversationItem(item, context, false);
+				movedList.add(new ConversationItemMoveRecord(oldIndex, item));
+			}
+			
+			//Inserting the new items
+			for(ConversationItem item : newMessages) insertConversationItem(item, context, false);
 			
 			//Updating the conversation items' relations
 			addConversationItemRelations(this, conversationItems, updateList, MainApplication.getInstance(), true);
 			
-			//Updating the adapter's unread messages
-			if(updater != null) updater.updateUnread();
+			//Updating the adapter
+			if(updater != null) {
+				//Updating the moved messages
+				for(ConversationItemMoveRecord record : movedList) {
+					int newIndex = conversationItems.indexOf(record.item);
+					if(record.index != newIndex) updater.updateMove(record.index, newIndex);
+				}
+				
+				//Updating the new messages
+				if(!newMessages.isEmpty()) {
+					for(ConversationItem item : newMessages) updater.updateInserted(conversationItems.indexOf(item));
+					updater.scrollToBottom();
+				}
+				
+				//Updating the unread messages
+				updater.updateUnread();
+			}
+		}
+		
+		private static class ConversationItemMoveRecord {
+			int index;
+			ConversationItem item;
+			
+			ConversationItemMoveRecord(int index, ConversationItem item) {
+				this.index = index;
+				this.item = item;
+			}
 		}
 		
 		void addChunk(List<ConversationItem> list) {
@@ -936,8 +1056,8 @@ class ConversationManager {
 			conversationItems.addAll(0, list);
 			
 			//Updating the adapter
-			AdapterUpdater updater = getAdapterUpdater();
-			//if(updater != null) updater.updateRangeInserted(0, list.size());
+			/* AdapterUpdater updater = getAdapterUpdater();
+			if(updater != null) updater.updateRangeInserted(0, list.size()); */
 		}
 		
 		private int insertConversationItem(ConversationItem conversationItem, Context context, boolean update) {
@@ -1002,7 +1122,10 @@ class ConversationManager {
 			
 			//Updating the adapter
 			AdapterUpdater updater = getAdapterUpdater();
-			if(updater != null) updater.updateScroll(conversationItems.size() - 1);
+			if(updater != null) {
+				updater.updateInserted(conversationItems.size() - 1);
+				updater.scrollToBottom();
+			}
 			
 			//Updating the view
 			View view = getView();
@@ -1055,10 +1178,13 @@ class ConversationManager {
 		
 		static abstract class AdapterUpdater {
 			abstract void updateFully();
-			abstract void updateScroll(int index);
+			abstract void updateInserted(int index);
+			//abstract void updateInsertedScroll(int index);
 			abstract void updateMove(int from, int to);
 			abstract void updateRangeInserted(int start, int size);
 			abstract void updateUnread();
+			
+			abstract void scrollToBottom();
 		}
 		
 		int getNextUserColor() {
@@ -1686,7 +1812,7 @@ class ConversationManager {
 		
 		private void prepareActivityStateDisplay(View itemView, Context context) {
 			//Getting the requested state
-			isShowingMessageState = this == getConversationInfo().getActivityStateTarget() &&
+			isShowingMessageState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetLatest()) &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
 					messageState != SharedValues.MessageInfo.stateCodeIdle &&
 					messageState != SharedValues.MessageInfo.stateCodeSent;
@@ -1705,7 +1831,7 @@ class ConversationManager {
 		
 		void updateActivityStateDisplay(Context context) {
 			//Getting the requested state
-			boolean requestedState = this == getConversationInfo().getActivityStateTarget() &&
+			boolean requestedState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetLatest()) &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
 					messageState != SharedValues.MessageInfo.stateCodeIdle &&
 					messageState != SharedValues.MessageInfo.stateCodeSent;
@@ -1725,7 +1851,8 @@ class ConversationManager {
 			//Checking if the requested state matches the current state
 			if(requestedState == currentState) {
 				//Updating the text
-				if(requestedState) label.setText(getDeliveryStatusText(context));
+				CharSequence text = getDeliveryStatusText(context);
+				if(requestedState && text != null && !text.toString().equals(((TextView) label.getCurrentView()).getText().toString())) label.setText(getDeliveryStatusText(context));
 			} else {
 				//Checking if the conversation should display its state
 				if(requestedState) {
@@ -1746,11 +1873,32 @@ class ConversationManager {
 					Constants.ResizeAnimation parentAnim = new Constants.ResizeAnimation(parentView, parentView.getHeight(), parentView.getHeight() + (label.getMeasuredHeight() + layoutParams.topMargin + layoutParams.bottomMargin));
 					parentAnim.setDuration(context.getResources().getInteger(android.R.integer.config_shortAnimTime));
 					parentAnim.setInterpolator(new AccelerateDecelerateInterpolator());
+					parentAnim.setAnimationListener(new Animation.AnimationListener() {
+						@Override
+						public void onAnimationStart(Animation animation) {}
+						
+						@Override
+						public void onAnimationEnd(Animation animation) {
+							parentView.post(() -> {
+								//Getting the view
+								View view = getView();
+								if(view == null) return;
+								
+								//Restoring the content container
+								View contentContainer = view.findViewById(R.id.content_container);
+								contentContainer.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+								contentContainer.requestLayout();
+							});
+						}
+						
+						@Override
+						public void onAnimationRepeat(Animation animation) {}
+					});
 					parentView.startAnimation(parentAnim);
 				} else {
 					//Hiding the label
 					Animation labelAnim = AnimationUtils.loadAnimation(context, R.anim.messagestatus_slide_out_top);
-					labelAnim.setAnimationListener(new Animation.AnimationListener() {
+					/* labelAnim.setAnimationListener(new Animation.AnimationListener() {
 						@Override
 						public void onAnimationStart(Animation animation) {}
 						
@@ -1763,7 +1911,7 @@ class ConversationManager {
 						
 						@Override
 						public void onAnimationRepeat(Animation animation) {}
-					});
+					}); */
 					label.startAnimation(labelAnim);
 					
 					//Collapsing the parent view
@@ -1772,6 +1920,31 @@ class ConversationManager {
 					Constants.ResizeAnimation parentAnim = new Constants.ResizeAnimation(parentView, parentView.getHeight(), parentView.getHeight() - (label.getMeasuredHeight() + layoutParams.topMargin + layoutParams.bottomMargin));
 					parentAnim.setDuration(context.getResources().getInteger(android.R.integer.config_shortAnimTime));
 					parentAnim.setInterpolator(new AccelerateDecelerateInterpolator());
+					parentAnim.setAnimationListener(new Animation.AnimationListener() {
+						@Override
+						public void onAnimationStart(Animation animation) {}
+						
+						@Override
+						public void onAnimationEnd(Animation animation) {
+							//Getting the view
+							View view = getView();
+							if(view == null) return;
+							
+							View contentContainer = view.findViewById(R.id.content_container);
+							
+							//Hiding the label
+							contentContainer.findViewById(R.id.activitystatus).setVisibility(View.GONE);
+							
+							//Restoring the content container
+							contentContainer.post(() -> {
+								contentContainer.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+								contentContainer.requestLayout();
+							});
+						}
+						
+						@Override
+						public void onAnimationRepeat(Animation animation) {}
+					});
 					parentView.startAnimation(parentAnim);
 				}
 			}
@@ -3074,7 +3247,8 @@ class ConversationManager {
 						StringBuilder stringBuilder = new StringBuilder();
 						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_type, context.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
 						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : context.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.FULL).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						//stringBuilder.append("Timestamp: " + getMessageInfo().getDate()).append('\n'); //TESTING date
 						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? context.getResources().getString(R.string.part_none) : getMessageInfo().getSendEffect())); //Send effect
 						
 						//Showing a dialog
@@ -5242,6 +5416,8 @@ class ConversationManager {
 		}
 		
 		//Finding the message to show the state on
+		boolean targetLatestSet = false;
+		boolean targetReadSet = false;
 		for(int i = conversationItems.size() - 1; i >= 0; i--) {
 			//Getting the item
 			ConversationManager.ConversationItem item = conversationItems.get(i);
@@ -5253,13 +5429,20 @@ class ConversationManager {
 			ConversationManager.MessageInfo messageItem = (ConversationManager.MessageInfo) item;
 			
 			//Skipping the remainder of the iteration if the message is incoming
-			if(messageItem.getSender() != null) continue;
+			if(!messageItem.isOutgoing()) continue;
 			
 			//Setting the conversation's active message state list ID
-			conversationInfo.setActivityStateTarget(messageItem);
+			if(!targetLatestSet) {
+				conversationInfo.setActivityStateTargetLatest(messageItem);
+				targetLatestSet = true;
+			}
+			if(!targetReadSet && messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeRead) {
+				conversationInfo.setActivityStateTargetRead(messageItem);
+				targetReadSet = true;
+			}
 			
 			//Breaking from the loop
-			break;
+			if(targetLatestSet && targetReadSet) break;
 		}
 	}
 	
@@ -5365,9 +5548,9 @@ class ConversationManager {
 			int index = conversationItems.indexOf(messageInfo);
 			
 			//Used to skip updating other items in the chunk, as they will be iterated over too
-			int chunkIndex = newConversationItems.indexOf(conversationItem);
-			boolean isOldestInChunk = chunkIndex == 0;
-			boolean isNewestInChunk = chunkIndex == newConversationItems.size() - 1;
+			//int chunkIndex = newConversationItems.indexOf(conversationItem);
+			//boolean isOldestInChunk = chunkIndex == 0;
+			//boolean isNewestInChunk = newConversationItems.indexOf(conversationItem) == newConversationItems.size() - 1;
 			
 			//Checking if there is a less recent item
 			if(index > 0) {
@@ -5384,7 +5567,7 @@ class ConversationManager {
 					//Updating the views
 					if(update) {
 						messageInfo.updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
-						if(isOldestInChunk) ((MessageInfo) adjacentItem).updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
+						if(!newConversationItems.contains(adjacentItem)) ((MessageInfo) adjacentItem).updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
 					}
 				}
 				
@@ -5418,13 +5601,13 @@ class ConversationManager {
 					//Updating the views
 					if(update) {
 						messageInfo.updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
-						if(isNewestInChunk) ((MessageInfo) adjacentItem).updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
+						if(!newConversationItems.contains(adjacentItem)) ((MessageInfo) adjacentItem).updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
 					}
 				}
 			}
 			
-			//Comparing (and replacing) the activity state target
-			if(isNewestInChunk) conversation.tryActivityStateTarget(messageInfo, update, context);
+			//Comparing (and replacing) the activity state target if the message is the newest in the chunk
+			if(newConversationItems.indexOf(conversationItem) == newConversationItems.size() - 1) conversation.tryActivityStateTarget(messageInfo, update, context);
 		}
 	}
 	

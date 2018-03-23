@@ -1,35 +1,33 @@
 package me.tagavari.airmessage;
 
-import android.Manifest;
 import android.annotation.TargetApi;
-import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.EditTextPreference;
-import android.preference.ListPreference;
-import android.preference.Preference;
-import android.preference.PreferenceFragment;
-import android.preference.PreferenceManager;
-import android.preference.RingtonePreference;
-import android.preference.SwitchPreference;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.preference.EditTextPreference;
+import android.support.v7.preference.ListPreference;
+import android.support.v7.preference.Preference;
+import android.support.v7.preference.PreferenceFragmentCompat;
+import android.support.v7.preference.SwitchPreferenceCompat;
 import android.view.MenuItem;
+import android.view.View;
 
-import static me.tagavari.airmessage.R.xml.preferences;
+import com.takisoft.fix.support.v7.preference.RingtonePreference;
+import com.takisoft.fix.support.v7.preference.RingtonePreferenceDialogFragmentCompat;
 
 public class Preferences extends AppCompatActivity {
 	@Override
@@ -37,20 +35,16 @@ public class Preferences extends AppCompatActivity {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
 		
-		//Setting the content view
 		//setContentView(R.layout.activity_preferences);
 		
 		//Adding the fragment
-		getFragmentManager().beginTransaction()
+		getSupportFragmentManager().beginTransaction()
 				.replace(android.R.id.content, new SettingsFragment())
 				.commit();
 		
 		//Enabling the toolbar and up navigation
 		//setActionBar(findViewById(R.id.toolbar));
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-		
-		//Enforcing the maximum content width
-		Constants.enforceContentWidth(getResources(), findViewById(android.R.id.content));
 	}
 	
 	@Override
@@ -73,23 +67,16 @@ public class Preferences extends AppCompatActivity {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 	} */
 	
-	public static class SettingsFragment extends PreferenceFragment {
-		//Creating the listeners
-		SharedPreferences.OnSharedPreferenceChangeListener sharedPreferenceListener = (prefs, key) -> {
-			//Finding the preference
-			Preference preference = findPreference(key);
+	public static class SettingsFragment extends PreferenceFragmentCompat {
+		Preference.OnPreferenceClickListener ringtoneClickListener = preference -> {
+			//Returning true
+			return true;
+		};
+		Preference.OnPreferenceChangeListener ringtoneChangeListener = (preference, newValue) -> {
+			//updateRingtonePreference(preference);
 			
-			{
-				//Checking if the preference is the notification sound
-				String notificationSound = getResources().getString(R.string.preference_messagenotifications_sound_key);
-				if(key.equals(notificationSound)) {
-					//Updating the ringtone preference
-					updateRingtonePreference(notificationSound, (RingtonePreference) preference);
-					
-					//Returning
-					return;
-				}
-			}
+			//Returning true
+			return true;
 		};
 		Preference.OnPreferenceChangeListener startOnBootChangeListener = (preference, value) -> {
 			//Updating the service state
@@ -187,13 +174,82 @@ public class Preferences extends AppCompatActivity {
 			//Returning true
 			return true;
 		};
+		Preference.OnPreferenceChangeListener themeChangeListener = (preference, newValue) -> {
+			//Applying the dark mode
+			((MainApplication) getActivity().getApplication()).applyDarkMode((String) newValue);
+			
+			//Recreating the activity
+			getActivity().recreate();
+			
+			//Accepting the change
+			return true;
+		};
 		
 		@Override
+		public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+			//Adding the preferences
+			addPreferencesFromResource(R.xml.preferences);
+			
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+				//Creating the notification channel intent
+				Intent intent = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS);
+				intent.putExtra(Settings.EXTRA_CHANNEL_ID, MainApplication.notificationChannelMessage);
+				intent.putExtra(Settings.EXTRA_APP_PACKAGE, getActivity().getPackageName());
+				
+				//Setting the listener
+				findPreference(getResources().getString(R.string.preference_messagenotifications_key)).setIntent(intent);
+			} else {
+				//Updating the notification information
+				//String ringtonePreferenceKey = getResources().getString(R.string.preference_messagenotifications_sound_key);
+				//updateRingtonePreference(findPreference(ringtonePreferenceKey));
+			}
+			
+			//Setting the listeners
+			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceClickListener(ringtoneClickListener);
+			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceChangeListener(ringtoneChangeListener);
+			findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setOnPreferenceChangeListener(startOnBootChangeListener);
+			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
+			findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
+			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
+			findPreference(getResources().getString(R.string.preference_server_resync_key)).setOnPreferenceClickListener(resyncMessagesClickListener);
+			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener(themeChangeListener);
+			
+			{
+				SwitchPreferenceCompat locationSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_location_key));
+				locationSwitch.setChecked(ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED);
+				
+				ListPreference darkModePreference = (ListPreference) findPreference(getResources().getString(R.string.preference_appearance_theme_key));
+				locationSwitch.setEnabled(darkModePreference.getValue().equals(MainApplication.darkModeAutomatic));
+				
+				locationSwitch.setOnPreferenceChangeListener((preference, value) -> {
+					//Opening the application settings if the permission has been granted
+					if(ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
+						//Otherwise requesting the permission
+					else requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION}, Constants.permissionAccessCoarseLocation);
+					//else Constants.requestPermission(getActivity(), new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, Constants.permissionAccessCoarseLocation);
+					
+					//Returning false (to prevent the system from changing the option)
+					return false;
+				});
+			}
+			
+			//Setting the intents
+			findPreference(getResources().getString(R.string.preference_server_help_key)).setIntent(new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress));
+		}
+		
+		@Override
+		public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+			super.onViewCreated(view, savedInstanceState);
+			//Enforcing the maximum content width
+			Constants.enforceContentWidth(getResources(), getListView());
+		}
+		
+		/* @Override
 		public void onCreate(@Nullable Bundle savedInstanceState) {
 			super.onCreate(savedInstanceState);
 			
 			//Adding the preferences
-			addPreferencesFromResource(preferences);
+			addPreferencesFromResource(R.xml.preferences);
 			
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 				//Creating the notification channel intent
@@ -247,7 +303,7 @@ public class Preferences extends AppCompatActivity {
 			
 			//Setting the intents
 			findPreference(getResources().getString(R.string.preference_server_help_key)).setIntent(new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress));
-		}
+		} */
 		
 		@Override
 		public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
@@ -256,7 +312,7 @@ public class Preferences extends AppCompatActivity {
 				//Checking if the result is a success
 				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 					//Enabling the toggle
-					((SwitchPreference) findPreference(getResources().getString(R.string.preference_appearance_location_key))).setChecked(true);
+					((SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_location_key))).setChecked(true);
 					
 					//Recreating the activity
 					getActivity().recreate();
@@ -277,7 +333,7 @@ public class Preferences extends AppCompatActivity {
 			super.onResume();
 			
 			//Registering the listener
-			PreferenceManager.getDefaultSharedPreferences(getActivity()).registerOnSharedPreferenceChangeListener(sharedPreferenceListener);
+			//PreferenceManager.getDefaultSharedPreferences(getActivity()).registerOnSharedPreferenceChangeListener(sharedPreferenceListener);
 			
 			//Updating the server URL
 			updateServerURL(findPreference(getResources().getString(R.string.preference_server_serverdetails_key)));
@@ -293,7 +349,29 @@ public class Preferences extends AppCompatActivity {
 			super.onStop();
 			
 			//Unregistering the listener
-			PreferenceManager.getDefaultSharedPreferences(getActivity()).unregisterOnSharedPreferenceChangeListener(sharedPreferenceListener);
+			//PreferenceManager.getDefaultSharedPreferences(getActivity()).unregisterOnSharedPreferenceChangeListener(sharedPreferenceListener);
+		}
+		
+		@Override
+		public void onDisplayPreferenceDialog(Preference preference) {
+			// Try if the preference is one of our custom Preferences
+			DialogFragment dialogFragment = null;
+			if(preference instanceof RingtonePreference) {
+				// Create a new instance of TimePreferenceDialogFragment with the key of the related
+				// Preference
+				dialogFragment = RingtonePreferenceDialogFragmentCompat
+						.newInstance(preference.getKey());
+			}
+			
+			// If it was one of our custom Preferences, show its dialog
+			if(dialogFragment != null) {
+				dialogFragment.setTargetFragment(this, 0);
+				dialogFragment.show(this.getFragmentManager(), "android.support.v7.preference" + ".PreferenceFragment.DIALOG");
+			}
+			// Could not be handled here. Try with the super method.
+			else {
+				super.onDisplayPreferenceDialog(preference);
+			}
 		}
 		
 		@TargetApi(26)
@@ -328,14 +406,15 @@ public class Preferences extends AppCompatActivity {
 			preference.setSummary(summary);
 		}
 		
-		private void updateRingtonePreference(String key, RingtonePreference preference) {
+		/* private void updateRingtonePreference(Preference preference) {
 			//Getting the ringtone name
-			String ringtone = PreferenceManager.getDefaultSharedPreferences(getActivity()).getString(key, "default ringtone");
-			String ringtoneName = RingtoneManager.getRingtone(getActivity(), Uri.parse(ringtone)).getTitle(getActivity());
+			String ringtoneUri = PreferenceManager.getDefaultSharedPreferences(getActivity()).getString(preference.getKey(), Constants.defaultNotificationSound);
+			Ringtone ringtone = RingtoneManager.getRingtone(getActivity(), Uri.parse(ringtoneUri));
+			String ringtoneName = ringtone == null ? getResources().getString(R.string.part_unknown) : ringtone.getTitle(getActivity());
 			
 			//Setting the summary
 			preference.setSummary(ringtoneName);
-		}
+		} */
 		
 		private void updateTextNumberPreference(EditTextPreference editTextPreference, int summaryString) {
 			//Setting the summary

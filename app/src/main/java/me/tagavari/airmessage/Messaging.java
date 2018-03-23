@@ -2164,6 +2164,9 @@ public class Messaging extends CompositeActivity {
 		RecyclerAdapter(ArrayList<ConversationManager.ConversationItem> items) {
 			//Setting the conversation items
 			conversationItems = items;
+			
+			//Enabling stable IDs
+			setHasStableIds(true);
 		}
 		
 		@Override
@@ -2207,8 +2210,10 @@ public class Messaging extends CompositeActivity {
 			conversationItem.bindView(Messaging.this, holder);
 			
 			//Setting the view source
-			LinearLayoutManager layout = (LinearLayoutManager) recyclerView.getLayoutManager();
-			conversationItem.setViewSource(() -> layout.findViewByPosition(conversationItems.indexOf(conversationItem) + (retainedFragment.progressiveLoadInProgress ? 1 : 0)));
+			conversationItem.setViewSource(() -> {
+				RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForItemId(conversationItem.getLocalID());
+				return viewHolder == null ? null : viewHolder.itemView;
+			});
 		}
 		
 		@Override
@@ -2230,11 +2235,17 @@ public class Messaging extends CompositeActivity {
 			return conversationItems.get(position - (retainedFragment.progressiveLoadInProgress ? 1 : 0)).getItemType();
 		}
 		
+		@Override
+		public long getItemId(int position) {
+			if(isViewLoadingSpinner(position)) return -1;
+			return conversationItems.get(position - (retainedFragment.progressiveLoadInProgress ? 1 : 0)).getLocalID();
+		}
+		
 		private boolean isViewLoadingSpinner(int position) {
 			return retainedFragment.progressiveLoadInProgress && position == 0;
 		}
 		
-		void scrollNotifyItemInserted(int position) {
+		/* void scrollNotifyItemInserted(int position) {
 			//Returning if the list is empty
 			if(conversationItems.isEmpty()) return;
 			
@@ -2249,7 +2260,7 @@ public class Messaging extends CompositeActivity {
 				//Scrolling to the bottom
 				recyclerView.smoothScrollToPosition(getItemCount() - 1);
 			}
-		}
+		} */
 		
 		boolean isScrolledToBottom() {
 			return ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
@@ -2791,14 +2802,25 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		@Override
-		public void updateScroll(int index) {
+		void updateInserted(int index) {
 			//Getting the activity
 			Messaging activity = activityReference.get();
 			if(activity == null) return;
 			
 			//Updating the adapter
-			activity.messageListAdapter.scrollNotifyItemInserted(index);
+			activity.messageListAdapter.notifyItemInserted(index);
 		}
+		
+		/* @Override
+		public void updateInsertedScroll(int index) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the adapter
+			activity.messageListAdapter.notifyItemInserted(index);
+			activity.messageListAdapter.scrollToBottom();
+		} */
 		
 		@Override
 		public void updateMove(int from, int to) {
@@ -2829,6 +2851,16 @@ public class Messaging extends CompositeActivity {
 			
 			//Notifying the scroll listener
 			activity.messageListScrollListener.onScrolled(activity.messageList, 0, 0);
+		}
+		
+		@Override
+		void scrollToBottom() {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the adapter
+			activity.messageListAdapter.scrollToBottom();
 		}
 	}
 }

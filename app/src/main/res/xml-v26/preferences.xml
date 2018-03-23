@@ -1,79 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-	<Preference
+<android.support.v7.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+	<android.support.v7.preference.Preference
 		android:key="@string/preference_messagenotifications_key"
 		android:title="@string/preference_messagenotifications_name" />
 	
-	<PreferenceCategory
+	<android.support.v7.preference.PreferenceCategory
 		android:key="@string/preferencegroup_appearance_key"
 		android:title="@string/preferencegroup_appearance_name">
-		<ListPreference
+		<android.support.v7.preference.ListPreference
 			android:key="@string/preference_appearance_theme_key"
 			android:title="@string/preference_appearance_theme_title"
 			android:entries="@array/preference_appearance_theme_entries"
 			android:entryValues="@array/preference_appearance_theme_values"
 			android:defaultValue="follow_system"
 			android:summary="%s" />
-		<SwitchPreference
+		<android.support.v7.preference.SwitchPreferenceCompat
 			android:key="@string/preference_appearance_location_key"
 			android:title="@string/preference_appearance_location_title"
 			android:summary="@string/preference_appearance_location_description"
 			android:persistent="false" />
-	</PreferenceCategory>
+	</android.support.v7.preference.PreferenceCategory>
 	
-	<PreferenceCategory
+	<android.support.v7.preference.PreferenceCategory
 		android:key="@string/preferencegroup_storage_key"
 		android:title="@string/preferencegroup_storage_name" >
-		<SwitchPreference
+		<android.support.v7.preference.SwitchPreferenceCompat
 			android:key="@string/preference_storage_autodownload_key"
 			android:title="@string/preference_storage_autodownload_name"
 			android:summary="@string/preference_storage_autodownload_desc"
 			android:defaultValue="false" />
-		<Preference
+		<android.support.v7.preference.Preference
 			android:key="@string/preference_storage_deleteattachments_key"
 			android:title="@string/preference_storage_deleteattachments_name"
 			android:summary="@string/preference_storage_deleteattachments_desc" />
-		<Preference
+		<android.support.v7.preference.Preference
 			android:key="@string/preference_storage_deleteall_key"
 			android:title="@string/preference_storage_deleteall_name" />
-	</PreferenceCategory>
+	</android.support.v7.preference.PreferenceCategory>
 	
-	<PreferenceCategory
+	<android.support.v7.preference.PreferenceCategory
 		android:key="@string/preferencegroup_server_key"
 		android:title="@string/preferencegroup_server_name" >
-		<Preference
+		<android.support.v7.preference.Preference
 			android:key="@string/preference_server_serverdetails_key"
 			android:title="@string/preference_server_serverdetails_title" >
 			<intent
 				android:action="android.intent.action.VIEW"
 				android:targetPackage="me.tagavari.airmessage"
 				android:targetClass="me.tagavari.airmessage.ServerSetup" />
-		</Preference>
-		<Preference
+		</android.support.v7.preference.Preference>
+		<android.support.v7.preference.Preference
 			android:key="@string/preference_server_resync_key"
 			android:title="@string/preference_server_resync_title" >
-		</Preference>
-		<!-- <SwitchPreference
+		</android.support.v7.preference.Preference>
+		<!-- <android.support.v7.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_disconnectionnotification_key"
 			android:title="@string/preference_server_disconnectionnotification_title"
 			android:summary="@string/preference_server_disconnectionnotification_description"
 			android:defaultValue="true" /> -->
-		<SwitchPreference
+		<android.support.v7.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_connectionboot_key"
 			android:title="@string/preference_server_connectionboot_title"
 			android:defaultValue="true" />
-		<SwitchPreference
+		<android.support.v7.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_dropreconnect_key"
 			android:title="@string/preference_server_dropreconnect_title"
 			android:summary="@string/preference_server_dropreconnect_description"
 			android:defaultValue="true" />
-		<SwitchPreference
+		<android.support.v7.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_networkreconnect_key"
 			android:title="@string/preference_server_networkreconnect_title"
 			android:summary="@string/preference_server_networkreconnect_description"
 			android:defaultValue="true" />
-		<Preference
+		<android.support.v7.preference.Preference
 			android:key="@string/preference_server_help_key"
 			android:title="@string/preference_server_help_title" />
-	</PreferenceCategory>
-</PreferenceScreen>
+	</android.support.v7.preference.PreferenceCategory>
+</android.support.v7.preference.PreferenceScreen>
