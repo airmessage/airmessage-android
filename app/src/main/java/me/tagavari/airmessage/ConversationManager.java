@@ -723,8 +723,7 @@ class ConversationManager {
 					if(update) activityStateTarget.updateActivityStateDisplay(context);
 				} else {
 					//Replacing the item if the new one is more recent
-					if(activityStateTarget.getDate() >= activeMessage.getDate() &&
-							(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
+					if(activityStateTarget.getDate() >= activeMessage.getDate()) {
 						setActivityStateTargetLatest(activityStateTarget);
 						
 						//Updating the views
@@ -984,7 +983,7 @@ class ConversationManager {
 				//Checking if a message could not be replaced
 				if(!messageReplaced) {
 					//Marking the item as a new item
-					newMessages.add(conversationItem); //TODO finish sorting and stuff
+					newMessages.add(conversationItem);
 					
 					//Inserting the item
 					//int index = insertConversationItem(conversationItem, context, false);
@@ -1035,8 +1034,14 @@ class ConversationManager {
 				
 				//Updating the new messages
 				for(ConversationItem item : newMessages) {
-					if(item == latestNewMessage) updater.updateInsertedScroll(conversationItems.indexOf(latestNewMessage));
-					else updater.updateInserted(conversationItems.indexOf(item));
+					if(item == latestNewMessage) {
+						updater.updateInsertedScroll(conversationItems.indexOf(item));
+						System.out.println("UIS: " + conversationItems.indexOf(item));
+					}
+					else {
+						updater.updateInserted(conversationItems.indexOf(item));
+						System.out.println("INS: " + conversationItems.indexOf(item));
+					}
 				}
 				
 				//Updating the unread messages
@@ -1872,11 +1877,32 @@ class ConversationManager {
 					Constants.ResizeAnimation parentAnim = new Constants.ResizeAnimation(parentView, parentView.getHeight(), parentView.getHeight() + (label.getMeasuredHeight() + layoutParams.topMargin + layoutParams.bottomMargin));
 					parentAnim.setDuration(context.getResources().getInteger(android.R.integer.config_shortAnimTime));
 					parentAnim.setInterpolator(new AccelerateDecelerateInterpolator());
+					parentAnim.setAnimationListener(new Animation.AnimationListener() {
+						@Override
+						public void onAnimationStart(Animation animation) {}
+						
+						@Override
+						public void onAnimationEnd(Animation animation) {
+							parentView.post(() -> {
+								//Getting the view
+								View view = getView();
+								if(view == null) return;
+								
+								//Restoring the content container
+								View contentContainer = view.findViewById(R.id.content_container);
+								contentContainer.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+								contentContainer.requestLayout();
+							});
+						}
+						
+						@Override
+						public void onAnimationRepeat(Animation animation) {}
+					});
 					parentView.startAnimation(parentAnim);
 				} else {
 					//Hiding the label
 					Animation labelAnim = AnimationUtils.loadAnimation(context, R.anim.messagestatus_slide_out_top);
-					labelAnim.setAnimationListener(new Animation.AnimationListener() {
+					/* labelAnim.setAnimationListener(new Animation.AnimationListener() {
 						@Override
 						public void onAnimationStart(Animation animation) {}
 						
@@ -1889,7 +1915,7 @@ class ConversationManager {
 						
 						@Override
 						public void onAnimationRepeat(Animation animation) {}
-					});
+					}); */
 					label.startAnimation(labelAnim);
 					
 					//Collapsing the parent view
@@ -1898,6 +1924,31 @@ class ConversationManager {
 					Constants.ResizeAnimation parentAnim = new Constants.ResizeAnimation(parentView, parentView.getHeight(), parentView.getHeight() - (label.getMeasuredHeight() + layoutParams.topMargin + layoutParams.bottomMargin));
 					parentAnim.setDuration(context.getResources().getInteger(android.R.integer.config_shortAnimTime));
 					parentAnim.setInterpolator(new AccelerateDecelerateInterpolator());
+					parentAnim.setAnimationListener(new Animation.AnimationListener() {
+						@Override
+						public void onAnimationStart(Animation animation) {}
+						
+						@Override
+						public void onAnimationEnd(Animation animation) {
+							//Getting the view
+							View view = getView();
+							if(view == null) return;
+							
+							View contentContainer = view.findViewById(R.id.content_container);
+							
+							//Hiding the label
+							contentContainer.findViewById(R.id.activitystatus).setVisibility(View.GONE);
+							
+							//Restoring the content container
+							contentContainer.post(() -> {
+								contentContainer.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+								contentContainer.requestLayout();
+							});
+						}
+						
+						@Override
+						public void onAnimationRepeat(Animation animation) {}
+					});
 					parentView.startAnimation(parentAnim);
 				}
 			}

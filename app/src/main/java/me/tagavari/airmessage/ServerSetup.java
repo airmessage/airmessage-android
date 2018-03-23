@@ -183,7 +183,7 @@ public class ServerSetup extends Activity {
 				new AlertDialog.Builder(this)
 						.setTitle(R.string.message_setup_sync_warning_title)
 						.setMessage(R.string.message_setup_sync_description)
-						.setNegativeButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
+						.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
 						.setPositiveButton(R.string.action_skip, (dialog, which) -> finishSetup())
 						.create().show();
 			} else {

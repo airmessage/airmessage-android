@@ -2635,9 +2635,14 @@ public class ConnectionService extends Service {
 					}
 				}
 				
-				//Adding the available conversations in memory
+				//Iterating over the available conversations
 				for(ConversationInfoRequest conversationInfoRequest : availableConversations) {
+					//Adding the available conversations in memory
 					ConversationManager.addConversation(conversationInfoRequest.conversationInfo);
+					
+					//Adding the unread messages
+					conversationInfoRequest.conversationInfo.setUnreadMessageCount(availableConversationItems.get(conversationInfoRequest.conversationInfo.getLocalID()).size());
+					conversationInfoRequest.conversationInfo.updateUnreadStatus();
 					//availableConversation.updateView(ConnectionService.this);
 				}
 				
@@ -2653,6 +2658,8 @@ public class ConnectionService extends Service {
 						conversationInfo.setState(transferData.state);
 						conversationInfo.setTitle(context, transferData.name);
 						if(Messaging.getLoadedConversations().contains(conversationInfo.getLocalID())) conversationInfo.addConversationItems(context, transferData.conversationItems);
+						//conversationInfo.setUnreadMessageCount(conversationInfo.getUnreadMessageCount() + transferData.conversationItems.size());
+						//conversationInfo.updateUnreadStatus();
 					}
 				}
 			}
