@@ -5432,7 +5432,7 @@ class ConversationManager {
 			if(!messageItem.isOutgoing()) continue;
 			
 			//Setting the conversation's active message state list ID
-			if(!targetLatestSet) {
+			if(!targetLatestSet && messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered) {
 				conversationInfo.setActivityStateTargetLatest(messageItem);
 				targetLatestSet = true;
 			}
@@ -5456,6 +5456,7 @@ class ConversationManager {
 			ConversationManager.ConversationItem adjacentItem = conversationItems.get(index - 1);
 			
 			//Checking if the item is a valid anchor point (is a message and is within the burst time)
+			System.out.println("Time diff: " + Math.abs(messageInfo.getDate() - adjacentItem.getDate()) + " VS " + ConversationManager.conversationBurstTimeMillis);
 			if(adjacentItem instanceof ConversationManager.MessageInfo && Math.abs(messageInfo.getDate() - adjacentItem.getDate()) < ConversationManager.conversationBurstTimeMillis) {
 				//Updating the anchorage
 				boolean isAnchored = messageInfo.getSender() == null ? ((ConversationManager.MessageInfo) adjacentItem).getSender() == null : messageInfo.getSender().equals(((ConversationManager.MessageInfo) adjacentItem).getSender());

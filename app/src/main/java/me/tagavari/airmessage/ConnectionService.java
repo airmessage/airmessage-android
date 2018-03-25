@@ -60,7 +60,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -135,6 +138,10 @@ public class ConnectionService extends Service {
 	
 	private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
 	private Thread fileUploadRequestThread = null;
+	
+	private final BlockingQueue<QueueTask<?, ?>> messageProcessingQueue = new LinkedBlockingQueue<>();
+	//private Thread messageProcessingQueueThread = null;
+	private AtomicBoolean messageProcessingQueueThreadRunning = new AtomicBoolean(false);
 	
 	private final List<FileDownloadRequest> fileDownloadRequests = new ArrayList<>();
 	
@@ -735,7 +742,8 @@ public class ConnectionService extends Service {
 	
 	private void processMessageUpdate(ArrayList<SharedValues.ConversationItem> structConversationItems, boolean sendNotifications) {
 		//Creating and running the task
-		new MessageUpdateAsyncTask(this, getApplicationContext(), structConversationItems, sendNotifications).execute();
+		//new MessageUpdateAsyncTask(this, getApplicationContext(), structConversationItems, sendNotifications).execute();
+		addMessagingProcessingTask(new MessageUpdateAsyncTask(this, getApplicationContext(), structConversationItems, sendNotifications));
 	}
 	
 	private void processMassRetrievalResult(ArrayList<SharedValues.ConversationItem> structConversationItems, ArrayList<SharedValues.ConversationInfo> structConversations) {
@@ -752,7 +760,8 @@ public class ConnectionService extends Service {
 				.putExtra(Constants.intentParamSize, massRetrievalProgressCount));
 		
 		//Creating and running the task
-		new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations).execute();
+		//new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations).execute();
+		addMessagingProcessingTask(new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations));
 	}
 	
 	private void processChatInfoResponse(ArrayList<SharedValues.ConversationInfo> structConversations) {
@@ -804,12 +813,14 @@ public class ConnectionService extends Service {
 		}
 		
 		//Creating and running the asynchronous task
-		new SaveConversationInfoAsyncTask(getApplicationContext(), unavailableConversations, availableConversations).execute();
+		//new SaveConversationInfoAsyncTask(getApplicationContext(), unavailableConversations, availableConversations).execute();
+		addMessagingProcessingTask(new SaveConversationInfoAsyncTask(getApplicationContext(), unavailableConversations, availableConversations));
 	}
 	
 	private void processModifierUpdate(ArrayList<SharedValues.ModifierInfo> structModifiers) {
 		//Creating and running the task
-		new ModifierUpdateAsyncTask(getApplicationContext(), structModifiers).execute();
+		//new ModifierUpdateAsyncTask(getApplicationContext(), structModifiers).execute();
+		addMessagingProcessingTask(new ModifierUpdateAsyncTask(getApplicationContext(), structModifiers));
 	}
 	
 	/* boolean requestAttachmentInfo(String fileGuid, short requestID) {
@@ -2082,6 +2093,21 @@ public class ConnectionService extends Service {
 		}
 	}
 	
+	private static ConversationManager.ConversationInfo findConversationInMemory(long localID) {
+		//Checking if the conversations are loaded in memory
+		ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+		if(conversations == null) return null;
+		
+		//Returning the first matching conversation
+		for(ConversationManager.ConversationInfo conversation : conversations) {
+			if(conversation.getLocalID() != localID) continue;
+			return conversation;
+		}
+		
+		//Returning null
+		return null;
+	}
+	
 	private static class FetchConversationRequests extends AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationInfo>> {
 		private final WeakReference<ConnectionService> serviceReference;
 		
@@ -2117,7 +2143,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	private static class MessageUpdateAsyncTask extends AsyncTask<Void, Void, Void> {
+	private static class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 		//Creating the reference values
 		private final WeakReference<ConnectionService> serviceReference;
 		private final WeakReference<Context> contextReference;
@@ -2141,16 +2167,13 @@ public class ConnectionService extends Service {
 			//Setting the values
 			this.structConversationItems = structConversationItems;
 			this.sendNotifications = sendNotifications;
-		}
-		
-		@Override
-		protected void onPreExecute() {
+			
 			//Getting the caches
 			loadedConversationsCache = new ArrayList<>(Messaging.getLoadedConversations());
 		}
 		
 		@Override
-		protected Void doInBackground(Void... params) {
+		protected Void doInBackground() {
 			//Getting the context
 			Context context = contextReference.get();
 			if(context == null) return null;
@@ -2392,22 +2415,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	private static ConversationManager.ConversationInfo findConversationInMemory(long localID) {
-		//Checking if the conversations are loaded in memory
-		ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-		if(conversations == null) return null;
-		
-		//Returning the first matching conversation
-		for(ConversationManager.ConversationInfo conversation : conversations) {
-			if(conversation.getLocalID() != localID) continue;
-			return conversation;
-		}
-		
-		//Returning null
-		return null;
-	}
-	
-	private static class MassRetrievalAsyncTask extends AsyncTask<Void, Integer, List<ConversationManager.ConversationInfo>> {
+	private static class MassRetrievalAsyncTask extends QueueTask<Integer, List<ConversationManager.ConversationInfo>> {
 		//Creating the task values
 		private final WeakReference<ConnectionService> serviceReference;
 		private final WeakReference<Context> contextReference;
@@ -2426,7 +2434,7 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		protected List<ConversationManager.ConversationInfo> doInBackground(Void... parameters) {
+		protected List<ConversationManager.ConversationInfo> doInBackground() {
 			//Getting the context
 			Context context = contextReference.get();
 			if(context == null) return null;
@@ -2482,13 +2490,13 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		protected void onProgressUpdate(Integer... values) {
+		protected void onProgressUpdate(Integer progress) {
 			//Getting the service
 			ConnectionService service = serviceReference.get();
 			if(service == null) return;
 			
 			//Updating the progress in the service
-			service.massRetrievalProgress = values[0];
+			service.massRetrievalProgress = progress;
 			
 			//Sending a broadcast
 			LocalBroadcastManager.getInstance(service).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress).putExtra(Constants.intentParamProgress, service.massRetrievalProgress));
@@ -2521,7 +2529,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	private static class SaveConversationInfoAsyncTask extends AsyncTask<Void, Void, Void> {
+	private static class SaveConversationInfoAsyncTask extends QueueTask<Void, Void> {
 		private final WeakReference<Context> contextReference;
 		private final List<ConversationManager.ConversationInfo> unavailableConversations;
 		private final List<ConversationInfoRequest> availableConversations;
@@ -2538,7 +2546,7 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		protected Void doInBackground(Void... params) {
+		protected Void doInBackground() {
 			//Getting the context
 			Context context = contextReference.get();
 			
@@ -2676,7 +2684,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	private static class ModifierUpdateAsyncTask extends AsyncTask<Void, Void, Void> {
+	private static class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 		//Creating the reference values
 		private final WeakReference<Context> contextReference;
 		
@@ -2695,7 +2703,7 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		protected Void doInBackground(Void... params) {
+		protected Void doInBackground() {
 			//Getting the context
 			Context context = contextReference.get();
 			if(context == null) return null;
@@ -2867,6 +2875,58 @@ public class ConnectionService extends Service {
 				this.message = message;
 				this.messageIndex = messageIndex;
 			}
+		}
+	}
+	
+	private static abstract class QueueTask<Progress, Result> {
+		//abstract void onPreExecute();
+		abstract Result doInBackground();
+		void onPostExecute(Result value) {}
+		
+		void publishProgress(Progress progress) {
+			new Handler(Looper.getMainLooper()).post(() -> onProgressUpdate(progress));
+		}
+		void onProgressUpdate(Progress progress) {}
+	}
+	
+	void addMessagingProcessingTask(QueueTask<?, ?> task) {
+		//Adding the task
+		messageProcessingQueue.add(task);
+		
+		//Starting the thread if it isn't running
+		if(!messageProcessingQueueThreadRunning.compareAndSet(false, true)) new MessageProcessingThread().start();
+	}
+	
+	private class MessageProcessingThread extends Thread {
+		@Override
+		public void run() {
+			//Creating the handler
+			Handler handler = new Handler(Looper.getMainLooper());
+			
+			try {
+				//Looping while the thread is alive
+				while(!isInterrupted()) {
+					//Pushing the queue
+					QueueTask<?, ?> task = messageProcessingQueue.take();
+					
+					//Checking if the task is invalid (the queue is empty)
+					if(task == null) {
+						//Finishing the thread
+						messageProcessingQueueThreadRunning.set(false);
+						break;
+					}
+					
+					//Running the task
+					runTask(task, handler);
+				}
+			} catch(InterruptedException exception) {
+			
+			}
+		}
+		
+		private <Result> void runTask(QueueTask<?, Result> task, Handler handler) {
+			Result value = task.doInBackground();
+			handler.post(() -> task.onPostExecute(value));
 		}
 	}
 	
