@@ -74,7 +74,7 @@ dependencies {
 	implementation "com.android.support:design:$supportLibraryVersion"
 	implementation "com.android.support:customtabs:$supportLibraryVersion"
 	implementation "com.android.support.constraint:constraint-layout:1.0.2"
-	implementation 'com.google.android:flexbox:0.3.1'
+	implementation "com.google.android:flexbox:0.3.1"
 
 	//classpath 'com.google.gms:google-services:3.1.0'
 	implementation "com.google.firebase:firebase-core:12.0.0"
@@ -90,6 +90,9 @@ dependencies {
 	implementation "de.hdodenhof:circleimageview:2.2.0"
 	implementation "nl.dionsegijn:konfetti:1.1.1"
 	implementation 'com.takisoft.fix:preference-v7-ringtone:27.1.0.0'
+
+	debugImplementation 'com.squareup.leakcanary:leakcanary-android:1.5.4'
+	releaseImplementation 'com.squareup.leakcanary:leakcanary-android-no-op:1.5.4'
 
 	implementation "org.jetbrains.kotlin:kotlin-stdlib:1.1.60"
 }

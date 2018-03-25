@@ -10,7 +10,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.database.sqlite.SQLiteDatabase;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -952,7 +951,7 @@ public class ConnectionService extends Service {
 		}
 		
 		//Recording the request
-		FileDownloadRequest request = new FileDownloadRequest(callbacks, requestID, attachmentID, attachmentGUID, attachmentName, fileDownloadRequests);
+		FileDownloadRequest request = new FileDownloadRequest(callbacks, requestID, attachmentID, attachmentGUID, attachmentName);
 		fileDownloadRequests.add(request);
 		request.startTimer();
 		
@@ -1051,9 +1050,9 @@ public class ConnectionService extends Service {
 		final long attachmentID;
 		final String fileName;
 		long fileSize = 0;
-		private List<FileDownloadRequest> removalList;
+		//private List<FileDownloadRequest> removalList;
 		
-		FileDownloadRequest(FileDownloadRequestCallbacks callbacks, short requestID, long attachmentID, String attachmentGUID, String fileName, List<FileDownloadRequest> removalList) {
+		FileDownloadRequest(FileDownloadRequestCallbacks callbacks, short requestID, long attachmentID, String attachmentGUID, String fileName) {
 			//Setting the callbacks
 			this.callbacks = callbacks;
 			
@@ -1062,15 +1061,13 @@ public class ConnectionService extends Service {
 			this.attachmentID = attachmentID;
 			this.attachmentGUID = attachmentGUID;
 			this.fileName = fileName;
-			
-			this.removalList = removalList;
 		}
 		
 		private static final long timeoutDelay = 20 * 1000; //20-second delay
 		private final Handler handler = new Handler(Looper.getMainLooper());
 		private final Runnable timeoutRunnable = () -> {
 			//Removing the request from the list
-			removalList.remove(FileDownloadRequest.this);
+			removeRequestFromList();
 			
 			//Calling the fail method
 			callbacks.onFail();
@@ -1090,12 +1087,17 @@ public class ConnectionService extends Service {
 			if(attachmentWriterThread != null) attachmentWriterThread.stopThread();
 			callbacks.onFail();
 			
-			removalList.remove(this);
+			removeRequestFromList();
 		}
 		
 		void finishDownload(File file) {
 			callbacks.onFinish(file);
-			removalList.remove(this);
+			removeRequestFromList();
+		}
+		
+		private void removeRequestFromList() {
+			ConnectionService service = getInstance();
+			if(service != null) service.fileDownloadRequests.remove(this);
 		}
 		
 		void setFileSize(long value) {
@@ -1251,7 +1253,7 @@ public class ConnectionService extends Service {
 								//cleanThread();
 								
 								//Saving to the database
-								DatabaseManager.updateAttachmentFile(DatabaseManager.getWritableDatabase(context), attachmentID, targetFile);
+								DatabaseManager.getInstance().updateAttachmentFile(attachmentID, targetFile);
 								
 								//Updating the state
 								new Handler(Looper.getMainLooper()).post(() -> finishDownload(targetFile));
@@ -1430,7 +1432,7 @@ public class ConnectionService extends Service {
 						outputStream.flush();
 						
 						//Updating the database entry
-						DatabaseManager.updateAttachmentFile(DatabaseManager.getWritableDatabase(context), request.attachmentID, targetFile);
+						DatabaseManager.getInstance().updateAttachmentFile(request.attachmentID, targetFile);
 						
 						//Setting the send file
 						request.sendFile = targetFile;
@@ -1588,7 +1590,7 @@ public class ConnectionService extends Service {
 					});
 					
 					//Saving the checksum
-					DatabaseManager.updateAttachmentChecksum(DatabaseManager.getWritableDatabase(context), request.attachmentID, checksum);
+					DatabaseManager.getInstance().updateAttachmentChecksum(request.attachmentID, checksum);
 				} catch(IOException exception) {
 					//Calling the fail method
 					handler.post(() -> finalCallbacks.onFail(messageSendIOException));
@@ -2122,7 +2124,7 @@ public class ConnectionService extends Service {
 			if(context == null) return null;
 			
 			//Fetching the incomplete conversations
-			return DatabaseManager.fetchConversationsWithState(context, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_SERVER);
+			return DatabaseManager.getInstance().fetchConversationsWithState(context, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_SERVER);
 		}
 		
 		@Override
@@ -2178,9 +2180,6 @@ public class ConnectionService extends Service {
 			Context context = contextReference.get();
 			if(context == null) return null;
 			
-			//Getting the writable database
-			SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(context);
-			
 			//Iterating over the conversations from the received messages
 			Collections.sort(structConversationItems, (value1, value2) -> Long.compare(value1.date, value2.date));
 			ArrayList<String> processedConversations = new ArrayList<>();
@@ -2222,7 +2221,7 @@ public class ConnectionService extends Service {
 				
 				//Otherwise retrieving / creating the conversation from the database
 				if(parentConversation == null) {
-					parentConversation = DatabaseManager.addRetrieveServerCreatedConversationInfo(writableDatabase, context, conversationItemStruct.chatGuid);
+					parentConversation = DatabaseManager.getInstance().addRetrieveServerCreatedConversationInfo(context, conversationItemStruct.chatGuid);
 					//Skipping the remainder of the iteration if the conversation is still invalid (a database error occurred)
 					if(parentConversation == null) continue;
 				}
@@ -2242,7 +2241,7 @@ public class ConnectionService extends Service {
 				}
 				
 				//Adding the conversation item to the database
-				ConversationManager.ConversationItem conversationItem = DatabaseManager.addConversationItemReplaceGhost(writableDatabase, conversationItemStruct, parentConversation);
+				ConversationManager.ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItemReplaceGhost(conversationItemStruct, parentConversation);
 				
 				//Skipping the remainder of the iteration if the conversation item is invalid
 				if(conversationItem == null) continue;
@@ -2254,12 +2253,12 @@ public class ConnectionService extends Service {
 					
 					//Adding or removing the member on disk
 					if(groupActionInfo.actionType == Constants.groupActionInvite) {
-						DatabaseManager.addConversationMember(writableDatabase, parentConversation.getLocalID(), groupActionInfo.other, groupActionInfo.color = parentConversation.getNextUserColor());
+						DatabaseManager.getInstance().addConversationMember(parentConversation.getLocalID(), groupActionInfo.other, groupActionInfo.color = parentConversation.getNextUserColor());
 					}
-					else if(groupActionInfo.actionType == Constants.groupActionLeave) DatabaseManager.removeConversationMember(writableDatabase, parentConversation.getLocalID(), groupActionInfo.other);
+					else if(groupActionInfo.actionType == Constants.groupActionLeave) DatabaseManager.getInstance().removeConversationMember(parentConversation.getLocalID(), groupActionInfo.other);
 				} else if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) {
 					//Writing the new title to the database
-					DatabaseManager.updateConversationTitle(writableDatabase, ((ConversationManager.ChatRenameActionInfo) conversationItem).title, parentConversation.getLocalID());
+					DatabaseManager.getInstance().updateConversationTitle(((ConversationManager.ChatRenameActionInfo) conversationItem).title, parentConversation.getLocalID());
 				}
 				
 				//Checking if the conversation is complete
@@ -2268,7 +2267,7 @@ public class ConnectionService extends Service {
 					newCompleteConversationItems.add(conversationItem);
 					
 					//Incrementing the unread count
-					if(!loadedConversationsCache.contains(parentConversation.getLocalID()) && (conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing())) DatabaseManager.incrementUnreadMessageCount(writableDatabase, parentConversation.getLocalID());
+					if(!loadedConversationsCache.contains(parentConversation.getLocalID()) && (conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing())) DatabaseManager.getInstance().incrementUnreadMessageCount(parentConversation.getLocalID());
 				}
 				//Otherwise updating the last conversation item
 				else if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
@@ -2439,9 +2438,6 @@ public class ConnectionService extends Service {
 			Context context = contextReference.get();
 			if(context == null) return null;
 			
-			//Getting a writable database instance
-			SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(context);
-			
 			//Creating the conversation list
 			List<ConversationManager.ConversationInfo> conversationInfoList = new ArrayList<>();
 			
@@ -2451,7 +2447,7 @@ public class ConnectionService extends Service {
 			//Iterating over the conversations
 			for(SharedValues.ConversationInfo structConversation : structConversationInfos) {
 				//Writing the conversation
-				conversationInfoList.add(DatabaseManager.addReadyConversationInfo(writableDatabase, context, structConversation));
+				conversationInfoList.add(DatabaseManager.getInstance().addReadyConversationInfo(context, structConversation));
 				
 				//Publishing the progress
 				publishProgress(++progress);
@@ -2471,7 +2467,7 @@ public class ConnectionService extends Service {
 				if(parentConversation == null) continue;
 				
 				//Writing the item
-				ConversationManager.ConversationItem conversationItem = DatabaseManager.addConversationItem(writableDatabase, structItem, parentConversation);
+				ConversationManager.ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItem(structItem, parentConversation);
 				if(conversationItem == null) continue;
 				
 				//Updating the parent conversation's last item
@@ -2553,11 +2549,8 @@ public class ConnectionService extends Service {
 			//Returning if the context is invalid
 			if(context == null) return null;
 			
-			//Getting the database
-			SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(context);
-			
 			//Removing the unavailable conversations from the database
-			for(ConversationManager.ConversationInfo conversation : unavailableConversations) DatabaseManager.deleteConversation(writableDatabase, conversation);
+			for(ConversationManager.ConversationInfo conversation : unavailableConversations) DatabaseManager.getInstance().deleteConversation(conversation);
 			
 			//Checking if there are any available conversations
 			if(!availableConversations.isEmpty()) {
@@ -2567,16 +2560,16 @@ public class ConnectionService extends Service {
 					ConversationManager.ConversationInfo availableConversation = iterator.next().conversationInfo;
 					
 					//Reading and recording the conversation's items
-					ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.loadConversationItems(writableDatabase, availableConversation);
+					ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationItems(availableConversation);
 					availableConversationItems.put(availableConversation.getLocalID(), conversationItems);
 					
 					//Searching for a matching conversation in the database
-					ConversationManager.ConversationInfo clientConversation = DatabaseManager.findConversationInfoWithMembers(writableDatabase, context, Constants.normalizeAddresses(availableConversation.getConversationMembersAsCollection()), availableConversation.getService(), true);
+					ConversationManager.ConversationInfo clientConversation = DatabaseManager.getInstance().findConversationInfoWithMembers(context, Constants.normalizeAddresses(availableConversation.getConversationMembersAsCollection()), availableConversation.getService(), true);
 					
 					//Checking if a client conversation has been found
 					if(clientConversation != null) {
 						//Switching the conversation item ownership to the new client conversation
-						DatabaseManager.switchMessageOwnership(writableDatabase, availableConversation.getLocalID(), clientConversation.getLocalID());
+						DatabaseManager.getInstance().switchMessageOwnership(availableConversation.getLocalID(), clientConversation.getLocalID());
 						for(ConversationManager.ConversationItem item : conversationItems) item.setConversationInfo(clientConversation);
 						
 						//Recording the conversation details
@@ -2586,17 +2579,17 @@ public class ConnectionService extends Service {
 								conversationItems));
 						
 						//Deleting the available conversation
-						DatabaseManager.deleteConversation(writableDatabase, availableConversation);
+						DatabaseManager.getInstance().deleteConversation(availableConversation);
 						unavailableConversations.add(availableConversation);
 						
 						//Updating the client conversation
-						DatabaseManager.copyConversationInfo(writableDatabase, availableConversation, clientConversation, false);
+						DatabaseManager.getInstance().copyConversationInfo(availableConversation, clientConversation, false);
 						
 						//Marking the the available conversation as invalid (to be deleted)
 						iterator.remove();
 					} else {
 						//Updating the available conversation
-						DatabaseManager.updateConversationInfo(writableDatabase, availableConversation, true);
+						DatabaseManager.getInstance().updateConversationInfo(availableConversation, true);
 					}
 				}
 			}
@@ -2708,9 +2701,6 @@ public class ConnectionService extends Service {
 			Context context = contextReference.get();
 			if(context == null) return null;
 			
-			//Getting the writable database
-			SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(context);
-			
 			//Iterating over the modifiers
 			for(SharedValues.ModifierInfo modifierInfo : structModifiers) {
 				//Checking if the modifier is an activity status modifier
@@ -2719,7 +2709,7 @@ public class ConnectionService extends Service {
 					SharedValues.ActivityStatusModifierInfo activityStatusModifierInfo = (SharedValues.ActivityStatusModifierInfo) modifierInfo;
 					
 					//Updating the modifier in the database
-					DatabaseManager.updateMessageState(writableDatabase, activityStatusModifierInfo.message, activityStatusModifierInfo.state, activityStatusModifierInfo.dateRead);
+					DatabaseManager.getInstance().updateMessageState(activityStatusModifierInfo.message, activityStatusModifierInfo.state, activityStatusModifierInfo.dateRead);
 				}
 				//Otherwise checking if the modifier is a sticker update
 				else if(modifierInfo instanceof SharedValues.StickerModifierInfo) {
@@ -2727,7 +2717,7 @@ public class ConnectionService extends Service {
 					SharedValues.StickerModifierInfo stickerInfo = (SharedValues.StickerModifierInfo) modifierInfo;
 					try {
 						stickerInfo.image = SharedValues.decompress(stickerInfo.image);
-						ConversationManager.StickerInfo sticker = DatabaseManager.addMessageSticker(writableDatabase, stickerInfo);
+						ConversationManager.StickerInfo sticker = DatabaseManager.getInstance().addMessageSticker(stickerInfo);
 						if(sticker != null) stickerModifiers.add(sticker);
 					} catch(IOException | DataFormatException exception) {
 						exception.printStackTrace();
@@ -2742,11 +2732,11 @@ public class ConnectionService extends Service {
 					//Checking if the tapback is negative
 					if(tapbackModifierInfo.code >= SharedValues.TapbackModifierInfo.tapbackBaseRemove) {
 						//Deleting the modifier in the database
-						DatabaseManager.removeMessageTapback(writableDatabase, tapbackModifierInfo);
+						DatabaseManager.getInstance().removeMessageTapback(tapbackModifierInfo);
 						tapbackRemovals.add(new TapbackRemovalStruct(tapbackModifierInfo.sender, tapbackModifierInfo.message, tapbackModifierInfo.messageIndex));
 					} else {
 						//Updating the modifier in the database
-						ConversationManager.TapbackInfo tapback = DatabaseManager.addMessageTapback(writableDatabase, tapbackModifierInfo);
+						ConversationManager.TapbackInfo tapback = DatabaseManager.getInstance().addMessageTapback(tapbackModifierInfo);
 						if(tapback != null) tapbackModifiers.add(tapback);
 					}
 				}

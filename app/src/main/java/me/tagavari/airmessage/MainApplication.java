@@ -14,6 +14,7 @@ import android.support.v7.app.AppCompatDelegate;
 
 import com.crashlytics.android.Crashlytics;
 import com.crashlytics.android.core.CrashlyticsCore;
+import com.squareup.leakcanary.LeakCanary;
 
 import java.io.File;
 import java.lang.ref.SoftReference;
@@ -54,6 +55,13 @@ public class MainApplication extends Application {
 		//Calling the super method
 		super.onCreate();
 		
+		if (LeakCanary.isInAnalyzerProcess(this)) {
+			// This process is dedicated to LeakCanary for heap analysis.
+			// You should not init your app in this process.
+			return;
+		}
+		LeakCanary.install(this);
+		
 		//Configuring crash reporting
 		configureCrashReporting();
 		
@@ -92,6 +100,9 @@ public class MainApplication extends Application {
 		//Creating the cache helpers
 		bitmapCacheHelper = new BitmapCacheHelper();
 		userCacheHelper = new UserCacheHelper();
+		
+		//Creating the database manager
+		DatabaseManager.createInstance(this);
 		
 		//Applying the dark mode
 		applyDarkMode(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.preference_appearance_theme_key), ""));

@@ -568,7 +568,7 @@ class ConversationManager {
 				//Assigning the user info
 				String contactName = member.getName();
 				final int finalIndex = i;
-				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, contactName, contactName, new BitmapCacheHelper.ImageDecodeResult() {
+				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context.getApplicationContext(), contactName, contactName, new BitmapCacheHelper.ImageDecodeResult() {
 					@Override
 					void onImageMeasured(int width, int height) {}
 					
@@ -1161,7 +1161,7 @@ class ConversationManager {
 				if(context == null) return null;
 				
 				//Deleting the conversation
-				DatabaseManager.deleteConversation(DatabaseManager.getWritableDatabase(context), conversationInfo);
+				DatabaseManager.getInstance().deleteConversation(conversationInfo);
 				
 				//Returning
 				return null;
@@ -1227,7 +1227,7 @@ class ConversationManager {
 		
 		int[] getMassUserColors(int userCount) {
 			//Creating a random generator based on the GUID
-			Random random = new Random(guid.hashCode());
+			Random random = guid == null ? new Random() : new Random(guid.hashCode());
 			
 			//Creating the color array
 			int[] array = new int[userCount];
@@ -2187,7 +2187,7 @@ class ConversationManager {
 				if(context == null) return null;
 				
 				//Updating the entry in the database
-				DatabaseManager.updateMessageErrorCode(DatabaseManager.getWritableDatabase(context), messageID, errorCode);
+				DatabaseManager.getInstance().updateMessageErrorCode(messageID, errorCode);
 				
 				//Returning
 				return null;
@@ -2374,7 +2374,7 @@ class ConversationManager {
 				pViewHolder.getImageProfileDefault().setVisibility(View.VISIBLE);
 				
 				//Assigning the profile image
-				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, sender, sender, new BitmapCacheHelper.ImageDecodeResult() {
+				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context.getApplicationContext(), sender, sender, new BitmapCacheHelper.ImageDecodeResult() {
 					@Override
 					void onImageMeasured(int width, int height) {}
 					
@@ -2415,7 +2415,7 @@ class ConversationManager {
 					labelSender.setText(sender);
 					
 					//Assigning the sender's name
-					MainApplication.getInstance().getUserCacheHelper().assignUserInfo(context, sender, wasTasked -> {
+					MainApplication.getInstance().getUserCacheHelper().assignUserInfo(context.getApplicationContext(), sender, wasTasked -> {
 						//Getting the view
 						View currentView = wasTasked ? getView() : view;
 						if(currentView == null) return null;
@@ -3707,7 +3707,7 @@ class ConversationManager {
 				
 				//Updating the database entry
 				Context context = contextReference.get();
-				if(context != null) DatabaseManager.invalidateAttachment(DatabaseManager.getWritableDatabase(context), localID);
+				if(context != null) DatabaseManager.getInstance().invalidateAttachment(localID);
 				
 				//Returning
 				return null;
@@ -5456,7 +5456,6 @@ class ConversationManager {
 			ConversationManager.ConversationItem adjacentItem = conversationItems.get(index - 1);
 			
 			//Checking if the item is a valid anchor point (is a message and is within the burst time)
-			System.out.println("Time diff: " + Math.abs(messageInfo.getDate() - adjacentItem.getDate()) + " VS " + ConversationManager.conversationBurstTimeMillis);
 			if(adjacentItem instanceof ConversationManager.MessageInfo && Math.abs(messageInfo.getDate() - adjacentItem.getDate()) < ConversationManager.conversationBurstTimeMillis) {
 				//Updating the anchorage
 				boolean isAnchored = messageInfo.getSender() == null ? ((ConversationManager.MessageInfo) adjacentItem).getSender() == null : messageInfo.getSender().equals(((ConversationManager.MessageInfo) adjacentItem).getSender());

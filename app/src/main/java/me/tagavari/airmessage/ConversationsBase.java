@@ -508,7 +508,7 @@ class ConversationsBase extends ActivityPlugin {
 			if(context == null) return null;
 			
 			//Loading the conversations
-			return DatabaseManager.fetchSummaryConversations(DatabaseManager.getReadableDatabase(context), context);
+			return DatabaseManager.getInstance().fetchSummaryConversations(context);
 		}
 		
 		@Override
@@ -578,7 +578,7 @@ class ConversationsBase extends ActivityPlugin {
 			if(context == null) return null;
 			
 			//Removing the messages from the database
-			DatabaseManager.deleteEverything(context);
+			DatabaseManager.getInstance().deleteEverything();
 			
 			//Clearing the attachments directory
 			MainApplication.clearAttachmentsDirectory(context);
@@ -619,7 +619,7 @@ class ConversationsBase extends ActivityPlugin {
 			if(context == null) return null;
 			
 			//Removing the messages from the database
-			DatabaseManager.deleteEverything(context);
+			DatabaseManager.getInstance().deleteEverything();
 			
 			//Clearing the attachments directory
 			MainApplication.clearAttachmentsDirectory(context);

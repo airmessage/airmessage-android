@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.database.sqlite.SQLiteDatabase;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
@@ -159,8 +158,7 @@ public class Conversations extends CompositeActivity {
 					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, true);
 					
 					//Updating the conversations
-					SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(Conversations.this);
-					for(long conversationID : updatedConversations) DatabaseManager.updateConversation(writableDatabase, conversationID, contentValues);
+					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
 				}
 				
 				//Finishing the action mode
@@ -198,8 +196,7 @@ public class Conversations extends CompositeActivity {
 					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, false);
 					
 					//Updating the conversations
-					SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(Conversations.this);
-					for(long conversationID : updatedConversations) DatabaseManager.updateConversation(writableDatabase, conversationID, contentValues);
+					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
 				}
 				
 				//Finishing the action mode
@@ -237,8 +234,7 @@ public class Conversations extends CompositeActivity {
 					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
 					
 					//Updating the conversations
-					SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(Conversations.this);
-					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.updateConversation(writableDatabase, conversationInfo.getLocalID(), contentValues);
+					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
 					
 					//Creating a snackbar
 					int affectedCount = updatedConversations.size();
@@ -256,7 +252,7 @@ public class Conversations extends CompositeActivity {
 							contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
 							
 							//Updating the conversations
-							DatabaseManager.updateConversation(writableDatabase, conversationInfo.getLocalID(), undoContentValues);
+							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
 						}
 						
 						//Updating the list
@@ -299,8 +295,7 @@ public class Conversations extends CompositeActivity {
 					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
 					
 					//Updating the conversations
-					SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(Conversations.this);
-					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.updateConversation(writableDatabase, conversationInfo.getLocalID(), contentValues);
+					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
 					
 					//Creating a snackbar
 					int affectedCount = updatedConversations.size();
@@ -315,7 +310,7 @@ public class Conversations extends CompositeActivity {
 							conversationInfo.setArchived(true);
 							
 							//Updating the conversations
-							DatabaseManager.updateConversation(writableDatabase, conversationInfo.getLocalID(), undoContentValues);
+							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
 						}
 						
 						//Updating the list

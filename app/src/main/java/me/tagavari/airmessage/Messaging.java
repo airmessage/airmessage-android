@@ -251,13 +251,13 @@ public class Messaging extends CompositeActivity {
 			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, retainedFragment.conversationInfo, null, message, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 			
 			//Writing the message to the database
-			new AddGhostMessageTask(getApplicationContext(), messageInfo).execute();
-			
-			//Adding the message to the conversation in memory
-			retainedFragment.conversationInfo.addGhostMessage(this, messageInfo);
-			
-			//Sending the message
-			messageInfo.sendMessage(this);
+			new AddGhostMessageTask(getApplicationContext(), messageInfo, () -> {
+				//Adding the message to the conversation in memory
+				retainedFragment.conversationInfo.addGhostMessage(this, messageInfo);
+				
+				//Sending the message
+				messageInfo.sendMessage(this);
+			}).execute();
 			
 			//Clearing the message box
 			messageInputField.setText("");
@@ -828,7 +828,7 @@ public class Messaging extends CompositeActivity {
 					//Updating the conversation's database entry
 					ContentValues contentValues = new ContentValues();
 					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-					DatabaseManager.updateConversation(DatabaseManager.getWritableDatabase(Messaging.this), retainedFragment.conversationInfo.getLocalID(), contentValues);
+					DatabaseManager.getInstance().updateConversation(retainedFragment.conversationInfo.getLocalID(), contentValues);
 					
 					//Showing a toast
 					Toast.makeText(Messaging.this, R.string.message_conversation_archived, Toast.LENGTH_SHORT).show();
@@ -847,7 +847,7 @@ public class Messaging extends CompositeActivity {
 					//Updating the conversation's database entry
 					ContentValues contentValues = new ContentValues();
 					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-					DatabaseManager.updateConversation(DatabaseManager.getWritableDatabase(Messaging.this), retainedFragment.conversationInfo.getLocalID(), contentValues);
+					DatabaseManager.getInstance().updateConversation(retainedFragment.conversationInfo.getLocalID(), contentValues);
 					
 					//Showing a toast
 					Toast.makeText(Messaging.this, R.string.message_conversation_unarchived, Toast.LENGTH_SHORT).show();
@@ -870,7 +870,7 @@ public class Messaging extends CompositeActivity {
 								if(conversations != null) conversations.remove(retainedFragment.conversationInfo);
 								
 								//Deleting the conversation from the database
-								DatabaseManager.deleteConversation(DatabaseManager.getReadableDatabase(Messaging.this), retainedFragment.conversationInfo);
+								DatabaseManager.getInstance().deleteConversation(retainedFragment.conversationInfo);
 								
 								//Showing a toast
 								Toast.makeText(Messaging.this, R.string.message_conversation_deleted, Toast.LENGTH_SHORT).show();
@@ -2048,7 +2048,7 @@ public class Messaging extends CompositeActivity {
 			
 			//Adding the item to the database
 			messageInfo.addAttachment(attachment);
-			DatabaseManager.addConversationItem(DatabaseManager.getWritableDatabase(context), messageInfo);
+			DatabaseManager.getInstance().addConversationItem(messageInfo);
 			
 			//Returning
 			return null;
@@ -2436,7 +2436,7 @@ public class Messaging extends CompositeActivity {
 				if(context == null) return null;
 				
 				//Returning the conversation
-				return DatabaseManager.fetchConversationInfo(context, DatabaseManager.getReadableDatabase(context), identifier);
+				return DatabaseManager.getInstance().fetchConversationInfo(context, identifier);
 			}
 			
 			@Override
@@ -2483,7 +2483,7 @@ public class Messaging extends CompositeActivity {
 				if(retainedFragment == null) return null;
 				
 				//Loading the conversation items
-				ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.loadConversationChunk(DatabaseManager.getReadableDatabase(retainedFragment.getContext()), conversationInfo, false, 0);
+				ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0);
 				//ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.loadConversationItems(DatabaseManager.getReadableDatabase(retainedFragment.getContext()), conversationInfo);
 				
 				//Setting up the conversation item relations
@@ -2554,7 +2554,7 @@ public class Messaging extends CompositeActivity {
 				if(retainedFragment == null) return null;
 				
 				//Loading the conversation items
-				return DatabaseManager.loadConversationChunk(DatabaseManager.getReadableDatabase(retainedFragment.getContext()), conversationInfo, true, lastMessageDate);
+				return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, lastMessageDate);
 			}
 			
 			@Override
@@ -2729,7 +2729,7 @@ public class Messaging extends CompositeActivity {
 			if(context == null) return null;
 			
 			//Updating the time
-			DatabaseManager.setUnreadMessageCount(DatabaseManager.getWritableDatabase(context), conversationID, count);
+			DatabaseManager.getInstance().setUnreadMessageCount(conversationID, count);
 			
 			//Returning
 			return null;
@@ -2756,15 +2756,16 @@ public class Messaging extends CompositeActivity {
 	
 	private static class AddGhostMessageTask extends AsyncTask<Void, Void, Void> {
 		private final WeakReference<Context> contextReference;
-		
 		private final ConversationManager.MessageInfo messageInfo;
+		private final Runnable onFinishListener;
 		
-		AddGhostMessageTask(Context context, ConversationManager.MessageInfo messageInfo) {
+		AddGhostMessageTask(Context context, ConversationManager.MessageInfo messageInfo, Runnable onFinishListener) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
 			
 			//Setting the other values
 			this.messageInfo = messageInfo;
+			this.onFinishListener = onFinishListener;
 		}
 		
 		@Override
@@ -2774,10 +2775,16 @@ public class Messaging extends CompositeActivity {
 			if(context == null) return null;
 			
 			//Adding the item to the database
-			DatabaseManager.addConversationItem(DatabaseManager.getWritableDatabase(context), messageInfo);
+			DatabaseManager.getInstance().addConversationItem(messageInfo);
 			
 			//Returning
 			return null;
+		}
+		
+		@Override
+		protected void onPostExecute(Void aVoid) {
+			//Calling the finish listener
+			onFinishListener.run();
 		}
 	}
 	
