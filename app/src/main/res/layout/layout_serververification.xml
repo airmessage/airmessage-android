@@ -26,9 +26,9 @@
 			android:layout_height="wrap_content"
 			android:layout_marginLeft="-2dp"
 			android:layout_marginRight="-2dp"
-			android:digits="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890:./"
 			android:imeOptions="actionNext|flagNoExtractUi"
-			android:inputType="textFilter|textNoSuggestions|textVisiblePassword"
+			android:inputType="textNoSuggestions"
+			android:maxLines="1"
 			android:textSize="30sp" />
 		<!-- Don't have a server? -->
 		<TextView
@@ -75,7 +75,8 @@
 				android:id="@+id/input_password"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
-				android:imeOptions="actionNone|flagNoExtractUi"
+				android:imeOptions="actionGo|flagNoExtractUi"
+				android:maxLines="1"
 				android:inputType="textPassword"
 				android:textSize="20sp" />
 		</android.support.design.widget.TextInputLayout>
