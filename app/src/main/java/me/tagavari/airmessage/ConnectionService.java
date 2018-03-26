@@ -652,13 +652,10 @@ public class ConnectionService extends Service {
 							messageResponseManager.stopTimer(false);
 							
 							//Running on the UI thread
-							new Handler(Looper.getMainLooper()).post(new Runnable() {
-								@Override
-								public void run() {
-									//Telling the listener
-									if(success) messageResponseManager.onSuccess();
-									else messageResponseManager.onFail(messageSendExternalException);
-								}
+							new Handler(Looper.getMainLooper()).post(() -> {
+								//Telling the listener
+								if(success) messageResponseManager.onSuccess();
+								else messageResponseManager.onFail(messageSendExternalException);
 							});
 						}
 						
@@ -2884,7 +2881,7 @@ public class ConnectionService extends Service {
 		messageProcessingQueue.add(task);
 		
 		//Starting the thread if it isn't running
-		if(!messageProcessingQueueThreadRunning.compareAndSet(false, true)) new MessageProcessingThread().start();
+		if(messageProcessingQueueThreadRunning.compareAndSet(false, true)) new MessageProcessingThread().start();
 	}
 	
 	private class MessageProcessingThread extends Thread {
