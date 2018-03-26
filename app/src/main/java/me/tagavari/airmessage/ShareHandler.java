@@ -186,4 +186,21 @@ public class ShareHandler extends CompositeActivity {
 			return filteredItems.isEmpty();
 		}
 	}
+	
+	/* private static class ConversationViewSource implements Constants.ViewSource {
+		private final WeakReference<ListView> listViewReference;
+		private final ConversationManager.ConversationInfo conversationInfo;
+		
+		ConversationViewSource(ListView listView, ConversationManager.ConversationInfo conversationInfo) {
+			listViewReference = new WeakReference<>(listView);
+			this.conversationInfo = conversationInfo;
+		}
+		
+		@Override
+		public View get() {
+			ListView listView = listViewReference.get();
+			//if(listView != null) return listView.getChildAt(listView..indexOf(conversationInfo) - conversationsBasePlugin.listView.getFirstVisiblePosition());
+			return null;
+		}
+	} */
 }

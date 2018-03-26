@@ -65,7 +65,7 @@ android {
 dependencies {
 	def supportLibraryVersion = "27.1.0"
 
-	compile fileTree(include: ['*.jar'], dir: 'libs')
+	implementation fileTree(include: ['*.jar'], dir: 'libs')
 	testImplementation "junit:junit:4.12"
 	implementation "com.android.support:appcompat-v7:$supportLibraryVersion"
 	implementation "com.android.support:preference-v7:$supportLibraryVersion"
@@ -94,7 +94,7 @@ dependencies {
 	debugImplementation 'com.squareup.leakcanary:leakcanary-android:1.5.4'
 	releaseImplementation 'com.squareup.leakcanary:leakcanary-android-no-op:1.5.4'
 
-	implementation "org.jetbrains.kotlin:kotlin-stdlib:1.1.60"
+	implementation "org.jetbrains.kotlin:kotlin-stdlib:1.2.0"
 }
 
 repositories {
