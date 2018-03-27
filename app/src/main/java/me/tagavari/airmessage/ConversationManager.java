@@ -351,7 +351,7 @@ class ConversationManager {
 		private transient Messaging.EffectCallbacks effectCallbacks = null;
 		
 		//private int currentUserViewIndex = -1;
-		private transient Constants.ViewSource viewSource = null;
+		private transient Constants.ViewHolderSource<ItemViewHolder> viewHolderSource = null;
 		
 		//Creating the listeners
 		private transient ArrayList<Runnable> titleChangeListeners = new ArrayList<>();
@@ -393,7 +393,7 @@ class ConversationManager {
 			ghostMessagesReference = new WeakReference<>(ghostItems);
 		}
 		
-		View createView(Context context, View convertView, ViewGroup parent) {
+		/* View createView(Context context, View convertView, ViewGroup parent) {
 			//Inflating the layout if the view can't be recycled
 			if(convertView == null)
 				convertView = LayoutInflater.from(context).inflate(R.layout.listitem_conversation, parent, false);
@@ -440,107 +440,132 @@ class ConversationManager {
 			
 			//Returning the view
 			return convertView;
+		} */
+		
+		void bindView(Context context, ItemViewHolder viewHolder) {
+			//Setting the flags
+			viewHolder.flagMuted.setVisibility(isMuted ? View.VISIBLE : View.GONE);
+			
+			//Setting the profile
+			currentUserViewIndex = -1;
+			updateViewUser(context, viewHolder);
+			updateSelected(viewHolder);
+			
+			//Returning if the last message is invalid
+			//if(lastItem == null) return convertView;
+			
+			//Updating the view
+			updateView(context, viewHolder);
 		}
 		
-		void setViewSource(Constants.ViewSource viewSource) {
-			this.viewSource = viewSource;
+		void bindSimpleView(Context context, SimpleItemViewHolder viewHolder, Constants.ViewHolderSource<SimpleItemViewHolder> viewHolderSource) {
+			//Setting the title
+			viewHolder.conversationTitle.setText(buildTitleDirect(context, title, getConversationMembersAsArray()));
+			buildTitle(context, (title, wasTasked) -> {
+				//Setting the title
+				SimpleItemViewHolder taskedViewHolder = wasTasked ? viewHolderSource.get() : viewHolder;
+				if(taskedViewHolder == null) return;
+				taskedViewHolder.conversationTitle.setText(title);
+			});
+			
+			//Updating the users
+			updateViewUser(context, viewHolder);
 		}
 		
-		private View getView() {
-			if(viewSource == null) return null;
-			return viewSource.get();
+		void setViewHolderSource(Constants.ViewHolderSource<ItemViewHolder> viewHolderSource) {
+			this.viewHolderSource = viewHolderSource;
+		}
+		
+		ItemViewHolder getViewHolder() {
+			if(viewHolderSource == null) return null;
+			return viewHolderSource.get();
 		}
 		
 		void updateView(Context context) {
-			View view = getView();
-			if(view != null) updateView(context, view);
+			ItemViewHolder itemView = getViewHolder();
+			if(itemView != null) updateView(context, itemView);
 		}
 		
-		private void updateView(Context context, View itemView) {
+		private void updateView(Context context, ItemViewHolder itemView) {
 			//Setting the title
-			((TextView) itemView.findViewById(R.id.title)).setText(buildTitleDirect(context, title, getConversationMembersAsArray()));
+			itemView.conversationTitle.setText(buildTitleDirect(context, title, getConversationMembersAsArray()));
 			updateUnreadStatus(itemView);
 			
 			buildTitle(context, (title, wasTasked) -> {
 				//Setting the title
-				View view = wasTasked ? getView() : itemView;
-				if(view == null) return;
-				((TextView) view.findViewById(R.id.title)).setText(title);
+				ItemViewHolder viewHolder = wasTasked ? getViewHolder() : itemView;
+				if(viewHolder == null) return;
+				viewHolder.conversationTitle.setText(title);
 			});
 			
 			if(lastItem == null) {
-				((TextView) itemView.findViewById(R.id.message)).setText("");
-				((TextView) itemView.findViewById(R.id.time)).setText("");
+				itemView.conversationMessage.setText(R.string.part_unknown);
+				itemView.conversationTime.setText(R.string.part_unknown);
 			} else {
-				((TextView) itemView.findViewById(R.id.message)).setText(lastItem.getMessage());
+				itemView.conversationMessage.setText(lastItem.getMessage());
 				updateTime(context, itemView);
 			}
 		}
 		
 		void updateUnreadStatus() {
 			//Calling the overload method
-			View view = getView();
-			if(view != null) updateUnreadStatus(view);
+			ItemViewHolder itemView = getViewHolder();
+			if(itemView != null) updateUnreadStatus(itemView);
 		}
 		
-		private void updateUnreadStatus(View itemView) {
-			//Getting the views
-			TextView titleText = itemView.findViewById(R.id.title);
-			TextView messageText = itemView.findViewById(R.id.message);
-			TextView unreadCount = itemView.findViewById(R.id.unread);
-			
+		private void updateUnreadStatus(ItemViewHolder itemView) {
 			if(unreadMessageCount > 0) {
-				titleText.setTypeface(titleText.getTypeface(), Typeface.BOLD);
-				titleText.setTextColor(itemView.getResources().getColor(R.color.colorPrimary, null));
+				itemView.conversationTitle.setTypeface(itemView.conversationTitle.getTypeface(), Typeface.BOLD);
+				itemView.conversationTitle.setTextColor(itemView.conversationTitle.getResources().getColor(R.color.colorPrimary, null));
 				
-				messageText.setTypeface(messageText.getTypeface(), Typeface.BOLD);
-				messageText.setTextColor(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				itemView.conversationMessage.setTypeface(itemView.conversationMessage.getTypeface(), Typeface.BOLD);
+				itemView.conversationMessage.setTextColor(Constants.resolveColorAttr(itemView.conversationMessage.getContext(), android.R.attr.textColorPrimary));
 				
-				unreadCount.setVisibility(View.VISIBLE);
-				unreadCount.setText(Integer.toString(unreadMessageCount));
+				itemView.conversationUnread.setVisibility(View.VISIBLE);
+				itemView.conversationUnread.setText(Integer.toString(unreadMessageCount));
 			} else {
-				titleText.setTypeface(titleText.getTypeface(), Typeface.NORMAL);
-				titleText.setTextColor(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
+				itemView.conversationTitle.setTypeface(itemView.conversationTitle.getTypeface(), Typeface.NORMAL);
+				itemView.conversationTitle.setTextColor(Constants.resolveColorAttr(itemView.conversationTitle.getContext(), android.R.attr.textColorPrimary));
 				
-				messageText.setTypeface(messageText.getTypeface(), Typeface.NORMAL);
-				messageText.setTextColor(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorSecondary));
+				itemView.conversationMessage.setTypeface(itemView.conversationMessage.getTypeface(), Typeface.NORMAL);
+				itemView.conversationMessage.setTextColor(Constants.resolveColorAttr(itemView.conversationMessage.getContext(), android.R.attr.textColorSecondary));
 				
-				unreadCount.setVisibility(View.GONE);
+				itemView.conversationUnread.setVisibility(View.GONE);
 			}
 		}
 		
 		void updateTime(Context context) {
 			//Calling the overload method
-			View view = getView();
-			if(view != null) updateTime(context, view);
+			ItemViewHolder itemView = getViewHolder();
+			if(itemView != null) updateTime(context, itemView);
 		}
 		
-		private void updateTime(Context context, View itemView) {
+		private void updateTime(Context context, ItemViewHolder itemView) {
 			//Returning if the last item is invalid
-			if(lastItem == null) return;
+			if(lastItem == null) {
+				itemView.conversationTime.setText(R.string.part_unknown);
+				return;
+			}
 			
 			//Setting the time
-			((TextView) itemView.findViewById(R.id.time)).setText(
+			itemView.conversationTime.setText(
 					System.currentTimeMillis() - lastItem.getDate() < conversationJustNowTimeMillis ?
 							context.getResources().getString(R.string.time_now) :
 							DateUtils.getRelativeTimeSpanString(lastItem.getDate(), System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_ALL).toString());
 		}
 		
 		void updateViewUser(Context context) {
-			View view = getView();
-			if(view != null) updateViewUser(context, view);
+			ItemViewHolder itemView = getViewHolder();
+			if(itemView != null) updateViewUser(context, itemView);
 		}
 		
-		private void updateViewUser(Context context, View itemView) {
+		private void updateViewUser(Context context, BaseViewHolder itemView) {
 			//Returning if the conversation has no members
 			if(conversationMembers.isEmpty()) return;
 			
-			//Getting the conversation icon view
-			ViewGroup conversationIcons = itemView.findViewById(R.id.conversationicon);
-			
 			//Getting the view data
 			currentUserViewIndex = Math.min(conversationMembers.size() - 1, maxUsersToDisplay - 1);
-			View viewAtIndex = conversationIcons.getChildAt(currentUserViewIndex);
+			View viewAtIndex = itemView.iconGroup.getChildAt(currentUserViewIndex);
 			ViewGroup iconView;
 			if(viewAtIndex instanceof ViewStub)
 				iconView = (ViewGroup) ((ViewStub) viewAtIndex).inflate();
@@ -548,7 +573,7 @@ class ConversationManager {
 			
 			//Hiding the other views
 			for(int i = 0; i < maxUsersToDisplay; i++)
-				conversationIcons.getChildAt(i).setVisibility(i == currentUserViewIndex ? View.VISIBLE : View.GONE);
+				itemView.iconGroup.getChildAt(i).setVisibility(i == currentUserViewIndex ? View.VISIBLE : View.GONE);
 			
 			//Setting the icons
 			for(int i = 0; i < iconView.getChildCount(); i++) {
@@ -577,11 +602,11 @@ class ConversationManager {
 						//Returning if the result is invalid
 						if(result == null) return;
 						
-						View view = wasTasked ? getView() : itemView;
-						if(view == null) return;
+						BaseViewHolder viewHolder = wasTasked ? getViewHolder() : itemView;
+						if(viewHolder == null) return;
 						
 						//Getting the icon view
-						View viewAtIndex = ((ViewGroup) view.findViewById(R.id.conversationicon)).getChildAt(currentUserViewIndex);
+						View viewAtIndex = viewHolder.iconGroup.getChildAt(currentUserViewIndex);
 						ViewGroup iconGroup;
 						if(viewAtIndex instanceof ViewStub) iconGroup = (ViewGroup) ((ViewStub) viewAtIndex).inflate();
 						else iconGroup = (ViewGroup) viewAtIndex;
@@ -680,12 +705,12 @@ class ConversationManager {
 			isMuted = muted;
 			
 			//Getting the view
-			View view = getView();
-			if(view == null) return;
+			ItemViewHolder itemView = getViewHolder();
+			if(itemView == null) return;
 			
 			//Updating the view
-			if(isMuted) view.findViewById(R.id.flag_muted).setVisibility(View.VISIBLE);
-			else view.findViewById(R.id.flag_muted).setVisibility(View.GONE);
+			if(isMuted) itemView.flagMuted.setVisibility(View.VISIBLE);
+			else itemView.flagMuted.setVisibility(View.GONE);
 		}
 		
 		MessageInfo getActivityStateTargetRead() {
@@ -825,8 +850,8 @@ class ConversationManager {
 			if(updater != null) updater.updateFully();
 			
 			//Updating the view
-			View view = getView();
-			if(view != null) updateView(context, view);
+			ItemViewHolder itemView = getViewHolder();
+			if(itemView != null) updateView(context, itemView);
 		}
 		
 		void setLastItem(Context context, ConversationItem lastConversationItem) {
@@ -1128,8 +1153,8 @@ class ConversationManager {
 			}
 			
 			//Updating the view
-			View view = getView();
-			if(view != null) updateView(context, view);
+			ItemViewHolder itemView = getViewHolder();
+			if(itemView != null) updateView(context, itemView);
 		}
 		
 		void delete(final Context context) {
@@ -1441,15 +1466,15 @@ class ConversationManager {
 			for(Runnable runnable : titleChangeListeners) runnable.run();
 			
 			//Updating the view
-			View view = getView();
-			if(view != null) {
+			ItemViewHolder itemView = getViewHolder();
+			if(itemView != null) {
 				//Setting the title
-				((TextView) view.findViewById(R.id.title)).setText("");
+				itemView.conversationTitle.setText("");
 				buildTitle(context, (title, wasTasked) -> {
 					//Setting the title
-					View currentView = getView();
-					if(currentView == null) return;
-					((TextView) currentView.findViewById(R.id.title)).setText(title);
+					ItemViewHolder viewHolder = getViewHolder();
+					if(viewHolder == null) return;
+					viewHolder.conversationTitle.setText(title);
 				});
 			}
 		}
@@ -1473,15 +1498,14 @@ class ConversationManager {
 		
 		void updateSelected() {
 			//Calling the overload method
-			View view = getView();
-			if(view != null) updateSelected(view);
+			ItemViewHolder itemView = getViewHolder();
+			if(itemView != null) updateSelected(itemView);
 		}
 		
-		private void updateSelected(View itemView) {
+		private void updateSelected(ItemViewHolder itemView) {
 			//Setting the visibility of the selected indicator
-			itemView.findViewById(R.id.selected).setVisibility(isSelected ? View.VISIBLE : View.GONE);
-			if(currentUserViewIndex != -1)
-				((ViewGroup) itemView.findViewById(R.id.conversationicon)).getChildAt(currentUserViewIndex).setVisibility(isSelected ? View.GONE : View.VISIBLE);
+			itemView.selectedIndicator.setVisibility(isSelected ? View.VISIBLE : View.GONE);
+			if(currentUserViewIndex != -1) itemView.iconGroup.getChildAt(currentUserViewIndex).setVisibility(isSelected ? View.GONE : View.VISIBLE);
 		}
 		
 		int getConversationColor() {
@@ -1622,6 +1646,54 @@ class ConversationManager {
 			//Setting and playing the effect
 			effectCallbacks.setCurrentScreenEffect(effect);
 			effectCallbacks.playCurrentScreenEffect();
+		}
+		
+		static abstract class BaseViewHolder extends RecyclerView.ViewHolder {
+			//Creating the view values
+			final ViewGroup iconGroup;
+			final TextView conversationTitle;
+			
+			BaseViewHolder(View view) {
+				super(view);
+				
+				//Getting the views
+				iconGroup = view.findViewById(R.id.conversationicon);
+				conversationTitle = view.findViewById(R.id.title);
+			}
+		}
+		
+		static class ItemViewHolder extends BaseViewHolder {
+			//Creating the view values
+			//final ViewGroup iconGroup;
+			final View selectedIndicator;
+			
+			//final TextView conversationTitle;
+			final TextView conversationMessage;
+			final TextView conversationTime;
+			final TextView conversationUnread;
+			
+			final View flagMuted;
+			
+			ItemViewHolder(View view) {
+				super(view);
+				
+				//Getting the views
+				//iconGroup = view.findViewById(R.id.conversationicon);
+				selectedIndicator = view.findViewById(R.id.selected);
+				
+				//conversationTitle = view.findViewById(R.id.title);
+				conversationMessage = view.findViewById(R.id.message);
+				conversationTime = view.findViewById(R.id.time);
+				conversationUnread = view.findViewById(R.id.unread);
+				
+				flagMuted = view.findViewById(R.id.flag_muted);
+			}
+		}
+		
+		static class SimpleItemViewHolder extends BaseViewHolder {
+			SimpleItemViewHolder(View view) {
+				super(view);
+			}
 		}
 	}
 	
@@ -3386,10 +3458,6 @@ class ConversationManager {
 			public void onFinish(File file) {
 				//Setting the attachment as not fetching
 				isFetching = false;
-				
-				//Getting the view
-				View view = getView();
-				if(view == null) return;
 				
 				//Setting the file in memory
 				AttachmentInfo.this.file = file;

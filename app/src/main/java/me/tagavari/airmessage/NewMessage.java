@@ -989,20 +989,20 @@ public class NewMessage extends AppCompatActivity {
 			}
 		}
 		
-		@Override
-		public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+		@Override @NonNull
+		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			switch(viewType) {
 				case TYPE_HEADER:
 					return new HeaderViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_contact_sendheader, parent, false));
 				case TYPE_ITEM:
 					return new ItemViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_contact, parent, false));
 				default:
-					return null;
+					throw new IllegalArgumentException("Invalid view type received, got " + viewType);
 			}
 		}
 		
 		@Override
-		public void onBindViewHolder(RecyclerView.ViewHolder viewHolder, int position) {
+		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder viewHolder, int position) {
 			switch(getItemViewType(position)) {
 				case TYPE_HEADER: {
 					//Casting the view holder

@@ -66,8 +66,6 @@ import android.widget.Toast;
 
 import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -2177,7 +2175,7 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		@Override @NonNull
-		public RecyclerView.ViewHolder onCreateViewHolder(@NotNull ViewGroup parent, int viewType) {
+		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			//Returning the correct view holder
 			switch(viewType) {
 				case ConversationManager.MessageInfo.itemType:

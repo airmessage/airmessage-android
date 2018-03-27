@@ -11,9 +11,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.widget.RecyclerView;
 import android.view.View;
-import android.widget.BaseAdapter;
-import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -34,7 +33,7 @@ class ConversationsBase extends ActivityPlugin {
 	static final String localBCConversationUpdate = "LocalMSG-Conversations-ConversationUpdate";
 	
 	//Creating the view values
-	ListView listView;
+	RecyclerView recyclerView;
 	ProgressBar massRetrievalProgressBar;
 	TextView noConversationsLabel;
 	
@@ -113,6 +112,7 @@ class ConversationsBase extends ActivityPlugin {
 	
 	//Creating the receiver values
 	private final List<Runnable> updateListListener = new ArrayList<>();
+	private final List<Runnable> conversationsLoadedListener = new ArrayList<>();
 	
 	//Creating the timer values
 	static final long timeUpdateHandlerDelay = 60 * 1000; //1 minute
@@ -130,10 +130,10 @@ class ConversationsBase extends ActivityPlugin {
 	
 	//Creating the other values
 	MainApplication.LoadFlagArrayList<ConversationManager.ConversationInfo> conversations;
-	private ListAdapterSource listAdapterSource;
+	private RecyclerAdapterSource recyclerAdapterSource;
 	
-	ConversationsBase(ListAdapterSource listAdapterSource) {
-		this.listAdapterSource = listAdapterSource;
+	ConversationsBase(RecyclerAdapterSource recyclerAdapterSource) {
+		this.recyclerAdapterSource = recyclerAdapterSource;
 	}
 	
 	@Override
@@ -168,9 +168,9 @@ class ConversationsBase extends ActivityPlugin {
 		timeUpdateHandler.postDelayed(timeUpdateHandlerRunnable, timeUpdateHandlerDelay);
 	}
 	
-	void setViews(ListView listView, ProgressBar massRetrievalProgressBar, TextView noConversationsLabel) {
+	void setViews(RecyclerView recyclerView, ProgressBar massRetrievalProgressBar, TextView noConversationsLabel) {
 		//Setting the views
-		this.listView = listView;
+		this.recyclerView = recyclerView;
 		this.massRetrievalProgressBar = massRetrievalProgressBar;
 		this.noConversationsLabel = noConversationsLabel;
 	}
@@ -213,9 +213,9 @@ class ConversationsBase extends ActivityPlugin {
 				break;
 			}
 			case stateReady: {
-				listView.animate()
+				recyclerView.animate()
 						.alpha(0)
-						.withEndAction(() -> listView.setVisibility(View.GONE));
+						.withEndAction(() -> recyclerView.setVisibility(View.GONE));
 				
 				View noConversations = getActivity().findViewById(R.id.no_conversations);
 				if(noConversations.getVisibility() == View.VISIBLE) noConversations.animate()
@@ -268,9 +268,9 @@ class ConversationsBase extends ActivityPlugin {
 				break;
 			}
 			case stateReady:
-				listView.setAlpha(0);
-				listView.setVisibility(View.VISIBLE);
-				listView.animate()
+				recyclerView.setAlpha(0);
+				recyclerView.setVisibility(View.VISIBLE);
+				recyclerView.animate()
 						.alpha(1);
 				
 				updateList(true);
@@ -301,10 +301,13 @@ class ConversationsBase extends ActivityPlugin {
 		}
 		
 		//Setting the list adapter
-		listView.setAdapter(listAdapterSource.get());
+		recyclerView.setAdapter(recyclerAdapterSource.get());
 		
 		//Setting the state
 		setState(stateReady);
+		
+		//Calling the listeners
+		for(Runnable listener : conversationsLoadedListener) listener.run();
 		
 		//Updating the views
 		//for(ConversationManager.ConversationInfo conversationInfo : ConversationManager.getConversations()) conversationInfo.updateView(Conversations.this);
@@ -315,7 +318,7 @@ class ConversationsBase extends ActivityPlugin {
 		setState(stateLoadError);
 	}
 	
-	static abstract class ListAdapter extends BaseAdapter {
+	static abstract class RecyclerAdapter<VH extends RecyclerView.ViewHolder> extends RecyclerView.Adapter<VH> {
 		abstract void filterAndUpdate();
 		abstract boolean isListEmpty();
 	}
@@ -456,15 +459,15 @@ class ConversationsBase extends ActivityPlugin {
 		
 		//Updating the list
 		//if(sort) Collections.sort(ConversationManager.getConversations(), ConversationManager.conversationComparator);
-		ListAdapter listAdapter = (ListAdapter) listView.getAdapter();
-		if(listAdapter == null) return;
-		listAdapter.filterAndUpdate();
+		RecyclerAdapter<?> recyclerAdapter = (RecyclerAdapter<?>) recyclerView.getAdapter();
+		if(recyclerAdapter == null) return;
+		recyclerAdapter.filterAndUpdate();
 		
 		//Returning if the state is not ready
 		if(currentState != stateReady) return;
 		
 		//Getting and checking if there are conversations
-		boolean newConversationsAvailable = !listAdapter.isListEmpty();
+		boolean newConversationsAvailable = !recyclerAdapter.isListEmpty();
 		if(forceUpdate || newConversationsAvailable != conversationsAvailable) {
 			//Checking if there are conversations to display
 			if(newConversationsAvailable) {
@@ -488,6 +491,10 @@ class ConversationsBase extends ActivityPlugin {
 	
 	void addUpdateListListener(Runnable listener) {
 		updateListListener.add(listener);
+	}
+	
+	void addConversationsLoadedListener(Runnable listener) {
+		conversationsLoadedListener.add(listener);
 	}
 	
 	private static class LoadConversationsTask extends AsyncTask<Void, Void, MainApplication.LoadFlagArrayList<ConversationManager.ConversationInfo>> {
@@ -651,7 +658,7 @@ class ConversationsBase extends ActivityPlugin {
 		}
 	}
 	
-	interface ListAdapterSource {
-		ListAdapter get();
+	interface RecyclerAdapterSource {
+		RecyclerAdapter<?> get();
 	}
 }

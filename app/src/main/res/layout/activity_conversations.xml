@@ -14,7 +14,7 @@
 		<android.support.v7.widget.Toolbar
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
-			android:layout_height="?attr/actionBarSize"
+			android:layout_height="?android:attr/actionBarSize"
 			android:theme="@style/SolidActionBar" />
 		<!-- Info bar container -->
 		<LinearLayout
@@ -121,7 +121,7 @@
 			android:textColor="?android:attr/textColorSecondary" />
 		
 		<!-- Conversation list -->
-		<ListView
+		<!-- <ListView
 			android:id="@+id/list"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
@@ -129,6 +129,14 @@
 			android:layout_alignParentTop="true"
 			android:divider="@null"
 			android:dividerHeight="0dp"
-			android:theme="@style/OverscrollNeutralizer" />
+			android:theme="@style/OverscrollNeutralizer" /> -->
+		<android.support.v7.widget.RecyclerView
+			android:id="@+id/list"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:divider="@null"
+			android:dividerHeight="0dp"
+			android:theme="@style/OverscrollNeutralizer"
+			app:layoutManager="android.support.v7.widget.LinearLayoutManager" />
 	</RelativeLayout>
 </android.support.design.widget.CoordinatorLayout>

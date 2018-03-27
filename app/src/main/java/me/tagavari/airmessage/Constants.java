@@ -18,6 +18,8 @@ import android.support.annotation.ColorInt;
 import android.support.customtabs.CustomTabsIntent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.view.ActionMode;
+import android.support.v7.widget.RecyclerView;
 import android.text.Spannable;
 import android.text.Spanned;
 import android.text.format.DateUtils;
@@ -34,6 +36,7 @@ import android.widget.TextView;
 import android.widget.Toolbar;
 
 import java.io.File;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -214,6 +217,27 @@ class Constants {
 	
 	interface TaskedViewSource {
 		View get(boolean wasTasked);
+	}
+	
+	interface ViewHolderSource<VH> {
+		VH get();
+	}
+	
+	static class ViewHolderSourceImpl<VH> implements ViewHolderSource<VH> {
+		private final WeakReference<RecyclerView> recyclerViewReference;
+		private final long itemId;
+		
+		ViewHolderSourceImpl(RecyclerView recyclerView, long itemId) {
+			recyclerViewReference = new WeakReference<>(recyclerView);
+			this.itemId = itemId;
+		}
+		
+		@Override
+		public VH get() {
+			RecyclerView recyclerView = recyclerViewReference.get();
+			if(recyclerView == null) return null;
+			return (VH) recyclerView.findViewHolderForItemId(itemId);
+		}
 	}
 	
 	private static final Pattern regExNumerated = Pattern.compile("_\\d+?$");
@@ -640,5 +664,9 @@ class Constants {
 		public boolean willChangeBounds() {
 			return true;
 		}
+	}
+	
+	interface CountingActionModeCallback<Item> extends ActionMode.Callback {
+		void onItemCheckedStateChanged(Item item, boolean checked);
 	}
 }

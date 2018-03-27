@@ -3,12 +3,14 @@ package me.tagavari.airmessage;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v7.widget.RecyclerView;
 import android.util.DisplayMetrics;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.AdapterView;
 import android.widget.Button;
 
 import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
@@ -18,29 +20,14 @@ import java.util.List;
 
 public class ShareHandler extends CompositeActivity {
 	//Creating the plugin values
-	private ConversationsBase conversationsBasePlugin = null;
+	private ConversationsBase conversationsBasePlugin;
 	
 	//Creating the target values
 	private String targetText = null;
 	
-	//Creating the listener values
-	private final AdapterView.OnItemClickListener onListItemClickListener = (AdapterView<?> parent, View view, int position, long id) -> {
-		//Creating the intent
-		Intent launchMessaging = new Intent(ShareHandler.this, Messaging.class);
-		
-		//Setting the target conversation
-		launchMessaging.putExtra(Constants.intentParamTargetID, ((ConversationManager.ConversationInfo) conversationsBasePlugin.listView.getItemAtPosition(position)).getLocalID());
-		
-		//Setting the fill text
-		if(targetText != null) launchMessaging.putExtra(Constants.intentParamDataText, targetText);
-		
-		//Launching the activity
-		startActivity(launchMessaging);
-	};
-	
 	public ShareHandler() {
 		//Setting the plugins
-		conversationsBasePlugin = new ConversationsBase(() -> new ListAdapter(conversationsBasePlugin.conversations));
+		conversationsBasePlugin = new ConversationsBase(() -> new RecyclerAdapter(conversationsBasePlugin.conversations));
 		addPlugin(conversationsBasePlugin);
 	}
 	
@@ -94,9 +81,6 @@ public class ShareHandler extends CompositeActivity {
 		//Setting the plugin views
 		conversationsBasePlugin.setViews(findViewById(R.id.list), findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
 		
-		//Configuring the list
-		conversationsBasePlugin.listView.setOnItemClickListener(onListItemClickListener);
-		
 		//Preventing the activity from finishing if the user touches outside of its bounds
 		this.setFinishOnTouchOutside(false);
 		
@@ -117,50 +101,74 @@ public class ShareHandler extends CompositeActivity {
 		startActivity(new Intent(this, NewMessage.class));
 	}
 	
-	private class ListAdapter extends ConversationsBase.ListAdapter {
+	private class RecyclerAdapter extends ConversationsBase.RecyclerAdapter<ConversationManager.ConversationInfo.SimpleItemViewHolder> {
 		//Creating the list values
 		private final List<ConversationManager.ConversationInfo> originalItems;
 		private final List<ConversationManager.ConversationInfo> filteredItems = new ArrayList<>();
 		
-		ListAdapter(ArrayList<ConversationManager.ConversationInfo> items) {
+		//Creating the recycler values
+		private RecyclerView recyclerView;
+		
+		RecyclerAdapter(ArrayList<ConversationManager.ConversationInfo> items) {
 			//Setting the original items
 			originalItems = items;
+			
+			//Enabling stable IDs
+			setHasStableIds(true);
 			
 			//Filtering the data
 			filterAndUpdate();
 		}
 		
 		@Override
-		public int getCount() {
+		public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
+			this.recyclerView = recyclerView;
+		}
+		
+		@Override
+		public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+			this.recyclerView = null;
+		}
+		
+		@NonNull
+		@Override
+		public ConversationManager.ConversationInfo.SimpleItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+			//Returning the view holder
+			return new ConversationManager.ConversationInfo.SimpleItemViewHolder(LayoutInflater.from(ShareHandler.this).inflate(R.layout.listitem_conversation_simple, parent, false));
+		}
+		
+		@Override
+		public void onBindViewHolder(@NonNull ConversationManager.ConversationInfo.SimpleItemViewHolder holder, int position) {
+			//Getting the conversation info
+			ConversationManager.ConversationInfo conversationInfo = filteredItems.get(position);
+			
+			//Creating the view
+			conversationInfo.bindSimpleView(ShareHandler.this, holder, new Constants.ViewHolderSourceImpl<>(recyclerView, conversationInfo.getLocalID()));
+			
+			//Setting the view's click listeners
+			holder.itemView.setOnClickListener(view -> {
+				//Creating the intent
+				Intent launchMessaging = new Intent(ShareHandler.this, Messaging.class);
+				
+				//Setting the target conversation
+				launchMessaging.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
+				
+				//Setting the fill text
+				if(targetText != null) launchMessaging.putExtra(Constants.intentParamDataText, targetText);
+				
+				//Launching the activity
+				startActivity(launchMessaging);
+			});
+		}
+		
+		@Override
+		public int getItemCount() {
 			return filteredItems.size();
 		}
 		
 		@Override
-		public ConversationManager.ConversationInfo getItem(int position) {
-			return filteredItems.get(position);
-		}
-		
-		@Override
 		public long getItemId(int position) {
-			return position;
-		}
-		
-		@Override
-		public View getView(int position, View convertView, ViewGroup parent) {
-			//Getting the view
-			View view = convertView;
-			
-			//Getting the conversation info
-			ConversationManager.ConversationInfo conversationInfo = getItem(position);
-			
-			//Returning if the conversation info is invalid
-			if(conversationInfo == null) return view;
-			
-			//Getting the view
-			view = conversationInfo.createSimpleView(ShareHandler.this, convertView, parent, () -> conversationsBasePlugin.listView.getChildAt(filteredItems.indexOf(conversationInfo) - conversationsBasePlugin.listView.getFirstVisiblePosition()));
-			
-			//Returning the view
-			return view;
+			return filteredItems.get(position).getLocalID();
 		}
 		
 		@Override
@@ -186,21 +194,4 @@ public class ShareHandler extends CompositeActivity {
 			return filteredItems.isEmpty();
 		}
 	}
-	
-	/* private static class ConversationViewSource implements Constants.ViewSource {
-		private final WeakReference<ListView> listViewReference;
-		private final ConversationManager.ConversationInfo conversationInfo;
-		
-		ConversationViewSource(ListView listView, ConversationManager.ConversationInfo conversationInfo) {
-			listViewReference = new WeakReference<>(listView);
-			this.conversationInfo = conversationInfo;
-		}
-		
-		@Override
-		public View get() {
-			ListView listView = listViewReference.get();
-			//if(listView != null) return listView.getChildAt(listView..indexOf(conversationInfo) - conversationsBasePlugin.listView.getFirstVisiblePosition());
-			return null;
-		}
-	} */
 }
