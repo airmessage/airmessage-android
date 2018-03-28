@@ -442,7 +442,7 @@ class ConversationManager {
 			return convertView;
 		} */
 		
-		void bindView(Context context, ItemViewHolder viewHolder) {
+		void bindView(ItemViewHolder viewHolder, Context context) {
 			//Setting the flags
 			viewHolder.flagMuted.setVisibility(isMuted ? View.VISIBLE : View.GONE);
 			
@@ -455,7 +455,7 @@ class ConversationManager {
 			//if(lastItem == null) return convertView;
 			
 			//Updating the view
-			updateView(context, viewHolder);
+			updateView(viewHolder, context);
 		}
 		
 		void bindSimpleView(Context context, SimpleItemViewHolder viewHolder, Constants.ViewHolderSource<SimpleItemViewHolder> viewHolderSource) {
@@ -476,20 +476,20 @@ class ConversationManager {
 			this.viewHolderSource = viewHolderSource;
 		}
 		
-		ItemViewHolder getViewHolder() {
+		private ItemViewHolder getViewHolder() {
 			if(viewHolderSource == null) return null;
 			return viewHolderSource.get();
 		}
 		
 		void updateView(Context context) {
 			ItemViewHolder itemView = getViewHolder();
-			if(itemView != null) updateView(context, itemView);
+			if(itemView != null) updateView(itemView, context);
 		}
 		
-		private void updateView(Context context, ItemViewHolder itemView) {
+		private void updateView(ItemViewHolder itemView, Context context) {
 			//Setting the title
 			itemView.conversationTitle.setText(buildTitleDirect(context, title, getConversationMembersAsArray()));
-			updateUnreadStatus(itemView);
+			updateUnreadStatus(itemView, context);
 			
 			buildTitle(context, (title, wasTasked) -> {
 				//Setting the title
@@ -507,13 +507,13 @@ class ConversationManager {
 			}
 		}
 		
-		void updateUnreadStatus() {
+		void updateUnreadStatus(Context context) {
 			//Calling the overload method
 			ItemViewHolder itemView = getViewHolder();
-			if(itemView != null) updateUnreadStatus(itemView);
+			if(itemView != null) updateUnreadStatus(itemView, context);
 		}
 		
-		private void updateUnreadStatus(ItemViewHolder itemView) {
+		private void updateUnreadStatus(ItemViewHolder itemView, Context context) {
 			if(unreadMessageCount > 0) {
 				itemView.conversationTitle.setTypeface(itemView.conversationTitle.getTypeface(), Typeface.BOLD);
 				itemView.conversationTitle.setTextColor(itemView.conversationTitle.getResources().getColor(R.color.colorPrimary, null));
@@ -522,7 +522,7 @@ class ConversationManager {
 				itemView.conversationMessage.setTextColor(Constants.resolveColorAttr(itemView.conversationMessage.getContext(), android.R.attr.textColorPrimary));
 				
 				itemView.conversationUnread.setVisibility(View.VISIBLE);
-				itemView.conversationUnread.setText(Integer.toString(unreadMessageCount));
+				itemView.conversationUnread.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? context.getResources().getConfiguration().getLocales().get(0) : context.getResources().getConfiguration().locale, "%d", unreadMessageCount));
 			} else {
 				itemView.conversationTitle.setTypeface(itemView.conversationTitle.getTypeface(), Typeface.NORMAL);
 				itemView.conversationTitle.setTextColor(Constants.resolveColorAttr(itemView.conversationTitle.getContext(), android.R.attr.textColorPrimary));
@@ -851,13 +851,13 @@ class ConversationManager {
 			
 			//Updating the view
 			ItemViewHolder itemView = getViewHolder();
-			if(itemView != null) updateView(context, itemView);
+			if(itemView != null) updateView(itemView, context);
 		}
 		
 		void setLastItem(Context context, ConversationItem lastConversationItem) {
 			//Setting the last item
 			lastItem = new LightConversationItem("", lastConversationItem.getDate());
-			lastConversationItem.getSummary(context, (wasTasked, result) -> lastItem.setMessage(result));
+			lastConversationItem.getSummary(context, (boolean wasTasked, String result) -> lastItem.setMessage(result));
 		}
 		
 		void updateLastItem(Context context) {
@@ -1154,7 +1154,7 @@ class ConversationManager {
 			
 			//Updating the view
 			ItemViewHolder itemView = getViewHolder();
-			if(itemView != null) updateView(context, itemView);
+			if(itemView != null) updateView(itemView, context);
 		}
 		
 		void delete(final Context context) {
@@ -1721,7 +1721,7 @@ class ConversationManager {
 		}
 	}
 	
-	static class MessageInfo extends ConversationItem implements Cloneable {
+	static class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		//Creating the constants
 		static final int itemType = 0;
 		private static final int dpDefaultMessagePadding = 5;
@@ -1737,7 +1737,7 @@ class ConversationManager {
 		private final String sendEffect;
 		private int messageState;
 		private int errorCode;
-		private long dateRead = -1;
+		private long dateRead;
 		private boolean isSending = false;
 		private float sendProgress = -1;
 		
@@ -1833,11 +1833,11 @@ class ConversationManager {
 		
 		void updateViewEdges(boolean isLTR) {
 			//Calling the overload method
-			View view = getView();
-			if(view != null) updateViewEdges(view, isLTR);
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) updateViewEdges(viewHolder, isLTR);
 		}
 		
-		private void updateViewEdges(View itemView, boolean isLTR) {
+		private void updateViewEdges(ViewHolder viewHolder, boolean isLTR) {
 			/*
 			true + true = true
 			true + false = false
@@ -1847,15 +1847,14 @@ class ConversationManager {
 			boolean alignToRight = isOutgoing() == isLTR;
 			
 			//Updating the padding
-			itemView.setPadding(itemView.getPaddingLeft(), Constants.dpToPx(isAnchoredTop ? dpRelatedMessagePadding : dpDefaultMessagePadding), itemView.getPaddingRight(), Constants.dpToPx(isAnchoredBottom ? dpRelatedMessagePadding : dpDefaultMessagePadding));
+			viewHolder.itemView.setPadding(viewHolder.itemView.getPaddingLeft(), Constants.dpToPx(isAnchoredTop ? dpRelatedMessagePadding : dpDefaultMessagePadding), viewHolder.itemView.getPaddingRight(), Constants.dpToPx(isAnchoredBottom ? dpRelatedMessagePadding : dpDefaultMessagePadding));
 			
 			//Checking if the message is outgoing
 			if(!isOutgoing()) {
 				//Setting the user information
 				boolean showUserInfo = !isAnchoredTop; //If the message isn't anchored to the top
-				if(getConversationInfo().isGroupChat())
-					itemView.findViewById(R.id.sender).setVisibility(showUserInfo ? View.VISIBLE : View.GONE);
-				itemView.findViewById(R.id.profile).setVisibility(showUserInfo ? View.VISIBLE : View.GONE);
+				if(getConversationInfo().isGroupChat()) viewHolder.labelSender.setVisibility(showUserInfo ? View.VISIBLE : View.GONE);
+				viewHolder.getProfileGroup().setVisibility(showUserInfo ? View.VISIBLE : View.GONE);
 			}
 			
 			//Getting the corner values in pixels
@@ -2295,9 +2294,8 @@ class ConversationManager {
 			//Checking if the calendars are of the same year
 			if(sentCalendar.get(Calendar.YEAR) == nowCalendar.get(Calendar.YEAR)) {
 				//If the message was sent today
-				if(nowCalendar.get(Calendar.DAY_OF_YEAR) == sentCalendar.get(Calendar.DAY_OF_YEAR))
-					return context.getResources().getString(R.string.time_today) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
-					//If the message was sent yesterday
+				if(nowCalendar.get(Calendar.DAY_OF_YEAR) == sentCalendar.get(Calendar.DAY_OF_YEAR)) return context.getResources().getString(R.string.time_today) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
+				//If the message was sent yesterday
 				else {
 					nowCalendar.add(Calendar.DAY_OF_YEAR, -1); //Today (now) -> Yesterday
 					if(nowCalendar.get(Calendar.DAY_OF_YEAR) == sentCalendar.get(Calendar.DAY_OF_YEAR))
@@ -2314,21 +2312,18 @@ class ConversationManager {
 		}
 		
 		@Override
-		void bindView(Context context, RecyclerView.ViewHolder viewHolder) {
-			//Casting the view holder
-			MessageViewHolder pViewHolder = (MessageViewHolder) viewHolder;
-			
+		void bindView(Context context, ViewHolder viewHolder) {
 			//Getting the properties
 			boolean isFromMe = isOutgoing();
 			
-			//Getting the message part container
-			ViewGroup messagePartContainer = pViewHolder.getGroupMPC();
-			
 			//Setting the message part container's draw order
-			messagePartContainer.setZ(1);
+			viewHolder.containerMessagePart.setZ(1);
 			
 			//Converting the view to a view group
-			LinearLayout view = pViewHolder.getView();
+			//LinearLayout view = (LinearLayout) viewHolder.itemView;
+			
+			//Sorting the components
+			
 			
 			{
 				//Getting the text content
@@ -2844,12 +2839,12 @@ class ConversationManager {
 			component.addTapback(tapback);
 		}
 		
-		void removeLiveTapback(String sender, int messageIndex) {
+		void removeLiveTapback(String sender, int messageIndex, Context context) {
 			//Removing the tapback from the item
 			MessageComponent component = getComponentAtIndex(messageIndex);
 			if(component == null) return;
 			
-			component.removeLiveTapback(sender);
+			component.removeLiveTapback(sender, context);
 		}
 		
 		private MessageComponent getComponentAtIndex(int index) {
@@ -2871,15 +2866,83 @@ class ConversationManager {
 			if(messageText != null) messageText.buildTapbackView(messagePartContainer.getChildAt(0));
 			for(int i = 0; i < attachments.size(); i++) attachments.get(i).buildTapbackView(messagePartContainer.getChildAt((messageText == null ? 0 : 1) + i));
 		} */
+		
+		static class ViewHolder extends RecyclerView.ViewHolder {
+			final TextView labelTimeDivider;
+			final TextView labelSender;
+			
+			private ViewStub profileStub;
+			private ViewGroup profileGroup = null;
+			private ImageView profileDefault = null;
+			private ImageView profileImage = null;
+			
+			final ViewGroup containerContent;
+			final ViewGroup containerMessagePart;
+			
+			final TextSwitcher labelActivityStatus;
+			final View buttonSendEffectReplay;
+			
+			final ProgressWheel progressSend;
+			final ImageButton buttonSendError;
+			
+			final List<? extends MessageComponent.ViewHolder> messageComponents = new ArrayList<>();
+			
+			ViewHolder(View view) {
+				super(view);
+				
+				labelTimeDivider = view.findViewById(R.id.timedivider);
+				labelSender = view.findViewById(R.id.sender);
+				
+				profileStub = view.findViewById(R.id.stub_profile);
+				if(profileStub == null) {
+					profileDefault = view.findViewById(R.id.profile_default);
+					profileImage = view.findViewById(R.id.profile_image);
+				}
+				
+				containerContent = view.findViewById(R.id.content_container);
+				containerMessagePart = containerContent.findViewById(R.id.messagepart_container);
+				
+				labelActivityStatus = containerContent.findViewById(R.id.activitystatus);
+				buttonSendEffectReplay = containerContent.findViewById(R.id.sendeffect_replay);
+				
+				progressSend = view.findViewById(R.id.send_progress);
+				buttonSendError = view.findViewById(R.id.send_error);
+			}
+			
+			ViewGroup getProfileGroup() {
+				inflateProfile();
+				return profileGroup;
+			}
+			
+			ImageView getProfileDefault() {
+				inflateProfile();
+				return profileDefault;
+			}
+			
+			ImageView getProfileImage() {
+				inflateProfile();
+				return profileImage;
+			}
+			
+			private void inflateProfile() {
+				if(profileGroup == null) {
+					profileGroup = (ViewGroup) profileStub.inflate();
+					profileStub = null;
+					
+					profileDefault = profileGroup.findViewById(R.id.profile_default);
+					profileImage = profileGroup.findViewById(R.id.profile_image);
+				}
+			}
+		}
 	}
 	
-	static abstract class MessageComponent {
+	static abstract class MessageComponent<VH extends MessageComponent.ViewHolder> {
 		//Creating the data values
 		long localID;
 		String guid;
 		final MessageInfo messageInfo;
 		
-		private Constants.ViewSource viewSource;
+		private Constants.ViewHolderSource<VH> viewHolderSource;
 		
 		//Creating the modifier values
 		final ArrayList<StickerInfo> stickers;
@@ -2910,12 +2973,13 @@ class ConversationManager {
 			this.tapbacks = tapbacks;
 		}
 		
-		void setViewSource(Constants.ViewSource viewSource) {
-			this.viewSource = viewSource;
+		void setViewHolderSource(Constants.ViewHolderSource<VH> viewHolderSource) {
+			this.viewHolderSource = viewHolderSource;
 		}
 		
-		View getView() {
-			return viewSource == null ? null : viewSource.get();
+		VH getViewHolder() {
+			if(viewHolderSource == null) return null;
+			return viewHolderSource.get();
 		}
 		
 		long getLocalID() {
@@ -2938,23 +3002,26 @@ class ConversationManager {
 			return messageInfo;
 		}
 		
-		abstract View createView(Context context, View convertView, ViewGroup parent);
+		abstract void bindView(VH viewHolder, Context context);
 		
-		void buildCommonViews(View view) {
+		void buildCommonViews(VH viewHolder, Context context) {
 			//Building the sticker view
-			buildStickerView(view);
+			buildStickerView(viewHolder, context);
 			
 			//Building the tapback view
-			buildTapbackView(view);
+			buildTapbackView(viewHolder, context);
 		}
 		
-		abstract void updateViewColor(View itemView);
+		abstract void updateViewColor(VH viewHolder, Context context);
 		
-		abstract void updateViewEdges(View itemView, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored);
+		abstract void updateViewEdges(VH viewHolder, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored);
 		
-		void buildStickerView(View itemView) {
+		void buildStickerView(VH viewHolder, Context context) {
 			//Clearing all previous stickers
-			((ViewGroup) itemView.findViewById(R.id.sticker_container)).removeAllViews();
+			viewHolder.stickerContainer.removeAllViews();
+			
+			//Weakly referencing the context
+			final WeakReference<Context> contextReference = new WeakReference<>(context);
 			
 			//Iterating over the stickers
 			for(StickerInfo sticker : stickers) {
@@ -2968,19 +3035,21 @@ class ConversationManager {
 						//Returning if the bitmap is invalid
 						if(result == null) return;
 						
-						//Getting the view
-						View view = wasTasked ? getView() : itemView;
+						//Getting the view holder
+						ViewHolder holder = wasTasked ? getViewHolder() : viewHolder;
+						if(holder == null) return;
 						
-						//Returning if the view is invalid
-						if(view == null) return;
+						//Getting the context
+						Context context = contextReference.get();
+						if(context == null) return;
 						
 						//Determining the maximum image size
 						DisplayMetrics displayMetrics = new DisplayMetrics();
-						((WindowManager) view.getContext().getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getMetrics(displayMetrics);
+						((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getMetrics(displayMetrics);
 						int maxStickerSize = Math.min(displayMetrics.widthPixels, displayMetrics.heightPixels) / 3; //One third of the smaller side of the display
 						
 						//Creating the image view
-						ImageView imageView = new ImageView(view.getContext());
+						ImageView imageView = new ImageView(context);
 						RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 						layoutParams.addRule(RelativeLayout.CENTER_IN_PARENT);
 						imageView.setLayoutParams(layoutParams);
@@ -2989,7 +3058,7 @@ class ConversationManager {
 						imageView.setImageBitmap(result);
 						
 						//Adding the view to the sticker container
-						((ViewGroup) view.findViewById(R.id.sticker_container)).addView(imageView);
+						holder.stickerContainer.addView(imageView);
 						
 						//Setting the bitmap
 						imageView.setImageBitmap(result);
@@ -3003,9 +3072,12 @@ class ConversationManager {
 			stickers.add(sticker);
 		}
 		
-		void addLiveSticker(StickerInfo sticker) {
+		void addLiveSticker(StickerInfo sticker, Context context) {
 			//Adding the sticker to the sticker list
 			stickers.add(sticker);
+			
+			//Creating a weak reference to the context
+			final WeakReference<Context> contextReference = new WeakReference<>(context);
 			
 			//Decoding the sticker
 			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromDBSticker(sticker.guid, sticker.localID, new BitmapCacheHelper.ImageDecodeResult() {
@@ -3015,18 +3087,20 @@ class ConversationManager {
 				@Override
 				void onImageDecoded(Bitmap result, boolean wasTasked) {
 					//Getting the view
-					View view = getView();
+					VH viewHolder = getViewHolder();
+					if(viewHolder == null) return;
 					
-					//Returning if the view is invalid
-					if(view == null) return;
+					//Getting the context
+					Context context = contextReference.get();
+					if(context == null) return;
 					
 					//Determining the maximum image size
 					DisplayMetrics displayMetrics = new DisplayMetrics();
-					((WindowManager) view.getContext().getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getMetrics(displayMetrics);
+					((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getMetrics(displayMetrics);
 					int maxStickerSize = Math.min(displayMetrics.widthPixels, displayMetrics.heightPixels) / 3; //One third of the smaller side of the display
 					
 					//Creating the image view
-					ImageView imageView = new ImageView(view.getContext());
+					ImageView imageView = new ImageView(context);
 					RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 					layoutParams.addRule(RelativeLayout.CENTER_IN_PARENT);
 					imageView.setLayoutParams(layoutParams);
@@ -3035,7 +3109,7 @@ class ConversationManager {
 					imageView.setImageBitmap(result);
 					
 					//Adding the view to the sticker container
-					((ViewGroup) view.findViewById(R.id.sticker_container)).addView(imageView);
+					viewHolder.stickerContainer.addView(imageView);
 					
 					//Setting the bitmap
 					imageView.setImageBitmap(result);
@@ -3060,25 +3134,22 @@ class ConversationManager {
 		}
 		
 		void updateStickerVisibility() {
-			//Getting the view
-			View view = getView();
-			if(view == null) return;
-			
-			//Getting the sticker container
-			ViewGroup stickerContainer = view.findViewById(R.id.sticker_container);
+			//Getting the view holder
+			VH viewHolder = getViewHolder();
+			if(viewHolder == null) return;
 			
 			//Checking if the stickers should be shown
 			if(getRequiredStickerVisibility()) {
 				//Showing the stickers
-				for(int i = 0; i < stickerContainer.getChildCount(); i++) {
-					View stickerView = stickerContainer.getChildAt(i);
+				for(int i = 0; i < viewHolder.stickerContainer.getChildCount(); i++) {
+					View stickerView = viewHolder.stickerContainer.getChildAt(i);
 					stickerView.setVisibility(View.VISIBLE);
 					stickerView.animate().alpha(1).start();
 				}
 			} else {
 				//Hiding the stickers
-				for(int i = 0; i < stickerContainer.getChildCount(); i++) {
-					View stickerView = stickerContainer.getChildAt(i);
+				for(int i = 0; i < viewHolder.stickerContainer.getChildCount(); i++) {
+					View stickerView = viewHolder.stickerContainer.getChildAt(i);
 					stickerView.animate().alpha(0).withEndAction(() -> stickerView.setVisibility(View.INVISIBLE)).start();
 				}
 			}
@@ -3097,13 +3168,13 @@ class ConversationManager {
 			tapbacks.add(tapback);
 		}
 		
-		void addLiveTapback(TapbackInfo tapback) {
+		void addLiveTapback(TapbackInfo tapback, Context context) {
 			//Adding the tapback
 			addTapback(tapback);
 			
 			//Rebuilding the tapback view
-			View view = getView();
-			if(view != null) buildTapbackView(view);
+			VH viewHolder = getViewHolder();
+			if(viewHolder != null) buildTapbackView(viewHolder, context);
 		}
 		
 		void removeTapback(String sender) {
@@ -3114,21 +3185,18 @@ class ConversationManager {
 			}
 		}
 		
-		void removeLiveTapback(String sender) {
+		void removeLiveTapback(String sender, Context context) {
 			//Removing the tapback
 			removeTapback(sender);
 			
 			//Rebuilding the tapback view
-			View view = getView();
-			if(view != null) buildTapbackView(view);
+			VH viewHolder = getViewHolder();
+			if(viewHolder != null) buildTapbackView(viewHolder, context);
 		}
 		
-		void buildTapbackView(View itemView) {
-			//Getting the tapback container
-			ViewGroup tapbackContainer = itemView.findViewById(R.id.tapback_container);
-			
-			//Clearing the tapback container
-			tapbackContainer.removeAllViews();
+		void buildTapbackView(VH viewHolder, Context context) {
+			//Emptying the tapback container
+			viewHolder.tapbackContainer.removeAllViews();
 			
 			//Returning if there are no tapbacks
 			if(tapbacks.isEmpty()) return;
@@ -3148,16 +3216,16 @@ class ConversationManager {
 			//Iterating over the tapback groups
 			for(Map.Entry<Integer, Integer> entry : tapbackCounts.entrySet()) {
 				//Inflating the view
-				View tapbackView = LayoutInflater.from(itemView.getContext()).inflate(R.layout.chip_tapback, tapbackContainer, false);
+				View tapbackView = LayoutInflater.from(context).inflate(R.layout.chip_tapback, viewHolder.tapbackContainer, false);
 				
 				//Getting the display info
-				TapbackInfo.TapbackDisplay displayInfo = TapbackInfo.getTapbackDisplay(entry.getKey(), itemView.getContext());
+				TapbackInfo.TapbackDisplay displayInfo = TapbackInfo.getTapbackDisplay(entry.getKey(), context);
 				
 				//Getting the count text
 				TextView count = tapbackView.findViewById(R.id.label_count);
 				
 				//Setting the count
-				count.setText(Integer.toString(entry.getValue()));
+				count.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? context.getResources().getConfiguration().getLocales().get(0) : context.getResources().getConfiguration().locale, "%d", entry.getValue()));
 				
 				//Checking if the display info is valid
 				if(displayInfo != null) {
@@ -3171,12 +3239,24 @@ class ConversationManager {
 				}
 				
 				//Adding the view to the container
-				tapbackContainer.addView(tapbackView);
+				viewHolder.tapbackContainer.addView(tapbackView);
+			}
+		}
+		
+		static abstract class ViewHolder extends RecyclerView.ViewHolder {
+			final ViewGroup stickerContainer;
+			final ViewGroup tapbackContainer;
+			
+			ViewHolder(View view) {
+				super(view);
+				
+				stickerContainer = view.findViewById(R.id.sticker_container);
+				tapbackContainer = view.findViewById(R.id.tapback_container);
 			}
 		}
 	}
 	
-	static class MessageTextInfo extends MessageComponent {
+	static class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder> {
 		//Creating the values
 		String messageText;
 		
@@ -3193,39 +3273,33 @@ class ConversationManager {
 		}
 		
 		@Override
-		View createView(Context context, View convertView, ViewGroup parent) {
-			//Inflating the layout if none was provided
-			if(convertView == null) convertView = LayoutInflater.from(context).inflate(R.layout.listitem_contenttext, parent, false);
-			
+		void bindView(ViewHolder viewHolder, Context context) {
 			//Setting the text
-			final TextView textView = convertView.findViewById(R.id.message);
-			textView.setText(messageText);
+			viewHolder.labelMessage.setText(messageText);
 			
 			//Inflating and adding the text content
-			setupTextLinks(textView);
+			setupTextLinks(viewHolder.labelMessage);
 			
 			//Assigning the interaction listeners
-			assignInteractionListeners(textView);
+			assignInteractionListeners(viewHolder.labelMessage);
 			
 			//Setting the gravity
-			LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) convertView.getLayoutParams();
-			layoutParams.gravity = getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START;
-			textView.setLayoutParams(layoutParams);
+			viewHolder.labelMessage.setGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
 			
 			//Limiting the width of the bubble
 			//Getting the maximum content width
 			int maxContentWidth = (int) Math.min(context.getResources().getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, context.getResources().getDisplayMetrics().widthPixels * .7F);
 			
 			//Enforcing the maximum content width
-			View contentView = convertView.findViewById(R.id.content);
+			/* View contentView = convertView.findViewById(R.id.content);
 			contentView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-			if(contentView.getMeasuredWidth() > maxContentWidth) contentView.getLayoutParams().width = maxContentWidth;
+			if(contentView.getMeasuredWidth() > maxContentWidth) contentView.getLayoutParams().width = maxContentWidth; */
+			
+			viewHolder.labelMessage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+			if(viewHolder.labelMessage.getMeasuredWidth() > maxContentWidth) viewHolder.labelMessage.getLayoutParams().width = maxContentWidth;
 			
 			//Building the common views
-			buildCommonViews(convertView);
-			
-			//Returning the view
-			return convertView;
+			buildCommonViews(viewHolder, context);
 		}
 		
 		private void setupTextLinks(TextView textView) {
@@ -3264,45 +3338,39 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewEdges(View itemView, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
-			//Getting the text background view
-			View textView = itemView.findViewById(R.id.message);
-			
-			//Updating the text view's background
-			textView.setBackground(Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
-		}
-		
-		@Override
-		void updateViewColor(View itemView) {
-			//Getting the message text
-			TextView messageTextView = itemView.findViewById(R.id.message);
-			
+		void updateViewColor(ViewHolder viewHolder, Context context) {
 			//Getting the colors
 			int backgroundColor;
 			int textColor;
 			
 			if(getMessageInfo().isOutgoing()) {
 				//backgroundColor = resources.getColor(R.color.colorMessageOutgoing, null);
-				backgroundColor = itemView.getResources().getColor(R.color.colorMessageOutgoing, null);
-				textColor = Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary);
+				backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
+				textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
 			} else {
 				MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
 				backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColor = itemView.getResources().getColor(android.R.color.white, null);
+				textColor = context.getResources().getColor(android.R.color.white, null);
 			}
 			
 			//Assigning the colors
-			messageTextView.setTextColor(textColor);
-			messageTextView.setLinkTextColor(textColor);
-			messageTextView.setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
+			viewHolder.labelMessage.setTextColor(textColor);
+			viewHolder.labelMessage.setLinkTextColor(textColor);
+			viewHolder.labelMessage.setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
 			
 			//Setting up the text links (to update the toolbar color in Chrome's custom tabs)
-			setupTextLinks(messageTextView);
+			setupTextLinks(viewHolder.labelMessage);
 		}
 		
-		private void displayContextMenu(final Context context, View itemView) {
+		@Override
+		void updateViewEdges(ViewHolder viewHolder, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
+			//Updating the text view's background
+			viewHolder.labelMessage.setBackground(Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
+		}
+		
+		private void displayContextMenu(Context context, View targetView) {
 			//Creating a new popup menu
-			PopupMenu popupMenu = new PopupMenu(context, itemView);
+			PopupMenu popupMenu = new PopupMenu(context, targetView);
 			
 			//Inflating the menu
 			popupMenu.inflate(R.menu.menu_conversationitem_contextual);
@@ -3311,20 +3379,27 @@ class ConversationManager {
 			Menu menu = popupMenu.getMenu();
 			menu.removeItem(R.id.action_deletedata);
 			
+			//Creating the context reference
+			WeakReference<Context> contextReference = new WeakReference<>(context);
+			
 			//Setting the click listener
 			popupMenu.setOnMenuItemClickListener(menuItem -> {
+				//Getting the context
+				Context newContext = contextReference.get();
+				if(newContext == null) return false;
+				
 				switch(menuItem.getItemId()) {
 					case R.id.action_details: {
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
-						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_type, context.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
-						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : context.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.FULL).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.FULL).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
 						//stringBuilder.append("Timestamp: " + getMessageInfo().getDate()).append('\n'); //TESTING date
-						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? context.getResources().getString(R.string.part_none) : getMessageInfo().getSendEffect())); //Send effect
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendEffect())); //Send effect
 						
 						//Showing a dialog
-						new AlertDialog.Builder(context)
+						new AlertDialog.Builder(newContext)
 								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()
@@ -3335,16 +3410,13 @@ class ConversationManager {
 					}
 					case R.id.action_copytext: {
 						//Getting the clipboard manager
-						ClipboardManager clipboardManager = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-						
-						//Creating the clip data
-						ClipData clipData = ClipData.newPlainText("message", messageText);
+						ClipboardManager clipboardManager = (ClipboardManager) newContext.getSystemService(Context.CLIPBOARD_SERVICE);
 						
 						//Applying the clip data
-						clipboardManager.setPrimaryClip(clipData);
+						clipboardManager.setPrimaryClip(ClipData.newPlainText("message", messageText));
 						
 						//Showing a confirmation toast
-						Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show();
+						Toast.makeText(newContext, R.string.message_textcopied, Toast.LENGTH_SHORT).show();
 						
 						//Returning true
 						return true;
@@ -3352,13 +3424,13 @@ class ConversationManager {
 					case R.id.action_share: {
 						//Starting the intent immediately if the user is "you"
 						if(getMessageInfo().getSender() == null)
-							shareMessageText(context, getMessageInfo().getDate(), null, messageText);
+							shareMessageText(newContext, getMessageInfo().getDate(), null, messageText);
 							//Requesting the user info
-						else MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, getMessageInfo().getSender(), new UserCacheHelper.UserFetchResult() {
+						else MainApplication.getInstance().getUserCacheHelper().getUserInfo(newContext, getMessageInfo().getSender(), new UserCacheHelper.UserFetchResult() {
 							@Override
 							void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
 								//Starting the intent
-								shareMessageText(context, getMessageInfo().getDate(), userInfo == null ? getMessageInfo().getSender() : userInfo.getContactName(), messageText);
+								shareMessageText(newContext, getMessageInfo().getDate(), userInfo == null ? getMessageInfo().getSender() : userInfo.getContactName(), messageText);
 							}
 						});
 						
@@ -3411,9 +3483,19 @@ class ConversationManager {
 			//Starting the intent
 			context.startActivity(Intent.createChooser(intent, context.getResources().getString(R.string.action_sharemessage)));
 		}
+		
+		static class ViewHolder extends MessageComponent.ViewHolder {
+			final TextView labelMessage;
+			
+			public ViewHolder(View view) {
+				super(view);
+				
+				labelMessage = view.findViewById(R.id.message);
+			}
+		}
 	}
 	
-	static abstract class AttachmentInfo extends MessageComponent {
+	static abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> extends MessageComponent<VH> {
 		//Creating the values
 		final String fileName;
 		File file = null;
@@ -3429,14 +3511,16 @@ class ConversationManager {
 		private final ConnectionService.FileDownloadRequestCallbacks fileDownloadRequestCallbacks = new ConnectionService.FileDownloadRequestCallbacks() {
 			@Override
 			public void onResponseReceived() {
+				//Setting the fetch as not waiting (a response was received from the server)
 				isFetchWaiting = false;
 				
-				//Getting the view
-				View view = getView();
-				if(view == null) return;
+				//Getting the view holder
+				VH viewHolder = getViewHolder();
+				if(viewHolder == null) return;
 				
 				//Setting the progress bar as determinate
-				((ProgressBar) view.findViewById(R.id.progressBar)).setIndeterminate(false);
+				viewHolder.progressDownload.setProgress(0);
+				viewHolder.progressDownload.setIndeterminate(false);
 			}
 			
 			@Override
@@ -3444,14 +3528,13 @@ class ConversationManager {
 			
 			@Override
 			public void onProgress(float progress) {
-				//Getting the view
-				View view = getView();
-				if(view == null) return;
+				//Getting the view holder
+				VH viewHolder = getViewHolder();
+				if(viewHolder == null) return;
 				
 				//Updating the progress bar's progress
-				ProgressBar progressBar = view.findViewById(R.id.progressBar);
-				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) progressBar.setProgress((int) (progress * progressBar.getMax()), true);
-				else progressBar.setProgress((int) (progress * progressBar.getMax()));
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) viewHolder.progressDownload.setProgress((int) (progress * viewHolder.progressDownload.getMax()), true);
+				else viewHolder.progressDownload.setProgress((int) (progress * viewHolder.progressDownload.getMax()));
 			}
 			
 			@Override
@@ -3462,8 +3545,12 @@ class ConversationManager {
 				//Setting the file in memory
 				AttachmentInfo.this.file = file;
 				
-				//Updating the content view
-				updateContentView();
+				//Getting the view holder
+				VH viewHolder = getViewHolder();
+				if(viewHolder == null) return;
+				
+				//Rebuilding the view
+				buildView(viewHolder);
 				
 				//Swapping to the content view
 				/* view.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
@@ -3474,19 +3561,14 @@ class ConversationManager {
 			public void onFail() {
 				//Setting the attachment as not fetching
 				isFetching = false;
+				isFetchWaiting = false;
 				
-				//Getting the view
-				View view = getView();
-				if(view == null) return;
+				//Getting the view holder
+				VH viewHolder = getViewHolder();
+				if(viewHolder == null) return;
 				
-				//Enabling the download button visually
-				view.findViewById(R.id.download_button).setAlpha(1);
-				
-				//Showing the content type
-				view.findViewById(R.id.download_label).setVisibility(View.VISIBLE);
-				
-				//Hiding the progress bar
-				view.findViewById(R.id.progressBar).setVisibility(View.GONE);
+				//Rebuilding the view
+				buildView(viewHolder);
 			}
 		};
 		
@@ -3511,7 +3593,7 @@ class ConversationManager {
 			this(localID, guid, message, fileName);
 			
 			//Setting the checksum
-			fileChecksum = fileChecksum;
+			this.fileChecksum = fileChecksum;
 		}
 		
 		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, Uri fileUri) {
@@ -3524,12 +3606,19 @@ class ConversationManager {
 		
 		abstract ContentType getContentType();
 		
-		abstract void updateContentView();
+		abstract void updateContentView(VH viewHolder, Context context);
 		
 		abstract void onClick(Messaging activity);
 		
+		/**
+		 * Binds the view to the view holder
+		 * @param viewHolder The view holder to bind
+		 * @param context The context to be used in the creation of the view
+		 *
+		 * Be sure to call the super() method when overriding!
+		 */
 		@Override
-		View createView(Context context, View convertView, ViewGroup parent) {
+		void bindView(VH viewHolder, Context context) {
 			//Getting the attachment request data
 			ConnectionService connectionService = ConnectionService.getInstance();
 			if(connectionService != null) {
@@ -3541,8 +3630,122 @@ class ConversationManager {
 				}
 			}
 			
-			return null;
+			//Setting the gravity
+			LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams();
+			layoutParams.gravity = messageInfo.isOutgoing() ? Gravity.END : Gravity.START;
+			viewHolder.itemView.setLayoutParams(layoutParams);
+			
+			//Building the view
+			buildView(viewHolder);
+			
+			//Assigning the interaction listeners
+			assignInteractionListeners(viewHolder.itemView);
+			
+			//Building the common views
+			buildCommonViews(viewHolder, context);
 		}
+		
+		/**
+		 * Builds the attachment's view based on the state
+		 * Switches between the 4 view types, and passes the content view building on to the subclass if necessary
+		 * @param viewHolder The attachment's view holder
+		 */
+		private void buildView(VH viewHolder, Context context) {
+			//Checking if there is no file
+			if(file == null) {
+				//Checking if the attachment is being fetched
+				if(isFetching) {
+					//Showing the download content view
+					viewHolder.groupDownload.setVisibility(View.VISIBLE);
+					viewHolder.groupContent.setVisibility(View.GONE);
+					if(viewHolder.groupFailed != null) viewHolder.groupFailed.setVisibility(View.GONE);
+					viewHolder.groupProcessing.setVisibility(View.GONE);
+					
+					//Hiding the content type
+					viewHolder.labelDownload.setVisibility(View.GONE);
+					
+					//Disabling the download icon visually
+					viewHolder.imageDownload.setAlpha(Constants.disabledAlpha);
+					
+					//Getting and preparing the progress bar
+					viewHolder.progressDownload.setIndeterminate(isFetchWaiting);
+					viewHolder.progressDownload.setProgress((int) (fetchProgress * viewHolder.progressDownload.getMax()));
+					viewHolder.progressDownload.setVisibility(View.VISIBLE);
+				}
+				//Otherwise checking if the attachment is being uploaded
+				else if(messageInfo.getMessageState() == SharedValues.MessageInfo.stateCodeGhost || messageInfo.isSending) {
+					//Showing the processing view
+					viewHolder.groupDownload.setVisibility(View.GONE);
+					viewHolder.groupContent.setVisibility(View.GONE);
+					if(viewHolder.groupFailed != null) viewHolder.groupFailed.setVisibility(View.GONE);
+					viewHolder.groupProcessing.setVisibility(View.VISIBLE);
+				} else {
+					//Showing the standard download content view
+					viewHolder.groupDownload.setVisibility(View.VISIBLE);
+					viewHolder.groupContent.setVisibility(View.GONE);
+					if(viewHolder.groupFailed != null) viewHolder.groupFailed.setVisibility(View.GONE);
+					viewHolder.groupProcessing.setVisibility(View.GONE);
+					
+					viewHolder.labelDownload.setVisibility(View.VISIBLE);
+					viewHolder.imageDownload.setAlpha(1F);
+					viewHolder.progressDownload.setVisibility(View.GONE);
+				}
+			} else {
+				//Hiding the views
+				viewHolder.groupDownload.setVisibility(View.GONE);
+				viewHolder.groupContent.setVisibility(View.GONE);
+				if(viewHolder.groupFailed != null) viewHolder.groupFailed.setVisibility(View.GONE);
+				viewHolder.groupProcessing.setVisibility(View.GONE);
+				
+				//Setting up the content view
+				updateContentView(viewHolder, context);
+			}
+		}
+		
+		@Override
+		void updateViewColor(VH viewHolder, Context context) {
+			//Creating the color values
+			ColorStateList textColorStateList;
+			ColorStateList backgroundColorStateList;
+			ColorStateList accentColorStateList;
+			
+			//Getting the colors
+			if(messageInfo.isOutgoing()) {
+				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
+				backgroundColorStateList = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
+				accentColorStateList = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
+			} else {
+				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
+				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
+				
+				textColorStateList = ColorStateList.valueOf(context.getResources().getColor(android.R.color.white, null));
+				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
+				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
+			}
+			
+			//Coloring the views
+			viewHolder.groupDownload.setBackgroundTintList(backgroundColorStateList);
+			viewHolder.labelDownload.setTextColor(textColorStateList);
+			viewHolder.imageDownload.setImageTintList(textColorStateList);
+			viewHolder.progressDownload.setProgressTintList(accentColorStateList);
+			viewHolder.progressDownload.setIndeterminateTintList(accentColorStateList);
+			viewHolder.progressDownload.setProgressBackgroundTintList(accentColorStateList);
+			
+			viewHolder.groupProcessing.setBackgroundTintList(backgroundColorStateList);
+			viewHolder.labelProcessing.setTextColor(textColorStateList);
+			viewHolder.labelProcessing.setCompoundDrawableTintList(textColorStateList);
+			
+			if(viewHolder.groupFailed != null) {
+				viewHolder.groupFailed.setBackgroundTintList(backgroundColorStateList);
+				viewHolder.labelFailed.setTextColor(textColorStateList);
+				viewHolder.labelFailed.setCompoundDrawableTintList(textColorStateList);
+			}
+			
+			//Updating the content view color
+			updateContentViewColor(viewHolder, context);
+		}
+		
+		abstract void updateContentViewColor(VH viewHolder, Context context);
 		
 		void downloadContent(Context context) {
 			//Returning if the content has already been fetched is being fetched, or the message is in a ghost state
@@ -3566,23 +3769,11 @@ class ConversationManager {
 			
 			//Updating the fetch state
 			isFetching = true;
-			isFetchWaiting = false;
+			isFetchWaiting = true;
 			
-			//Getting the view
-			View view = getView();
-			if(view != null) {
-				//Hiding the content type
-				view.findViewById(R.id.download_label).setVisibility(View.GONE);
-				
-				//Disabling the download button visually
-				view.findViewById(R.id.download_button).setAlpha(Constants.disabledAlpha);
-				
-				//Getting and preparing the progress bar
-				ProgressBar progressBar = view.findViewById(R.id.progressBar);
-				progressBar.setProgress(0);
-				progressBar.setIndeterminate(true);
-				progressBar.setVisibility(View.VISIBLE);
-			}
+			//Rebuilding the view
+			VH viewHolder = getViewHolder();
+			if(viewHolder != null) buildView(viewHolder);
 		}
 		
 		void discardFile() {
@@ -3592,9 +3783,13 @@ class ConversationManager {
 			//Invalidating the file
 			file = null;
 			
-			//Getting the view
-			View view = getView();
-			if(view != null) {
+			//Rebuilding the view
+			VH viewHolder = getViewHolder();
+			if(viewHolder != null) buildView(viewHolder);
+			
+			/* //Getting the view
+			VH viewHolder = getViewHolder();
+			if(viewHolder != null) {
 				//Showing the standard download content view
 				view.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
 				view.findViewById(R.id.content).setVisibility(View.GONE);
@@ -3610,10 +3805,10 @@ class ConversationManager {
 				
 				//Notifying the list of a view resize
 				//getMessageInfo().getConversationInfo().notifyListOfViewResize(view);
-			}
+			} */
 		}
 		
-		void assignInteractionListeners(View view) {
+		private void assignInteractionListeners(View view) {
 			//Setting the click listener
 			view.setOnClickListener(clickView -> {
 				//Getting the context
@@ -3648,7 +3843,7 @@ class ConversationManager {
 			});
 		}
 		
-		private void displayContextMenu(View view, final Context context) {
+		private void displayContextMenu(View view, Context context) { //TODO weakly reference context instead
 			//Returning if there is no view
 			if(view == null) return;
 			
@@ -3668,20 +3863,27 @@ class ConversationManager {
 				menu.findItem(R.id.action_deletedata).setEnabled(false);
 			}
 			
+			//Creating a weak reference to the context
+			WeakReference<Context> contextReference = new WeakReference<>(context);
+			
 			//Setting the click listener
 			popupMenu.setOnMenuItemClickListener(menuItem -> {
+				//Getting the context
+				Context newContext = contextReference.get();
+				if(newContext == null) return false;
+				
 				switch(menuItem.getItemId()) {
 					case R.id.action_details: {
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
-						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_type, context.getResources().getString(getContentType().getName()))).append('\n'); //Message type
-						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : context.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
-						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_size, file != null ? Formatter.formatShortFileSize(context, file.length()) : context.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment size
-						stringBuilder.append(context.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? context.getResources().getString(R.string.part_none) : getMessageInfo().getSendEffect())); //Send effect
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(getContentType().getName()))).append('\n'); //Message type
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_size, file != null ? Formatter.formatShortFileSize(newContext, file.length()) : newContext.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment size
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendEffect())); //Send effect
 						
 						//Showing a dialog
-						new AlertDialog.Builder(context)
+						new AlertDialog.Builder(newContext)
 								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()
@@ -3705,7 +3907,7 @@ class ConversationManager {
 						intent.setAction(Intent.ACTION_SEND);
 						
 						//Creating a content URI
-						Uri content = FileProvider.getUriForFile(context, MainApplication.fileAuthority, file);
+						Uri content = FileProvider.getUriForFile(newContext, MainApplication.fileAuthority, file);
 						
 						//Setting the intent file
 						intent.putExtra(Intent.EXTRA_STREAM, content);
@@ -3717,14 +3919,14 @@ class ConversationManager {
 						intent.setType(mimeType);
 						
 						//Starting the activity
-						context.startActivity(Intent.createChooser(intent, context.getResources().getText(R.string.action_sharemessage)));
+						newContext.startActivity(Intent.createChooser(intent, newContext.getResources().getText(R.string.action_sharemessage)));
 						
 						//Returning true
 						return true;
 					}
 					case R.id.action_deletedata: {
 						//Deleting the attachment
-						new AttachmentDeleter(context, file, localID).execute();
+						new AttachmentDeleter(newContext, file, localID).execute();
 						
 						//Discarding the file in memory
 						discardFile();
@@ -3771,6 +3973,7 @@ class ConversationManager {
 			@Override
 			protected Void doInBackground(Void... voids) {
 				//Deleting the file
+				//noinspection ResultOfMethodCallIgnored
 				file.delete();
 				
 				//Updating the database entry
@@ -3789,9 +3992,43 @@ class ConversationManager {
 		void setFileChecksum(byte[] fileChecksum) {
 			this.fileChecksum = fileChecksum;
 		}
+		
+		abstract ViewHolder createViewHolder(Context context, ViewGroup parent);
+		
+		static abstract class ViewHolder extends MessageComponent.ViewHolder {
+			final ViewGroup groupDownload;
+			final ProgressBar progressDownload;
+			final TextView labelDownload;
+			final ImageView imageDownload;
+			
+			final ViewGroup groupContent;
+			
+			final ViewGroup groupFailed; //This field can be null in some cases (other attachment info), so always do validity checks before using it
+			final TextView labelFailed;
+			
+			final ViewGroup groupProcessing;
+			final TextView labelProcessing;
+			
+			ViewHolder(View view) {
+				super(view);
+				
+				groupDownload = view.findViewById(R.id.downloadcontent);
+				progressDownload = groupDownload.findViewById(R.id.download_progress);
+				labelDownload = groupDownload.findViewById(R.id.download_label);
+				imageDownload = groupDownload.findViewById(R.id.download_icon);
+				
+				groupContent = view.findViewById(R.id.content);
+				
+				groupFailed = view.findViewById(R.id.failedcontent);
+				labelFailed = groupFailed == null ? null : groupFailed.findViewById(R.id.failed_label);
+				
+				groupProcessing = view.findViewById(R.id.processingcontent);
+				labelProcessing = groupProcessing.findViewById(R.id.processing_label);
+			}
+		}
 	}
 	
-	static class ImageAttachmentInfo extends AttachmentInfo {
+	static class ImageAttachmentInfo extends AttachmentInfo<ImageAttachmentInfo.ViewHolder> {
 		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName) {
 			super(localID, guid, message, fileName);
 		}
@@ -3842,181 +4079,106 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewColor(View itemView) {
-			//Creating the color values
-			ColorStateList textColorStateList;
-			ColorStateList backgroundColorStateList;
-			ColorStateList accentColorStateList;
-			
-			//Getting the colors
-			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
-				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
-			} else {
-				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
-				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				
-				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
-				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
-				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
-			}
-			
-			//Coloring the views
-			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			downloadView.setBackgroundTintList(backgroundColorStateList);
-			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
-			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
-			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
-			progressBar.setProgressTintList(accentColorStateList);
-			progressBar.setIndeterminateTintList(accentColorStateList);
-			progressBar.setProgressBackgroundTintList(accentColorStateList);
-			
-			View failedView = itemView.findViewById(R.id.failedcontent);
-			failedView.setBackgroundTintList(backgroundColorStateList);
-			((TextView) failedView.findViewById(R.id.failedcontent_label)).setTextColor(textColorStateList);
-			((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
+		void updateContentViewColor(ViewHolder viewHolder, Context context) {
+		
 		}
 		
 		@Override
-		void updateContentView() {
-			//Calling the overload method
-			View view = getView();
-			if(view != null) updateContentView(view);
-		}
-		
-		private void updateContentView(View itemView) {
-			//Checking if there is no file
-			if(file == null) {
-				//Checking if the attachment is being fetched
-				if(isFetching) {
-					//Showing the download content view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
+		void updateContentView(ViewHolder viewHolder, Context context) {
+			//Configuring the content view
+			ViewGroup content = itemView.findViewById(R.id.content);
+			ViewGroup.LayoutParams params = content.getLayoutParams();
+			content.getLayoutParams().width = 0;
+			content.getLayoutParams().height = 0;
+			content.setLayoutParams(params);
+			
+			//Switching to the content view
+			content.setVisibility(View.VISIBLE);
+			itemView.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
+			itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
+			itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
+			itemView.setTag(guid);
+			
+			//Setting the bitmap
+			((ImageView) content.findViewById(R.id.content_view)).setImageBitmap(null);
+			int pxBitmapSizeMax = (int) content.getResources().getDimension(R.dimen.image_size_max);
+			
+			//Creating a weak reference to the context
+			WeakReference<Context> contextReference = new WeakReference<>(context);
+			
+			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromImageFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult() {
+				@Override
+				public void onImageMeasured(int width, int height) {
+					//Getting the context
+					Context context = contextReference.get();
+					if(context == null) return;
 					
-					//Hiding the content type
-					itemView.findViewById(R.id.download_label).setVisibility(View.GONE);
+					//Getting the view holder
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
 					
-					//Disabling the download button visually
-					itemView.findViewById(R.id.download_button).setAlpha(Constants.disabledAlpha);
+					//Getting the multiplier
+					float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), width, height);
 					
-					//Getting and preparing the progress bar
-					ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
-					progressBar.setIndeterminate(isFetchWaiting);
-					progressBar.setProgress((int) (fetchProgress * progressBar.getMax()));
-					progressBar.setVisibility(View.VISIBLE);
+					//Configuring the layout
+					newViewHolder.groupContent.getLayoutParams().width = (int) (width * multiplier);
+					newViewHolder.groupContent.getLayoutParams().height = (int) (height * multiplier);
 				}
-				//Otherwise checking if the attachment is being uploaded
-				else if(messageInfo.getMessageState() == SharedValues.MessageInfo.stateCodeGhost || messageInfo.isSending) {
-					//Showing the processing view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.VISIBLE);
-				} else {
-					//Showing the standard download content view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
+				
+				@Override
+				public void onImageDecoded(Bitmap bitmap, boolean wasTasked) {
+					//Getting the context
+					Context context = contextReference.get();
+					if(context == null) return;
 					
-					itemView.findViewById(R.id.download_label).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.download_button).setAlpha(1);
-					itemView.findViewById(R.id.progressBar).setVisibility(View.GONE);
-				}
-			} else {
-				//Configuring the content view
-				ViewGroup content = itemView.findViewById(R.id.content);
-				ViewGroup.LayoutParams params = content.getLayoutParams();
-				content.getLayoutParams().width = 0;
-				content.getLayoutParams().height = 0;
-				content.setLayoutParams(params);
-				
-				//Switching to the content view
-				content.setVisibility(View.VISIBLE);
-				itemView.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
-				itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-				itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
-				itemView.setTag(guid);
-				
-				//Setting the bitmap
-				((ImageView) content.findViewById(R.id.content_view)).setImageBitmap(null);
-				int pxBitmapSizeMax = (int) itemView.getResources().getDimension(R.dimen.image_size_max);
-				
-				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromImageFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult(wasTasked -> wasTasked ? getView() : itemView) {
-					@Override
-					public void onImageMeasured(int width, int height) {
-						//Getting the content view
-						View itemView = viewSource.get(true);
-						if(itemView == null) return;
-						View content = itemView.findViewById(R.id.content);
-						
-						//Getting the multiplier
-						float multiplier = Constants.calculateImageAttachmentMultiplier(itemView.getResources(), width, height);
-						
-						//Configuring the layout
-						content.getLayoutParams().width = (int) (width * multiplier);
-						content.getLayoutParams().height = (int) (height * multiplier);
-						content.setLayoutParams(params);
-					}
+					//Getting the view holder
+					ViewHolder newViewHolder = wasTasked ? getViewHolder() : viewHolder;
+					if(newViewHolder == null) return;
 					
-					@Override
-					public void onImageDecoded(Bitmap bitmap, boolean wasTasked) {
-						//Getting the item view
-						View itemView = viewSource.get(wasTasked);
-						if(itemView == null) return;
+					//Checking if the bitmap is invalid
+					if(bitmap == null) {
+						//Showing the simplified view
+						newViewHolder.groupFailed.setVisibility(View.VISIBLE);
+					} else {
+						//Configuring the content view
+						//ViewGroup.LayoutParams params = content.getLayoutParams();
 						
-						//Checking if the bitmap is invalid
-						if(bitmap == null) {
-							//Showing the simplified view
-							itemView.findViewById(R.id.content).setVisibility(View.GONE);
-							itemView.findViewById(R.id.failedcontent).setVisibility(View.VISIBLE);
-						} else {
-							//Configuring the content view
-							ViewGroup content = itemView.findViewById(R.id.content);
-							ViewGroup.LayoutParams params = content.getLayoutParams();
-							
-							float multiplier = Constants.calculateImageAttachmentMultiplier(itemView.getResources(), bitmap.getWidth(), bitmap.getHeight());
-							
-							content.getLayoutParams().width = (int) (bitmap.getWidth() * multiplier);
-							content.getLayoutParams().height = (int) (bitmap.getHeight() * multiplier);
-							content.setLayoutParams(params);
-							
-							//Setting the bitmap
-							ImageView imageView = content.findViewById(R.id.content_view);
-							imageView.setImageBitmap(bitmap);
-							
-							//Fading in the view
-							if(wasTasked) {
-								imageView.setAlpha(0F);
-								imageView.animate().alpha(1).setDuration(300).start();
-							}
+						float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), bitmap.getWidth(), bitmap.getHeight());
+						newViewHolder.groupContent.getLayoutParams().width = (int) (bitmap.getWidth() * multiplier);
+						newViewHolder.groupContent.getLayoutParams().height = (int) (bitmap.getHeight() * multiplier);
+						//content.setLayoutParams(params);
+						
+						//Setting the bitmap
+						newViewHolder.imageContent.setImageBitmap(bitmap);
+						
+						//Fading in the view
+						if(wasTasked) {
+							newViewHolder.imageContent.setAlpha(0F);
+							newViewHolder.imageContent.animate().alpha(1).setDuration(300).start();
 						}
 					}
-				}, true, pxBitmapSizeMax, pxBitmapSizeMax);
-			}
+				}
+			}, true, pxBitmapSizeMax, pxBitmapSizeMax);
 		}
 		
 		@Override
-		void updateViewEdges(View itemView, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
+		void updateViewEdges(ViewHolder viewHolder, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Creating the drawable
 			Drawable drawable = Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored);
 			
 			//Assigning the drawable
-			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content).findViewById(R.id.content_background).setBackground(drawable.getConstantState().newDrawable());
-			itemView.findViewById(R.id.failedcontent).setBackground(drawable.getConstantState().newDrawable());
+			viewHolder.groupDownload.setBackground(drawable);
+			viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
+			viewHolder.groupProcessing.setBackground(drawable.getConstantState().newDrawable());
+			viewHolder.groupFailed.setBackground(drawable.getConstantState().newDrawable());
 			
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
 			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
 			
-			RoundedImageView imageView = itemView.findViewById(R.id.content_view);
-			if(alignToRight) imageView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else imageView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
-			imageView.invalidate();
+			if(alignToRight) viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+			else viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			viewHolder.imageContent.invalidate();
 		}
 		
 		@Override
@@ -4042,6 +4204,23 @@ class ConversationManager {
 			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 			if(intent.resolveActivity(activity.getPackageManager()) != null) activity.startActivity(intent);
 			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
+		}
+		
+		@Override
+		ViewHolder createViewHolder(Context context, ViewGroup parent) {
+			return new ViewHolder(LayoutInflater.from(context).inflate(R.layout.listitem_contentimage, parent, false));
+		}
+		
+		private static class ViewHolder extends AttachmentInfo.ViewHolder {
+			final View backgroundContent;
+			final RoundedImageView imageContent;
+			
+			ViewHolder(View view) {
+				super(view);
+				
+				backgroundContent = view.findViewById(R.id.content_background);
+				imageContent = view.findViewById(R.id.content_view);
+			}
 		}
 	}
 	
@@ -4141,8 +4320,8 @@ class ConversationManager {
 			
 			View failedView = itemView.findViewById(R.id.failedcontent);
 			failedView.setBackgroundTintList(backgroundColorStateList);
-			((TextView) failedView.findViewById(R.id.failedcontent_label)).setTextColor(textColorStateList);
-			((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
+			((TextView) failedView.findViewById(R.id.failed_label)).setTextColor(textColorStateList);
+			//((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
 		}
 		
 		@Override
@@ -4451,8 +4630,8 @@ class ConversationManager {
 			
 			View failedView = itemView.findViewById(R.id.failedcontent);
 			failedView.setBackgroundTintList(backgroundColorStateList);
-			((TextView) failedView.findViewById(R.id.failedcontent_label)).setTextColor(textColorStateList);
-			((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
+			((TextView) failedView.findViewById(R.id.failed_label)).setTextColor(textColorStateList);
+			//((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
 		}
 		
 		@Override
@@ -5244,13 +5423,14 @@ class ConversationManager {
 		}
 	}
 	
-	static abstract class ConversationItem {
+	static abstract class ConversationItem<VH> {
 		//Creating the conversation item values
 		private long localID;
 		private String guid;
 		private long date;
 		private ConversationInfo conversationInfo;
-		private Constants.ViewSource viewSource;
+		//private Constants.ViewSource viewSource;
+		private Constants.ViewHolderSource<VH> viewHolderSource;
 		
 		ConversationItem(long localID, String guid, long date, ConversationInfo conversationInfo) {
 			//Setting the identifiers
@@ -5288,12 +5468,13 @@ class ConversationManager {
 			date = value;
 		}
 		
-		void setViewSource(Constants.ViewSource viewSource) {
-			this.viewSource = viewSource;
+		void setViewHolderSource(Constants.ViewHolderSource<VH> viewHolderSource) {
+			this.viewHolderSource = viewHolderSource;
 		}
 		
-		View getView() {
-			return viewSource == null ? null : viewSource.get();
+		VH getViewHolder() {
+			if(viewHolderSource == null) return null;
+			return viewHolderSource.get();
 		}
 		
 		ConversationInfo getConversationInfo() {
@@ -5304,9 +5485,9 @@ class ConversationManager {
 			this.conversationInfo = conversationInfo;
 		}
 		
-		abstract void bindView(Context context, RecyclerView.ViewHolder viewHolder);
+		abstract void bindView(Context context, VH viewHolder);
 		
-		static class MessageViewHolder extends RecyclerView.ViewHolder {
+		/* static class MessageViewHolder extends RecyclerView.ViewHolder {
 			//Creating the common item values
 			private final TextView labelTimeDivider;
 			private final TextView labelSender;
@@ -5396,7 +5577,7 @@ class ConversationManager {
 			ImageView getImageProfileImage() {
 				return imageProfileImage;
 			}
-		}
+		} */
 		
 		void updateViewColor() {}
 		

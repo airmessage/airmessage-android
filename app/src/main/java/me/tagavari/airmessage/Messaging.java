@@ -1714,7 +1714,7 @@ public class Messaging extends CompositeActivity {
 		bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
 		
 		//Updating the badge
-		bottomFABBadge.setText(Integer.toString(retainedFragment.conversationInfo.getUnreadMessageCount()));
+		bottomFABBadge.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? getResources().getConfiguration().getLocales().get(0) : getResources().getConfiguration().locale, "%d", retainedFragment.conversationInfo.getUnreadMessageCount()));
 		bottomFABBadge.setVisibility(View.VISIBLE);
 		bottomFABBadge.setScaleX(1);
 		bottomFABBadge.setScaleY(1);
@@ -1734,7 +1734,7 @@ public class Messaging extends CompositeActivity {
 			bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
 			
 			//Updating the badge text
-			bottomFABBadge.setText(Integer.toString(retainedFragment.conversationInfo.getUnreadMessageCount()));
+			bottomFABBadge.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? getResources().getConfiguration().getLocales().get(0) : getResources().getConfiguration().locale, "%d", retainedFragment.conversationInfo.getUnreadMessageCount()));
 			
 			//Animating the badge
 			if(bottomFAB.isShown()) {

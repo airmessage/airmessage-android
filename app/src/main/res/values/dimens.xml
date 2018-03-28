@@ -6,7 +6,11 @@
     <dimen name="profile_size">40dp</dimen> <!-- The width and height of profile images -->
     <dimen name="image_size_min">50dp</dimen> <!-- The minimum width / height of media sent in conversations -->
     <dimen name="image_size_max">250dp</dimen> <!-- The maximum width / height of media sent in conversations -->
-    
+	
+	<dimen name="messagebubble_padding_x">12dp</dimen> <!-- The horizontal padding of a message bubble -->
+	<dimen name="messagebubble_padding_y">8dp</dimen> <!-- The vertical padding of a message bubble -->
+	<dimen name="messagebubble_minheight">40dp</dimen> <!-- The vertical padding of a message bubble -->
+	
 	<dimen name="conversationwindow_minheight">250dp</dimen> <!-- The minimum height of the conversation window before the app bar is hidden -->
     <dimen name="dialogwidth_max">500dp</dimen> <!-- The maximum width of floating app dialogs -->
     <dimen name="contentwidth_max">1000dp</dimen> <!-- The maximum width of the screen content before side margins are added -->

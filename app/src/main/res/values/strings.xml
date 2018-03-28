@@ -150,8 +150,8 @@
 		<item quantity="other">%d attachments</item>
 	</plurals>
 	<plurals name="message_selectioncount">
-		<item quantity="one">%s selected</item>
-		<item quantity="other">%s selected</item>
+		<item quantity="one">%d selected</item>
+		<item quantity="other">%d selected</item>
 	</plurals>
 	<string name="message_confirm_unblock">Unblock %s?</string>
 	<string name="message_shareable_text">On %1$s, %2$s said: %3$s</string>

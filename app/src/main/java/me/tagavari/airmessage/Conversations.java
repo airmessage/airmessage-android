@@ -353,7 +353,7 @@ public class Conversations extends CompositeActivity {
 			else nonArchivedConversations += value;
 			
 			//Setting the name
-			actionMode.setTitle(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, Integer.toString(selectedConversations)));
+			actionMode.setTitle(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, selectedConversations));
 			
 			//Showing or hiding the mute / unmute buttons
 			if(mutedConversations > 0) actionMode.getMenu().findItem(R.id.action_unmute).setVisible(true);

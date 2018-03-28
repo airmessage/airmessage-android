@@ -613,21 +613,13 @@ class BitmapCacheHelper {
 	
 	static abstract class ImageDecodeResult {
 		//Creating the view values (for subclass reference)
-		final Constants.TaskedViewSource viewSource;
 		final WeakReference<View> viewReference;
 		
 		ImageDecodeResult() {
-			viewSource = null;
 			viewReference = null;
 		}
 		
-		ImageDecodeResult(Constants.TaskedViewSource viewSource) {
-			this.viewSource = viewSource;
-			this.viewReference = null;
-		}
-		
 		ImageDecodeResult(View view) {
-			this.viewSource = null;
 			this.viewReference = new WeakReference<>(view);
 		}
 		
