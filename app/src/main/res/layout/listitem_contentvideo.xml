@@ -53,15 +53,14 @@
 				android:id="@+id/download_icon"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
 				android:src="@drawable/download"
 				android:tint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		
 		<RelativeLayout
 			android:id="@+id/content"
-			android:layout_width="100dp"
-			android:layout_height="100dp"
+			android:layout_width="0dp"
+			android:layout_height="0dp"
 			android:visibility="gone">
 			
 			<View
@@ -72,8 +71,8 @@
 			
 			<me.tagavari.airmessage.RoundedImageView
 				android:id="@+id/content_view"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
 				android:adjustViewBounds="true"
 				android:scaleType="fitStart" />
 			
@@ -81,9 +80,6 @@
 				android:layout_width="48dp"
 				android:layout_height="48dp"
 				android:layout_centerInParent="true"
-				android:layout_gravity="center_vertical"
-				android:layout_marginLeft="8dp"
-				android:layout_marginRight="8dp"
 				android:src="@drawable/play_circle" />
 		</RelativeLayout>
 		

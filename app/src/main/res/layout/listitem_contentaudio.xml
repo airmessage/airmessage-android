@@ -52,7 +52,6 @@
 				android:id="@+id/download_icon"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
 				android:src="@drawable/download"
 				android:tint="?android:attr/textColorPrimary" />
 		</LinearLayout>
@@ -61,43 +60,41 @@
 			android:id="@+id/content"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:paddingBottom="8dp"
-			android:paddingTop="8dp"
+			android:minHeight="@dimen/messagebubble_minheight"
+			android:paddingBottom="@dimen/messagebubble_padding_y"
+			android:paddingLeft="@dimen/messagebubble_padding_x"
+			android:paddingRight="@dimen/messagebubble_padding_x"
+			android:paddingTop="@dimen/messagebubble_padding_y"
 			android:background="@drawable/rounded_rectangle"
-			android:backgroundTint="@android:color/white"
+			android:backgroundTint="@color/colorMessageOutgoing"
 			android:orientation="horizontal"
+			android:gravity="center"
 			android:visibility="gone">
-			
 			<ImageView
-				android:id="@+id/button_play_pause_toggle"
+				android:id="@+id/content_icon"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:layout_marginEnd="4dp"
-				android:layout_marginStart="10dp"
 				android:src="@drawable/play"
-				android:tint="@android:color/black" />
+				android:tint="?android:attr/textColorPrimary"
+				android:layout_marginEnd="4dp"/>
 			
 			<TextView
-				android:id="@+id/audio_duration"
+				android:id="@+id/content_duration"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center_vertical"
-				android:layout_marginLeft="4dp"
-				android:layout_marginRight="4dp"
 				android:text="@string/placeholder_audioduration"
-				android:textColor="@android:color/black" />
+				android:textColor="?android:attr/textColorPrimary"
+				android:gravity="center" />
 			
 			<ProgressBar
-				android:id="@+id/audio_progress_bar"
+				android:id="@+id/content_progress"
 				style="?android:attr/progressBarStyleHorizontal"
 				android:theme="@style/Theme.AppCompat.Light"
 				android:layout_width="80dp"
-				android:layout_height="5dp"
+				android:layout_height="wrap_content"
 				android:width="0dip"
-				android:layout_gravity="center_vertical"
-				android:layout_marginEnd="15dp"
-				android:layout_marginStart="10dp"
+				android:layout_marginStart="8dp"
 				android:indeterminate="false"
 				android:max="100" />
 		</LinearLayout>

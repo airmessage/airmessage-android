@@ -51,15 +51,14 @@
 				android:id="@+id/download_icon"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
 				android:src="@drawable/download"
 				android:tint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		
 		<RelativeLayout
 			android:id="@+id/content"
-			android:layout_width="100dp"
-			android:layout_height="100dp"
+			android:layout_width="0dp"
+			android:layout_height="0px"
 			android:orientation="vertical"
 			android:visibility="gone">
 			

@@ -53,7 +53,6 @@
 				android:id="@+id/download_icon"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
 				android:src="@drawable/download"
 				android:tint="?android:attr/textColorPrimary" />
 		</LinearLayout>
@@ -106,13 +105,13 @@
 			android:visibility="gone">
 			
 			<TextView
-				android:id="@+id/failed_label"
+				android:id="@+id/content_label"
 				android:layout_width="0dp"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center_vertical"
 				android:layout_weight="1"
 				android:gravity="center"
-				android:text="@string/part_content_video"
+				android:text="@string/part_content_other"
 				android:textColor="?android:attr/textColorPrimary"
 				android:drawableEnd="@drawable/open"
 				android:drawablePadding="4dp"

@@ -2312,7 +2312,7 @@ class ConversationManager {
 		}
 		
 		@Override
-		void bindView(Context context, ViewHolder viewHolder) {
+		void bindView(ViewHolder viewHolder, Context context) {
 			//Getting the properties
 			boolean isFromMe = isOutgoing();
 			
@@ -3550,7 +3550,7 @@ class ConversationManager {
 				if(viewHolder == null) return;
 				
 				//Rebuilding the view
-				buildView(viewHolder);
+				buildView(viewHolder, viewHolder.itemView.getContext());
 				
 				//Swapping to the content view
 				/* view.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
@@ -3568,7 +3568,7 @@ class ConversationManager {
 				if(viewHolder == null) return;
 				
 				//Rebuilding the view
-				buildView(viewHolder);
+				buildView(viewHolder, viewHolder.itemView.getContext());
 			}
 		};
 		
@@ -3636,7 +3636,10 @@ class ConversationManager {
 			viewHolder.itemView.setLayoutParams(layoutParams);
 			
 			//Building the view
-			buildView(viewHolder);
+			buildView(viewHolder, context);
+			
+			//Updating the view color
+			updateViewColor(viewHolder, context);
 			
 			//Assigning the interaction listeners
 			assignInteractionListeners(viewHolder.itemView);
@@ -3703,49 +3706,65 @@ class ConversationManager {
 		}
 		
 		@Override
+		void updateViewEdges(VH viewHolder, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
+			//Creating the drawable
+			Drawable drawable = Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored);
+			
+			//Assigning the drawable
+			viewHolder.groupDownload.setBackground(drawable);
+			viewHolder.groupProcessing.setBackground(drawable);
+			if(viewHolder.groupFailed != null) viewHolder.groupFailed.setBackground(drawable);
+			
+			//Updating the content view's edges
+			updateContentViewEdges(viewHolder, drawable, anchoredTop, anchoredBottom, alignToRight, pxCornerAnchored, pxCornerUnanchored);
+		}
+		
+		void updateContentViewEdges(VH viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {}
+		
+		@Override
 		void updateViewColor(VH viewHolder, Context context) {
 			//Creating the color values
-			ColorStateList textColorStateList;
-			ColorStateList backgroundColorStateList;
-			ColorStateList accentColorStateList;
+			ColorStateList cslText;
+			ColorStateList cslBackground;
+			ColorStateList cslAccent;
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
-				backgroundColorStateList = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
+				cslText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
+				cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
+				cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 				
-				textColorStateList = ColorStateList.valueOf(context.getResources().getColor(android.R.color.white, null));
-				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
-				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
+				cslText = ColorStateList.valueOf(context.getResources().getColor(android.R.color.white, null));
+				cslBackground = ColorStateList.valueOf(bubbleColor);
+				cslAccent = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
 			
 			//Coloring the views
-			viewHolder.groupDownload.setBackgroundTintList(backgroundColorStateList);
-			viewHolder.labelDownload.setTextColor(textColorStateList);
-			viewHolder.imageDownload.setImageTintList(textColorStateList);
-			viewHolder.progressDownload.setProgressTintList(accentColorStateList);
-			viewHolder.progressDownload.setIndeterminateTintList(accentColorStateList);
-			viewHolder.progressDownload.setProgressBackgroundTintList(accentColorStateList);
+			viewHolder.groupDownload.setBackgroundTintList(cslBackground);
+			viewHolder.labelDownload.setTextColor(cslText);
+			viewHolder.imageDownload.setImageTintList(cslText);
+			viewHolder.progressDownload.setProgressTintList(cslAccent);
+			viewHolder.progressDownload.setIndeterminateTintList(cslAccent);
+			viewHolder.progressDownload.setProgressBackgroundTintList(cslAccent);
 			
-			viewHolder.groupProcessing.setBackgroundTintList(backgroundColorStateList);
-			viewHolder.labelProcessing.setTextColor(textColorStateList);
-			viewHolder.labelProcessing.setCompoundDrawableTintList(textColorStateList);
+			viewHolder.groupProcessing.setBackgroundTintList(cslBackground);
+			viewHolder.labelProcessing.setTextColor(cslText);
+			viewHolder.labelProcessing.setCompoundDrawableTintList(cslText);
 			
 			if(viewHolder.groupFailed != null) {
-				viewHolder.groupFailed.setBackgroundTintList(backgroundColorStateList);
-				viewHolder.labelFailed.setTextColor(textColorStateList);
-				viewHolder.labelFailed.setCompoundDrawableTintList(textColorStateList);
+				viewHolder.groupFailed.setBackgroundTintList(cslBackground);
+				viewHolder.labelFailed.setTextColor(cslText);
+				viewHolder.labelFailed.setCompoundDrawableTintList(cslText);
 			}
 			
 			//Updating the content view color
-			updateContentViewColor(viewHolder, context);
+			updateContentViewColor(viewHolder, context, cslText, cslBackground, cslAccent);
 		}
 		
-		abstract void updateContentViewColor(VH viewHolder, Context context);
+		void updateContentViewColor(VH viewHolder, Context context, ColorStateList cslText, ColorStateList cslBackground, ColorStateList cslAccent) {}
 		
 		void downloadContent(Context context) {
 			//Returning if the content has already been fetched is being fetched, or the message is in a ghost state
@@ -3773,10 +3792,10 @@ class ConversationManager {
 			
 			//Rebuilding the view
 			VH viewHolder = getViewHolder();
-			if(viewHolder != null) buildView(viewHolder);
+			if(viewHolder != null) buildView(viewHolder, context);
 		}
 		
-		void discardFile() {
+		void discardFile(Context context) {
 			//Returning if there is no file
 			if(file == null) return;
 			
@@ -3785,7 +3804,7 @@ class ConversationManager {
 			
 			//Rebuilding the view
 			VH viewHolder = getViewHolder();
-			if(viewHolder != null) buildView(viewHolder);
+			if(viewHolder != null) buildView(viewHolder, context);
 			
 			/* //Getting the view
 			VH viewHolder = getViewHolder();
@@ -3929,7 +3948,7 @@ class ConversationManager {
 						new AttachmentDeleter(newContext, file, localID).execute();
 						
 						//Discarding the file in memory
-						discardFile();
+						discardFile(newContext);
 						
 						//Returning true
 						return true;
@@ -4046,7 +4065,7 @@ class ConversationManager {
 			return ContentType.IMAGE;
 		}
 		
-		@Override
+		/* @Override
 		View createView(Context context, View convertView, ViewGroup parent) {
 			//Calling the super method
 			super.createView(context, convertView, parent);
@@ -4076,16 +4095,11 @@ class ConversationManager {
 			
 			//Submitting the view
 			return convertView;
-		}
-		
-		@Override
-		void updateContentViewColor(ViewHolder viewHolder, Context context) {
-		
-		}
+		} */
 		
 		@Override
 		void updateContentView(ViewHolder viewHolder, Context context) {
-			//Configuring the content view
+			/* //Configuring the content view
 			ViewGroup content = itemView.findViewById(R.id.content);
 			ViewGroup.LayoutParams params = content.getLayoutParams();
 			content.getLayoutParams().width = 0;
@@ -4100,8 +4114,8 @@ class ConversationManager {
 			itemView.setTag(guid);
 			
 			//Setting the bitmap
-			((ImageView) content.findViewById(R.id.content_view)).setImageBitmap(null);
-			int pxBitmapSizeMax = (int) content.getResources().getDimension(R.dimen.image_size_max);
+			((ImageView) content.findViewById(R.id.content_view)).setImageBitmap(null); */
+			int pxBitmapSizeMax = (int) context.getResources().getDimension(R.dimen.image_size_max);
 			
 			//Creating a weak reference to the context
 			WeakReference<Context> contextReference = new WeakReference<>(context);
@@ -4123,6 +4137,9 @@ class ConversationManager {
 					//Configuring the layout
 					newViewHolder.groupContent.getLayoutParams().width = (int) (width * multiplier);
 					newViewHolder.groupContent.getLayoutParams().height = (int) (height * multiplier);
+					
+					//Showing the layout
+					newViewHolder.groupContent.setVisibility(View.VISIBLE);
 				}
 				
 				@Override
@@ -4137,16 +4154,20 @@ class ConversationManager {
 					
 					//Checking if the bitmap is invalid
 					if(bitmap == null) {
-						//Showing the simplified view
+						//Showing the failed view
+						newViewHolder.groupContent.setVisibility(View.GONE);
 						newViewHolder.groupFailed.setVisibility(View.VISIBLE);
 					} else {
-						//Configuring the content view
+						//Configuring the layout
 						//ViewGroup.LayoutParams params = content.getLayoutParams();
 						
 						float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), bitmap.getWidth(), bitmap.getHeight());
 						newViewHolder.groupContent.getLayoutParams().width = (int) (bitmap.getWidth() * multiplier);
 						newViewHolder.groupContent.getLayoutParams().height = (int) (bitmap.getHeight() * multiplier);
 						//content.setLayoutParams(params);
+						
+						//Showing the layout
+						newViewHolder.groupContent.setVisibility(View.VISIBLE);
 						
 						//Setting the bitmap
 						newViewHolder.imageContent.setImageBitmap(bitmap);
@@ -4162,15 +4183,9 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateViewEdges(ViewHolder viewHolder, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
-			//Creating the drawable
-			Drawable drawable = Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored);
-			
+		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Assigning the drawable
-			viewHolder.groupDownload.setBackground(drawable);
 			viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
-			viewHolder.groupProcessing.setBackground(drawable.getConstantState().newDrawable());
-			viewHolder.groupFailed.setBackground(drawable.getConstantState().newDrawable());
 			
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
@@ -4211,24 +4226,30 @@ class ConversationManager {
 			return new ViewHolder(LayoutInflater.from(context).inflate(R.layout.listitem_contentimage, parent, false));
 		}
 		
-		private static class ViewHolder extends AttachmentInfo.ViewHolder {
+		static class ViewHolder extends AttachmentInfo.ViewHolder {
 			final View backgroundContent;
 			final RoundedImageView imageContent;
 			
 			ViewHolder(View view) {
 				super(view);
 				
-				backgroundContent = view.findViewById(R.id.content_background);
-				imageContent = view.findViewById(R.id.content_view);
+				backgroundContent = groupContent.findViewById(R.id.content_background);
+				imageContent = groupContent.findViewById(R.id.content_view);
 			}
 		}
 	}
 	
-	static class AudioAttachmentInfo extends AttachmentInfo {
+	static class AudioAttachmentInfo extends AttachmentInfo<AudioAttachmentInfo.ViewHolder> {
+		//Creating the reference values
+		private static final byte fileStateIdle = 0;
+		private static final byte fileStateLoading = 1;
+		private static final byte fileStateLoaded = 2;
+		private static final byte fileStateFailed = 3;
+		
 		//Creating the media values
-		private long duration = -1;
-		private boolean fileLoaded = false;
-		private boolean mediaPlaying = false;
+		private long duration = 0;
+		private byte fileState = fileStateIdle;
+		private boolean isPlaying = false;
 		private int mediaProgress = 0;
 		
 		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName) {
@@ -4248,7 +4269,7 @@ class ConversationManager {
 			return ContentType.AUDIO;
 		}
 		
-		@Override
+		/* @Override
 		View createView(Context context, View convertView, ViewGroup parent) {
 			//Calling the super method
 			super.createView(context, convertView, parent);
@@ -4278,145 +4299,39 @@ class ConversationManager {
 			
 			//Submitting the view
 			return convertView;
+		} */
+		
+		@Override
+		void updateContentViewColor(ViewHolder viewHolder, Context context, ColorStateList cslText, ColorStateList cslBackground, ColorStateList cslAccent) {
+			viewHolder.groupContent.setBackgroundTintList(cslBackground);
+			viewHolder.contentIcon.setImageTintList(cslText);
+			viewHolder.contentLabel.setTextColor(cslText);
+			viewHolder.contentProgress.setBackgroundTintList(cslText); //cslBackground
+			viewHolder.contentProgress.setProgressTintList(cslText);
 		}
 		
 		@Override
-		void updateViewColor(View itemView) {
-			//Creating the color values
-			ColorStateList textColorStateList;
-			ColorStateList backgroundColorStateList;
-			ColorStateList accentColorStateList;
-			
-			//Getting the colors
-			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
-				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
-			} else {
-				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
-				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				
-				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
-				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
-				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
+		void updateContentView(ViewHolder viewHolder, Context context) {
+			//Loading the file data if the state is idle
+			if(file != null && fileState == fileStateIdle) {
+				new GetDurationTask(this).execute(file);
+				fileState = fileStateLoading;
 			}
 			
-			//Coloring the views
-			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			downloadView.setBackgroundTintList(backgroundColorStateList);
-			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
-			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
-			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
-			progressBar.setProgressTintList(accentColorStateList);
-			progressBar.setIndeterminateTintList(accentColorStateList);
-			progressBar.setProgressBackgroundTintList(accentColorStateList);
-			
-			itemView.findViewById(R.id.content).setBackgroundTintList(backgroundColorStateList);
-			((ImageView) itemView.findViewById(R.id.button_play_pause_toggle)).setImageTintList(textColorStateList);
-			((TextView) itemView.findViewById(R.id.audio_duration)).setTextColor(textColorStateList);
-			ProgressBar audioProgressBar = itemView.findViewById(R.id.audio_progress_bar);
-			audioProgressBar.setBackgroundTintList(backgroundColorStateList);
-			audioProgressBar.setProgressTintList(textColorStateList);
-			
-			View failedView = itemView.findViewById(R.id.failedcontent);
-			failedView.setBackgroundTintList(backgroundColorStateList);
-			((TextView) failedView.findViewById(R.id.failed_label)).setTextColor(textColorStateList);
-			//((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
-		}
-		
-		@Override
-		void updateContentView() {
-			//Calling the overload method
-			View view = getView();
-			if(view != null) updateContentView(view);
-		}
-		
-		private void updateContentView(View itemView) {
-			//Loading the file data if it needs to be loaded
-			if(!fileLoaded && file != null) new GetDurationTask(this).execute(file);
-			
-			//Checking if there is no file
-			if(file == null) {
-				//Checking if the attachment is being fetched
-				if(isFetching) {
-					//Showing the download content view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
-					
-					//Hiding the content type
-					itemView.findViewById(R.id.download_label).setVisibility(View.GONE);
-					
-					//Disabling the download button visually
-					itemView.findViewById(R.id.download_button).setAlpha(Constants.disabledAlpha);
-					
-					//Getting and preparing the progress bar
-					ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
-					progressBar.setIndeterminate(isFetchWaiting);
-					progressBar.setProgress((int) (fetchProgress * progressBar.getMax()));
-					progressBar.setVisibility(View.VISIBLE);
-				}
-				//Otherwise checking if the attachment is being uploaded
-				else if(messageInfo.getMessageState() == SharedValues.MessageInfo.stateCodeGhost || messageInfo.isSending) {
-					//Showing the processing view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.VISIBLE);
-				} else {
-					//Showing the standard download content view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
-					
-					itemView.findViewById(R.id.download_label).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.download_button).setAlpha(1);
-					itemView.findViewById(R.id.progressBar).setVisibility(View.GONE);
-				}
+			//Checking if the file state is invalid
+			if(fileState == fileStateFailed) {
+				//Showing the failed view
+				viewHolder.groupFailed.setVisibility(View.VISIBLE);
 			} else {
-				//Hiding the other views
-				(itemView.findViewById(R.id.downloadcontent)).setVisibility(View.GONE);
-				(itemView.findViewById(R.id.processingcontent)).setVisibility(View.GONE);
+				//Showing the content view
+				viewHolder.groupContent.setVisibility(View.VISIBLE);
 				
-				//Checking if the duration is invalid
-				if(fileLoaded && duration == -1) {
-					//Showing the failed content view
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.failedcontent).setVisibility(View.VISIBLE);
-				} else {
-					//Showing the content view
-					itemView.findViewById(R.id.content).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-					
-					//Resetting the media if the file isn't loaded
-					if(!fileLoaded) resetPlaying(itemView);
-					else {
-						//Updating the media
-						updateMediaPlaying(itemView);
-						updateMediaProgress(itemView);
-					}
-					
-					/* //Setting the duration
-					if(fileLoaded) ((TextView) itemView.findViewById(R.id.audio_duration)).setText(Constants.getFormattedDuration((int) Math.floor(duration / 1000)));
-					else ((TextView) itemView.findViewById(R.id.audio_duration)).setText(Constants.getFormattedDuration(0));
-					
-					//Checking if the media is playing
-					if(mediaPlaying) {
-						//Restoring the progress bar
-						((ProgressBar) itemView.findViewById(R.id.audio_progress_bar)).setProgress((int) ((float) mediaProgress / (float) duration * 100F));
-						
-						//Setting the button icon
-						((ImageView) itemView.findViewById(R.id.button_play_pause_toggle)).setImageResource(R.drawable.pause);
-					} else {
-						//Emptying the progress bar
-						((ProgressBar) itemView.findViewById(R.id.audio_progress_bar)).setProgress(0);
-						
-						//Setting the button icon
-						((ImageView) itemView.findViewById(R.id.button_play_pause_toggle)).setImageResource(R.drawable.play);
-					} */
-				}
+				//Checking if the state is playing or the file is ready
+				if(isPlaying || fileState == fileStateLoaded) {
+					//Updating the media
+					updateMediaPlaying(viewHolder);
+					updateMediaProgress(viewHolder);
+				} else resetPlaying(viewHolder);
 			}
 		}
 		
@@ -4442,21 +4357,16 @@ class ConversationManager {
 				if(attachmentInfo == null) return;
 				
 				//Setting the duration
-				attachmentInfo.fileLoaded = true;
+				attachmentInfo.fileState = fileStateLoaded;
 				attachmentInfo.duration = result;
-				attachmentInfo.updateContentView();
+				attachmentInfo.updateMediaProgress();
 			}
 		}
 		
 		@Override
-		void updateViewEdges(View itemView, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
-			//Creating the drawable
-			Drawable drawable = Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored);
-			
+		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Assigning the drawable
-			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content).setBackground(drawable.getConstantState().newDrawable());
-			itemView.findViewById(R.id.failedcontent).setBackground(drawable);
+			viewHolder.groupContent.setBackground(drawable.getConstantState().newDrawable());
 		}
 		
 		@Override
@@ -4482,46 +4392,52 @@ class ConversationManager {
 		
 		void setMediaPlaying(boolean playing) {
 			//Calling the overload method
-			View view = getView();
-			if(view != null) setMediaPlaying(view, playing);
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) setMediaPlaying(viewHolder, playing);
 		}
 		
-		private void setMediaPlaying(View itemView, boolean playing) {
-			mediaPlaying = playing;
-			updateMediaPlaying(itemView);
+		private void setMediaPlaying(ViewHolder viewholder, boolean playing) {
+			isPlaying = playing;
+			updateMediaPlaying(viewholder);
 		}
 		
-		private void updateMediaPlaying(View itemView) {
-			((ImageView) itemView.findViewById(R.id.button_play_pause_toggle)).setImageResource(mediaPlaying ?
+		private void updateMediaPlaying(ViewHolder viewHolder) {
+			viewHolder.contentIcon.setImageResource(isPlaying ?
 					R.drawable.pause :
 					R.drawable.play);
 		}
 		
 		void setMediaProgress(int progress) {
 			//Calling the overload method
-			View view = getView();
-			if(view != null) setMediaProgress(view, progress);
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) setMediaProgress(viewHolder, progress);
 		}
 		
-		private void setMediaProgress(View itemView, int progress) {
+		private void setMediaProgress(ViewHolder viewHolder, int progress) {
 			mediaProgress = progress;
-			updateMediaProgress(itemView);
+			updateMediaProgress(viewHolder);
 		}
 		
-		private void updateMediaProgress(View itemView) {
-			((ProgressBar) itemView.findViewById(R.id.audio_progress_bar)).setProgress((int) ((float) mediaProgress / (float) duration * 100F));
-			((TextView) itemView.findViewById(R.id.audio_duration)).setText(Constants.getFormattedDuration((int) Math.floor(mediaProgress <= 0 ? duration / 1000L : mediaProgress / 1000L)));
+		void updateMediaProgress() {
+			//Calling the overload method
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) updateMediaProgress(viewHolder);
+		}
+		
+		private void updateMediaProgress(ViewHolder viewHolder) {
+			viewHolder.contentProgress.setProgress((int) ((float) mediaProgress / (float) duration * 100F));
+			viewHolder.contentLabel.setText(Constants.getFormattedDuration((int) Math.floor(mediaProgress <= 0 ? duration / 1000L : mediaProgress / 1000L)));
 		}
 		
 		void resetPlaying() {
 			//Calling the overload method
-			View view = getView();
-			if(view != null) resetPlaying(view);
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) resetPlaying(viewHolder);
 		}
 		
-		private void resetPlaying(View itemView) {
-			setMediaPlaying(itemView, false);
-			setMediaProgress(itemView, 0);
+		private void resetPlaying(ViewHolder viewHolder) {
+			setMediaPlaying(viewHolder, false);
+			setMediaProgress(viewHolder, 0);
 		}
 		
 		static long getDurationMillis(File file) {
@@ -4545,9 +4461,28 @@ class ConversationManager {
 			//Returning an invalid value
 			return -1;
 		}
+		
+		@Override
+		ViewHolder createViewHolder(Context context, ViewGroup parent) {
+			return new ViewHolder(LayoutInflater.from(context).inflate(R.layout.listitem_contentaudio, parent, false));
+		}
+		
+		static class ViewHolder extends AttachmentInfo.ViewHolder {
+			final ImageView contentIcon;
+			final TextView contentLabel;
+			final ProgressBar contentProgress;
+			
+			ViewHolder(View view) {
+				super(view);
+				
+				contentIcon = groupContent.findViewById(R.id.content_icon);
+				contentLabel = groupContent.findViewById(R.id.content_duration);
+				contentProgress = groupContent.findViewById(R.id.content_progress);
+			}
+		}
 	}
 	
-	static class VideoAttachmentInfo extends AttachmentInfo {
+	static class VideoAttachmentInfo extends AttachmentInfo<VideoAttachmentInfo.ViewHolder> {
 		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName) {
 			super(localID, guid, message, fileName);
 		}
@@ -4566,213 +4501,102 @@ class ConversationManager {
 		}
 		
 		@Override
-		View createView(Context context, View convertView, ViewGroup parent) {
-			//Calling the super method
-			super.createView(context, convertView, parent);
+		void updateContentView(ViewHolder viewHolder, Context context) {
+			/* //Configuring the content view
+			ViewGroup content = itemView.findViewById(R.id.content);
+			ViewGroup.LayoutParams params = content.getLayoutParams();
+			content.getLayoutParams().width = 0;
+			content.getLayoutParams().height = 0;
+			content.setLayoutParams(params);
 			
-			//Checking if the view needs to be inflated
-			if(convertView == null) {
-				//Creating the view
-				convertView = LayoutInflater.from(context).inflate(R.layout.listitem_contentvideo, parent, false);
-			}
+			//Switching to the content view
+			content.setVisibility(View.VISIBLE);
+			itemView.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
+			itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
+			itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
+			itemView.setTag(guid);
 			
-			//Setting the gravity
-			LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) convertView.getLayoutParams();
-			layoutParams.gravity = messageInfo.isOutgoing() ? Gravity.END : Gravity.START;
-			convertView.setLayoutParams(layoutParams);
+			//Setting the bitmap
+			((ImageView) content.findViewById(R.id.content_view)).setImageBitmap(null); */
+			int pxBitmapSizeMax = (int) context.getResources().getDimension(R.dimen.image_size_max);
 			
-			//Setting the view color
-			updateViewColor(convertView);
+			//Creating a weak reference to the context
+			WeakReference<Context> contextReference = new WeakReference<>(context);
 			
-			//Updating the content view
-			updateContentView(convertView);
-			
-			//Building the common views
-			buildCommonViews(convertView);
-			
-			//Assigning the click listeners
-			assignInteractionListeners(convertView);
-			
-			//Submitting the view
-			return convertView;
-		}
-		
-		@Override
-		void updateViewColor(View itemView) {
-			//Creating the color values
-			ColorStateList textColorStateList;
-			ColorStateList backgroundColorStateList;
-			ColorStateList accentColorStateList;
-			
-			//Getting the colors
-			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
-				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
-			} else {
-				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
-				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				
-				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
-				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
-				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
-			}
-			
-			//Coloring the views
-			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			downloadView.setBackgroundTintList(backgroundColorStateList);
-			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
-			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
-			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
-			progressBar.setProgressTintList(accentColorStateList);
-			progressBar.setIndeterminateTintList(accentColorStateList);
-			progressBar.setProgressBackgroundTintList(accentColorStateList);
-			
-			View failedView = itemView.findViewById(R.id.failedcontent);
-			failedView.setBackgroundTintList(backgroundColorStateList);
-			((TextView) failedView.findViewById(R.id.failed_label)).setTextColor(textColorStateList);
-			//((ImageView) failedView.findViewById(R.id.failedcontent_button)).setImageTintList(textColorStateList);
-		}
-		
-		@Override
-		void updateContentView() {
-			//Calling the overload method
-			View view = getView();
-			if(view != null) updateContentView(view);
-		}
-		
-		private void updateContentView(View itemView) {
-			//Checking if there is no file
-			if(file == null) {
-				//Checking if the attachment is being fetched
-				if(isFetching) {
-					//Showing the download content view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
+			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromImageFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult() {
+				@Override
+				public void onImageMeasured(int width, int height) {
+					//Getting the context
+					Context context = contextReference.get();
+					if(context == null) return;
 					
-					//Hiding the content type
-					itemView.findViewById(R.id.download_label).setVisibility(View.GONE);
+					//Getting the view holder
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
 					
-					//Disabling the download button visually
-					itemView.findViewById(R.id.download_button).setAlpha(Constants.disabledAlpha);
+					//Getting the multiplier
+					float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), width, height);
 					
-					//Getting and preparing the progress bar
-					ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
-					progressBar.setIndeterminate(isFetchWaiting);
-					progressBar.setProgress((int) (fetchProgress * progressBar.getMax()));
-					progressBar.setVisibility(View.VISIBLE);
+					//Configuring the layout
+					newViewHolder.groupContent.getLayoutParams().width = (int) (width * multiplier);
+					newViewHolder.groupContent.getLayoutParams().height = (int) (height * multiplier);
+					
+					//Showing the layout
+					newViewHolder.groupContent.setVisibility(View.VISIBLE);
 				}
-				//Otherwise checking if the attachment is being uploaded
-				else if(messageInfo.getMessageState() == SharedValues.MessageInfo.stateCodeGhost || messageInfo.isSending) {
-					//Showing the processing view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.VISIBLE);
-				} else {
-					//Showing the standard download content view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
+				
+				@Override
+				public void onImageDecoded(Bitmap bitmap, boolean wasTasked) {
+					//Getting the context
+					Context context = contextReference.get();
+					if(context == null) return;
 					
-					itemView.findViewById(R.id.download_label).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.download_button).setAlpha(1);
-					itemView.findViewById(R.id.progressBar).setVisibility(View.GONE);
-				}
-			} else {
-				//Configuring the content view
-				ViewGroup content = itemView.findViewById(R.id.content);
-				ViewGroup.LayoutParams params = content.getLayoutParams();
-				content.getLayoutParams().width = 0;
-				content.getLayoutParams().height = 0;
-				content.setLayoutParams(params);
-				
-				//Switching to the content view
-				content.setVisibility(View.VISIBLE);
-				itemView.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
-				itemView.findViewById(R.id.failedcontent).setVisibility(View.GONE);
-				itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
-				
-				//Requesting the bitmap
-				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromVideoFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult(wasTasked -> wasTasked ? getView() : itemView) {
-					@Override
-					public void onImageMeasured(int width, int height) {
-						//Getting the content view
-						View itemView = viewSource.get(true);
-						if(itemView == null) return;
-						View content = itemView.findViewById(R.id.content);
-						
-						//Getting the multiplier
-						float multiplier = Constants.calculateImageAttachmentMultiplier(itemView.getResources(), width, height);
-						
+					//Getting the view holder
+					ViewHolder newViewHolder = wasTasked ? getViewHolder() : viewHolder;
+					if(newViewHolder == null) return;
+					
+					//Checking if the bitmap is invalid
+					if(bitmap == null) {
+						//Showing the failed view
+						newViewHolder.groupContent.setVisibility(View.GONE);
+						newViewHolder.groupFailed.setVisibility(View.VISIBLE);
+					} else {
 						//Configuring the layout
-						content.getLayoutParams().width = (int) (width * multiplier);
-						content.getLayoutParams().height = (int) (height * multiplier);
-						content.setLayoutParams(params);
-					}
-					
-					@Override
-					public void onImageDecoded(Bitmap bitmap, boolean wasTasked) {
-						//Getting the item view
-						View itemView = viewSource.get(wasTasked);
-						if(itemView == null) return;
+						//ViewGroup.LayoutParams params = content.getLayoutParams();
 						
-						//Checking if the bitmap is invalid
-						if(bitmap == null) {
-							//Showing the simplified view
-							itemView.findViewById(R.id.content).setVisibility(View.GONE);
-							itemView.findViewById(R.id.failedcontent).setVisibility(View.VISIBLE);
-						} else {
-							//Configuring the content view
-							ViewGroup content = itemView.findViewById(R.id.content);
-							ViewGroup.LayoutParams params = content.getLayoutParams();
-							
-							float multiplier = Constants.calculateImageAttachmentMultiplier(itemView.getResources(), bitmap.getWidth(), bitmap.getHeight());
-							
-							content.getLayoutParams().width = (int) (bitmap.getWidth() * multiplier);
-							content.getLayoutParams().height = (int) (bitmap.getHeight() * multiplier);
-							content.setLayoutParams(params);
-							
-							//Setting the bitmap
-							ImageView imageView = content.findViewById(R.id.content_view);
-							imageView.setImageBitmap(bitmap);
-							
-							//Fading in the view
-							if(wasTasked) {
-								imageView.setAlpha(0F);
-								imageView.animate().alpha(1).setDuration(300).start();
-							}
+						float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), bitmap.getWidth(), bitmap.getHeight());
+						newViewHolder.groupContent.getLayoutParams().width = (int) (bitmap.getWidth() * multiplier);
+						newViewHolder.groupContent.getLayoutParams().height = (int) (bitmap.getHeight() * multiplier);
+						//content.setLayoutParams(params);
+						
+						//Showing the layout
+						newViewHolder.groupContent.setVisibility(View.VISIBLE);
+						
+						//Setting the bitmap
+						newViewHolder.imageContent.setImageBitmap(bitmap);
+						
+						//Fading in the view
+						if(wasTasked) {
+							newViewHolder.imageContent.setAlpha(0F);
+							newViewHolder.imageContent.animate().alpha(1).setDuration(300).start();
 						}
 					}
-				});
-			}
+				}
+			}, true, pxBitmapSizeMax, pxBitmapSizeMax);
 		}
 		
 		@Override
-		void updateViewEdges(View itemView, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
-			//Creating the drawable
-			Drawable drawable = Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored);
-			
+		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Assigning the drawable
-			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content_background).setBackground(drawable.getConstantState().newDrawable());
-			itemView.findViewById(R.id.failedcontent).setBackground(drawable.getConstantState().newDrawable());
+			viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
 			
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
 			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
-			if(alignToRight)
-				((RoundedImageView) itemView.findViewById(R.id.content_view)).setRadii(pxCornerUnanchored,
-						radiusTop,
-						radiusBottom,
-						pxCornerUnanchored);
-			else ((RoundedImageView) itemView.findViewById(R.id.content_view)).setRadii(radiusTop,
-					pxCornerUnanchored,
-					pxCornerUnanchored,
-					radiusBottom);
+			
+			if(alignToRight) viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+			else viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			viewHolder.imageContent.invalidate();
 		}
 		
 		@Override
@@ -4792,9 +4616,26 @@ class ConversationManager {
 				activity.startActivity(intent);
 			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
 		}
+		
+		@Override
+		ViewHolder createViewHolder(Context context, ViewGroup parent) {
+			return new ViewHolder(LayoutInflater.from(context).inflate(R.layout.listitem_contentvideo, parent, false));
+		}
+		
+		static class ViewHolder extends AttachmentInfo.ViewHolder {
+			final View backgroundContent;
+			final RoundedImageView imageContent;
+			
+			ViewHolder(View view) {
+				super(view);
+				
+				backgroundContent = groupContent.findViewById(R.id.content_background);
+				imageContent = groupContent.findViewById(R.id.content_view);
+			}
+		}
 	}
 	
-	static class OtherAttachmentInfo extends AttachmentInfo {
+	static class OtherAttachmentInfo extends AttachmentInfo<OtherAttachmentInfo.ViewHolder> {
 		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName) {
 			super(localID, guid, message, fileName);
 		}
@@ -4813,138 +4654,25 @@ class ConversationManager {
 		}
 		
 		@Override
-		View createView(Context context, View convertView, ViewGroup parent) {
-			//Calling the super method
-			super.createView(context, convertView, parent);
-			
-			//Checking if the view needs to be inflated
-			if(convertView == null) {
-				//Creating the view
-				convertView = LayoutInflater.from(context).inflate(R.layout.listitem_contentother, parent, false);
-			}
-			
-			//Setting the gravity
-			LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) convertView.getLayoutParams();
-			layoutParams.gravity = messageInfo.isOutgoing() ? Gravity.END : Gravity.START;
-			convertView.setLayoutParams(layoutParams);
-			
-			//Setting the view color
-			updateViewColor(convertView);
-			
-			//Updating the content view
-			updateContentView(convertView);
-			
-			//Building the common views
-			buildCommonViews(convertView);
-			
-			//Assigning the click listeners
-			assignInteractionListeners(convertView);
-			
-			//Submitting the view
-			return convertView;
+		void updateContentViewColor(ViewHolder viewHolder, Context context, ColorStateList cslText, ColorStateList cslBackground, ColorStateList cslAccent) {
+			viewHolder.groupContent.setBackgroundTintList(cslBackground);
+			viewHolder.labelContent.setTextColor(cslText);
+			viewHolder.labelContent.setCompoundDrawableTintList(cslText);
 		}
 		
 		@Override
-		void updateViewColor(View itemView) {
-			//Creating the color values
-			ColorStateList textColorStateList;
-			ColorStateList backgroundColorStateList;
-			ColorStateList accentColorStateList;
+		void updateContentView(ViewHolder viewHolder, Context context) {
+			//Configuring the content view
+			viewHolder.labelContent.setText(fileName);
 			
-			//Getting the colors
-			if(messageInfo.isOutgoing()) {
-				textColorStateList = ColorStateList.valueOf(Constants.resolveColorAttr(itemView.getContext(), android.R.attr.textColorPrimary));
-				backgroundColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoing, null));
-				accentColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
-			} else {
-				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
-				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				
-				textColorStateList = ColorStateList.valueOf(itemView.getResources().getColor(android.R.color.white, null));
-				backgroundColorStateList = ColorStateList.valueOf(bubbleColor);
-				accentColorStateList = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
-			}
-			
-			//Coloring the views
-			View downloadView = itemView.findViewById(R.id.downloadcontent);
-			downloadView.setBackgroundTintList(backgroundColorStateList);
-			((TextView) downloadView.findViewById(R.id.download_label)).setTextColor(textColorStateList);
-			((ImageView) downloadView.findViewById(R.id.download_button)).setImageTintList(textColorStateList);
-			ProgressBar progressBar = downloadView.findViewById(R.id.progressBar);
-			progressBar.setProgressTintList(accentColorStateList);
-			progressBar.setIndeterminateTintList(accentColorStateList);
-			progressBar.setProgressBackgroundTintList(accentColorStateList);
-			
-			View contentView = itemView.findViewById(R.id.content);
-			contentView.setBackgroundTintList(backgroundColorStateList);
-			((TextView) contentView.findViewById(R.id.content_label)).setTextColor(textColorStateList);
-			((ImageView) contentView.findViewById(R.id.content_button)).setImageTintList(textColorStateList);
+			//Showing the content view
+			viewHolder.groupContent.setVisibility(View.VISIBLE);
 		}
 		
 		@Override
-		void updateContentView() {
-			//Calling the overload method
-			View view = getView();
-			if(view != null) updateContentView(view);
-		}
-		
-		private void updateContentView(View itemView) {
-			//Checking if there is no file
-			if(file == null) {
-				//Checking if the attachment is being fetched
-				if(isFetching) {
-					//Showing the download content view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
-					
-					//Hiding the content type
-					itemView.findViewById(R.id.download_label).setVisibility(View.GONE);
-					
-					//Disabling the download button visually
-					itemView.findViewById(R.id.download_button).setAlpha(Constants.disabledAlpha);
-					
-					//Getting and preparing the progress bar
-					ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
-					progressBar.setIndeterminate(isFetchWaiting);
-					progressBar.setProgress((int) (fetchProgress * progressBar.getMax()));
-					progressBar.setVisibility(View.VISIBLE);
-				}
-				//Otherwise checking if the attachment is being uploaded
-				else if(messageInfo.getMessageState() == SharedValues.MessageInfo.stateCodeGhost || messageInfo.isSending) {
-					//Showing the processing view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.VISIBLE);
-				} else {
-					//Showing the standard download content view
-					itemView.findViewById(R.id.downloadcontent).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.content).setVisibility(View.GONE);
-					itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
-					
-					itemView.findViewById(R.id.download_label).setVisibility(View.VISIBLE);
-					itemView.findViewById(R.id.download_button).setAlpha(1);
-					itemView.findViewById(R.id.progressBar).setVisibility(View.GONE);
-				}
-			} else {
-				//Configuring the content view
-				((TextView) itemView.findViewById(R.id.content_label)).setText(fileName);
-				
-				//Switching to the content view
-				itemView.findViewById(R.id.content).setVisibility(View.VISIBLE);
-				itemView.findViewById(R.id.downloadcontent).setVisibility(View.GONE);
-				itemView.findViewById(R.id.processingcontent).setVisibility(View.GONE);
-			}
-		}
-		
-		@Override
-		void updateViewEdges(View itemView, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
-			//Creating the drawable
-			Drawable drawable = Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored);
-			
+		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Assigning the drawable
-			itemView.findViewById(R.id.downloadcontent).setBackground(drawable);
-			itemView.findViewById(R.id.content).setBackground(drawable.getConstantState().newDrawable());
+			viewHolder.groupContent.setBackground(drawable.getConstantState().newDrawable());
 		}
 		
 		@Override
@@ -4969,6 +4697,21 @@ class ConversationManager {
 			if(intent.resolveActivity(activity.getPackageManager()) != null)
 				activity.startActivity(intent);
 			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
+		}
+		
+		@Override
+		ViewHolder createViewHolder(Context context, ViewGroup parent) {
+			return new ViewHolder(LayoutInflater.from(context).inflate(R.layout.listitem_contentother, parent, false));
+		}
+		
+		static class ViewHolder extends AttachmentInfo.ViewHolder {
+			final TextView labelContent;
+			
+			ViewHolder(View view) {
+				super(view);
+				
+				labelContent = view.findViewById(R.id.content_label);
+			}
 		}
 	}
 	
@@ -5097,7 +4840,7 @@ class ConversationManager {
 		}
 	}
 	
-	static class GroupActionInfo extends ConversationItem {
+	static class GroupActionInfo extends ConversationItem<ActionLineViewHolder> {
 		//Creating the constants
 		static final int itemType = 1;
 		
@@ -5120,17 +4863,12 @@ class ConversationManager {
 		}
 		
 		@Override
-		void bindView(Context context, RecyclerView.ViewHolder viewHolder) {
-			//Getting the view holder
-			ActionLineViewHolder pViewHolder = ((ActionLineViewHolder) viewHolder);
-			
+		void bindView(ActionLineViewHolder viewHolder, Context context) {
 			//Setting the message
-			pViewHolder.getLabelMessage().setText(getDirectSummary(context, agent, other, actionType));
+			viewHolder.labelMessage.setText(getDirectSummary(context, agent, other, actionType));
 			if(agent != null || other != null) getSummary(context, (wasTasked, result) -> {
-				if(wasTasked) {
-					View itemView = getView();
-					if(itemView != null) ((TextView) itemView.findViewById(R.id.message)).setText(result);
-				} else pViewHolder.getLabelMessage().setText(result);
+				ActionLineViewHolder newViewHolder = wasTasked ? getViewHolder() : viewHolder;
+				if(newViewHolder != null) newViewHolder.labelMessage.setText(result);
 			});
 		}
 		
@@ -5253,7 +4991,7 @@ class ConversationManager {
 		}
 	}
 	
-	static class ChatRenameActionInfo extends ConversationItem {
+	static class ChatRenameActionInfo extends ConversationItem<ActionLineViewHolder> {
 		//Creating the constants
 		static final int itemType = 2;
 		
@@ -5271,17 +5009,12 @@ class ConversationManager {
 		}
 		
 		@Override
-		void bindView(Context context, RecyclerView.ViewHolder viewHolder) {
-			//Getting the view holder
-			ActionLineViewHolder pViewHolder = ((ActionLineViewHolder) viewHolder);
-			
+		void bindView(ActionLineViewHolder viewHolder, Context context) {
 			//Setting the message
-			pViewHolder.getLabelMessage().setText(getDirectSummary(context, agent, title));
+			viewHolder.labelMessage.setText(getDirectSummary(context, agent, title));
 			if(agent != null) getSummary(context, (wasTasked, result) -> {
-				if(wasTasked) {
-					View itemView = getView();
-					if(itemView != null) ((TextView) itemView.findViewById(R.id.message)).setText(result);
-				} else pViewHolder.getLabelMessage().setText(result);
+				ActionLineViewHolder newViewHolder = wasTasked ? getViewHolder() : viewHolder;
+				if(newViewHolder != null) newViewHolder.labelMessage.setText(result);
 			});
 		}
 		
@@ -5358,7 +5091,7 @@ class ConversationManager {
 		}
 	}
 	
-	static class ChatCreationMessage extends ConversationItem {
+	static class ChatCreationMessage extends ConversationItem<ActionLineViewHolder> {
 		//Creating the constants
 		static final int itemType = 3;
 		
@@ -5367,9 +5100,9 @@ class ConversationManager {
 		}
 		
 		@Override
-		void bindView(Context context, RecyclerView.ViewHolder viewHolder) {
+		void bindView(ActionLineViewHolder viewHolder, Context context) {
 			//Setting the message
-			((ActionLineViewHolder) viewHolder).getLabelMessage().setText(getDirectSummary(context));
+			viewHolder.labelMessage.setText(getDirectSummary(context));
 		}
 		
 		@Override
@@ -5399,27 +5132,12 @@ class ConversationManager {
 	}
 	
 	static class ActionLineViewHolder extends RecyclerView.ViewHolder {
-		//Creating the common item values
-		private final TextView labelMessage;
-		
-		//Creating the view value
-		private View view;
+		final TextView labelMessage;
 		
 		ActionLineViewHolder(View view) {
-			//Calling the super method and setting the view
 			super(view);
-			this.view = view;
 			
-			//Assigning the views
 			labelMessage = view.findViewById(R.id.message);
-		}
-		
-		View getView() {
-			return view;
-		}
-		
-		TextView getLabelMessage() {
-			return labelMessage;
 		}
 	}
 	
@@ -5485,7 +5203,7 @@ class ConversationManager {
 			this.conversationInfo = conversationInfo;
 		}
 		
-		abstract void bindView(Context context, VH viewHolder);
+		abstract void bindView(VH viewHolder, Context context);
 		
 		/* static class MessageViewHolder extends RecyclerView.ViewHolder {
 			//Creating the common item values
