@@ -929,7 +929,7 @@ public class Conversations extends CompositeActivity {
 			ConversationManager.ConversationInfo conversationInfo = filteredItems.get(position);
 			
 			//Creating the view
-			conversationInfo.bindView(Conversations.this, holder);
+			conversationInfo.bindView(holder, Conversations.this);
 			
 			//Setting the view's click listeners
 			holder.itemView.setOnClickListener(view -> {

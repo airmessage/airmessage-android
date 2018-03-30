@@ -36,7 +36,7 @@
 		android:visibility="gone" />
 	
 	<RelativeLayout
-		android:layout_width="wrap_content"
+		android:layout_width="match_parent"
 		android:layout_height="wrap_content">
 		<!-- User -->
 		<ViewStub
@@ -47,13 +47,14 @@
 			android:layout="@layout/reference_user" />
 		<!-- Layout -->
 		<LinearLayout
-			android:layout_width="wrap_content"
+			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:orientation="horizontal">
+			android:orientation="horizontal"
+			android:gravity="end">
 			
 			<LinearLayout
 				android:id="@+id/content_container"
-				android:layout_width="wrap_content"
+				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:layout_marginStart="44dp"
 				android:orientation="vertical">
@@ -132,7 +133,7 @@
 				android:layout_height="20dp"
 				android:layout_marginStart="8dp"
 				android:layout_marginTop="10dp"
-				android:visibility="gone"
+				android:visibility="visible"
 				app:matProg_barColor="@color/colorMessageOutgoingAccent"
 				app:matProg_barWidth="2dp"
 				app:matProg_progressIndeterminate="true" />

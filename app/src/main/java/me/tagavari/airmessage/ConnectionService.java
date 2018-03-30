@@ -2339,7 +2339,7 @@ public class ConnectionService extends Service {
 						
 						//Incrementing the conversation's unread count
 						if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing()) parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
-						parentConversation.updateUnreadStatus();
+						parentConversation.updateUnreadStatus(context);
 						
 						//Checking if the conversation is loaded
 						if(loadedConversations.contains(parentConversation.getLocalID())) {
@@ -2376,7 +2376,7 @@ public class ConnectionService extends Service {
 							}
 						} else {
 							//Updating the parent conversation's latest item
-							parentConversation.setLastItem(context, conversationItem);
+							parentConversation.setLastItemUpdate(context, conversationItem);
 						}
 						
 						//Sending notifications
@@ -2640,7 +2640,7 @@ public class ConnectionService extends Service {
 					
 					//Adding the unread messages
 					conversationInfoRequest.conversationInfo.setUnreadMessageCount(availableConversationItems.get(conversationInfoRequest.conversationInfo.getLocalID()).size());
-					conversationInfoRequest.conversationInfo.updateUnreadStatus();
+					conversationInfoRequest.conversationInfo.updateUnreadStatus(context);
 					//availableConversation.updateView(ConnectionService.this);
 				}
 				
@@ -2808,7 +2808,7 @@ public class ConnectionService extends Service {
 				if(messageInfo == null) return;
 				
 				//Updating the message
-				messageInfo.addLiveSticker(sticker);
+				messageInfo.addLiveSticker(sticker, context);
 			}
 			
 			//Iterating over the tapback modifiers
@@ -2828,7 +2828,7 @@ public class ConnectionService extends Service {
 				if(messageInfo == null) return;
 				
 				//Updating the message
-				messageInfo.addLiveTapback(tapback);
+				messageInfo.addLiveTapback(tapback, context);
 			}
 			
 			//Iterating over the removed tapbacks
@@ -2848,7 +2848,7 @@ public class ConnectionService extends Service {
 				if(messageInfo == null) return;
 				
 				//Updating the message
-				messageInfo.removeLiveTapback(tapback.sender, tapback.messageIndex);
+				messageInfo.removeLiveTapback(tapback.sender, tapback.messageIndex, context);
 			}
 		}
 		

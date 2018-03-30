@@ -2,6 +2,7 @@ package me.tagavari.airmessage;
 
 import android.Manifest;
 import android.animation.Animator;
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Fragment;
@@ -31,6 +32,7 @@ import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.util.Pools;
 import android.support.v7.app.ActionBar;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.LinearSmoothScroller;
@@ -42,6 +44,7 @@ import android.transition.ChangeBounds;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -58,7 +61,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -547,7 +549,7 @@ public class Messaging extends CompositeActivity {
 			colorUI(findViewById(android.R.id.content));
 			
 			//Coloring the messages
-			if(retainedFragment.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : retainedFragment.conversationItemList) conversationItem.updateViewColor();
+			if(retainedFragment.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : retainedFragment.conversationItemList) conversationItem.updateViewColor(this);
 			
 			//Checking if the title is static
 			
@@ -620,7 +622,7 @@ public class Messaging extends CompositeActivity {
 				retainedFragment.conversationInfo.clearMessages();
 				
 				//Updating the conversation's unread message count
-				retainedFragment.conversationInfo.updateUnreadStatus();
+				retainedFragment.conversationInfo.updateUnreadStatus(this);
 				new UpdateUnreadMessageCount(getApplicationContext(), retainedFragment.conversationInfo.getLocalID(), retainedFragment.conversationInfo.getUnreadMessageCount()).execute();
 			}
 		} else {
@@ -2081,7 +2083,8 @@ public class Messaging extends CompositeActivity {
 			}
 			
 			//Sending the message
-			messageInfo.sendMessage(context);
+			Activity activity = activityReference.get();
+			if(activity != null) messageInfo.sendMessage(activity);
 		}
 	}
 	
@@ -2159,6 +2162,10 @@ public class Messaging extends CompositeActivity {
 		private final ArrayList<ConversationManager.ConversationItem> conversationItems;
 		private RecyclerView recyclerView;
 		
+		//Creating the pools
+		private final SparseArray<Pools.SimplePool<? extends RecyclerView.ViewHolder>> componentPoolList = new SparseArray<>();
+		private final PoolSource poolSource = new PoolSource();
+		
 		RecyclerAdapter(ArrayList<ConversationManager.ConversationItem> items) {
 			//Setting the conversation items
 			conversationItems = items;
@@ -2178,16 +2185,14 @@ public class Messaging extends CompositeActivity {
 		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			//Returning the correct view holder
 			switch(viewType) {
-				case ConversationManager.MessageInfo.itemType:
-					return new ConversationManager.ConversationItem.MessageViewHolder((LinearLayout) LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_conversationitem, parent, false));
-				case ConversationManager.GroupActionInfo.itemType:
-				case ConversationManager.ChatRenameActionInfo.itemType:
-				case ConversationManager.ChatCreationMessage.itemType:
+				case ConversationManager.ConversationItem.viewTypeMessage:
+					return new ConversationManager.MessageInfo.ViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_message, parent, false));
+				case ConversationManager.ConversationItem.viewTypeAction:
 					return new ConversationManager.ActionLineViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_action, parent, false));
 				case itemTypeLoadingBar: {
 					View loadingView = LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_loading, parent, false);
 					((ProgressBar) loadingView.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(retainedFragment.conversationInfo.getConversationColor()));
-					return new RecyclerView.ViewHolder(loadingView) {};
+					return new LoadingViewHolder(loadingView);
 				}
 				default:
 					throw new IllegalArgumentException();
@@ -2204,14 +2209,19 @@ public class Messaging extends CompositeActivity {
 			if(retainedFragment.progressiveLoadInProgress) conversationItem = conversationItems.get(position - 1);
 			else conversationItem = conversationItems.get(position);
 			
+			if(conversationItem instanceof ConversationManager.MessageInfo) ((ConversationManager.MessageInfo.ViewHolder) holder).setPoolSource(poolSource);
+			
 			//Creating the view
-			conversationItem.bindView(Messaging.this, holder);
+			conversationItem.bindView(holder, Messaging.this);
 			
 			//Setting the view source
-			conversationItem.setViewSource(() -> {
-				RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForItemId(conversationItem.getLocalID());
-				return viewHolder == null ? null : viewHolder.itemView;
-			});
+			conversationItem.setViewHolderSource(new Constants.ViewHolderSourceImpl<RecyclerView.ViewHolder>(recyclerView, conversationItem.getLocalID()));
+		}
+		
+		@Override
+		public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
+			//Releasing the view holder's views
+			
 		}
 		
 		@Override
@@ -2230,7 +2240,7 @@ public class Messaging extends CompositeActivity {
 		@Override
 		public int getItemViewType(int position) {
 			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
-			return conversationItems.get(position - (retainedFragment.progressiveLoadInProgress ? 1 : 0)).getItemType();
+			return conversationItems.get(position - (retainedFragment.progressiveLoadInProgress ? 1 : 0)).getItemViewType();
 		}
 		
 		@Override
@@ -2241,6 +2251,28 @@ public class Messaging extends CompositeActivity {
 		
 		private boolean isViewLoadingSpinner(int position) {
 			return retainedFragment.progressiveLoadInProgress && position == 0;
+		}
+		
+		final class PoolSource {
+			static final int poolSize = 20;
+			
+			ConversationManager.MessageComponent.ViewHolder getComponent(ConversationManager.MessageComponent<ConversationManager.MessageComponent.ViewHolder> component, Context context) {
+				Pools.SimplePool<ConversationManager.MessageComponent.ViewHolder> pool = (Pools.SimplePool<ConversationManager.MessageComponent.ViewHolder>) componentPoolList.get(component.getItemViewType());
+				if(pool == null) return component.createViewHolder(context, null);
+				else {
+					ConversationManager.MessageComponent.ViewHolder viewHolder = pool.acquire();
+					return viewHolder == null ? component.createViewHolder(context, null) : viewHolder;
+				}
+			}
+			
+			void releaseComponent(int componentViewType, ConversationManager.MessageComponent.ViewHolder viewHolder) {
+				Pools.SimplePool<ConversationManager.MessageComponent.ViewHolder> pool = (Pools.SimplePool<ConversationManager.MessageComponent.ViewHolder>) componentPoolList.get(componentViewType);
+				if(pool == null) {
+					pool = new Pools.SimplePool<>(poolSize);
+					componentPoolList.put(componentViewType, pool);
+				}
+				pool.release(viewHolder);
+			}
 		}
 		
 		/* void scrollNotifyItemInserted(int position) {
@@ -2270,6 +2302,12 @@ public class Messaging extends CompositeActivity {
 			
 			//Scrolling to the bottom
 			recyclerView.smoothScrollToPosition(getItemCount() - 1);
+		}
+	}
+	
+	static class LoadingViewHolder extends RecyclerView.ViewHolder {
+		LoadingViewHolder(View itemView) {
+			super(itemView);
 		}
 	}
 	

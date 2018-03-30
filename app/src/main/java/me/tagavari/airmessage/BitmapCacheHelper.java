@@ -50,7 +50,7 @@ class BitmapCacheHelper {
 	
 	void assignContactImage(Context context, String name, Constants.TaskedViewSource viewSource) {
 		//Creating the result listener
-		ImageDecodeResult callbacks = new ImageDecodeResult(viewSource) {
+		ImageDecodeResult callbacks = new ImageDecodeResult() {
 			@Override
 			void onImageMeasured(int width, int height) {}
 			
