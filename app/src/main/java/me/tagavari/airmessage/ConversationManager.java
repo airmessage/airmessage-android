@@ -1896,7 +1896,7 @@ class ConversationManager {
 						alignToRight,
 						pxCornerAnchored, pxCornerUnanchored);
 				
-				//Increasing the indices
+				//Increasing the index
 				componentIndex++;
 			}
 		}
@@ -5586,6 +5586,8 @@ class ConversationManager {
 	}
 	
 	static void addConversationItemRelations(ConversationInfo conversation, List<ConversationItem> conversationItems, List<ConversationItem> newConversationItems, Context context, boolean update) {
+		int highestIndex = -1;
+		
 		//Iterating over the new items
 		for(ConversationItem conversationItem : newConversationItems) {
 			//Skipping the remainder of the iteration if the item is not a message
@@ -5596,6 +5598,7 @@ class ConversationManager {
 			
 			//Getting the item's positioning
 			int index = conversationItems.indexOf(messageInfo);
+			if(index > highestIndex) highestIndex = index;
 			
 			//Used to skip updating other items in the chunk, as they will be iterated over too
 			//int chunkIndex = newConversationItems.indexOf(conversationItem);
@@ -5658,6 +5661,19 @@ class ConversationManager {
 			
 			//Comparing (and replacing) the activity state target if the message is the newest in the chunk
 			if(newConversationItems.indexOf(conversationItem) == newConversationItems.size() - 1) conversation.tryActivityStateTarget(messageInfo, update, context);
+		}
+		
+		//Updating the time divider of the item below the group
+		if(highestIndex != -1 && conversationItems.size() > highestIndex + 1) {
+			ConversationItem groupItem = conversationItems.get(highestIndex);
+			ConversationItem adjacentItem = conversationItems.get(highestIndex + 1);
+			
+			//Checking if both items are messages
+			if(groupItem instanceof MessageInfo && adjacentItem instanceof MessageInfo) {
+				MessageInfo adjacentMessage = (MessageInfo) adjacentItem;
+				adjacentMessage.setHasTimeDivider(Math.abs(groupItem.getDate() - adjacentItem.getDate()) >= ConversationManager.conversationSessionTimeMillis);
+				if(update) adjacentMessage.updateTimeDivider(context);
+			}
 		}
 	}
 	
