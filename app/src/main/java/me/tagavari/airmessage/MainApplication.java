@@ -3,6 +3,7 @@ package me.tagavari.airmessage;
 import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -106,6 +107,11 @@ public class MainApplication extends Application {
 		
 		//Applying the dark mode
 		applyDarkMode(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.preference_appearance_theme_key), ""));
+		
+		//Enabling / disabling the service on boot as per the shared preference
+		getPackageManager().setComponentEnabledSetting(new ComponentName(this, ConnectionService.ServiceStart.class),
+				PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_connectionboot_key), true) ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+				PackageManager.DONT_KILL_APP);
 	}
 	
 	public static MainApplication getInstance() {

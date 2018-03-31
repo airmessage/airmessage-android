@@ -514,7 +514,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					//Iterating over the results
 					while(attachmentCursor.moveToNext()) {
 						//Getting the attachment data
-						File file = attachmentCursor.isNull(aFilePathIndex) ? null : new File(attachmentCursor.getString(aFilePathIndex));
+						File file = attachmentCursor.isNull(aFilePathIndex) ? null : ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentCursor.getString(aFilePathIndex));
 						ConversationManager.ContentType contentType = ConversationManager.ContentType.fromIdentifier(attachmentCursor.getInt(aContentTypeIndex));
 						String fileName = attachmentCursor.getString(aFileNameIndex);
 						String stringChecksum = attachmentCursor.getString(aChecksumIndex);
@@ -707,7 +707,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					//Iterating over the results
 					while(attachmentCursor.moveToNext()) {
 						//Getting the attachment data
-						File file = attachmentCursor.isNull(aFilePathIndex) ? null : new File(attachmentCursor.getString(aFilePathIndex));
+						File file = attachmentCursor.isNull(aFilePathIndex) ? null : ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentCursor.getString(aFilePathIndex));
 						ConversationManager.ContentType contentType = ConversationManager.ContentType.fromIdentifier(attachmentCursor.getInt(aContentTypeIndex));
 						String fileName = attachmentCursor.getString(aFileNameIndex);
 						String stringChecksum = attachmentCursor.getString(aChecksumIndex);
@@ -839,10 +839,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(localID)});
 	}
 	
-	void updateAttachmentFile(long localID, File file) {
+	void updateAttachmentFile(long localID, Context context, File file) {
 		//Creating the content values variable
 		ContentValues contentValues = new ContentValues();
-		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, file.getPath());
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, ConversationManager.AttachmentInfo.getRelativePath(context, file));
 		
 		//Updating the data
 		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + "=?", new String[]{Long.toString(localID)});
@@ -1458,7 +1458,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 							//Checking if a file could be found
 							if(attachmentFilePath != null) {
 								//Getting the attachment file
-								File attachmentFile = new File(attachmentFilePath);
+								File attachmentFile = ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentFilePath);
 								
 								//Updating the message
 								try {
@@ -1711,7 +1711,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, itemLocalID);
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_TYPE, attachment.getContentType().getIdentifier());
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILENAME, attachment.fileName);
-				if(attachment.file != null) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, attachment.file.getPath());
+				if(attachment.file != null) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, ConversationManager.AttachmentInfo.getRelativePath(MainApplication.getInstance(), attachment.file));
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM, attachment.fileChecksum);
 				
 				//Inserting the attachment into the database

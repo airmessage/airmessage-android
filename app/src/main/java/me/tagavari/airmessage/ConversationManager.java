@@ -53,6 +53,8 @@ import android.widget.Toast;
 
 import com.pnikosis.materialishprogress.ProgressWheel;
 
+import org.lukhnos.nnio.file.Paths;
+
 import java.io.File;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
@@ -4072,6 +4074,14 @@ class ConversationManager {
 				groupProcessing = view.findViewById(R.id.processingcontent);
 				labelProcessing = groupProcessing.findViewById(R.id.processing_label);
 			}
+		}
+		
+		static String getRelativePath(Context context, File file) {
+			return MainApplication.getAttachmentDirectory(context).toURI().relativize(file.toURI()).getPath();
+		}
+		
+		static File getAbsolutePath(Context context, String path) {
+			return Paths.get(MainApplication.getAttachmentDirectory(context).getPath()).resolve(path).toFile();
 		}
 	}
 	

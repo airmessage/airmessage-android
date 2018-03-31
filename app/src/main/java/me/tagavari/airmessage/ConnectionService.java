@@ -1174,8 +1174,8 @@ public class ConnectionService extends Service {
 			
 			@Override
 			public void run() {
-				//Getting the file path
-				File directory;
+				//Getting the file paths
+				File targetFileDir;
 				{
 					//Getting the context
 					Context context = contextReference.get();
@@ -1184,16 +1184,16 @@ public class ConnectionService extends Service {
 						return;
 					}
 					
-					directory = new File(MainApplication.getDownloadDirectory(context), Long.toString(attachmentID));
-					if(!directory.exists()) directory.mkdir();
-					else if(directory.isFile()) {
-						Constants.recursiveDelete(directory);
-						directory.mkdir();
+					targetFileDir = new File(MainApplication.getDownloadDirectory(context), Long.toString(attachmentID));
+					if(!targetFileDir.exists()) targetFileDir.mkdir();
+					else if(targetFileDir.isFile()) {
+						Constants.recursiveDelete(targetFileDir);
+						targetFileDir.mkdir();
 					}
 				}
 				
 				//Preparing to write to the file
-				File targetFile = new File(directory, fileName);
+				File targetFile = new File(targetFileDir, fileName);
 				try(FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 					while(isRunning) {
 						//Getting the data struct
@@ -1216,8 +1216,8 @@ public class ConnectionService extends Service {
 							//Cleaning the thread
 							//cleanThread();
 							
-							//Saving to the database
-							DatabaseManager.getInstance().updateAttachmentFile(attachmentID, targetFile);
+							//Updating the database entry
+							DatabaseManager.getInstance().updateAttachmentFile(attachmentID, MainApplication.getInstance(), targetFile);
 							
 							//Updating the state
 							new Handler(Looper.getMainLooper()).post(() -> finishDownload(targetFile));
@@ -1279,7 +1279,7 @@ public class ConnectionService extends Service {
 				//Checking if the thread was stopped
 				if(!isRunning) {
 					//Cleaning up
-					Constants.recursiveDelete(directory);
+					Constants.recursiveDelete(targetFileDir);
 				}
 			}
 			
@@ -1357,12 +1357,14 @@ public class ConnectionService extends Service {
 					//Finding a valid file
 					String fileName = Constants.getFileName(context, request.sendUri);
 					if(fileName == null) fileName = Constants.defaultFileName;
-					File targetFile = MainApplication.findUploadFileTarget(context, fileName);
+					File attachmentDir = MainApplication.getAttachmentDirectory(context);
+					File targetFile = new File(Constants.findFreeFile(MainApplication.getUploadDirectory(context), Long.toString(System.currentTimeMillis())), fileName);
+					//File targetFile = MainApplication.findUploadFileTarget(context, fileName);
 					
 					try {
 						//Creating the targets
 						if(!targetFile.getParentFile().mkdir()) throw new IOException();
-						if(!targetFile.createNewFile()) throw new IOException();
+						//if(!targetFile.createNewFile()) throw new IOException();
 					} catch(IOException exception) {
 						//Printing the stack trace
 						exception.printStackTrace();
@@ -1415,7 +1417,9 @@ public class ConnectionService extends Service {
 						outputStream.flush();
 						
 						//Updating the database entry
-						DatabaseManager.getInstance().updateAttachmentFile(request.attachmentID, targetFile);
+						context = contextReference.get();
+						if(context != null) DatabaseManager.getInstance().updateAttachmentFile(request.attachmentID, MainApplication.getInstance(), targetFile);
+						context = null;
 						
 						//Setting the send file
 						request.sendFile = targetFile;
@@ -1578,6 +1582,9 @@ public class ConnectionService extends Service {
 					//Saving the checksum
 					DatabaseManager.getInstance().updateAttachmentChecksum(request.attachmentID, checksum);
 				} catch(IOException exception) {
+					//Printing the stack trace
+					exception.printStackTrace();
+					
 					//Calling the fail method
 					handler.post(() -> finalCallbacks.onFail(messageSendIOException));
 					
