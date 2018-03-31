@@ -63,9 +63,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
@@ -135,11 +132,13 @@ public class ConnectionService extends Service {
 	private static final long massRetrievalTimeout = 60 * 1000; //1 minute
 	private int activeCommunicationsVersion = -1;
 	
-	private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
-	private Thread fileUploadRequestThread = null;
+	//private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
+	//private Thread fileUploadRequestThread = null;
+	
+	private final BlockingQueue<FileUploadRequest> fileUploadRequestQueue = new LinkedBlockingQueue<>();
+	private AtomicBoolean fileUploadRequestThreadRunning = new AtomicBoolean(false);
 	
 	private final BlockingQueue<QueueTask<?, ?>> messageProcessingQueue = new LinkedBlockingQueue<>();
-	//private Thread messageProcessingQueueThread = null;
 	private AtomicBoolean messageProcessingQueueThreadRunning = new AtomicBoolean(false);
 	
 	private final List<FileDownloadRequest> fileDownloadRequests = new ArrayList<>();
@@ -905,22 +904,20 @@ public class ConnectionService extends Service {
 	
 	void queueUploadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 		//Adding the request
-		synchronized(fileUploadRequestQueue) {
-			fileUploadRequestQueue.add(new FileUploadRequest(callbacks, uri, conversationInfo, attachmentID));
-		}
-		
-		//Notifying the queue
-		notifyUploadQueue();
+		addUploadRequest(new FileUploadRequest(callbacks, uri, conversationInfo, attachmentID));
 	}
 	
 	void queueUploadRequest(FileUploadRequestCallbacks callbacks, File file, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 		//Adding the request
-		synchronized(fileUploadRequestQueue) {
-			fileUploadRequestQueue.add(new FileUploadRequest(callbacks, file, conversationInfo, attachmentID));
-		}
+		addUploadRequest(new FileUploadRequest(callbacks, file, conversationInfo, attachmentID));
+	}
+	
+	private void addUploadRequest(FileUploadRequest request) {
+		//Adding the task
+		fileUploadRequestQueue.add(request);
 		
-		//Notifying the queue
-		notifyUploadQueue();
+		//Starting the thread if it isn't running
+		if(fileUploadRequestThreadRunning.compareAndSet(false, true)) new FileUploadRequestThread(getApplicationContext(), this).start();
 	}
 	
 	boolean addDownloadRequest(FileDownloadRequestCallbacks callbacks, long attachmentID, String attachmentGUID, String attachmentName) {
@@ -962,15 +959,6 @@ public class ConnectionService extends Service {
 			return request.getProgress();
 		}
 		return null;
-	}
-	
-	void notifyUploadQueue() {
-		//Returning if the thread is running
-		if(fileUploadRequestThread != null && fileUploadRequestThread.getState() != Thread.State.TERMINATED) return;
-		
-		//Creating and starting the thread
-		fileUploadRequestThread = new FileUploadRequestThread(getApplicationContext(), this);
-		fileUploadRequestThread.start();
 	}
 	
 	interface FileUploadRequestCallbacks {
@@ -1088,6 +1076,7 @@ public class ConnectionService extends Service {
 		}
 		
 		void finishDownload(File file) {
+			stopTimer(false);
 			callbacks.onFinish(file);
 			removeRequestFromList();
 		}
@@ -1144,13 +1133,7 @@ public class ConnectionService extends Service {
 			}
 			
 			//Adding the data struct
-			attachmentWriterThread.dataStructsLock.lock();
-			try {
-				attachmentWriterThread.dataStructs.add(new AttachmentWriterDataStruct(compressedBytes, isLast));
-				attachmentWriterThread.dataStructsCondition.signal();
-			} finally {
-				attachmentWriterThread.dataStructsLock.unlock();
-			}
+			attachmentWriterThread.dataQueue.add(new AttachmentWriterDataStruct(compressedBytes, isLast));
 		}
 		
 		static class ProgressStruct {
@@ -1167,10 +1150,8 @@ public class ConnectionService extends Service {
 			//Creating the references
 			private final WeakReference<Context> contextReference;
 			
-			//Creating the lock
-			private final Lock dataStructsLock = new ReentrantLock();
-			private final Condition dataStructsCondition = dataStructsLock.newCondition();
-			ArrayList<AttachmentWriterDataStruct> dataStructs = new ArrayList<>();
+			//Creating the queue
+			private final BlockingQueue<AttachmentWriterDataStruct> dataQueue = new LinkedBlockingQueue<>();
 			
 			//Creating the request values
 			private final long attachmentID;
@@ -1193,77 +1174,62 @@ public class ConnectionService extends Service {
 			
 			@Override
 			public void run() {
-				//Getting the references
-				Context context = contextReference.get();
-				if(context == null) {
-					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
-					return;
-				};
-				
 				//Getting the file path
-				File directory = new File(MainApplication.getDownloadDirectory(context), Long.toString(attachmentID));
-				if(!directory.exists()) directory.mkdir();
-				else if(directory.isFile()) {
-					Constants.recursiveDelete(directory);
-					directory.mkdir();
+				File directory;
+				{
+					//Getting the context
+					Context context = contextReference.get();
+					if(context == null) {
+						new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+						return;
+					}
+					
+					directory = new File(MainApplication.getDownloadDirectory(context), Long.toString(attachmentID));
+					if(!directory.exists()) directory.mkdir();
+					else if(directory.isFile()) {
+						Constants.recursiveDelete(directory);
+						directory.mkdir();
+					}
 				}
 				
 				//Preparing to write to the file
 				File targetFile = new File(directory, fileName);
 				try(FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 					while(isRunning) {
-						/* //Checking if the task has been cancelled
-						if(isCancelled()) {
-							//Cleaning up the file
-							Constants.recursiveDelete(directory);
+						//Getting the data struct
+						AttachmentWriterDataStruct dataStruct = dataQueue.poll(timeoutDelay, TimeUnit.MILLISECONDS);
+						
+						//Skipping the remainder of the iteration if the data struct is invalid
+						if(dataStruct == null) continue;
+						
+						//Decompressing the bytes
+						byte[] bytes = SharedValues.decompress(dataStruct.compressedBytes);
+						
+						//Writing the bytes
+						outputStream.write(bytes);
+						
+						//Adding to the bytes written
+						bytesWritten += bytes.length;
+						
+						//Checking if the data is the last group
+						if(dataStruct.isLast) {
+							//Cleaning the thread
+							//cleanThread();
+							
+							//Saving to the database
+							DatabaseManager.getInstance().updateAttachmentFile(attachmentID, targetFile);
+							
+							//Updating the state
+							new Handler(Looper.getMainLooper()).post(() -> finishDownload(targetFile));
 							
 							//Returning
-							return null;
-						} */
-						
-						//Moving the structs (to be able to release the lock sooner)
-						ArrayList<AttachmentWriterDataStruct> localDataStructs = new ArrayList<>();
-						dataStructsLock.lock();
-						try {
-							if(!dataStructs.isEmpty()) {
-								localDataStructs = dataStructs;
-								dataStructs = new ArrayList<>();
-							}
-						} finally {
-							dataStructsLock.unlock();
+							return;
+						} else {
+							//Updating the progress
+							new Handler(Looper.getMainLooper()).post(() -> updateProgress(((float) bytesWritten / fileSize)));
 						}
 						
-						//Iterating over the data structs
-						for(AttachmentWriterDataStruct dataStruct : localDataStructs) {
-							//Decompressing the bytes
-							byte[] bytes = SharedValues.decompress(dataStruct.compressedBytes);
-							
-							//Writing the bytes
-							outputStream.write(bytes);
-							
-							//Adding to the bytes written
-							bytesWritten += bytes.length;
-							
-							//Checking if the file is the last one
-							if(dataStruct.isLast) {
-								//Cleaning the thread
-								//cleanThread();
-								
-								//Saving to the database
-								DatabaseManager.getInstance().updateAttachmentFile(attachmentID, targetFile);
-								
-								//Updating the state
-								new Handler(Looper.getMainLooper()).post(() -> finishDownload(targetFile));
-								
-								//Returning
-								return;
-							} else {
-								//Updating the progress
-								new Handler(Looper.getMainLooper()).post(() -> updateProgress(((float) bytesWritten / fileSize)));
-							}
-						}
-						
-						//Checking if the thread is still running
+						/* //Checking if the thread is still running
 						if(isRunning) {
 							dataStructsLock.lock();
 							try {
@@ -1287,7 +1253,7 @@ public class ConnectionService extends Service {
 							} finally {
 								dataStructsLock.unlock();
 							}
-						}
+						} */
 					}
 				} catch(IOException | DataFormatException exception) {
 					//Printing the stack trace
@@ -1296,6 +1262,18 @@ public class ConnectionService extends Service {
 					
 					//Failing the download
 					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+					
+					//Setting the thread as not running
+					isRunning = false;
+				} catch(InterruptedException exception) {
+					//Printing the stack trace
+					exception.printStackTrace();
+					
+					//Failing the download
+					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+					
+					//Setting the thread as not running
+					isRunning = false;
 				}
 				
 				//Checking if the thread was stopped
@@ -1327,37 +1305,32 @@ public class ConnectionService extends Service {
 		
 		//Creating the reference values
 		private final WeakReference<Context> contextReference;
-		private final WeakReference<ConnectionService> superclassReference;
+		private final WeakReference<ConnectionService> serviceReference;
 		
 		//Creating the other values
 		private final Handler handler = new Handler(Looper.getMainLooper());
 		
-		FileUploadRequestThread(Context context, ConnectionService superclass) {
+		FileUploadRequestThread(Context context, ConnectionService service) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
-			superclassReference = new WeakReference<>(superclass);
+			serviceReference = new WeakReference<>(service);
 		}
 		
 		@Override
 		public void run() {
 			//Looping while there are requests in the queue
+			ConnectionService service = null;
 			FileUploadRequest request;
-			while((request = pushQueue()) != null) {
+			while(!isInterrupted() &&
+					(service = serviceReference.get()) != null &&
+					(request = pushQueue(service)) != null) {
+				//Clearing the reference to the service
+				service = null;
 				//Getting the callbacks
 				FileUploadRequestCallbacks finalCallbacks = request.callbacks;
 				
 				//Telling the callbacks that the process has started
 				handler.post(request.callbacks::onStart);
-				
-				//Getting the context
-				Context context = contextReference.get();
-				if(context == null) {
-					//Calling the fail method
-					handler.post(() -> finalCallbacks.onFail(messageSendReferencesLost));
-					
-					//Skipping the remainder of the iteration
-					continue;
-				}
 				
 				//Checking if the request has no send file
 				boolean copyFile = request.sendFile == null;
@@ -1366,6 +1339,16 @@ public class ConnectionService extends Service {
 					if(request.sendUri == null) {
 						//Calling the fail method
 						handler.post(() -> finalCallbacks.onFail(messageSendInvalidContent));
+						
+						//Skipping the remainder of the iteration
+						continue;
+					}
+					
+					//Getting the context
+					Context context = contextReference.get();
+					if(context == null) {
+						//Calling the fail method
+						handler.post(() -> finalCallbacks.onFail(messageSendReferencesLost));
 						
 						//Skipping the remainder of the iteration
 						continue;
@@ -1397,6 +1380,9 @@ public class ConnectionService extends Service {
 					//Preparing to copy the file
 					try(InputStream inputStream = context.getContentResolver().openInputStream(request.sendUri);
 						OutputStream outputStream = new FileOutputStream(targetFile)) {
+						//Clearing the reference to the context
+						context = null;
+						
 						//Checking if the input stream is invalid
 						if(inputStream == null) {
 							//Calling the fail method
@@ -1444,6 +1430,9 @@ public class ConnectionService extends Service {
 						
 						//Calling the fail method
 						handler.post(() -> finalCallbacks.onFail(messageSendIOException));
+						
+						//Clearing the reference to the context
+						context = null;
 						
 						//Skipping the remainder of the iteration
 						continue;
@@ -1602,9 +1591,17 @@ public class ConnectionService extends Service {
 					continue;
 				}
 			}
+			
+			//Telling the service that the thread is finished
+			if(service != null) service.fileUploadRequestThreadRunning.set(false);
 		}
 		
-		private FileUploadRequest pushQueue() {
+		private FileUploadRequest pushQueue(ConnectionService service) {
+			if(service == null) return null;
+			return service.fileUploadRequestQueue.poll();
+		}
+		
+		/* private FileUploadRequest pushQueue() {
 			//Getting the service
 			ConnectionService connectionService = superclassReference.get();
 			if(connectionService == null) return null;
@@ -1619,7 +1616,7 @@ public class ConnectionService extends Service {
 				connectionService.fileUploadRequestQueue.remove(0);
 				return request;
 			}
-		}
+		} */
 	}
 	
 	boolean sendMessage(String chatGUID, String message, MessageResponseManager responseListener) {
@@ -2467,6 +2464,12 @@ public class ConnectionService extends Service {
 				ConversationManager.ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItem(structItem, parentConversation);
 				if(conversationItem == null) continue;
 				
+				/* if(structItem instanceof SharedValues.MessageInfo) {
+					if(((SharedValues.MessageInfo) structItem).attachments.size() > 0) {
+						System.out.println("Found message with" + ((SharedValues.MessageInfo) structItem).attachments.size() + " attachments!");
+					}
+				} */
+				
 				//Updating the parent conversation's last item
 				if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
 					parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context));
@@ -2881,34 +2884,41 @@ public class ConnectionService extends Service {
 		messageProcessingQueue.add(task);
 		
 		//Starting the thread if it isn't running
-		if(messageProcessingQueueThreadRunning.compareAndSet(false, true)) new MessageProcessingThread().start();
+		if(messageProcessingQueueThreadRunning.compareAndSet(false, true)) new MessageProcessingThread(this).start();
 	}
 	
-	private class MessageProcessingThread extends Thread {
+	private static class MessageProcessingThread extends Thread {
+		private final WeakReference<ConnectionService> serviceReference;
+		
+		MessageProcessingThread(ConnectionService service) {
+			serviceReference = new WeakReference<>(service);
+		}
+		
 		@Override
 		public void run() {
 			//Creating the handler
 			Handler handler = new Handler(Looper.getMainLooper());
 			
-			try {
-				//Looping while the thread is alive
-				while(!isInterrupted()) {
-					//Pushing the queue
-					QueueTask<?, ?> task = messageProcessingQueue.take();
-					
-					//Checking if the task is invalid (the queue is empty)
-					if(task == null) {
-						//Finishing the thread
-						messageProcessingQueueThreadRunning.set(false);
-						break;
-					}
-					
-					//Running the task
-					runTask(task, handler);
-				}
-			} catch(InterruptedException exception) {
-			
+			//Looping while the thread is alive
+			ConnectionService service = null;
+			QueueTask<?, ?> task;
+			while(!isInterrupted() &&
+					(service = serviceReference.get()) != null &&
+					(task = pushQueue(service)) != null) {
+				//Clearing the reference to the service
+				service = null;
+				
+				//Running the task
+				runTask(task, handler);
 			}
+			
+			//Telling the service that the thread is finished
+			if(service != null) service.messageProcessingQueueThreadRunning.set(false);
+		}
+		
+		private QueueTask<?, ?> pushQueue(ConnectionService service) {
+			if(service == null) return null;
+			return service.messageProcessingQueue.poll();
 		}
 		
 		private <Result> void runTask(QueueTask<?, Result> task, Handler handler) {

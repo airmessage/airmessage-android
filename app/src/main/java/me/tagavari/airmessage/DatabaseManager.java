@@ -12,7 +12,6 @@ import android.util.Base64;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.zip.DataFormatException;
@@ -936,7 +935,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Checking if the message is valid
 				if(message != null) {
 					//Returning the light message info (without the attachments)
-					return new ConversationManager.LightConversationItem(ConversationManager.MessageInfo.getSummary(context, sender == null, message, sendStyle, new ArrayList<Integer>()), date);
+					return new ConversationManager.LightConversationItem(ConversationManager.MessageInfo.getSummary(context, sender == null, message, sendStyle, new ArrayList<>()), date);
 				}
 				
 				//Retrieving the attachments
@@ -945,10 +944,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 						Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(lastItemID)},
 						null, null, null);
 				
-				//Closing the cursor and returning if there are no results
+				//Closing the cursor and returning if an empty item there are no results
 				if(!cursor.moveToNext()) {
 					cursor.close();
-					return null;
+					return new ConversationManager.LightConversationItem(context.getResources().getString(R.string.part_unknown), date);
 				}
 				
 				//Getting the attachment string resources

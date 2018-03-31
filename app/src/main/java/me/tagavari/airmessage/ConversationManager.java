@@ -2756,8 +2756,8 @@ class ConversationManager {
 			else if(attachmentStringRes.size() > 1)
 				return prefix + context.getResources().getQuantityString(R.plurals.message_multipleattachments, attachmentStringRes.size(), attachmentStringRes.size());
 			
-			//Returning an empty string
-			return "";
+			//Returning "unknown"
+			return context.getResources().getString(R.string.part_unknown);
 		}
 		
 		@Override
