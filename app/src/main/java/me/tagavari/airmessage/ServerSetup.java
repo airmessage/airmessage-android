@@ -151,9 +151,9 @@ public class ServerSetup extends Activity {
 		nextButton.setClickable(false);
 		
 		//Filling in the input fields with previous information
-		SharedPreferences sharedPreferences = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
-		hostnameInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesKeyHostname, ""));
-		passwordInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesKeyPassword, ""));
+		SharedPreferences sharedPreferences = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+		hostnameInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, ""));
+		passwordInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, ""));
 	}
 	
 	@Override
@@ -208,9 +208,9 @@ public class ServerSetup extends Activity {
 	
 	private void finishSetup() {
 		//Saving the connection data in the shared preferences
-		SharedPreferences.Editor editor = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE).edit();
-		editor.putString(MainApplication.sharedPreferencesKeyHostname, newHostname); //The raw, unprocessed hostname (No protocol or port)
-		editor.putString(MainApplication.sharedPreferencesKeyPassword, newPassword);
+		SharedPreferences.Editor editor = ((MainApplication) getApplication()).getConnectivitySharedPrefs().edit();
+		editor.putString(MainApplication.sharedPreferencesConnectivityKeyHostname, newHostname); //The raw, unprocessed hostname (No protocol or port)
+		editor.putString(MainApplication.sharedPreferencesConnectivityKeyPassword, newPassword);
 		editor.apply();
 		
 		//Starting the new activity

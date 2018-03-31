@@ -35,11 +35,11 @@ public class MainApplication extends Application {
 	static final String dirNameDownload = "downloads";
 	static final String dirNameUpload = "uploads";
 	
-	static final String sharedPreferencesFile = "me.tagavari.airmessage.MAIN_PREFERENCES";
-	static final String sharedPreferencesKeyHostname = "hostname";
-	static final String sharedPreferencesKeyPassword = "password";
-	static final String sharedPreferencesKeyLastConnectionTime = "last_connection_time";
-	static final String sharedPreferencesKeyLastConnectionHostname = "last_connection_hostname";
+	private static final String sharedPreferencesConnectivityFile = "connectivity";
+	static final String sharedPreferencesConnectivityKeyHostname = "hostname";
+	static final String sharedPreferencesConnectivityKeyPassword = "password";
+	static final String sharedPreferencesConnectivityKeyLastConnectionTime = "last_connection_time";
+	static final String sharedPreferencesConnectivityKeyLastConnectionHostname = "last_connection_hostname";
 	
 	static final String fileAuthority = "me.tagavari.airmessage.fileprovider";
 	
@@ -94,9 +94,9 @@ public class MainApplication extends Application {
 		}
 		
 		//Getting the connection service information
-		SharedPreferences sharedPrefs = getSharedPreferences(sharedPreferencesFile, Context.MODE_PRIVATE);
-		ConnectionService.hostname = sharedPrefs.getString(sharedPreferencesKeyHostname, "");
-		ConnectionService.password = sharedPrefs.getString(sharedPreferencesKeyPassword, "");
+		SharedPreferences sharedPrefs = getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
+		ConnectionService.hostname = sharedPrefs.getString(sharedPreferencesConnectivityKeyHostname, "");
+		ConnectionService.password = sharedPrefs.getString(sharedPreferencesConnectivityKeyPassword, "");
 		
 		//Creating the cache helpers
 		bitmapCacheHelper = new BitmapCacheHelper();
@@ -225,8 +225,12 @@ public class MainApplication extends Application {
 		}
 	}
 	
+	SharedPreferences getConnectivitySharedPrefs() {
+		return getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
+	}
+	
 	boolean isServerConfigured() {
-		return !getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE).getString(MainApplication.sharedPreferencesKeyHostname, "").isEmpty();
+		return !getConnectivitySharedPrefs().getString(sharedPreferencesConnectivityKeyHostname, "").isEmpty();
 	}
 	
 	static final String darkModeFollowSystem = "follow_system";

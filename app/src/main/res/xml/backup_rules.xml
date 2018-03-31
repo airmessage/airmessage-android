@@ -5,4 +5,5 @@
 	<exclude domain="file" path="instant-run" />
 	<exclude domain="file" path="attachments" />
 	<exclude domain="database" path="messages.db" />
+	<exclude domain="sharedpref" path="connectivity.xml" />
 </full-backup-content>

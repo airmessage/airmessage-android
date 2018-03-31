@@ -428,7 +428,7 @@ public class Preferences extends AppCompatActivity {
 		
 		private void updateServerURL(Preference preference) {
 			//Setting the summary
-			preference.setSummary(getActivity().getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE).getString(MainApplication.sharedPreferencesKeyHostname, null));
+			preference.setSummary(((MainApplication) getActivity().getApplication()).getConnectivitySharedPrefs().getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null));
 		}
 	}
 }

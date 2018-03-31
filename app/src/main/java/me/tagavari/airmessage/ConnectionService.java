@@ -291,9 +291,9 @@ public class ConnectionService extends Service {
 		//Checking if there is no hostname
 		if(hostname == null || hostname.isEmpty()) {
 			//Retrieving the data from the shared preferences
-			SharedPreferences sharedPrefs = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
-			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesKeyHostname, "");
-			password = sharedPrefs.getString(MainApplication.sharedPreferencesKeyPassword, "");
+			SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, "");
+			password = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, "");
 		}
 		
 		//Preparing the hostname
@@ -507,13 +507,13 @@ public class ConnectionService extends Service {
 			connectionEstablishedForRetrieval = connectionEstablishedForReconnect = true;
 			
 			//Getting the last connection time
-			SharedPreferences sharedPrefs = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
-			String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesKeyLastConnectionHostname, null);
+			SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+			String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
 			
 			//Checking if the last connection is the same as the current one
 			if(hostname.equals(lastConnectionHostname)) {
 				//Getting the last connection time
-				long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesKeyLastConnectionTime, -1);
+				long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, -1);
 				
 				//Fetching the messages since the last connection time
 				retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
@@ -703,10 +703,10 @@ public class ConnectionService extends Service {
 			//Checking if a connection existed for retrieval
 			if(connectionEstablishedForRetrieval) {
 				//Writing the time to shared preferences
-				SharedPreferences sharedPrefs = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
+				SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
 				SharedPreferences.Editor editor = sharedPrefs.edit();
-				editor.putLong(MainApplication.sharedPreferencesKeyLastConnectionTime, System.currentTimeMillis());
-				editor.putString(MainApplication.sharedPreferencesKeyLastConnectionHostname, hostname);
+				editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+				editor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
 				editor.commit();
 			}
 			
