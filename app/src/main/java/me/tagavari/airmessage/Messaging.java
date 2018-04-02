@@ -912,10 +912,9 @@ public class Messaging extends CompositeActivity {
 	
 	@Override
 	public boolean dispatchTouchEvent(MotionEvent event) {
-		//Returning false if the current state isn't recording
+		//Returning if the current state isn't recording
 		if(retainedFragment.inputState != InputState.RECORDING) {
-			super.dispatchTouchEvent(event);
-			return false;
+			return super.dispatchTouchEvent(event);
 		}
 		
 		//Checking if the action is a move touch

@@ -3297,7 +3297,7 @@ class ConversationManager {
 			((RelativeLayout) viewHolder.itemView).setGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
 			
 			//Inflating and adding the text content
-			setupTextLinks(viewHolder.labelMessage);
+			//setupTextLinks(viewHolder.labelMessage);
 			
 			//Updating the view color
 			updateViewColor(viewHolder, context);
