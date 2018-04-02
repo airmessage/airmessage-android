@@ -2366,7 +2366,7 @@ class ConversationManager {
 					else if(componentViewHolder instanceof ImageAttachmentInfo.ViewHolder) viewAdder.accept(ImageAttachmentInfo.itemViewType, componentViewHolder);
 					else if(componentViewHolder instanceof AudioAttachmentInfo.ViewHolder) viewAdder.accept(AudioAttachmentInfo.itemViewType, componentViewHolder);
 					else if(componentViewHolder instanceof VideoAttachmentInfo.ViewHolder) viewAdder.accept(VideoAttachmentInfo.itemViewType, componentViewHolder);
-					else if(componentViewHolder instanceof OtherAttachmentInfo.ViewHolder) viewAdder.accept(VideoAttachmentInfo.itemViewType, componentViewHolder);
+					else if(componentViewHolder instanceof OtherAttachmentInfo.ViewHolder) viewAdder.accept(OtherAttachmentInfo.itemViewType, componentViewHolder);
 				}
 				
 				//Clearing and removing the components
@@ -2386,8 +2386,8 @@ class ConversationManager {
 				}
 				
 				//Adding the component view holder to the message view holder
-				viewHolder.containerMessagePart.addView(componentViewHolder.itemView);
 				viewHolder.messageComponents.add(componentViewHolder);
+				viewHolder.containerMessagePart.addView(componentViewHolder.itemView);
 				final int componentIndex = viewHolder.messageComponents.size() - 1;
 				
 				component.bindView(componentViewHolder, context);

@@ -631,8 +631,7 @@ public class ConnectionService extends Service {
 							//Searching for a matching request
 							for(FileDownloadRequest request : fileDownloadRequests) {
 								if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
-								request.stopTimer(false);
-								request.callbacks.onFail();
+								request.failDownload();
 								break;
 							}
 						});
@@ -1050,13 +1049,7 @@ public class ConnectionService extends Service {
 		
 		private static final long timeoutDelay = 20 * 1000; //20-second delay
 		private final Handler handler = new Handler(Looper.getMainLooper());
-		private final Runnable timeoutRunnable = () -> {
-			//Removing the request from the list
-			removeRequestFromList();
-			
-			//Calling the fail method
-			callbacks.onFail();
-		};
+		private final Runnable timeoutRunnable = this::failDownload;
 		
 		void startTimer() {
 			handler.postDelayed(timeoutRunnable, timeoutDelay);
