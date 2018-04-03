@@ -3,7 +3,6 @@ package me.tagavari.airmessage;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -79,7 +78,7 @@ class NotificationUtils {
 	}
 	
 	private static NotificationCompat.Builder getBaseMessageNotification(Context context, ConversationManager.ConversationInfo conversationInfo, Bitmap userIcon, boolean playSound) {
-		//Creating the click intent
+		/* //Creating the click intent
 		Intent clickIntent = new Intent(context, Messaging.class);
 		clickIntent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
 		
@@ -93,7 +92,8 @@ class NotificationUtils {
 		clickStackBuilder.addNextIntent(clickIntent);
 		
 		//Getting the pending intent
-		PendingIntent clickPendingIntent = clickStackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+		PendingIntent clickPendingIntent = clickStackBuilder.getPendingIntent((int) conversationInfo.getLocalID(), 0); */
+		PendingIntent clickPendingIntent = PendingIntent.getActivity(context.getApplicationContext(), (int) conversationInfo.getLocalID(), new Intent(context, Messaging.class).putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID()), 0);
 		
 		//Creating the notification builder
 		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, MainApplication.notificationChannelMessage)
@@ -110,8 +110,8 @@ class NotificationUtils {
 				.setGroup(MainApplication.notificationGroupMessage)
 				//Setting the category
 				.setCategory(Notification.CATEGORY_MESSAGE);
-		//TODO add person
-		//.addPerson();
+				//TODO add person
+				//.addPerson();
 		
 		//Checking if the Android version is below Oreo
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {

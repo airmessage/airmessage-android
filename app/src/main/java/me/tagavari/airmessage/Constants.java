@@ -1,6 +1,7 @@
 package me.tagavari.airmessage;
 
 import android.app.Activity;
+import android.arch.lifecycle.ViewModel;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -15,6 +16,7 @@ import android.os.Parcel;
 import android.provider.OpenableColumns;
 import android.support.annotation.AttrRes;
 import android.support.annotation.ColorInt;
+import android.support.annotation.NonNull;
 import android.support.customtabs.CustomTabsIntent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -512,6 +514,32 @@ class Constants {
 		Map<K, V> result = new LinkedHashMap<>();
 		for (Map.Entry<K, V> entry : list) result.put(entry.getKey(), entry.getValue());
 		return result;
+	}
+	
+	static String createLocalizedList(String[] list, Resources resources) {
+		StringBuilder stringBuilder = new StringBuilder();
+		
+		if(list.length == 1) stringBuilder.append(resources.getString(R.string.list_single, list[0]));
+		else if(list.length == 2) stringBuilder.append(resources.getString(R.string.list_double, list[0], list[1]));
+		else if(list.length > 2) {
+			stringBuilder.append(resources.getString(R.string.list_n_start, list[0]));
+			for(int i = 1; i < list.length - 1; i++) stringBuilder.append(resources.getString(R.string.list_n_middle, list[i]));
+			stringBuilder.append(resources.getString(R.string.list_n_start, list[list.length - 1]));
+		}
+		
+		return stringBuilder.toString();
+	}
+	
+	public static abstract class ActivityViewModel<A extends Activity> extends ViewModel {
+		private final WeakReference<A> activityReference;
+		
+		public ActivityViewModel(@NonNull A activity) {
+			activityReference = new WeakReference<>(activity);
+		}
+		
+		public A getActivity() {
+			return activityReference.get();
+		}
 	}
 	
 	static float calculateImageAttachmentMultiplier(Resources resources, int width, int height) {

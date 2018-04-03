@@ -207,6 +207,12 @@
 	<string name="message_conversation_unarchived">La conversation a été desarchivée</string>
 	<string name="message_conversation_deleted">La conversation a été supprimée</string>
 	
+	<string name="list_single">%s</string>
+	<string name="list_double">%s et %s</string>
+	<string name="list_n_start">%s</string>
+	<string name="list_n_middle">, %s</string>
+	<string name="list_n_end">, et %s</string>
+	
 	<plurals name="message_multipledestinations">
 		<item quantity="other">%s (%s de plus)</item>
 	</plurals>
@@ -243,4 +249,5 @@
 	<string name="preference_appearance_theme_title">Thème</string>
 	<string name="preference_appearance_location_title">Détection de nuit améliorée</string>
 	<string name="preference_appearance_location_description">Utiliser votre position actuelle pour détecter les heures de lever et de coucher du soleil pour un mode de nuit plus précis</string>
+	<string name="message_loaderror_conversation">Échec du chargement de la conversation</string>
 </resources>

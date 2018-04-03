@@ -2,12 +2,18 @@ package me.tagavari.airmessage;
 
 import android.Manifest;
 import android.animation.Animator;
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
-import android.app.Fragment;
-import android.app.FragmentManager;
 import android.app.NotificationManager;
+import android.arch.lifecycle.MutableLiveData;
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModel;
+import android.arch.lifecycle.ViewModelProvider;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -90,34 +96,12 @@ public class Messaging extends CompositeActivity {
 	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
 	private static final List<WeakReference<Messaging>> loadedConversations = new ArrayList<>();
 	
-	//Creating the plugin values
-	private PluginMessageBar pluginMessageBar = null;
+	//Creating the view model and plugin values
+	private ActivityViewModel viewModel;
+	private PluginMessageBar pluginMessageBar;
 	
 	//Creating the info bar values
 	private PluginMessageBar.InfoBar infoBarConnection;
-	
-	private final Runnable conversationTitleChangeListener = new Runnable() {
-		@Override
-		public void run() {
-			//Returning if the conversation info is invalid
-			if(retainedFragment.conversationInfo == null) return;
-			
-			//Building the conversation title
-			retainedFragment.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
-				//Setting the title in the app bar
-				getSupportActionBar().setTitle(result);
-				
-				//Updating the task description
-				lastTaskDescription = new ActivityManager.TaskDescription(result, lastTaskDescription.getIcon(), retainedFragment.conversationInfo.getConversationColor());
-				setTaskDescription(lastTaskDescription);
-			});
-		}
-	};
-	
-	private final Runnable conversationUnreadCountChangeListener = this::updateUnreadIndicator;
-	
-	//Creating the send values
-	private File currentSendFile;
 	
 	private boolean currentScreenEffectPlaying = false;
 	private String currentScreenEffect = "";
@@ -132,9 +116,6 @@ public class Messaging extends CompositeActivity {
 	private final ArrayList<ConversationManager.MessageInfo> searchFilteredMessages = new ArrayList<>();
 	private final List<Integer> searchListIndexes = new ArrayList<>();
 	
-	private static final String retainedFragmentTag = RetainedFragment.class.getName();
-	private RetainedFragment retainedFragment;
-	
 	//Creating the listener values
 	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
 		@Override
@@ -144,33 +125,17 @@ public class Messaging extends CompositeActivity {
 			
 			//Hiding the server warning bar if the connection is successful
 			if(result == ConnectionService.intentResultValueSuccess) hideServerWarning();
-			//Otherwise showing the warning
+				//Otherwise showing the warning
 			else showServerWarning(result);
 		}
 	};
-	private final RecyclerView.OnScrollListener messageListScrollListener = new RecyclerView.OnScrollListener() {
-		@Override
-		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-			//Getting the layout manager
-			LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-			int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - 1 - linearLayoutManager.findLastVisibleItemPosition();
-			
-			//Showing the FAB if the user has scrolled more than the threshold items
-			if(itemsScrolledFromBottom > quickScrollFABThreshold) setFABVisibility(true);
-			else setFABVisibility(false);
-			
-			//Marking viewed items as read
-			if(itemsScrolledFromBottom < retainedFragment.conversationInfo.getUnreadMessageCount()) retainedFragment.conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
-			
-			//Loading chunks if the user is scrolled to the top
-			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !retainedFragment.progressiveLoadInProgress && !retainedFragment.progressiveLoadReachedLimit) recyclerView.post(retainedFragment::loadNextChunk);
-		}
-	};
-	
 	//Creating the view values
 	private View rootView;
 	private AppBarLayout appBar;
 	private Toolbar toolbar;
+	private TextView labelLoading;
+	private ViewGroup groupLoadFail;
+	private TextView labelLoadFail;
 	private RecyclerView messageList;
 	private View inputBar;
 	private View referenceBar;
@@ -186,7 +151,24 @@ public class Messaging extends CompositeActivity {
 	private TextView recordingTimeLabel;
 	private FloatingActionButton bottomFAB;
 	private TextView bottomFABBadge;
-	
+	private final RecyclerView.OnScrollListener messageListScrollListener = new RecyclerView.OnScrollListener() {
+		@Override
+		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+			//Getting the layout manager
+			LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+			int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - 1 - linearLayoutManager.findLastVisibleItemPosition();
+			
+			//Showing the FAB if the user has scrolled more than the threshold items
+			if(itemsScrolledFromBottom > quickScrollFABThreshold) setFABVisibility(true);
+			else setFABVisibility(false);
+			
+			//Marking viewed items as read
+			if(itemsScrolledFromBottom < viewModel.conversationInfo.getUnreadMessageCount()) viewModel.conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
+			
+			//Loading chunks if the user is scrolled to the top
+			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !viewModel.isProgressiveLoadInProgress() && !viewModel.progressiveLoadReachedLimit) recyclerView.post(viewModel::loadNextChunk);
+		}
+	};
 	//Creating the menu values
 	private boolean menuLoaded = false;
 	private MenuItem archiveMenuItem;
@@ -234,7 +216,7 @@ public class Messaging extends CompositeActivity {
 	};
 	private final View.OnClickListener sendButtonClickListener = view -> {
 		//Returning if the input state is not text
-		if(retainedFragment.inputState != InputState.MESSAGE) return;
+		if(viewModel.inputState != ActivityViewModel.inputStateText) return;
 		
 		//Checking if the message box has text
 		if(messageBoxHasText) {
@@ -248,12 +230,12 @@ public class Messaging extends CompositeActivity {
 			if(message.isEmpty()) return;
 			
 			//Creating a message
-			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, retainedFragment.conversationInfo, null, message, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, message, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 			
 			//Writing the message to the database
 			new AddGhostMessageTask(getApplicationContext(), messageInfo, () -> {
 				//Adding the message to the conversation in memory
-				retainedFragment.conversationInfo.addGhostMessage(this, messageInfo);
+				viewModel.conversationInfo.addGhostMessage(this, messageInfo);
 				
 				//Sending the message
 				messageInfo.sendMessage(this);
@@ -275,19 +257,130 @@ public class Messaging extends CompositeActivity {
 			view.performClick();
 			
 			//Checking if the input state is content and the action is a down touch
-			if(retainedFragment.inputState == InputState.CONTENT && motionEvent.getAction() == MotionEvent.ACTION_DOWN) {
+			if(viewModel.inputState == ActivityViewModel.inputStateContent && motionEvent.getAction() == MotionEvent.ACTION_DOWN) {
 				//Attempting to start recording
 				boolean result = startRecording();
 				
 				//Moving the recording indicator if the recording could be started
-				if(result)
-					recordingIndicator.setX(motionEvent.getRawX() - (float) recordingIndicator.getWidth() / 2f);
+				if(result) recordingIndicator.setX(motionEvent.getRawX() - (float) recordingIndicator.getWidth() / 2f);
+				System.out.println("Recording request passed: " + result);
 				
 				//Returning true
 				return true;
 			}
 			//Returning false
 			return false;
+		}
+	};
+	private final Observer<Byte> messagesStateObserver = state -> {
+		switch(state) {
+			case ActivityViewModel.messagesStateLoadingConversation:
+				labelLoading.setVisibility(View.VISIBLE);
+				groupLoadFail.setVisibility(View.GONE);
+				
+				setMessageBarState(false);
+				
+				break;
+			case ActivityViewModel.messagesStateLoadingMessages:
+				labelLoading.setVisibility(View.VISIBLE);
+				groupLoadFail.setVisibility(View.GONE);
+				
+				setMessageBarState(false);
+				
+				//Setting the conversation title
+				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
+					getSupportActionBar().setTitle(result);
+					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), viewModel.conversationInfo.getConversationColor()));
+				});
+				
+				//Setting up the menu buttons
+				if(menuLoaded) {
+					if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
+					else archiveMenuItem.setVisible(true);
+				}
+				
+				//Setting the activity callbacks
+				viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
+				viewModel.conversationInfo.setEffectCallbacks(new EffectCallbacks(this)); //TODO merge activity callbacks with effect callbacks
+				
+				//Setting the list adapter
+				//messageList.setLayoutManager(new SpeedyLinearLayoutManager(this));
+				messageListAdapter = new RecyclerAdapter(viewModel.conversationItemList);
+				messageList.setAdapter(messageListAdapter);
+				messageList.addOnScrollListener(messageListScrollListener);
+				
+				//Setting the message input field hint
+				messageInputField.setHint(getInputBarMessage());
+				
+				//Updating the send button
+				//updateSendButton();
+				
+				break;
+			case ActivityViewModel.messagesStateReady:
+				labelLoading.setVisibility(View.GONE);
+				groupLoadFail.setVisibility(View.GONE);
+				
+				setMessageBarState(true);
+				
+				//Finding the latest send effect
+				for(int i = viewModel.conversationItemList.size() - 1; i >= 0; i--) {
+					//Getting the conversation item
+					ConversationManager.ConversationItem conversationItem = viewModel.conversationItemList.get(i);
+					
+					//Breaking from the loop if the item has already been viewed
+					if(viewModel.conversationItemList.size() - 1 >= viewModel.conversationInfo.getUnreadMessageCount()) break;
+					
+					//Skipping the remainder of the iteration if the item is not a message
+					if(!(conversationItem instanceof ConversationManager.MessageInfo)) continue;
+					
+					//Getting the message
+					ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
+					
+					//Skipping the remainder of the iteration if the message has no send effect
+					if(messageInfo.getSendEffect().isEmpty()) continue;
+					
+					//Setting the send effect
+					currentScreenEffect = messageInfo.getSendEffect();
+					
+					//Breaking from the loop
+					break;
+				}
+				
+				//Playing the send effect if there is one
+				if(!currentScreenEffect.isEmpty()) playCurrentSendEffect();
+				
+				//Setting the last message count
+				viewModel.lastUnreadCount = viewModel.conversationInfo.getUnreadMessageCount();
+				
+				{
+					//Getting the layout manager
+					LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
+					int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
+					
+					//Showing the FAB if the user has scrolled more than 3 items
+					if(itemsScrolledFromBottom > quickScrollFABThreshold) {
+						bottomFAB.show();
+						restoreUnreadIndicator();
+					}
+				}
+				
+				break;
+			case ActivityViewModel.messagesStateFailedConversation:
+				labelLoading.setVisibility(View.GONE);
+				groupLoadFail.setVisibility(View.VISIBLE);
+				labelLoadFail.setText(R.string.message_loaderror_conversation);
+				
+				setMessageBarState(false);
+				
+				break;
+			case ActivityViewModel.messagesStateFailedMessages:
+				labelLoading.setVisibility(View.GONE);
+				groupLoadFail.setVisibility(View.VISIBLE);
+				labelLoadFail.setText(R.string.message_loaderror_messages);
+				
+				setMessageBarState(false);
+				
+				break;
 		}
 	};
 	
@@ -311,6 +404,11 @@ public class Messaging extends CompositeActivity {
 		rootView = findViewById(android.R.id.content);
 		toolbar = findViewById(R.id.toolbar);
 		appBar = findViewById(R.id.app_bar);
+		
+		labelLoading = findViewById(R.id.loading_text);
+		groupLoadFail = findViewById(R.id.group_error);
+		labelLoadFail = findViewById(R.id.group_error_label);
+		
 		messageList = findViewById(R.id.list_messages);
 		inputBar = findViewById(R.id.inputbar);
 		messageSendButton = inputBar.findViewById(R.id.button_send);
@@ -333,14 +431,31 @@ public class Messaging extends CompositeActivity {
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), messageList);
 		
-		//Setting up the retained fragment
-		prepareRetainedFragment();
+		//Getting the conversation ID
+		long conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
+		
+		//Getting the view model
+		viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
+			@NonNull
+			@Override
+			public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
+				return (T) new ActivityViewModel(Messaging.this, conversationID);
+			}
+		}).get(ActivityViewModel.class);
+		
+		//Registering the observers
+		viewModel.messagesState.observe(this, messagesStateObserver);
+		viewModel.recordingDuration.observe(this, value -> recordingTimeLabel.setText(Constants.getFormattedDuration(value)));
+		viewModel.progressiveLoadInProgress.observe(this, value -> {
+			if(value) onProgressiveLoadStart();
+			else onProgressiveLoadFinish(viewModel.lastProgressiveLoadCount);
+		});
 		
 		//Restoring the input bar state
 		restoreInputBarState();
 		
 		//Restoring the text states
-		findViewById(R.id.loading_text).setVisibility(retainedFragment.messagesState == RetainedFragment.messagesStateLoading ? View.VISIBLE : View.GONE);
+		//findViewById(R.id.loading_text).setVisibility(viewModel.messagesState == viewModel.messagesStateLoading ? View.VISIBLE : View.GONE);
 		
 		//Enabling the toolbar's up navigation
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -357,14 +472,14 @@ public class Messaging extends CompositeActivity {
 		contentRecordButton.setOnTouchListener(recordingTouchListener);
 		bottomFAB.setOnClickListener(view -> messageListAdapter.scrollToBottom());
 		
-		//Checking if there is already a conversation info available
-		if(retainedFragment.conversationInfo != null) {
+		/* //Checking if there is already a conversation info available
+		if(viewModel.conversationInfo != null) {
 			//Applying the conversation
 			applyConversation();
 		} else {
 			//Getting the conversation info
-			retainedFragment.conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
-			ConversationManager.ConversationInfo conversationInfo = ConversationManager.findConversationInfo(retainedFragment.conversationID);
+			viewModel.conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
+			ConversationManager.ConversationInfo conversationInfo = ConversationManager.findConversationInfo(viewModel.conversationID);
 			
 			//Checking if the conversation info is invalid
 			if(conversationInfo == null) {
@@ -375,13 +490,13 @@ public class Messaging extends CompositeActivity {
 				findViewById(R.id.loading_text).setVisibility(View.VISIBLE);
 				
 				//Loading the conversation
-				retainedFragment.loadConversation(getApplicationContext());
+				viewModel.loadConversation(getApplicationContext());
 			} else {
 				//Applying the conversation
-				retainedFragment.conversationInfo = conversationInfo;
+				viewModel.conversationInfo = conversationInfo;
 				applyConversation();
 			}
-		}
+		} */
 		
 		//Setting the filler data
 		if(getIntent().hasExtra(Constants.intentParamDataText))
@@ -392,122 +507,6 @@ public class Messaging extends CompositeActivity {
 		
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
-	}
-	
-	private void prepareRetainedFragment() {
-		//Getting the send file task fragment
-		FragmentManager fragmentManager = getFragmentManager();
-		retainedFragment = (RetainedFragment) fragmentManager.findFragmentByTag(retainedFragmentTag);
-		
-		//Checking if the fragment is invalid
-		if(retainedFragment == null) { //If the fragment is valid, it has been retrieved from across a config change
-			//Creating and adding the fragment
-			retainedFragment = new RetainedFragment();
-			fragmentManager.beginTransaction().add(retainedFragment, retainedFragmentTag).commit();
-		}
-	}
-	
-	void applyConversation() {
-		/* //Checking if the conversation info is invalid
-		if(conversationInfo == null) {
-			//Finishing the activity
-			finish();
-			return;
-		}
-		
-		//Setting the conversation info
-		retainedFragment.conversationInfo = conversationInfo; */
-		
-		//Enabling the messaging bar
-		setMessageBarState(true);
-		
-		//Setting the conversation title
-		retainedFragment.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
-			getSupportActionBar().setTitle(result);
-			setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), retainedFragment.conversationInfo.getConversationColor()));
-		});
-		
-		//Setting up the menu buttons
-		if(menuLoaded) {
-			if(retainedFragment.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
-			else archiveMenuItem.setVisible(true);
-		}
-		
-		//Setting the list adapter
-		//messageList.setLayoutManager(new SpeedyLinearLayoutManager(this));
-		messageListAdapter = new RecyclerAdapter(retainedFragment.conversationItemList);
-		retainedFragment.conversationInfo.setAdapterUpdater(new AdapterUpdater(this));
-		messageList.setAdapter(messageListAdapter);
-		messageList.addOnScrollListener(messageListScrollListener);
-		
-		//Setting the conversation listeners
-		retainedFragment.conversationInfo.addTitleChangeListener(conversationTitleChangeListener);
-		retainedFragment.conversationInfo.addUnreadCountChangeListener(conversationUnreadCountChangeListener);
-		
-		//Setting the conversation effect callbacks
-		retainedFragment.conversationInfo.setEffectCallbacks(new EffectCallbacks(this));
-		
-		//Setting the message input field hint
-		messageInputField.setHint(getInputBarMessage());
-		
-		//Updating the send button
-		updateSendButton();
-		
-		//Loading the messages
-		if(retainedFragment.messagesState == RetainedFragment.messagesStateLoaded) onMessagesLoaded();
-		else loadMessages();
-	}
-	
-	void onConversationLoadFailed() {
-		//Finishing the activity
-		finish();
-	}
-	
-	void onMessagesLoaded() {
-		//Hiding the loading text
-		findViewById(R.id.loading_text).setVisibility(View.GONE);
-		
-		//Finding the latest send effect
-		for(int i = retainedFragment.conversationItemList.size() - 1; i >= 0; i--) {
-			//Getting the conversation item
-			ConversationManager.ConversationItem conversationItem = retainedFragment.conversationItemList.get(i);
-			
-			//Breaking from the loop if the item has already been viewed
-			if(retainedFragment.conversationItemList.size() - 1 >= retainedFragment.conversationInfo.getUnreadMessageCount()) break;
-			
-			//Skipping the remainder of the iteration if the item is not a message
-			if(!(conversationItem instanceof ConversationManager.MessageInfo)) continue;
-			
-			//Getting the message
-			ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
-			
-			//Skipping the remainder of the iteration if the message has no send effect
-			if(messageInfo.getSendEffect().isEmpty()) continue;
-			
-			//Setting the send effect
-			currentScreenEffect = messageInfo.getSendEffect();
-			
-			//Breaking from the loop
-			break;
-		}
-		
-		//Playing the send effect if there is one
-		if(!currentScreenEffect.isEmpty()) playCurrentSendEffect();
-		
-		//Setting the last message count
-		retainedFragment.lastUnreadCount = retainedFragment.conversationInfo.getUnreadMessageCount();
-		
-		{
-			//Getting the layout manager
-			LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
-			int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
-			
-			//Showing the FAB if the user has scrolled more than 3 items
-			if(itemsScrolledFromBottom > quickScrollFABThreshold) {
-				bottomFAB.show();
-				restoreUnreadIndicator();
-			}
-		}
 	}
 	
 	/* void onMessagesFailed() {
@@ -541,18 +540,17 @@ public class Messaging extends CompositeActivity {
 		foregroundConversations.add(new WeakReference<>(this));
 		
 		//Checking if the conversation is valid
-		if(retainedFragment.conversationInfo != null) {
+		if(viewModel.conversationInfo != null) {
 			//Clearing the notifications
-			((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel((int) retainedFragment.conversationInfo.getLocalID());
+			((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel((int) viewModel.conversationInfo.getLocalID());
 			
 			//Coloring the UI
 			colorUI(findViewById(android.R.id.content));
 			
 			//Coloring the messages
-			if(retainedFragment.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : retainedFragment.conversationItemList) conversationItem.updateViewColor(this);
+			if(viewModel.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) conversationItem.updateViewColor(this);
 			
 			//Checking if the title is static
-			
 			
 			//Updating the recycler adapter's views
 			//messageListAdapter.notifyDataSetChanged();
@@ -571,7 +569,7 @@ public class Messaging extends CompositeActivity {
 		super.onPause();
 		
 		//Iterating over the foreground conversations
-		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext();) {
+		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext(); ) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			
@@ -596,40 +594,6 @@ public class Messaging extends CompositeActivity {
 		//Calling the super method
 		super.onStop();
 		
-		//Checking if the activity is being destroyed
-		if(isFinishing()) {
-			/* //Checking the conversation if the list is empty and the messages have been loaded
-			if(conversationInfo.getConversationItems().isEmpty()) {
-				//Removing the conversation from memory
-				ConversationManager.getConversations().remove(conversationInfo);
-				
-				//Deleting the conversation from the database
-				DatabaseManager.deleteConversation(DatabaseManager.getWritableDatabase(this), conversationInfo);
-				
-				//Updating the conversation activity list
-				LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
-			} */
-			
-			//Cleaning up the media recorder
-			invalidateMediaRecorder();
-			
-			//Cleaning up the media player
-			getAudioMessageManager().release();
-			
-			//Checking if the conversation is valid
-			if(retainedFragment.conversationInfo != null) {
-				//Clearing the messages
-				retainedFragment.conversationInfo.clearMessages();
-				
-				//Updating the conversation's unread message count
-				retainedFragment.conversationInfo.updateUnreadStatus(this);
-				new UpdateUnreadMessageCount(getApplicationContext(), retainedFragment.conversationInfo.getLocalID(), retainedFragment.conversationInfo.getUnreadMessageCount()).execute();
-			}
-		} else {
-			//Setting the restarting from config change variable to true
-			retainedFragment.restartingFromConfigChange = true;
-		}
-		
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
@@ -641,7 +605,7 @@ public class Messaging extends CompositeActivity {
 		super.onDestroy();
 		
 		//Iterating over the loaded conversations
-		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
+		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext(); ) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			
@@ -659,21 +623,15 @@ public class Messaging extends CompositeActivity {
 			//Breaking from the loop
 			break;
 		}
-		
-		//Removing the conversation listeners
-		if(retainedFragment.conversationInfo != null) {
-			retainedFragment.conversationInfo.removeTitleChangeListener(conversationTitleChangeListener);
-			retainedFragment.conversationInfo.removeUnreadCountChangeListener(conversationUnreadCountChangeListener);
-		}
 	}
 	
 	long getConversationID() {
-		return retainedFragment.conversationID;
+		return viewModel.conversationID;
 	}
 	
 	private void restoreInputBarState() {
-		switch(retainedFragment.inputState) {
-			case CONTENT:
+		switch(viewModel.inputState) {
+			case ActivityViewModel.inputStateContent:
 				//Disabling the message bar
 				messageContentButton.setEnabled(false);
 				messageInputField.setEnabled(false);
@@ -685,7 +643,7 @@ public class Messaging extends CompositeActivity {
 				contentBar.setVisibility(View.VISIBLE);
 				
 				break;
-			case RECORDING:
+			case ActivityViewModel.inputStateRecording:
 				//Disabling the message bar
 				messageContentButton.setEnabled(false);
 				messageInputField.setEnabled(false);
@@ -714,46 +672,23 @@ public class Messaging extends CompositeActivity {
 		//getAudioMessageManager().reconnectAttachment(conversationInfo);
 	}
 	
-	private void loadMessages() {
-		//Returning if the messages don't need to be loaded
-		if(retainedFragment.messagesState != RetainedFragment.messagesStateUnloaded) return;
-		
-		//Checking if the messages are already loaded (the GC hasn't removed them yet)
-		/* if(retainedFragment.conversationItemList != null) {
-			//Setting the messages as loaded
-			retainedFragment.messagesState = RetainedFragment.messagesStateLoaded;
-			
-			//Applying the messages
-			onMessagesLoaded();
-			
-			//Returning
-			return;
-		} */
-		
-		//Showing the loading text
-		findViewById(R.id.loading_text).setVisibility(View.VISIBLE);
-		
-		//Telling the retained fragment to load the messages
-		retainedFragment.loadMessages();
-	}
-	
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		//Checking if the request code is taking a picture
 		if(requestCode == Constants.intentTakePicture) {
 			//Returning if the current input state is not the content bar
-			if(retainedFragment.inputState != InputState.CONTENT) return;
+			if(viewModel.inputState != ActivityViewModel.inputStateContent) return;
 			
 			//Checking if the result was a success
 			if(resultCode == RESULT_OK) {
 				//Sending the file
-				sendFile(currentSendFile);
+				sendFile(viewModel.targetFile);
 			}
 		}
 		//Otherwise if the request code is the media picker
 		else if(requestCode == Constants.intentPickMediaFile || requestCode == Constants.intentPickAnyFile) {
 			//Returning if the current input state is not the content bar
-			if(retainedFragment.inputState != InputState.CONTENT) return;
+			if(viewModel.inputState != ActivityViewModel.inputStateContent) return;
 			
 			//Checking if the result was a success
 			if(resultCode == RESULT_OK) {
@@ -777,8 +712,8 @@ public class Messaging extends CompositeActivity {
 		unarchiveMenuItem = menu.findItem(R.id.action_unarchive);
 		
 		//Showing the correct "archive" menu item
-		if(retainedFragment.conversationInfo != null) {
-			if(retainedFragment.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
+		if(viewModel.conversationInfo != null) {
+			if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
 			else archiveMenuItem.setVisible(true);
 		}
 		
@@ -805,15 +740,15 @@ public class Messaging extends CompositeActivity {
 				return true;
 			case R.id.action_details:
 				//Checking if the conversation is valid
-				if(retainedFragment.conversationInfo != null) {
+				if(viewModel.conversationInfo != null) {
 					//Launching the details activity
-					startActivity(new Intent(this, MessagingInfo.class).putExtra(Constants.intentParamTargetID, retainedFragment.conversationInfo.getLocalID()));
+					startActivity(new Intent(this, MessagingInfo.class).putExtra(Constants.intentParamTargetID, viewModel.conversationInfo.getLocalID()));
 				}
 				
 				return true;
 			case R.id.action_search:
 				//Checking if the conversation is valid
-				if(retainedFragment.conversationInfo != null) {
+				if(viewModel.conversationInfo != null) {
 					//Setting the state to search
 					setAppBarState(appBarStateSearch);
 				}
@@ -821,14 +756,14 @@ public class Messaging extends CompositeActivity {
 				return true;
 			case R.id.action_archive:
 				//Checking if the conversation is valid
-				if(retainedFragment.conversationInfo != null) {
+				if(viewModel.conversationInfo != null) {
 					//Archiving the conversation
-					retainedFragment.conversationInfo.setArchived(true);
+					viewModel.conversationInfo.setArchived(true);
 					
 					//Updating the conversation's database entry
 					ContentValues contentValues = new ContentValues();
 					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-					DatabaseManager.getInstance().updateConversation(retainedFragment.conversationInfo.getLocalID(), contentValues);
+					DatabaseManager.getInstance().updateConversation(viewModel.conversationInfo.getLocalID(), contentValues);
 					
 					//Showing a toast
 					Toast.makeText(Messaging.this, R.string.message_conversation_archived, Toast.LENGTH_SHORT).show();
@@ -840,14 +775,14 @@ public class Messaging extends CompositeActivity {
 				return true;
 			case R.id.action_unarchive:
 				//Checking if the conversation is valid
-				if(retainedFragment.conversationInfo != null) {
+				if(viewModel.conversationInfo != null) {
 					//Unarchiving the conversation
-					retainedFragment.conversationInfo.setArchived(false);
+					viewModel.conversationInfo.setArchived(false);
 					
 					//Updating the conversation's database entry
 					ContentValues contentValues = new ContentValues();
 					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-					DatabaseManager.getInstance().updateConversation(retainedFragment.conversationInfo.getLocalID(), contentValues);
+					DatabaseManager.getInstance().updateConversation(viewModel.conversationInfo.getLocalID(), contentValues);
 					
 					//Showing a toast
 					Toast.makeText(Messaging.this, R.string.message_conversation_unarchived, Toast.LENGTH_SHORT).show();
@@ -859,7 +794,7 @@ public class Messaging extends CompositeActivity {
 				return true;
 			case R.id.action_delete:
 				//Checking if the conversation is valid
-				if(retainedFragment.conversationInfo != null) {
+				if(viewModel.conversationInfo != null) {
 					//Creating a dialog
 					AlertDialog dialog = new AlertDialog.Builder(this)
 							.setMessage(R.string.message_confirm_deleteconversation_current)
@@ -867,10 +802,10 @@ public class Messaging extends CompositeActivity {
 							.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
 								//Removing the conversation from memory
 								ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-								if(conversations != null) conversations.remove(retainedFragment.conversationInfo);
+								if(conversations != null) conversations.remove(viewModel.conversationInfo);
 								
 								//Deleting the conversation from the database
-								DatabaseManager.getInstance().deleteConversation(retainedFragment.conversationInfo);
+								DatabaseManager.getInstance().deleteConversation(viewModel.conversationInfo);
 								
 								//Showing a toast
 								Toast.makeText(Messaging.this, R.string.message_conversation_deleted, Toast.LENGTH_SHORT).show();
@@ -883,7 +818,7 @@ public class Messaging extends CompositeActivity {
 					//Configuring the dialog's listener
 					dialog.setOnShowListener(dialogInterface -> {
 						//Setting the button's colors
-						int color = retainedFragment.conversationInfo.getConversationColor();
+						int color = viewModel.conversationInfo.getConversationColor();
 						dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
 						dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
 					});
@@ -913,7 +848,7 @@ public class Messaging extends CompositeActivity {
 	@Override
 	public boolean dispatchTouchEvent(MotionEvent event) {
 		//Returning if the current state isn't recording
-		if(retainedFragment.inputState != InputState.RECORDING) {
+		if(viewModel.inputState != ActivityViewModel.inputStateRecording) {
 			return super.dispatchTouchEvent(event);
 		}
 		
@@ -922,30 +857,29 @@ public class Messaging extends CompositeActivity {
 			//Moving the recording indicator
 			recordingIndicator.setX(event.getRawX() - (float) recordingIndicator.getWidth() / 2f);
 			
+			//Checking if the hover values do not match
+			boolean isOverDiscardZone = isPosOverDiscardZone(event.getRawX());
+			if(viewModel.recordingDiscardHover != isOverDiscardZone) {
+				//Getting the colors
+				int colorBG = Constants.resolveColorAttr(this, android.R.attr.colorBackgroundFloating);
+				int colorWarn = getResources().getColor(R.color.colorRecordingDiscard, null);
+				
+				ValueAnimator colorAnimation = ValueAnimator.ofObject(new ArgbEvaluator(), isOverDiscardZone ? colorBG : colorWarn, isOverDiscardZone ? colorWarn : colorBG);
+				colorAnimation.setDuration(250);
+				colorAnimation.addUpdateListener(animation -> recordingBar.setBackgroundColor((int) animation.getAnimatedValue()));
+				colorAnimation.start();
+				
+				//Updating the view model's hover value
+				viewModel.recordingDiscardHover = isOverDiscardZone;
+			}
+			
 			//Returning true
 			return true;
 		}
 		//Checking if the action is an up touch
 		else if(event.getAction() == MotionEvent.ACTION_UP) {
-			//Creating the force discard variable
-			boolean forceDiscard = false;
-			
-			//Getting the display width
-			DisplayMetrics displaymetrics = new DisplayMetrics();
-			getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-			int width = displaymetrics.widthPixels;
-			
-			//Checking if the layout is left-to-right
-			if(getResources().getBoolean(R.bool.is_left_to_right)) {
-				//Setting force discard to true if the touch is on the left 20% of the display
-				if(event.getRawX() < (float) width / 5) forceDiscard = true;
-			} else {
-				//Setting force discard to true if the touch is on the right 20% of the display
-				if(event.getRawX() > (float) width * 0.8) forceDiscard = true;
-			}
-			
-			//Stopping recording
-			stopRecording(forceDiscard, (int) event.getRawX());
+			//Stopping the recording session
+			stopRecording(isPosOverDiscardZone(event.getRawX()), (int) event.getRawX());
 			
 			//Returning true
 			return true;
@@ -956,9 +890,19 @@ public class Messaging extends CompositeActivity {
 		return false;
 	}
 	
+	private boolean isPosOverDiscardZone(float posX) {
+		//Getting the display width
+		DisplayMetrics displaymetrics = new DisplayMetrics();
+		getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
+		int width = displaymetrics.widthPixels;
+		
+		if(getResources().getBoolean(R.bool.is_left_to_right)) return posX < (float) width * 0.2F; //Left 20% of the display
+		else return posX > (float) width * 0.8F; //Right 20% of the display
+	}
+	
 	private void colorUI(ViewGroup root) {
 		//Getting the color
-		int color = retainedFragment.conversationInfo.getConversationColor();
+		int color = viewModel.conversationInfo.getConversationColor();
 		int darkerColor = ColorHelper.darkenColor(color);
 		int lighterColor = ColorHelper.lightenColor(color);
 		
@@ -982,7 +926,7 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		//Coloring the unique UI components
-		if(retainedFragment.lastUnreadCount == 0) bottomFAB.setImageTintList(ColorStateList.valueOf(color));
+		if(viewModel.lastUnreadCount == 0) bottomFAB.setImageTintList(ColorStateList.valueOf(color));
 		else bottomFAB.setBackgroundTintList(ColorStateList.valueOf(color));
 		bottomFABBadge.setBackgroundTintList(ColorStateList.valueOf(darkerColor));
 		findViewById(R.id.fab_bottom_splash).setBackgroundTintList(ColorStateList.valueOf(lighterColor));
@@ -1030,7 +974,7 @@ public class Messaging extends CompositeActivity {
 					@Override
 					public void onTextChanged(CharSequence s, int start, int before, int count) {
 						//Returning if the conversation details are invalid
-						if(retainedFragment.conversationInfo == null || retainedFragment.conversationItemList == null) return;
+						if(viewModel.conversationInfo == null || viewModel.conversationItemList == null) return;
 						
 						//Checking if there is no search text
 						if(s.length() == 0) {
@@ -1057,8 +1001,8 @@ public class Messaging extends CompositeActivity {
 						searchFilteredMessages.clear();
 						searchListIndexes.clear();
 						
-						for(int i = 0; i < retainedFragment.conversationItemList.size(); i++) {
-							ConversationManager.ConversationItem conversationItem = retainedFragment.conversationItemList.get(i);
+						for(int i = 0; i < viewModel.conversationItemList.size(); i++) {
+							ConversationManager.ConversationItem conversationItem = viewModel.conversationItemList.get(i);
 							if(!(conversationItem instanceof ConversationManager.MessageInfo)) continue;
 							ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
 							if(!Constants.containsIgnoreCase(messageInfo.getMessageText(), s.toString())) continue;
@@ -1091,6 +1035,10 @@ public class Messaging extends CompositeActivity {
 		
 		//Updating the current state
 		currentAppBarState = state;
+	}
+	
+	public void onClickRetryLoad(View view) {
+	
 	}
 	
 	public void onClickSearchPrevious(View view) {
@@ -1138,7 +1086,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void showContentBar() {
 		//Setting the input state to the content bar
-		retainedFragment.inputState = InputState.CONTENT;
+		viewModel.inputState = ActivityViewModel.inputStateContent;
 		
 		//Disabling the message bar
 		TransitionManager.beginDelayedTransition(messageBar, new ChangeBounds());
@@ -1170,7 +1118,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void hideContentBar() {
 		//Setting the input state to the message bar
-		retainedFragment.inputState = InputState.MESSAGE;
+		viewModel.inputState = ActivityViewModel.inputStateText;
 		
 		//Disabling the content bar
 		contentCloseButton.setEnabled(false);
@@ -1197,7 +1145,7 @@ public class Messaging extends CompositeActivity {
 			@Override
 			public void onAnimationEnd(Animator animation) {
 				//Returning if the state doesn't match
-				if(retainedFragment.inputState == InputState.CONTENT) return;
+				if(viewModel.inputState == ActivityViewModel.inputStateContent) return;
 				
 				//Hiding the content bar
 				contentBar.setVisibility(View.GONE);
@@ -1225,7 +1173,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void showRecordingBar() {
 		//Setting the input state to recording
-		retainedFragment.inputState = InputState.RECORDING;
+		viewModel.inputState = ActivityViewModel.inputStateRecording;
 		
 		//Disabling the content bar
 		contentCloseButton.setEnabled(false);
@@ -1250,7 +1198,7 @@ public class Messaging extends CompositeActivity {
 			@Override
 			public void onAnimationEnd(Animator animation) {
 				//Returning if the state doesn't match
-				if(retainedFragment.inputState == InputState.CONTENT) return;
+				if(viewModel.inputState == ActivityViewModel.inputStateContent) return;
 				
 				//Hiding the content bar
 				contentBar.setVisibility(View.GONE);
@@ -1271,7 +1219,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void hideRecordingBar(boolean toMessageInput, int positionX) {
 		//Setting the input state to the message input or content bar
-		retainedFragment.inputState = toMessageInput ? InputState.MESSAGE : InputState.CONTENT;
+		viewModel.inputState = toMessageInput ? ActivityViewModel.inputStateText : ActivityViewModel.inputStateContent;
 		
 		//Concealing the recording bar
 		Animator animator = ViewAnimationUtils.createCircularReveal(recordingBar, referenceBar.getLeft() + positionX, referenceBar.getTop() + referenceBar.getHeight() / 2, referenceBar.getWidth(), 0);
@@ -1285,8 +1233,7 @@ public class Messaging extends CompositeActivity {
 			@Override
 			public void onAnimationEnd(Animator animation) {
 				//Returning if the state doesn't match
-				if(retainedFragment.inputState == InputState.RECORDING)
-					return;
+				if(viewModel.inputState == ActivityViewModel.inputStateRecording) return;
 				
 				//Hiding the recording bar
 				recordingBar.setVisibility(View.GONE);
@@ -1326,50 +1273,11 @@ public class Messaging extends CompositeActivity {
 	}
 	
 	private boolean startRecording() {
-		//Setting up the media recorder
-		boolean result = setupMediaRecorder();
+		//Starting the recording
+		if(!viewModel.startRecording(this)) return false;
 		
-		//Returning false if the media recorder couldn't be set up
-		if(!result) return false;
-		
-		//Finding a target file
-		retainedFragment.mediaRecorderFile = MainApplication.findUploadFileTarget(this, Constants.recordingName);
-		
-		try {
-			//Creating the targets
-			if(!retainedFragment.mediaRecorderFile.getParentFile().mkdir()) throw new IOException();
-			//if(!targetFile.createNewFile()) throw new IOException();
-		} catch(IOException exception) {
-			//Printing the stack trace
-			exception.printStackTrace();
-			
-			//Returning
-			return false;
-		}
-		
-		//Setting the media recorder file
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) retainedFragment.mediaRecorder.setOutputFile(retainedFragment.mediaRecorderFile);
-		else retainedFragment.mediaRecorder.setOutputFile(retainedFragment.mediaRecorderFile.getAbsolutePath());
-		
-		try {
-			//Preparing the media recorder
-			retainedFragment.mediaRecorder.prepare();
-		} catch(IOException exception) {
-			//Printing the stack trace
-			exception.printStackTrace();
-			
-			//Returning
-			return false;
-		}
-		
-		//Resetting the recording duration
-		retainedFragment.recordingDuration = 0;
-		
-		//Setting the recording time text
-		recordingTimeLabel.setText(Constants.getFormattedDuration(0));
-		
-		//Showing the cancel text
-		//recordingBar.findViewById(R.id.recording_canceltext).setVisibility(View.VISIBLE);
+		//Resetting the recording bar's color
+		recordingBar.setBackgroundColor(Constants.resolveColorAttr(this, android.R.attr.colorBackgroundFloating));
 		
 		//Setting the recording indicator's Y
 		recordingIndicator.setY(inputBar.getTop() + inputBar.getHeight() / 2 - recordingIndicator.getHeight() / 2);
@@ -1380,14 +1288,8 @@ public class Messaging extends CompositeActivity {
 		animator.setInterpolator(new AccelerateDecelerateInterpolator());
 		animator.start();
 		
-		//Starting the timer
-		retainedFragment.recordingTimerHandler.postDelayed(retainedFragment.recordingTimerHandlerRunnable, 1000);
-		
 		//Showing the recording input
 		showRecordingBar();
-		
-		//Starting the media recorder
-		retainedFragment.mediaRecorder.start();
 		
 		//Returning true
 		return true;
@@ -1395,10 +1297,10 @@ public class Messaging extends CompositeActivity {
 	
 	void stopRecording(boolean forceDiscard, int positionX) {
 		//Returning if the input state is not recording
-		if(retainedFragment.inputState != InputState.RECORDING) return;
+		if(viewModel.inputState != ActivityViewModel.inputStateRecording) return;
 		
-		//Setting the input state to finished
-		//retainedFragment.inputState = InputState.MESSAGE;
+		//Stopping the recording session
+		boolean fileAvailable = viewModel.stopRecording(forceDiscard);
 		
 		//Concealing the recording indicator
 		Animator animator = ViewAnimationUtils.createCircularReveal(recordingIndicator, recordingIndicator.getLeft() + recordingIndicator.getWidth() / 2, recordingIndicator.getTop() + recordingIndicator.getWidth() / 2, recordingIndicator.getWidth(), 0);
@@ -1413,7 +1315,7 @@ public class Messaging extends CompositeActivity {
 			@Override
 			public void onAnimationEnd(Animator animation) {
 				//Returning if the state doesn't match
-				if(retainedFragment.inputState == InputState.RECORDING) return;
+				if(viewModel.inputState == ActivityViewModel.inputStateRecording) return;
 				
 				//Hiding the recording indicator
 				recordingIndicator.setVisibility(View.INVISIBLE);
@@ -1431,134 +1333,28 @@ public class Messaging extends CompositeActivity {
 		});
 		animator.start();
 		
-		//Disabling the recording button
-		//contentRecordButton.setEnabled(false);
-		
-		//Hiding the cancel text
-		//inputBar.findViewById(R.id.recording_canceltext).setVisibility(View.GONE);
-		
-		//Stopping the timer
-		retainedFragment.recordingTimerHandler.removeCallbacks(retainedFragment.recordingTimerHandlerRunnable);
-		
-		try {
-			//Stopping the media recorder
-			retainedFragment.mediaRecorder.stop();
-		} catch(RuntimeException stopException) { //The media recorder couldn't capture any media
-			//Showing a toast
-			Toast.makeText(Messaging.this, R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
-			
-			//Hiding the recording bar
-			int[] recordingButtonLocation = {0, 0};
-			contentRecordButton.getLocationOnScreen(recordingButtonLocation);
-			hideRecordingBar(false, referenceBar.getLeft() + recordingButtonLocation[0]);
-			
-			//Returning
-			return;
-		}
-		
-		//Checking if there was not enough time
-		if(retainedFragment.recordingDuration < 1) {
-			//Showing a toast
-			Toast.makeText(Messaging.this, R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
-			
-			//Setting force discard to true
-			forceDiscard = true;
-		}
-		
-		//Resetting the media recorder
-		retainedFragment.mediaRecorder.reset();
-		
-		//Checking if the recording should be discarded
-		if(forceDiscard) {
-			//Discarding the recording
-			discardRecording(positionX);
-			
-			//Returning
-			return;
-		}
-		
 		//Hiding the recording bar
-		int[] recordingButtonLocation = {0, 0};
+		/* int[] recordingButtonLocation = {0, 0};
 		contentRecordButton.getLocationOnScreen(recordingButtonLocation);
-		hideRecordingBar(true, recordingButtonLocation[0]);
-		
-		//Disabling the message bar
-		//setMessageBarState(false);
+		hideRecordingBar(fileAvailable, recordingButtonLocation[0]); */
+		hideRecordingBar(fileAvailable, positionX);
 		
 		//Sending the file
-		sendFile(retainedFragment.mediaRecorderFile);
-	}
-	
-	void discardRecording(int positionX) {
-		//Deleting the file if it exists
-		if(retainedFragment.mediaRecorderFile.exists())
-			retainedFragment.mediaRecorderFile.delete();
-		
-		//Hiding the recording bar
-		hideRecordingBar(false, positionX);
-	}
-	
-	private boolean setupMediaRecorder() {
-		//Returning false if the required permissions have not been granted
-		if(Constants.requestPermission(this, new String[]{Manifest.permission.RECORD_AUDIO}, Constants.permissionRecordAudio)) {
-			//Notifying the user via a toast
-			Toast.makeText(Messaging.this, R.string.message_permissiondetails_microphone_missing, Toast.LENGTH_SHORT).show();
-			
-			//Returning false
-			return false;
-		}
-		
-		//Setting the media recorder
-		if(retainedFragment.mediaRecorder == null) retainedFragment.mediaRecorder = new MediaRecorder();
-		else retainedFragment.mediaRecorder.reset();
-		
-		//Configuring the media recorder
-		retainedFragment.mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
-		retainedFragment.mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.AMR_NB);
-		retainedFragment.mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-		retainedFragment.mediaRecorder.setMaxDuration(10 * 60 * 1000); //10 minutes
-		
-		/* //Checking if the media recorder is invalid
-		if(retainedFragment.mediaRecorder == null) {
-			//Notifying the user via a toast
-			Toast.makeText(Messaging.this, R.string.failed_recording_error, Toast.LENGTH_SHORT).show();
-			
-			//Returning false
-			return false;
-		} */
-		
-		//Returning true
-		return true;
-	}
-	
-	private void invalidateMediaRecorder() {
-		//Discarding the recording
-		if(retainedFragment.inputState == InputState.RECORDING) {
-			int[] recordingButtonLocation = {0, 0};
-			contentRecordButton.getLocationOnScreen(recordingButtonLocation);
-			
-			discardRecording(referenceBar.getLeft() + recordingButtonLocation[0]);
-		}
-		
-		//Releasing the media recorder
-		if(retainedFragment.mediaRecorder != null) {
-			retainedFragment.mediaRecorder.release();
-			retainedFragment.mediaRecorder = null;
-		}
+		if(fileAvailable) sendFile(viewModel.targetFile);
 	}
 	
 	private String getInputBarMessage() {
 		//Returning a generic message if the service is invalid
-		if(retainedFragment.conversationInfo.getService() == null)
+		if(viewModel.conversationInfo.getService() == null)
 			return getResources().getString(R.string.imperative_messageinput);
 		
-		switch(retainedFragment.conversationInfo.getService()) {
+		switch(viewModel.conversationInfo.getService()) {
 			case Constants.serviceIDAppleMessage:
 				return getResources().getString(R.string.proper_imessage);
 			case Constants.serviceIDSMS:
 				return getResources().getString(R.string.proper_sms);
 			default:
-				return retainedFragment.conversationInfo.getService();
+				return viewModel.conversationInfo.getService();
 		}
 	}
 	
@@ -1681,7 +1477,7 @@ public class Messaging extends CompositeActivity {
 			bottomFAB.show();
 			
 			//Checking if there are unread messages
-			if(retainedFragment.conversationInfo.getUnreadMessageCount() > 0) {
+			if(viewModel.conversationInfo.getUnreadMessageCount() > 0) {
 				//Animating the badge (to go with the FAB appearance)
 				bottomFABBadge.setVisibility(View.VISIBLE);
 				bottomFABBadge.animate()
@@ -1695,7 +1491,7 @@ public class Messaging extends CompositeActivity {
 			bottomFAB.hide();
 			
 			//Checking if there are unread messages
-			if(retainedFragment.conversationInfo.getUnreadMessageCount() > 0) {
+			if(viewModel.conversationInfo.getUnreadMessageCount() > 0) {
 				//Hiding the badge (to go with the FAB disappearance)
 				bottomFABBadge.animate()
 						.scaleX(0)
@@ -1708,14 +1504,14 @@ public class Messaging extends CompositeActivity {
 	
 	void restoreUnreadIndicator() {
 		//Returning if the indicator shouldn't be visible
-		if(retainedFragment.conversationInfo.getUnreadMessageCount() == 0) return;
+		if(viewModel.conversationInfo.getUnreadMessageCount() == 0) return;
 		
 		//Coloring the FAB
-		bottomFAB.setBackgroundTintList(ColorStateList.valueOf(retainedFragment.conversationInfo.getConversationColor()));
+		bottomFAB.setBackgroundTintList(ColorStateList.valueOf(viewModel.conversationInfo.getConversationColor()));
 		bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
 		
 		//Updating the badge
-		bottomFABBadge.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? getResources().getConfiguration().getLocales().get(0) : getResources().getConfiguration().locale, "%d", retainedFragment.conversationInfo.getUnreadMessageCount()));
+		bottomFABBadge.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? getResources().getConfiguration().getLocales().get(0) : getResources().getConfiguration().locale, "%d", viewModel.conversationInfo.getUnreadMessageCount()));
 		bottomFABBadge.setVisibility(View.VISIBLE);
 		bottomFABBadge.setScaleX(1);
 		bottomFABBadge.setScaleY(1);
@@ -1723,19 +1519,19 @@ public class Messaging extends CompositeActivity {
 	
 	void updateUnreadIndicator() {
 		//Returning if the value has not changed
-		if(retainedFragment.lastUnreadCount == retainedFragment.conversationInfo.getUnreadMessageCount()) return;
+		if(viewModel.lastUnreadCount == viewModel.conversationInfo.getUnreadMessageCount()) return;
 		
 		//Getting the color
-		int colorTint = retainedFragment.conversationInfo.getConversationColor();
+		int colorTint = viewModel.conversationInfo.getConversationColor();
 		
 		//Checking if there are any unread messages
-		if(retainedFragment.conversationInfo.getUnreadMessageCount() > 0) {
+		if(viewModel.conversationInfo.getUnreadMessageCount() > 0) {
 			//Coloring the FAB
-			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(retainedFragment.conversationInfo.getConversationColor()));
+			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(viewModel.conversationInfo.getConversationColor()));
 			bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
 			
 			//Updating the badge text
-			bottomFABBadge.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? getResources().getConfiguration().getLocales().get(0) : getResources().getConfiguration().locale, "%d", retainedFragment.conversationInfo.getUnreadMessageCount()));
+			bottomFABBadge.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? getResources().getConfiguration().getLocales().get(0) : getResources().getConfiguration().locale, "%d", viewModel.conversationInfo.getUnreadMessageCount()));
 			
 			//Animating the badge
 			if(bottomFAB.isShown()) {
@@ -1750,7 +1546,7 @@ public class Messaging extends CompositeActivity {
 			}
 			
 			//Checking if there were previously no unread messages and the FAB is visible
-			if(retainedFragment.lastUnreadCount == 0 && bottomFAB.isShown()) {
+			if(viewModel.lastUnreadCount == 0 && bottomFAB.isShown()) {
 				//Animating the splash
 				View bottomSplash = findViewById(R.id.fab_bottom_splash);
 				bottomSplash.setScaleX(1);
@@ -1780,7 +1576,7 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		//Setting the last unread message count
-		retainedFragment.lastUnreadCount = retainedFragment.conversationInfo.getUnreadMessageCount();
+		viewModel.lastUnreadCount = viewModel.conversationInfo.getUnreadMessageCount();
 	}
 	
 	@Override
@@ -1818,7 +1614,7 @@ public class Messaging extends CompositeActivity {
 				//Configuring the dialog's listener
 				dialog.setOnShowListener(dialogInterface -> {
 					//Setting the button's colors
-					int color = retainedFragment.conversationInfo.getConversationColor();
+					int color = viewModel.conversationInfo.getConversationColor();
 					dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
 					dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(color);
 					dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
@@ -1844,12 +1640,12 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		//Finding a free file
-		currentSendFile = MainApplication.findUploadFileTarget(this, Constants.pictureName);
+		viewModel.targetFile = MainApplication.findUploadFileTarget(this, Constants.pictureName);
 		
 		try {
 			//Creating the targets
-			if(!currentSendFile.getParentFile().mkdir()) throw new IOException();
-			if(!currentSendFile.createNewFile()) throw new IOException();
+			if(!viewModel.targetFile.getParentFile().mkdir()) throw new IOException();
+			//if(!viewModel.targetFile.createNewFile()) throw new IOException();
 		} catch(IOException exception) {
 			//Printing the stack trace
 			exception.printStackTrace();
@@ -1859,13 +1655,13 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		//Getting the content uri
-		Uri imageUri = FileProvider.getUriForFile(this, MainApplication.fileAuthority, currentSendFile);
+		Uri imageUri = FileProvider.getUriForFile(this, MainApplication.fileAuthority, viewModel.targetFile);
 		
 		//Setting the clip data
 		takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
 		
 		//Setting the file path (for future reference)
-		takePictureIntent.putExtra(Constants.intentParamDataFile, currentSendFile);
+		//takePictureIntent.putExtra(Constants.intentParamDataFile, viewModel.targetFile);
 		
 		//Starting the activity
 		startActivityForResult(takePictureIntent, Constants.intentTakePicture);
@@ -1910,7 +1706,7 @@ public class Messaging extends CompositeActivity {
 		ArrayList<Long> list = new ArrayList<>();
 		
 		//Iterating over the loaded conversations
-		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext();) {
+		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext(); ) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			
@@ -1933,7 +1729,7 @@ public class Messaging extends CompositeActivity {
 		ArrayList<Long> list = new ArrayList<>();
 		
 		//Iterating over the loaded conversations
-		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
+		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext(); ) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			
@@ -1953,7 +1749,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void sendFile(File file) {
 		//Creating a message
-		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, retainedFragment.conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 		
 		//Starting the task
 		new SendFilePreparationTask(this, messageInfo, file).execute();
@@ -1961,7 +1757,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void sendFile(Uri uri) {
 		//Creating a message
-		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, retainedFragment.conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 		
 		//Starting the task
 		new SendFilePreparationTask(this, messageInfo, uri).execute();
@@ -2092,6 +1888,7 @@ public class Messaging extends CompositeActivity {
 	}
 	
 	private static final long confettiDuration = 1000;
+	
 	void playCurrentSendEffect() {
 		//Returning if an effect is already playing
 		if(currentScreenEffectPlaying) return;
@@ -2143,16 +1940,6 @@ public class Messaging extends CompositeActivity {
 		messageListAdapter.notifyItemRangeInserted(0, itemCount); //Inserting the new items
 	}
 	
-	public RetainedFragment.AudioMessageManager getAudioMessageManager() {
-		return retainedFragment.audioMessageManager;
-	}
-	
-	private enum InputState {
-		MESSAGE,
-		CONTENT,
-		RECORDING
-	}
-	
 	class RecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 		//Creating the reference values
 		private static final int itemTypeLoadingBar = -1;
@@ -2180,7 +1967,8 @@ public class Messaging extends CompositeActivity {
 			this.recyclerView = recyclerView;
 		}
 		
-		@Override @NonNull
+		@Override
+		@NonNull
 		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			//Returning the correct view holder
 			switch(viewType) {
@@ -2190,7 +1978,7 @@ public class Messaging extends CompositeActivity {
 					return new ConversationManager.ActionLineViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_action, parent, false));
 				case itemTypeLoadingBar: {
 					View loadingView = LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_loading, parent, false);
-					((ProgressBar) loadingView.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(retainedFragment.conversationInfo.getConversationColor()));
+					((ProgressBar) loadingView.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(viewModel.conversationInfo.getConversationColor()));
 					return new LoadingViewHolder(loadingView);
 				}
 				default:
@@ -2205,7 +1993,7 @@ public class Messaging extends CompositeActivity {
 			
 			//Getting the item
 			ConversationManager.ConversationItem conversationItem;
-			if(retainedFragment.progressiveLoadInProgress) conversationItem = conversationItems.get(position - 1);
+			if(viewModel.isProgressiveLoadInProgress()) conversationItem = conversationItems.get(position - 1);
 			else conversationItem = conversationItems.get(position);
 			
 			if(conversationItem instanceof ConversationManager.MessageInfo) ((ConversationManager.MessageInfo.ViewHolder) holder).setPoolSource(poolSource);
@@ -2218,12 +2006,6 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		@Override
-		public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
-			//Releasing the view holder's views
-			
-		}
-		
-		@Override
 		public void onViewDetachedFromWindow(@NonNull RecyclerView.ViewHolder holder) {
 			//Clearing the view's animation
 			holder.itemView.clearAnimation();
@@ -2232,24 +2014,24 @@ public class Messaging extends CompositeActivity {
 		@Override
 		public int getItemCount() {
 			int size = conversationItems.size();
-			if(retainedFragment.progressiveLoadInProgress) size += 1;
+			if(viewModel.isProgressiveLoadInProgress()) size += 1;
 			return size;
 		}
 		
 		@Override
 		public int getItemViewType(int position) {
 			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
-			return conversationItems.get(position - (retainedFragment.progressiveLoadInProgress ? 1 : 0)).getItemViewType();
+			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getItemViewType();
 		}
 		
 		@Override
 		public long getItemId(int position) {
 			if(isViewLoadingSpinner(position)) return -1;
-			return conversationItems.get(position - (retainedFragment.progressiveLoadInProgress ? 1 : 0)).getLocalID();
+			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getLocalID();
 		}
 		
 		private boolean isViewLoadingSpinner(int position) {
-			return retainedFragment.progressiveLoadInProgress && position == 0;
+			return viewModel.isProgressiveLoadInProgress() && position == 0;
 		}
 		
 		final class PoolSource {
@@ -2349,399 +2131,466 @@ public class Messaging extends CompositeActivity {
 		}
 	}
 	
-	public static class RetainedFragment extends Fragment {
-		//Creating the task values
-		private Messaging parentActivity;
+	private static class ActivityViewModel extends Constants.ActivityViewModel<Messaging> {
+		//Creating the reference values
+		static final byte inputStateText = 0;
+		static final byte inputStateContent = 1;
+		static final byte inputStateRecording = 2;
 		
-		//Creating the general state values
-		InputState inputState = InputState.MESSAGE;
-		boolean restartingFromConfigChange = false;
-		private static final byte messagesStateUnloaded = 0;
-		private static final byte messagesStateLoading = 1;
-		private static final byte messagesStateLoaded = 2;
-		private static final byte messagesStateFailed = 3;
-		byte messagesState = messagesStateUnloaded;
-		boolean progressiveLoadInProgress = false;
+		static final byte messagesStateIdle = 0;
+		static final byte messagesStateLoadingConversation = 1;
+		static final byte messagesStateLoadingMessages = 2;
+		static final byte messagesStateFailedConversation = 3;
+		static final byte messagesStateFailedMessages = 4;
+		static final byte messagesStateReady = 5;
+		
+		//Creating the state values
+		byte inputState = inputStateText;
+		MutableLiveData<Byte> messagesState = new MutableLiveData<>();
+		
+		MutableLiveData<Boolean> progressiveLoadInProgress = new MutableLiveData<>();
 		boolean progressiveLoadReachedLimit = false;
+		int lastProgressiveLoadCount = -1;
 		
 		int lastUnreadCount = 0;
 		
+		//Creating the conversation values
 		private long conversationID;
 		private ConversationManager.ConversationInfo conversationInfo;
 		private ArrayList<ConversationManager.ConversationItem> conversationItemList = new ArrayList<>();
 		private ArrayList<ConversationManager.MessageInfo> conversationGhostList = new ArrayList<>();
 		
-		//Creating the audio state values
-		int recordingDuration = 0;
+		//Creating the attachment values
+		File targetFile = null;
+		
+		Messaging.AudioMessageManager audioMessageManager = new AudioMessageManager();
+		
+		MutableLiveData<Integer> recordingDuration = new MutableLiveData<>();
+		boolean recordingDiscardHover = false; //If the user is hovering the recording indicator over the discard zone
 		MediaRecorder mediaRecorder = null;
-		File mediaRecorderFile = null;
-		AudioMessageManager audioMessageManager = new AudioMessageManager();
-		final Handler recordingTimerHandler = new Handler(Looper.getMainLooper());
-		final Runnable recordingTimerHandlerRunnable = new Runnable() {
+		private final Handler recordingTimerHandler = new Handler(Looper.getMainLooper());
+		private final Runnable recordingTimerHandlerRunnable = new Runnable() {
 			@Override
 			public void run() {
 				//Adding a second
-				recordingDuration++;
+				recordingDuration.setValue(recordingDuration.getValue() + 1);
 				
-				//Updating the time
-				if(parentActivity != null) parentActivity.onAudioRecordingTimeUpdate(Constants.getFormattedDuration(recordingDuration));
-				
-				//Running again
+				//Scheduling the next run
 				recordingTimerHandler.postDelayed(this, 1000);
 			}
 		};
 		
-		/**
-		 * Hold a reference to the parent Activity so we can report the
-		 * task's current progress and results. The Android framework
-		 * will pass us a reference to the newly created Activity after
-		 * each configuration change.
-		 */
-		@Override
-		public void onAttach(Context context) {
-			//Calling the super method
-			super.onAttach(context);
+		ActivityViewModel(@NonNull Messaging activity, long conversationID) {
+			super(activity);
 			
-			//Getting the parent activity
-			parentActivity = (Messaging) context;
-		}
-		
-		/**
-		 * This method will only be called once when the retained
-		 * Fragment is first created.
-		 */
-		@Override
-		public void onCreate(Bundle savedInstanceState) {
-			//Calling the super method
-			super.onCreate(savedInstanceState);
+			//Setting the values
+			this.conversationID = conversationID;
 			
-			//Retain this fragment across configuration changes
-			setRetainInstance(true);
+			//Loading the data
+			loadConversation();
+		}
+		
+		@Override
+		protected void onCleared() {
+			//Cleaning up the media recorder
+			if(inputState == inputStateRecording) stopRecording(true);
+			if(mediaRecorder != null) mediaRecorder.release();
+			
+			//Releasing the audio player
+			audioMessageManager.release();
+			
+			//Checking if the conversation is valid
+			if(conversationInfo != null) {
+				//Clearing the messages
+				conversationInfo.clearMessages();
+				
+				//Updating the conversation's unread message count
+				conversationInfo.updateUnreadStatus(MainApplication.getInstance());
+				new UpdateUnreadMessageCount(MainApplication.getInstance(), conversationID, conversationInfo.getUnreadMessageCount()).execute();
+			}
 		}
 		
 		/**
-		 * Set the callback to null so we don't accidentally leak the
-		 * Activity instance.
+		 * Loads the conversation and its messages
 		 */
-		@Override
-		public void onDetach() {
-			super.onDetach();
-			parentActivity = null;
+		@SuppressLint("StaticFieldLeak")
+		void loadConversation() {
+			//Updating the state
+			messagesState.setValue(messagesStateLoadingConversation);
+			
+			//Loading the conversation
+			conversationInfo = ConversationManager.findConversationInfo(conversationID);
+			if(conversationInfo != null) loadMessages();
+			else new AsyncTask<Void, Void, ConversationManager.ConversationInfo>() {
+				@Override
+				protected ConversationManager.ConversationInfo doInBackground(Void... args) {
+					Context context = getActivity();
+					if(context == null) return null;
+					
+					return DatabaseManager.getInstance().fetchConversationInfo(context, conversationID);
+				}
+				
+				@Override
+				protected void onPostExecute(ConversationManager.ConversationInfo result) {
+					//Setting the state to failed if the conversation info couldn't be fetched
+					if(result == null) messagesState.setValue(messagesStateFailedConversation);
+					else {
+						conversationInfo = result;
+						loadMessages();
+					}
+				}
+			}.execute();
 		}
 		
-		void loadConversation(Context context) {
-			//Starting the task
-			new LoadConversationTask(context, this, conversationID).execute();
-		}
-		
+		@SuppressLint("StaticFieldLeak")
 		void loadMessages() {
-			//Starting the task
-			new LoadMessagesTask(this, conversationInfo).execute();
+			//Updating the state
+			messagesState.setValue(messagesStateLoadingMessages);
+			
+			//Loading the messages
+			new AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationItem>>() {
+				@Override
+				protected ArrayList<ConversationManager.ConversationItem> doInBackground(Void... params) {
+					//Loading the conversation items
+					ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0);
+					
+					//Setting up the conversation item relations
+					ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
+					
+					//Returning the conversation items
+					return conversationItems;
+				}
+				
+				@Override
+				protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> messages) {
+					//Returning if the conversation isn't loaded anymore
+					if(!ConversationManager.getForegroundConversations().contains(conversationInfo)) return;
+					
+					//Checking if the messages are invalid
+					if(messages == null) {
+						//Setting the state
+						messagesState.setValue(messagesStateFailedMessages);
+						
+						//Returning
+						return;
+					}
+					
+					//Setting the state
+					messagesState.setValue(messagesStateReady);
+					
+					//Recording the lists in the conversation info
+					conversationInfo.setConversationItems(conversationItemList, conversationGhostList);
+					
+					//Replacing the conversation items
+					conversationInfo.replaceConversationItems(MainApplication.getInstance(), messages);
+					
+					//Marking all messages as read (list will always be scrolled to the bottom)
+					conversationInfo.setUnreadMessageCount(0);
+				}
+			}.execute();
 		}
 		
+		@SuppressLint("StaticFieldLeak")
 		void loadNextChunk() {
 			//Returning if the conversation isn't ready, a load is already in progress or there are no conversation items
-			if(messagesState != messagesStateLoaded || progressiveLoadInProgress || progressiveLoadReachedLimit || conversationInfo.getConversationItems().isEmpty()) return;
+			if(messagesState.getValue() != messagesStateReady || isProgressiveLoadInProgress() || progressiveLoadReachedLimit || conversationInfo.getConversationItems().isEmpty()) return;
 			
 			//Setting the flags
-			progressiveLoadInProgress = true;
-			parentActivity.onProgressiveLoadStart();
+			progressiveLoadInProgress.setValue(true);
 			
 			//Loading a chunk
-			new LoadChunkTask(this, conversationInfo).execute();
-		}
-		
-		private static class LoadConversationTask extends AsyncTask<Void, Void, ConversationManager.ConversationInfo> {
-			//Creating the request values
-			private final WeakReference<Context> contextReference;
-			private final WeakReference<RetainedFragment> superclassReference;
-			private final long identifier;
-			
-			LoadConversationTask(Context context, RetainedFragment superclass, long identifier) {
-				//Setting the request values
-				contextReference = new WeakReference<>(context);
-				superclassReference = new WeakReference<>(superclass);
-				this.identifier = identifier;
-			}
-			
-			@Override
-			protected ConversationManager.ConversationInfo doInBackground(Void... voids) {
-				//Getting the context
-				Context context = contextReference.get();
-				if(context == null) return null;
-				
-				//Returning the conversation
-				return DatabaseManager.getInstance().fetchConversationInfo(context, identifier);
-			}
-			
-			@Override
-			protected void onPostExecute(ConversationManager.ConversationInfo conversationInfo) {
-				//Getting the superclass
-				RetainedFragment superclass = superclassReference.get();
-				if(superclass == null) return;
-				
-				//Setting the conversation
-				superclass.conversationInfo = conversationInfo;
-				
-				//Updating the activity
-				if(superclass.parentActivity != null) {
-					if(conversationInfo == null) superclass.parentActivity.onConversationLoadFailed();
-					else superclass.parentActivity.applyConversation();
-				}
-			}
-		}
-		
-		private static class LoadMessagesTask extends AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationItem>> {
-			//Creating the values
-			private final WeakReference<RetainedFragment> fragmentReference;
-			
-			private final ConversationManager.ConversationInfo conversationInfo;
-			
-			LoadMessagesTask(RetainedFragment retainedFragment, ConversationManager.ConversationInfo conversationInfo) {
-				//Setting the references
-				fragmentReference = new WeakReference<>(retainedFragment);
-				
-				//Setting the values
-				this.conversationInfo = conversationInfo;
-			}
-			
-			@Override
-			protected void onPreExecute() {
-				//Setting the messages state
-				fragmentReference.get().messagesState = messagesStateLoading;
-			}
-			
-			@Override
-			protected ArrayList<ConversationManager.ConversationItem> doInBackground(Void... params) {
-				//Getting the fragment
-				RetainedFragment retainedFragment = fragmentReference.get();
-				if(retainedFragment == null) return null;
-				
-				//Loading the conversation items
-				ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0);
-				//ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.loadConversationItems(DatabaseManager.getReadableDatabase(retainedFragment.getContext()), conversationInfo);
-				
-				//Setting up the conversation item relations
-				ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
-				
-				//Returning the conversation items
-				return conversationItems;
-			}
-			
-			@Override
-			protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> messages) {
-				//Returning if the conversation isn't loaded anymore
-				if(!ConversationManager.getForegroundConversations().contains(conversationInfo)) return;
-				
-				//Getting the fragment
-				RetainedFragment retainedFragment = fragmentReference.get();
-				if(retainedFragment == null || retainedFragment.getContext() == null) return;
-				
-				//Checking if the messages are invalid
-				if(messages == null) {
-					//Setting the state
-					retainedFragment.messagesState = messagesStateFailed;
-					
-					//Calling the failed method
-					//retainedFragment.parentActivity.onMessagesFailed();
-					
-					//Returning
-					return;
-				}
-				
-				//Setting the state
-				retainedFragment.messagesState = messagesStateLoaded;
-				
-				//Recording the lists in the conversation info
-				conversationInfo.setConversationItems(retainedFragment.conversationItemList, retainedFragment.conversationGhostList);
-				
-				//Replacing the conversation items
-				conversationInfo.replaceConversationItems(retainedFragment.getContext(), messages);
-				
-				//Marking all messages as read (list will always be scrolled to the bottom)
-				conversationInfo.setUnreadMessageCount(0);
-				
-				//Telling the callbacks
-				retainedFragment.parentActivity.onMessagesLoaded();
-			}
-		}
-		
-		private static class LoadChunkTask extends AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationItem>> {
-			//Creating the values
-			private final WeakReference<RetainedFragment> fragmentReference;
-			
-			private final ConversationManager.ConversationInfo conversationInfo;
-			private final long lastMessageDate;
-			
-			LoadChunkTask(RetainedFragment retainedFragment, ConversationManager.ConversationInfo conversationInfo) {
-				//Setting the references
-				fragmentReference = new WeakReference<>(retainedFragment);
-				
-				//Setting the values
-				this.conversationInfo = conversationInfo;
-				lastMessageDate = conversationInfo.getConversationItems().get(0).getDate();
-			}
-			
-			@Override
-			protected ArrayList<ConversationManager.ConversationItem> doInBackground(Void... params) {
-				//Getting the fragment
-				RetainedFragment retainedFragment = fragmentReference.get();
-				if(retainedFragment == null) return null;
-				
-				//Loading the conversation items
-				return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, lastMessageDate);
-			}
-			
-			@Override
-			protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> conversationItems) {
-				//Getting the fragment
-				RetainedFragment retainedFragment = fragmentReference.get();
-				if(retainedFragment == null) return;
-				
-				//Updating the activity
-				if(retainedFragment.parentActivity != null) retainedFragment.parentActivity.onProgressiveLoadFinish(conversationItems.size());
-				
-				//Checking if there are no new conversation items
-				if(conversationItems.isEmpty()) {
-					//Finishing the progressive load
-					retainedFragment.progressiveLoadInProgress = false;
-					
-					//Disabling the progressive load (there are no more items to load)
-					retainedFragment.progressiveLoadReachedLimit = true;
-					
-					//Returning
-					return;
-				}
-				
-				//Loading the items
-				List<ConversationManager.ConversationItem> allItems = conversationInfo.getConversationItems();
-				if(allItems == null) return;
-				
-				//Adding the items
-				conversationInfo.addChunk(conversationItems);
-				
-				//Updating the items' relations
-				ConversationManager.addConversationItemRelations(conversationInfo, allItems, conversationItems, retainedFragment.getContext(), true);
-				
-				retainedFragment.progressiveLoadInProgress = false;
-			}
-		}
-		
-		static class AudioMessageManager {
-			//Creating the values
-			private MediaPlayer mediaPlayer = new MediaPlayer();
-			private String currentFilePath = "";
-			private WeakReference<ConversationManager.AudioAttachmentInfo> attachmentReference;
-			private Handler mediaPlayerHandler = new Handler(Looper.getMainLooper());
-			private Runnable mediaPlayerHandlerRunnable = new Runnable() {
+			long lastMessageDate = conversationInfo.getConversationItems().get(0).getDate();
+			new AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationItem>>() {
 				@Override
-				public void run() {
-					//Updating the attachment
-					ConversationManager.AudioAttachmentInfo attachment = getAttachmentInfo();
-					if(attachment != null) attachment.setMediaProgress(mediaPlayer.getCurrentPosition());
-					
-					//Running again
-					mediaPlayerHandler.postDelayed(this, 10);
-				}
-			};
-			
-			AudioMessageManager() {
-				//Setting the media player listeners
-				mediaPlayer.setOnPreparedListener(player -> {
-					//Playing the media
-					player.start();
-					
-					//Starting the timer
-					mediaPlayerHandlerRunnable.run();
-					
-					//Updating the attachment
-					ConversationManager.AudioAttachmentInfo attachment = getAttachmentInfo();
-					if(attachment != null) attachment.setMediaPlaying(true);
-				});
-				mediaPlayer.setOnCompletionListener(player -> {
-					//Cancelling the timer
-					mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
-					
-					//Updating the attachment
-					ConversationManager.AudioAttachmentInfo attachment = getAttachmentInfo();
-					if(attachment != null) attachment.resetPlaying();
-				});
-			}
-			
-			private ConversationManager.AudioAttachmentInfo getAttachmentInfo() {
-				if(attachmentReference == null) return null;
-				return attachmentReference.get();
-			}
-			
-			void release() {
-				//Cancelling the timer
-				if(mediaPlayer.isPlaying()) mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
-				
-				//Releasing the media player
-				mediaPlayer.release();
-			}
-			
-			void prepareMediaPlayer(long messageID, File file, ConversationManager.AudioAttachmentInfo attachmentInfo) {
-				//Returning if the attachment is already playing
-				if(currentFilePath.equals(file.getPath())) return;
-				
-				//Cancelling the timer
-				if(mediaPlayer.isPlaying()) mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
-				
-				//Resetting the media player
-				mediaPlayer.reset();
-				
-				//Resetting the old view
-				{
-					ConversationManager.AudioAttachmentInfo oldAttachmentInfo = getAttachmentInfo();
-					if(oldAttachmentInfo != null) oldAttachmentInfo.resetPlaying();
+				protected ArrayList<ConversationManager.ConversationItem> doInBackground(Void... params) {
+					//Loading the conversation items
+					return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, lastMessageDate);
 				}
 				
-				try {
-					//Creating the media player
-					mediaPlayer.setDataSource(file.getPath());
-				} catch(IOException exception) {
-					//Printing the stack trace
-					exception.printStackTrace();
+				@Override
+				protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> conversationItems) {
+					//Setting the progressive load count
+					lastProgressiveLoadCount = conversationItems.size();
 					
-					//Returning
-					return;
+					//Checking if there are no new conversation items
+					if(conversationItems.isEmpty()) {
+						//Disabling the progressive load (there are no more items to load)
+						progressiveLoadReachedLimit = true;
+						
+						//Returning
+						return;
+					} else {
+						//Loading the items
+						List<ConversationManager.ConversationItem> allItems = conversationInfo.getConversationItems();
+						if(allItems == null) return;
+						
+						//Adding the items
+						conversationInfo.addChunk(conversationItems);
+						
+						//Updating the items' relations
+						ConversationManager.addConversationItemRelations(conversationInfo, allItems, conversationItems, MainApplication.getInstance(), true);
+					}
+					
+					//Finishing the progressive load
+					progressiveLoadInProgress.setValue(false);
 				}
+			}.execute();
+		}
+		
+		boolean isProgressiveLoadInProgress() {
+			Boolean value = progressiveLoadInProgress.getValue();
+			return value == null ? false : value;
+		}
+		
+		/* int getRecordingDuration() {
+			Integer value = recordingDuration.getValue();
+			if(value == null) return 0;
+			return value;
+		} */
+		
+		void startRecordingTimer() {
+			recordingDuration.setValue(0);
+			recordingTimerHandler.postDelayed(recordingTimerHandlerRunnable, 1000);
+		}
+		
+		void stopRecordingTimer() {
+			recordingTimerHandler.removeCallbacks(recordingTimerHandlerRunnable);
+		}
+		
+		private boolean startRecording(Activity activity) {
+			//Setting up the media recorder
+			boolean result = setupMediaRecorder(activity);
+			
+			//Returning false if the media recorder couldn't be set up
+			if(!result) return false;
+			
+			//Finding a target file
+			targetFile = MainApplication.findUploadFileTarget(activity, Constants.recordingName);
+			
+			try {
+				//Creating the targets
+				if(!targetFile.getParentFile().mkdir()) throw new IOException();
+				//if(!targetFile.createNewFile()) throw new IOException();
+			} catch(IOException exception) {
+				//Printing the stack trace
+				exception.printStackTrace();
 				
-				//Setting the attachment reference
-				attachmentReference = new WeakReference<>(attachmentInfo);
-				
-				//Setting the values
-				currentFilePath = file.getPath();
-				
-				//Preparing the media player
-				mediaPlayer.prepareAsync();
+				//Returning
+				return false;
 			}
 			
-			boolean isCurrentMessage(File file) {
-				return currentFilePath.equals(file.getPath());
+			//Setting the media recorder file
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) mediaRecorder.setOutputFile(targetFile);
+			else mediaRecorder.setOutputFile(targetFile.getAbsolutePath());
+			
+			try {
+				//Preparing the media recorder
+				mediaRecorder.prepare();
+			} catch(IOException exception) {
+				//Printing the stack trace
+				exception.printStackTrace();
+				
+				//Returning
+				return false;
 			}
 			
-			void togglePlaying() {
-				//Checking if the media player is playing
-				if(mediaPlayer.isPlaying()) {
-					//Pausing the media player
-					mediaPlayer.pause();
-					
-					//Cancelling the playback timer
-					mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
-				} else {
-					//Playing the media player
-					mediaPlayer.start();
-					
-					//Starting the playback timer
-					mediaPlayerHandlerRunnable.run();
-				}
+			//Starting the recording timer
+			startRecordingTimer();
+			
+			//Starting the media recorder
+			mediaRecorder.start();
+			
+			//Resetting the flags
+			recordingDiscardHover = false;
+			
+			//Returning true
+			return true;
+		}
+		
+		/**
+		 * Stops the current recording session
+		 * @param discard whether the file should be discarded or not
+		 * @return the file's availability (to be able to use or send)
+		 */
+		private boolean stopRecording(boolean discard) {
+			//Returning false if the input state is not recording
+			if(inputState != inputStateRecording) return true;
+			
+			//Stopping the timer
+			stopRecordingTimer();
+			
+			try {
+				//Stopping the media recorder
+				mediaRecorder.stop();
+			} catch(RuntimeException stopException) { //The media recorder couldn't capture any media
+				//Showing a toast
+				Toast.makeText(MainApplication.getInstance(), R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
 				
-				//Telling the attachment
+				//Returning false
+				return false;
+			}
+			
+			//Checking if the recording was under a second
+			if(recordingDuration.getValue() < 1) {
+				//Showing a toast
+				Toast.makeText(MainApplication.getInstance(), R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
+				
+				//Discarding the file
+				discard = true;
+			}
+			
+			//Checking if the recording should be discarded
+			if(discard) {
+				//Deleting the file
+				targetFile.delete();
+				
+				//Returning false
+				return false;
+			}
+			
+			//Returning true
+			return true;
+		}
+		
+		private boolean setupMediaRecorder(Activity activity) {
+			//Returning false if the required permissions have not been granted
+			if(Constants.requestPermission(activity, new String[]{Manifest.permission.RECORD_AUDIO}, Constants.permissionRecordAudio)) {
+				//Notifying the user via a toast
+				Toast.makeText(activity, R.string.message_permissiondetails_microphone_missing, Toast.LENGTH_SHORT).show();
+				
+				//Returning false
+				return false;
+			}
+			
+			//Setting the media recorder
+			if(mediaRecorder == null) mediaRecorder = new MediaRecorder();
+			else mediaRecorder.reset();
+			
+			//Configuring the media recorder
+			mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+			mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.AMR_NB);
+			mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+			mediaRecorder.setMaxDuration(10 * 60 * 1000); //10 minutes
+			
+			//Returning true
+			return true;
+		}
+	}
+	
+	static class AudioMessageManager {
+		//Creating the values
+		private MediaPlayer mediaPlayer = new MediaPlayer();
+		private String currentFilePath = "";
+		private WeakReference<ConversationManager.AudioAttachmentInfo> attachmentReference;
+		private Handler mediaPlayerHandler = new Handler(Looper.getMainLooper());
+		private Runnable mediaPlayerHandlerRunnable = new Runnable() {
+			@Override
+			public void run() {
+				//Updating the attachment
 				ConversationManager.AudioAttachmentInfo attachment = getAttachmentInfo();
-				if(attachment != null) attachment.setMediaPlaying(mediaPlayer.isPlaying());
+				if(attachment != null) attachment.setMediaProgress(mediaPlayer.getCurrentPosition());
+				
+				//Running again
+				mediaPlayerHandler.postDelayed(this, 10);
 			}
+		};
+		
+		AudioMessageManager() {
+			//Setting the media player listeners
+			mediaPlayer.setOnPreparedListener(player -> {
+				//Playing the media
+				player.start();
+				
+				//Starting the timer
+				mediaPlayerHandlerRunnable.run();
+				
+				//Updating the attachment
+				ConversationManager.AudioAttachmentInfo attachment = getAttachmentInfo();
+				if(attachment != null) attachment.setMediaPlaying(true);
+			});
+			mediaPlayer.setOnCompletionListener(player -> {
+				//Cancelling the timer
+				mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
+				
+				//Updating the attachment
+				ConversationManager.AudioAttachmentInfo attachment = getAttachmentInfo();
+				if(attachment != null) attachment.resetPlaying();
+			});
+		}
+		
+		private ConversationManager.AudioAttachmentInfo getAttachmentInfo() {
+			if(attachmentReference == null) return null;
+			return attachmentReference.get();
+		}
+		
+		void release() {
+			//Cancelling the timer
+			if(mediaPlayer.isPlaying()) mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
+			
+			//Releasing the media player
+			mediaPlayer.release();
+		}
+		
+		void prepareMediaPlayer(long messageID, File file, ConversationManager.AudioAttachmentInfo attachmentInfo) {
+			//Returning if the attachment is already playing
+			if(currentFilePath.equals(file.getPath())) return;
+			
+			//Cancelling the timer
+			if(mediaPlayer.isPlaying()) mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
+			
+			//Resetting the media player
+			mediaPlayer.reset();
+			
+			//Resetting the old view
+			{
+				ConversationManager.AudioAttachmentInfo oldAttachmentInfo = getAttachmentInfo();
+				if(oldAttachmentInfo != null) oldAttachmentInfo.resetPlaying();
+			}
+			
+			try {
+				//Creating the media player
+				mediaPlayer.setDataSource(file.getPath());
+			} catch(IOException exception) {
+				//Printing the stack trace
+				exception.printStackTrace();
+				
+				//Returning
+				return;
+			}
+			
+			//Setting the attachment reference
+			attachmentReference = new WeakReference<>(attachmentInfo);
+			
+			//Setting the values
+			currentFilePath = file.getPath();
+			
+			//Preparing the media player
+			mediaPlayer.prepareAsync();
+		}
+		
+		boolean isCurrentMessage(File file) {
+			return currentFilePath.equals(file.getPath());
+		}
+		
+		void togglePlaying() {
+			//Checking if the media player is playing
+			if(mediaPlayer.isPlaying()) {
+				//Pausing the media player
+				mediaPlayer.pause();
+				
+				//Cancelling the playback timer
+				mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
+			} else {
+				//Playing the media player
+				mediaPlayer.start();
+				
+				//Starting the playback timer
+				mediaPlayerHandlerRunnable.run();
+			}
+			
+			//Telling the attachment
+			ConversationManager.AudioAttachmentInfo attachment = getAttachmentInfo();
+			if(attachment != null) attachment.setMediaPlaying(mediaPlayer.isPlaying());
 		}
 	}
 	
@@ -2823,17 +2672,17 @@ public class Messaging extends CompositeActivity {
 		}
 	}
 	
-	private static class AdapterUpdater extends ConversationManager.ConversationInfo.AdapterUpdater {
+	private static class ActivityCallbacks extends ConversationManager.ConversationInfo.ActivityCallbacks {
 		//Creating the references
 		private final WeakReference<Messaging> activityReference;
 		
-		AdapterUpdater(Messaging activity) {
+		ActivityCallbacks(Messaging activity) {
 			//Setting the references
 			activityReference = new WeakReference<>(activity);
 		}
 		
 		@Override
-		public void updateFully() {
+		public void listUpdateFully() {
 			//Getting the activity
 			Messaging activity = activityReference.get();
 			if(activity == null) return;
@@ -2844,7 +2693,7 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		@Override
-		void updateInserted(int index) {
+		void listUpdateInserted(int index) {
 			//Getting the activity
 			Messaging activity = activityReference.get();
 			if(activity == null) return;
@@ -2853,19 +2702,8 @@ public class Messaging extends CompositeActivity {
 			activity.messageListAdapter.notifyItemInserted(index);
 		}
 		
-		/* @Override
-		public void updateInsertedScroll(int index) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Updating the adapter
-			activity.messageListAdapter.notifyItemInserted(index);
-			activity.messageListAdapter.scrollToBottom();
-		} */
-		
 		@Override
-		public void updateMove(int from, int to) {
+		public void listUpdateMove(int from, int to) {
 			//Getting the activity
 			Messaging activity = activityReference.get();
 			if(activity == null) return;
@@ -2876,17 +2714,7 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		@Override
-		public void updateRangeInserted(int start, int size) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Updating the adapter
-			activity.messageListAdapter.notifyItemRangeInserted(start, size);
-		}
-		
-		@Override
-		void updateUnread() {
+		void listUpdateUnread() {
 			//Getting the activity
 			Messaging activity = activityReference.get();
 			if(activity == null) return;
@@ -2896,13 +2724,50 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		@Override
-		void scrollToBottom() {
+		void listScrollToBottom() {
 			//Getting the activity
 			Messaging activity = activityReference.get();
 			if(activity == null) return;
 			
 			//Updating the adapter
 			activity.messageListAdapter.scrollToBottom();
+		}
+		
+		@Override
+		void chatUpdateTitle() {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Building the conversation title
+			activity.viewModel.conversationInfo.buildTitle(activity, (result, wasTasked) -> {
+				//Setting the title in the app bar
+				activity.getSupportActionBar().setTitle(result);
+				
+				//Updating the task description
+				activity.lastTaskDescription = new ActivityManager.TaskDescription(result, activity.lastTaskDescription.getIcon(), activity.viewModel.conversationInfo.getConversationColor());
+				activity.setTaskDescription(activity.lastTaskDescription);
+			});
+		}
+		
+		@Override
+		void chatUpdateUnreadCount() {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the unread indicator
+			activity.updateUnreadIndicator();
+		}
+		
+		@Override
+		AudioMessageManager getAudioMessageManager() {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return null;
+			
+			//Returning the view model's audio message manager
+			return activity.viewModel.audioMessageManager;
 		}
 	}
 }

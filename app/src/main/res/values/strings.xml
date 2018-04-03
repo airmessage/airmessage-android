@@ -63,14 +63,18 @@
 	<string name="dialog_feedback_message">Have a bug to report, a feature to suggest, or anything else to say? Contact me or discuss with others using the links below.</string>
 	<string name="dialog_feedback_email">Send E-Mail</string>
 	<string name="dialog_feedback_googleplus">Open G+ Community</string>
+	
 	<string name="message_blankstate_conversations">Once you start a new conversation, you\'ll see it listed here</string>
 	<string name="message_blankstate_conversations_archived">Archived conversations appear here</string>
 	<string name="message_blankstate_conversations_basic">No conversations</string>
 	<string name="message_blankstate_blocked">No blocked addresses</string>
+	
 	<string name="message_unknownerror">An unknown error occurred</string>
+	<string name="message_loaderror_conversation">Failed to load conversation</string>
 	<string name="message_loaderror_messages">Failed to load messages</string>
 	<string name="message_loaderror_contacts">Failed to load contacts</string>
 	<string name="message_loaderror_blocked">Failed to load blocked addresses</string>
+	
 	<string name="message_intenterror_open">Couldn\'t open file</string>
 	<string name="message_intenterror_camera">No camera app found</string>
 	<string name="message_intenterror_browser">No web browser app found</string>
@@ -205,6 +209,13 @@
 	<string name="state_sent">Sent</string>
 	<string name="state_delivered">Delivered</string>
 	<string name="state_read">Read</string>
+	
+	<string name="list_single">%s</string>
+	<string name="list_double">%s and %s</string>
+	<string name="list_n_start">%s</string>
+	<string name="list_n_middle">, %s</string>
+	<string name="list_n_end">, and %s</string>
+	
 	<string name="placeholder_title" translatable="false">Title</string>
 	<string name="placeholder_message" translatable="false">Message</string>
 	<string name="placeholder_name" translatable="false">Name</string>

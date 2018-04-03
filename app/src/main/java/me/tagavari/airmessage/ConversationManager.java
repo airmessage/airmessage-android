@@ -337,7 +337,7 @@ class ConversationManager {
 		private transient WeakReference<ArrayList<MessageInfo>> ghostMessagesReference = null;
 		private ArrayList<MemberInfo> conversationMembers;
 		//private transient WeakReference<Messaging.RecyclerAdapter> arrayAdapterReference = null;
-		private transient AdapterUpdater adapterUpdater = null;
+		private transient ActivityCallbacks activityCallbacks = null;
 		//private transient View view;
 		//private transient ViewGroup iconView = null;
 		private String title = null;
@@ -355,10 +355,6 @@ class ConversationManager {
 		
 		//private int currentUserViewIndex = -1;
 		private transient Constants.ViewHolderSource<ItemViewHolder> viewHolderSource = null;
-		
-		//Creating the listeners
-		private transient ArrayList<Runnable> titleChangeListeners = new ArrayList<>();
-		private transient ArrayList<Runnable> unreadCountChangeListeners = new ArrayList<>();
 		
 		ConversationInfo(long localID, ConversationState conversationState) {
 			//Setting the local ID and state
@@ -647,8 +643,8 @@ class ConversationManager {
 			activityStateTargetLatestReference = null;
 			
 			//Updating the adapter
-			AdapterUpdater updater = getAdapterUpdater();
-			if(updater != null) updater.updateFully();
+			ActivityCallbacks updater = getActivityCallbacks();
+			if(updater != null) updater.listUpdateFully();
 		}
 		
 		ArrayList<ConversationItem> getConversationItems() {
@@ -687,8 +683,8 @@ class ConversationManager {
 			//Setting the value
 			this.unreadMessageCount = unreadMessageCount;
 			
-			//Calling the listeners
-			for(Runnable listener : unreadCountChangeListeners) listener.run();
+			//Telling the activity
+			if(activityCallbacks != null) activityCallbacks.chatUpdateUnreadCount();
 		}
 		
 		boolean isArchived() {
@@ -849,8 +845,8 @@ class ConversationManager {
 			//conversationItems.get(conversationItems.size() - 1).toLightConversationItem(context, result -> lastItem = result);
 			
 			//Updating the adapter
-			AdapterUpdater updater = getAdapterUpdater();
-			if(updater != null) updater.updateFully();
+			ActivityCallbacks updater = getActivityCallbacks();
+			if(updater != null) updater.listUpdateFully();
 			
 			//Updating the view
 			ItemViewHolder itemView = getViewHolder();
@@ -903,7 +899,7 @@ class ConversationManager {
 			if(ghostMessages == null) return;
 			
 			//Getting the adapter updater
-			AdapterUpdater updater = getAdapterUpdater();
+			ActivityCallbacks updater = getActivityCallbacks();
 			
 			//Creating the tracking lists
 			List<ConversationItem> updateList = new ArrayList<>(list);
@@ -952,7 +948,7 @@ class ConversationManager {
 									
 									//Updating the adapter
 									if(originalIndex != newIndex) {
-										//if(updater != null) updater.updateMove(originalIndex, newIndex);
+										//if(updater != null) updater.listUpdateMove(originalIndex, newIndex);
 										movedList.add(new ConversationItemMoveRecord(originalIndex, ghostMessage));
 									}
 								} */
@@ -1005,7 +1001,7 @@ class ConversationManager {
 										
 										//Updating the adapter
 										if(originalIndex != newIndex) {
-											//if(updater != null) updater.updateMove(originalIndex, newIndex);
+											//if(updater != null) updater.listUpdateMove(originalIndex, newIndex);
 											movedList.add(new ConversationItemMoveRecord(originalIndex, ghostMessage));
 										}
 									} */
@@ -1076,17 +1072,17 @@ class ConversationManager {
 				//Updating the moved messages
 				for(ConversationItemMoveRecord record : movedList) {
 					int newIndex = conversationItems.indexOf(record.item);
-					if(record.index != newIndex) updater.updateMove(record.index, newIndex);
+					if(record.index != newIndex) updater.listUpdateMove(record.index, newIndex);
 				}
 				
 				//Updating the new messages
 				if(!newMessages.isEmpty()) {
-					for(ConversationItem item : newMessages) updater.updateInserted(conversationItems.indexOf(item));
-					updater.scrollToBottom();
+					for(ConversationItem item : newMessages) updater.listUpdateInserted(conversationItems.indexOf(item));
+					updater.listScrollToBottom();
 				}
 				
 				//Updating the unread messages
-				updater.updateUnread();
+				updater.listUpdateUnread();
 			}
 		}
 		
@@ -1171,10 +1167,10 @@ class ConversationManager {
 			setLastItemUpdate(context, message);
 			
 			//Updating the adapter
-			AdapterUpdater updater = getAdapterUpdater();
+			ActivityCallbacks updater = getActivityCallbacks();
 			if(updater != null) {
-				updater.updateInserted(conversationItems.size() - 1);
-				updater.scrollToBottom();
+				updater.listUpdateInserted(conversationItems.size() - 1);
+				updater.listScrollToBottom();
 			}
 			
 			//Updating the view
@@ -1218,23 +1214,25 @@ class ConversationManager {
 			}
 		}
 		
-		void setAdapterUpdater(AdapterUpdater adapterUpdater) {
-			this.adapterUpdater = adapterUpdater;
+		void setActivityCallbacks(ActivityCallbacks activityCallbacks) {
+			this.activityCallbacks = activityCallbacks;
 		}
 		
-		private AdapterUpdater getAdapterUpdater() {
-			return adapterUpdater;
+		private ActivityCallbacks getActivityCallbacks() {
+			return activityCallbacks;
 		}
 		
-		static abstract class AdapterUpdater {
-			abstract void updateFully();
-			abstract void updateInserted(int index);
-			//abstract void updateInsertedScroll(int index);
-			abstract void updateMove(int from, int to);
-			abstract void updateRangeInserted(int start, int size);
-			abstract void updateUnread();
+		static abstract class ActivityCallbacks {
+			abstract void listUpdateFully();
+			abstract void listUpdateInserted(int index);
+			abstract void listUpdateMove(int from, int to);
+			abstract void listUpdateUnread();
+			abstract void listScrollToBottom();
 			
-			abstract void scrollToBottom();
+			abstract void chatUpdateTitle();
+			abstract void chatUpdateUnreadCount();
+			
+			abstract Messaging.AudioMessageManager getAudioMessageManager();
 		}
 		
 		int getNextUserColor() {
@@ -1415,6 +1413,9 @@ class ConversationManager {
 			//Creating the named conversation title list
 			ArrayList<String> namedConversationMembers = new ArrayList<>();
 			
+			//Creating a weak reference to the context
+			final WeakReference<Context> contextReference = new WeakReference<>(context);
+			
 			//Converting the list to named members
 			for(String username : members) {
 				//Getting the user info
@@ -1427,22 +1428,12 @@ class ConversationManager {
 						//Returning if the names have not all been added
 						if(members.length != namedConversationMembers.size()) return;
 						
-						//Creating the string builder
-						StringBuilder stringBuilder = new StringBuilder();
-						
-						//Adding the first name
-						stringBuilder.append(namedConversationMembers.get(0));
-						
-						//Checking if there are more than 2 conversation members
-						if(namedConversationMembers.size() > 2)
-							for(int i = 1; i < namedConversationMembers.size() - 1; i++)
-								stringBuilder.append(", ").append(namedConversationMembers.get(i)); //TODO might cause localization issues
-						
-						//Adding the last name
-						stringBuilder.append(" & ").append(namedConversationMembers.get(namedConversationMembers.size() - 1));
+						//Getting the context
+						Context context = contextReference.get();
+						if(context == null) return;
 						
 						//Returning the string
-						resultCallback.onResult(stringBuilder.toString(), wasTasked);
+						resultCallback.onResult(Constants.createLocalizedList(namedConversationMembers.toArray(new String[0]), context.getResources()), wasTasked);
 					}
 				});
 			}
@@ -1455,25 +1446,8 @@ class ConversationManager {
 			//Returning "unknown" if the conversation has no members
 			if(members.length == 0) return context.getResources().getString(R.string.part_unknown);
 			
-			//Returning the member's name if there is only one member
-			if(members.length == 1) return members[0];
-			
-			//Creating the string builder
-			StringBuilder stringBuilder = new StringBuilder();
-			
-			//Adding the first name
-			stringBuilder.append(members[0]);
-			
-			//Checking if there are more than 2 conversation members
-			if(members.length > 2)
-				for(int i = 1; i < members.length - 1; i++)
-					stringBuilder.append(", ").append(members[i]); //TODO might cause localization issues
-			
-			//Adding the last name
-			stringBuilder.append(" & ").append(members[members.length - 1]);
-			
 			//Returning the string
-			return stringBuilder.toString();
+			return Constants.createLocalizedList(members, context.getResources());
 		}
 		
 		String getStaticTitle() {
@@ -1487,8 +1461,8 @@ class ConversationManager {
 			//Setting the new title
 			title = value;
 			
-			//Calling the listeners
-			for(Runnable runnable : titleChangeListeners) runnable.run();
+			//Telling the activity listener
+			if(activityCallbacks != null) activityCallbacks.chatUpdateTitle();
 			
 			//Updating the view
 			ItemViewHolder itemView = getViewHolder();
@@ -1540,22 +1514,6 @@ class ConversationManager {
 		static String getFormattedTime(long date) {
 			//Returning the formatting
 			return DateUtils.getRelativeTimeSpanString(date, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, 0).toString();
-		}
-		
-		void addTitleChangeListener(Runnable runnable) {
-			titleChangeListeners.add(runnable);
-		}
-		
-		void removeTitleChangeListener(Runnable runnable) {
-			titleChangeListeners.remove(runnable);
-		}
-		
-		void addUnreadCountChangeListener(Runnable runnable) {
-			unreadCountChangeListeners.add(runnable);
-		}
-		
-		void removeUnreadCountChangeListener(Runnable runnable) {
-			unreadCountChangeListeners.remove(runnable);
 		}
 		
 		ConversationItem findConversationItem(long localID) {
@@ -4422,8 +4380,12 @@ class ConversationManager {
 			//Returning if there is no content
 			if(file == null) return;
 			
+			//Getting the activiy callbacks
+			ConversationInfo.ActivityCallbacks callbacks = getMessageInfo().getConversationInfo().activityCallbacks;
+			if(callbacks == null) return;
+			
 			//Getting the audio message manager
-			Messaging.RetainedFragment.AudioMessageManager audioMessageManager = activity.getAudioMessageManager();
+			Messaging.AudioMessageManager audioMessageManager = callbacks.getAudioMessageManager();
 			
 			//Checking if the GUID matches
 			if(audioMessageManager.isCurrentMessage(file)) {
