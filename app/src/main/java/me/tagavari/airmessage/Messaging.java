@@ -263,7 +263,6 @@ public class Messaging extends CompositeActivity {
 				
 				//Moving the recording indicator if the recording could be started
 				if(result) recordingIndicator.setX(motionEvent.getRawX() - (float) recordingIndicator.getWidth() / 2f);
-				System.out.println("Recording request passed: " + result);
 				
 				//Returning true
 				return true;
@@ -1038,7 +1037,9 @@ public class Messaging extends CompositeActivity {
 	}
 	
 	public void onClickRetryLoad(View view) {
-	
+		byte state = viewModel.messagesState.getValue();
+		if(state == ActivityViewModel.messagesStateFailedConversation) viewModel.loadConversation();
+		else if(state == ActivityViewModel.messagesStateFailedMessages) viewModel.loadMessages();
 	}
 	
 	public void onClickSearchPrevious(View view) {
@@ -1309,7 +1310,7 @@ public class Messaging extends CompositeActivity {
 		animator.addListener(new Animator.AnimatorListener() {
 			@Override
 			public void onAnimationStart(Animator animation) {
-				
+			
 			}
 			
 			@Override
@@ -1323,12 +1324,12 @@ public class Messaging extends CompositeActivity {
 			
 			@Override
 			public void onAnimationCancel(Animator animation) {
-				
+			
 			}
 			
 			@Override
 			public void onAnimationRepeat(Animator animation) {
-				
+			
 			}
 		});
 		animator.start();
@@ -2264,7 +2265,7 @@ public class Messaging extends CompositeActivity {
 				@Override
 				protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> messages) {
 					//Returning if the conversation isn't loaded anymore
-					if(!ConversationManager.getForegroundConversations().contains(conversationInfo)) return;
+					if(!ConversationManager.getLoadedConversations().contains(conversationInfo)) return;
 					
 					//Checking if the messages are invalid
 					if(messages == null) {
@@ -2316,9 +2317,6 @@ public class Messaging extends CompositeActivity {
 					if(conversationItems.isEmpty()) {
 						//Disabling the progressive load (there are no more items to load)
 						progressiveLoadReachedLimit = true;
-						
-						//Returning
-						return;
 					} else {
 						//Loading the items
 						List<ConversationManager.ConversationItem> allItems = conversationInfo.getConversationItems();
