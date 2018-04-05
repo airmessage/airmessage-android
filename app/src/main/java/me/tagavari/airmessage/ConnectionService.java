@@ -75,6 +75,7 @@ import me.tagavari.airmessage.common.SharedValues;
 public class ConnectionService extends Service {
 	//Creating the reference values
 	private static final int[] applicableCommunicationsVersions = {SharedValues.mmCommunicationsVersion/*, SharedValues.mmCommunicationsVersion - 1*/};
+	private static final int notificationID = -1;
 	
 	static final String localBCResult = "LocalMSG-ConnectionService-Result";
 	static final String localBCMassRetrieval = "LocalMSG-ConnectionService-MassRetrievalProgress";
@@ -211,8 +212,8 @@ public class ConnectionService extends Service {
 		//Setting the reference values
 		pingPendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(BCPingTimer), PendingIntent.FLAG_UPDATE_CURRENT);
 		
-		//Starting the service as a foreground service
-		startForeground(-1, getBackgroundNotification(false));
+		//Starting the service as a foreground service (if enabled in the preferences)
+		if(foregroundServiceRequested()) startForeground(-1, getBackgroundNotification(false));
 	}
 	
 	@Override
@@ -285,6 +286,32 @@ public class ConnectionService extends Service {
 		
 		//Returning the hostname
 		return hostname;
+	}
+	
+	void setForegroundState(boolean foregroundState) {
+		if(foregroundState) {
+			Notification notification;
+			if(isConnected()) notification = getBackgroundNotification(true);
+			else if(isConnecting()) notification = getBackgroundNotification(false);
+			else notification = getOfflineNotification(true);
+			
+			startForeground(-1, notification);
+		} else {
+			if(disconnectedNotificationRequested() && isClosed()) {
+				stopForeground(false);
+				postDisconnectedNotification(true);
+			} else {
+				stopForeground(true);
+			}
+		}
+	}
+	
+	private boolean foregroundServiceRequested() {
+		return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_foregroundservice_key), false);
+	}
+	
+	private boolean disconnectedNotificationRequested() {
+		return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_disconnectionnotification_key), true);
 	}
 	
 	private void connect(byte launchID) {
@@ -363,7 +390,7 @@ public class ConnectionService extends Service {
 		//Connecting
 		wsClient.connect();
 		
-		//Starting the service as a foreground service
+		//Updating the notification
 		postConnectedNotification(false);
 	}
 	
@@ -383,13 +410,22 @@ public class ConnectionService extends Service {
 	}
 	
 	private void postConnectedNotification(boolean isConnected) {
+		if(isConnected && !foregroundServiceRequested()) return;
+		
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(-1, getBackgroundNotification(isConnected));
+		notificationManager.notify(notificationID, getBackgroundNotification(isConnected));
 	}
 	
 	private void postDisconnectedNotification(boolean silent) {
+		if(!foregroundServiceRequested() && !disconnectedNotificationRequested()) return;
+		
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(-1, getOfflineNotification(silent));
+		notificationManager.notify(notificationID, getOfflineNotification(silent));
+	}
+	
+	private void clearNotification() {
+		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationManager.cancel(notificationID);
 	}
 	
 	/* private void finishService() {
@@ -501,7 +537,8 @@ public class ConnectionService extends Service {
 			retrievePendingConversationInfo();
 			
 			//Updating the notification
-			postConnectedNotification(true);
+			if(foregroundServiceRequested()) postConnectedNotification(true);
+			else clearNotification();
 			
 			//Setting the connection as existing
 			connectionEstablishedForRetrieval = connectionEstablishedForReconnect = true;
@@ -875,6 +912,10 @@ public class ConnectionService extends Service {
 	
 	boolean isConnecting() {
 		return wsClient != null && wsClient.isConnecting();
+	}
+	
+	boolean isClosed() {
+		return wsClient == null || wsClient.isClosed() || wsClient.isClosing();
 	}
 	
 	boolean isMassRetrievalInProgress() {

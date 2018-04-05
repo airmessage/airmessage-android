@@ -49,11 +49,14 @@
     <string name="preference_server_serverdetails_title">Edit server information</string>
 	<string name="preference_server_resync_key" translatable="false">pref_key_server_resync</string>
 	<string name="preference_server_resync_title">Resync messages</string>
+	<string name="preference_server_foregroundservice_key" translatable="false">pref_key_server_foregroundservice</string>
+	<string name="preference_server_foregroundservice_title">Run service in foreground</string>
+	<string name="preference_server_foregroundservice_description">Shows a notification and allows connecting on startup</string>
 	<string name="preference_server_connectionboot_key" translatable="false">pref_key_server_connectionboot</string>
-	<string name="preference_server_connectionboot_title">Automatically connect on boot</string>
-	<!-- <string name="preference_server_disconnectionnotification_key" translatable="false">pref_key_server_disconnectionnotification</string>
+	<string name="preference_server_connectionboot_title">Automatically connect on startup</string>
+	<string name="preference_server_disconnectionnotification_key" translatable="false">pref_key_server_disconnectionnotification</string>
 	<string name="preference_server_disconnectionnotification_title">Disconnected notification</string>
-	<string name="preference_server_disconnectionnotification_description">Display notification when the connection is lost</string> -->
+	<string name="preference_server_disconnectionnotification_description">Display a notification when the connection is lost</string>
 	<string name="preference_server_dropreconnect_key" translatable="false">pref_key_server_dropreconnect</string>
 	<string name="preference_server_dropreconnect_title">Connection drop reconnect</string>
 	<string name="preference_server_dropreconnect_description">Attempt to reconnect immediately after the connection is lost</string>

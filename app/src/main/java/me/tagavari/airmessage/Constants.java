@@ -302,11 +302,10 @@ class Constants {
 		String fileName = null;
 		
 		//Attempting to pull the file name from the content resolver
-		if(uri.getScheme().equals("content")) {
+		if("content".equals(uri.getScheme())) {
 			try(Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
 				if(cursor != null && cursor.moveToFirst()) fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
 			}
-			
 		}
 		
 		//Attempting to pull the file name from the URI path

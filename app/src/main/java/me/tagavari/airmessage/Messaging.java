@@ -271,6 +271,7 @@ public class Messaging extends CompositeActivity {
 			return false;
 		}
 	};
+	private boolean messagesStateRebuildRequired = true;
 	private final Observer<Byte> messagesStateObserver = state -> {
 		switch(state) {
 			case ActivityViewModel.messagesStateLoadingConversation:
@@ -320,6 +321,32 @@ public class Messaging extends CompositeActivity {
 				groupLoadFail.setVisibility(View.GONE);
 				
 				setMessageBarState(true);
+				
+				if(messagesStateRebuildRequired) {
+					//Setting the conversation title
+					viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
+						getSupportActionBar().setTitle(result);
+						setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), viewModel.conversationInfo.getConversationColor()));
+					});
+					
+					//Setting up the menu buttons
+					if(menuLoaded) {
+						if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
+						else archiveMenuItem.setVisible(true);
+					}
+					
+					//Setting the activity callbacks
+					viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
+					viewModel.conversationInfo.setEffectCallbacks(new EffectCallbacks(this)); //TODO merge activity callbacks with effect callbacks
+					
+					//Setting the list adapter
+					messageListAdapter = new RecyclerAdapter(viewModel.conversationItemList);
+					messageList.setAdapter(messageListAdapter);
+					messageList.addOnScrollListener(messageListScrollListener);
+					
+					//Setting the message input field hint
+					messageInputField.setHint(getInputBarMessage());
+				}
 				
 				//Finding the latest send effect
 				for(int i = viewModel.conversationItemList.size() - 1; i >= 0; i--) {
@@ -381,6 +408,8 @@ public class Messaging extends CompositeActivity {
 				
 				break;
 		}
+		
+		messagesStateRebuildRequired = false;
 	};
 	
 	public Messaging() {
