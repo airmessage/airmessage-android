@@ -68,7 +68,7 @@ public class Preferences extends AppCompatActivity {
 	} */
 	
 	public static class SettingsFragment extends PreferenceFragmentCompat {
-		Preference.OnPreferenceClickListener ringtoneClickListener = preference -> {
+		/* Preference.OnPreferenceClickListener ringtoneClickListener = preference -> {
 			//Returning true
 			return true;
 		};
@@ -77,16 +77,34 @@ public class Preferences extends AppCompatActivity {
 			
 			//Returning true
 			return true;
-		};
+		}; */
 		Preference.OnPreferenceChangeListener startOnBootChangeListener = (preference, value) -> {
 			//Updating the service state
-			getActivity().getPackageManager().setComponentEnabledSetting(new ComponentName(getActivity(), ConnectionService.ServiceStart.class),
+			getActivity().getPackageManager().setComponentEnabledSetting(new ComponentName(getActivity(), ConnectionService.ServiceStartBoot.class),
 					(boolean) value ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
 					PackageManager.DONT_KILL_APP);
 			
 			//Returning true (to allow the change)
 			return true;
 		};
+		/* Preference.OnPreferenceChangeListener useForegroundServiceChangeListener = (preference, value) -> {
+			//Casting the value
+			boolean boolValue = (boolean) value;
+			//Updating the service
+			ConnectionService service = ConnectionService.getInstance();
+			if(service != null) service.setForegroundState(boolValue);
+			
+			//Disabling the "start on boot" switch if the service is now a background service
+			if(boolValue) ((SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_server_disconnectionnotification_key))).setChecked(true);
+			else ((SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_server_connectionboot_key))).setChecked(false);
+			
+			//Updating the state of the dependant items
+			findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setEnabled(boolValue);
+			findPreference(getResources().getString(R.string.preference_server_disconnectionnotification_key)).setEnabled(!boolValue);
+			
+			//Returning true (to allow the change)
+			return true;
+		}; */
 		Preference.OnPreferenceClickListener deleteAttachmentsClickListener = preference -> {
 			//Creating a dialog
 			AlertDialog dialog = new AlertDialog.Builder(getActivity())
@@ -198,21 +216,18 @@ public class Preferences extends AppCompatActivity {
 				
 				//Setting the listener
 				findPreference(getResources().getString(R.string.preference_messagenotifications_key)).setIntent(intent);
-			} else {
+			}/* else {
 				//Updating the notification information
-				//String ringtonePreferenceKey = getResources().getString(R.string.preference_messagenotifications_sound_key);
-				//updateRingtonePreference(findPreference(ringtonePreferenceKey));
-			}
+				String ringtonePreferenceKey = getResources().getString(R.string.preference_messagenotifications_sound_key);
+				updateRingtonePreference(findPreference(ringtonePreferenceKey));
+			} */
 			
-			//Setting the listeners
-			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceClickListener(ringtoneClickListener);
-			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceChangeListener(ringtoneChangeListener);
-			findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setOnPreferenceChangeListener(startOnBootChangeListener);
-			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
-			findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
-			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
-			findPreference(getResources().getString(R.string.preference_server_resync_key)).setOnPreferenceClickListener(resyncMessagesClickListener);
-			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener(themeChangeListener);
+			//Setting the dependant states
+			/* {
+				SwitchPreferenceCompat foregroundServiceSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_server_foregroundservice_key));
+				findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setEnabled(foregroundServiceSwitch.isChecked());
+				findPreference(getResources().getString(R.string.preference_server_disconnectionnotification_key)).setEnabled(!foregroundServiceSwitch.isChecked());
+			} */
 			
 			{
 				SwitchPreferenceCompat locationSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_location_key));
@@ -235,6 +250,17 @@ public class Preferences extends AppCompatActivity {
 			
 			//Setting the intents
 			findPreference(getResources().getString(R.string.preference_server_help_key)).setIntent(new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress));
+			
+			//Setting the listeners
+			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceClickListener(ringtoneClickListener);
+			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceChangeListener(ringtoneChangeListener);
+			//findPreference(getResources().getString(R.string.preference_server_foregroundservice_key)).setOnPreferenceChangeListener(useForegroundServiceChangeListener);
+			findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setOnPreferenceChangeListener(startOnBootChangeListener);
+			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
+			findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
+			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
+			findPreference(getResources().getString(R.string.preference_server_resync_key)).setOnPreferenceClickListener(resyncMessagesClickListener);
+			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener(themeChangeListener);
 		}
 		
 		@Override
@@ -428,7 +454,7 @@ public class Preferences extends AppCompatActivity {
 		
 		private void updateServerURL(Preference preference) {
 			//Setting the summary
-			preference.setSummary(getActivity().getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE).getString(MainApplication.sharedPreferencesKeyHostname, null));
+			preference.setSummary(((MainApplication) getActivity().getApplication()).getConnectivitySharedPrefs().getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null));
 		}
 	}
 }

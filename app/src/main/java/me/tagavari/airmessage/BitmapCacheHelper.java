@@ -50,7 +50,7 @@ class BitmapCacheHelper {
 	
 	void assignContactImage(Context context, String name, Constants.TaskedViewSource viewSource) {
 		//Creating the result listener
-		ImageDecodeResult callbacks = new ImageDecodeResult(viewSource) {
+		ImageDecodeResult callbacks = new ImageDecodeResult() {
 			@Override
 			void onImageMeasured(int width, int height) {}
 			
@@ -585,7 +585,7 @@ class BitmapCacheHelper {
 			if(context == null) return null;
 			
 			//Fetching the bytes from the database
-			byte[] imageBlob = DatabaseManager.getStickerBlob(DatabaseManager.getReadableDatabase(context), parameters[0]);
+			byte[] imageBlob = DatabaseManager.getInstance().getStickerBlob(parameters[0]);
 			if(imageBlob == null) return null;
 			
 			//Returning the bitmap
@@ -613,21 +613,13 @@ class BitmapCacheHelper {
 	
 	static abstract class ImageDecodeResult {
 		//Creating the view values (for subclass reference)
-		final Constants.TaskedViewSource viewSource;
 		final WeakReference<View> viewReference;
 		
 		ImageDecodeResult() {
-			viewSource = null;
 			viewReference = null;
 		}
 		
-		ImageDecodeResult(Constants.TaskedViewSource viewSource) {
-			this.viewSource = viewSource;
-			this.viewReference = null;
-		}
-		
 		ImageDecodeResult(View view) {
-			this.viewSource = null;
 			this.viewReference = new WeakReference<>(view);
 		}
 		

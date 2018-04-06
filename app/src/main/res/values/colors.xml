@@ -37,6 +37,7 @@
 	<color name="colorServerDisconnected">#F44336</color>
 
     <color name="colorRecording">#F44336</color>
+    <color name="colorRecordingDiscard">#FF5252</color>
 	
 	<color name="imageDrawDrawer">#80212121</color>
 	<color name="drawColor_red">#F44336</color>

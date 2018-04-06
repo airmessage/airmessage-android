@@ -15,21 +15,23 @@
 			android:id="@+id/downloadcontent"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
+			android:minHeight="@dimen/messagebubble_minheight"
 			android:background="@drawable/rounded_rectangle"
 			android:backgroundTint="@color/colorMessageOutgoing"
+			android:paddingBottom="@dimen/messagebubble_padding_y"
+			android:paddingLeft="@dimen/messagebubble_padding_x"
+			android:paddingRight="@dimen/messagebubble_padding_x"
+			android:paddingTop="@dimen/messagebubble_padding_y"
 			android:orientation="horizontal"
-			android:paddingBottom="8dp"
-			android:paddingTop="8dp">
+			android:gravity="center" >
 			
 			<ProgressBar
-				android:id="@+id/progressBar"
+				android:id="@+id/download_progress"
 				style="?android:attr/progressBarStyleHorizontal"
 				android:theme="@style/Theme.AppCompat.Light"
 				android:layout_width="80dp"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:layout_marginEnd="4dp"
-				android:layout_marginStart="10dp"
+				android:layout_marginEnd="8dp"
 				android:indeterminate="true"
 				android:indeterminateOnly="false"
 				android:indeterminateTint="@color/colorMessageOutgoingAccent"
@@ -41,24 +43,21 @@
 				android:id="@+id/download_label"
 				android:layout_width="0dp"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:layout_marginStart="15dp"
 				android:layout_weight="1"
+				android:gravity="center"
 				android:text="@string/part_content_other"
+				android:layout_marginEnd="4dp"
 				android:textColor="?android:attr/textColorPrimary" />
 			
 			<ImageView
-				android:id="@+id/download_button"
+				android:id="@+id/download_icon"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:layout_marginLeft="8dp"
-				android:layout_marginRight="8dp"
 				android:src="@drawable/download"
 				android:tint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		
-		<LinearLayout
+		<!-- <LinearLayout
 			android:id="@+id/content"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
@@ -88,36 +87,64 @@
 				android:layout_marginRight="8dp"
 				android:src="@drawable/open"
 				android:tint="?android:attr/textColorPrimary" />
+		</LinearLayout> -->
+		
+		<LinearLayout
+			android:id="@+id/content"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:minHeight="@dimen/messagebubble_minheight"
+			android:background="@drawable/rounded_rectangle"
+			android:backgroundTint="@color/colorMessageOutgoing"
+			android:orientation="horizontal"
+			android:paddingBottom="@dimen/messagebubble_padding_y"
+			android:paddingLeft="@dimen/messagebubble_padding_x"
+			android:paddingRight="@dimen/messagebubble_padding_x"
+			android:paddingTop="@dimen/messagebubble_padding_y"
+			android:gravity="center"
+			android:visibility="gone">
+			
+			<TextView
+				android:id="@+id/content_label"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
+				android:layout_weight="1"
+				android:gravity="center"
+				android:text="@string/part_content_other"
+				android:textColor="?android:attr/textColorPrimary"
+				android:drawableEnd="@drawable/open"
+				android:drawablePadding="4dp"
+				android:drawableTint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		
 		<LinearLayout
 			android:id="@+id/processingcontent"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
+			android:minHeight="@dimen/messagebubble_minheight"
 			android:background="@drawable/rounded_rectangle"
 			android:backgroundTint="@color/colorMessageOutgoing"
 			android:orientation="horizontal"
-			android:paddingBottom="8dp"
-			android:paddingTop="8dp"
+			android:paddingBottom="@dimen/messagebubble_padding_y"
+			android:paddingLeft="@dimen/messagebubble_padding_x"
+			android:paddingRight="@dimen/messagebubble_padding_x"
+			android:paddingTop="@dimen/messagebubble_padding_y"
+			android:gravity="center"
 			android:visibility="gone">
 			
 			<TextView
+				android:id="@+id/processing_label"
 				android:layout_width="0dp"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center_vertical"
-				android:layout_marginStart="15dp"
 				android:layout_weight="1"
 				android:text="@string/part_content_other"
-				android:textColor="?android:attr/textColorPrimary" />
-			
-			<ImageView
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:layout_marginLeft="8dp"
-				android:layout_marginRight="8dp"
-				android:src="@drawable/upload"
-				android:tint="?android:attr/textColorPrimary" />
+				android:gravity="center"
+				android:textColor="?android:attr/textColorPrimary"
+				android:drawableEnd="@drawable/upload"
+				android:drawablePadding="4dp"
+				android:drawableTint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		
 		<include layout="@layout/layout_tapbackcontainer" />

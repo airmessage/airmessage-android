@@ -1,6 +1,7 @@
 package me.tagavari.airmessage;
 
 import android.app.Activity;
+import android.arch.lifecycle.ViewModel;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -15,9 +16,12 @@ import android.os.Parcel;
 import android.provider.OpenableColumns;
 import android.support.annotation.AttrRes;
 import android.support.annotation.ColorInt;
+import android.support.annotation.NonNull;
 import android.support.customtabs.CustomTabsIntent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.view.ActionMode;
+import android.support.v7.widget.RecyclerView;
 import android.text.Spannable;
 import android.text.Spanned;
 import android.text.format.DateUtils;
@@ -34,6 +38,7 @@ import android.widget.TextView;
 import android.widget.Toolbar;
 
 import java.io.File;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -216,6 +221,27 @@ class Constants {
 		View get(boolean wasTasked);
 	}
 	
+	interface ViewHolderSource<VH> {
+		VH get();
+	}
+	
+	static class ViewHolderSourceImpl<VH> implements ViewHolderSource<VH> {
+		private final WeakReference<RecyclerView> recyclerViewReference;
+		private final long itemId;
+		
+		ViewHolderSourceImpl(RecyclerView recyclerView, long itemId) {
+			recyclerViewReference = new WeakReference<>(recyclerView);
+			this.itemId = itemId;
+		}
+		
+		@Override
+		public VH get() {
+			RecyclerView recyclerView = recyclerViewReference.get();
+			if(recyclerView == null) return null;
+			return (VH) recyclerView.findViewHolderForItemId(itemId);
+		}
+	}
+	
 	private static final Pattern regExNumerated = Pattern.compile("_\\d+?$");
 	private static final String regExSplitFilename = "\\.(?=[^.]+$)";
 	static File findFreeFile(File directory, String fileName) {
@@ -276,11 +302,10 @@ class Constants {
 		String fileName = null;
 		
 		//Attempting to pull the file name from the content resolver
-		if(uri.getScheme().equals("content")) {
+		if("content".equals(uri.getScheme())) {
 			try(Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
 				if(cursor != null && cursor.moveToFirst()) fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
 			}
-			
 		}
 		
 		//Attempting to pull the file name from the URI path
@@ -490,6 +515,32 @@ class Constants {
 		return result;
 	}
 	
+	static String createLocalizedList(String[] list, Resources resources) {
+		StringBuilder stringBuilder = new StringBuilder();
+		
+		if(list.length == 1) stringBuilder.append(resources.getString(R.string.list_single, list[0]));
+		else if(list.length == 2) stringBuilder.append(resources.getString(R.string.list_double, list[0], list[1]));
+		else if(list.length > 2) {
+			stringBuilder.append(resources.getString(R.string.list_n_start, list[0]));
+			for(int i = 1; i < list.length - 1; i++) stringBuilder.append(resources.getString(R.string.list_n_middle, list[i]));
+			stringBuilder.append(resources.getString(R.string.list_n_start, list[list.length - 1]));
+		}
+		
+		return stringBuilder.toString();
+	}
+	
+	public static abstract class ActivityViewModel<A extends Activity> extends ViewModel {
+		private final WeakReference<A> activityReference;
+		
+		public ActivityViewModel(@NonNull A activity) {
+			activityReference = new WeakReference<>(activity);
+		}
+		
+		public A getActivity() {
+			return activityReference.get();
+		}
+	}
+	
 	static float calculateImageAttachmentMultiplier(Resources resources, int width, int height) {
 		//Getting the min and max values
 		int pxBitmapSizeMin = (int) resources.getDimension(R.dimen.image_size_min);
@@ -640,5 +691,13 @@ class Constants {
 		public boolean willChangeBounds() {
 			return true;
 		}
+	}
+	
+	interface CountingActionModeCallback<Item> extends ActionMode.Callback {
+		void onItemCheckedStateChanged(Item item, boolean checked);
+	}
+	
+	interface BiConsumer<A1, A2> {
+		void accept(A1 a1, A2 a2);
 	}
 }

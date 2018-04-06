@@ -1,17 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	tools:context=".Messaging"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent">
-	<!-- Loading Text -->
-	<TextView
-		android:id="@+id/loading_text"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_centerInParent="true"
-		android:text="@string/progress_loadingmessages"
-		android:textColor="?android:textColorSecondary"
-		android:visibility="gone" />
 	<!-- Recording indicator -->
 	<FrameLayout
 		android:id="@+id/recordingindicator"
@@ -30,6 +23,7 @@
 			android:contentDescription="@null"
 			android:src="@drawable/microphone" />
 	</FrameLayout>
+	
 	<!-- General layout -->
 	<LinearLayout
 		android:id="@+id/content"
@@ -385,5 +379,41 @@
 					android:textColor="?android:attr/textColorSecondary" />
 			</LinearLayout>
 		</RelativeLayout>
+	</LinearLayout>
+	
+	<!-- Loading label -->
+	<TextView
+		android:id="@+id/loading_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_centerInParent="true"
+		android:text="@string/progress_loadingmessages"
+		android:textColor="?android:textColorSecondary"
+		android:textAlignment="center"
+		android:visibility="gone" />
+	
+	<!-- Error view -->
+	<LinearLayout
+		android:id="@+id/group_error"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_centerInParent="true"
+		android:orientation="vertical"
+		android:gravity="center"
+		android:visibility="gone">
+		<TextView
+			android:id="@+id/group_error_label"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:textAlignment="center"
+			android:textColor="?android:textColorSecondary"
+			android:text="@string/message_loaderror_conversation" />
+		<Button
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/action_retry"
+			android:tag="@string/tag_primarytint"
+			style="@style/Widget.AppCompat.Button.Borderless.Colored"
+			android:onClick="onClickRetryLoad" />
 	</LinearLayout>
 </RelativeLayout>

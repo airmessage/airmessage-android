@@ -15,11 +15,13 @@ import android.text.InputFilter;
 import android.text.Spanned;
 import android.text.TextWatcher;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 public class ServerSetup extends Activity {
@@ -121,9 +123,17 @@ public class ServerSetup extends Activity {
 		hostnameInputField = findViewById(R.id.input_address);
 		passwordInputField = findViewById(R.id.input_password);
 		nextButton = findViewById(R.id.nextbutton);
-		((EditText) findViewById(R.id.input_password)).setFilters(new InputFilter[]{credentialInputFilter});
 		layoutAddress = findViewById(R.id.layout_serververification);
 		layoutSync = findViewById(R.id.layout_serversync);
+		
+		passwordInputField.setFilters(new InputFilter[]{credentialInputFilter});
+		passwordInputField.setOnEditorActionListener((view, actionID, event) -> {
+			if(actionID == EditorInfo.IME_ACTION_GO) {
+				onNextButtonClick(null);
+				return true;
+			}
+			return false;
+		});
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), findViewById(R.id.content));
@@ -141,9 +151,9 @@ public class ServerSetup extends Activity {
 		nextButton.setClickable(false);
 		
 		//Filling in the input fields with previous information
-		SharedPreferences sharedPreferences = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
-		hostnameInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesKeyHostname, ""));
-		passwordInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesKeyPassword, ""));
+		SharedPreferences sharedPreferences = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+		hostnameInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, ""));
+		passwordInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, ""));
 	}
 	
 	@Override
@@ -158,22 +168,25 @@ public class ServerSetup extends Activity {
 	public void onNextButtonClick(View view) {
 		//Checking if the page is 0
 		if(page == 0) {
-			//Starting the connection
-			startConnection();
-			
-			//Setting the connection data
-			//Starting the service
-			///startService(new Intent(this, ConnectionService.class));
-			
-			//Switching the next button for a loading button
-			findViewById(R.id.nextbuttonarrow).setVisibility(View.GONE);
-			findViewById(R.id.nextbuttonprogress).setVisibility(View.VISIBLE);
-			nextButton.setAlpha(0.38F);
-			nextButton.setClickable(false);
-			
-			//Disabling the input fields
-			hostnameInputField.setEnabled(false);
-			passwordInputField.setEnabled(false);
+			//Checking if the server address is valid
+			if(regExValidAddress.matcher(hostnameInputField.getText()).find()) {
+				//Starting the connection
+				startConnection();
+				
+				//Setting the connection data
+				//Starting the service
+				///startService(new Intent(this, ConnectionService.class));
+				
+				//Switching the next button for a loading button
+				findViewById(R.id.nextbuttonarrow).setVisibility(View.GONE);
+				findViewById(R.id.nextbuttonprogress).setVisibility(View.VISIBLE);
+				nextButton.setAlpha(0.38F);
+				nextButton.setClickable(false);
+				
+				//Disabling the input fields
+				hostnameInputField.setEnabled(false);
+				passwordInputField.setEnabled(false);
+			}
 		}
 		//Otherwise checking if the page is 1
 		else if(page == 1) {
@@ -195,9 +208,9 @@ public class ServerSetup extends Activity {
 	
 	private void finishSetup() {
 		//Saving the connection data in the shared preferences
-		SharedPreferences.Editor editor = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE).edit();
-		editor.putString(MainApplication.sharedPreferencesKeyHostname, newHostname); //The raw, unprocessed hostname (No protocol or port)
-		editor.putString(MainApplication.sharedPreferencesKeyPassword, newPassword);
+		SharedPreferences.Editor editor = ((MainApplication) getApplication()).getConnectivitySharedPrefs().edit();
+		editor.putString(MainApplication.sharedPreferencesConnectivityKeyHostname, newHostname); //The raw, unprocessed hostname (No protocol or port)
+		editor.putString(MainApplication.sharedPreferencesConnectivityKeyPassword, newPassword);
 		editor.apply();
 		
 		//Starting the new activity
@@ -224,25 +237,13 @@ public class ServerSetup extends Activity {
 				layoutSync.setX(0);
 				layoutSync.animate().translationX(layoutSync.getWidth());
 				
-				//Setting the "NEXT" button
-				((TextView) findViewById(R.id.nextbuttonlabel)).setText(R.string.action_next);
-				if(isRequired) findViewById(R.id.backbutton).setVisibility(View.GONE);
-				
 				//Enabling the input fields
 				hostnameInputField.setEnabled(true);
 				passwordInputField.setEnabled(true);
 				
-				//Updating the "delete messages" section
-				View deleteMessagesLabel = layoutSync.findViewById(R.id.deletemessages_label);
-				View deleteMessagesButton = layoutSync.findViewById(R.id.deletemessages_button);
-				
-				if(ConversationManager.getConversations() != null) {
-					deleteMessagesLabel.setVisibility(View.VISIBLE);
-					deleteMessagesButton.setVisibility(View.VISIBLE);
-				} else {
-					deleteMessagesLabel.setVisibility(View.GONE);
-					deleteMessagesButton.setVisibility(View.GONE);
-				}
+				//Setting the "NEXT" button
+				((TextView) findViewById(R.id.nextbuttonlabel)).setText(R.string.action_next);
+				if(isRequired) findViewById(R.id.backbutton).setVisibility(View.GONE);
 				
 				break;
 			case 1:
@@ -253,6 +254,19 @@ public class ServerSetup extends Activity {
 				layoutSync.setX(layoutSync.getWidth());
 				layoutSync.animate().translationX(0);
 				layoutSync.setVisibility(View.VISIBLE);
+				
+				//Updating the "delete messages" section
+				View deleteMessagesLabel = layoutSync.findViewById(R.id.deletemessages_label);
+				View deleteMessagesButton = layoutSync.findViewById(R.id.deletemessages_button);
+				
+				List<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+				if(conversations == null || conversations.isEmpty()) {
+					deleteMessagesLabel.setVisibility(View.GONE);
+					deleteMessagesButton.setVisibility(View.GONE);
+				} else {
+					deleteMessagesLabel.setVisibility(View.VISIBLE);
+					deleteMessagesButton.setVisibility(View.VISIBLE);
+				}
 				
 				//Setting the "SKIP" button
 				((TextView) findViewById(R.id.nextbuttonlabel)).setText(R.string.action_skip);
@@ -298,6 +312,13 @@ public class ServerSetup extends Activity {
 				
 				break;
 		}
+	}
+	
+	@Override
+	public void onBackPressed() {
+		//Retracting the page
+		if(page > 0) setPage(page - 1);
+		else super.onBackPressed();
 	}
 	
 	private void hideSoftKeyboard() {

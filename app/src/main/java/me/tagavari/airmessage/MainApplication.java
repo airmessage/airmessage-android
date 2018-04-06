@@ -1,8 +1,10 @@
 package me.tagavari.airmessage;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -14,6 +16,7 @@ import android.support.v7.app.AppCompatDelegate;
 
 import com.crashlytics.android.Crashlytics;
 import com.crashlytics.android.core.CrashlyticsCore;
+import com.squareup.leakcanary.LeakCanary;
 
 import java.io.File;
 import java.lang.ref.SoftReference;
@@ -33,11 +36,11 @@ public class MainApplication extends Application {
 	static final String dirNameDownload = "downloads";
 	static final String dirNameUpload = "uploads";
 	
-	static final String sharedPreferencesFile = "me.tagavari.airmessage.MAIN_PREFERENCES";
-	static final String sharedPreferencesKeyHostname = "hostname";
-	static final String sharedPreferencesKeyPassword = "password";
-	static final String sharedPreferencesKeyLastConnectionTime = "last_connection_time";
-	static final String sharedPreferencesKeyLastConnectionHostname = "last_connection_hostname";
+	private static final String sharedPreferencesConnectivityFile = "connectivity";
+	static final String sharedPreferencesConnectivityKeyHostname = "hostname";
+	static final String sharedPreferencesConnectivityKeyPassword = "password";
+	static final String sharedPreferencesConnectivityKeyLastConnectionTime = "last_connection_time";
+	static final String sharedPreferencesConnectivityKeyLastConnectionHostname = "last_connection_hostname";
 	
 	static final String fileAuthority = "me.tagavari.airmessage.fileprovider";
 	
@@ -53,6 +56,13 @@ public class MainApplication extends Application {
 	public void onCreate() {
 		//Calling the super method
 		super.onCreate();
+		
+		if (LeakCanary.isInAnalyzerProcess(this)) {
+			// This process is dedicated to LeakCanary for heap analysis.
+			// You should not init your app in this process.
+			return;
+		}
+		LeakCanary.install(this);
 		
 		//Configuring crash reporting
 		configureCrashReporting();
@@ -84,17 +94,28 @@ public class MainApplication extends Application {
 			}
 		}
 		
+		//Migrating the shared preferences TODO remove on next release
+		migrateSharedPreferences();
+		
 		//Getting the connection service information
-		SharedPreferences sharedPrefs = getSharedPreferences(sharedPreferencesFile, Context.MODE_PRIVATE);
-		ConnectionService.hostname = sharedPrefs.getString(sharedPreferencesKeyHostname, "");
-		ConnectionService.password = sharedPrefs.getString(sharedPreferencesKeyPassword, "");
+		SharedPreferences sharedPrefs = getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
+		ConnectionService.hostname = sharedPrefs.getString(sharedPreferencesConnectivityKeyHostname, "");
+		ConnectionService.password = sharedPrefs.getString(sharedPreferencesConnectivityKeyPassword, "");
 		
 		//Creating the cache helpers
 		bitmapCacheHelper = new BitmapCacheHelper();
 		userCacheHelper = new UserCacheHelper();
 		
+		//Creating the database manager
+		DatabaseManager.createInstance(this);
+		
 		//Applying the dark mode
 		applyDarkMode(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.preference_appearance_theme_key), ""));
+		
+		//Enabling / disabling the service on boot as per the shared preference
+		getPackageManager().setComponentEnabledSetting(new ComponentName(this, ConnectionService.ServiceStartBoot.class),
+				PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_connectionboot_key), true) ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+				PackageManager.DONT_KILL_APP);
 	}
 	
 	public static MainApplication getInstance() {
@@ -109,6 +130,30 @@ public class MainApplication extends Application {
 		
 		// Initialize Fabric with the debug-disabled crashlytics
 		Fabric.with(this, crashlyticsKit);
+	}
+	
+	private static final String oldSharedPrefsName = "me.tagavari.airmessage.MAIN_PREFERENCES";
+	@SuppressLint("ApplySharedPref")
+	private boolean migrateSharedPreferences() {
+		//Returning false if the file doesn't exist
+		File oldSharedPrefsFile = new File(getFilesDir().getParent(), "shared_prefs/" + oldSharedPrefsName + ".xml");
+		if(!oldSharedPrefsFile.exists()) return false;
+		
+		//Getting the shared preferences
+		SharedPreferences oldSharedPrefs = getSharedPreferences(oldSharedPrefsName, Context.MODE_PRIVATE);
+		SharedPreferences newSharedPrefs = getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
+		
+		//Copying the data
+		newSharedPrefs.edit()
+				.putString(sharedPreferencesConnectivityKeyHostname, oldSharedPrefs.getString("hostname", null))
+				.putString(sharedPreferencesConnectivityKeyPassword, oldSharedPrefs.getString("password", null))
+				.commit();
+		
+		//Deleting the old shared preferences
+		oldSharedPrefsFile.delete();
+		
+		//Returning true
+		return true;
 	}
 	
 	static File getAttachmentDirectory(Context context) {
@@ -208,8 +253,12 @@ public class MainApplication extends Application {
 		}
 	}
 	
+	SharedPreferences getConnectivitySharedPrefs() {
+		return getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
+	}
+	
 	boolean isServerConfigured() {
-		return !getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE).getString(MainApplication.sharedPreferencesKeyHostname, "").isEmpty();
+		return !getConnectivitySharedPrefs().getString(sharedPreferencesConnectivityKeyHostname, "").isEmpty();
 	}
 	
 	static final String darkModeFollowSystem = "follow_system";

@@ -511,7 +511,7 @@ public class NewMessage extends AppCompatActivity {
 			for(ListIterator<String> iterator = normalizedMembers.listIterator(); iterator.hasNext();) iterator.set(Constants.normalizeAddress(iterator.next()));
 			
 			//Adding the conversation
-			return DatabaseManager.addRetrieveClientCreatedConversationInfo(DatabaseManager.getWritableDatabase(context), context, members, service);
+			return DatabaseManager.getInstance().addRetrieveClientCreatedConversationInfo(context, members, service);
 		}
 		
 		@Override
@@ -644,8 +644,8 @@ public class NewMessage extends AppCompatActivity {
 						
 					}
 				});
-				MainApplication.getInstance().getUserCacheHelper().assignUserInfo(NewMessage.this, name, labelView);
-				MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(NewMessage.this, name, (View) popupView.findViewById(R.id.profile_image));
+				MainApplication.getInstance().getUserCacheHelper().assignUserInfo(getApplicationContext(), name, labelView);
+				MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(getApplicationContext(), name, (View) popupView.findViewById(R.id.profile_image));
 				
 				//Creating the window
 				final PopupWindow popupWindow = new PopupWindow(
@@ -989,20 +989,20 @@ public class NewMessage extends AppCompatActivity {
 			}
 		}
 		
-		@Override
-		public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+		@Override @NonNull
+		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			switch(viewType) {
 				case TYPE_HEADER:
 					return new HeaderViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_contact_sendheader, parent, false));
 				case TYPE_ITEM:
 					return new ItemViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_contact, parent, false));
 				default:
-					return null;
+					throw new IllegalArgumentException("Invalid view type received, got " + viewType);
 			}
 		}
 		
 		@Override
-		public void onBindViewHolder(RecyclerView.ViewHolder viewHolder, int position) {
+		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder viewHolder, int position) {
 			switch(getItemViewType(position)) {
 				case TYPE_HEADER: {
 					//Casting the view holder
@@ -1057,7 +1057,7 @@ public class NewMessage extends AppCompatActivity {
 					itemViewHolder.profileImage.setImageBitmap(null);
 					
 					//Assigning the contact's image
-					MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(NewMessage.this, Long.toString(contactInfo.identifier), contactInfo.identifier, new BitmapCacheHelper.ImageDecodeResult() {
+					MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(getApplicationContext(), Long.toString(contactInfo.identifier), contactInfo.identifier, new BitmapCacheHelper.ImageDecodeResult() {
 						@Override
 						void onImageMeasured(int width, int height) {
 						

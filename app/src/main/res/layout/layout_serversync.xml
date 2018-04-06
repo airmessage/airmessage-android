@@ -3,10 +3,10 @@
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
+	android:clipToPadding="false"
 	android:orientation="vertical"
 	android:padding="20dp"
-	tools:context=".ServerSetup"
-	android:clipToPadding="false">
+	tools:context=".ServerSetup">
 	
 	<TextView
 		android:layout_width="wrap_content"
@@ -32,7 +32,8 @@
 		android:layout_marginTop="10dp"
 		android:backgroundTint="@color/colorPrimary"
 		android:onClick="buttonSyncMessages"
-		android:text="@string/action_downloadmessages" />
+		android:text="@string/action_downloadmessages"
+		android:textColor="@android:color/white" />
 	
 	<TextView
 		android:id="@+id/deletemessages_label"
@@ -52,5 +53,6 @@
 		android:layout_marginTop="10dp"
 		android:backgroundTint="@color/colorPrimary"
 		android:onClick="buttonDeleteMessages"
-		android:text="@string/action_deletemessages" />
+		android:text="@string/action_deletemessages"
+		android:textColor="@android:color/white" />
 </LinearLayout>

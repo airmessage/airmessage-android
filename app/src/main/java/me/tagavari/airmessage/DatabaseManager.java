@@ -12,7 +12,6 @@ import android.util.Base64;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.zip.DataFormatException;
@@ -130,39 +129,39 @@ class DatabaseManager extends SQLiteOpenHelper {
 	}
 	
 	@Override
-	public void onCreate(SQLiteDatabase db) {
+	public void onCreate(SQLiteDatabase database) {
 		//Creating the tables
-		db.execSQL(SQL_CREATE_TABLE_MESSAGES);
-		db.execSQL(SQL_CREATE_TABLE_CONVERSATIONS);
-		db.execSQL(SQL_CREATE_TABLE_MEMBERS);
-		db.execSQL(SQL_CREATE_TABLE_ATTACHMENTS);
-		db.execSQL(SQL_CREATE_TABLE_STICKER);
-		db.execSQL(SQL_CREATE_TABLE_TAPBACK);
-		//db.execSQL(SQL_CREATE_TABLE_BLOCKED);
+		database.execSQL(SQL_CREATE_TABLE_MESSAGES);
+		database.execSQL(SQL_CREATE_TABLE_CONVERSATIONS);
+		database.execSQL(SQL_CREATE_TABLE_MEMBERS);
+		database.execSQL(SQL_CREATE_TABLE_ATTACHMENTS);
+		database.execSQL(SQL_CREATE_TABLE_STICKER);
+		database.execSQL(SQL_CREATE_TABLE_TAPBACK);
+		//database.execSQL(SQL_CREATE_TABLE_BLOCKED);
 	}
 	
 	@Override
-	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+	public void onUpgrade(SQLiteDatabase database, int oldVersion, int newVersion) {
 		switch(oldVersion) {
 			case 1:
 				//Adding the "date read" column
-				db.execSQL("ALTER TABLE " + Contract.MessageEntry.TABLE_NAME + " ADD " + Contract.MessageEntry.COLUMN_NAME_DATEREAD + " INTEGER;");
+				database.execSQL("ALTER TABLE " + Contract.MessageEntry.TABLE_NAME + " ADD " + Contract.MessageEntry.COLUMN_NAME_DATEREAD + " INTEGER;");
 				
 				//Adding the sticker and tapback tables
-				db.execSQL(SQL_CREATE_TABLE_STICKER);
-				db.execSQL(SQL_CREATE_TABLE_TAPBACK);
+				database.execSQL(SQL_CREATE_TABLE_STICKER);
+				database.execSQL(SQL_CREATE_TABLE_TAPBACK);
 			case 2:
 				//Obsolete columns: "last_viewed"
 				
 				//Removing the "last viewed" column
-				//dropColumn(db, Contract.ConversationEntry.TABLE_NAME, "last_viewed");
+				//dropColumn(database, Contract.ConversationEntry.TABLE_NAME, "last_viewed");
 				
 				//Adding the "unread messages" column
-				db.execSQL("ALTER TABLE " + Contract.ConversationEntry.TABLE_NAME + " ADD " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER DEFAULT 0;");
+				database.execSQL("ALTER TABLE " + Contract.ConversationEntry.TABLE_NAME + " ADD " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER DEFAULT 0;");
 				
 				//Decompressing the sticker data
 				{
-					Cursor cursor = db.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_DATA}, null, null, null, null, null);
+					Cursor cursor = database.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_DATA}, null, null, null, null, null);
 					int indexID = cursor.getColumnIndex(Contract.StickerEntry._ID);
 					int indexData = cursor.getColumnIndex(Contract.StickerEntry.COLUMN_NAME_DATA);
 					
@@ -175,7 +174,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 							exception.printStackTrace();
 							continue;
 						}
-						db.update(Contract.StickerEntry.TABLE_NAME, contentValues, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(cursor.getLong(indexID))});
+						database.update(Contract.StickerEntry.TABLE_NAME, contentValues, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(cursor.getLong(indexID))});
 					}
 					
 					cursor.close();
@@ -184,16 +183,16 @@ class DatabaseManager extends SQLiteOpenHelper {
 	}
 	
 	@Override
-	public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+	public void onDowngrade(SQLiteDatabase database, int oldVersion, int newVersion) {
 		//Dropping all tables
-		String[] tableNames = getTableNames(db);
-		for(String table : tableNames) db.execSQL("DROP TABLE IF EXISTS " + table);
+		String[] tableNames = getTableNames();
+		for(String table : tableNames) database.execSQL("DROP TABLE IF EXISTS " + table);
 		
 		//Rebuilding the database
-		onCreate(db);
+		onCreate(database);
 		
 		//Shrinking the database
-		//db.execSQL("VACUUM;");
+		//database.execSQL("VACUUM;");
 	}
 	
 	static final class Contract {
@@ -272,26 +271,28 @@ class DatabaseManager extends SQLiteOpenHelper {
 		} */
 	}
 	
-	static SQLiteDatabase getReadableDatabase(Context context) {
-		//Getting the readable database
-		return getInstance(context).getReadableDatabase();
+	static void createInstance(Context context) {
+		instance = new DatabaseManager(context);
 	}
 	
-	static SQLiteDatabase getWritableDatabase(Context context) {
-		//Getting the readable database
-		return getInstance(context).getWritableDatabase();
+	static DatabaseManager getInstance() {
+		return instance;
+	}
+	
+	static void disposeInstance() {
+		instance.close();
 	}
 	
 	//DO NOT USE, CAUSES ISSUES
-	static void dropColumn(SQLiteDatabase writableDatabase, String tableName, String columnName) {
+	void dropColumn(String tableName, String columnName) {
 		//Fetching the column names of the table
-		String columnNames[] = getColumnNames(writableDatabase, tableName);
+		String columnNames[] = getColumnNames(tableName);
 		StringBuilder columnTargetSB = new StringBuilder();
 		for(String column : columnNames) if(!column.equals(columnName)) columnTargetSB.append(',').append(column);
 		String columnTarget = columnTargetSB.toString();
 		
 		//Dropping the column
-		writableDatabase.execSQL(
+		getWritableDatabase().execSQL(
 				"BEGIN TRANSACTION;" +
 						"CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnTarget + ");" +
 						"INSERT INTO " + tableName + "_backup SELECT " + columnTarget + " FROM " + tableName + ";" +
@@ -303,30 +304,27 @@ class DatabaseManager extends SQLiteOpenHelper {
 		);
 	}
 	
-	static String[] getTableNames(SQLiteDatabase readableDatabase) {
+	private String[] getTableNames() {
 		List<String> tableNames = new ArrayList<>();
-		Cursor cursor = readableDatabase.rawQuery("SELECT name FROM sqlite_master WHERE type='table'", null);
+		Cursor cursor = getReadableDatabase().rawQuery("SELECT name FROM sqlite_master WHERE type='table'", null);
 		//int indexName = cursor.getColumnIndex("name");
 		while(cursor.moveToNext()) tableNames.add(cursor.getString(0));
 		cursor.close();
 		return tableNames.toArray(new String[0]);
 	}
 	
-	static String[] getColumnNames(SQLiteDatabase readableDatabase, String tableName) {
-		try(Cursor cursor = readableDatabase.query(tableName, null, null, null, null, null, null)) {
+	private String[] getColumnNames(String tableName) {
+		try(Cursor cursor = getReadableDatabase().query(tableName, null, null, null, null, null, null)) {
 			return cursor.getColumnNames();
 		}
 	}
 	
-	static ArrayList<ConversationManager.ConversationInfo> fetchConversationsWithState(Context context, ConversationManager.ConversationInfo.ConversationState conversationState) {
+	ArrayList<ConversationManager.ConversationInfo> fetchConversationsWithState(Context context, ConversationManager.ConversationInfo.ConversationState conversationState) {
 		//Creating the conversation list
 		ArrayList<ConversationManager.ConversationInfo> conversationList = new ArrayList<>();
 		
-		//Getting the instance
-		SQLiteOpenHelper databaseManager = getInstance(context);
-		
-		//Getting the readable database
-		SQLiteDatabase database = databaseManager.getReadableDatabase();
+		//Getting the database
+		SQLiteDatabase database = getReadableDatabase();
 		
 		//Querying the database
 		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData, Contract.ConversationEntry.COLUMN_NAME_STATE + " = ?", new String[]{Integer.toString(conversationState.getIdentifier())}, null, null, null);
@@ -352,7 +350,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			boolean chatArchived = cursor.getInt(indexChatArchived) == 1;
 			boolean chatMuted = cursor.getInt(indexChatMuted) == 1;
 			int chatColor = cursor.getInt(indexChatColor);
-			ConversationManager.LightConversationItem lightItem = getLightItem(context, database, chatID);
+			ConversationManager.LightConversationItem lightItem = getLightItem(context, chatID);
 			
 			//Creating the members list
 			ArrayList<ConversationManager.MemberInfo> conversationMembers = new ArrayList<>();
@@ -382,12 +380,15 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return conversationList;
 	}
 	
-	static MainApplication.LoadFlagArrayList<ConversationManager.ConversationInfo> fetchSummaryConversations(SQLiteDatabase readableDatabase, Context context) {
+	MainApplication.LoadFlagArrayList<ConversationManager.ConversationInfo> fetchSummaryConversations(Context context) {
+		//Getting the database
+		SQLiteDatabase database = getReadableDatabase();
+		
 		//Creating the conversation list
 		MainApplication.LoadFlagArrayList<ConversationManager.ConversationInfo> conversationList = new MainApplication.LoadFlagArrayList<>(true);
 		
 		//Querying the database
-		Cursor cursor = readableDatabase.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData, Contract.ConversationEntry.COLUMN_NAME_STATE + " != ?", new String[]{Integer.toString(ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_SERVER.getIdentifier())}, null, null, null);
+		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData, Contract.ConversationEntry.COLUMN_NAME_STATE + " != ?", new String[]{Integer.toString(ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_SERVER.getIdentifier())}, null, null, null);
 		
 		//Getting the indexes
 		int indexChatID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry._ID);
@@ -412,13 +413,13 @@ class DatabaseManager extends SQLiteOpenHelper {
 			boolean chatArchived = cursor.getInt(indexChatArchived) == 1;
 			boolean chatMuted = cursor.getInt(indexChatMuted) == 1;
 			int chatColor = cursor.getInt(indexChatColor);
-			ConversationManager.LightConversationItem lightItem = getLightItem(context, readableDatabase, chatID);
+			ConversationManager.LightConversationItem lightItem = getLightItem(context, chatID);
 			
 			//Creating the members list
 			ArrayList<ConversationManager.MemberInfo> conversationMembers = new ArrayList<>();
 			
 			//Querying the members in the table
-			Cursor memberCursor = readableDatabase.query(Contract.MemberEntry.TABLE_NAME, new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER, Contract.MemberEntry.COLUMN_NAME_CHAT, Contract.MemberEntry.COLUMN_NAME_COLOR}, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(chatID)}, null, null, null);
+			Cursor memberCursor = database.query(Contract.MemberEntry.TABLE_NAME, new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER, Contract.MemberEntry.COLUMN_NAME_CHAT, Contract.MemberEntry.COLUMN_NAME_COLOR}, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(chatID)}, null, null, null);
 			while(memberCursor.moveToNext())
 				conversationMembers.add(new ConversationManager.MemberInfo(memberCursor.getString(memberCursor.getColumnIndexOrThrow(Contract.MemberEntry.COLUMN_NAME_MEMBER)), memberCursor.getInt(memberCursor.getColumnIndexOrThrow(Contract.MemberEntry.COLUMN_NAME_COLOR))));
 			
@@ -443,21 +444,24 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return conversationList;
 	}
 	
-	static void switchMessageOwnership(SQLiteDatabase writableDatabase, long identifierFrom, long identifierTo) {
+	void switchMessageOwnership(long identifierFrom, long identifierTo) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, identifierTo);
 		
 		//Updating the entries
-		writableDatabase.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry.COLUMN_NAME_CHAT + "=?", new String[]{Long.toString(identifierFrom)});
+		getWritableDatabase().update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry.COLUMN_NAME_CHAT + "=?", new String[]{Long.toString(identifierFrom)});
 	}
 	
-	static ArrayList<ConversationManager.ConversationItem> loadConversationItems(SQLiteDatabase readableDatabase, ConversationManager.ConversationInfo conversationInfo) {
+	ArrayList<ConversationManager.ConversationItem> loadConversationItems(ConversationManager.ConversationInfo conversationInfo) {
+		//Getting the database
+		SQLiteDatabase database = getReadableDatabase();
+		
 		//Creating the message list
 		ArrayList<ConversationManager.ConversationItem> conversationItems = new ArrayList<>();
 		
 		//Querying the database
-		Cursor cursor = readableDatabase.query(Contract.MessageEntry.TABLE_NAME, null, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " ASC", null);
+		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " ASC", null);
 		//Cursor cursor = database.rawQuery(SQL_FETCH_CONVERSATION_MESSAGES, new String[]{Long.toString(conversationInfo.getLocalID())});
 		
 		//Getting the indexes
@@ -496,7 +500,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				{
 					//Querying the database for attachments
-					Cursor attachmentCursor = readableDatabase.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry._ID, Contract.AttachmentEntry.COLUMN_NAME_GUID, Contract.AttachmentEntry.COLUMN_NAME_TYPE, Contract.AttachmentEntry.COLUMN_NAME_FILENAME, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM},
+					Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry._ID, Contract.AttachmentEntry.COLUMN_NAME_GUID, Contract.AttachmentEntry.COLUMN_NAME_TYPE, Contract.AttachmentEntry.COLUMN_NAME_FILENAME, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM},
 							Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
 					
 					//Getting the indexes
@@ -510,7 +514,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					//Iterating over the results
 					while(attachmentCursor.moveToNext()) {
 						//Getting the attachment data
-						File file = attachmentCursor.isNull(aFilePathIndex) ? null : new File(attachmentCursor.getString(aFilePathIndex));
+						File file = attachmentCursor.isNull(aFilePathIndex) ? null : ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentCursor.getString(aFilePathIndex));
 						ConversationManager.ContentType contentType = ConversationManager.ContentType.fromIdentifier(attachmentCursor.getInt(aContentTypeIndex));
 						String fileName = attachmentCursor.getString(aFileNameIndex);
 						String stringChecksum = attachmentCursor.getString(aChecksumIndex);
@@ -556,7 +560,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				{
 					//Querying the database for stickers
-					Cursor stickerCursor = readableDatabase.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX, Contract.StickerEntry.COLUMN_NAME_GUID, Contract.StickerEntry.COLUMN_NAME_SENDER, Contract.StickerEntry.COLUMN_NAME_DATE},
+					Cursor stickerCursor = database.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX, Contract.StickerEntry.COLUMN_NAME_GUID, Contract.StickerEntry.COLUMN_NAME_SENDER, Contract.StickerEntry.COLUMN_NAME_DATE},
 							Contract.StickerEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
 					
 					//Getting the indexes
@@ -575,7 +579,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				{
 					//Querying the database for tapbacks
-					Cursor tapbackCursor = readableDatabase.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID, Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX, Contract.TapbackEntry.COLUMN_NAME_SENDER, Contract.TapbackEntry.COLUMN_NAME_CODE},
+					Cursor tapbackCursor = database.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID, Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX, Contract.TapbackEntry.COLUMN_NAME_SENDER, Contract.TapbackEntry.COLUMN_NAME_CODE},
 							Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
 					
 					//Getting the indexes
@@ -633,7 +637,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return conversationItems;
 	}
 	
-	static ArrayList<ConversationManager.ConversationItem> loadConversationChunk(SQLiteDatabase readableDatabase, ConversationManager.ConversationInfo conversationInfo, boolean useFirstDate, long firstMessageDate) {
+	ArrayList<ConversationManager.ConversationItem> loadConversationChunk(ConversationManager.ConversationInfo conversationInfo, boolean useFirstDate, long firstMessageDate) {
+		//Getting the database
+		SQLiteDatabase database = getReadableDatabase();
+		
 		//Creating the message list
 		ArrayList<ConversationManager.ConversationItem> conversationItems = new ArrayList<>();
 		
@@ -647,7 +654,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?";
 			selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID())};
 		}
-		Cursor cursor = readableDatabase.query(Contract.MessageEntry.TABLE_NAME, null, selection, selectionArgs, null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " DESC", Integer.toString(Messaging.messageChunkSize));
+		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, selection, selectionArgs, null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " DESC", Integer.toString(Messaging.messageChunkSize));
 		//Cursor cursor = database.rawQuery(SQL_FETCH_CONVERSATION_MESSAGES, new String[]{Long.toString(conversationInfo.getLocalID())});
 		
 		//Getting the indexes
@@ -686,7 +693,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				{
 					//Querying the database for attachments
-					Cursor attachmentCursor = readableDatabase.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry._ID, Contract.AttachmentEntry.COLUMN_NAME_GUID, Contract.AttachmentEntry.COLUMN_NAME_TYPE, Contract.AttachmentEntry.COLUMN_NAME_FILENAME, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM},
+					Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry._ID, Contract.AttachmentEntry.COLUMN_NAME_GUID, Contract.AttachmentEntry.COLUMN_NAME_TYPE, Contract.AttachmentEntry.COLUMN_NAME_FILENAME, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM},
 							Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
 					
 					//Getting the indexes
@@ -700,7 +707,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					//Iterating over the results
 					while(attachmentCursor.moveToNext()) {
 						//Getting the attachment data
-						File file = attachmentCursor.isNull(aFilePathIndex) ? null : new File(attachmentCursor.getString(aFilePathIndex));
+						File file = attachmentCursor.isNull(aFilePathIndex) ? null : ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentCursor.getString(aFilePathIndex));
 						ConversationManager.ContentType contentType = ConversationManager.ContentType.fromIdentifier(attachmentCursor.getInt(aContentTypeIndex));
 						String fileName = attachmentCursor.getString(aFileNameIndex);
 						String stringChecksum = attachmentCursor.getString(aChecksumIndex);
@@ -746,7 +753,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				{
 					//Querying the database for stickers
-					Cursor stickerCursor = readableDatabase.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX, Contract.StickerEntry.COLUMN_NAME_GUID, Contract.StickerEntry.COLUMN_NAME_SENDER, Contract.StickerEntry.COLUMN_NAME_DATE},
+					Cursor stickerCursor = database.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX, Contract.StickerEntry.COLUMN_NAME_GUID, Contract.StickerEntry.COLUMN_NAME_SENDER, Contract.StickerEntry.COLUMN_NAME_DATE},
 							Contract.StickerEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
 					
 					//Getting the indexes
@@ -765,7 +772,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				{
 					//Querying the database for tapbacks
-					Cursor tapbackCursor = readableDatabase.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID, Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX, Contract.TapbackEntry.COLUMN_NAME_SENDER, Contract.TapbackEntry.COLUMN_NAME_CODE},
+					Cursor tapbackCursor = database.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID, Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX, Contract.TapbackEntry.COLUMN_NAME_SENDER, Contract.TapbackEntry.COLUMN_NAME_CODE},
 							Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
 					
 					//Getting the indexes
@@ -823,31 +830,31 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return conversationItems;
 	}
 	
-	static void invalidateAttachment(SQLiteDatabase writableDatabase, long localID) {
+	void invalidateAttachment(long localID) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, (String) null);
 		
 		//Updating the database
-		writableDatabase.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(localID)});
+		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(localID)});
 	}
 	
-	static void updateAttachmentFile(SQLiteDatabase writableDatabase, long localID, File file) {
+	void updateAttachmentFile(long localID, Context context, File file) {
 		//Creating the content values variable
 		ContentValues contentValues = new ContentValues();
-		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, file.getPath());
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, ConversationManager.AttachmentInfo.getRelativePath(context, file));
 		
 		//Updating the data
-		writableDatabase.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + "=?", new String[]{Long.toString(localID)});
+		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + "=?", new String[]{Long.toString(localID)});
 	}
 	
-	static void updateAttachmentChecksum(SQLiteDatabase writableDatabase, long localID, byte[] checksum) {
+	void updateAttachmentChecksum(long localID, byte[] checksum) {
 		//Creating the content values variable
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM, Base64.encodeToString(checksum, Base64.NO_WRAP));
 		
 		//Updating the data
-		writableDatabase.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + "=?", new String[]{Long.toString(localID)});
+		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + "=?", new String[]{Long.toString(localID)});
 	}
 	
 	/* static void createUpdateAttachmentFile(SQLiteDatabase writableDatabase, long localID, ConversationManager.AttachmentInfo attachmentInfo, File file) {
@@ -873,7 +880,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 		writableDatabase.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + "=?", new String[]{Long.toString(localID)});
 	} */
 	
-	private static ConversationManager.LightConversationItem getLightItem(Context context, SQLiteDatabase database, long chatID) {
+	private ConversationManager.LightConversationItem getLightItem(Context context, long chatID) {
+		//Getting the database
+		SQLiteDatabase database = getReadableDatabase();
+		
 		//Getting the last item
 		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME,
 				new String[]{Contract.MessageEntry._ID, Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, Contract.MessageEntry.COLUMN_NAME_DATE},
@@ -925,7 +935,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Checking if the message is valid
 				if(message != null) {
 					//Returning the light message info (without the attachments)
-					return new ConversationManager.LightConversationItem(ConversationManager.MessageInfo.getSummary(context, sender == null, message, sendStyle, new ArrayList<Integer>()), date);
+					return new ConversationManager.LightConversationItem(ConversationManager.MessageInfo.getSummary(context, sender == null, message, sendStyle, new ArrayList<>()), date);
 				}
 				
 				//Retrieving the attachments
@@ -934,10 +944,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 						Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(lastItemID)},
 						null, null, null);
 				
-				//Closing the cursor and returning if there are no results
+				//Closing the cursor and returning if an empty item there are no results
 				if(!cursor.moveToNext()) {
 					cursor.close();
-					return null;
+					return new ConversationManager.LightConversationItem(context.getResources().getString(R.string.part_unknown), date);
 				}
 				
 				//Getting the attachment string resources
@@ -1075,12 +1085,15 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return null; */
 	}
 	
-	static ConversationManager.ConversationInfo addRetrieveServerCreatedConversationInfo(SQLiteDatabase writableDatabase, Context context, String guid) {
+	ConversationManager.ConversationInfo addRetrieveServerCreatedConversationInfo(Context context, String guid) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Returning the existing conversation if one already exists
-		Cursor cursor = writableDatabase.query(Contract.ConversationEntry.TABLE_NAME, null, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{guid}, null, null, null, "1");
+		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, null, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{guid}, null, null, null, "1");
 		if(cursor.getCount() > 0) {
 			cursor.close();
-			return fetchConversationInfo(context, writableDatabase, guid);
+			return fetchConversationInfo(context, guid);
 		}
 		cursor.close();
 		
@@ -1092,7 +1105,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		long localID;
 		//Inserting the conversation into the database
 		try {
-			localID = writableDatabase.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
+			localID = database.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
 		} catch(SQLiteConstraintException exception) {
 			//Printing the exception's stack trace
 			exception.printStackTrace();
@@ -1105,13 +1118,16 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return new ConversationManager.ConversationInfo(localID, guid, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_SERVER);
 	}
 	
-	static ConversationManager.ConversationInfo addReadyConversationInfo(SQLiteDatabase writableDatabase, Context context, SharedValues.ConversationInfo structConversationInfo) {
+	ConversationManager.ConversationInfo addReadyConversationInfo(Context context, SharedValues.ConversationInfo structConversationInfo) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Deleting the conversation if it exists in the database
 		long existingLocalID = -1;
-		Cursor cursor = writableDatabase.query(Contract.ConversationEntry.TABLE_NAME, new String[]{Contract.ConversationEntry._ID}, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{structConversationInfo.guid}, null, null, null, "1");
+		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, new String[]{Contract.ConversationEntry._ID}, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{structConversationInfo.guid}, null, null, null, "1");
 		if(cursor.moveToNext()) {
 			existingLocalID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.ConversationEntry._ID));
-			writableDatabase.delete(Contract.ConversationEntry.TABLE_NAME, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{structConversationInfo.guid});
+			database.delete(Contract.ConversationEntry.TABLE_NAME, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{structConversationInfo.guid});
 		}
 		cursor.close();
 		
@@ -1129,7 +1145,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		//Inserting the conversation into the database
 		long localID;
 		try {
-			localID = writableDatabase.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
+			localID = database.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
 		} catch(SQLiteConstraintException exception) {
 			//Printing the exception's stack trace
 			exception.printStackTrace();
@@ -1146,23 +1162,26 @@ class DatabaseManager extends SQLiteOpenHelper {
 		conversationInfo.setConversationMembersCreateColors(structConversationInfo.members);
 		
 		//Adding the members
-		if(existingLocalID != -1) writableDatabase.delete(Contract.MemberEntry.TABLE_NAME, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(existingLocalID)}); //Deleting the existing members
+		if(existingLocalID != -1) database.delete(Contract.MemberEntry.TABLE_NAME, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(existingLocalID)}); //Deleting the existing members
 		for(ConversationManager.MemberInfo member : conversationInfo.getConversationMembers()) {
 			contentValues = new ContentValues();
 			contentValues.put(Contract.MemberEntry.COLUMN_NAME_MEMBER, member.getName());
 			contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
 			contentValues.put(Contract.MemberEntry.COLUMN_NAME_CHAT, localID);
 			
-			writableDatabase.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
+			database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
 		}
 		
 		//Returning the conversation info
 		return conversationInfo;
 	}
 	
-	static ConversationManager.ConversationInfo addRetrieveClientCreatedConversationInfo(SQLiteDatabase writableDatabase, Context context, List<String> members, String service) {
+	ConversationManager.ConversationInfo addRetrieveClientCreatedConversationInfo(Context context, List<String> members, String service) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Returning an existing conversation if it exists
-		ConversationManager.ConversationInfo existingConversation = findConversationInfoWithMembers(writableDatabase, context, members, service, false);
+		ConversationManager.ConversationInfo existingConversation = findConversationInfoWithMembers(context, members, service, false);
 		if(existingConversation != null) return existingConversation;
 		
 		//Picking a conversation color
@@ -1178,7 +1197,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		long localID;
 		//Inserting the conversation into the database
 		try {
-			localID = writableDatabase.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
+			localID = database.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
 		} catch(SQLiteConstraintException exception) {
 			//Printing the exception's stack trace
 			exception.printStackTrace();
@@ -1204,7 +1223,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
 			
 			//Inserting the data
-			writableDatabase.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
+			database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
 		}
 		
 		//Adding the conversation created message
@@ -1217,15 +1236,18 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
 		
-		writableDatabase.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+		database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
 		
 		//Returning the conversation info
 		return conversationInfo;
 	}
 	
-	static ConversationManager.ConversationInfo findConversationInfoWithMembers(SQLiteDatabase readableDatabase, Context context, List<String> members, String service, boolean clientIncompleteOnly) {
+	ConversationManager.ConversationInfo findConversationInfoWithMembers(Context context, List<String> members, String service, boolean clientIncompleteOnly) {
+		//Getting the database
+		SQLiteDatabase database = getReadableDatabase();
+		
 		//Getting all conversation identifiers
-		Cursor conversationCursor = readableDatabase.query(Contract.ConversationEntry.TABLE_NAME, new String[]{Contract.ConversationEntry._ID},
+		Cursor conversationCursor = database.query(Contract.ConversationEntry.TABLE_NAME, new String[]{Contract.ConversationEntry._ID},
 				Contract.ConversationEntry.COLUMN_NAME_SERVICE + " = ?" + (clientIncompleteOnly ? " AND " + Contract.ConversationEntry.COLUMN_NAME_STATE + " = ?" : ""),
 				clientIncompleteOnly ? new String[]{service, Integer.toString(ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_CLIENT.getIdentifier())} : new String[]{service},
 				null, null, null);
@@ -1237,7 +1259,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			
 			//Getting the conversation's members
 			ArrayList<String> conversationMembers = new ArrayList<>();
-			Cursor memberCursor = readableDatabase.query(Contract.MemberEntry.TABLE_NAME, new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER}, Contract.MemberEntry.COLUMN_NAME_CHAT + "=?", new String[]{Long.toString(conversationID)}, null, null, null);
+			Cursor memberCursor = database.query(Contract.MemberEntry.TABLE_NAME, new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER}, Contract.MemberEntry.COLUMN_NAME_CHAT + "=?", new String[]{Long.toString(conversationID)}, null, null, null);
 			while(memberCursor.moveToNext()) conversationMembers.add(memberCursor.getString(memberCursor.getColumnIndexOrThrow(Contract.MemberEntry.COLUMN_NAME_MEMBER)));
 			memberCursor.close();
 			Constants.normalizeAddresses(conversationMembers);
@@ -1246,7 +1268,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			if(members.size() == conversationMembers.size() && members.containsAll(conversationMembers)) {
 				//Returning the complete conversation info
 				conversationCursor.close();
-				return fetchConversationInfo(context, readableDatabase, conversationID);
+				return fetchConversationInfo(context, conversationID);
 			}
 		}
 		
@@ -1257,9 +1279,12 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return null;
 	}
 	
-	static ConversationManager.ConversationInfo fetchConversationInfo(Context context, SQLiteDatabase readableDatabase, String conversationGUID) {
+	ConversationManager.ConversationInfo fetchConversationInfo(Context context, String conversationGUID) {
+		//Getting the database
+		SQLiteDatabase database = getReadableDatabase();
+		
 		//Querying the database
-		Cursor cursor = readableDatabase.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{conversationGUID}, null, null, null);
+		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{conversationGUID}, null, null, null);
 		
 		//Returning null if there are no results
 		if(!cursor.moveToNext()) {
@@ -1276,7 +1301,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		boolean chatArchived = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED)) == 1;
 		boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) == 1;
 		int chatColor = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR));
-		ConversationManager.LightConversationItem lightItem = getLightItem(context, readableDatabase, localID);
+		ConversationManager.LightConversationItem lightItem = getLightItem(context, localID);
 		
 		//Closing the cursor
 		cursor.close();
@@ -1286,7 +1311,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Getting the members
 		ArrayList<ConversationManager.MemberInfo> conversationMembers = new ArrayList<>();
-		Cursor memberCursor = readableDatabase.query(Contract.MemberEntry.TABLE_NAME, new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER, Contract.MemberEntry.COLUMN_NAME_CHAT, Contract.MemberEntry.COLUMN_NAME_COLOR}, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(localID)}, null, null, null);
+		Cursor memberCursor = database.query(Contract.MemberEntry.TABLE_NAME, new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER, Contract.MemberEntry.COLUMN_NAME_CHAT, Contract.MemberEntry.COLUMN_NAME_COLOR}, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(localID)}, null, null, null);
 		while(memberCursor.moveToNext())
 			conversationMembers.add(new ConversationManager.MemberInfo(memberCursor.getString(memberCursor.getColumnIndexOrThrow(Contract.MemberEntry.COLUMN_NAME_MEMBER)), memberCursor.getInt(memberCursor.getColumnIndexOrThrow(Contract.MemberEntry.COLUMN_NAME_COLOR))));
 		
@@ -1303,9 +1328,12 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return conversationInfo;
 	}
 	
-	static ConversationManager.ConversationInfo fetchConversationInfo(Context context, SQLiteDatabase readableDatabase, long localID) {
+	ConversationManager.ConversationInfo fetchConversationInfo(Context context, long localID) {
+		//Getting the database
+		SQLiteDatabase database = getReadableDatabase();
+		
 		//Querying the database
-		try(Cursor cursor = readableDatabase.query(Contract.ConversationEntry.TABLE_NAME, new String[]{
+		try(Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, new String[]{
 				Contract.ConversationEntry.COLUMN_NAME_GUID,
 				Contract.ConversationEntry.COLUMN_NAME_STATE,
 				Contract.ConversationEntry.COLUMN_NAME_SERVICE,
@@ -1326,7 +1354,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			boolean chatArchived = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED)) == 1;
 			boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) == 1;
 			int chatColor = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR));
-			ConversationManager.LightConversationItem lightItem = getLightItem(context, readableDatabase, localID);
+			ConversationManager.LightConversationItem lightItem = getLightItem(context, localID);
 			
 			//Closing the cursor
 			cursor.close();
@@ -1336,7 +1364,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			
 			//Getting the members
 			ArrayList<ConversationManager.MemberInfo> conversationMembers = new ArrayList<>();
-			Cursor memberCursor = readableDatabase.query(Contract.MemberEntry.TABLE_NAME, new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER, Contract.MemberEntry.COLUMN_NAME_CHAT, Contract.MemberEntry.COLUMN_NAME_COLOR}, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(localID)}, null, null, null);
+			Cursor memberCursor = database.query(Contract.MemberEntry.TABLE_NAME, new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER, Contract.MemberEntry.COLUMN_NAME_CHAT, Contract.MemberEntry.COLUMN_NAME_COLOR}, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(localID)}, null, null, null);
 			while(memberCursor.moveToNext()) conversationMembers.add(new ConversationManager.MemberInfo(memberCursor.getString(memberCursor.getColumnIndexOrThrow(Contract.MemberEntry.COLUMN_NAME_MEMBER)), memberCursor.getInt(memberCursor.getColumnIndexOrThrow(Contract.MemberEntry.COLUMN_NAME_COLOR))));
 			memberCursor.close();
 			
@@ -1351,7 +1379,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
-	static ConversationManager.ConversationItem addConversationItemReplaceGhost(SQLiteDatabase writableDatabase, SharedValues.ConversationItem conversationItem, ConversationManager.ConversationInfo conversationInfo) {
+	ConversationManager.ConversationItem addConversationItemReplaceGhost(SharedValues.ConversationItem conversationItem, ConversationManager.ConversationInfo conversationInfo) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Checking if the item is a message
 		if(conversationItem instanceof SharedValues.MessageInfo) {
 			//Getting the message info
@@ -1371,7 +1402,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Checking if the message is a text message
 				if(messageStruct.text != null && messageStruct.attachments.isEmpty()) {
 					//Finding a matching row
-					try(Cursor cursor = writableDatabase.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID},
+					try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID},
 							Contract.MessageEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " = ?",
 							new String[]{Integer.toString(SharedValues.MessageInfo.stateCodeGhost), messageStruct.text},
 							null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " DESC", "1")) {
@@ -1382,7 +1413,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 							
 							//Updating the message
 							try {
-								writableDatabase.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+								database.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 							} catch(SQLiteConstraintException exception) {
 								//Printing the stack trace
 								exception.printStackTrace();
@@ -1392,8 +1423,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 							}
 							
 							//Adding the associations
-							ArrayList<ConversationManager.StickerInfo> stickers = addMessageStickers(writableDatabase, messageID, messageStruct.stickers);
-							ArrayList<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(writableDatabase, messageID, messageStruct.tapbacks);
+							ArrayList<ConversationManager.StickerInfo> stickers = addMessageStickers(messageID, messageStruct.stickers);
+							ArrayList<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(messageID, messageStruct.tapbacks);
 							
 							//Creating and returning the message
 							ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, messageStruct.dateRead);
@@ -1410,7 +1441,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					/* Cursor cursor = writableDatabase.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry.COLUMN_NAME_MESSAGE},
 							Contract.MessageEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " = ? AND " + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = ?",
 							new String[]{Integer.toString(SharedValues.MessageInfo.stateCodeGhost), null, "x'" + Constants.bytesToHex(attachmentHash)}, null, null, null, "1"); */
-					try(Cursor cursor = writableDatabase.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
+					try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
 							" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID +
 							" WHERE " + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + SharedValues.MessageInfo.stateCodeGhost + " AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(attachmentChecksum, Base64.NO_WRAP) + '\'' +
 							" ORDER BY " + Contract.MessageEntry.COLUMN_NAME_DATE + " DESC" +
@@ -1427,11 +1458,11 @@ class DatabaseManager extends SQLiteOpenHelper {
 							//Checking if a file could be found
 							if(attachmentFilePath != null) {
 								//Getting the attachment file
-								File attachmentFile = new File(attachmentFilePath);
+								File attachmentFile = ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentFilePath);
 								
 								//Updating the message
 								try {
-									writableDatabase.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+									database.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 								} catch(SQLiteConstraintException exception) {
 									exception.printStackTrace();
 									return null;
@@ -1441,7 +1472,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 								contentValues = new ContentValues();
 								contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, messageStruct.attachments.get(0).guid);
 								try {
-									writableDatabase.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(attachmentID)});
+									database.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(attachmentID)});
 								} catch(SQLiteConstraintException exception) {
 									//Printing the stack trace
 									exception.printStackTrace();
@@ -1451,8 +1482,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 								}
 								
 								//Adding the associations
-								ArrayList<ConversationManager.StickerInfo> stickers = addMessageStickers(writableDatabase, messageID, messageStruct.stickers);
-								ArrayList<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(writableDatabase, messageID, messageStruct.tapbacks);
+								ArrayList<ConversationManager.StickerInfo> stickers = addMessageStickers(messageID, messageStruct.stickers);
+								ArrayList<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(messageID, messageStruct.tapbacks);
 								
 								//Creating the message
 								ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, messageStruct.dateRead);
@@ -1494,10 +1525,13 @@ class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		//Adding the conversation item normally
-		return addConversationItem(writableDatabase, conversationItem, conversationInfo);
+		return addConversationItem(conversationItem, conversationInfo);
 	}
 	
-	static ConversationManager.ConversationItem addConversationItem(SQLiteDatabase writableDatabase, SharedValues.ConversationItem conversationItem, ConversationManager.ConversationInfo conversationInfo) {
+	ConversationManager.ConversationItem addConversationItem(SharedValues.ConversationItem conversationItem, ConversationManager.ConversationInfo conversationInfo) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Creating the content values and adding the common data
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, conversationItem.guid);
@@ -1521,7 +1555,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			//Inserting the conversation into the database
 			long messageLocalID;
 			try {
-				messageLocalID = writableDatabase.insertOrThrow(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+				messageLocalID = database.insertOrThrow(Contract.MessageEntry.TABLE_NAME, null, contentValues);
 			} catch(SQLiteConstraintException exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
@@ -1531,8 +1565,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 			}
 			
 			//Adding the associations
-			ArrayList<ConversationManager.StickerInfo> stickers = addMessageStickers(writableDatabase, messageLocalID, messageInfoStruct.stickers);
-			ArrayList<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(writableDatabase, messageLocalID, messageInfoStruct.tapbacks);
+			ArrayList<ConversationManager.StickerInfo> stickers = addMessageStickers(messageLocalID, messageInfoStruct.stickers);
+			ArrayList<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(messageLocalID, messageInfoStruct.tapbacks);
 			
 			//Creating the message info
 			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageLocalID, messageInfoStruct.guid, conversationInfo, messageInfoStruct.sender, messageInfoStruct.text, new ArrayList<>(), messageInfoStruct.sendEffect, messageInfoStruct.date, messageInfoStruct.stateCode, messageInfoStruct.errorCode, messageInfoStruct.dateRead);
@@ -1552,7 +1586,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Inserting the attachment into the database
 				long localID;
 				try {
-					localID = writableDatabase.insertOrThrow(Contract.AttachmentEntry.TABLE_NAME, null, contentValues);
+					localID = database.insertOrThrow(Contract.AttachmentEntry.TABLE_NAME, null, contentValues);
 				} catch(SQLiteConstraintException exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
@@ -1590,7 +1624,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			//Inserting the action into the database
 			long localID;
 			try {
-				localID = writableDatabase.insertOrThrow(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+				localID = database.insertOrThrow(Contract.MessageEntry.TABLE_NAME, null, contentValues);
 			} catch(SQLiteConstraintException exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
@@ -1615,7 +1649,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			//Inserting the action into the database
 			long localID;
 			try {
-				localID = writableDatabase.insertOrThrow(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+				localID = database.insertOrThrow(Contract.MessageEntry.TABLE_NAME, null, contentValues);
 			} catch(SQLiteConstraintException exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
@@ -1632,7 +1666,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return null;
 	}
 	
-	static void addConversationItem(SQLiteDatabase writableDatabase, ConversationManager.ConversationItem conversationItem) {
+	void addConversationItem(ConversationManager.ConversationItem conversationItem) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Creating the content values and adding the common data
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, conversationItem.getGuid());
@@ -1657,7 +1694,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			
 			//Inserting the conversation into the database
 			try {
-				itemLocalID = writableDatabase.insertOrThrow(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+				itemLocalID = database.insertOrThrow(Contract.MessageEntry.TABLE_NAME, null, contentValues);
 			} catch(SQLiteConstraintException exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
@@ -1674,13 +1711,13 @@ class DatabaseManager extends SQLiteOpenHelper {
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, itemLocalID);
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_TYPE, attachment.getContentType().getIdentifier());
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILENAME, attachment.fileName);
-				if(attachment.file != null) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, attachment.file.getPath());
+				if(attachment.file != null) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, ConversationManager.AttachmentInfo.getRelativePath(MainApplication.getInstance(), attachment.file));
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM, attachment.fileChecksum);
 				
 				//Inserting the attachment into the database
 				long attachmentLocalID;
 				try {
-					attachmentLocalID = writableDatabase.insertOrThrow(Contract.AttachmentEntry.TABLE_NAME, null, contentValues);
+					attachmentLocalID = database.insertOrThrow(Contract.AttachmentEntry.TABLE_NAME, null, contentValues);
 				} catch(SQLiteConstraintException exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
@@ -1706,7 +1743,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			
 			//Inserting the action into the database
 			try {
-				itemLocalID = writableDatabase.insertOrThrow(Contract.AttachmentEntry.TABLE_NAME, null, contentValues);
+				itemLocalID = database.insertOrThrow(Contract.AttachmentEntry.TABLE_NAME, null, contentValues);
 			} catch(SQLiteConstraintException exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
@@ -1724,7 +1761,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			
 			//Inserting the action into the database
 			try {
-				itemLocalID = writableDatabase.insertOrThrow(Contract.AttachmentEntry.TABLE_NAME, null, contentValues);
+				itemLocalID = database.insertOrThrow(Contract.AttachmentEntry.TABLE_NAME, null, contentValues);
 			} catch(SQLiteConstraintException exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
@@ -1735,20 +1772,23 @@ class DatabaseManager extends SQLiteOpenHelper {
 		conversationItem.setLocalID(itemLocalID);
 	}
 	
-	static void setUnreadMessageCount(SQLiteDatabase writableDatabase, long conversationID, int count) {
+	void setUnreadMessageCount(long conversationID, int count) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT, count);
 		
 		//Updating the database
-		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
+		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	}
 	
-	static void incrementUnreadMessageCount(SQLiteDatabase writableDatabase, long conversationID) {
-		writableDatabase.execSQL("UPDATE " + Contract.ConversationEntry.TABLE_NAME + " SET " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " = " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " + 1 WHERE " + Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
+	void incrementUnreadMessageCount(long conversationID) {
+		getWritableDatabase().execSQL("UPDATE " + Contract.ConversationEntry.TABLE_NAME + " SET " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " = " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " + 1 WHERE " + Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	}
 	
-	private static ArrayList<ConversationManager.StickerInfo> addMessageStickers(SQLiteDatabase writableDatabase, long messageID, ArrayList<SharedValues.StickerModifierInfo> stickers) {
+	private ArrayList<ConversationManager.StickerInfo> addMessageStickers(long messageID, ArrayList<SharedValues.StickerModifierInfo> stickers) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Creating the list
 		ArrayList<ConversationManager.StickerInfo> list = new ArrayList<>();
 		
@@ -1767,7 +1807,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			//Inserting the entry
 			long rowID;
 			try {
-				rowID = writableDatabase.insert(Contract.StickerEntry.TABLE_NAME, null, contentValues);
+				rowID = database.insert(Contract.StickerEntry.TABLE_NAME, null, contentValues);
 			} catch(SQLiteConstraintException exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
@@ -1784,7 +1824,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return list;
 	}
 	
-	private static ArrayList<ConversationManager.TapbackInfo> addMessageTapbacks(SQLiteDatabase writableDatabase, long messageID, ArrayList<SharedValues.TapbackModifierInfo> tapbacks) {
+	private ArrayList<ConversationManager.TapbackInfo> addMessageTapbacks(long messageID, ArrayList<SharedValues.TapbackModifierInfo> tapbacks) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Creating the list
 		ArrayList<ConversationManager.TapbackInfo> list = new ArrayList<>();
 		
@@ -1801,7 +1844,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			//Inserting the entry
 			long rowID;
 			try {
-				rowID = writableDatabase.insert(Contract.TapbackEntry.TABLE_NAME, null, contentValues);
+				rowID = database.insert(Contract.TapbackEntry.TABLE_NAME, null, contentValues);
 			} catch(SQLiteConstraintException exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
@@ -1818,7 +1861,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return list;
 	}
 	
-	static void updateConversationInfo(SQLiteDatabase writableDatabase, ConversationManager.ConversationInfo conversationInfo, boolean updateMembers) {
+	void updateConversationInfo(ConversationManager.ConversationInfo conversationInfo, boolean updateMembers) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		
@@ -1829,7 +1875,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_NAME, conversationInfo.getStaticTitle());
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationInfo.getConversationColor());
 		
-		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + "=?", new String[]{Long.toString(conversationInfo.getLocalID())});
+		database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + "=?", new String[]{Long.toString(conversationInfo.getLocalID())});
 		
 		//Checking if members should be updated
 		if(updateMembers) {
@@ -1842,12 +1888,15 @@ class DatabaseManager extends SQLiteOpenHelper {
 				contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
 				
 				//Inserting the values into the conversation / users join table
-				writableDatabase.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
+				database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
 			}
 		}
 	}
 	
-	static void copyConversationInfo(SQLiteDatabase writableDatabase, ConversationManager.ConversationInfo sourceConversation, ConversationManager.ConversationInfo targetConversation, boolean updateMembers) {
+	void copyConversationInfo(ConversationManager.ConversationInfo sourceConversation, ConversationManager.ConversationInfo targetConversation, boolean updateMembers) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		
@@ -1857,7 +1906,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, sourceConversation.getService());
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_NAME, sourceConversation.getStaticTitle());
 		
-		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + "=?", new String[]{Long.toString(targetConversation.getLocalID())});
+		database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + "=?", new String[]{Long.toString(targetConversation.getLocalID())});
 		
 		//Checking if members should be updated
 		if(updateMembers) {
@@ -1870,21 +1919,24 @@ class DatabaseManager extends SQLiteOpenHelper {
 				contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
 				
 				//Inserting the values into the conversation / users join table
-				writableDatabase.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
+				database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
 			}
 		}
 	}
 	
-	static void updateConversationColor(SQLiteDatabase writableDatabase, long conversationID, int newColor) {
+	void updateConversationColor(long conversationID, int newColor) {
 		//Creating and setting the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, newColor);
 		
 		//Updating the conversation's color in the database
-		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
+		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	}
 	
-	static void updateMemberColors(SQLiteDatabase writableDatabase, long conversationID, ConversationManager.MemberInfo[] members) {
+	void updateMemberColors(long conversationID, ConversationManager.MemberInfo[] members) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Creating the content values
 		ContentValues contentValues;
 		
@@ -1897,27 +1949,30 @@ class DatabaseManager extends SQLiteOpenHelper {
 			contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
 			
 			//Updating the user's color in the database
-			writableDatabase.update(Contract.MemberEntry.TABLE_NAME, contentValues, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MemberEntry.COLUMN_NAME_MEMBER + " = ?", new String[]{Long.toString(conversationID), member.getName()});
+			database.update(Contract.MemberEntry.TABLE_NAME, contentValues, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MemberEntry.COLUMN_NAME_MEMBER + " = ?", new String[]{Long.toString(conversationID), member.getName()});
 		}
 	}
 	
-	static void updateConversationTitle(SQLiteDatabase writableDatabase, String title, long conversationID) {
+	void updateConversationTitle(String title, long conversationID) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_NAME, title);
 		
 		//Updating the entry
-		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
+		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	}
 	
-	static void addConversationMember(SQLiteDatabase writableDatabase, long chatID, String memberName, int memberColor) {
+	void addConversationMember(long chatID, String memberName, int memberColor) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Inserting the content
 		/* writableDatabase.execSQL("INSERT INTO " + Contract.MemberEntry.TABLE_NAME + '(' + Contract.MemberEntry.COLUMN_NAME_MEMBER + ',' + Contract.MemberEntry.COLUMN_NAME_CHAT + ',' + Contract.MemberEntry.COLUMN_NAME_COLOR + ')' +
 				" SELECT " + chatID + ',' + member.getColor() + ',' + escapedMemberName +
 				" WHERE NOT EXISTS (SELECT 1 FROM " + Contract.MemberEntry.TABLE_NAME + " WHERE " + Contract.MemberEntry.COLUMN_NAME_CHAT + '=' + chatID + " AND " + Contract.MemberEntry.COLUMN_NAME_MEMBER + '=' + escapedMemberName); */
 		
 		//Checking if the member is already listed
-		try(Cursor cursor = writableDatabase.query(Contract.MemberEntry.TABLE_NAME,
+		try(Cursor cursor = database.query(Contract.MemberEntry.TABLE_NAME,
 				new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER}, //Any value to reduce number of columns selected (null returns all columns)
 				Contract.MemberEntry.COLUMN_NAME_CHAT + "=? AND " + Contract.MemberEntry.COLUMN_NAME_MEMBER + "=?",
 				new String[]{Long.toString(chatID), memberName},
@@ -1933,18 +1988,15 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, memberColor);
 		
 		//Inserting the member
-		writableDatabase.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
+		database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
 	}
 	
-	static void removeConversationMember(SQLiteDatabase writableDatabase, long chatID, String member) {
+	void removeConversationMember(long chatID, String member) {
 		//Removing the content
-		writableDatabase.delete(Contract.MemberEntry.TABLE_NAME, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MemberEntry.COLUMN_NAME_MEMBER + " = ?", new String[]{Long.toString(chatID), member});
+		getWritableDatabase().delete(Contract.MemberEntry.TABLE_NAME, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MemberEntry.COLUMN_NAME_MEMBER + " = ?", new String[]{Long.toString(chatID), member});
 	}
 	
-	static void removeText(Context context, long messageID) {
-		//Getting the writable database
-		SQLiteDatabase database = getInstance(context).getWritableDatabase();
-		
+	/* void removeText(long messageID) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		
@@ -1952,26 +2004,23 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT, (String) null);
 		
 		//Updating the data
-		database.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+		getWritableDatabase().update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 	}
 	
-	static void removeAttachment(Context context, long attachmentID) {
-		//Getting the writable database
-		SQLiteDatabase database = getInstance(context).getWritableDatabase();
-		
+	void removeAttachment(long attachmentID) {
 		//Deleting the attachment
-		database.delete(Contract.AttachmentEntry.TABLE_NAME, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(attachmentID)});
+		getWritableDatabase().delete(Contract.AttachmentEntry.TABLE_NAME, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(attachmentID)});
 	}
 	
-	static void deleteConversationItem(Context context, ConversationManager.ConversationItem conversationItem) {
-		//Getting the writable database
-		SQLiteDatabase database = getInstance(context).getWritableDatabase();
-		
+	void deleteConversationItem(ConversationManager.ConversationItem conversationItem) {
 		//Deleting the conversation item
-		database.delete(Contract.MessageEntry.TABLE_NAME, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(conversationItem.getLocalID())});
-	}
+		getWritableDatabase().delete(Contract.MessageEntry.TABLE_NAME, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(conversationItem.getLocalID())});
+	} */
 	
-	static void deleteConversation(SQLiteDatabase database, ConversationManager.ConversationInfo conversationInfo) {
+	void deleteConversation(ConversationManager.ConversationInfo conversationInfo) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Deleting the conversation
 		database.delete(Contract.ConversationEntry.TABLE_NAME, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())});
 		
@@ -1997,12 +2046,12 @@ class DatabaseManager extends SQLiteOpenHelper {
 		database.delete(Contract.MessageEntry.TABLE_NAME, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())});
 	}
 	
-	static void deleteEverything(Context context) {
-		//Getting the writable database
-		SQLiteDatabase database = getInstance(context).getWritableDatabase();
+	void deleteEverything() {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
 		
 		//Clearing the tables
-		String tableNames[] = getTableNames(database);
+		String tableNames[] = getTableNames();
 		for(String table : tableNames) database.delete(table, null, null);
 		
 		//Shrinking the database
@@ -2016,42 +2065,48 @@ class DatabaseManager extends SQLiteOpenHelper {
 		database.delete(Contract.TapbackEntry.TABLE_NAME, null, null); */
 	}
 	
-	static void updateConversation(SQLiteDatabase writableDatabase, long conversationID, ContentValues contentValues) {
+	void updateConversation(long conversationID, ContentValues contentValues) {
 		//Updating the database
-		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
+		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	}
 	
-	/* static void setConversationLastViewTime(SQLiteDatabase writableDatabase, long conversationID, long lastViewTime) {
+	/* void setConversationLastViewTime(long conversationID, long lastViewTime) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_LASTVIEWED, lastViewTime);
 		
 		//Updating the database
-		writableDatabase.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
+		database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	} */
 	
-	static void updateMessageErrorCode(SQLiteDatabase writableDatabase, long messageID, int errorCode) {
+	void updateMessageErrorCode(long messageID, int errorCode) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, errorCode);
 		
 		//Updating the database
-		writableDatabase.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+		getWritableDatabase().update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 	}
 	
-	static void updateMessageState(SQLiteDatabase writableDatabase, String guid, int state, long dateRead) {
+	void updateMessageState(String guid, int state, long dateRead) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, state);
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, dateRead);
 		
 		//Updating the entry
-		writableDatabase.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry.COLUMN_NAME_GUID + " = ?", new String[]{guid});
+		getWritableDatabase().update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry.COLUMN_NAME_GUID + " = ?", new String[]{guid});
 	}
 	
-	static ConversationManager.StickerInfo addMessageSticker(SQLiteDatabase writableDatabase, SharedValues.StickerModifierInfo sticker) {
+	ConversationManager.StickerInfo addMessageSticker(SharedValues.StickerModifierInfo sticker) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Fetching the local ID of the associated message
-		Cursor cursor = writableDatabase.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID}, Contract.MessageEntry.COLUMN_NAME_GUID + " = ?", new String[]{sticker.message}, null, null, null, "1");
+		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID}, Contract.MessageEntry.COLUMN_NAME_GUID + " = ?", new String[]{sticker.message}, null, null, null, "1");
 		
 		//Returning null if the cursor is empty (the associated message could not be found)
 		if(!cursor.moveToNext()) {
@@ -2076,7 +2131,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		long localID;
 		try {
-			localID = writableDatabase.insertOrThrow(Contract.StickerEntry.TABLE_NAME, null, contentValues);
+			localID = database.insertOrThrow(Contract.StickerEntry.TABLE_NAME, null, contentValues);
 		} catch(SQLiteConstraintException exception) {
 			//Printing the stack trace
 			exception.printStackTrace();
@@ -2089,16 +2144,19 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return new ConversationManager.StickerInfo(localID, sticker.fileGuid, messageID, sticker.messageIndex, sticker.sender, sticker.date);
 	}
 	
-	static byte[] getStickerBlob(SQLiteDatabase readableDatabase, long identifier) {
-		try(Cursor cursor = readableDatabase.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry.COLUMN_NAME_DATA}, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(identifier)}, null, null, null, "1")) {
+	byte[] getStickerBlob(long identifier) {
+		try(Cursor cursor = getReadableDatabase().query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry.COLUMN_NAME_DATA}, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(identifier)}, null, null, null, "1")) {
 			if(cursor.moveToNext()) return cursor.getBlob(0);
 			return null;
 		}
 	}
 	
-	static ConversationManager.TapbackInfo addMessageTapback(SQLiteDatabase writableDatabase, SharedValues.TapbackModifierInfo tapback) {
+	ConversationManager.TapbackInfo addMessageTapback(SharedValues.TapbackModifierInfo tapback) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Fetching the local ID of the associated message
-		Cursor cursor = writableDatabase.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID}, Contract.MessageEntry.COLUMN_NAME_GUID + " = ?", new String[]{tapback.message}, null, null, null, "1");
+		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID}, Contract.MessageEntry.COLUMN_NAME_GUID + " = ?", new String[]{tapback.message}, null, null, null, "1");
 		
 		//Returning null if the cursor is empty (the associated message could not be found)
 		if(!cursor.moveToNext()) {
@@ -2117,7 +2175,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.TapbackEntry.COLUMN_NAME_CODE, ConversationManager.TapbackInfo.convertToPrivateCode(tapback.code));
 		
 		//Updating the matching entry
-		int affectedRows = writableDatabase.updateWithOnConflict(Contract.TapbackEntry.TABLE_NAME, contentValues,
+		int affectedRows = database.updateWithOnConflict(Contract.TapbackEntry.TABLE_NAME, contentValues,
 				Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_SENDER + " = ?", new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex), tapback.sender}, SQLiteDatabase.CONFLICT_IGNORE);
 		
 		//Checking if the entry didn't already exist
@@ -2130,7 +2188,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			//Inserting the modifier
 			long localID;
 			try {
-				localID = writableDatabase.insertOrThrow(Contract.TapbackEntry.TABLE_NAME, null, contentValues);
+				localID = database.insertOrThrow(Contract.TapbackEntry.TABLE_NAME, null, contentValues);
 			} catch(SQLiteConstraintException exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
@@ -2143,7 +2201,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			return new ConversationManager.TapbackInfo(localID, messageID, tapback.messageIndex, tapback.sender, ConversationManager.TapbackInfo.convertToPrivateCode(tapback.code));
 		} else {
 			//Getting the affected row ID
-			cursor = writableDatabase.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID},
+			cursor = database.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID},
 					Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_SENDER + " = ?", new String[]{Long.toString(messageID), tapback.sender},
 					null, null, null);
 			
@@ -2164,9 +2222,12 @@ class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
-	static void removeMessageTapback(SQLiteDatabase writableDatabase, SharedValues.TapbackModifierInfo tapback) {
+	void removeMessageTapback(SharedValues.TapbackModifierInfo tapback) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
 		//Fetching the local ID of the associated message
-		Cursor cursor = writableDatabase.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID}, Contract.MessageEntry.COLUMN_NAME_GUID + " = ?", new String[]{tapback.message}, null, null, null, "1");
+		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID}, Contract.MessageEntry.COLUMN_NAME_GUID + " = ?", new String[]{tapback.message}, null, null, null, "1");
 		
 		//Returning if the cursor is empty (the associated message could not be found)
 		if(!cursor.moveToNext()) {
@@ -2181,7 +2242,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		cursor.close();
 		
 		//Deleting the tapback
-		writableDatabase.delete(Contract.TapbackEntry.TABLE_NAME, Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_SENDER + " = ?", new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex), tapback.sender});
+		database.delete(Contract.TapbackEntry.TABLE_NAME, Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_SENDER + " = ?", new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex), tapback.sender});
 	}
 	
 	/* static ArrayList<BlockedAddresses.BlockedAddress> fetchBlockedAddresses(SQLiteDatabase readableDatabase) {
@@ -2204,12 +2265,4 @@ class DatabaseManager extends SQLiteOpenHelper {
 		cursor.close();
 		return list;
 	} */
-	
-	private static DatabaseManager getInstance(Context context) {
-		//Instantiating the instance if it is invalid
-		if(instance == null) instance = new DatabaseManager(context);
-		
-		//Returning the instance
-		return instance;
-	}
 }

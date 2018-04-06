@@ -8,7 +8,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
-import android.database.sqlite.SQLiteDatabase;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
@@ -119,7 +118,7 @@ public class MessagingInfo extends AppCompatActivity {
 			if(context == null) return null;
 			
 			//Returning the conversation
-			return DatabaseManager.fetchConversationInfo(context, DatabaseManager.getReadableDatabase(context), identifier);
+			return DatabaseManager.getInstance().fetchConversationInfo(context, identifier);
 		}
 		
 		@Override
@@ -314,7 +313,7 @@ public class MessagingInfo extends AppCompatActivity {
 					addressView.setVisibility(View.VISIBLE);
 				}
 			});
-			MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(this, member.getName(), (View) memberEntry.findViewById(R.id.profile_image));
+			MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(getApplicationContext(), member.getName(), (View) memberEntry.findViewById(R.id.profile_image));
 			
 			//Configuring the color editor
 			ImageView changeColorButton = memberEntry.findViewById(R.id.button_change_color);
@@ -454,9 +453,6 @@ public class MessagingInfo extends AppCompatActivity {
 			Context context = contextReference.get();
 			if(context == null) return null;
 			
-			//Getting an instance of the database
-			SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(context);
-			
 			//Updating the database
 			ContentValues contentValues = new ContentValues();
 			if(conversationMutedChanged)
@@ -465,11 +461,11 @@ public class MessagingInfo extends AppCompatActivity {
 				contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationInfo.getConversationColor());
 			
 			if(contentValues.size() != 0)
-				DatabaseManager.updateConversation(writableDatabase, conversationInfo.getLocalID(), contentValues);
+				DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
 			
 			//Updating the member colors
 			if(!modifiedMembers.isEmpty())
-				DatabaseManager.updateMemberColors(writableDatabase, conversationInfo.getLocalID(), modifiedMembers.toArray(new ConversationManager.MemberInfo[0]));
+				DatabaseManager.getInstance().updateMemberColors(conversationInfo.getLocalID(), modifiedMembers.toArray(new ConversationManager.MemberInfo[0]));
 			
 			//Returning
 			return null;

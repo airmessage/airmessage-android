@@ -10,7 +10,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.database.sqlite.SQLiteDatabase;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -60,10 +59,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
@@ -76,6 +75,7 @@ import me.tagavari.airmessage.common.SharedValues;
 public class ConnectionService extends Service {
 	//Creating the reference values
 	private static final int[] applicableCommunicationsVersions = {SharedValues.mmCommunicationsVersion/*, SharedValues.mmCommunicationsVersion - 1*/};
+	private static final int notificationID = -1;
 	
 	static final String localBCResult = "LocalMSG-ConnectionService-Result";
 	static final String localBCMassRetrieval = "LocalMSG-ConnectionService-MassRetrievalProgress";
@@ -133,8 +133,14 @@ public class ConnectionService extends Service {
 	private static final long massRetrievalTimeout = 60 * 1000; //1 minute
 	private int activeCommunicationsVersion = -1;
 	
-	private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
-	private Thread fileUploadRequestThread = null;
+	//private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
+	//private Thread fileUploadRequestThread = null;
+	
+	private final BlockingQueue<FileUploadRequest> fileUploadRequestQueue = new LinkedBlockingQueue<>();
+	private AtomicBoolean fileUploadRequestThreadRunning = new AtomicBoolean(false);
+	
+	private final BlockingQueue<QueueTask<?, ?>> messageProcessingQueue = new LinkedBlockingQueue<>();
+	private AtomicBoolean messageProcessingQueueThreadRunning = new AtomicBoolean(false);
 	
 	private final List<FileDownloadRequest> fileDownloadRequests = new ArrayList<>();
 	
@@ -168,7 +174,7 @@ public class ConnectionService extends Service {
 	//private final LongSparseArray<MessageResponseManager> fileSendRequests = new LongSparseArray<>();
 	//private short nextRequestID = (short) (new Random(System.currentTimeMillis()).nextInt((int) Short.MAX_VALUE - (int) Short.MIN_VALUE + 1) + Short.MIN_VALUE);
 	private short nextRequestID = (short) new Random(System.currentTimeMillis()).nextInt(1 << 16);
-	private boolean isShuttingDown = false;
+	private boolean shutdownRequested = false;
 	
 	private MMWebSocketClient wsClient = null;
 	private final ArrayList<ConversationInfoRequest> pendingConversations = new ArrayList<>();
@@ -206,8 +212,8 @@ public class ConnectionService extends Service {
 		//Setting the reference values
 		pingPendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(BCPingTimer), PendingIntent.FLAG_UPDATE_CURRENT);
 		
-		//Starting the service as a foreground service
-		startForeground(-1, getBackgroundNotification(false));
+		//Starting the service as a foreground service (if enabled in the preferences)
+		if(foregroundServiceRequested()) startForeground(-1, getBackgroundNotification(false));
 	}
 	
 	@Override
@@ -215,23 +221,22 @@ public class ConnectionService extends Service {
 		//Getting the intent action
 		String intentAction = intent == null ? null : intent.getAction();
 		
-		//Checking if a stop has been requested or the connection address is invalid
-		if(selfIntentActionStop.equals(intentAction) || (hostname == null || hostname.isEmpty())) {
+		//Checking if a stop has been requested
+		if(selfIntentActionStop.equals(intentAction)) {
 			//Denying the existence of the connection for reconnection
 			connectionEstablishedForReconnect = false;
+			
+			//Setting the service as shutting down
+			shutdownRequested = true;
 			
 			//Stopping the service
 			stopSelf();
 			
-			//Setting the service as shutting down
-			isShuttingDown = true;
-			
 			//Returning not sticky
 			return START_NOT_STICKY;
 		}
-		
 		//Checking if a disconnect has been requested
-		if(selfIntentActionDisconnect.equals(intentAction)) {
+		else if(selfIntentActionDisconnect.equals(intentAction)) {
 			//Denying the existence of the connection for reconnection
 			connectionEstablishedForReconnect = false;
 			
@@ -245,7 +250,7 @@ public class ConnectionService extends Service {
 		else if(wsClient == null || wsClient.isClosed() || selfIntentActionConnect.equals(intentAction)) connect(intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : getNextLaunchID());
 		
 		//Setting the service as not shutting down
-		isShuttingDown = false;
+		shutdownRequested = false;
 		
 		//Calling the listeners
 		//for(ServiceStartCallback callback : startCallbacks) callback.onServiceStarted(this);
@@ -257,6 +262,8 @@ public class ConnectionService extends Service {
 	
 	@Override
 	public void onDestroy() {
+		super.onDestroy();
+		
 		//Disconnecting
 		disconnect();
 		
@@ -282,13 +289,50 @@ public class ConnectionService extends Service {
 		return hostname;
 	}
 	
+	void setForegroundState(boolean foregroundState) {
+		if(foregroundState) {
+			Notification notification;
+			if(isConnected()) notification = getBackgroundNotification(true);
+			else if(isConnecting()) notification = getBackgroundNotification(false);
+			else notification = getOfflineNotification(true);
+			
+			startForeground(-1, notification);
+		} else {
+			if(disconnectedNotificationRequested() && isClosed()) {
+				stopForeground(false);
+				postDisconnectedNotification(true);
+			} else {
+				stopForeground(true);
+			}
+		}
+	}
+	
+	private boolean foregroundServiceRequested() {
+		return true;
+		//return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_foregroundservice_key), false);
+	}
+	
+	private boolean disconnectedNotificationRequested() {
+		return true;
+		//return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_disconnectionnotification_key), true);
+	}
+	
 	private void connect(byte launchID) {
 		//Checking if there is no hostname
 		if(hostname == null || hostname.isEmpty()) {
 			//Retrieving the data from the shared preferences
-			SharedPreferences sharedPrefs = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
-			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesKeyHostname, "");
-			password = sharedPrefs.getString(MainApplication.sharedPreferencesKeyPassword, "");
+			SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, "");
+			password = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, "");
+		}
+		
+		//Checking if the hostname is still invalid
+		if(hostname.isEmpty()) {
+			//Updating the notification state
+			postDisconnectedNotification(false);
+			
+			//Returning
+			return;
 		}
 		
 		//Preparing the hostname
@@ -358,7 +402,7 @@ public class ConnectionService extends Service {
 		//Connecting
 		wsClient.connect();
 		
-		//Starting the service as a foreground service
+		//Updating the notification
 		postConnectedNotification(false);
 	}
 	
@@ -378,13 +422,22 @@ public class ConnectionService extends Service {
 	}
 	
 	private void postConnectedNotification(boolean isConnected) {
+		if(isConnected && !foregroundServiceRequested()) return;
+		
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(-1, getBackgroundNotification(isConnected));
+		notificationManager.notify(notificationID, getBackgroundNotification(isConnected));
 	}
 	
 	private void postDisconnectedNotification(boolean silent) {
+		if(!foregroundServiceRequested() && !disconnectedNotificationRequested()) return;
+		
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(-1, getOfflineNotification(silent));
+		notificationManager.notify(notificationID, getOfflineNotification(silent));
+	}
+	
+	private void clearNotification() {
+		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationManager.cancel(notificationID);
 	}
 	
 	/* private void finishService() {
@@ -496,19 +549,20 @@ public class ConnectionService extends Service {
 			retrievePendingConversationInfo();
 			
 			//Updating the notification
-			postConnectedNotification(true);
+			if(foregroundServiceRequested()) postConnectedNotification(true);
+			else clearNotification();
 			
 			//Setting the connection as existing
 			connectionEstablishedForRetrieval = connectionEstablishedForReconnect = true;
 			
 			//Getting the last connection time
-			SharedPreferences sharedPrefs = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
-			String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesKeyLastConnectionHostname, null);
+			SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+			String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
 			
 			//Checking if the last connection is the same as the current one
 			if(hostname.equals(lastConnectionHostname)) {
 				//Getting the last connection time
-				long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesKeyLastConnectionTime, -1);
+				long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, -1);
 				
 				//Fetching the messages since the last connection time
 				retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
@@ -626,8 +680,7 @@ public class ConnectionService extends Service {
 							//Searching for a matching request
 							for(FileDownloadRequest request : fileDownloadRequests) {
 								if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
-								request.stopTimer(false);
-								request.callbacks.onFail();
+								request.failDownload();
 								break;
 							}
 						});
@@ -646,13 +699,10 @@ public class ConnectionService extends Service {
 							messageResponseManager.stopTimer(false);
 							
 							//Running on the UI thread
-							new Handler(Looper.getMainLooper()).post(new Runnable() {
-								@Override
-								public void run() {
-									//Telling the listener
-									if(success) messageResponseManager.onSuccess();
-									else messageResponseManager.onFail(messageSendExternalException);
-								}
+							new Handler(Looper.getMainLooper()).post(() -> {
+								//Telling the listener
+								if(success) messageResponseManager.onSuccess();
+								else messageResponseManager.onFail(messageSendExternalException);
 							});
 						}
 						
@@ -701,10 +751,10 @@ public class ConnectionService extends Service {
 			//Checking if a connection existed for retrieval
 			if(connectionEstablishedForRetrieval) {
 				//Writing the time to shared preferences
-				SharedPreferences sharedPrefs = getSharedPreferences(MainApplication.sharedPreferencesFile, Context.MODE_PRIVATE);
+				SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
 				SharedPreferences.Editor editor = sharedPrefs.edit();
-				editor.putLong(MainApplication.sharedPreferencesKeyLastConnectionTime, System.currentTimeMillis());
-				editor.putString(MainApplication.sharedPreferencesKeyLastConnectionHostname, hostname);
+				editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+				editor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
 				editor.commit();
 			}
 			
@@ -718,7 +768,7 @@ public class ConnectionService extends Service {
 			connectionEstablishedForRetrieval = connectionEstablishedForReconnect = false;
 			
 			//Posting the disconnected notification
-			if(!isShuttingDown) postDisconnectedNotification(false);
+			if(!shutdownRequested) postDisconnectedNotification(false);
 			
 			//Cancelling the mass retrieval if there is one in progress
 			if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
@@ -735,7 +785,8 @@ public class ConnectionService extends Service {
 	
 	private void processMessageUpdate(ArrayList<SharedValues.ConversationItem> structConversationItems, boolean sendNotifications) {
 		//Creating and running the task
-		new MessageUpdateAsyncTask(this, getApplicationContext(), structConversationItems, sendNotifications).execute();
+		//new MessageUpdateAsyncTask(this, getApplicationContext(), structConversationItems, sendNotifications).execute();
+		addMessagingProcessingTask(new MessageUpdateAsyncTask(this, getApplicationContext(), structConversationItems, sendNotifications));
 	}
 	
 	private void processMassRetrievalResult(ArrayList<SharedValues.ConversationItem> structConversationItems, ArrayList<SharedValues.ConversationInfo> structConversations) {
@@ -752,7 +803,8 @@ public class ConnectionService extends Service {
 				.putExtra(Constants.intentParamSize, massRetrievalProgressCount));
 		
 		//Creating and running the task
-		new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations).execute();
+		//new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations).execute();
+		addMessagingProcessingTask(new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations));
 	}
 	
 	private void processChatInfoResponse(ArrayList<SharedValues.ConversationInfo> structConversations) {
@@ -804,12 +856,14 @@ public class ConnectionService extends Service {
 		}
 		
 		//Creating and running the asynchronous task
-		new SaveConversationInfoAsyncTask(getApplicationContext(), unavailableConversations, availableConversations).execute();
+		//new SaveConversationInfoAsyncTask(getApplicationContext(), unavailableConversations, availableConversations).execute();
+		addMessagingProcessingTask(new SaveConversationInfoAsyncTask(getApplicationContext(), unavailableConversations, availableConversations));
 	}
 	
 	private void processModifierUpdate(ArrayList<SharedValues.ModifierInfo> structModifiers) {
 		//Creating and running the task
-		new ModifierUpdateAsyncTask(getApplicationContext(), structModifiers).execute();
+		//new ModifierUpdateAsyncTask(getApplicationContext(), structModifiers).execute();
+		addMessagingProcessingTask(new ModifierUpdateAsyncTask(getApplicationContext(), structModifiers));
 	}
 	
 	/* boolean requestAttachmentInfo(String fileGuid, short requestID) {
@@ -872,6 +926,10 @@ public class ConnectionService extends Service {
 		return wsClient != null && wsClient.isConnecting();
 	}
 	
+	boolean isClosed() {
+		return wsClient == null || wsClient.isClosed() || wsClient.isClosing();
+	}
+	
 	boolean isMassRetrievalInProgress() {
 		return massRetrievalInProgress;
 	}
@@ -898,22 +956,20 @@ public class ConnectionService extends Service {
 	
 	void queueUploadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 		//Adding the request
-		synchronized(fileUploadRequestQueue) {
-			fileUploadRequestQueue.add(new FileUploadRequest(callbacks, uri, conversationInfo, attachmentID));
-		}
-		
-		//Notifying the queue
-		notifyUploadQueue();
+		addUploadRequest(new FileUploadRequest(callbacks, uri, conversationInfo, attachmentID));
 	}
 	
 	void queueUploadRequest(FileUploadRequestCallbacks callbacks, File file, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 		//Adding the request
-		synchronized(fileUploadRequestQueue) {
-			fileUploadRequestQueue.add(new FileUploadRequest(callbacks, file, conversationInfo, attachmentID));
-		}
+		addUploadRequest(new FileUploadRequest(callbacks, file, conversationInfo, attachmentID));
+	}
+	
+	private void addUploadRequest(FileUploadRequest request) {
+		//Adding the task
+		fileUploadRequestQueue.add(request);
 		
-		//Notifying the queue
-		notifyUploadQueue();
+		//Starting the thread if it isn't running
+		if(fileUploadRequestThreadRunning.compareAndSet(false, true)) new FileUploadRequestThread(getApplicationContext(), this).start();
 	}
 	
 	boolean addDownloadRequest(FileDownloadRequestCallbacks callbacks, long attachmentID, String attachmentGUID, String attachmentName) {
@@ -941,7 +997,7 @@ public class ConnectionService extends Service {
 		}
 		
 		//Recording the request
-		FileDownloadRequest request = new FileDownloadRequest(callbacks, requestID, attachmentID, attachmentGUID, attachmentName, fileDownloadRequests);
+		FileDownloadRequest request = new FileDownloadRequest(callbacks, requestID, attachmentID, attachmentGUID, attachmentName);
 		fileDownloadRequests.add(request);
 		request.startTimer();
 		
@@ -955,15 +1011,6 @@ public class ConnectionService extends Service {
 			return request.getProgress();
 		}
 		return null;
-	}
-	
-	void notifyUploadQueue() {
-		//Returning if the thread is running
-		if(fileUploadRequestThread != null && fileUploadRequestThread.getState() != Thread.State.TERMINATED) return;
-		
-		//Creating and starting the thread
-		fileUploadRequestThread = new FileUploadRequestThread(getApplicationContext(), this);
-		fileUploadRequestThread.start();
 	}
 	
 	interface FileUploadRequestCallbacks {
@@ -1040,9 +1087,9 @@ public class ConnectionService extends Service {
 		final long attachmentID;
 		final String fileName;
 		long fileSize = 0;
-		private List<FileDownloadRequest> removalList;
+		//private List<FileDownloadRequest> removalList;
 		
-		FileDownloadRequest(FileDownloadRequestCallbacks callbacks, short requestID, long attachmentID, String attachmentGUID, String fileName, List<FileDownloadRequest> removalList) {
+		FileDownloadRequest(FileDownloadRequestCallbacks callbacks, short requestID, long attachmentID, String attachmentGUID, String fileName) {
 			//Setting the callbacks
 			this.callbacks = callbacks;
 			
@@ -1051,19 +1098,11 @@ public class ConnectionService extends Service {
 			this.attachmentID = attachmentID;
 			this.attachmentGUID = attachmentGUID;
 			this.fileName = fileName;
-			
-			this.removalList = removalList;
 		}
 		
 		private static final long timeoutDelay = 20 * 1000; //20-second delay
 		private final Handler handler = new Handler(Looper.getMainLooper());
-		private final Runnable timeoutRunnable = () -> {
-			//Removing the request from the list
-			removalList.remove(FileDownloadRequest.this);
-			
-			//Calling the fail method
-			callbacks.onFail();
-		};
+		private final Runnable timeoutRunnable = this::failDownload;
 		
 		void startTimer() {
 			handler.postDelayed(timeoutRunnable, timeoutDelay);
@@ -1079,12 +1118,18 @@ public class ConnectionService extends Service {
 			if(attachmentWriterThread != null) attachmentWriterThread.stopThread();
 			callbacks.onFail();
 			
-			removalList.remove(this);
+			removeRequestFromList();
 		}
 		
 		void finishDownload(File file) {
+			stopTimer(false);
 			callbacks.onFinish(file);
-			removalList.remove(this);
+			removeRequestFromList();
+		}
+		
+		private void removeRequestFromList() {
+			ConnectionService service = getInstance();
+			if(service != null) service.fileDownloadRequests.remove(this);
 		}
 		
 		void setFileSize(long value) {
@@ -1134,13 +1179,7 @@ public class ConnectionService extends Service {
 			}
 			
 			//Adding the data struct
-			attachmentWriterThread.dataStructsLock.lock();
-			try {
-				attachmentWriterThread.dataStructs.add(new AttachmentWriterDataStruct(compressedBytes, isLast));
-				attachmentWriterThread.dataStructsCondition.signal();
-			} finally {
-				attachmentWriterThread.dataStructsLock.unlock();
-			}
+			attachmentWriterThread.dataQueue.add(new AttachmentWriterDataStruct(compressedBytes, isLast));
 		}
 		
 		static class ProgressStruct {
@@ -1157,10 +1196,8 @@ public class ConnectionService extends Service {
 			//Creating the references
 			private final WeakReference<Context> contextReference;
 			
-			//Creating the lock
-			private final Lock dataStructsLock = new ReentrantLock();
-			private final Condition dataStructsCondition = dataStructsLock.newCondition();
-			ArrayList<AttachmentWriterDataStruct> dataStructs = new ArrayList<>();
+			//Creating the queue
+			private final BlockingQueue<AttachmentWriterDataStruct> dataQueue = new LinkedBlockingQueue<>();
 			
 			//Creating the request values
 			private final long attachmentID;
@@ -1183,77 +1220,62 @@ public class ConnectionService extends Service {
 			
 			@Override
 			public void run() {
-				//Getting the references
-				Context context = contextReference.get();
-				if(context == null) {
-					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
-					return;
-				};
-				
-				//Getting the file path
-				File directory = new File(MainApplication.getDownloadDirectory(context), Long.toString(attachmentID));
-				if(!directory.exists()) directory.mkdir();
-				else if(directory.isFile()) {
-					Constants.recursiveDelete(directory);
-					directory.mkdir();
+				//Getting the file paths
+				File targetFileDir;
+				{
+					//Getting the context
+					Context context = contextReference.get();
+					if(context == null) {
+						new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+						return;
+					}
+					
+					targetFileDir = new File(MainApplication.getDownloadDirectory(context), Long.toString(attachmentID));
+					if(!targetFileDir.exists()) targetFileDir.mkdir();
+					else if(targetFileDir.isFile()) {
+						Constants.recursiveDelete(targetFileDir);
+						targetFileDir.mkdir();
+					}
 				}
 				
 				//Preparing to write to the file
-				File targetFile = new File(directory, fileName);
+				File targetFile = new File(targetFileDir, fileName);
 				try(FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 					while(isRunning) {
-						/* //Checking if the task has been cancelled
-						if(isCancelled()) {
-							//Cleaning up the file
-							Constants.recursiveDelete(directory);
+						//Getting the data struct
+						AttachmentWriterDataStruct dataStruct = dataQueue.poll(timeoutDelay, TimeUnit.MILLISECONDS);
+						
+						//Skipping the remainder of the iteration if the data struct is invalid
+						if(dataStruct == null) continue;
+						
+						//Decompressing the bytes
+						byte[] bytes = SharedValues.decompress(dataStruct.compressedBytes);
+						
+						//Writing the bytes
+						outputStream.write(bytes);
+						
+						//Adding to the bytes written
+						bytesWritten += bytes.length;
+						
+						//Checking if the data is the last group
+						if(dataStruct.isLast) {
+							//Cleaning the thread
+							//cleanThread();
+							
+							//Updating the database entry
+							DatabaseManager.getInstance().updateAttachmentFile(attachmentID, MainApplication.getInstance(), targetFile);
+							
+							//Updating the state
+							new Handler(Looper.getMainLooper()).post(() -> finishDownload(targetFile));
 							
 							//Returning
-							return null;
-						} */
-						
-						//Moving the structs (to be able to release the lock sooner)
-						ArrayList<AttachmentWriterDataStruct> localDataStructs = new ArrayList<>();
-						dataStructsLock.lock();
-						try {
-							if(!dataStructs.isEmpty()) {
-								localDataStructs = dataStructs;
-								dataStructs = new ArrayList<>();
-							}
-						} finally {
-							dataStructsLock.unlock();
+							return;
+						} else {
+							//Updating the progress
+							new Handler(Looper.getMainLooper()).post(() -> updateProgress(((float) bytesWritten / fileSize)));
 						}
 						
-						//Iterating over the data structs
-						for(AttachmentWriterDataStruct dataStruct : localDataStructs) {
-							//Decompressing the bytes
-							byte[] bytes = SharedValues.decompress(dataStruct.compressedBytes);
-							
-							//Writing the bytes
-							outputStream.write(bytes);
-							
-							//Adding to the bytes written
-							bytesWritten += bytes.length;
-							
-							//Checking if the file is the last one
-							if(dataStruct.isLast) {
-								//Cleaning the thread
-								//cleanThread();
-								
-								//Saving to the database
-								DatabaseManager.updateAttachmentFile(DatabaseManager.getWritableDatabase(context), attachmentID, targetFile);
-								
-								//Updating the state
-								new Handler(Looper.getMainLooper()).post(() -> finishDownload(targetFile));
-								
-								//Returning
-								return;
-							} else {
-								//Updating the progress
-								new Handler(Looper.getMainLooper()).post(() -> updateProgress(((float) bytesWritten / fileSize)));
-							}
-						}
-						
-						//Checking if the thread is still running
+						/* //Checking if the thread is still running
 						if(isRunning) {
 							dataStructsLock.lock();
 							try {
@@ -1277,7 +1299,7 @@ public class ConnectionService extends Service {
 							} finally {
 								dataStructsLock.unlock();
 							}
-						}
+						} */
 					}
 				} catch(IOException | DataFormatException exception) {
 					//Printing the stack trace
@@ -1286,12 +1308,24 @@ public class ConnectionService extends Service {
 					
 					//Failing the download
 					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+					
+					//Setting the thread as not running
+					isRunning = false;
+				} catch(InterruptedException exception) {
+					//Printing the stack trace
+					exception.printStackTrace();
+					
+					//Failing the download
+					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+					
+					//Setting the thread as not running
+					isRunning = false;
 				}
 				
 				//Checking if the thread was stopped
 				if(!isRunning) {
 					//Cleaning up
-					Constants.recursiveDelete(directory);
+					Constants.recursiveDelete(targetFileDir);
 				}
 			}
 			
@@ -1317,37 +1351,32 @@ public class ConnectionService extends Service {
 		
 		//Creating the reference values
 		private final WeakReference<Context> contextReference;
-		private final WeakReference<ConnectionService> superclassReference;
+		private final WeakReference<ConnectionService> serviceReference;
 		
 		//Creating the other values
 		private final Handler handler = new Handler(Looper.getMainLooper());
 		
-		FileUploadRequestThread(Context context, ConnectionService superclass) {
+		FileUploadRequestThread(Context context, ConnectionService service) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
-			superclassReference = new WeakReference<>(superclass);
+			serviceReference = new WeakReference<>(service);
 		}
 		
 		@Override
 		public void run() {
 			//Looping while there are requests in the queue
+			ConnectionService service = null;
 			FileUploadRequest request;
-			while((request = pushQueue()) != null) {
+			while(!isInterrupted() &&
+					(service = serviceReference.get()) != null &&
+					(request = pushQueue(service)) != null) {
+				//Clearing the reference to the service
+				service = null;
 				//Getting the callbacks
 				FileUploadRequestCallbacks finalCallbacks = request.callbacks;
 				
 				//Telling the callbacks that the process has started
 				handler.post(request.callbacks::onStart);
-				
-				//Getting the context
-				Context context = contextReference.get();
-				if(context == null) {
-					//Calling the fail method
-					handler.post(() -> finalCallbacks.onFail(messageSendReferencesLost));
-					
-					//Skipping the remainder of the iteration
-					continue;
-				}
 				
 				//Checking if the request has no send file
 				boolean copyFile = request.sendFile == null;
@@ -1361,15 +1390,27 @@ public class ConnectionService extends Service {
 						continue;
 					}
 					
+					//Getting the context
+					Context context = contextReference.get();
+					if(context == null) {
+						//Calling the fail method
+						handler.post(() -> finalCallbacks.onFail(messageSendReferencesLost));
+						
+						//Skipping the remainder of the iteration
+						continue;
+					}
+					
 					//Finding a valid file
 					String fileName = Constants.getFileName(context, request.sendUri);
 					if(fileName == null) fileName = Constants.defaultFileName;
-					File targetFile = MainApplication.findUploadFileTarget(context, fileName);
+					File attachmentDir = MainApplication.getAttachmentDirectory(context);
+					File targetFile = new File(Constants.findFreeFile(MainApplication.getUploadDirectory(context), Long.toString(System.currentTimeMillis())), fileName);
+					//File targetFile = MainApplication.findUploadFileTarget(context, fileName);
 					
 					try {
 						//Creating the targets
 						if(!targetFile.getParentFile().mkdir()) throw new IOException();
-						if(!targetFile.createNewFile()) throw new IOException();
+						//if(!targetFile.createNewFile()) throw new IOException();
 					} catch(IOException exception) {
 						//Printing the stack trace
 						exception.printStackTrace();
@@ -1387,6 +1428,9 @@ public class ConnectionService extends Service {
 					//Preparing to copy the file
 					try(InputStream inputStream = context.getContentResolver().openInputStream(request.sendUri);
 						OutputStream outputStream = new FileOutputStream(targetFile)) {
+						//Clearing the reference to the context
+						context = null;
+						
 						//Checking if the input stream is invalid
 						if(inputStream == null) {
 							//Calling the fail method
@@ -1419,7 +1463,9 @@ public class ConnectionService extends Service {
 						outputStream.flush();
 						
 						//Updating the database entry
-						DatabaseManager.updateAttachmentFile(DatabaseManager.getWritableDatabase(context), request.attachmentID, targetFile);
+						context = contextReference.get();
+						if(context != null) DatabaseManager.getInstance().updateAttachmentFile(request.attachmentID, MainApplication.getInstance(), targetFile);
+						context = null;
 						
 						//Setting the send file
 						request.sendFile = targetFile;
@@ -1434,6 +1480,9 @@ public class ConnectionService extends Service {
 						
 						//Calling the fail method
 						handler.post(() -> finalCallbacks.onFail(messageSendIOException));
+						
+						//Clearing the reference to the context
+						context = null;
 						
 						//Skipping the remainder of the iteration
 						continue;
@@ -1577,8 +1626,11 @@ public class ConnectionService extends Service {
 					});
 					
 					//Saving the checksum
-					DatabaseManager.updateAttachmentChecksum(DatabaseManager.getWritableDatabase(context), request.attachmentID, checksum);
+					DatabaseManager.getInstance().updateAttachmentChecksum(request.attachmentID, checksum);
 				} catch(IOException exception) {
+					//Printing the stack trace
+					exception.printStackTrace();
+					
 					//Calling the fail method
 					handler.post(() -> finalCallbacks.onFail(messageSendIOException));
 					
@@ -1592,9 +1644,17 @@ public class ConnectionService extends Service {
 					continue;
 				}
 			}
+			
+			//Telling the service that the thread is finished
+			if(service != null) service.fileUploadRequestThreadRunning.set(false);
 		}
 		
-		private FileUploadRequest pushQueue() {
+		private FileUploadRequest pushQueue(ConnectionService service) {
+			if(service == null) return null;
+			return service.fileUploadRequestQueue.poll();
+		}
+		
+		/* private FileUploadRequest pushQueue() {
 			//Getting the service
 			ConnectionService connectionService = superclassReference.get();
 			if(connectionService == null) return null;
@@ -1609,7 +1669,7 @@ public class ConnectionService extends Service {
 				connectionService.fileUploadRequestQueue.remove(0);
 				return request;
 			}
-		}
+		} */
 	}
 	
 	boolean sendMessage(String chatGUID, String message, MessageResponseManager responseListener) {
@@ -2042,19 +2102,16 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	public static class ServiceStart extends BroadcastReceiver {
+	public static class ServiceStartBoot extends BroadcastReceiver {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			//Returning if the action doesn't match or the preference isn't enabled
-			if(!"android.intent.action.BOOT_COMPLETED".equals(intent.getAction())/* || !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_connectionboot_key), false)*/) return;
+			//Returning if the service is not a boot service
+			if(!"android.intent.action.BOOT_COMPLETED".equals(intent.getAction())) return;
 			
 			//Starting the service
 			Intent serviceIntent = new Intent(context, ConnectionService.class);
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-				context.startForegroundService(serviceIntent);
-			} else {
-				context.startService(serviceIntent);
-			}
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(serviceIntent);
+			else context.startService(serviceIntent);
 		}
 	}
 	
@@ -2082,6 +2139,21 @@ public class ConnectionService extends Service {
 		}
 	}
 	
+	private static ConversationManager.ConversationInfo findConversationInMemory(long localID) {
+		//Checking if the conversations are loaded in memory
+		ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+		if(conversations == null) return null;
+		
+		//Returning the first matching conversation
+		for(ConversationManager.ConversationInfo conversation : conversations) {
+			if(conversation.getLocalID() != localID) continue;
+			return conversation;
+		}
+		
+		//Returning null
+		return null;
+	}
+	
 	private static class FetchConversationRequests extends AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationInfo>> {
 		private final WeakReference<ConnectionService> serviceReference;
 		
@@ -2096,7 +2168,7 @@ public class ConnectionService extends Service {
 			if(context == null) return null;
 			
 			//Fetching the incomplete conversations
-			return DatabaseManager.fetchConversationsWithState(context, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_SERVER);
+			return DatabaseManager.getInstance().fetchConversationsWithState(context, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_SERVER);
 		}
 		
 		@Override
@@ -2117,7 +2189,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	private static class MessageUpdateAsyncTask extends AsyncTask<Void, Void, Void> {
+	private static class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 		//Creating the reference values
 		private final WeakReference<ConnectionService> serviceReference;
 		private final WeakReference<Context> contextReference;
@@ -2141,22 +2213,16 @@ public class ConnectionService extends Service {
 			//Setting the values
 			this.structConversationItems = structConversationItems;
 			this.sendNotifications = sendNotifications;
-		}
-		
-		@Override
-		protected void onPreExecute() {
+			
 			//Getting the caches
 			loadedConversationsCache = new ArrayList<>(Messaging.getLoadedConversations());
 		}
 		
 		@Override
-		protected Void doInBackground(Void... params) {
+		protected Void doInBackground() {
 			//Getting the context
 			Context context = contextReference.get();
 			if(context == null) return null;
-			
-			//Getting the writable database
-			SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(context);
 			
 			//Iterating over the conversations from the received messages
 			Collections.sort(structConversationItems, (value1, value2) -> Long.compare(value1.date, value2.date));
@@ -2199,7 +2265,7 @@ public class ConnectionService extends Service {
 				
 				//Otherwise retrieving / creating the conversation from the database
 				if(parentConversation == null) {
-					parentConversation = DatabaseManager.addRetrieveServerCreatedConversationInfo(writableDatabase, context, conversationItemStruct.chatGuid);
+					parentConversation = DatabaseManager.getInstance().addRetrieveServerCreatedConversationInfo(context, conversationItemStruct.chatGuid);
 					//Skipping the remainder of the iteration if the conversation is still invalid (a database error occurred)
 					if(parentConversation == null) continue;
 				}
@@ -2219,7 +2285,7 @@ public class ConnectionService extends Service {
 				}
 				
 				//Adding the conversation item to the database
-				ConversationManager.ConversationItem conversationItem = DatabaseManager.addConversationItemReplaceGhost(writableDatabase, conversationItemStruct, parentConversation);
+				ConversationManager.ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItemReplaceGhost(conversationItemStruct, parentConversation);
 				
 				//Skipping the remainder of the iteration if the conversation item is invalid
 				if(conversationItem == null) continue;
@@ -2231,12 +2297,12 @@ public class ConnectionService extends Service {
 					
 					//Adding or removing the member on disk
 					if(groupActionInfo.actionType == Constants.groupActionInvite) {
-						DatabaseManager.addConversationMember(writableDatabase, parentConversation.getLocalID(), groupActionInfo.other, groupActionInfo.color = parentConversation.getNextUserColor());
+						DatabaseManager.getInstance().addConversationMember(parentConversation.getLocalID(), groupActionInfo.other, groupActionInfo.color = parentConversation.getNextUserColor());
 					}
-					else if(groupActionInfo.actionType == Constants.groupActionLeave) DatabaseManager.removeConversationMember(writableDatabase, parentConversation.getLocalID(), groupActionInfo.other);
+					else if(groupActionInfo.actionType == Constants.groupActionLeave) DatabaseManager.getInstance().removeConversationMember(parentConversation.getLocalID(), groupActionInfo.other);
 				} else if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) {
 					//Writing the new title to the database
-					DatabaseManager.updateConversationTitle(writableDatabase, ((ConversationManager.ChatRenameActionInfo) conversationItem).title, parentConversation.getLocalID());
+					DatabaseManager.getInstance().updateConversationTitle(((ConversationManager.ChatRenameActionInfo) conversationItem).title, parentConversation.getLocalID());
 				}
 				
 				//Checking if the conversation is complete
@@ -2245,7 +2311,7 @@ public class ConnectionService extends Service {
 					newCompleteConversationItems.add(conversationItem);
 					
 					//Incrementing the unread count
-					if(!loadedConversationsCache.contains(parentConversation.getLocalID()) && (conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing())) DatabaseManager.incrementUnreadMessageCount(writableDatabase, parentConversation.getLocalID());
+					if(!loadedConversationsCache.contains(parentConversation.getLocalID()) && (conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing())) DatabaseManager.getInstance().incrementUnreadMessageCount(parentConversation.getLocalID());
 				}
 				//Otherwise updating the last conversation item
 				else if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
@@ -2320,7 +2386,7 @@ public class ConnectionService extends Service {
 						
 						//Incrementing the conversation's unread count
 						if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing()) parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
-						parentConversation.updateUnreadStatus();
+						parentConversation.updateUnreadStatus(context);
 						
 						//Checking if the conversation is loaded
 						if(loadedConversations.contains(parentConversation.getLocalID())) {
@@ -2357,7 +2423,7 @@ public class ConnectionService extends Service {
 							}
 						} else {
 							//Updating the parent conversation's latest item
-							parentConversation.setLastItem(context, conversationItem);
+							parentConversation.setLastItemUpdate(context, conversationItem);
 						}
 						
 						//Sending notifications
@@ -2392,22 +2458,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	private static ConversationManager.ConversationInfo findConversationInMemory(long localID) {
-		//Checking if the conversations are loaded in memory
-		ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-		if(conversations == null) return null;
-		
-		//Returning the first matching conversation
-		for(ConversationManager.ConversationInfo conversation : conversations) {
-			if(conversation.getLocalID() != localID) continue;
-			return conversation;
-		}
-		
-		//Returning null
-		return null;
-	}
-	
-	private static class MassRetrievalAsyncTask extends AsyncTask<Void, Integer, List<ConversationManager.ConversationInfo>> {
+	private static class MassRetrievalAsyncTask extends QueueTask<Integer, List<ConversationManager.ConversationInfo>> {
 		//Creating the task values
 		private final WeakReference<ConnectionService> serviceReference;
 		private final WeakReference<Context> contextReference;
@@ -2426,13 +2477,10 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		protected List<ConversationManager.ConversationInfo> doInBackground(Void... parameters) {
+		protected List<ConversationManager.ConversationInfo> doInBackground() {
 			//Getting the context
 			Context context = contextReference.get();
 			if(context == null) return null;
-			
-			//Getting a writable database instance
-			SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(context);
 			
 			//Creating the conversation list
 			List<ConversationManager.ConversationInfo> conversationInfoList = new ArrayList<>();
@@ -2443,7 +2491,7 @@ public class ConnectionService extends Service {
 			//Iterating over the conversations
 			for(SharedValues.ConversationInfo structConversation : structConversationInfos) {
 				//Writing the conversation
-				conversationInfoList.add(DatabaseManager.addReadyConversationInfo(writableDatabase, context, structConversation));
+				conversationInfoList.add(DatabaseManager.getInstance().addReadyConversationInfo(context, structConversation));
 				
 				//Publishing the progress
 				publishProgress(++progress);
@@ -2463,8 +2511,14 @@ public class ConnectionService extends Service {
 				if(parentConversation == null) continue;
 				
 				//Writing the item
-				ConversationManager.ConversationItem conversationItem = DatabaseManager.addConversationItem(writableDatabase, structItem, parentConversation);
+				ConversationManager.ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItem(structItem, parentConversation);
 				if(conversationItem == null) continue;
+				
+				/* if(structItem instanceof SharedValues.MessageInfo) {
+					if(((SharedValues.MessageInfo) structItem).attachments.size() > 0) {
+						System.out.println("Found message with" + ((SharedValues.MessageInfo) structItem).attachments.size() + " attachments!");
+					}
+				} */
 				
 				//Updating the parent conversation's last item
 				if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
@@ -2482,13 +2536,13 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		protected void onProgressUpdate(Integer... values) {
+		protected void onProgressUpdate(Integer progress) {
 			//Getting the service
 			ConnectionService service = serviceReference.get();
 			if(service == null) return;
 			
 			//Updating the progress in the service
-			service.massRetrievalProgress = values[0];
+			service.massRetrievalProgress = progress;
 			
 			//Sending a broadcast
 			LocalBroadcastManager.getInstance(service).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress).putExtra(Constants.intentParamProgress, service.massRetrievalProgress));
@@ -2521,7 +2575,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	private static class SaveConversationInfoAsyncTask extends AsyncTask<Void, Void, Void> {
+	private static class SaveConversationInfoAsyncTask extends QueueTask<Void, Void> {
 		private final WeakReference<Context> contextReference;
 		private final List<ConversationManager.ConversationInfo> unavailableConversations;
 		private final List<ConversationInfoRequest> availableConversations;
@@ -2538,18 +2592,15 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		protected Void doInBackground(Void... params) {
+		protected Void doInBackground() {
 			//Getting the context
 			Context context = contextReference.get();
 			
 			//Returning if the context is invalid
 			if(context == null) return null;
 			
-			//Getting the database
-			SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(context);
-			
 			//Removing the unavailable conversations from the database
-			for(ConversationManager.ConversationInfo conversation : unavailableConversations) DatabaseManager.deleteConversation(writableDatabase, conversation);
+			for(ConversationManager.ConversationInfo conversation : unavailableConversations) DatabaseManager.getInstance().deleteConversation(conversation);
 			
 			//Checking if there are any available conversations
 			if(!availableConversations.isEmpty()) {
@@ -2559,16 +2610,16 @@ public class ConnectionService extends Service {
 					ConversationManager.ConversationInfo availableConversation = iterator.next().conversationInfo;
 					
 					//Reading and recording the conversation's items
-					ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.loadConversationItems(writableDatabase, availableConversation);
+					ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationItems(availableConversation);
 					availableConversationItems.put(availableConversation.getLocalID(), conversationItems);
 					
 					//Searching for a matching conversation in the database
-					ConversationManager.ConversationInfo clientConversation = DatabaseManager.findConversationInfoWithMembers(writableDatabase, context, Constants.normalizeAddresses(availableConversation.getConversationMembersAsCollection()), availableConversation.getService(), true);
+					ConversationManager.ConversationInfo clientConversation = DatabaseManager.getInstance().findConversationInfoWithMembers(context, Constants.normalizeAddresses(availableConversation.getConversationMembersAsCollection()), availableConversation.getService(), true);
 					
 					//Checking if a client conversation has been found
 					if(clientConversation != null) {
 						//Switching the conversation item ownership to the new client conversation
-						DatabaseManager.switchMessageOwnership(writableDatabase, availableConversation.getLocalID(), clientConversation.getLocalID());
+						DatabaseManager.getInstance().switchMessageOwnership(availableConversation.getLocalID(), clientConversation.getLocalID());
 						for(ConversationManager.ConversationItem item : conversationItems) item.setConversationInfo(clientConversation);
 						
 						//Recording the conversation details
@@ -2578,17 +2629,17 @@ public class ConnectionService extends Service {
 								conversationItems));
 						
 						//Deleting the available conversation
-						DatabaseManager.deleteConversation(writableDatabase, availableConversation);
+						DatabaseManager.getInstance().deleteConversation(availableConversation);
 						unavailableConversations.add(availableConversation);
 						
 						//Updating the client conversation
-						DatabaseManager.copyConversationInfo(writableDatabase, availableConversation, clientConversation, false);
+						DatabaseManager.getInstance().copyConversationInfo(availableConversation, clientConversation, false);
 						
 						//Marking the the available conversation as invalid (to be deleted)
 						iterator.remove();
 					} else {
 						//Updating the available conversation
-						DatabaseManager.updateConversationInfo(writableDatabase, availableConversation, true);
+						DatabaseManager.getInstance().updateConversationInfo(availableConversation, true);
 					}
 				}
 			}
@@ -2642,7 +2693,7 @@ public class ConnectionService extends Service {
 					
 					//Adding the unread messages
 					conversationInfoRequest.conversationInfo.setUnreadMessageCount(availableConversationItems.get(conversationInfoRequest.conversationInfo.getLocalID()).size());
-					conversationInfoRequest.conversationInfo.updateUnreadStatus();
+					conversationInfoRequest.conversationInfo.updateUnreadStatus(context);
 					//availableConversation.updateView(ConnectionService.this);
 				}
 				
@@ -2676,7 +2727,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	private static class ModifierUpdateAsyncTask extends AsyncTask<Void, Void, Void> {
+	private static class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 		//Creating the reference values
 		private final WeakReference<Context> contextReference;
 		
@@ -2695,13 +2746,10 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		protected Void doInBackground(Void... params) {
+		protected Void doInBackground() {
 			//Getting the context
 			Context context = contextReference.get();
 			if(context == null) return null;
-			
-			//Getting the writable database
-			SQLiteDatabase writableDatabase = DatabaseManager.getWritableDatabase(context);
 			
 			//Iterating over the modifiers
 			for(SharedValues.ModifierInfo modifierInfo : structModifiers) {
@@ -2711,7 +2759,7 @@ public class ConnectionService extends Service {
 					SharedValues.ActivityStatusModifierInfo activityStatusModifierInfo = (SharedValues.ActivityStatusModifierInfo) modifierInfo;
 					
 					//Updating the modifier in the database
-					DatabaseManager.updateMessageState(writableDatabase, activityStatusModifierInfo.message, activityStatusModifierInfo.state, activityStatusModifierInfo.dateRead);
+					DatabaseManager.getInstance().updateMessageState(activityStatusModifierInfo.message, activityStatusModifierInfo.state, activityStatusModifierInfo.dateRead);
 				}
 				//Otherwise checking if the modifier is a sticker update
 				else if(modifierInfo instanceof SharedValues.StickerModifierInfo) {
@@ -2719,7 +2767,7 @@ public class ConnectionService extends Service {
 					SharedValues.StickerModifierInfo stickerInfo = (SharedValues.StickerModifierInfo) modifierInfo;
 					try {
 						stickerInfo.image = SharedValues.decompress(stickerInfo.image);
-						ConversationManager.StickerInfo sticker = DatabaseManager.addMessageSticker(writableDatabase, stickerInfo);
+						ConversationManager.StickerInfo sticker = DatabaseManager.getInstance().addMessageSticker(stickerInfo);
 						if(sticker != null) stickerModifiers.add(sticker);
 					} catch(IOException | DataFormatException exception) {
 						exception.printStackTrace();
@@ -2734,11 +2782,11 @@ public class ConnectionService extends Service {
 					//Checking if the tapback is negative
 					if(tapbackModifierInfo.code >= SharedValues.TapbackModifierInfo.tapbackBaseRemove) {
 						//Deleting the modifier in the database
-						DatabaseManager.removeMessageTapback(writableDatabase, tapbackModifierInfo);
+						DatabaseManager.getInstance().removeMessageTapback(tapbackModifierInfo);
 						tapbackRemovals.add(new TapbackRemovalStruct(tapbackModifierInfo.sender, tapbackModifierInfo.message, tapbackModifierInfo.messageIndex));
 					} else {
 						//Updating the modifier in the database
-						ConversationManager.TapbackInfo tapback = DatabaseManager.addMessageTapback(writableDatabase, tapbackModifierInfo);
+						ConversationManager.TapbackInfo tapback = DatabaseManager.getInstance().addMessageTapback(tapbackModifierInfo);
 						if(tapback != null) tapbackModifiers.add(tapback);
 					}
 				}
@@ -2813,7 +2861,7 @@ public class ConnectionService extends Service {
 				if(messageInfo == null) return;
 				
 				//Updating the message
-				messageInfo.addLiveSticker(sticker);
+				messageInfo.addLiveSticker(sticker, context);
 			}
 			
 			//Iterating over the tapback modifiers
@@ -2833,7 +2881,7 @@ public class ConnectionService extends Service {
 				if(messageInfo == null) return;
 				
 				//Updating the message
-				messageInfo.addLiveTapback(tapback);
+				messageInfo.addLiveTapback(tapback, context);
 			}
 			
 			//Iterating over the removed tapbacks
@@ -2853,7 +2901,7 @@ public class ConnectionService extends Service {
 				if(messageInfo == null) return;
 				
 				//Updating the message
-				messageInfo.removeLiveTapback(tapback.sender, tapback.messageIndex);
+				messageInfo.removeLiveTapback(tapback.sender, tapback.messageIndex, context);
 			}
 		}
 		
@@ -2867,6 +2915,65 @@ public class ConnectionService extends Service {
 				this.message = message;
 				this.messageIndex = messageIndex;
 			}
+		}
+	}
+	
+	private static abstract class QueueTask<Progress, Result> {
+		//abstract void onPreExecute();
+		abstract Result doInBackground();
+		void onPostExecute(Result value) {}
+		
+		void publishProgress(Progress progress) {
+			new Handler(Looper.getMainLooper()).post(() -> onProgressUpdate(progress));
+		}
+		void onProgressUpdate(Progress progress) {}
+	}
+	
+	void addMessagingProcessingTask(QueueTask<?, ?> task) {
+		//Adding the task
+		messageProcessingQueue.add(task);
+		
+		//Starting the thread if it isn't running
+		if(messageProcessingQueueThreadRunning.compareAndSet(false, true)) new MessageProcessingThread(this).start();
+	}
+	
+	private static class MessageProcessingThread extends Thread {
+		private final WeakReference<ConnectionService> serviceReference;
+		
+		MessageProcessingThread(ConnectionService service) {
+			serviceReference = new WeakReference<>(service);
+		}
+		
+		@Override
+		public void run() {
+			//Creating the handler
+			Handler handler = new Handler(Looper.getMainLooper());
+			
+			//Looping while the thread is alive
+			ConnectionService service = null;
+			QueueTask<?, ?> task;
+			while(!isInterrupted() &&
+					(service = serviceReference.get()) != null &&
+					(task = pushQueue(service)) != null) {
+				//Clearing the reference to the service
+				service = null;
+				
+				//Running the task
+				runTask(task, handler);
+			}
+			
+			//Telling the service that the thread is finished
+			if(service != null) service.messageProcessingQueueThreadRunning.set(false);
+		}
+		
+		private QueueTask<?, ?> pushQueue(ConnectionService service) {
+			if(service == null) return null;
+			return service.messageProcessingQueue.poll();
+		}
+		
+		private <Result> void runTask(QueueTask<?, Result> task, Handler handler) {
+			Result value = task.doInBackground();
+			handler.post(() -> task.onPostExecute(value));
 		}
 	}
 	

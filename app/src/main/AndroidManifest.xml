@@ -11,6 +11,7 @@
 	
 	<application
 		android:allowBackup="true"
+		android:fullBackupContent="@xml/backup_rules"
 		android:appCategory="social"
 		android:icon="@drawable/app_icon"
 		android:label="@string/app_name"
@@ -41,8 +42,8 @@
 			android:exported="false"
 			android:label="@string/screen_newconversation"
 			android:name=".NewMessage"
-			android:theme="@style/AppTheme.AppCompat.NoActionBar"
 			android:parentActivityName=".Conversations"
+			android:theme="@style/AppTheme.AppCompat.NoActionBar"
 			android:windowSoftInputMode="adjustResize|stateVisible" />
 		<!-- Conversation information -->
 		<activity
@@ -55,7 +56,7 @@
 			android:exported="false"
 			android:label="@string/screen_settings"
 			android:name=".Preferences"
-			android:parentActivityName=".Conversations" >
+			android:parentActivityName=".Conversations">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.NOTIFICATION_PREFERENCES" />
@@ -71,14 +72,18 @@
 			android:exported="false"
 			android:name=".ServerSetup"
 			android:theme="@style/AppTheme.Setup">
-			<!-- <intent-filter>
+			<!--
+            <intent-filter>
 				<action android:name="me.tagavari.airmessage.ServerSetup" />
 				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter> -->
+			</intent-filter>
+            -->
 		</activity>
 		<!-- Blocked addresses -->
-		<!-- <activity android:name=".BlockedAddresses">
-		</activity> -->
+		<!--
+        <activity android:name=".BlockedAddresses">
+		</activity>
+        -->
 		<!-- Share Handler -->
 		<activity
 			android:excludeFromRecents="true"
@@ -115,13 +120,14 @@
 		<receiver
 			android:enabled="true"
 			android:exported="false"
-			android:name=".ConnectionService$ServiceStart">
+			android:name=".ConnectionService$ServiceStartBoot">
 			<intent-filter>
 				<action android:name="android.intent.action.BOOT_COMPLETED" />
 			</intent-filter>
 		</receiver>
-		
 		<!-- Disables automatic Crashlytics initialization -->
-		<meta-data android:name="firebase_crashlytics_collection_enabled" android:value="false" />
+		<meta-data
+			android:name="firebase_crashlytics_collection_enabled"
+			android:value="false" />
 	</application>
 </manifest>

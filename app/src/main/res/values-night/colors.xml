@@ -11,4 +11,6 @@
 	<color name="colorMessageOutgoingAccent">#616161</color>
 	
 	<color name="colorImageUnloaded">#424242</color>
+	
+	<color name="colorRecordingDiscard">#B71C1C</color>
 </resources>
