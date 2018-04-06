@@ -1,5 +1,6 @@
 package me.tagavari.airmessage;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -93,6 +94,9 @@ public class MainApplication extends Application {
 			}
 		}
 		
+		//Migrating the shared preferences TODO remove on next release
+		migrateSharedPreferences();
+		
 		//Getting the connection service information
 		SharedPreferences sharedPrefs = getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
 		ConnectionService.hostname = sharedPrefs.getString(sharedPreferencesConnectivityKeyHostname, "");
@@ -126,6 +130,30 @@ public class MainApplication extends Application {
 		
 		// Initialize Fabric with the debug-disabled crashlytics
 		Fabric.with(this, crashlyticsKit);
+	}
+	
+	private static final String oldSharedPrefsName = "me.tagavari.airmessage.MAIN_PREFERENCES";
+	@SuppressLint("ApplySharedPref")
+	private boolean migrateSharedPreferences() {
+		//Returning false if the file doesn't exist
+		File oldSharedPrefsFile = new File(getFilesDir().getParent(), "shared_prefs/" + oldSharedPrefsName + ".xml");
+		if(!oldSharedPrefsFile.exists()) return false;
+		
+		//Getting the shared preferences
+		SharedPreferences oldSharedPrefs = getSharedPreferences(oldSharedPrefsName, Context.MODE_PRIVATE);
+		SharedPreferences newSharedPrefs = getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
+		
+		//Copying the data
+		newSharedPrefs.edit()
+				.putString(sharedPreferencesConnectivityKeyHostname, oldSharedPrefs.getString("hostname", null))
+				.putString(sharedPreferencesConnectivityKeyPassword, oldSharedPrefs.getString("password", null))
+				.commit();
+		
+		//Deleting the old shared preferences
+		oldSharedPrefsFile.delete();
+		
+		//Returning true
+		return true;
 	}
 	
 	static File getAttachmentDirectory(Context context) {
