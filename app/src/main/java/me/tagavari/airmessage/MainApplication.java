@@ -109,7 +109,7 @@ public class MainApplication extends Application {
 		applyDarkMode(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.preference_appearance_theme_key), ""));
 		
 		//Enabling / disabling the service on boot as per the shared preference
-		getPackageManager().setComponentEnabledSetting(new ComponentName(this, ConnectionService.ServiceStart.class),
+		getPackageManager().setComponentEnabledSetting(new ComponentName(this, ConnectionService.ServiceStartBoot.class),
 				PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_connectionboot_key), true) ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
 				PackageManager.DONT_KILL_APP);
 	}

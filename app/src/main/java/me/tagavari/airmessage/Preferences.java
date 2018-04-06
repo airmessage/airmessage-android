@@ -80,14 +80,14 @@ public class Preferences extends AppCompatActivity {
 		}; */
 		Preference.OnPreferenceChangeListener startOnBootChangeListener = (preference, value) -> {
 			//Updating the service state
-			getActivity().getPackageManager().setComponentEnabledSetting(new ComponentName(getActivity(), ConnectionService.ServiceStart.class),
+			getActivity().getPackageManager().setComponentEnabledSetting(new ComponentName(getActivity(), ConnectionService.ServiceStartBoot.class),
 					(boolean) value ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
 					PackageManager.DONT_KILL_APP);
 			
 			//Returning true (to allow the change)
 			return true;
 		};
-		Preference.OnPreferenceChangeListener useForegroundServiceChangeListener = (preference, value) -> {
+		/* Preference.OnPreferenceChangeListener useForegroundServiceChangeListener = (preference, value) -> {
 			//Casting the value
 			boolean boolValue = (boolean) value;
 			//Updating the service
@@ -104,7 +104,7 @@ public class Preferences extends AppCompatActivity {
 			
 			//Returning true (to allow the change)
 			return true;
-		};
+		}; */
 		Preference.OnPreferenceClickListener deleteAttachmentsClickListener = preference -> {
 			//Creating a dialog
 			AlertDialog dialog = new AlertDialog.Builder(getActivity())
@@ -216,18 +216,18 @@ public class Preferences extends AppCompatActivity {
 				
 				//Setting the listener
 				findPreference(getResources().getString(R.string.preference_messagenotifications_key)).setIntent(intent);
-			} else {
+			}/* else {
 				//Updating the notification information
-				//String ringtonePreferenceKey = getResources().getString(R.string.preference_messagenotifications_sound_key);
-				//updateRingtonePreference(findPreference(ringtonePreferenceKey));
-			}
+				String ringtonePreferenceKey = getResources().getString(R.string.preference_messagenotifications_sound_key);
+				updateRingtonePreference(findPreference(ringtonePreferenceKey));
+			} */
 			
 			//Setting the dependant states
-			{
+			/* {
 				SwitchPreferenceCompat foregroundServiceSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_server_foregroundservice_key));
 				findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setEnabled(foregroundServiceSwitch.isChecked());
 				findPreference(getResources().getString(R.string.preference_server_disconnectionnotification_key)).setEnabled(!foregroundServiceSwitch.isChecked());
-			}
+			} */
 			
 			{
 				SwitchPreferenceCompat locationSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_location_key));
@@ -254,7 +254,7 @@ public class Preferences extends AppCompatActivity {
 			//Setting the listeners
 			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceClickListener(ringtoneClickListener);
 			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceChangeListener(ringtoneChangeListener);
-			findPreference(getResources().getString(R.string.preference_server_foregroundservice_key)).setOnPreferenceChangeListener(useForegroundServiceChangeListener);
+			//findPreference(getResources().getString(R.string.preference_server_foregroundservice_key)).setOnPreferenceChangeListener(useForegroundServiceChangeListener);
 			findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setOnPreferenceChangeListener(startOnBootChangeListener);
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
 			findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);

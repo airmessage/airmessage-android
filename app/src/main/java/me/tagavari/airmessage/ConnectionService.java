@@ -174,7 +174,7 @@ public class ConnectionService extends Service {
 	//private final LongSparseArray<MessageResponseManager> fileSendRequests = new LongSparseArray<>();
 	//private short nextRequestID = (short) (new Random(System.currentTimeMillis()).nextInt((int) Short.MAX_VALUE - (int) Short.MIN_VALUE + 1) + Short.MIN_VALUE);
 	private short nextRequestID = (short) new Random(System.currentTimeMillis()).nextInt(1 << 16);
-	private boolean isShuttingDown = false;
+	private boolean shutdownRequested = false;
 	
 	private MMWebSocketClient wsClient = null;
 	private final ArrayList<ConversationInfoRequest> pendingConversations = new ArrayList<>();
@@ -221,23 +221,22 @@ public class ConnectionService extends Service {
 		//Getting the intent action
 		String intentAction = intent == null ? null : intent.getAction();
 		
-		//Checking if a stop has been requested or the connection address is invalid
-		if(selfIntentActionStop.equals(intentAction) || (hostname == null || hostname.isEmpty())) {
+		//Checking if a stop has been requested
+		if(selfIntentActionStop.equals(intentAction)) {
 			//Denying the existence of the connection for reconnection
 			connectionEstablishedForReconnect = false;
+			
+			//Setting the service as shutting down
+			shutdownRequested = true;
 			
 			//Stopping the service
 			stopSelf();
 			
-			//Setting the service as shutting down
-			isShuttingDown = true;
-			
 			//Returning not sticky
 			return START_NOT_STICKY;
 		}
-		
 		//Checking if a disconnect has been requested
-		if(selfIntentActionDisconnect.equals(intentAction)) {
+		else if(selfIntentActionDisconnect.equals(intentAction)) {
 			//Denying the existence of the connection for reconnection
 			connectionEstablishedForReconnect = false;
 			
@@ -251,7 +250,7 @@ public class ConnectionService extends Service {
 		else if(wsClient == null || wsClient.isClosed() || selfIntentActionConnect.equals(intentAction)) connect(intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : getNextLaunchID());
 		
 		//Setting the service as not shutting down
-		isShuttingDown = false;
+		shutdownRequested = false;
 		
 		//Calling the listeners
 		//for(ServiceStartCallback callback : startCallbacks) callback.onServiceStarted(this);
@@ -263,6 +262,8 @@ public class ConnectionService extends Service {
 	
 	@Override
 	public void onDestroy() {
+		super.onDestroy();
+		
 		//Disconnecting
 		disconnect();
 		
@@ -307,11 +308,13 @@ public class ConnectionService extends Service {
 	}
 	
 	private boolean foregroundServiceRequested() {
-		return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_foregroundservice_key), false);
+		return true;
+		//return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_foregroundservice_key), false);
 	}
 	
 	private boolean disconnectedNotificationRequested() {
-		return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_disconnectionnotification_key), true);
+		return true;
+		//return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_disconnectionnotification_key), true);
 	}
 	
 	private void connect(byte launchID) {
@@ -321,6 +324,15 @@ public class ConnectionService extends Service {
 			SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
 			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, "");
 			password = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, "");
+		}
+		
+		//Checking if the hostname is still invalid
+		if(hostname.isEmpty()) {
+			//Updating the notification state
+			postDisconnectedNotification(false);
+			
+			//Returning
+			return;
 		}
 		
 		//Preparing the hostname
@@ -756,7 +768,7 @@ public class ConnectionService extends Service {
 			connectionEstablishedForRetrieval = connectionEstablishedForReconnect = false;
 			
 			//Posting the disconnected notification
-			if(!isShuttingDown) postDisconnectedNotification(false);
+			if(!shutdownRequested) postDisconnectedNotification(false);
 			
 			//Cancelling the mass retrieval if there is one in progress
 			if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
@@ -2090,19 +2102,16 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	public static class ServiceStart extends BroadcastReceiver {
+	public static class ServiceStartBoot extends BroadcastReceiver {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			//Returning if the action doesn't match or the preference isn't enabled
-			if(!"android.intent.action.BOOT_COMPLETED".equals(intent.getAction())/* || !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_connectionboot_key), false)*/) return;
+			//Returning if the service is not a boot service
+			if(!"android.intent.action.BOOT_COMPLETED".equals(intent.getAction())) return;
 			
 			//Starting the service
 			Intent serviceIntent = new Intent(context, ConnectionService.class);
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-				context.startForegroundService(serviceIntent);
-			} else {
-				context.startService(serviceIntent);
-			}
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(serviceIntent);
+			else context.startService(serviceIntent);
 		}
 	}
 	
