@@ -2126,11 +2126,13 @@ class ConversationManager {
 						
 						//Updating the view
 						AttachmentInfo.ViewHolder attachmentViewHolder = (AttachmentInfo.ViewHolder) attachmentInfo.getViewHolder();
-						attachmentViewHolder.groupDownload.setVisibility(View.GONE);
-						attachmentViewHolder.groupContent.setVisibility(View.GONE);
-						attachmentViewHolder.groupProcessing.setVisibility(View.GONE);
-						if(attachmentViewHolder.groupFailed != null) attachmentViewHolder.groupFailed.setVisibility(View.GONE);
-						attachmentInfo.updateContentView(attachmentViewHolder, context);
+						if(attachmentViewHolder != null) {
+							attachmentViewHolder.groupDownload.setVisibility(View.GONE);
+							attachmentViewHolder.groupContent.setVisibility(View.GONE);
+							attachmentViewHolder.groupProcessing.setVisibility(View.GONE);
+							if(attachmentViewHolder.groupFailed != null) attachmentViewHolder.groupFailed.setVisibility(View.GONE);
+							attachmentInfo.updateContentView(attachmentViewHolder, context);
+						}
 					}
 					
 					@Override
@@ -2508,10 +2510,16 @@ class ConversationManager {
 			viewHolder.progressSend.setBarColor(getConversationInfo().getConversationColor());
 			
 			//Updating the message colors
-			if(updateComponents && messageText != null) messageText.updateViewColor(messageText.getViewHolder(), context);
+			if(updateComponents && messageText != null) {
+				MessageTextInfo.ViewHolder componentVH = messageText.getViewHolder();
+				if(componentVH != null) messageText.updateViewColor(componentVH, context);
+			}
 			
 			//Updating the attachment colors
-			if(updateComponents) for(AttachmentInfo attachmentInfo : attachments) attachmentInfo.updateViewColor((AttachmentInfo.ViewHolder) attachmentInfo.getViewHolder(), context);
+			if(updateComponents) for(AttachmentInfo attachmentInfo : attachments) {
+				AttachmentInfo.ViewHolder componentVH = (AttachmentInfo.ViewHolder) attachmentInfo.getViewHolder();
+				if(componentVH != null) attachmentInfo.updateViewColor(componentVH, context);
+			}
 		}
 		
 		void updateViewProgressState(Context context) {

@@ -20,7 +20,7 @@ import me.tagavari.airmessage.common.SharedValues;
 
 class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
-	private static final int DATABASE_VERSION = 3;
+	private static final int DATABASE_VERSION = 4;
 	private static final String DATABASE_NAME = "messages.db";
 	
 	//Creating the fetch statements
@@ -151,13 +151,12 @@ class DatabaseManager extends SQLiteOpenHelper {
 				database.execSQL(SQL_CREATE_TABLE_STICKER);
 				database.execSQL(SQL_CREATE_TABLE_TAPBACK);
 			case 2:
-				//Obsolete columns: "last_viewed"
-				
-				//Removing the "last viewed" column
-				//dropColumn(database, Contract.ConversationEntry.TABLE_NAME, "last_viewed");
-				
 				//Adding the "unread messages" column
 				database.execSQL("ALTER TABLE " + Contract.ConversationEntry.TABLE_NAME + " ADD " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER DEFAULT 0;");
+				
+				//Adding the sticker and tapback tables (because for some reason they don't exist sometimes)
+				database.execSQL(SQL_CREATE_TABLE_STICKER.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
+				database.execSQL(SQL_CREATE_TABLE_TAPBACK.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
 				
 				//Decompressing the sticker data
 				{
@@ -179,13 +178,16 @@ class DatabaseManager extends SQLiteOpenHelper {
 					
 					cursor.close();
 				}
+			case 3:
+				//Removing the "last viewed" column (it is now obsolete)
+				dropColumn(database, Contract.ConversationEntry.TABLE_NAME, "last_viewed");
 		}
 	}
 	
 	@Override
 	public void onDowngrade(SQLiteDatabase database, int oldVersion, int newVersion) {
 		//Dropping all tables
-		String[] tableNames = getTableNames();
+		String[] tableNames = getTableNames(database);
 		for(String table : tableNames) database.execSQL("DROP TABLE IF EXISTS " + table);
 		
 		//Rebuilding the database
@@ -283,38 +285,45 @@ class DatabaseManager extends SQLiteOpenHelper {
 		instance.close();
 	}
 	
-	//DO NOT USE, CAUSES ISSUES
-	void dropColumn(String tableName, String columnName) {
+	private void dropColumn(SQLiteDatabase writableDatabase, String tableName, String columnName) {
 		//Fetching the column names of the table
-		String columnNames[] = getColumnNames(tableName);
+		String columnNames[] = getColumnNames(writableDatabase, tableName);
 		StringBuilder columnTargetSB = new StringBuilder();
-		for(String column : columnNames) if(!column.equals(columnName)) columnTargetSB.append(',').append(column);
+		if(columnNames.length > 0) {
+			columnTargetSB.append(columnNames[0]);
+			for(int i = 1; i < columnNames.length; i++) {
+				String column = columnNames[i];
+				if(!column.equals(columnName)) columnTargetSB.append(',').append(column);
+			}
+		}
 		String columnTarget = columnTargetSB.toString();
 		
 		//Dropping the column
-		getWritableDatabase().execSQL(
-				"BEGIN TRANSACTION;" +
-						"CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnTarget + ");" +
-						"INSERT INTO " + tableName + "_backup SELECT " + columnTarget + " FROM " + tableName + ";" +
-						"DROP TABLE " + tableName + ";" +
-						"CREATE TABLE " + tableName + "(" + columnTarget + ");" +
-						"INSERT INTO " + tableName + " SELECT " + columnTarget + " FROM " + tableName + "_backup;" +
-						"DROP TABLE " + tableName + "_backup;" +
-						"COMMIT;"
-		);
+		writableDatabase.beginTransaction();
+		try {
+			writableDatabase.execSQL("CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnTarget + ");");
+			writableDatabase.execSQL("INSERT INTO " + tableName + "_backup SELECT " + columnTarget + " FROM " + tableName + ";");
+			writableDatabase.execSQL("DROP TABLE " + tableName + ";");
+			writableDatabase.execSQL("CREATE TABLE " + tableName + "(" + columnTarget + ");");
+			writableDatabase.execSQL("INSERT INTO " + tableName + " SELECT " + columnTarget + " FROM " + tableName + "_backup;");
+			writableDatabase.execSQL("DROP TABLE " + tableName + "_backup;");
+			writableDatabase.setTransactionSuccessful();
+		} finally {
+			writableDatabase.endTransaction();
+		}
 	}
 	
-	private String[] getTableNames() {
+	private String[] getTableNames(SQLiteDatabase readableDatabase) {
 		List<String> tableNames = new ArrayList<>();
-		Cursor cursor = getReadableDatabase().rawQuery("SELECT name FROM sqlite_master WHERE type='table'", null);
+		Cursor cursor = readableDatabase.rawQuery("SELECT name FROM sqlite_master WHERE type='table'", null);
 		//int indexName = cursor.getColumnIndex("name");
 		while(cursor.moveToNext()) tableNames.add(cursor.getString(0));
 		cursor.close();
 		return tableNames.toArray(new String[0]);
 	}
 	
-	private String[] getColumnNames(String tableName) {
-		try(Cursor cursor = getReadableDatabase().query(tableName, null, null, null, null, null, null)) {
+	private String[] getColumnNames(SQLiteDatabase readableDatabase, String tableName) {
+		try(Cursor cursor = readableDatabase.query(tableName, null, null, null, null, null, null)) {
 			return cursor.getColumnNames();
 		}
 	}
@@ -2051,7 +2060,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		SQLiteDatabase database = getWritableDatabase();
 		
 		//Clearing the tables
-		String tableNames[] = getTableNames();
+		String tableNames[] = getTableNames(database);
 		for(String table : tableNames) database.delete(table, null, null);
 		
 		//Shrinking the database
