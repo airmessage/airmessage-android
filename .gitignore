@@ -14,22 +14,21 @@ local.properties
 .signing/
 
 # User-specific configurations
+.idea/libraries/
+.idea/workspace.xml
+.idea/tasks.xml
 .idea/.name
-.idea/caches/
-.idea/codeStyles/
+.idea/caches
+.idea/codeStyles
 .idea/codeStyleSettings.xml
 .idea/compiler.xml
 .idea/copyright/profiles_settings.xml
-.idea/dictionaries
 .idea/encodings.xml
-.idea/gradle.xml
-.idea/libraries/
 .idea/misc.xml
 .idea/modules.xml
 .idea/scopes/scope_settings.xml
-.idea/tasks.xml
 .idea/vcs.xml
-.idea/workspace.xml
+.idea/dictionaries
 *.iml
 
 # OS-specific files
