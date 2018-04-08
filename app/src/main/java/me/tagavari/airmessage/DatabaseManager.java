@@ -154,6 +154,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Adding the "unread messages" column
 				database.execSQL("ALTER TABLE " + Contract.ConversationEntry.TABLE_NAME + " ADD " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER DEFAULT 0;");
 				
+				//Adding the sticker and tapback tables (because for some reason they don't exist sometimes)
+				database.execSQL(SQL_CREATE_TABLE_STICKER.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
+				database.execSQL(SQL_CREATE_TABLE_TAPBACK.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
+				
 				//Decompressing the sticker data
 				{
 					Cursor cursor = database.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_DATA}, null, null, null, null, null);
