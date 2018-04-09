@@ -2409,6 +2409,7 @@ class ConversationManager {
 						
 						//Getting the view holder
 						ViewHolder newViewHolder = wasTasked ? getViewHolder() : viewHolder;
+						if(newViewHolder == null) return;
 						newViewHolder.inflateProfile();
 						
 						//Hiding the default view
