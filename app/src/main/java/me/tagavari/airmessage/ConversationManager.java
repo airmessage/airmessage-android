@@ -4193,7 +4193,7 @@ class ConversationManager {
 		@Override
 		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Assigning the drawable
-			viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
+			viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable()); //TODO Apparently this causes a memory leak
 			
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;

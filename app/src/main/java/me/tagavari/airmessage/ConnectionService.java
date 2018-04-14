@@ -2546,12 +2546,6 @@ public class ConnectionService extends Service {
 				ConversationManager.ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItem(structItem, parentConversation);
 				if(conversationItem == null) continue;
 				
-				/* if(structItem instanceof SharedValues.MessageInfo) {
-					if(((SharedValues.MessageInfo) structItem).attachments.size() > 0) {
-						System.out.println("Found message with" + ((SharedValues.MessageInfo) structItem).attachments.size() + " attachments!");
-					}
-				} */
-				
 				//Updating the parent conversation's last item
 				if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
 					parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context));

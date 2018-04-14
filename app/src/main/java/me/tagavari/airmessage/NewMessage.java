@@ -1,8 +1,12 @@
 package me.tagavari.airmessage;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.app.Fragment;
-import android.app.FragmentManager;
+import android.app.Application;
+import android.arch.lifecycle.AndroidViewModel;
+import android.arch.lifecycle.MutableLiveData;
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
@@ -45,24 +49,48 @@ import java.util.List;
 import java.util.ListIterator;
 
 public class NewMessage extends AppCompatActivity {
+	//Creating the constants
 	private static final int menuIdentifierConfirmParticipants = 0;
+	
+	//Creating the view model and plugin values
+	private ActivityViewModel viewModel;
 	
 	//Creating the view values
 	private ViewGroup recipientViewGroup;
-	
 	private MenuItem confirmMenuItem;
 	private EditText recipientInput;
-	private RecyclerView contactsList;
+	private RecyclerView contactListView;
 	private RecyclerAdapter contactsListAdapter;
-	//private ListView contactsList;
+	
+	private ViewGroup groupMessagePermission;
+	private ViewGroup groupMessageError;
+	//private ListView contactListView;
 	//private ListAdapter contactsListAdapter;
+	
+	private final Observer<Byte> contactStateObserver = state -> {
+		switch(state) {
+			case ActivityViewModel.contactStateReady:
+				contactListView.setVisibility(View.VISIBLE);
+				groupMessagePermission.setVisibility(View.GONE);
+				groupMessageError.setVisibility(View.GONE);
+				break;
+			case ActivityViewModel.contactStateNoAccess:
+				contactListView.setVisibility(View.GONE);
+				groupMessagePermission.setVisibility(View.VISIBLE);
+				groupMessageError.setVisibility(View.GONE);
+				break;
+			case ActivityViewModel.contactStateFailed:
+				contactListView.setVisibility(View.GONE);
+				groupMessagePermission.setVisibility(View.GONE);
+				groupMessageError.setVisibility(View.VISIBLE);
+				break;
+		}
+	};
 	
 	//Creating the listener values
 	private final TextWatcher recipientInputTextWatcher = new TextWatcher() {
 		@Override
-		public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-		
-		}
+		public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 		
 		@Override
 		public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -112,6 +140,7 @@ public class NewMessage extends AppCompatActivity {
 		
 		}
 	};
+	//Creating the retained fragment values
 	private final View.OnKeyListener recipientInputOnKeyListener = new View.OnKeyListener() {
 		@Override
 		public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -121,9 +150,9 @@ public class NewMessage extends AppCompatActivity {
 			//Checking if the key is the delete key
 			if(keyCode == KeyEvent.KEYCODE_DEL) {
 				//Checking if the cursor is at the start and there are chips
-				if(recipientInput.getSelectionStart() == 0 && recipientInput.getSelectionEnd() == 0 && !retainedFragment.userChips.isEmpty()) {
+				if(recipientInput.getSelectionStart() == 0 && recipientInput.getSelectionEnd() == 0 && !viewModel.userChips.isEmpty()) {
 					//Removing a chip
-					removeChip(retainedFragment.userChips.get(retainedFragment.userChips.size() - 1));
+					removeChip(viewModel.userChips.get(viewModel.userChips.size() - 1));
 					
 					//Returning true
 					return true;
@@ -134,7 +163,6 @@ public class NewMessage extends AppCompatActivity {
 			return false;
 		}
 	};
-	
 	private final TextView.OnEditorActionListener recipientInputOnActionListener = new TextView.OnEditorActionListener() {
 		@Override
 		public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
@@ -161,10 +189,6 @@ public class NewMessage extends AppCompatActivity {
 		}
 	};
 	
-	//Creating the retained fragment values
-	private static final String retainedFragmentTag = RetainedFragment.class.getName();
-	private RetainedFragment retainedFragment;
-	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		//Calling the super method
@@ -180,60 +204,34 @@ public class NewMessage extends AppCompatActivity {
 		//Getting the views
 		recipientViewGroup = findViewById(R.id.viewgroup_recipients);
 		recipientInput = findViewById(R.id.recipients_input);
-		contactsList = findViewById(R.id.list_contacts);
+		contactListView = findViewById(R.id.list_contacts);
 		
-		//Setting the name change listener
+		groupMessagePermission = findViewById(R.id.group_permission);
+		groupMessageError = findViewById(R.id.group_error);
+		
+		//Adding the input listeners
 		recipientInput.addTextChangedListener(recipientInputTextWatcher);
 		recipientInput.setOnKeyListener(recipientInputOnKeyListener);
 		recipientInput.setOnEditorActionListener(recipientInputOnActionListener);
 		
-		//Preparing the retained fragment
-		prepareRetainedFragment();
+		//Getting the view model
+		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
 		
-		//Restoring the state
+		//Registering the observers
+		viewModel.contactState.observe(this, contactStateObserver);
+		viewModel.contactListLD.observe(this, value -> contactsListAdapter.onListUpdated());
+		
+		//Restoring the input bar
 		restoreInputBar();
 		
-		//Checking if the state is idle
-		if(retainedFragment.contactState == RetainedFragment.contactStateIdle) {
-			//Checking if contacts can be used
-			if(MainApplication.canUseContacts(this)) {
-				//Loading the contacts
-				retainedFragment.loadContacts(getApplicationContext());
-			} else {
-				//Setting the state to no access
-				retainedFragment.updateState(RetainedFragment.contactStateNoAccess);
-				updateContactState((byte) -1, RetainedFragment.contactStateNoAccess);
-			}
-		} else {
-			//Updating the state
-			updateContactState((byte) -1, retainedFragment.contactState);
-		}
-		
-		//Configuring the input
-		//recipientInput.setInputType(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
-		//recipientInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
-		
 		//Configuring the list
-		contactsListAdapter = new RecyclerAdapter(retainedFragment.contactList, contactsList);
-		contactsList.setAdapter(contactsListAdapter);
-	}
-	
-	private void prepareRetainedFragment() {
-		//Getting the retained fragment
-		FragmentManager fragmentManager = getFragmentManager();
-		retainedFragment = (RetainedFragment) fragmentManager.findFragmentByTag(retainedFragmentTag);
-		
-		//Checking if the fragment is invalid
-		if(retainedFragment == null) { //If the fragment is valid, it has been retrieved from across a config change
-			//Creating and adding the fragment
-			retainedFragment = new RetainedFragment();
-			fragmentManager.beginTransaction().add(retainedFragment, retainedFragmentTag).commit();
-		}
+		contactsListAdapter = new RecyclerAdapter(viewModel.contactList, contactListView);
+		contactListView.setAdapter(contactsListAdapter);
 	}
 	
 	private void restoreInputBar() {
 		//Restoring the input type
-		if(retainedFragment.recipientInputAlphabetical) {
+		if(viewModel.recipientInputAlphabetical) {
 			recipientInput.setInputType(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
 			((ImageButton) findViewById(R.id.recipients_inputtoggle)).setImageResource(R.drawable.dialpad);
 		} else {
@@ -242,7 +240,7 @@ public class NewMessage extends AppCompatActivity {
 		}
 		
 		//Restoring the chips
-		if(retainedFragment.userChips.isEmpty()) {
+		if(viewModel.userChips.isEmpty()) {
 			//Setting the hint
 			recipientInput.setHint(R.string.imperative_userinput);
 		} else {
@@ -251,52 +249,12 @@ public class NewMessage extends AppCompatActivity {
 			
 			//Adding the views
 			int chipIndex = 0;
-			for(Chip chip : retainedFragment.userChips) {
+			for(Chip chip : viewModel.userChips) {
 				((ViewGroup) chip.getView().getParent()).removeView(chip.getView());
 				recipientViewGroup.addView(chip.getView(), chipIndex);
 				chipIndex++;
 			}
 		}
-	}
-	
-	void updateContactState(byte oldState, byte newState) {
-		switch(oldState) {
-			case -1:
-				break;
-			case RetainedFragment.contactStateLoading:
-				findViewById(R.id.list_contacts).setVisibility(View.GONE);
-				break;
-			case RetainedFragment.contactStateLoaded:
-				findViewById(R.id.list_contacts).setVisibility(View.GONE);
-				break;
-			case RetainedFragment.contactStateNoAccess:
-				findViewById(R.id.message_permission).setVisibility(View.GONE);
-				break;
-			case RetainedFragment.contactStateFailed:
-				findViewById(R.id.message_error).setVisibility(View.GONE);
-				break;
-		}
-		
-		switch(newState) {
-			case RetainedFragment.contactStateLoading:
-				findViewById(R.id.list_contacts).setVisibility(View.VISIBLE);
-				break;
-			case RetainedFragment.contactStateLoaded:
-				findViewById(R.id.list_contacts).setVisibility(View.VISIBLE);
-				break;
-			case RetainedFragment.contactStateNoAccess:
-				findViewById(R.id.message_permission).setVisibility(View.VISIBLE);
-				findViewById(R.id.list_contacts).setVisibility(View.GONE);
-				break;
-			case RetainedFragment.contactStateFailed:
-				findViewById(R.id.message_error).setVisibility(View.VISIBLE);
-				findViewById(R.id.list_contacts).setVisibility(View.GONE);
-				break;
-		}
-	}
-	
-	void updateContactList() {
-		contactsListAdapter.onListUpdated();
 	}
 	
 	@Override
@@ -307,7 +265,7 @@ public class NewMessage extends AppCompatActivity {
 		confirmMenuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 		
 		//Hiding the menu button
-		confirmMenuItem.setVisible(!retainedFragment.userChips.isEmpty());
+		confirmMenuItem.setVisible(!viewModel.userChips.isEmpty());
 		
 		//Returning true
 		return true;
@@ -343,8 +301,8 @@ public class NewMessage extends AppCompatActivity {
 		if(requestCode == Constants.permissionReadContacts) {
 			//Checking if the result is a success
 			if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-				//Requesting contacts
-				retainedFragment.loadContacts(getApplicationContext());
+				//Loading the contacts
+				viewModel.loadContacts();
 			}
 			//Otherwise checking if the result is a denial
 			else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
@@ -381,7 +339,7 @@ public class NewMessage extends AppCompatActivity {
 		int selectionEnd = recipientInput.getSelectionEnd();
 		
 		//Checking if the input is alphabetical
-		if(retainedFragment.recipientInputAlphabetical) {
+		if(viewModel.recipientInputAlphabetical) {
 			//Setting the input type
 			recipientInput.setInputType(InputType.TYPE_CLASS_PHONE);
 			//recipientInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
@@ -390,7 +348,7 @@ public class NewMessage extends AppCompatActivity {
 			((ImageButton) view).setImageResource(R.drawable.keyboard);
 			
 			//Setting the alphabetical input variable
-			retainedFragment.recipientInputAlphabetical = false;
+			viewModel.recipientInputAlphabetical = false;
 		} else {
 			//Setting the input type
 			recipientInput.setInputType(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
@@ -400,7 +358,7 @@ public class NewMessage extends AppCompatActivity {
 			((ImageButton) view).setImageResource(R.drawable.dialpad);
 			
 			//Setting the alphabetical input variable
-			retainedFragment.recipientInputAlphabetical = true;
+			viewModel.recipientInputAlphabetical = true;
 		}
 		
 		//Restoring the selection
@@ -434,7 +392,7 @@ public class NewMessage extends AppCompatActivity {
 		}
 		
 		//Confirming the participants
-		new ConfirmParticipantsTask(getApplicationContext(), this, recipients, retainedFragment.service).execute();
+		new ConfirmParticipantsTask(getApplicationContext(), this, recipients, viewModel.service).execute();
 		
 		//Creating a new asynchronous task
 		/* new AsyncTask<Object, Void, ConversationManager.ConversationInfo>() {
@@ -474,6 +432,10 @@ public class NewMessage extends AppCompatActivity {
 	public void onClickRequestContacts(View view) {
 		//Requesting the permission
 		Constants.requestPermission(this, new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts);
+	}
+	
+	public void onClickRetryLoad(View view) {
+		if(viewModel.contactState.getValue() == ActivityViewModel.contactStateFailed) viewModel.loadContacts();
 	}
 	
 	private static class ConfirmParticipantsTask extends AsyncTask<Void, Void, ConversationManager.ConversationInfo> {
@@ -530,7 +492,7 @@ public class NewMessage extends AppCompatActivity {
 			} else {
 				//Checking if the conversations exist
 				ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-				if(conversations != null && !conversations.contains(result)) {
+				if(conversations != null && ConversationManager.findConversationInfo(result.getLocalID()) == null) {
 					//Adding the conversation in memory
 					ConversationManager.addConversation(result);
 					
@@ -549,7 +511,7 @@ public class NewMessage extends AppCompatActivity {
 	private ArrayList<String> getRecipientList() {
 		//Converting the user chips to a string list
 		ArrayList<String> recipients = new ArrayList<>();
-		for(Chip chip : retainedFragment.userChips) recipients.add(chip.getName());
+		for(Chip chip : viewModel.userChips) recipients.add(chip.getName());
 		
 		//Sorting the list
 		Collections.sort(recipients);
@@ -573,16 +535,16 @@ public class NewMessage extends AppCompatActivity {
 	private void addChip(Chip chip) {
 		//Validating the chip
 		String chipName = Constants.normalizeAddress(chip.name);
-		for(Chip existingChips : retainedFragment.userChips) if(Constants.normalizeAddress(existingChips.getName()).equals(chipName)) return;
+		for(Chip existingChips : viewModel.userChips) if(Constants.normalizeAddress(existingChips.getName()).equals(chipName)) return;
 		
 		//Removing the hint from the recipient input if this is the first chip
-		if(retainedFragment.userChips.isEmpty()) recipientInput.setHint("");
+		if(viewModel.userChips.isEmpty()) recipientInput.setHint("");
 		
 		//Adding the chip to the list
-		retainedFragment.userChips.add(chip);
+		viewModel.userChips.add(chip);
 		
 		//Adding the view
-		recipientViewGroup.addView(chip.getView(), retainedFragment.userChips.size() - 1);
+		recipientViewGroup.addView(chip.getView(), viewModel.userChips.size() - 1);
 		
 		//Setting the confirm button as visible
 		confirmMenuItem.setVisible(true);
@@ -590,13 +552,13 @@ public class NewMessage extends AppCompatActivity {
 	
 	private void removeChip(Chip chip) {
 		//Removing the chip from the list
-		retainedFragment.userChips.remove(chip);
+		viewModel.userChips.remove(chip);
 		
 		//Removing the view
 		recipientViewGroup.removeView(chip.getView());
 		
 		//Checking if there are no more chips
-		if(retainedFragment.userChips.isEmpty()) {
+		if(viewModel.userChips.isEmpty()) {
 			//Setting the hint
 			recipientInput.setHint(R.string.imperative_userinput);
 			
@@ -700,7 +662,7 @@ public class NewMessage extends AppCompatActivity {
 			filteredItems.addAll(items);
 			
 			//Inflating the header view
-			sendHeaderView = getLayoutInflater().inflate(R.layout.listitem_contact_sendheader, contactsList, false);
+			sendHeaderView = getLayoutInflater().inflate(R.layout.listitem_contact_sendheader, contactListView, false);
 		}
 		
 		@Override
@@ -770,7 +732,7 @@ public class NewMessage extends AppCompatActivity {
 					if(result == null) return;
 					
 					//Getting the view
-					View currentView = wasTasked ? contactsList.getChildAt(position - contactsList.getFirstVisiblePosition()) : view;
+					View currentView = wasTasked ? contactListView.getChildAt(position - contactListView.getFirstVisiblePosition()) : view;
 					if(currentView == null) return;
 					
 					//Getting the icon view
@@ -907,7 +869,7 @@ public class NewMessage extends AppCompatActivity {
 			
 			//Adding / removing the header and click listener
 			if(state) {
-				contactsList.addHeaderView(sendHeaderView);
+				contactListView.addHeaderView(sendHeaderView);
 				sendHeaderView.setOnClickListener(view -> {
 					//Adding the chip
 					addChip(new Chip(lastFilterText.trim()));
@@ -916,7 +878,7 @@ public class NewMessage extends AppCompatActivity {
 					recipientInput.setText("");
 				});
 			}
-			else contactsList.removeHeaderView(sendHeaderView);
+			else contactListView.removeHeaderView(sendHeaderView);
 		}
 	} */
 	
@@ -926,7 +888,7 @@ public class NewMessage extends AppCompatActivity {
 		private static final int TYPE_ITEM = 1;
 		
 		//Creating the list values
-		private ArrayList<ContactInfo> originalItems;
+		private List<ContactInfo> originalItems;
 		private final ArrayList<ContactInfo> filteredItems = new ArrayList<>();
 		
 		//Creating the recycler values
@@ -936,7 +898,7 @@ public class NewMessage extends AppCompatActivity {
 		private boolean directAddHeaderVisible = false;
 		private String lastFilterText = "";
 		
-		RecyclerAdapter(ArrayList<ContactInfo> items, RecyclerView recyclerView) {
+		RecyclerAdapter(List<ContactInfo> items, RecyclerView recyclerView) {
 			//Setting the items
 			originalItems = items;
 			filteredItems.addAll(items);
@@ -989,7 +951,8 @@ public class NewMessage extends AppCompatActivity {
 			}
 		}
 		
-		@Override @NonNull
+		@Override
+		@NonNull
 		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			switch(viewType) {
 				case TYPE_HEADER:
@@ -1184,10 +1147,11 @@ public class NewMessage extends AppCompatActivity {
 					}
 					
 					//Adding the item if any of the contact's addresses match the filter
-					for(String address : contactInfo.normalizedAddresses) if(address.startsWith(normalizedFilter)) {
-						filteredItems.add(contactInfo);
-						continue contactLoop;
-					}
+					for(String address : contactInfo.normalizedAddresses)
+						if(address.startsWith(normalizedFilter)) {
+							filteredItems.add(contactInfo);
+							continue contactLoop;
+						}
 				}
 				
 				//Checking if the filter text is a valid label
@@ -1228,7 +1192,7 @@ public class NewMessage extends AppCompatActivity {
 					recipientInput.setText("");
 				});
 			}
-			else contactsList.removeHeaderView(directAddHeaderView); */
+			else contactListView.removeHeaderView(directAddHeaderView); */
 		}
 	}
 	
@@ -1251,197 +1215,131 @@ public class NewMessage extends AppCompatActivity {
 		}
 	}
 	
-	public static class RetainedFragment extends Fragment {
-		//Creating the task values
-		private NewMessage parentActivity;
+	public static class ActivityViewModel extends AndroidViewModel {
+		//Creating the reference values
+		static final byte contactStateIdle = 0;
+		static final byte contactStateReady = 1;
+		static final byte contactStateNoAccess = 2;
+		static final byte contactStateFailed = 3;
+		
+		//Creating the state values
+		final MutableLiveData<Byte> contactState = new MutableLiveData<>();
+		boolean recipientInputAlphabetical = true;
+		
+		//Creating the other values
+		String service = Constants.serviceIDAppleMessage;
+		final MutableLiveData<Object> contactListLD = new MutableLiveData<>();
+		final List<ContactInfo> contactList = new ArrayList<>();
 		
 		//Creating the input values
 		private ArrayList<Chip> userChips = new ArrayList<>();
-		private boolean recipientInputAlphabetical = true;
 		
-		//Creating the state values
-		private static final byte contactStateIdle = 0;
-		private static final byte contactStateLoading = 1;
-		private static final byte contactStateLoaded = 2;
-		private static final byte contactStateNoAccess = 3;
-		private static final byte contactStateFailed = 4;
-		private byte contactState = contactStateIdle;
-		
-		//Creating the other values
-		private String service = Constants.serviceIDAppleMessage;
-		private ArrayList<ContactInfo> contactList = new ArrayList<>();
-		
-		/**
-		 * Hold a reference to the parent Activity so we can report the
-		 * task's current progress and results. The Android framework
-		 * will pass us a reference to the newly created Activity after
-		 * each configuration change.
-		 */
-		@Override
-		public void onAttach(Context context) {
-			//Calling the super method
-			super.onAttach(context);
+		ActivityViewModel(@NonNull Application application) {
+			super(application);
 			
-			//Getting the parent activity
-			parentActivity = (NewMessage) context;
+			//Loading the data
+			loadContacts();
 		}
 		
-		/**
-		 * This method will only be called once when the retained
-		 * Fragment is first created.
-		 */
-		@Override
-		public void onCreate(Bundle savedInstanceState) {
-			//Calling the super method
-			super.onCreate(savedInstanceState);
-			
-			//Retain this fragment across configuration changes
-			setRetainInstance(true);
-		}
-		
-		/**
-		 * Set the callback to null so we don't accidentally leak the
-		 * Activity instance.
-		 */
-		@Override
-		public void onDetach() {
-			super.onDetach();
-			parentActivity = null;
-		}
-		
-		void updateState(byte state) {
-			//Returning if the requested state matches the existing state
-			if(contactState == state) return;
-			
-			//Updating the activity
-			if(parentActivity != null) parentActivity.updateContactState(contactState, state);
-			
-			//Setting the new state
-			contactState = state;
-		}
-		
-		void loadContacts(Context appContext) {
-			//Returning if the state is not ready to load contacts
-			if(contactState == contactStateLoading || contactState == contactStateLoaded) return;
-			
-			//Starting the task
-			new LoadContactsAsyncTask(appContext, this).execute();
-			
-			//Setting the state
-			updateState(contactStateLoading);
-		}
-		
-		public static class LoadContactsAsyncTask extends AsyncTask<Void, ContactInfo, ArrayList<ContactInfo>> {
-			//Creating the reference values
-			private final WeakReference<Context> contextReference;
-			private final WeakReference<RetainedFragment> fragmentReference;
-			
-			LoadContactsAsyncTask(Context context, RetainedFragment fragment) {
-				//Setting the references
-				contextReference = new WeakReference<>(context);
-				fragmentReference = new WeakReference<>(fragment);
+		@SuppressLint("StaticFieldLeak")
+		void loadContacts() {
+			//Aborting if contacts cannot be used
+			if(!MainApplication.canUseContacts(getApplication())) {
+				contactState.setValue(contactStateNoAccess);
+				return;
 			}
 			
-			@Override
-			protected ArrayList<ContactInfo> doInBackground(Void... parameters) {
-				//Getting the context
-				Context context = contextReference.get();
-				if(context == null) return null;
-				
-				//Getting the content resolver
-				ContentResolver contentResolver = context.getContentResolver();
-				
-				//Querying the database
-				Cursor cursor = contentResolver.query(
-						ContactsContract.Data.CONTENT_URI,
-						new String[]{ContactsContract.Data.CONTACT_ID, ContactsContract.Data.DISPLAY_NAME, ContactsContract.Data.DATA1},
-						ContactsContract.Data.MIMETYPE + " = ? OR (" + ContactsContract.Data.HAS_PHONE_NUMBER + "!= 0 AND " + ContactsContract.Data.MIMETYPE + " = ?)",
-						new String[]{ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE},
-						ContactsContract.Data.DISPLAY_NAME + " ASC");
-				
-				//Returning null if the cursor is invalid
-				if(cursor == null) return null;
-				
-				//Reading the data
-				ArrayList<ContactInfo> contactList = new ArrayList<>();
-				int indexContactID = cursor.getColumnIndexOrThrow(ContactsContract.Data.CONTACT_ID);
-				int indexDisplayName = cursor.getColumnIndexOrThrow(ContactsContract.Data.DISPLAY_NAME);
-				int indexAddress = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA1);
-				
-				userIterator:
-				while(cursor.moveToNext()) {
-					//Retrieving and validating the entry's label
-					String address = cursor.getString(indexAddress);
-					if(address == null || address.isEmpty()) continue;
+			//Updating the state
+			contactState.setValue(contactStateReady);
+			
+			//Loading the contacts
+			new AsyncTask<Void, ContactInfo, ArrayList<ContactInfo>>() {
+				@Override
+				protected ArrayList<ContactInfo> doInBackground(Void... parameters) {
+					//Getting the content resolver
+					ContentResolver contentResolver = getApplication().getContentResolver();
 					
-					//Getting the general info
-					long contactID = cursor.getLong(indexContactID);
-					String contactName = cursor.getString(indexDisplayName);
-					if(contactName != null && contactName.isEmpty()) contactName = null;
+					//Querying the database
+					Cursor cursor = contentResolver.query(
+							ContactsContract.Data.CONTENT_URI,
+							new String[]{ContactsContract.Data.CONTACT_ID, ContactsContract.Data.DISPLAY_NAME, ContactsContract.Data.DATA1},
+							ContactsContract.Data.MIMETYPE + " = ? OR (" + ContactsContract.Data.HAS_PHONE_NUMBER + "!= 0 AND " + ContactsContract.Data.MIMETYPE + " = ?)",
+							new String[]{ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE},
+							ContactsContract.Data.DISPLAY_NAME + " ASC");
 					
-					//Checking if there is a user with a matching contact ID
-					String normalizedAddress = Constants.normalizeAddress(address);
-					for(ContactInfo contactInfo : contactList)
-						if(contactInfo.identifier == contactID) {
-							for(String contactAddresses : contactInfo.normalizedAddresses)
-								if(contactAddresses.equals(normalizedAddress))
-									continue userIterator;
-							contactInfo.addAddress(address);
-							continue userIterator;
-						}
+					//Returning null if the cursor is invalid
+					if(cursor == null) return null;
 					
-					//Adding the user to the list
-					ArrayList<String> contactAddresses = new ArrayList<>();
-					contactAddresses.add(address);
-					ContactInfo contactInfo = new ContactInfo(contactID, contactName, contactAddresses);
-					contactList.add(contactInfo);
+					//Reading the data
+					ArrayList<ContactInfo> contactList = new ArrayList<>();
+					int indexContactID = cursor.getColumnIndexOrThrow(ContactsContract.Data.CONTACT_ID);
+					int indexDisplayName = cursor.getColumnIndexOrThrow(ContactsContract.Data.DISPLAY_NAME);
+					int indexAddress = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA1);
 					
-					//Calling the progress update
-					publishProgress(contactInfo);
+					userIterator:
+					while(cursor.moveToNext()) {
+						//Retrieving and validating the entry's label
+						String address = cursor.getString(indexAddress);
+						if(address == null || address.isEmpty()) continue;
+						
+						//Getting the general info
+						long contactID = cursor.getLong(indexContactID);
+						String contactName = cursor.getString(indexDisplayName);
+						if(contactName != null && contactName.isEmpty()) contactName = null;
+						
+						//Checking if there is a user with a matching contact ID
+						String normalizedAddress = Constants.normalizeAddress(address);
+						for(ContactInfo contactInfo : contactList)
+							if(contactInfo.identifier == contactID) {
+								for(String contactAddresses : contactInfo.normalizedAddresses)
+									if(contactAddresses.equals(normalizedAddress))
+										continue userIterator;
+								contactInfo.addAddress(address);
+								continue userIterator;
+							}
+						
+						//Adding the user to the list
+						ArrayList<String> contactAddresses = new ArrayList<>();
+						contactAddresses.add(address);
+						ContactInfo contactInfo = new ContactInfo(contactID, contactName, contactAddresses);
+						contactList.add(contactInfo);
+						
+						//Calling the progress update
+						publishProgress(contactInfo);
+					}
+					
+					//Closing the cursor
+					cursor.close();
+					
+					//Returning the contact list
+					return contactList;
 				}
 				
-				//Closing the cursor
-				cursor.close();
-				
-				//Returning the contact list
-				return contactList;
-			}
-			
-			@Override
-			protected void onProgressUpdate(ContactInfo... newContacts) {
-				//Getting the fragment
-				RetainedFragment fragment = fragmentReference.get();
-				if(fragment == null) return;
-				
-				//Adding the contacts
-				Collections.addAll(fragment.contactList, newContacts);
-				
-				//Updating the list
-				if(fragment.getActivity() != null) fragment.parentActivity.updateContactList();
-			}
-			
-			@Override
-			protected void onPostExecute(ArrayList<ContactInfo> contacts) {
-				//Getting the fragment
-				RetainedFragment fragment = fragmentReference.get();
-				if(fragment == null) return;
-				
-				//Checking if the result is invalid
-				if(contacts == null) {
-					//Updating to a failed state
-					fragment.updateState(contactStateFailed);
-				} else {
-					//Setting the contacts
-					fragment.contactList.clear();
-					fragment.contactList.addAll(contacts);
-					
-					//Updating the list
-					if(fragment.getActivity() != null) fragment.parentActivity.updateContactList();
-					
-					//Updating to a completed state
-					fragment.updateState(contactStateLoaded);
+				@Override
+				protected void onProgressUpdate(ContactInfo... newContacts) {
+					//Adding the contacts
+					Collections.addAll(contactList, newContacts);
+					contactListLD.setValue(null);
 				}
-			}
+				
+				@Override
+				protected void onPostExecute(ArrayList<ContactInfo> contacts) {
+					//Clearing the contacts list
+					contactList.clear();
+					
+					//Checking if the result is invalid
+					if(contacts == null) {
+						//Updating the state
+						contactState.setValue(contactStateFailed);
+					} else {
+						//Setting the contacts
+						contactList.addAll(contacts);
+					}
+					
+					//Updating the contacts list
+					contactListLD.setValue(null);
+				}
+			}.execute();
 		}
 	}
 }

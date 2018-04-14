@@ -67,8 +67,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.MessageEntry.COLUMN_NAME_DATE + " INTEGER NOT NULL, " +
 			Contract.MessageEntry.COLUMN_NAME_ITEMTYPE + " INTEGER NOT NULL, " +
 			Contract.MessageEntry.COLUMN_NAME_ITEMSUBTYPE + " INTEGER, " +
-			Contract.MessageEntry.COLUMN_NAME_STATE + " INTEGER NOT NULL, " +
-			Contract.MessageEntry.COLUMN_NAME_ERROR + " INTEGER NOT NULL, " +
+			Contract.MessageEntry.COLUMN_NAME_STATE + " INTEGER, " +
+			Contract.MessageEntry.COLUMN_NAME_ERROR + " INTEGER, " +
 			Contract.MessageEntry.COLUMN_NAME_DATEREAD + " INTEGER, " +
 			Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " TEXT, " +
 			Contract.MessageEntry.COLUMN_NAME_SENDSTYLE + " TEXT NOT NULL DEFAULT '', " +
