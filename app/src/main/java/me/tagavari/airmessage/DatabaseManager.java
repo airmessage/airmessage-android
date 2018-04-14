@@ -67,8 +67,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.MessageEntry.COLUMN_NAME_DATE + " INTEGER NOT NULL, " +
 			Contract.MessageEntry.COLUMN_NAME_ITEMTYPE + " INTEGER NOT NULL, " +
 			Contract.MessageEntry.COLUMN_NAME_ITEMSUBTYPE + " INTEGER, " +
-			Contract.MessageEntry.COLUMN_NAME_STATE + " INTEGER, " +
-			Contract.MessageEntry.COLUMN_NAME_ERROR + " INTEGER, " +
+			Contract.MessageEntry.COLUMN_NAME_STATE + " INTEGER NOT NULL, " +
+			Contract.MessageEntry.COLUMN_NAME_ERROR + " INTEGER NOT NULL, " +
 			Contract.MessageEntry.COLUMN_NAME_DATEREAD + " INTEGER, " +
 			Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " TEXT, " +
 			Contract.MessageEntry.COLUMN_NAME_SENDSTYLE + " TEXT NOT NULL DEFAULT '', " +
@@ -80,10 +80,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.ConversationEntry.COLUMN_NAME_STATE + " INTEGER NOT NULL, " +
 			Contract.ConversationEntry.COLUMN_NAME_SERVICE + " TEXT, " +
 			Contract.ConversationEntry.COLUMN_NAME_NAME + " TEXT, " +
-			Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER DEFAULT 0, " +
-			Contract.ConversationEntry.COLUMN_NAME_ARCHIVED + " INTEGER DEFAULT 0, " +
-			Contract.ConversationEntry.COLUMN_NAME_MUTED + " INTEGER DEFAULT 0," +
-			Contract.ConversationEntry.COLUMN_NAME_COLOR + " INTEGER DEFAULT " + 0xFF000000 + //Black
+			Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER NOT NULL DEFAULT 0, " +
+			Contract.ConversationEntry.COLUMN_NAME_ARCHIVED + " INTEGER NOT NULL DEFAULT 0, " +
+			Contract.ConversationEntry.COLUMN_NAME_MUTED + " INTEGER NOT NULL DEFAULT 0," +
+			Contract.ConversationEntry.COLUMN_NAME_COLOR + " INTEGER NOT NULL DEFAULT " + 0xFF000000 + //Black
 			");";
 	private static final String SQL_CREATE_TABLE_MEMBERS = "CREATE TABLE " + Contract.MemberEntry.TABLE_NAME + " (" +
 			Contract.MemberEntry.COLUMN_NAME_MEMBER + " TEXT NOT NULL," +
@@ -152,7 +152,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				database.execSQL(SQL_CREATE_TABLE_TAPBACK);
 			case 2:
 				//Adding the "unread messages" column
-				database.execSQL("ALTER TABLE " + Contract.ConversationEntry.TABLE_NAME + " ADD " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER DEFAULT 0;");
+				database.execSQL("ALTER TABLE " + Contract.ConversationEntry.TABLE_NAME + " ADD " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER NOT NULL DEFAULT 0;");
 				
 				//Adding the sticker and tapback tables (because for some reason they don't exist sometimes)
 				database.execSQL(SQL_CREATE_TABLE_STICKER.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));

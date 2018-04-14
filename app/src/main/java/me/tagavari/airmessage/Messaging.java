@@ -530,6 +530,28 @@ public class Messaging extends CompositeActivity {
 		if(getIntent().hasExtra(Constants.intentParamDataText))
 			messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText));
 		
+		//Iterating over the loaded conversations
+		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext(); ) {
+			//Getting the referenced activity
+			Messaging activity = iterator.next().get();
+			
+			//Removing the reference if it is invalid
+			if(activity == null) {
+				iterator.remove();
+				continue;
+			}
+			
+			//Checking if the conversation matches this one
+			if(activity.viewModel.conversationID != conversationID) continue;
+			
+			//Destroying the activity
+			activity.finish();
+			iterator.remove();
+			
+			//Breaking from the loop
+			break;
+		}
+		
 		//Adding the conversation as a loaded conversation
 		loadedConversations.add(new WeakReference<>(this));
 		

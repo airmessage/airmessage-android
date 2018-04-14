@@ -158,8 +158,8 @@ class NotificationUtils {
 		conversationInfo.buildTitle(context, (conversationTitle, wasTasked) -> {
 			//Checking if the sender is the user
 			if(sender == null) {
-				//Sending the notification without an icon if the conversation is a group chat
-				if(conversationInfo.isGroupChat()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, timestamp);
+				//Sending the notification without an icon if the conversation is a group chat or the chat has no members
+				if(conversationInfo.isGroupChat() || conversationInfo.getConversationMembers().isEmpty()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, timestamp);
 				else {
 					//Fetching the icon of the recipient member
 					String member = conversationInfo.getConversationMembers().get(0).getName();

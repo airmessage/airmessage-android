@@ -4545,12 +4545,11 @@ class ConversationManager {
 			
 			//Setting the bitmap
 			((ImageView) content.findViewById(R.id.content_view)).setImageBitmap(null); */
-			int pxBitmapSizeMax = (int) context.getResources().getDimension(R.dimen.image_size_max);
 			
 			//Creating a weak reference to the context
 			WeakReference<Context> contextReference = new WeakReference<>(context);
 			
-			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromImageFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult() {
+			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromVideoFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult() {
 				@Override
 				public void onImageMeasured(int width, int height) {
 					//Getting the context
@@ -4609,7 +4608,7 @@ class ConversationManager {
 						}
 					}
 				}
-			}, true, pxBitmapSizeMax, pxBitmapSizeMax);
+			});
 		}
 		
 		@Override

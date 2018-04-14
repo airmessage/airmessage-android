@@ -942,8 +942,8 @@ public class Conversations extends CompositeActivity {
 				}
 				
 				//Launching the conversation activity
-				startActivity(new Intent(Conversations.this, Messaging.class)
-						.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID()));
+				//new Handler().postDelayed(() -> startActivity(new Intent(Conversations.this, Messaging.class).putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID())), 1000);
+				startActivity(new Intent(Conversations.this, Messaging.class).putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID()));
 			});
 			holder.itemView.setOnLongClickListener(view -> {
 				//Returning if action mode isn't running
