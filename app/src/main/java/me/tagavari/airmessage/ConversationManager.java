@@ -1841,23 +1841,31 @@ class ConversationManager {
 			if(messageText != null) messageText.updateViewEdges((MessageTextInfo.ViewHolder) viewHolder.messageComponents.get(0), isAnchoredTop, isAnchoredBottom || !attachments.isEmpty(), alignToRight, pxCornerAnchored, pxCornerUnanchored);
 			
 			//Iterating over the attachments
-			int componentIndex = messageText == null ? 0 : 1;
+			int attachmentIndex = 0;
+			int messageTextDiff = messageText == null ? 0 : 1;
+			//int componentIndex = messageText == null ? 0 : 1;
 			for(AttachmentInfo attachment : attachments) {
 				//Getting the view holder
-				AttachmentInfo.ViewHolder attachmentViewHolder = (AttachmentInfo.ViewHolder) viewHolder.messageComponents.get(componentIndex);
+				AttachmentInfo.ViewHolder attachmentViewHolder = (AttachmentInfo.ViewHolder) viewHolder.messageComponents.get(attachmentIndex + messageTextDiff);
+				
+				//Calculating the anchorage
+				boolean itemAnchoredTop = messageText != null || attachmentIndex > 0 || isAnchoredTop;
+				boolean itemAnchoredBottom = attachmentIndex < attachments.size() - 1 || isAnchoredBottom;
 				
 				//Updating the padding
-				attachmentViewHolder.itemView.setPadding(attachmentViewHolder.itemView.getPaddingLeft(), messageText != null || componentIndex > 0 ? Constants.dpToPx(dpInterMessagePadding) : 0, attachmentViewHolder.itemView.getPaddingRight(), attachmentViewHolder.itemView.getPaddingBottom());
+				attachmentViewHolder.itemView.setPadding(attachmentViewHolder.itemView.getPaddingLeft(), attachmentIndex + messageTextDiff > 0 ? Constants.dpToPx(dpInterMessagePadding) : 0, attachmentViewHolder.itemView.getPaddingRight(), attachmentViewHolder.itemView.getPaddingBottom());
 				
 				//Updating the attachment's edges
 				attachment.updateViewEdges(attachmentViewHolder,
-						messageText != null || componentIndex > 0 || isAnchoredTop, //There is message text above, there is an attachment above or the message is anchored anyways
-						componentIndex < attachments.size() - 1 || isAnchoredBottom, //There is an attachment below or the message is anchored anyways
+						itemAnchoredTop, //There is message text above, there is an attachment above or the message is anchored anyways
+						itemAnchoredBottom, //There is an attachment below or the message is anchored anyways
 						alignToRight,
-						pxCornerAnchored, pxCornerUnanchored);
+						pxCornerAnchored,
+						pxCornerUnanchored);
 				
 				//Increasing the index
-				componentIndex++;
+				//componentIndex++;
+				attachmentIndex++;
 			}
 		}
 		
