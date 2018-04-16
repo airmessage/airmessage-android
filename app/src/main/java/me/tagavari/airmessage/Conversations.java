@@ -686,12 +686,11 @@ public class Conversations extends CompositeActivity {
 	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			//Getting the result
-			final byte result = intent.getByteExtra(Constants.intentParamResult, ConnectionService.intentResultValueConnection);
-			
-			//Updating the server warning
-			if(result == ConnectionService.intentResultValueSuccess) hideServerWarning();
-			else showServerWarning(result);
+			int state = intent.getIntExtra(Constants.intentParamState, -1);
+			if(state == ConnectionService.stateDisconnected) {
+				int code = intent.getIntExtra(Constants.intentParamCode, -1);
+				showServerWarning(code);
+			} else hideServerWarning();
 		}
 	};
 	
@@ -767,13 +766,29 @@ public class Conversations extends CompositeActivity {
 	}
 	
 	@Override
+	public void onResume() {
+		//Calling the super method
+		super.onResume();
+		
+		//Showing the server warning if necessary
+		ConnectionService connectionService = ConnectionService.getInstance();
+		if(connectionService == null) showServerWarning(ConnectionService.intentResultCodeConnection);
+		else if(connectionService.getCurrentState() == ConnectionService.stateDisconnected && ConnectionService.lastConnectionResult.get() != -1) showServerWarning(ConnectionService.lastConnectionResult.get());
+		else hideServerWarning();
+		
+		//Updating the contacts info bar
+		if(MainApplication.canUseContacts(this)) infoBarContacts.hide();
+		else infoBarContacts.show();
+	}
+	
+	@Override
 	public void onStart() {
 		//Calling the super method
 		super.onStart();
 		
 		//Adding the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionService.localBCResult));
+		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionService.localBCStateUpdate));
 		
 		//Starting the service
 		startService(new Intent(Conversations.this, ConnectionService.class));
@@ -1003,22 +1018,6 @@ public class Conversations extends CompositeActivity {
 	}
 	
 	@Override
-	public void onResume() {
-		//Calling the super method
-		super.onResume();
-		
-		//Showing the server warning if necessary
-		ConnectionService connectionService = ConnectionService.getInstance();
-		if(connectionService == null) showServerWarning(ConnectionService.intentResultValueConnection);
-		else if(!connectionService.isConnected() && !connectionService.isConnecting() && ConnectionService.lastConnectionResult != -1) showServerWarning(ConnectionService.lastConnectionResult);
-		else hideServerWarning();
-		
-		//Updating the contacts info bar
-		if(MainApplication.canUseContacts(this)) infoBarContacts.hide();
-		else infoBarContacts.show();
-	}
-	
-	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
 		//Checking if the request code is contacts access
 		if(requestCode == Constants.permissionReadContacts) {
@@ -1149,9 +1148,9 @@ public class Conversations extends CompositeActivity {
 		}
 	}
 	
-	void showServerWarning(byte reason) {
+	void showServerWarning(int reason) {
 		switch(reason) {
-			case ConnectionService.intentResultValueInternalException:
+			case ConnectionService.intentResultCodeInternalException:
 				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_internalexception)));
 				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
@@ -1167,7 +1166,7 @@ public class Conversations extends CompositeActivity {
 					}
 				});
 				break;
-			case ConnectionService.intentResultValueBadRequest:
+			case ConnectionService.intentResultCodeBadRequest:
 				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_badrequest)));
 				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
@@ -1183,19 +1182,19 @@ public class Conversations extends CompositeActivity {
 					}
 				});
 				break;
-			case ConnectionService.intentResultValueClientOutdated:
+			case ConnectionService.intentResultCodeClientOutdated:
 				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_clientoutdated)));
 				infoBarConnection.setButton(R.string.action_update, view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))));
 				break;
-			case ConnectionService.intentResultValueServerOutdated:
+			case ConnectionService.intentResultCodeServerOutdated:
 				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_serveroutdated)));
 				infoBarConnection.setButton(R.string.screen_help, view -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)));
 				break;
-			case ConnectionService.intentResultValueUnauthorized:
+			case ConnectionService.intentResultCodeUnauthorized:
 				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_authfail)));
 				infoBarConnection.setButton(R.string.action_reconfigure, view -> startActivity(new Intent(Conversations.this, ServerSetup.class)));
 				break;
-			case ConnectionService.intentResultValueConnection:
+			case ConnectionService.intentResultCodeConnection:
 				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_noconnection)));
 				infoBarConnection.setButton(R.string.action_reconnect, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();

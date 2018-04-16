@@ -29,7 +29,7 @@ public class ServerSetup extends Activity {
 	static final String intentExtraRequired = "isRequired";
 	
 	//Creating the regular expression string
-	private static final Pattern regExValidAddress = Pattern.compile("^(ws(s?)://)?(((www\\.)?+[a-zA-Z0-9\\.\\-\\_]+(\\.[a-zA-Z]{2,3})+)|(\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b))(/[a-zA-Z0-9_\\-\\s./?%#&=]*)?(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))?$");
+	private static final Pattern regExValidAddress = Pattern.compile("^(((www\\.)?+[a-zA-Z0-9.\\-_]+(\\.[a-zA-Z]{2,3})+)|(\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b))(/[a-zA-Z0-9_\\-\\s./?%#&=]*)?(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))?$");
 	//private static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
 	//private static final Pattern regExValidProtocol = Pattern.compile("^ws(s?)://");
 	private final InputFilter credentialInputFilter = (CharSequence source, int start, int end, Spanned dest, int dstart, int dend) -> {
@@ -82,8 +82,10 @@ public class ServerSetup extends Activity {
 	private BroadcastReceiver serviceBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			//Ignoring the broadcast if the launch ID doesn't match
-			if(intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) != connectionLaunchID) return;
+			//Ignoring the broadcast if the launch ID doesn't match or the result is connecting
+			int state;
+			if(intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) != connectionLaunchID ||
+					(state = intent.getIntExtra(Constants.intentParamState, -1)) == ConnectionService.stateConnecting) return;
 			
 			//Unregistering the receiver
 			LocalBroadcastManager.getInstance(ServerSetup.this).unregisterReceiver(this);
@@ -95,14 +97,13 @@ public class ServerSetup extends Activity {
 			nextButton.setClickable(true);
 			
 			//Getting the result
-			byte result = intent.getByteExtra(Constants.intentParamResult, ConnectionService.intentResultValueConnection);
-			if(result == ConnectionService.intentResultValueSuccess) {
+			if(state == ConnectionService.stateConnected) {
 				//Advancing the page
 				setPage(1);
 				hideSoftKeyboard();
 			} else {
 				//Showing the error dialog
-				showErrorDialog(result);
+				showErrorDialog(intent.getIntExtra(Constants.intentParamCode, -1));
 				
 				//Enabling the input fields
 				hostnameInputField.setEnabled(true);
@@ -292,7 +293,7 @@ public class ServerSetup extends Activity {
 		startService(new Intent(this, ConnectionService.class).setAction(ConnectionService.selfIntentActionConnect).putExtra(Constants.intentParamLaunchID, connectionLaunchID = ConnectionService.getNextLaunchID()));
 		
 		//Adding the broadcast listener
-		LocalBroadcastManager.getInstance(this).registerReceiver(serviceBroadcastReceiver, new IntentFilter(ConnectionService.localBCResult));
+		LocalBroadcastManager.getInstance(this).registerReceiver(serviceBroadcastReceiver, new IntentFilter(ConnectionService.localBCStateUpdate));
 	}
 	
 	public void onBackButtonClick(View view) {
@@ -329,40 +330,40 @@ public class ServerSetup extends Activity {
 		}
 	}
 	
-	private void showErrorDialog(byte reason) {
+	private void showErrorDialog(int reason) {
 		//Creating the alert dialog variable
 		AlertDialog alertDialog = null;
 		
 		switch(reason) {
-			case ConnectionService.intentResultValueInternalException: //Internal exception
+			case ConnectionService.intentResultCodeInternalException: //Internal exception
 				alertDialog = new AlertDialog.Builder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_internalexception)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
-			case ConnectionService.intentResultValueBadRequest: //Bad request
+			case ConnectionService.intentResultCodeBadRequest: //Bad request
 				alertDialog = new AlertDialog.Builder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_badrequest)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
-			case ConnectionService.intentResultValueConnection: //Connection failed
+			case ConnectionService.intentResultCodeConnection: //Connection failed
 				alertDialog = new AlertDialog.Builder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_connectionerrror)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
-			case ConnectionService.intentResultValueUnauthorized: //Authentication failed
+			case ConnectionService.intentResultCodeUnauthorized: //Authentication failed
 				alertDialog = new AlertDialog.Builder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_authfail)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
-			case ConnectionService.intentResultValueClientOutdated: //Client outdated
+			case ConnectionService.intentResultCodeClientOutdated: //Client outdated
 				alertDialog = new AlertDialog.Builder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_clientoutdated)
@@ -370,7 +371,7 @@ public class ServerSetup extends Activity {
 						.setNegativeButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
-			case ConnectionService.intentResultValueServerOutdated: //Server outdated
+			case ConnectionService.intentResultCodeServerOutdated: //Server outdated
 				alertDialog = new AlertDialog.Builder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_serveroutdated)

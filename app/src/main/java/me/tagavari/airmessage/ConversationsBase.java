@@ -80,7 +80,7 @@ class ConversationsBase extends ActivityPlugin {
 							.setAction(R.string.action_retry, view -> {
 								//Getting the connection service
 								ConnectionService service = ConnectionService.getInstance();
-								if(service == null || !service.isConnected()) return;
+								if(service == null || service.getCurrentState() != ConnectionService.stateConnected) return;
 								
 								//Requesting another mass retrieval
 								service.requestMassRetrieval(getActivity().getApplicationContext());

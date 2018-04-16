@@ -122,13 +122,11 @@ public class Messaging extends CompositeActivity {
 	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			//Getting the result
-			final byte result = intent.getByteExtra(Constants.intentParamResult, ConnectionService.intentResultValueConnection);
-			
-			//Hiding the server warning bar if the connection is successful
-			if(result == ConnectionService.intentResultValueSuccess) hideServerWarning();
-				//Otherwise showing the warning
-			else showServerWarning(result);
+			int state = intent.getIntExtra(Constants.intentParamState, -1);
+			if(state == ConnectionService.stateDisconnected) {
+				int code = intent.getIntExtra(Constants.intentParamCode, -1);
+				showServerWarning(code);
+			} else hideServerWarning();
 		}
 	};
 	//Creating the view values
@@ -580,7 +578,7 @@ public class Messaging extends CompositeActivity {
 		
 		//Adding the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionService.localBCResult));
+		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionService.localBCStateUpdate));
 	}
 	
 	@Override
@@ -610,8 +608,8 @@ public class Messaging extends CompositeActivity {
 		
 		//Updating the server warning bar state
 		ConnectionService connectionService = ConnectionService.getInstance();
-		boolean showWarning = connectionService == null || (!connectionService.isConnected() && !connectionService.isConnecting() && ConnectionService.lastConnectionResult != -1);
-		if(showWarning) showServerWarning(ConnectionService.lastConnectionResult);
+		boolean showWarning = connectionService == null || (connectionService.getCurrentState() == ConnectionService.stateDisconnected && ConnectionService.lastConnectionResult.get() != -1);
+		if(showWarning) showServerWarning(ConnectionService.lastConnectionResult.get());
 		else hideServerWarning();
 	}
 	
@@ -1412,9 +1410,9 @@ public class Messaging extends CompositeActivity {
 		}
 	}
 	
-	void showServerWarning(byte reason) {
+	void showServerWarning(int reason) {
 		switch(reason) {
-			case ConnectionService.intentResultValueInternalException:
+			case ConnectionService.intentResultCodeInternalException:
 				infoBarConnection.setText(R.string.message_serverstatus_internalexception);
 				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
@@ -1430,7 +1428,7 @@ public class Messaging extends CompositeActivity {
 					}
 				});
 				break;
-			case ConnectionService.intentResultValueBadRequest:
+			case ConnectionService.intentResultCodeBadRequest:
 				infoBarConnection.setText(R.string.message_serverstatus_badrequest);
 				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();
@@ -1446,19 +1444,19 @@ public class Messaging extends CompositeActivity {
 					}
 				});
 				break;
-			case ConnectionService.intentResultValueClientOutdated:
+			case ConnectionService.intentResultCodeClientOutdated:
 				infoBarConnection.setText(R.string.message_serverstatus_clientoutdated);
 				infoBarConnection.setButton(R.string.action_update, view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))));
 				break;
-			case ConnectionService.intentResultValueServerOutdated:
+			case ConnectionService.intentResultCodeServerOutdated:
 				infoBarConnection.setText(R.string.message_serverstatus_serveroutdated);
 				infoBarConnection.setButton(R.string.screen_help, view -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)));
 				break;
-			case ConnectionService.intentResultValueUnauthorized:
+			case ConnectionService.intentResultCodeUnauthorized:
 				infoBarConnection.setText(R.string.message_serverstatus_authfail);
 				infoBarConnection.setButton(R.string.action_reconfigure, view -> startActivity(new Intent(Messaging.this, ServerSetup.class)));
 				break;
-			case ConnectionService.intentResultValueConnection:
+			case ConnectionService.intentResultCodeConnection:
 				infoBarConnection.setText(R.string.message_serverstatus_noconnection);
 				infoBarConnection.setButton(R.string.action_retry, view -> {
 					ConnectionService connectionService = ConnectionService.getInstance();

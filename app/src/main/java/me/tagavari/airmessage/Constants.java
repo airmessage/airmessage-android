@@ -38,6 +38,7 @@ import android.widget.TextView;
 import android.widget.Toolbar;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,6 +59,8 @@ class Constants {
 	static final int permissionReadContacts = 5;
 	static final int permissionAccessCoarseLocation = 6;
 	
+	static final int historicCommunicationsWS = 2;
+	
 	static final int intentDisconnectService = 6;
 	
 	static final String intentParamTargetID = "targetID";
@@ -77,6 +80,7 @@ class Constants {
 	static final String intentParamProgress = "progress";
 	static final String intentParamRequestID = "requestID";
 	static final String intentParamLaunchID = "launchID";
+	static final String intentParamCode = "code";
 	
 	static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	
@@ -108,7 +112,7 @@ class Constants {
 	static final Uri googlePlusCommunityAddress = Uri.parse("https://plus.google.com/communities/106264748879310604272");
 	static final String feedbackEmail = "hello@airmessage.org";
 	
-	static final String defaultPort = ":1359";
+	static final int defaultPort = 1359;
 	static final String defaultProtocol = "wss://";
 	static final String recordingName = "recording.amr";
 	static final String pictureName = "image.jpg";
@@ -699,5 +703,9 @@ class Constants {
 	
 	interface BiConsumer<A1, A2> {
 		void accept(A1 a1, A2 a2);
+	}
+	
+	static boolean checkBrokenPipe(IOException exception) {
+		return exception.getMessage().toLowerCase().contains("broken pipe");
 	}
 }

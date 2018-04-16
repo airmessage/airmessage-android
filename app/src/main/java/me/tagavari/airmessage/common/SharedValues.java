@@ -10,7 +10,12 @@ import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 public class SharedValues {
-	public static final int mmCommunicationsVersion = 2;
+	/* COMMUNICATIONS VERSION CHANGES
+	*  1 - Original release
+	*  2 - Did something (I forget)
+	*  3 - Reworked without WS layer
+	*/
+	public static final int mmCommunicationsVersion = 3;
 	
 	public static final String headerCommVer = "MMS-Comm-Version";
 	public static final String headerSoftVersion = "MMS-Soft-Version";
@@ -36,6 +41,31 @@ public class SharedValues {
 	public static final byte wsFrameSendTextNew = 102;
 	public static final byte wsFrameSendFileExisting = 103;
 	public static final byte wsFrameSendFileNew = 104;
+	
+	//NHT = Net Header Type
+	public static final int nhtClose = -1;
+	public static final int nhtPing = -2;
+	public static final int nhtPong = -3;
+	public static final int nhtAuthentication = 0;
+	public static final int nhtMessageUpdate = 1;
+	public static final int nhtTimeRetrieval = 2;
+	public static final int nhtMassRetrieval = 3;
+	public static final int nhtChatInfo = 4;
+	public static final int nhtModifierUpdate = 5;
+	public static final int nhtAttachmentReq = 6;
+	public static final int nhtAttachmentReqConfirm = 7;
+	public static final int nhtAttachmentReqFail = 8;
+	
+	public static final int nhtSendResult = 100;
+	public static final int nhtSendTextExisting = 101;
+	public static final int nhtSendTextNew = 102;
+	public static final int nhtSendFileExisting = 103;
+	public static final int nhtSendFileNew = 104;
+	
+	public static final int nhtAuthenticationOK = 0;
+	public static final int nhtAuthenticationUnauthorized = 1;
+	public static final int nhtAuthenticationBadRequest = 2;
+	public static final int nhtAuthenticationVersionMismatch = 3;
 	
 	public static final String hashAlgorithm = "MD5";
 	

@@ -3777,7 +3777,7 @@ class ConversationManager {
 			
 			//Checking if the service isn't running
 			ConnectionService connectionService = ConnectionService.getInstance();
-			if(connectionService == null || !connectionService.isConnected()) {
+			if(connectionService == null || connectionService.getCurrentState() != ConnectionService.stateConnected) {
 				//Showing a toast
 				Toast.makeText(context, R.string.message_connectionerrror, Toast.LENGTH_SHORT).show();
 				
