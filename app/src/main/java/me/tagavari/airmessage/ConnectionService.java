@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -19,6 +20,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
+import android.provider.OpenableColumns;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.LongSparseArray;
@@ -53,6 +55,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -65,6 +68,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -345,6 +349,7 @@ public class ConnectionService extends Service {
 			
 			//Closing the client
 			wsClient.close();
+			wsClient = null;
 		}
 		
 		//Preparing the WS client
@@ -1372,6 +1377,7 @@ public class ConnectionService extends Service {
 					(request = pushQueue(service)) != null) {
 				//Clearing the reference to the service
 				service = null;
+				
 				//Getting the callbacks
 				FileUploadRequestCallbacks finalCallbacks = request.callbacks;
 				
@@ -1400,10 +1406,24 @@ public class ConnectionService extends Service {
 						continue;
 					}
 					
+					//Verifying the file size
+					try(Cursor cursor = context.getContentResolver().query(request.sendUri, null, null, null, null)) {
+						cursor.moveToFirst();
+						long fileSize = cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
+						
+						//Checking if the file size is too large to send
+						if(fileSize > largestFileSize) {
+							//Calling the fail method
+							handler.post(() -> finalCallbacks.onFail(messageSendFileTooLarge));
+							
+							//Skipping the remainder of the iteration
+							continue;
+						}
+					}
+					
 					//Finding a valid file
 					String fileName = Constants.getFileName(context, request.sendUri);
 					if(fileName == null) fileName = Constants.defaultFileName;
-					File attachmentDir = MainApplication.getAttachmentDirectory(context);
 					File targetFile = new File(Constants.findFreeFile(MainApplication.getUploadDirectory(context), Long.toString(System.currentTimeMillis())), fileName);
 					//File targetFile = MainApplication.findUploadFileTarget(context, fileName);
 					
@@ -1441,10 +1461,10 @@ public class ConnectionService extends Service {
 						}
 						
 						//Preparing to read the file
-						int totalLength = inputStream.available();
+						long totalLength = inputStream.available();
 						byte[] buffer = new byte[ConnectionService.attachmentChunkSize];
 						int bytesRead;
-						int totalBytesRead = 0;
+						long totalBytesRead = 0;
 						
 						//Looping while there is data to read
 						while((bytesRead = inputStream.read(buffer)) != -1) {
@@ -1455,8 +1475,8 @@ public class ConnectionService extends Service {
 							totalBytesRead += bytesRead;
 							
 							//Updating the progress
-							final int finalTotalBytesRead = totalBytesRead;
-							handler.post(() -> finalCallbacks.onProgress((float) finalTotalBytesRead / (float) totalLength * copyProgressValue));
+							final long finalTotalBytesRead = totalBytesRead;
+							handler.post(() -> finalCallbacks.onProgress((float) ((double) finalTotalBytesRead / (double) totalLength * copyProgressValue)));
 						}
 						
 						//Flushing the output stream
@@ -1532,11 +1552,14 @@ public class ConnectionService extends Service {
 				try(InputStream inputStream = new FileInputStream(request.sendFile);
 					DigestInputStream digestInputStream = new DigestInputStream(inputStream, messageDigest)) {
 					//Preparing to read the file
-					int totalLength = digestInputStream.available();
+					long totalLength = digestInputStream.available();
 					byte[] buffer = new byte[ConnectionService.attachmentChunkSize];
 					int bytesRead;
-					int totalBytesRead = 0;
+					long totalBytesRead = 0;
 					int requestIndex = 0;
+					
+					Deflater compressor;
+					byte[] compressedData = new byte[ConnectionService.attachmentChunkSize];
 					
 					//Checking if the file size is too large to send
 					if(totalLength > largestFileSize) {
@@ -1552,8 +1575,14 @@ public class ConnectionService extends Service {
 						//Adding to the total bytes read
 						totalBytesRead += bytesRead;
 						
-						//Uploading the data
-						byte[] compressedData = SharedValues.compress(buffer, bytesRead);
+						//Compressing the data
+						compressor = new Deflater();
+						compressor.setInput(buffer, 0, bytesRead);
+						compressor.finish();
+						int compressedLen = compressor.deflate(compressedData);
+						compressor.end();
+						compressedData = Arrays.copyOf(compressedData, compressedLen);
+						//compressedData = Constants.streamCompress(buffer, bytesRead);
 						
 						//Preparing to serialize the request
 						try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
@@ -1588,10 +1617,13 @@ public class ConnectionService extends Service {
 							connectionService.wsClient.send(bos.toByteArray());
 						}
 						
+						//Resetting the compressed data
+						compressedData = new byte[ConnectionService.attachmentChunkSize];
+						
 						//Updating the progress
-						final int finalTotalBytesRead = totalBytesRead;
+						final long finalTotalBytesRead = totalBytesRead;
 						handler.post(() -> finalCallbacks.onProgress(copyFile ?
-								1 - copyProgressValue + (float) finalTotalBytesRead / (float) totalLength * copyProgressValue :
+								(float) (copyProgressValue + (double) finalTotalBytesRead / (double) totalLength * (1F - copyProgressValue)) :
 								(float) finalTotalBytesRead / (float) totalLength));
 						
 						//Adding to the request index
@@ -2513,12 +2545,6 @@ public class ConnectionService extends Service {
 				//Writing the item
 				ConversationManager.ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItem(structItem, parentConversation);
 				if(conversationItem == null) continue;
-				
-				/* if(structItem instanceof SharedValues.MessageInfo) {
-					if(((SharedValues.MessageInfo) structItem).attachments.size() > 0) {
-						System.out.println("Found message with" + ((SharedValues.MessageInfo) structItem).attachments.size() + " attachments!");
-					}
-				} */
 				
 				//Updating the parent conversation's last item
 				if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())

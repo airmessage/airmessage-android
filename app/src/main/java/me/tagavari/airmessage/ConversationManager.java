@@ -1841,23 +1841,31 @@ class ConversationManager {
 			if(messageText != null) messageText.updateViewEdges((MessageTextInfo.ViewHolder) viewHolder.messageComponents.get(0), isAnchoredTop, isAnchoredBottom || !attachments.isEmpty(), alignToRight, pxCornerAnchored, pxCornerUnanchored);
 			
 			//Iterating over the attachments
-			int componentIndex = messageText == null ? 0 : 1;
+			int attachmentIndex = 0;
+			int messageTextDiff = messageText == null ? 0 : 1;
+			//int componentIndex = messageText == null ? 0 : 1;
 			for(AttachmentInfo attachment : attachments) {
 				//Getting the view holder
-				AttachmentInfo.ViewHolder attachmentViewHolder = (AttachmentInfo.ViewHolder) viewHolder.messageComponents.get(componentIndex);
+				AttachmentInfo.ViewHolder attachmentViewHolder = (AttachmentInfo.ViewHolder) viewHolder.messageComponents.get(attachmentIndex + messageTextDiff);
+				
+				//Calculating the anchorage
+				boolean itemAnchoredTop = messageText != null || attachmentIndex > 0 || isAnchoredTop;
+				boolean itemAnchoredBottom = attachmentIndex < attachments.size() - 1 || isAnchoredBottom;
 				
 				//Updating the padding
-				attachmentViewHolder.itemView.setPadding(attachmentViewHolder.itemView.getPaddingLeft(), messageText != null || componentIndex > 0 ? Constants.dpToPx(dpInterMessagePadding) : 0, attachmentViewHolder.itemView.getPaddingRight(), attachmentViewHolder.itemView.getPaddingBottom());
+				attachmentViewHolder.itemView.setPadding(attachmentViewHolder.itemView.getPaddingLeft(), attachmentIndex + messageTextDiff > 0 ? Constants.dpToPx(dpInterMessagePadding) : 0, attachmentViewHolder.itemView.getPaddingRight(), attachmentViewHolder.itemView.getPaddingBottom());
 				
 				//Updating the attachment's edges
 				attachment.updateViewEdges(attachmentViewHolder,
-						messageText != null || componentIndex > 0 || isAnchoredTop, //There is message text above, there is an attachment above or the message is anchored anyways
-						componentIndex < attachments.size() - 1 || isAnchoredBottom, //There is an attachment below or the message is anchored anyways
+						itemAnchoredTop, //There is message text above, there is an attachment above or the message is anchored anyways
+						itemAnchoredBottom, //There is an attachment below or the message is anchored anyways
 						alignToRight,
-						pxCornerAnchored, pxCornerUnanchored);
+						pxCornerAnchored,
+						pxCornerUnanchored);
 				
 				//Increasing the index
-				componentIndex++;
+				//componentIndex++;
+				attachmentIndex++;
 			}
 		}
 		
@@ -4193,7 +4201,7 @@ class ConversationManager {
 		@Override
 		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Assigning the drawable
-			viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
+			viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable()); //TODO Apparently this causes a memory leak
 			
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
@@ -4545,12 +4553,11 @@ class ConversationManager {
 			
 			//Setting the bitmap
 			((ImageView) content.findViewById(R.id.content_view)).setImageBitmap(null); */
-			int pxBitmapSizeMax = (int) context.getResources().getDimension(R.dimen.image_size_max);
 			
 			//Creating a weak reference to the context
 			WeakReference<Context> contextReference = new WeakReference<>(context);
 			
-			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromImageFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult() {
+			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromVideoFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult() {
 				@Override
 				public void onImageMeasured(int width, int height) {
 					//Getting the context
@@ -4609,7 +4616,7 @@ class ConversationManager {
 						}
 					}
 				}
-			}, true, pxBitmapSizeMax, pxBitmapSizeMax);
+			});
 		}
 		
 		@Override

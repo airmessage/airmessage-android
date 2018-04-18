@@ -193,42 +193,41 @@ class ConversationsBase extends ActivityPlugin {
 	}
 	
 	private void setState(byte state) {
-		//Returning if the current state matches the requested state
-		if(currentState == state) return;
-		
 		//Disabling the old state
-		switch(currentState) {
-			case stateLoading: {
-				View loadingText = getActivity().findViewById(R.id.loading_text);
-				loadingText.animate()
-						.alpha(0)
-						.withEndAction(() -> loadingText.setVisibility(View.GONE));
-				break;
-			}
-			case stateSyncing: {
-				View syncView = getActivity().findViewById(R.id.syncview);
-				syncView.animate()
-						.alpha(0)
-						.withEndAction(() -> syncView.setVisibility(View.GONE));
-				break;
-			}
-			case stateReady: {
-				recyclerView.animate()
-						.alpha(0)
-						.withEndAction(() -> recyclerView.setVisibility(View.GONE));
-				
-				View noConversations = getActivity().findViewById(R.id.no_conversations);
-				if(noConversations.getVisibility() == View.VISIBLE) noConversations.animate()
-						.alpha(0)
-						.withEndAction(() -> noConversations.setVisibility(View.GONE));
-				break;
-			}
-			case stateLoadError: {
-				View errorView = getActivity().findViewById(R.id.errorview);
-				errorView.animate()
-						.alpha(0)
-						.withEndAction(() -> errorView.setVisibility(View.GONE));
-				break;
+		if(currentState != state) {
+			switch(currentState) {
+				case stateLoading: {
+					View loadingText = getActivity().findViewById(R.id.loading_text);
+					loadingText.animate()
+							.alpha(0)
+							.withEndAction(() -> loadingText.setVisibility(View.GONE));
+					break;
+				}
+				case stateSyncing: {
+					View syncView = getActivity().findViewById(R.id.syncview);
+					syncView.animate()
+							.alpha(0)
+							.withEndAction(() -> syncView.setVisibility(View.GONE));
+					break;
+				}
+				case stateReady: {
+					recyclerView.animate()
+							.alpha(0)
+							.withEndAction(() -> recyclerView.setVisibility(View.GONE));
+					
+					View noConversations = getActivity().findViewById(R.id.no_conversations);
+					if(noConversations.getVisibility() == View.VISIBLE) noConversations.animate()
+							.alpha(0)
+							.withEndAction(() -> noConversations.setVisibility(View.GONE));
+					break;
+				}
+				case stateLoadError: {
+					View errorView = getActivity().findViewById(R.id.errorview);
+					errorView.animate()
+							.alpha(0)
+							.withEndAction(() -> errorView.setVisibility(View.GONE));
+					break;
+				}
 			}
 		}
 		

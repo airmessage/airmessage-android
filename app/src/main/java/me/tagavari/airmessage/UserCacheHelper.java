@@ -1,7 +1,6 @@
 package me.tagavari.airmessage;
 
 import android.content.ContentResolver;
-import android.content.ContentUris;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
@@ -153,7 +152,7 @@ class UserCacheHelper {
 			
 			//Querying the database
 			Cursor cursor = contentResolver.query(ContactsContract.Data.CONTENT_URI,
-					new String[]{ContactsContract.Data.CONTACT_ID, ContactsContract.Contacts.DISPLAY_NAME, ContactsContract.Contacts.PHOTO_ID},
+					new String[]{ContactsContract.Contacts.LOOKUP_KEY, ContactsContract.Contacts.DISPLAY_NAME},
 					ContactsContract.CommonDataKinds.Email.ADDRESS + " = ? OR " + ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER + " = ?", new String[]{name, PhoneNumberUtils.normalizeNumber(name)},
 					null);
 			
@@ -173,14 +172,15 @@ class UserCacheHelper {
 			}
 			
 			//Getting the data
-			long contactIdentifier = cursor.getLong(cursor.getColumnIndexOrThrow(ContactsContract.Data.CONTACT_ID));
+			String lookupKey = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.LOOKUP_KEY));
+			//long contactIdentifier = cursor.getLong(cursor.getColumnIndexOrThrow(ContactsContract.Data.CONTACT_ID));
 			String contactName = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME));
 			
 			//Closing the cursor
 			cursor.close();
 			
 			//Returning the user info
-			return new UserInfo(contactIdentifier, contactName);
+			return new UserInfo(lookupKey, contactName);
 		}
 		
 		/* private Bitmap getBitmap(ContentResolver contentResolver, long contactID) {
@@ -232,13 +232,13 @@ class UserCacheHelper {
 	
 	static class UserInfo {
 		//Creating the values
-		private final long contactID;
+		private final String lookupKey;
 		private final String contactName;
 		//private final Uri photoUri;
 		
-		UserInfo(long contactID, String contactName) {
+		UserInfo(String lookupKey, String contactName) {
 			//Setting the values
-			this.contactID = contactID;
+			this.lookupKey = lookupKey;
 			this.contactName = contactName;
 		}
 		
@@ -246,12 +246,16 @@ class UserCacheHelper {
 			return contactName;
 		}
 		
-		long getContactID() {
-			return contactID;
+		String getLookupKey() {
+			return lookupKey;
 		}
 		
-		Uri getProfileUri() {
+		/* Uri getProfileUri() {
 			return Uri.withAppendedPath(ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, contactID), ContactsContract.Contacts.Photo.CONTENT_DIRECTORY);
+		} */
+		
+		Uri getContactLookupUri() {
+			return Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
 		}
 	}
 	

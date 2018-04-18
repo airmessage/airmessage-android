@@ -8,7 +8,9 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
+import android.app.Application;
 import android.app.NotificationManager;
+import android.arch.lifecycle.AndroidViewModel;
 import android.arch.lifecycle.MutableLiveData;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModel;
@@ -467,7 +469,7 @@ public class Messaging extends CompositeActivity {
 			@NonNull
 			@Override
 			public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
-				return (T) new ActivityViewModel(Messaging.this, conversationID);
+				return (T) new ActivityViewModel(getApplication(), conversationID);
 			}
 		}).get(ActivityViewModel.class);
 		
@@ -529,6 +531,28 @@ public class Messaging extends CompositeActivity {
 		//Setting the filler data
 		if(getIntent().hasExtra(Constants.intentParamDataText))
 			messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText));
+		
+		//Iterating over the loaded conversations
+		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext(); ) {
+			//Getting the referenced activity
+			Messaging activity = iterator.next().get();
+			
+			//Removing the reference if it is invalid
+			if(activity == null) {
+				iterator.remove();
+				continue;
+			}
+			
+			//Checking if the conversation matches this one
+			//if(activity.viewModel.conversationID != conversationID) continue;
+			
+			//Destroying the activity
+			activity.finish();
+			iterator.remove();
+			
+			//Breaking from the loop
+			break;
+		}
 		
 		//Adding the conversation as a loaded conversation
 		loadedConversations.add(new WeakReference<>(this));
@@ -2161,7 +2185,7 @@ public class Messaging extends CompositeActivity {
 		}
 	}
 	
-	private static class ActivityViewModel extends Constants.ActivityViewModel<Messaging> {
+	private static class ActivityViewModel extends AndroidViewModel {
 		//Creating the reference values
 		static final byte inputStateText = 0;
 		static final byte inputStateContent = 1;
@@ -2210,8 +2234,8 @@ public class Messaging extends CompositeActivity {
 			}
 		};
 		
-		ActivityViewModel(@NonNull Messaging activity, long conversationID) {
-			super(activity);
+		ActivityViewModel(Application application, long conversationID) {
+			super(application);
 			
 			//Setting the values
 			this.conversationID = conversationID;
@@ -2254,10 +2278,7 @@ public class Messaging extends CompositeActivity {
 			else new AsyncTask<Void, Void, ConversationManager.ConversationInfo>() {
 				@Override
 				protected ConversationManager.ConversationInfo doInBackground(Void... args) {
-					Context context = getActivity();
-					if(context == null) return null;
-					
-					return DatabaseManager.getInstance().fetchConversationInfo(context, conversationID);
+					return DatabaseManager.getInstance().fetchConversationInfo(getApplication(), conversationID);
 				}
 				
 				@Override

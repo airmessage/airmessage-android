@@ -133,6 +133,31 @@ class BitmapCacheHelper {
 		else callbacks.onImageDecoded(bitmap, false);
 	}
 	
+	void getBitmapFromVideoFile(String id, File file, ImageDecodeResult callbacks) {
+		//Prefixing the identifier
+		id = cachePrefixAttachment + id;
+		
+		//Checking if there is an entry in the cache
+		Bitmap bitmap = bitmapCache.get(id);
+		
+		//Checking if the bitmap is not cached
+		if(bitmap == null && !failedBitmapCache.contains(id)) {
+			//Adding the listener
+			if(callbackList.containsKey(id))
+				callbackList.get(id).add(callbacks);
+			else {
+				ArrayList<ImageDecodeResult> resultList = new ArrayList<>();
+				resultList.add(callbacks);
+				callbackList.put(id, resultList);
+			}
+			
+			//Starting the task
+			new DecodeVideoFileTask(id, this).execute(file);
+		}
+		//Otherwise immediately telling the callback listener
+		else callbacks.onImageDecoded(bitmap, false);
+	}
+	
 	void getBitmapFromContact(Context context, String id, long contactID, ImageDecodeResult callbacks) {
 		//Returning if contacts are not enabled
 		if(!MainApplication.canUseContacts(MainApplication.getInstance())) {
@@ -190,31 +215,6 @@ class BitmapCacheHelper {
 			
 			//Starting the task
 			new DecodeContactThumbnailTask(id, this, context.getContentResolver(), contactName).execute();
-		}
-		//Otherwise immediately telling the callback listener
-		else callbacks.onImageDecoded(bitmap, false);
-	}
-	
-	void getBitmapFromVideoFile(String id, File file, ImageDecodeResult callbacks) {
-		//Prefixing the identifier
-		id = cachePrefixAttachment + id;
-		
-		//Checking if there is an entry in the cache
-		Bitmap bitmap = bitmapCache.get(id);
-		
-		//Checking if the bitmap is not cached
-		if(bitmap == null && !failedBitmapCache.contains(id)) {
-			//Adding the listener
-			if(callbackList.containsKey(id))
-				callbackList.get(id).add(callbacks);
-			else {
-				ArrayList<ImageDecodeResult> resultList = new ArrayList<>();
-				resultList.add(callbacks);
-				callbackList.put(id, resultList);
-			}
-			
-			//Starting the task
-			new DecodeVideoFileTask(id, this).execute(file);
 		}
 		//Otherwise immediately telling the callback listener
 		else callbacks.onImageDecoded(bitmap, false);

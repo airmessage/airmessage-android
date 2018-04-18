@@ -14,38 +14,36 @@
 		<android.support.v7.widget.Toolbar
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
-			android:layout_height="?attr/actionBarSize"
+			android:layout_height="?android:attr/actionBarSize"
 			android:theme="@style/SolidActionBar" />
 		<!-- Recipient input -->
-		<RelativeLayout
+		<LinearLayout
 			android:id="@+id/user_input"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:background="?android:attr/colorBackgroundFloating"
-			android:minHeight="50dp"
-			android:orientation="horizontal">
+			android:orientation="horizontal" >
 			
 			<TextView
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_alignParentStart="true"
-				android:layout_marginStart="16dp"
-				android:layout_marginTop="15dp"
+				android:layout_width="72dp"
+				android:layout_height="45dp"
 				android:text="@string/to"
+				android:gravity="center"
 				android:textColor="?android:attr/textColorSecondary"
 				android:textSize="14sp" />
 			
 			<com.google.android.flexbox.FlexboxLayout
 				android:id="@+id/viewgroup_recipients"
-				android:layout_width="match_parent"
+				android:layout_width="0dp"
 				android:layout_height="wrap_content"
-				android:layout_marginBottom="5dp"
-				android:layout_marginEnd="56dp"
-				android:layout_marginStart="72dp"
-				android:layout_marginTop="8dp"
+				android:layout_weight="1"
+				android:paddingTop="6.5dp"
+				android:paddingBottom="6.5dp"
+				android:minHeight="45dp"
 				app:alignContent="flex_start"
 				app:alignItems="flex_start"
 				app:dividerDrawable="@drawable/user_divider"
+				app:showDivider="middle"
 				app:flexWrap="wrap" >
 				
 				<EditText
@@ -59,6 +57,7 @@
 					android:maxLines="1"
 					android:minHeight="32dp"
 					android:minWidth="50dp"
+					app:layout_flexGrow="1"
 					android:textSize="14sp" />
 			</com.google.android.flexbox.FlexboxLayout>
 			
@@ -67,13 +66,12 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_alignParentEnd="true"
-				android:layout_marginEnd="16dp"
-				android:layout_marginTop="12dp"
+				android:padding="10dp"
 				android:background="?android:attr/selectableItemBackgroundBorderless"
 				android:onClick="toggleInputType"
 				android:src="@drawable/dialpad"
 				android:tint="?android:attr/textColorSecondary" />
-		</RelativeLayout>
+		</LinearLayout>
 	</android.support.design.widget.AppBarLayout>
 	
 	<!-- Contact list -->
@@ -107,7 +105,7 @@
 			android:visibility="gone" /> -->
 		<!-- Permission missing warning -->
 		<LinearLayout
-			android:id="@+id/message_permission"
+			android:id="@+id/group_permission"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
@@ -132,14 +130,31 @@
 				android:text="@string/action_enable"
 				android:textColor="@color/colorPrimary" />
 		</LinearLayout>
-		<!-- Error message -->
-		<TextView
-			android:id="@+id/message_error"
+		<!-- Error view -->
+		<LinearLayout
+			android:id="@+id/group_error"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
-			android:text="@string/message_loaderror_contacts"
-			android:textColor="?android:attr/textColorSecondary"
-			android:visibility="gone" />
+			android:gravity="center"
+			android:orientation="vertical"
+			android:visibility="gone">
+			
+			<TextView
+				android:id="@+id/group_error_label"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="@string/message_loaderror_contacts"
+				android:textAlignment="center"
+				android:textColor="?android:textColorSecondary" />
+			
+			<Button
+				style="@style/Widget.AppCompat.Button.Borderless.Colored"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:onClick="onClickRetryLoad"
+				android:tag="@string/tag_primarytint"
+				android:text="@string/action_retry" />
+		</LinearLayout>
 	</RelativeLayout>
 </LinearLayout>

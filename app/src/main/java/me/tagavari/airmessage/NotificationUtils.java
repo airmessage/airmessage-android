@@ -3,6 +3,7 @@ package me.tagavari.airmessage;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -77,8 +78,8 @@ class NotificationUtils {
 		return output;
 	}
 	
-	private static NotificationCompat.Builder getBaseMessageNotification(Context context, ConversationManager.ConversationInfo conversationInfo, Bitmap userIcon, boolean playSound) {
-		/* //Creating the click intent
+	private static NotificationCompat.Builder getBaseMessageNotification(Context context, ConversationManager.ConversationInfo conversationInfo, Bitmap userIcon, String userUri, boolean playSound) {
+		//Creating the click intent
 		Intent clickIntent = new Intent(context, Messaging.class);
 		clickIntent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
 		
@@ -92,8 +93,8 @@ class NotificationUtils {
 		clickStackBuilder.addNextIntent(clickIntent);
 		
 		//Getting the pending intent
-		PendingIntent clickPendingIntent = clickStackBuilder.getPendingIntent((int) conversationInfo.getLocalID(), 0); */
-		PendingIntent clickPendingIntent = PendingIntent.getActivity(context.getApplicationContext(), (int) conversationInfo.getLocalID(), new Intent(context, Messaging.class).putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID()), 0);
+		PendingIntent clickPendingIntent = clickStackBuilder.getPendingIntent((int) conversationInfo.getLocalID(), 0);
+		//PendingIntent clickPendingIntent = PendingIntent.getActivity(context.getApplicationContext(), (int) conversationInfo.getLocalID(), new Intent(context, Messaging.class).putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID()), 0);
 		
 		//Creating the notification builder
 		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, MainApplication.notificationChannelMessage)
@@ -103,15 +104,12 @@ class NotificationUtils {
 				.setContentIntent(clickPendingIntent)
 				//Setting the color
 				.setColor(context.getResources().getColor(R.color.colorNotification, null))
-				//Setting and showing the timestamp
-				//.setWhen(messageInfo.getDateTime().toDate().getTime())
-				//.setShowWhen(true)
 				//Setting the group
 				.setGroup(MainApplication.notificationGroupMessage)
 				//Setting the category
-				.setCategory(Notification.CATEGORY_MESSAGE);
-				//TODO add person
-				//.addPerson();
+				.setCategory(Notification.CATEGORY_MESSAGE)
+				//Adding the person
+				.addPerson(userUri);
 		
 		//Checking if the Android version is below Oreo
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
@@ -158,19 +156,27 @@ class NotificationUtils {
 		conversationInfo.buildTitle(context, (conversationTitle, wasTasked) -> {
 			//Checking if the sender is the user
 			if(sender == null) {
-				//Sending the notification without an icon if the conversation is a group chat
-				if(conversationInfo.isGroupChat()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, timestamp);
+				//Sending the notification without an icon if the conversation is a group chat or the chat has no members
+				if(conversationInfo.isGroupChat() || conversationInfo.getConversationMembers().isEmpty()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp);
 				else {
-					//Fetching the icon of the recipient member
+					//Fetching the user info of the recipient member
 					String member = conversationInfo.getConversationMembers().get(0).getName();
-					MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, member, member, new BitmapCacheHelper.ImageDecodeResult() {
+					MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, member, new UserCacheHelper.UserFetchResult() {
 						@Override
-						void onImageMeasured(int width, int height) {}
-						
-						@Override
-						void onImageDecoded(Bitmap result, boolean wasTasked) {
-							//Sending the notification
-							addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result, null, timestamp);
+						void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
+							//Sending the message without user info if no user info was found
+							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp);
+							//Otherwise fetching the icon of the recipient member
+							else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, member, member, new BitmapCacheHelper.ImageDecodeResult() {
+								@Override
+								void onImageMeasured(int width, int height) {}
+								
+								@Override
+								void onImageDecoded(Bitmap result, boolean wasTasked) {
+									//Sending the notification
+									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result, userInfo.getContactLookupUri().toString(), null, timestamp);
+								}
+							});
 						}
 					});
 				}
@@ -180,9 +186,9 @@ class NotificationUtils {
 				@Override
 				void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
 					//Sending the notification without an icon if the conversation is a group chat or the user is invalid
-					if(userInfo == null || conversationInfo.isGroupChat()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, userInfo == null || userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp);
-					//else if(conversationInfo.isGroupChat()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, userInfo.getContactName() == null ? sender, timestamp);
-					//Otherwise fetching the user's icon
+					if(userInfo == null || conversationInfo.isGroupChat()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, userInfo == null || userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp);
+						//else if(conversationInfo.isGroupChat()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, userInfo.getContactName() == null ? sender, timestamp);
+						//Otherwise fetching the user's icon
 					else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, sender, sender, new BitmapCacheHelper.ImageDecodeResult() {
 						@Override
 						void onImageMeasured(int width, int height) {}
@@ -190,7 +196,7 @@ class NotificationUtils {
 						@Override
 						void onImageDecoded(Bitmap result, boolean wasTasked) {
 							//Sending the notification
-							addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result, userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp);
+							addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result, userInfo.getContactLookupUri().toString(), userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp);
 						}
 					});
 				}
@@ -198,9 +204,9 @@ class NotificationUtils {
 		});
 	}
 	
-	private static void addMessageToNotificationPrepared(Context context, ConversationManager.ConversationInfo conversationInfo, String conversationTitle, String message, Bitmap userIcon, String senderName, long timestamp) {
+	private static void addMessageToNotificationPrepared(Context context, ConversationManager.ConversationInfo conversationInfo, String conversationTitle, String message, Bitmap chatIcon, String chatUserUri, String senderName, long timestamp) {
 		//Creating the base notification
-		NotificationCompat.Builder notification = getBaseMessageNotification(context, conversationInfo, userIcon, senderName != null);
+		NotificationCompat.Builder notification = getBaseMessageNotification(context, conversationInfo, chatIcon, chatUserUri, senderName != null);
 		
 		//Getting the notification manager
 		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
