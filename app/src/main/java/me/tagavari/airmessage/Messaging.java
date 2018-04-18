@@ -608,8 +608,8 @@ public class Messaging extends CompositeActivity {
 		
 		//Updating the server warning bar state
 		ConnectionService connectionService = ConnectionService.getInstance();
-		boolean showWarning = connectionService == null || (connectionService.getCurrentState() == ConnectionService.stateDisconnected && ConnectionService.lastConnectionResult.get() != -1);
-		if(showWarning) showServerWarning(ConnectionService.lastConnectionResult.get());
+		boolean showWarning = connectionService == null || (connectionService.getCurrentState() == ConnectionService.stateDisconnected && ConnectionService.getLastConnectionResult() != -1);
+		if(showWarning) showServerWarning(ConnectionService.getLastConnectionResult());
 		else hideServerWarning();
 	}
 	

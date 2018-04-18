@@ -773,7 +773,7 @@ public class Conversations extends CompositeActivity {
 		//Showing the server warning if necessary
 		ConnectionService connectionService = ConnectionService.getInstance();
 		if(connectionService == null) showServerWarning(ConnectionService.intentResultCodeConnection);
-		else if(connectionService.getCurrentState() == ConnectionService.stateDisconnected && ConnectionService.lastConnectionResult.get() != -1) showServerWarning(ConnectionService.lastConnectionResult.get());
+		else if(connectionService.getCurrentState() == ConnectionService.stateDisconnected && ConnectionService.getLastConnectionResult() != -1) showServerWarning(ConnectionService.getLastConnectionResult());
 		else hideServerWarning();
 		
 		//Updating the contacts info bar

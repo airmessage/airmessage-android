@@ -70,7 +70,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
@@ -126,11 +125,11 @@ public class ConnectionService extends Service {
 	//Creating the connection values
 	static String hostname = null;
 	static String password = null;
-	private final AtomicInteger currentState = new AtomicInteger(stateDisconnected);
+	private int currentState = stateDisconnected;
 	private ConnectionThread connectionThread = null;
-	static AtomicInteger lastConnectionResult = new AtomicInteger(-1);
-	private final AtomicBoolean flagMarkEndTime = new AtomicBoolean(false); //Marks the time that the connection is closed, so that missed messages can be fetched since that time when reconnecting
-	private final AtomicBoolean flagDropReconnect = new AtomicBoolean(false); //Automatically starts a new connection when the connection is closed
+	static int lastConnectionResult = -1;
+	private boolean flagMarkEndTime = false; //Marks the time that the connection is closed, so that missed messages can be fetched since that time when reconnecting
+	private boolean flagDropReconnect = false; //Automatically starts a new connection when the connection is closed
 	private boolean massRetrievalInProgress = false;
 	private int massRetrievalProgress = -1;
 	private int massRetrievalProgressCount = -1;
@@ -146,7 +145,7 @@ public class ConnectionService extends Service {
 		LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalFailed));
 	};
 	private static final long massRetrievalTimeout = 60 * 1000; //1 minute
-	private final AtomicInteger activeCommunicationsVersion = new AtomicInteger();
+	private int activeCommunicationsVersion = -1;
 	
 	//private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
 	//private Thread fileUploadRequestThread = null;
@@ -165,10 +164,10 @@ public class ConnectionService extends Service {
 	private final BroadcastReceiver pingBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			if(currentState.get() != stateConnected) return;
+			if(currentState != stateConnected) return;
 			
 			//Pinging the server
-			if(activeCommunicationsVersion.get() == Constants.historicCommunicationsWS) {
+			if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
 				if(wsClient == null || !wsClient.isOpen()) return;
 				wsClient.sendPing();
 			} else {
@@ -186,7 +185,7 @@ public class ConnectionService extends Service {
 			if(!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_networkreconnect_key), false)) return;
 			
 			//Reconnecting
-			if(currentState.get() == stateDisconnected) reconnect();
+			if(currentState == stateDisconnected) reconnect();
 		}
 	};
 	
@@ -211,11 +210,15 @@ public class ConnectionService extends Service {
 		if(connectionService == null) return -1;
 		
 		//Returning the active communications version
-		return connectionService.activeCommunicationsVersion.get();
+		return connectionService.activeCommunicationsVersion;
 	}
 	
 	int getCurrentState() {
-		return currentState.get();
+		return currentState;
+	}
+	
+	static int getLastConnectionResult() {
+		return lastConnectionResult;
 	}
 	
 	static byte getNextLaunchID() {
@@ -263,7 +266,7 @@ public class ConnectionService extends Service {
 		//Checking if a disconnection has been requested
 		else if(selfIntentActionDisconnect.equals(intentAction)) {
 			//Removing the reconnection flag
-			flagDropReconnect.set(false);
+			flagDropReconnect = false;
 			
 			//Disconnecting
 			disconnect();
@@ -315,16 +318,15 @@ public class ConnectionService extends Service {
 	}
 	
 	void setForegroundState(boolean foregroundState) {
-		int state = currentState.get();
 		if(foregroundState) {
 			Notification notification;
-			if(state == stateConnected) notification = getBackgroundNotification(true);
-			else if(state == stateConnecting) notification = getBackgroundNotification(false);
+			if(currentState == stateConnected) notification = getBackgroundNotification(true);
+			else if(currentState == stateConnecting) notification = getBackgroundNotification(false);
 			else notification = getOfflineNotification(true);
 			
 			startForeground(-1, notification);
 		} else {
-			if(disconnectedNotificationRequested() && state == stateDisconnected) {
+			if(disconnectedNotificationRequested() && currentState == stateDisconnected) {
 				stopForeground(false);
 				postDisconnectedNotification(true);
 			} else {
@@ -345,9 +347,9 @@ public class ConnectionService extends Service {
 	
 	private void connect(byte launchID) {
 		//Checking if the state is not disconnected
-		if(currentState.get() != stateDisconnected) {
+		if(currentState != stateDisconnected) {
 			//Closing the old connection
-			flagDropReconnect.set(false);
+			flagDropReconnect = false;
 			connectionThread.initiateClose();
 		}
 		
@@ -381,7 +383,7 @@ public class ConnectionService extends Service {
 		connectionThread.start();
 		
 		//Setting the state as connecting
-		currentState.set(stateConnecting);
+		currentState = stateConnecting;
 		
 		//Updating the notification
 		postConnectedNotification(false);
@@ -393,11 +395,10 @@ public class ConnectionService extends Service {
 	}
 	
 	private void connectProtocol2(byte launchID) {
-		System.out.println("Connect protocol 2 called to " + prepareHostnameProtocol2(hostname));
 		//Checking if the client is valid
 		if(wsClient != null) {
 			//Clearing the reconnection flag
-			flagDropReconnect.set(false);
+			flagDropReconnect = false;
 			
 			//Closing the client
 			wsClient.close();
@@ -455,7 +456,7 @@ public class ConnectionService extends Service {
 		wsClient.connect();
 		
 		//Setting the state
-		currentState.set(stateConnecting);
+		currentState = stateConnecting;
 		
 		//Updating the notification
 		postConnectedNotification(false);
@@ -468,12 +469,12 @@ public class ConnectionService extends Service {
 	
 	public void disconnect() {
 		//Returning if the client is disconnected
-		if(currentState.get() == stateDisconnected) return;
+		if(currentState == stateDisconnected) return;
 		
 		//Removing the reconnection flag
-		flagDropReconnect.set(false);
+		flagDropReconnect = false;
 		
-		if(activeCommunicationsVersion.get() == Constants.historicCommunicationsWS) {
+		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
 			if(wsClient != null && wsClient.isOpen()) wsClient.close();
 		} else {
 			connectionThread.initiateClose();
@@ -595,10 +596,10 @@ public class ConnectionService extends Service {
 		@Override
 		public void onOpen(ServerHandshake handshake) {
 			//Setting the state
-			currentState.set(stateConnected);
+			currentState = stateConnected;
 			
 			//Setting the last connection result
-			lastConnectionResult.set(intentResultCodeSuccess);
+			lastConnectionResult = intentResultCodeSuccess;
 			
 			//Notifying the connection listeners
 			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
@@ -608,7 +609,7 @@ public class ConnectionService extends Service {
 			//Recording the server versions
 			{
 				String commVer = handshake.getFieldValue(SharedValues.headerCommVer);
-				if(commVer.matches("^\\d+$")) activeCommunicationsVersion.set(Integer.parseInt(commVer));
+				if(commVer.matches("^\\d+$")) activeCommunicationsVersion = Integer.parseInt(commVer);
 			}
 			
 			//Retrieving the pending conversation info
@@ -619,8 +620,7 @@ public class ConnectionService extends Service {
 			else clearNotification();
 			
 			//Setting the connection as existing
-			flagDropReconnect.set(true);
-			//connectionEstablishedForRetrieval = flagDropReconnect = true;
+			flagMarkEndTime = flagDropReconnect = true;
 			
 			//Getting the last connection time
 			SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
@@ -807,20 +807,19 @@ public class ConnectionService extends Service {
 			}
 			
 			//Setting the state
-			currentState.set(stateDisconnected);
+			currentState = stateDisconnected;
 			
 			//Setting the last connection result
-			lastConnectionResult.set(clientReason);
+			lastConnectionResult = clientReason;
 			
 			//Notifying the connection listeners
 			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
 					.putExtra(Constants.intentParamState, stateDisconnected)
 					.putExtra(Constants.intentParamCode, clientReason)
 					.putExtra(Constants.intentParamLaunchID, launchID));
-			System.out.println("WS close broadcast sent!");
 			
 			//Checking if the end time should be marked
-			if(flagMarkEndTime.get()) {
+			if(flagMarkEndTime) {
 				//Writing the time to shared preferences
 				SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
 				SharedPreferences.Editor editor = sharedPrefs.edit();
@@ -830,14 +829,13 @@ public class ConnectionService extends Service {
 			}
 			
 			//Checking if a connection existed for reconnection and the preference is enabled
-			if(flagDropReconnect.get() && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
+			if(flagDropReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
 				//Reconnecting
-				ConnectionService.this.connect(getNextLaunchID());
+				connectProtocol2(getNextLaunchID());
 			}
 			
 			//Clearing the flags
-			flagMarkEndTime.set(false);
-			flagDropReconnect.set(false);
+			flagMarkEndTime = flagDropReconnect = false;
 			
 			//Posting the disconnected notification
 			if(!shutdownRequested) postDisconnectedNotification(false);
@@ -1012,83 +1010,84 @@ public class ConnectionService extends Service {
 			//Attempting to connect via the legacy method
 			if(forwardRequest) connectProtocol2(launchID);
 			else {
-				//Setting the state
-				currentState.set(stateDisconnected);
-				
-				//Setting the last connection result
-				lastConnectionResult.set(reason);
-				
 				//Notifying the connection listeners
 				LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
 						.putExtra(Constants.intentParamState, stateDisconnected)
 						.putExtra(Constants.intentParamCode, reason)
 						.putExtra(Constants.intentParamLaunchID, launchID));
 				
-				//Updating the notification state
 				new Handler(Looper.getMainLooper()).post(() -> {
+					//Setting the state
+					currentState = stateDisconnected;
+					
+					//Setting the last connection result
+					lastConnectionResult = reason;
+					
+					//Updating the notification state
 					if(!shutdownRequested) postDisconnectedNotification(false);
+					
+					//Checking if the end time should be marked
+					if(flagMarkEndTime) {
+						//Writing the time to shared preferences
+						SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+						SharedPreferences.Editor editor = sharedPrefs.edit();
+						editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+						editor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
+						editor.commit();
+					}
+					
+					//Checking if a connection existed for reconnection and the preference is enabled
+					if(flagDropReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
+						//Reconnecting
+						reconnect();
+					}
+					
+					//Clearing the flags
+					flagMarkEndTime = flagDropReconnect = false;
+					
+					//Cancelling the mass retrieval if there is one in progress
+					if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
 				});
-				
-				//Checking if the end time should be marked
-				if(flagMarkEndTime.get()) {
-					//Writing the time to shared preferences
-					SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-					SharedPreferences.Editor editor = sharedPrefs.edit();
-					editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
-					editor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
-					editor.commit();
-				}
-				
-				//Checking if a connection existed for reconnection and the preference is enabled
-				if(flagDropReconnect.get() && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
-					//Reconnecting
-					reconnect();
-				}
-				
-				//Clearing the flags
-				flagMarkEndTime.set(false);
-				flagDropReconnect.set(false);
-				
-				//Cancelling the mass retrieval if there is one in progress
-				if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
 			}
 		}
 		
 		private void updateStateConnected() {
-			//Setting the last connection result
-			lastConnectionResult.set(intentResultCodeSuccess);
-			
-			//Setting the state
-			currentState.set(stateConnected);
+			//Running on the main thread
+			new Handler(Looper.getMainLooper()).post(() -> {
+				//Setting the last connection result
+				lastConnectionResult = intentResultCodeSuccess;
+				
+				//Setting the state
+				currentState = stateConnected;
+				
+				//Retrieving the pending conversation info
+				retrievePendingConversationInfo();
+				
+				//Setting the flags
+				flagMarkEndTime = flagDropReconnect = true;
+				
+				//Getting the last connection time
+				SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+				String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
+				
+				//Checking if the last connection is the same as the current one
+				if(hostname.equals(lastConnectionHostname)) {
+					//Getting the last connection time
+					long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, -1);
+					
+					//Fetching the messages since the last connection time
+					retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
+				}
+			});
 			
 			//Notifying the connection listeners
 			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
 					.putExtra(Constants.intentParamState, stateConnected)
 					.putExtra(Constants.intentParamLaunchID, launchID));
 			
-			//Retrieving the pending conversation info
-			retrievePendingConversationInfo();
-			
 			//Updating the notification
 			if(foregroundServiceRequested()) postConnectedNotification(true);
 			else clearNotification();
-			
-			//Setting the flags
-			flagMarkEndTime.set(true);
-			flagDropReconnect.set(true);
-			
-			//Getting the last connection time
-			SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-			String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
-			
-			//Checking if the last connection is the same as the current one
-			if(hostname.equals(lastConnectionHostname)) {
-				//Getting the last connection time
-				long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, -1);
-				
-				//Fetching the messages since the last connection time
-				retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
-			}
 			
 			//Scheduling the ping
 			schedulePing();
@@ -1112,7 +1111,7 @@ public class ConnectionService extends Service {
 					try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
 						//Recording the communications version
 						int communicationsVersion = in.readInt();
-						activeCommunicationsVersion.set(communicationsVersion);
+						new Handler(Looper.getMainLooper()).post(() -> activeCommunicationsVersion = communicationsVersion);
 						
 						//Checking the result
 						int result = in.readInt();
@@ -1547,7 +1546,7 @@ public class ConnectionService extends Service {
 				list.add(conversationInfoRequest.conversationInfo.getGuid());
 			
 			//Requesting information on new conversations
-			if(activeCommunicationsVersion.get() == Constants.historicCommunicationsWS) {
+			if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
 				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
 					//Adding the data
 					out.writeByte(SharedValues.wsFrameChatInfo); //Message type - chat info
@@ -1623,7 +1622,7 @@ public class ConnectionService extends Service {
 		short requestID = getNextRequestID();
 		
 		//Preparing to serialize the request
-		if(activeCommunicationsVersion.get() == Constants.historicCommunicationsWS) {
+		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
 			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
 				//Adding the data
 				out.writeByte(SharedValues.wsFrameAttachmentReq); //Message type - attachment request
@@ -2416,7 +2415,7 @@ public class ConnectionService extends Service {
 	
 	boolean sendMessage(String chatGUID, String message, MessageResponseManager responseListener) {
 		//Checking if the client isn't ready
-		if(currentState.get() != stateConnected) {
+		if(currentState != stateConnected) {
 			//Telling the response listener
 			responseListener.onFail(messageSendNetworkException);
 			
@@ -2428,7 +2427,7 @@ public class ConnectionService extends Service {
 		short requestID = getNextRequestID();
 		
 		//Preparing to serialize the request
-		if(activeCommunicationsVersion.get() == Constants.historicCommunicationsWS) {
+		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
 			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
 				//Adding the data
 				out.writeByte(SharedValues.wsFrameSendTextExisting); //Message type - send existing text
@@ -2483,7 +2482,7 @@ public class ConnectionService extends Service {
 	
 	boolean sendMessage(String[] chatRecipients, String message, String service, MessageResponseManager responseListener) {
 		//Checking if the client isn't ready
-		if(currentState.get() != stateConnected) {
+		if(currentState != stateConnected) {
 			//Telling the response listener
 			responseListener.onFail(messageSendNetworkException);
 			
@@ -2495,7 +2494,7 @@ public class ConnectionService extends Service {
 		short requestID = getNextRequestID();
 		
 		//Preparing to serialize the request
-		if(activeCommunicationsVersion.get() == Constants.historicCommunicationsWS) {
+		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
 			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
 				//Adding the data
 				out.writeByte(SharedValues.wsFrameSendTextNew); //Message type - send new text
@@ -2747,7 +2746,7 @@ public class ConnectionService extends Service {
 	} */
 	
 	private boolean retrieveMessagesSince(long timeLower, long timeUpper) {
-		if(activeCommunicationsVersion.get() == Constants.historicCommunicationsWS) {
+		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
 			//Returning if the client isn't ready
 			if(wsClient == null || !wsClient.isOpen()) return false;
 			
