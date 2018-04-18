@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -371,7 +372,7 @@ public class SharedValues {
 		return stream.readUTF();
 	} */
 	
-	public static byte[] compress(byte[] data, int length) throws IOException {
+	public static byte[] compressLegacyV2(byte[] data, int length) throws IOException {
 		Deflater deflater = new Deflater();
 		deflater.setInput(data, 0, length);
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream(length);
@@ -385,7 +386,17 @@ public class SharedValues {
 		return outputStream.toByteArray();
 	}
 	
-	public static byte[] decompress(byte[] data) throws IOException, DataFormatException {
+	public static byte[] compress(byte[] data, int length) {
+		Deflater compressor = new Deflater();
+		compressor.setInput(data, 0, length);
+		compressor.finish();
+		byte[] compressedData = new byte[length];
+		int compressedLen = compressor.deflate(compressedData);
+		compressor.end();
+		return Arrays.copyOf(compressedData, compressedLen);
+	}
+	
+	public static byte[] decompressLegacyV2(byte[] data) throws IOException, DataFormatException {
 		Inflater inflater = new Inflater();
 		inflater.setInput(data);
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream(data.length);

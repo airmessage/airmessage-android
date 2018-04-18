@@ -37,6 +37,8 @@ import android.webkit.MimeTypeMap;
 import android.widget.TextView;
 import android.widget.Toolbar;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -49,6 +51,8 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 class Constants {
 	//Creating the constants
@@ -707,5 +711,24 @@ class Constants {
 	
 	static boolean checkBrokenPipe(IOException exception) {
 		return exception.getMessage().toLowerCase().contains("broken pipe");
+	}
+	
+	static byte[] compressGZIP(byte[] data, int length) throws IOException {
+		try(ByteArrayOutputStream fin = new ByteArrayOutputStream(); GZIPOutputStream out = new GZIPOutputStream(fin)) {
+			out.write(data, 0, length);
+			out.close();
+			return fin.toByteArray();
+		}
+	}
+	
+	static byte[] decompressGZIP(byte[] data) throws IOException {
+		try(ByteArrayInputStream src = new ByteArrayInputStream(data); GZIPInputStream in = new GZIPInputStream(src);
+			ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			byte[] buffer = new byte[1024];
+			int bytesRead;
+			while((bytesRead = in.read(buffer)) != -1) out.write(buffer, 0, bytesRead);
+			in.close();
+			return out.toByteArray();
+		}
 	}
 }
