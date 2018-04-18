@@ -13,7 +13,6 @@ import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.view.LayoutInflater;
@@ -304,7 +303,7 @@ public class MessagingInfo extends AppCompatActivity {
 					if(memberEntry == null) return;
 					
 					//Setting the tag
-					memberEntry.setTag(userInfo.getContactID());
+					memberEntry.setTag(userInfo.getContactLookupUri());
 					
 					//Setting the member's name
 					((TextView) memberEntry.findViewById(R.id.label_member)).setText(userInfo.getContactName());
@@ -327,7 +326,8 @@ public class MessagingInfo extends AppCompatActivity {
 				
 				//Opening the user's contact profile
 				Intent intent = new Intent(Intent.ACTION_VIEW);
-				intent.setData(Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(view.getTag())));
+				intent.setData((Uri) view.getTag());
+				//intent.setData(Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(view.getTag())));
 				view.getContext().startActivity(intent);
 			});
 			

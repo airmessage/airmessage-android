@@ -544,7 +544,7 @@ public class Messaging extends CompositeActivity {
 			}
 			
 			//Checking if the conversation matches this one
-			if(activity.viewModel.conversationID != conversationID) continue;
+			//if(activity.viewModel.conversationID != conversationID) continue;
 			
 			//Destroying the activity
 			activity.finish();

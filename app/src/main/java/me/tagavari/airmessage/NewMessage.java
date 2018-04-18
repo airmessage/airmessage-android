@@ -1234,7 +1234,7 @@ public class NewMessage extends AppCompatActivity {
 		//Creating the input values
 		private ArrayList<Chip> userChips = new ArrayList<>();
 		
-		ActivityViewModel(@NonNull Application application) {
+		public ActivityViewModel(@NonNull Application application) {
 			super(application);
 			
 			//Loading the data
