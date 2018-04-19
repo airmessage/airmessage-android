@@ -2523,10 +2523,11 @@ public class ConnectionService extends Service {
 				out.writeInt(chatRecipients.length); //Members
 				for(String item : chatRecipients) out.writeUTF(item);
 				out.writeUTF(message); //Message
+				out.writeUTF(service); //Service
 				out.flush();
 				
 				//Sending the message
-				connectionThread.sendPacket(new PacketStruct(SharedValues.nhtSendTextExisting, bos.toByteArray()));
+				connectionThread.sendPacket(new PacketStruct(SharedValues.nhtSendTextNew, bos.toByteArray()));
 			} catch(IOException exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
@@ -2551,22 +2552,23 @@ public class ConnectionService extends Service {
 	
 	boolean requestMassRetrieval(Context context) {
 		//Returning false if the client isn't ready or a mass retrieval is already in progress
-		if(wsClient == null || !wsClient.isOpen() || massRetrievalInProgress) return false;
+		if(currentState != stateConnected || massRetrievalInProgress) return false;
 		
-		//Preparing to serialize the request
-		try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-			//Adding the data
-			out.writeByte(SharedValues.wsFrameMassRetrieval); //Message type - Mass retrieval request
-			out.flush();
-			
-			//Sending the message
-			wsClient.send(bos.toByteArray());
-		} catch(Exception exception) {
-			//Printing the stack trace
-			exception.printStackTrace();
-			
-			//Returning false
-			return false;
+		//Senidng the request
+		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				//Adding the data
+				out.writeByte(SharedValues.wsFrameMassRetrieval); //Message type - Mass retrieval request
+				out.flush();
+				
+				wsClient.send(bos.toByteArray());
+			} catch(Exception exception) {
+				exception.printStackTrace();
+				
+				return false;
+			}
+		} else {
+			connectionThread.sendPacket(new PacketStruct(SharedValues.nhtMassRetrieval, new byte[0]));
 		}
 		
 		//Setting the mass retrieval values

@@ -13,7 +13,7 @@ import java.util.zip.Inflater;
 public class SharedValues {
 	/* COMMUNICATIONS VERSION CHANGES
 	*  1 - Original release
-	*  2 - Did something (I forget)
+	*  2 - Serialization changes
 	*  3 - Reworked without WS layer
 	*/
 	public static final int mmCommunicationsVersion = 3;
