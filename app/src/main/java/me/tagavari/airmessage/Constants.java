@@ -50,7 +50,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Random;
-import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -250,9 +249,11 @@ class Constants {
 		}
 	}
 	
-	private static final Pattern regExNumerated = Pattern.compile("_\\d+?$");
-	private static final String regExSplitFilename = "\\.(?=[^.]+$)";
 	static File findFreeFile(File directory, String fileName) {
+		return findFreeFile(directory, fileName, "_", 0);
+	}
+	
+	static File findFreeFile(File directory, String fileName, String separator, int startIndex) {
 		//Creating the file
 		File file = new File(directory, fileName);
 		
@@ -265,41 +266,14 @@ class Constants {
 			return file;
 		}
 		
-		//Looping while the file exists
-		while(file.exists()) {
-			//Getting the file name and extension
-			String[] fileData = file.getName().split(regExSplitFilename);
-			String baseFileName = fileData[0];
-			String fileExtension = fileData.length > 1 ? fileData[1] : "";
-			
-			//Checking if the base file name ends with an underscore followed by a number
-			if(regExNumerated.matcher(baseFileName).find()) {
-				//Creating the starting substring variable
-				int numberStartChar = 0;
-				
-				//Finding the substring start
-				for(int i = 0; i < baseFileName.length(); i++)
-					if(baseFileName.charAt(i) == '_') numberStartChar = i + 1;
-				
-				//Getting the number
-				int number = Integer.parseInt(baseFileName.substring(numberStartChar)) + 1;
-				
-				//Substringing the base file name to leave just the name and the underscore
-				baseFileName = baseFileName.substring(0, numberStartChar);
-				
-				//Adding the number to the base file name
-				baseFileName += number;
-			} else {
-				//Adding the number to the base file name
-				baseFileName += "_0";
-			}
-			
-			//Adding the extension to the base file name
-			baseFileName += "." + fileExtension;
-			
-			//Setting the new file
-			file = new File(directory, baseFileName);
-		}
+		//Getting the file name and extension
+		String[] fileData = file.getName().split("\\.(?=[^.]+$)");
+		String baseFileName = fileData[0];
+		String fileExtension = fileData.length > 1 ? fileData[1] : "";
+		int currentIndex = startIndex;
+		
+		//Finding a free file
+		while(file.exists()) file = new File(directory, baseFileName + separator + currentIndex++ + '.' + fileExtension);
 		
 		//Returning the file
 		return file;

@@ -1,5 +1,6 @@
 package me.tagavari.airmessage;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -17,6 +18,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.provider.OpenableColumns;
 import android.support.v4.app.NotificationCompat;
@@ -184,8 +186,8 @@ public class ConnectionService extends Service {
 			//Returning if automatic reconnects are disabled
 			if(!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_networkreconnect_key), false)) return;
 			
-			//Reconnecting
-			if(currentState == stateDisconnected) reconnect();
+			//Reconnecting if there is a connection available
+			if(!intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false)) reconnect();
 		}
 	};
 	
@@ -892,8 +894,8 @@ public class ConnectionService extends Service {
 				
 				//Connecting to the server
 				socket = sslContext.getSocketFactory().createSocket();
-				socket.setKeepAlive(true);
-				socket.connect(new InetSocketAddress(hostname, port), 20 * 1000);
+				//socket.setKeepAlive(true);
+				socket.connect(new InetSocketAddress(hostname, port), 10 * 1000);
 				
 				//Getting the input stream
 				inputStream = new BufferedInputStream(socket.getInputStream());
@@ -1356,7 +1358,7 @@ public class ConnectionService extends Service {
 		
 		private void closeConnection(int reason, boolean forwardRequest) {
 			//Finishing the threads
-			writerThread.interrupt();
+			if(writerThread != null) writerThread.interrupt();
 			interrupt();
 			
 			//Updating the state
@@ -2727,10 +2729,10 @@ public class ConnectionService extends Service {
 	
 	private void schedulePing() {
 		//Scheduling the ping
-		/* ((AlarmManager) getSystemService(ALARM_SERVICE)).setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+		((AlarmManager) getSystemService(ALARM_SERVICE)).setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP,
 				SystemClock.elapsedRealtime() + keepAliveMillis - keepAliveWindowMillis,
 				keepAliveWindowMillis * 2,
-				pingPendingIntent); */
+				pingPendingIntent);
 	}
 	
 	/* private void unschedulePing() {
