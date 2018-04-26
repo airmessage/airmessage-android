@@ -45,7 +45,7 @@ public class Conversations extends CompositeActivity {
 	private PluginMessageBar pluginMessageBar = null;
 	
 	//Creating the info bar values
-	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts;
+	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarSystemUpdate;
 	
 	//Creating the menu values
 	private MenuItem searchMenuItem = null;
@@ -690,7 +690,15 @@ public class Conversations extends CompositeActivity {
 			if(state == ConnectionService.stateDisconnected) {
 				int code = intent.getIntExtra(Constants.intentParamCode, -1);
 				showServerWarning(code);
-			} else hideServerWarning();
+				infoBarSystemUpdate.hide();
+			} else {
+				hideServerWarning();
+				{
+					ConnectionService connectionService = ConnectionService.getInstance();
+					if(connectionService != null && connectionService.getActiveCommunicationsVersion() < SharedValues.mmCommunicationsVersion) infoBarSystemUpdate.show();
+					else infoBarSystemUpdate.hide();
+				}
+			}
 		}
 	};
 	
@@ -763,6 +771,7 @@ public class Conversations extends CompositeActivity {
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
 		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
 		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts));
+		infoBarSystemUpdate = pluginMessageBar.create(R.drawable.update, getResources().getString(R.string.message_serverupdate));
 	}
 	
 	@Override
@@ -774,7 +783,11 @@ public class Conversations extends CompositeActivity {
 		ConnectionService connectionService = ConnectionService.getInstance();
 		if(connectionService == null) showServerWarning(ConnectionService.intentResultCodeConnection);
 		else if(connectionService.getCurrentState() == ConnectionService.stateDisconnected && ConnectionService.getLastConnectionResult() != -1) showServerWarning(ConnectionService.getLastConnectionResult());
-		else hideServerWarning();
+		else {
+			hideServerWarning();
+			if(connectionService.getActiveCommunicationsVersion() < SharedValues.mmCommunicationsVersion) infoBarSystemUpdate.show();
+			else infoBarSystemUpdate.hide();
+		}
 		
 		//Updating the contacts info bar
 		if(MainApplication.canUseContacts(this)) infoBarContacts.hide();

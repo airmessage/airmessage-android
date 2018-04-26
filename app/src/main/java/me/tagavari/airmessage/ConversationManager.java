@@ -2552,13 +2552,10 @@ class ConversationManager {
 			//Showing the error
 			viewHolder.buttonSendError.setVisibility(View.VISIBLE);
 			
-			//Creating a weak reference to the context
-			WeakReference<Context> contextReference = new WeakReference<>(context);
-			
 			//Showing the dialog when the button is clicked
 			viewHolder.buttonSendError.setOnClickListener(view -> {
 				//Getting the context
-				Context newContext = contextReference.get();
+				Context newContext = view.getContext();
 				if(newContext == null) return;
 				
 				//Configuring the dialog
@@ -2654,11 +2651,14 @@ class ConversationManager {
 				}
 				
 				//Showing the retry button (if requested)
-				if(showRetryButton)
+				if(showRetryButton) {
+					final WeakReference<Context> contextReference = new WeakReference<>(newContext);
+					
 					dialogBuilder.setPositiveButton(R.string.action_retry, (dialog, which) -> {
 						Context anotherNewContext = contextReference.get();
 						if(anotherNewContext != null) sendMessage(anotherNewContext);
 					});
+				}
 				
 				//Showing the dialog
 				dialogBuilder.create().show();
@@ -3232,11 +3232,15 @@ class ConversationManager {
 		abstract VH createViewHolder(Context context, ViewGroup parent);
 		
 		static abstract class ViewHolder extends RecyclerView.ViewHolder {
+			final ViewGroup groupContainer;
+			
 			final ViewGroup stickerContainer;
 			final ViewGroup tapbackContainer;
 			
 			ViewHolder(View view) {
 				super(view);
+				
+				groupContainer = view.findViewById(R.id.container);
 				
 				stickerContainer = view.findViewById(R.id.sticker_container);
 				tapbackContainer = view.findViewById(R.id.tapback_container);
@@ -3268,8 +3272,32 @@ class ConversationManager {
 			//Setting the text
 			viewHolder.labelMessage.setText(messageText);
 			
-			//Setting the gravity
-			((RelativeLayout) viewHolder.itemView).setGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
+			{
+				//Setting the alignment
+				viewHolder.itemView.setForegroundGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
+				//((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
+				//FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) viewHolder.groupContainer.getLayoutParams();
+				//params.gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START) | Gravity.CENTER_VERTICAL;
+				
+				/* RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) viewHolder.groupContainer.getLayoutParams();
+				if(getMessageInfo().isOutgoing()) {
+					params.removeRule(RelativeLayout.ALIGN_PARENT_START);
+					params.addRule(RelativeLayout.ALIGN_PARENT_END);
+				} else {
+					params.removeRule(RelativeLayout.ALIGN_PARENT_END);
+					params.addRule(RelativeLayout.ALIGN_PARENT_START);
+				} */
+				
+				/* ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) viewHolder.groupContainer.getLayoutParams();
+				if(getMessageInfo().isOutgoing()) {
+					params.startToStart = ConstraintLayout.LayoutParams.UNSET;
+					params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+				} else {
+					params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+					params.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+				} */
+			}
+			//((RelativeLayout) viewHolder.itemView).setGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
 			
 			//Inflating and adding the text content
 			//setupTextLinks(viewHolder.labelMessage);
@@ -3634,8 +3662,20 @@ class ConversationManager {
 				}
 			}
 			
-			//Setting the gravity
-			((RelativeLayout) viewHolder.itemView).setGravity(messageInfo.isOutgoing() ? Gravity.END : Gravity.START);
+			{
+				//Setting the alignment
+				viewHolder.itemView.setForegroundGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
+				/* RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) viewHolder.groupContainer.getLayoutParams();
+				if(getMessageInfo().isOutgoing()) {
+					params.removeRule(RelativeLayout.ALIGN_PARENT_START);
+					params.addRule(RelativeLayout.ALIGN_PARENT_END);
+				} else {
+					params.removeRule(RelativeLayout.ALIGN_PARENT_END);
+					params.addRule(RelativeLayout.ALIGN_PARENT_START);
+				} */
+			}
+			
+			//((RelativeLayout) viewHolder.itemView).setGravity(messageInfo.isOutgoing() ? Gravity.END : Gravity.START);
 			/* LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams();
 			layoutParams.gravity = messageInfo.isOutgoing() ? Gravity.END : Gravity.START;
 			viewHolder.itemView.setLayoutParams(layoutParams); */

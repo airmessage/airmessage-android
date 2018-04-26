@@ -1035,7 +1035,7 @@ public class NewMessage extends AppCompatActivity {
 							if(!filteredItems.contains(contactInfo)) return;
 							
 							//Getting the view holder
-							ItemViewHolder currentViewHolder = wasTasked ? (ItemViewHolder) recyclerView.findViewHolderForAdapterPosition(filteredItems.indexOf(contactInfo)) : itemViewHolder;
+							ItemViewHolder currentViewHolder = wasTasked ? (ItemViewHolder) recyclerView.findViewHolderForAdapterPosition(getIndexOfItem(contactInfo)) : itemViewHolder;
 							if(currentViewHolder == null) return;
 							
 							//Hiding the default view
@@ -1084,6 +1084,10 @@ public class NewMessage extends AppCompatActivity {
 		
 		private ContactInfo getItemAtIndex(int index) {
 			return filteredItems.get(index - (directAddHeaderVisible ? 1 : 0));
+		}
+		
+		private int getIndexOfItem(ContactInfo contactInfo) {
+			return filteredItems.indexOf(contactInfo) + (directAddHeaderVisible ? 1 : 0);
 		}
 		
 		@Override

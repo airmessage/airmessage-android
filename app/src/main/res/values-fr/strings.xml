@@ -242,6 +242,7 @@
 	</string-array>
 	
 	<string name="message_serverstatus_authfail">Le mot de passe a été rejeté</string>
+	<string name="message_serverupdate">Une mise à jour du serveur est disponible</string>
 	<string name="action_reconfigure">Reconfigurer</string>
 	<string name="preference_server_dropreconnect_description">Essayer de vous reconnecter immédiatement après la perte de la connexion</string>
 	<string name="preference_server_dropreconnect_title">Reconnexion de connexion perdue</string>
