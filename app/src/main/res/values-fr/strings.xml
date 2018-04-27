@@ -143,6 +143,10 @@
 	<string name="action_choosephoto">Choisir une photo</string>
 	<string name="action_choosefile">Choisir un fichier</string>
 	<string name="action_recordaudio">Enregistrer de l\'audio</string>
+	<plurals name="message_confirm_deleteconversation">
+		<item quantity="one">Supprimer la conversation sélectionnée?</item>
+		<item quantity="other">Supprimer les conversations sélectionnées?</item>
+	</plurals>
 	<string name="message_confirm_deleteconversation_current">Supprimer cette conversation?</string>
 	<string name="servicedesc_connectionservice">Crée et maintient une connexion au serveur AirMessage pour envoyer et recevoir des messages</string>
 	<string name="notificationchannel_message">Messages</string>
@@ -232,6 +236,11 @@
 	
 	<plurals name="message_multipleattachments">
 		<item quantity="other">%d pièces jointes</item>
+	</plurals>
+	
+	<plurals name="message_selectioncount">
+		<item quantity="one">%d sélectionnée</item>
+		<item quantity="other">%d sélectionnées</item>
 	</plurals>
 	
 	<string-array name="preference_appearance_theme_entries">

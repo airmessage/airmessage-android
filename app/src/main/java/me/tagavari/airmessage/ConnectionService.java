@@ -1513,7 +1513,7 @@ public class ConnectionService extends Service {
 							outputStream.flush();
 						} catch(IOException exception) {
 							//Closing the connection if the exception is due to a broken pipe (connection dropped on server side)
-							if(Constants.checkBrokenPipe(exception)) {
+							if(!socket.isConnected()) {
 								exception.printStackTrace();
 								closeConnection(intentResultCodeConnection, false);
 							} else {
@@ -2119,7 +2119,7 @@ public class ConnectionService extends Service {
 							}
 						} */
 					}
-				} catch(IOException | DataFormatException exception) {
+				} catch(IOException | DataFormatException | OutOfMemoryError exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
 					Crashlytics.logException(exception);
@@ -2505,7 +2505,7 @@ public class ConnectionService extends Service {
 					
 					//Saving the checksum
 					DatabaseManager.getInstance().updateAttachmentChecksum(request.attachmentID, checksum);
-				} catch(IOException exception) {
+				} catch(IOException | OutOfMemoryError exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
 					
@@ -3706,7 +3706,7 @@ public class ConnectionService extends Service {
 						else stickerInfo.image = Constants.decompressGZIP(stickerInfo.image);
 						ConversationManager.StickerInfo sticker = DatabaseManager.getInstance().addMessageSticker(stickerInfo);
 						if(sticker != null) stickerModifiers.add(sticker);
-					} catch(IOException | DataFormatException exception) {
+					} catch(IOException | DataFormatException | OutOfMemoryError exception) {
 						exception.printStackTrace();
 						Crashlytics.logException(exception);
 					}
