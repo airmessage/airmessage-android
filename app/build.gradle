@@ -33,7 +33,7 @@ android {
 		minSdkVersion 23
 		targetSdkVersion 27
 		versionCode 24
-		versionName "0.1.10"
+		versionName "0.2"
 
 		resConfigs "en", "fr"
 	}
