@@ -27,7 +27,7 @@
 			android:layout_marginLeft="-2dp"
 			android:layout_marginRight="-2dp"
 			android:imeOptions="actionNext|flagNoExtractUi"
-			android:inputType="textNoSuggestions"
+			android:inputType="textNoSuggestions|textVisiblePassword"
 			android:maxLines="1"
 			android:textSize="30sp" />
 		<!-- Don't have a server? -->
