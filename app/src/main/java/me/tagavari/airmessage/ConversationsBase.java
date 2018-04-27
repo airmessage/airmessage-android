@@ -51,7 +51,7 @@ class ConversationsBase extends ActivityPlugin {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Getting the state
-			switch(intent.getByteExtra(Constants.intentParamState, (byte) 0)) {
+			switch(intent.getIntExtra(Constants.intentParamState, 0)) {
 				case ConnectionService.intentExtraStateMassRetrievalStarted:
 					//Setting the state to syncing
 					setState(stateSyncing);
@@ -80,7 +80,7 @@ class ConversationsBase extends ActivityPlugin {
 							.setAction(R.string.action_retry, view -> {
 								//Getting the connection service
 								ConnectionService service = ConnectionService.getInstance();
-								if(service == null || !service.isConnected()) return;
+								if(service == null || service.getCurrentState() != ConnectionService.stateConnected) return;
 								
 								//Requesting another mass retrieval
 								service.requestMassRetrieval(getActivity().getApplicationContext());

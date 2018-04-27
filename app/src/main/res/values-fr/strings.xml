@@ -7,7 +7,7 @@
 	<string name="screen_archived">Archivés</string>
 	<string name="screen_blockedcontacts">Contacts bloqués</string>
 	<string name="screen_newconversation">Nouvelle conversation</string>
-	<string name="dialog_feedback_message">Avez-vous un bogue à signaler, une fonction à suggérer, ou quelque chose d\'autre à dire? Contactez-moi ou discutez avec les autres en utilisant les liens ci-dessous.</string>
+	<string name="dialog_feedback_message">Avez-vous un bogue à signaler, une fonction à suggérer, ou quelque chose d\'autre à dire? Contactez-nous ou discutez avec les autres par les liens ci-dessous.</string>
 	<string name="dialog_feedback_email">Envoyer un courriel</string>
 	<string name="dialog_feedback_googleplus">Ouvrir la communauté G+</string>
 	<string name="app_name">AirMessage</string>
@@ -17,8 +17,8 @@
 	<string name="progress_loadingmessages">Chargement des messages&#8230;</string>
 	<string name="progress_loading">Chargment&#8230;</string>
 	<string name="progress_sync">Obtention de vos messages&#8230;</string>
-	<string name="message_loaderror_messages">Échec du chargement des messages</string>
-	<string name="message_loaderror_contacts">Échec du chargement des contacts</string>
+	<string name="message_loaderror_messages">Échec de chargement des messages</string>
+	<string name="message_loaderror_contacts">Échec de chargement des contacts</string>
 	<string name="message_blankstate_conversations">Lorsque vous commencez une conversation, elle s\'affiche ici</string>
 	<string name="message_blankstate_conversations_archived">Les conversations archivées s\'affichent ici</string>
 	<string name="message_blankstate_conversations_basic">Aucune conversation</string>
@@ -112,7 +112,7 @@
 	<string name="action_deletemessages">Supprimer les messages</string>
 	<string name="message_setup_sync_warning_title">Passer la suppression des messages?</string>
 	<string name="message_setup_sync_description">Si vous changez le compte d\'Apple du serveur et n\'effacez pas vos messages, vos anciennes conversations peuvent être modifiées de manière incorrecte.</string>
-	<string name="message_syncerror">Échec du téléchargement des messages</string>
+	<string name="message_syncerror">Échec de téléchargement des messages</string>
 	
 	<string name="imperative_recording_cancel">Glissez pour annuler</string>
 	<string name="imperative_recording_instructions">Tapez et maintenez pour enregistrer</string>
@@ -237,11 +237,12 @@
 	<string-array name="preference_appearance_theme_entries">
 		<item>Assortir le système</item>
 		<item>Automatique</item>
-		<item>Toujours clair</item>
-		<item>Toujours foncé</item>
+		<item>Toujours lumineux</item>
+		<item>Toujours sombre</item>
 	</string-array>
 	
 	<string name="message_serverstatus_authfail">Le mot de passe a été rejeté</string>
+	<string name="message_serverupdate">Une mise à jour significatife du serveur est disponible</string>
 	<string name="action_reconfigure">Reconfigurer</string>
 	<string name="preference_server_dropreconnect_description">Essayer de vous reconnecter immédiatement après la perte de la connexion</string>
 	<string name="preference_server_dropreconnect_title">Reconnexion de connexion perdue</string>

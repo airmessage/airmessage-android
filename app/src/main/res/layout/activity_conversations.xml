@@ -137,6 +137,8 @@
 			android:divider="@null"
 			android:dividerHeight="0dp"
 			android:theme="@style/OverscrollNeutralizer"
-			app:layoutManager="android.support.v7.widget.LinearLayoutManager" />
+			app:layoutManager="android.support.v7.widget.LinearLayoutManager"
+			android:clipToPadding="false"
+			android:paddingBottom="88dp" />
 	</RelativeLayout>
 </android.support.design.widget.CoordinatorLayout>

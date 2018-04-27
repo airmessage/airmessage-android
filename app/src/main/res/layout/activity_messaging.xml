@@ -4,7 +4,8 @@
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	tools:context=".Messaging">
+	tools:context=".Messaging"
+	android:clipChildren="false">
 	<!-- Recording indicator -->
 	<FrameLayout
 		android:id="@+id/recordingindicator"
@@ -100,7 +101,8 @@
 		<android.support.constraint.ConstraintLayout
 			android:layout_width="match_parent"
 			android:layout_height="0dp"
-			android:layout_weight="1">
+			android:layout_weight="1"
+			android:clipChildren="false">
 			<!-- Message list -->
 			<android.support.v7.widget.RecyclerView
 				android:id="@+id/list_messages"
@@ -118,7 +120,8 @@
 				app:layout_constraintLeft_toLeftOf="parent"
 				app:layout_constraintRight_toRightOf="parent"
 				app:layout_constraintTop_toTopOf="parent"
-				app:stackFromEnd="true" />
+				app:stackFromEnd="true"
+				android:clipChildren="false" />
 			<!-- Konfetti view -->
 			<nl.dionsegijn.konfetti.KonfettiView
 				android:id="@+id/konfetti"

@@ -37,7 +37,10 @@ import android.webkit.MimeTypeMap;
 import android.widget.TextView;
 import android.widget.Toolbar;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,7 +50,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Random;
-import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 class Constants {
 	//Creating the constants
@@ -57,6 +61,8 @@ class Constants {
 	static final int permissionRecordAudio = 4;
 	static final int permissionReadContacts = 5;
 	static final int permissionAccessCoarseLocation = 6;
+	
+	static final int historicCommunicationsWS = 2;
 	
 	static final int intentDisconnectService = 6;
 	
@@ -77,6 +83,7 @@ class Constants {
 	static final String intentParamProgress = "progress";
 	static final String intentParamRequestID = "requestID";
 	static final String intentParamLaunchID = "launchID";
+	static final String intentParamCode = "code";
 	
 	static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	
@@ -108,7 +115,7 @@ class Constants {
 	static final Uri googlePlusCommunityAddress = Uri.parse("https://plus.google.com/communities/106264748879310604272");
 	static final String feedbackEmail = "hello@airmessage.org";
 	
-	static final String defaultPort = ":1359";
+	static final int defaultPort = 1359;
 	static final String defaultProtocol = "wss://";
 	static final String recordingName = "recording.amr";
 	static final String pictureName = "image.jpg";
@@ -242,9 +249,11 @@ class Constants {
 		}
 	}
 	
-	private static final Pattern regExNumerated = Pattern.compile("_\\d+?$");
-	private static final String regExSplitFilename = "\\.(?=[^.]+$)";
 	static File findFreeFile(File directory, String fileName) {
+		return findFreeFile(directory, fileName, "_", 0);
+	}
+	
+	static File findFreeFile(File directory, String fileName, String separator, int startIndex) {
 		//Creating the file
 		File file = new File(directory, fileName);
 		
@@ -257,41 +266,14 @@ class Constants {
 			return file;
 		}
 		
-		//Looping while the file exists
-		while(file.exists()) {
-			//Getting the file name and extension
-			String[] fileData = file.getName().split(regExSplitFilename);
-			String baseFileName = fileData[0];
-			String fileExtension = fileData.length > 1 ? fileData[1] : "";
-			
-			//Checking if the base file name ends with an underscore followed by a number
-			if(regExNumerated.matcher(baseFileName).find()) {
-				//Creating the starting substring variable
-				int numberStartChar = 0;
-				
-				//Finding the substring start
-				for(int i = 0; i < baseFileName.length(); i++)
-					if(baseFileName.charAt(i) == '_') numberStartChar = i + 1;
-				
-				//Getting the number
-				int number = Integer.parseInt(baseFileName.substring(numberStartChar)) + 1;
-				
-				//Substringing the base file name to leave just the name and the underscore
-				baseFileName = baseFileName.substring(0, numberStartChar);
-				
-				//Adding the number to the base file name
-				baseFileName += number;
-			} else {
-				//Adding the number to the base file name
-				baseFileName += "_0";
-			}
-			
-			//Adding the extension to the base file name
-			baseFileName += "." + fileExtension;
-			
-			//Setting the new file
-			file = new File(directory, baseFileName);
-		}
+		//Getting the file name and extension
+		String[] fileData = file.getName().split("\\.(?=[^.]+$)");
+		String baseFileName = fileData[0];
+		String fileExtension = fileData.length > 1 ? fileData[1] : "";
+		int currentIndex = startIndex;
+		
+		//Finding a free file
+		while(file.exists()) file = new File(directory, baseFileName + separator + currentIndex++ + '.' + fileExtension);
 		
 		//Returning the file
 		return file;
@@ -699,5 +681,28 @@ class Constants {
 	
 	interface BiConsumer<A1, A2> {
 		void accept(A1 a1, A2 a2);
+	}
+	
+	static boolean checkBrokenPipe(IOException exception) {
+		return exception.getMessage().toLowerCase().contains("broken pipe");
+	}
+	
+	static byte[] compressGZIP(byte[] data, int length) throws IOException {
+		try(ByteArrayOutputStream fin = new ByteArrayOutputStream(); GZIPOutputStream out = new GZIPOutputStream(fin)) {
+			out.write(data, 0, length);
+			out.close();
+			return fin.toByteArray();
+		}
+	}
+	
+	static byte[] decompressGZIP(byte[] data) throws IOException {
+		try(ByteArrayInputStream src = new ByteArrayInputStream(data); GZIPInputStream in = new GZIPInputStream(src);
+			ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			byte[] buffer = new byte[1024];
+			int bytesRead;
+			while((bytesRead = in.read(buffer)) != -1) out.write(buffer, 0, bytesRead);
+			in.close();
+			return out.toByteArray();
+		}
 	}
 }

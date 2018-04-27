@@ -157,7 +157,7 @@ public class Preferences extends AppCompatActivity {
 		Preference.OnPreferenceClickListener resyncMessagesClickListener = preference -> {
 			//Checking if the service is ready
 			ConnectionService service = ConnectionService.getInstance();
-			if(service == null || !service.isConnected()) {
+			if(service == null || service.getCurrentState() != ConnectionService.stateConnected) {
 				//Displaying a snackbar
 				Snackbar.make(getView(), R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
 				

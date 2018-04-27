@@ -168,7 +168,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					while(cursor.moveToNext()) {
 						contentValues = new ContentValues();
 						try {
-							contentValues.put(Contract.StickerEntry.COLUMN_NAME_DATA, SharedValues.decompress(cursor.getBlob(indexData)));
+							contentValues.put(Contract.StickerEntry.COLUMN_NAME_DATA, SharedValues.decompressLegacyV2(cursor.getBlob(indexData)));
 						} catch(IOException | DataFormatException exception) {
 							exception.printStackTrace();
 							continue;
