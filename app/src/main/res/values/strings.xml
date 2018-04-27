@@ -66,7 +66,7 @@
 	<string name="title_conversation_members">People in this conversation</string>
 	<string name="title_conversation_files">Files in this conversation</string>
 	
-	<string name="dialog_feedback_message">Have a bug to report, a feature to suggest, or anything else to say? Contact me or discuss with others using the links below.</string>
+	<string name="dialog_feedback_message">Have a bug to report, a feature to suggest, or anything else to say? Contact us or discuss with others using the links below.</string>
 	<string name="dialog_feedback_email">Send E-Mail</string>
 	<string name="dialog_feedback_googleplus">Open G+ Community</string>
 	
@@ -117,7 +117,7 @@
 	<string name="message_serverstatus_authfail">Couldn\'t log in to server</string>
 	<string name="message_serverstatus_unknown">An unknown error occurred</string>
 	
-	<string name="message_serverupdate">A new server update is available</string>
+	<string name="message_serverupdate">A significant server update is available</string>
 	
 	<string name="message_eventtype_chatrename_change">%s named the conversation \"%s\"</string>
 	<string name="message_eventtype_chatrename_change_you">You named the conversation \"%s\"</string>

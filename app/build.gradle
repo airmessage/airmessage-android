@@ -34,14 +34,21 @@ android {
 		targetSdkVersion 27
 		versionCode 24
 		versionName "0.1.10"
+
+		resConfigs "en", "fr"
 	}
 	buildTypes {
-		release {
-			proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-			signingConfig signingConfigs.config
-		}
 		debug {
 			ext.enableCrashlytics = false
+		}
+		release {
+			minifyEnabled true
+			shrinkResources true
+
+			useProguard true
+			proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+
+			signingConfig signingConfigs.config
 		}
 	}
 	lintOptions {

@@ -693,7 +693,7 @@ public class Conversations extends CompositeActivity {
 				infoBarSystemUpdate.hide();
 			} else {
 				hideServerWarning();
-				{
+				if(state == ConnectionService.stateConnected) {
 					ConnectionService connectionService = ConnectionService.getInstance();
 					if(connectionService != null && connectionService.getActiveCommunicationsVersion() < SharedValues.mmCommunicationsVersion) infoBarSystemUpdate.show();
 					else infoBarSystemUpdate.hide();
@@ -785,7 +785,7 @@ public class Conversations extends CompositeActivity {
 		else if(connectionService.getCurrentState() == ConnectionService.stateDisconnected && ConnectionService.getLastConnectionResult() != -1) showServerWarning(ConnectionService.getLastConnectionResult());
 		else {
 			hideServerWarning();
-			if(connectionService.getActiveCommunicationsVersion() < SharedValues.mmCommunicationsVersion) infoBarSystemUpdate.show();
+			if(connectionService.getCurrentState() == ConnectionService.stateConnected && connectionService.getActiveCommunicationsVersion() < SharedValues.mmCommunicationsVersion) infoBarSystemUpdate.show();
 			else infoBarSystemUpdate.hide();
 		}
 		

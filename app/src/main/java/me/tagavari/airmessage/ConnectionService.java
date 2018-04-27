@@ -1077,6 +1077,13 @@ public class ConnectionService extends Service {
 					break;
 				}
 			}
+			
+			//Closing the socket
+			try {
+				socket.close();
+			} catch(IOException exception) {
+				exception.printStackTrace();
+			}
 		}
 		
 		private void updateStateDisconnected(int reason, boolean forwardRequest) {
@@ -1448,16 +1455,14 @@ public class ConnectionService extends Service {
 		}
 		
 		void initiateClose() {
-			//Finishing the current thread
-			interrupt();
+			//Sending a message and finishing the threads
+			queuePacket(new PacketStruct(SharedValues.nhtClose, new byte[0], () -> {
+				interrupt();
+				if(writerThread != null) writerThread.interrupt();
+			}));
 			
 			//Updating the state
 			updateStateDisconnected(intentResultCodeConnection, false);
-			
-			//Sending a message and finishing the writer thread
-			queuePacket(new PacketStruct(SharedValues.nhtClose, new byte[0], () -> {
-				if(writerThread != null) writerThread.interrupt();
-			}));
 		}
 		
 		private void closeConnection(int reason, boolean forwardRequest) {
@@ -1518,18 +1523,10 @@ public class ConnectionService extends Service {
 						}
 					}
 					
-					try {
-						socket.close();
-					} catch(IOException exception) {
-						exception.printStackTrace();
-					}
+					closeConnection(intentResultCodeConnection, false);
 				} catch(InterruptedException exception) {
-					try {
-						//Closing the socket
-						socket.close();
-					} catch(IOException otherException) {
-						otherException.printStackTrace();
-					}
+					exception.printStackTrace();
+					//closeConnection(intentResultCodeConnection, false); //Can only be interrupted from closeConnection, so this is pointless
 					
 					return;
 				}
