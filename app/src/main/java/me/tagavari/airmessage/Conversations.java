@@ -36,6 +36,7 @@ import android.widget.Toast;
 
 import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -977,7 +978,7 @@ public class Conversations extends CompositeActivity {
 		
 		//Starting the action mode
 		startActionMode();
-		actionModeCallbacks.updateActionModeTitle();
+		actionModeCallbacks.updateActionModeContext();
 	}
 	
 	void setAppBarState(byte state) {
@@ -1146,11 +1147,15 @@ public class Conversations extends CompositeActivity {
 		}
 	}; */
 	
-	private static class ActivityViewModel extends ViewModel {
+	public static class ActivityViewModel extends ViewModel {
 		final List<Long> actionModeSelections = new ArrayList<>();
 		
 		public ActivityViewModel() {
-			ConversationManager.ConversationInfo.setSelectionSource(actionModeSelections::contains);
+			final WeakReference<List<Long>> actionModeSelectionsReference = new WeakReference<>(actionModeSelections);
+			ConversationManager.ConversationInfo.setSelectionSource(id -> {
+				List<Long> selections = actionModeSelectionsReference.get();
+				return selections != null && selections.contains(id);
+			});
 		}
 	}
 	
@@ -1449,8 +1454,16 @@ public class Conversations extends CompositeActivity {
 			if(item.isArchived()) archivedConversations += value;
 			else nonArchivedConversations += value;
 			
+			//Updating the context
+			updateActionModeContext();
+			
+			//Finishing the action mode if there are no more items selected
+			if(selectedConversations == 0) actionMode.finish();
+		}
+		
+		public void updateActionModeContext() {
 			//Updating the title
-			updateActionModeTitle();
+			actionMode.setTitle(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, selectedConversations));
 			
 			//Showing or hiding the mute / unmute buttons
 			if(mutedConversations > 0) actionMode.getMenu().findItem(R.id.action_unmute).setVisible(true);
@@ -1463,13 +1476,6 @@ public class Conversations extends CompositeActivity {
 			else actionMode.getMenu().findItem(R.id.action_unarchive).setVisible(false);
 			if(nonArchivedConversations > 0) actionMode.getMenu().findItem(R.id.action_archive).setVisible(true);
 			else actionMode.getMenu().findItem(R.id.action_archive).setVisible(false);
-			
-			//Finishing the action mode if there are no more items selected
-			if(selectedConversations == 0) actionMode.finish();
-		}
-		
-		public void updateActionModeTitle() {
-			actionMode.setTitle(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, selectedConversations));
 		}
 	}
 }
