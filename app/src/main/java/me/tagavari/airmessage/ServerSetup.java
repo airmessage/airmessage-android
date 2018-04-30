@@ -191,8 +191,9 @@ public class ServerSetup extends Activity {
 		}
 		//Otherwise checking if the page is 1
 		else if(page == 1) {
-			//Checking if there are messages
-			if(ConversationManager.getConversations() != null) {
+			//Checking if there are any messages
+			List<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+			if(conversations != null && !conversations.isEmpty()) {
 				//Showing a warning
 				new AlertDialog.Builder(this)
 						.setTitle(R.string.message_setup_sync_warning_title)

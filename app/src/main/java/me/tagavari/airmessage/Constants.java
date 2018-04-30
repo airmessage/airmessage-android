@@ -675,10 +675,6 @@ class Constants {
 		}
 	}
 	
-	interface CountingActionModeCallback<Item> extends ActionMode.Callback {
-		void onItemCheckedStateChanged(Item item, boolean checked);
-	}
-	
 	interface BiConsumer<A1, A2> {
 		void accept(A1 a1, A2 a2);
 	}
@@ -687,7 +683,7 @@ class Constants {
 		return exception.getMessage().toLowerCase().contains("broken pipe");
 	}
 	
-	static byte[] compressGZIP(byte[] data, int length) throws IOException {
+	static byte[] compressGZIP(byte[] data, int length) throws IOException, OutOfMemoryError {
 		try(ByteArrayOutputStream fin = new ByteArrayOutputStream(); GZIPOutputStream out = new GZIPOutputStream(fin)) {
 			out.write(data, 0, length);
 			out.close();
@@ -695,7 +691,7 @@ class Constants {
 		}
 	}
 	
-	static byte[] decompressGZIP(byte[] data) throws IOException {
+	static byte[] decompressGZIP(byte[] data) throws IOException, OutOfMemoryError {
 		try(ByteArrayInputStream src = new ByteArrayInputStream(data); GZIPInputStream in = new GZIPInputStream(src);
 			ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 			byte[] buffer = new byte[1024];

@@ -919,6 +919,7 @@ public class ConnectionService extends Service {
 		
 		private Socket socket;
 		private BufferedInputStream inputStream;
+		private BufferedOutputStream outputStream;
 		private WriterThread writerThread = null;
 		
 		private Timer authenticationExpiryTimer = null;
@@ -966,11 +967,12 @@ public class ConnectionService extends Service {
 					return;
 				}
 				
-				//Getting the input stream
+				//Getting the streams
 				inputStream = new BufferedInputStream(socket.getInputStream());
+				outputStream = new BufferedOutputStream(socket.getOutputStream());
 				
 				//Starting the writer thread
-				writerThread = new WriterThread(new BufferedOutputStream(socket.getOutputStream()));
+				writerThread = new WriterThread();
 				writerThread.start();
 			} catch(IOException | NoSuchAlgorithmException | KeyManagementException exception) {
 				//Printing the stack trace
@@ -1456,10 +1458,14 @@ public class ConnectionService extends Service {
 		
 		void initiateClose() {
 			//Sending a message and finishing the threads
-			queuePacket(new PacketStruct(SharedValues.nhtClose, new byte[0], () -> {
+			if(writerThread == null) {
 				interrupt();
-				if(writerThread != null) writerThread.interrupt();
-			}));
+			} else {
+				queuePacket(new PacketStruct(SharedValues.nhtClose, new byte[0], () -> {
+					interrupt();
+					writerThread.interrupt();
+				}));
+			}
 			
 			//Updating the state
 			updateStateDisconnected(intentResultCodeConnection, false);
@@ -1474,16 +1480,29 @@ public class ConnectionService extends Service {
 			updateStateDisconnected(reason, forwardRequest);
 		}
 		
+		synchronized boolean sendDataSync(int messageType, byte[] data, boolean flush) {
+			try {
+				outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(messageType).putInt(data.length).array());
+				outputStream.write(data);
+				if(flush) outputStream.flush();
+				
+				return true;
+			} catch(IOException exception) {
+				exception.printStackTrace();
+				
+				if(socket.isConnected()) {
+					closeConnection(intentResultCodeConnection, false);
+				} else {
+					Crashlytics.logException(exception);
+				}
+				
+				return false;
+			}
+		}
+		
 		private class WriterThread extends Thread {
-			//Creating the stream
-			private final BufferedOutputStream outputStream;
-			
 			//Creating the queue
 			final BlockingQueue<PacketStruct> uploadQueue = new LinkedBlockingQueue<>();
-			
-			WriterThread(BufferedOutputStream outputStream) {
-				this.outputStream = outputStream;
-			}
 			
 			@Override
 			public void run() {
@@ -1495,16 +1514,18 @@ public class ConnectionService extends Service {
 							packet = uploadQueue.take();
 							
 							try {
-								outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(packet.type).putInt(packet.content.length).array());
-								outputStream.write(packet.content);
+								//outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(packet.type).putInt(packet.content.length).array());
+								//outputStream.write(packet.content);
+								sendDataSync(packet.type, packet.content, false);
 							} finally {
 								if(packet.sentRunnable != null) packet.sentRunnable.run();
 							}
 							
 							while((packet = uploadQueue.poll()) != null) {
 								try {
-									outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(packet.type).putInt(packet.content.length).array());
-									outputStream.write(packet.content);
+									//outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(packet.type).putInt(packet.content.length).array());
+									//outputStream.write(packet.content);
+									sendDataSync(packet.type, packet.content, false);
 								} finally {
 									if(packet.sentRunnable != null) packet.sentRunnable.run();
 								}
@@ -1512,12 +1533,11 @@ public class ConnectionService extends Service {
 							
 							outputStream.flush();
 						} catch(IOException exception) {
-							//Closing the connection if the exception is due to a broken pipe (connection dropped on server side)
-							if(Constants.checkBrokenPipe(exception)) {
-								exception.printStackTrace();
+							exception.printStackTrace();
+							
+							if(socket.isConnected()) {
 								closeConnection(intentResultCodeConnection, false);
 							} else {
-								exception.printStackTrace();
 								Crashlytics.logException(exception);
 							}
 						}
@@ -1949,6 +1969,7 @@ public class ConnectionService extends Service {
 		}
 		
 		void onResponseReceived() {
+			if(!isWaiting) return;
 			isWaiting = false;
 			callbacks.onResponseReceived();
 		}
@@ -1967,6 +1988,12 @@ public class ConnectionService extends Service {
 		int lastIndex = -1;
 		float lastProgress = 0;
 		private void processFileFragment(Context context, final byte[] compressedBytes, int index, boolean isLast, int communicationsVersion) {
+			//Setting the state to receiving if it isn't already
+			if(isWaiting) {
+				isWaiting = false;
+				callbacks.onResponseReceived();
+			}
+			
 			//Checking if the index doesn't line up
 			if(lastIndex + 1 != index) {
 				//Failing the download
@@ -2119,7 +2146,7 @@ public class ConnectionService extends Service {
 							}
 						} */
 					}
-				} catch(IOException | DataFormatException exception) {
+				} catch(IOException | DataFormatException | OutOfMemoryError exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
 					Crashlytics.logException(exception);
@@ -2224,16 +2251,18 @@ public class ConnectionService extends Service {
 					
 					//Verifying the file size
 					try(Cursor cursor = context.getContentResolver().query(request.sendUri, null, null, null, null)) {
-						cursor.moveToFirst();
-						long fileSize = cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
-						
-						//Checking if the file size is too large to send
-						if(fileSize > largestFileSize) {
-							//Calling the fail method
-							handler.post(() -> finalCallbacks.onFail(messageSendFileTooLarge));
+						if(cursor != null) {
+							cursor.moveToFirst();
+							long fileSize = cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
 							
-							//Skipping the remainder of the iteration
-							continue;
+							//Checking if the file size is too large to send
+							if(fileSize > largestFileSize) {
+								//Calling the fail method
+								handler.post(() -> finalCallbacks.onFail(messageSendFileTooLarge));
+								
+								//Skipping the remainder of the iteration
+								continue;
+							}
 						}
 					}
 					
@@ -2461,8 +2490,9 @@ public class ConnectionService extends Service {
 									out.flush();
 								}
 								
-								//Sending the message
-								connectionService.connectionThread.queuePacket(new PacketStruct(nht, bos.toByteArray()));
+								//Sending the message (synchronously, to avoid memory buildup)
+								connectionService.connectionThread.sendDataSync(nht, bos.toByteArray(), true);
+								//connectionService.connectionThread.queuePacket(new PacketStruct(nht, bos.toByteArray()));
 							}
 						}
 						
@@ -2505,7 +2535,7 @@ public class ConnectionService extends Service {
 					
 					//Saving the checksum
 					DatabaseManager.getInstance().updateAttachmentChecksum(request.attachmentID, checksum);
-				} catch(IOException exception) {
+				} catch(IOException | OutOfMemoryError exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
 					
@@ -3706,7 +3736,7 @@ public class ConnectionService extends Service {
 						else stickerInfo.image = Constants.decompressGZIP(stickerInfo.image);
 						ConversationManager.StickerInfo sticker = DatabaseManager.getInstance().addMessageSticker(stickerInfo);
 						if(sticker != null) stickerModifiers.add(sticker);
-					} catch(IOException | DataFormatException exception) {
+					} catch(IOException | DataFormatException | OutOfMemoryError exception) {
 						exception.printStackTrace();
 						Crashlytics.logException(exception);
 					}

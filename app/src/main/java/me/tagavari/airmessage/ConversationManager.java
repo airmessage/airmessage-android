@@ -328,6 +328,9 @@ class ConversationManager {
 		static final int backupUserColor = 0xFF607D8B; //Blue grey
 		private static final int maxUsersToDisplay = 4;
 		
+		//Creating the static values
+		private static SelectionSource selectionSource = id -> false;
+		
 		//Creating the values
 		private final long localID;
 		private String guid;
@@ -344,7 +347,6 @@ class ConversationManager {
 		private transient int unreadMessageCount = 0;
 		private boolean isArchived = false;
 		private boolean isMuted = false;
-		private transient boolean isSelected = false;
 		private int conversationColor = 0xFF000000; //Black
 		private transient WeakReference<MessageInfo> activityStateTargetReadReference = null;
 		private transient WeakReference<MessageInfo> activityStateTargetLatestReference = null;
@@ -355,6 +357,10 @@ class ConversationManager {
 		
 		//private int currentUserViewIndex = -1;
 		private transient Constants.ViewHolderSource<ItemViewHolder> viewHolderSource = null;
+		
+		static void setSelectionSource(SelectionSource source) {
+			selectionSource = source;
+		}
 		
 		ConversationInfo(long localID, ConversationState conversationState) {
 			//Setting the local ID and state
@@ -1478,12 +1484,8 @@ class ConversationManager {
 			}
 		}
 		
-		boolean isSelected() {
-			return isSelected;
-		}
-		
-		void setSelected(boolean selected) {
-			isSelected = selected;
+		private boolean getSelected() {
+			return selectionSource.getSelected(localID);
 		}
 		
 		void updateSelected() {
@@ -1494,8 +1496,13 @@ class ConversationManager {
 		
 		private void updateSelected(ItemViewHolder itemView) {
 			//Setting the visibility of the selected indicator
+			boolean isSelected = getSelected();
 			itemView.selectedIndicator.setVisibility(isSelected ? View.VISIBLE : View.GONE);
 			if(currentUserViewIndex != -1) itemView.iconGroup.getChildAt(currentUserViewIndex).setVisibility(isSelected ? View.GONE : View.VISIBLE);
+		}
+		
+		interface SelectionSource {
+			boolean getSelected(long identifier);
 		}
 		
 		int getConversationColor() {

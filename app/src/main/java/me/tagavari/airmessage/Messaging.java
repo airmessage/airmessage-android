@@ -2232,7 +2232,7 @@ public class Messaging extends CompositeActivity {
 			}
 		};
 		
-		ActivityViewModel(Application application, long conversationID) {
+		public ActivityViewModel(Application application, long conversationID) {
 			super(application);
 			
 			//Setting the values

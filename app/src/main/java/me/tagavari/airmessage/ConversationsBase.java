@@ -496,6 +496,7 @@ class ConversationsBase extends ActivityPlugin {
 		conversationsLoadedListener.add(listener);
 	}
 	
+	//TODO implement in ViewModel
 	private static class LoadConversationsTask extends AsyncTask<Void, Void, MainApplication.LoadFlagArrayList<ConversationManager.ConversationInfo>> {
 		private final WeakReference<Context> contextReference;
 		private final WeakReference<ConversationsBase> superclassReference;
