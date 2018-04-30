@@ -675,10 +675,6 @@ class Constants {
 		}
 	}
 	
-	interface CountingActionModeCallback<Item> extends ActionMode.Callback {
-		void onItemCheckedStateChanged(Item item, boolean checked);
-	}
-	
 	interface BiConsumer<A1, A2> {
 		void accept(A1 a1, A2 a2);
 	}

@@ -2,6 +2,8 @@ package me.tagavari.airmessage;
 
 import android.animation.ValueAnimator;
 import android.app.AlertDialog;
+import android.arch.lifecycle.ViewModel;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -44,7 +46,8 @@ public class Conversations extends CompositeActivity {
 	private ConversationsBase conversationsBasePlugin = null;
 	private PluginMessageBar pluginMessageBar = null;
 	
-	//Creating the info bar values
+	//Creating the view model and info bar values
+	private ActivityViewModel viewModel;
 	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarSystemUpdate;
 	
 	//Creating the menu values
@@ -60,317 +63,8 @@ public class Conversations extends CompositeActivity {
 	
 	//Creating the listener values
 	private ActionMode actionMode = null;
-	private final Constants.CountingActionModeCallback<ConversationManager.ConversationInfo> actionModeCallbacks = new Constants.CountingActionModeCallback<ConversationManager.ConversationInfo>() {
-		//Creating the selected conversations variable
-		private int selectedConversations = 0;
-		private int mutedConversations = 0;
-		private int nonMutedConversations = 0;
-		private int archivedConversations = 0;
-		private int nonArchivedConversations = 0;
-		
-		@Override
-		public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
-			MenuInflater inflater = actionMode.getMenuInflater();
-			inflater.inflate(R.menu.menu_conversation_actionmode, menu);
-			
-			return true;
-		}
-		
-		@Override
-		public boolean onPrepareActionMode(ActionMode actionMode, Menu menu) {
-			return false;
-		}
-		
-		@Override
-		public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
-			//Checking if the item is the mute button
-			if(menuItem.getItemId() == R.id.action_mute) {
-				//Creating the updated conversation list
-				final ArrayList<Long> updatedConversations = new ArrayList<>();
-				
-				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
-					//Skipping the remainder of the iteration if the conversation is not selected
-					if(!conversationInfo.isSelected()) continue;
-					
-					//Checking if the conversation is not muted
-					if(!conversationInfo.isMuted()) {
-						//Muting the conversation
-						conversationInfo.setMuted(true);
-						
-						//Adding the conversation to the updated conversations list
-						updatedConversations.add(conversationInfo.getLocalID());
-					}
-				}
-				
-				//Checking if there are conversations to update in the database
-				if(!updatedConversations.isEmpty()) {
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, true);
-					
-					//Updating the conversations
-					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
-				}
-				
-				//Finishing the action mode
-				actionMode.finish();
-				
-				//Returning true
-				return true;
-			}
-			//Checking if the item is the unmute button
-			else if(menuItem.getItemId() == R.id.action_unmute) {
-				//Creating the updated conversation list
-				ArrayList<Long> updatedConversations = new ArrayList<>();
-				
-				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
-					//Skipping the remainder of the iteration if the conversation is not selected
-					if(!conversationInfo.isSelected()) continue;
-					
-					//Checking if the conversation is muted
-					if(conversationInfo.isMuted()) {
-						//Unmuting the conversation
-						conversationInfo.setMuted(false);
-						
-						//Adding the conversation to the updated conversations list
-						updatedConversations.add(conversationInfo.getLocalID());
-					}
-				}
-				
-				//Checking if there are conversations to update in the database
-				if(!updatedConversations.isEmpty()) {
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the muted value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, false);
-					
-					//Updating the conversations
-					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
-				}
-				
-				//Finishing the action mode
-				actionMode.finish();
-				
-				//Returning true
-				return true;
-			}
-			//Checking if the item is the archive button
-			else if(menuItem.getItemId() == R.id.action_archive) {
-				//Creating the updated conversation list
-				ArrayList<ConversationManager.ConversationInfo> updatedConversations = new ArrayList<>();
-				
-				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
-					//Skipping the remainder of the iteration if the conversation is not selected
-					if(!conversationInfo.isSelected()) continue;
-					
-					//Archiving the conversation
-					conversationInfo.setArchived(true);
-					
-					//Adding the conversation to the updated conversations list
-					updatedConversations.add(conversationInfo);
-				}
-				
-				//Checking if there are conversations to update in the database
-				if(!updatedConversations.isEmpty()) {
-					//Updating the list
-					conversationsBasePlugin.updateList(false);
-					
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the archived value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-					
-					//Updating the conversations
-					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
-					
-					//Creating a snackbar
-					int affectedCount = updatedConversations.size();
-					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
-						//Creating the content values
-						ContentValues undoContentValues = new ContentValues();
-						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-						
-						//Iterating over the conversations
-						for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) {
-							//Unarchiving the conversation
-							conversationInfo.setArchived(false);
-							
-							//Setting the archived value
-							contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-							
-							//Updating the conversations
-							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
-						}
-						
-						//Updating the list
-						conversationsBasePlugin.updateList(false);
-					}).show();
-				}
-				
-				//Finishing the action mode
-				actionMode.finish();
-				
-				//Returning true
-				return true;
-			}
-			//Checking if the item is the unarchive button
-			else if(menuItem.getItemId() == R.id.action_unarchive) {
-				//Creating the updated conversation list
-				ArrayList<ConversationManager.ConversationInfo> updatedConversations = new ArrayList<>();
-				
-				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
-					//Skipping the remainder of the iteration if the conversation is not selected
-					if(!conversationInfo.isSelected()) continue;
-					
-					//Unarchiving the conversation
-					conversationInfo.setArchived(false);
-					
-					//Adding the conversation to the updated conversations list
-					updatedConversations.add(conversationInfo);
-				}
-				
-				//Checking if there are conversations to update in the database
-				if(!updatedConversations.isEmpty()) {
-					//Updating the list
-					conversationsBasePlugin.updateList(false);
-					
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the archived value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-					
-					//Updating the conversations
-					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
-					
-					//Creating a snackbar
-					int affectedCount = updatedConversations.size();
-					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationunarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
-						//Creating the content values
-						ContentValues undoContentValues = new ContentValues();
-						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-						
-						//Iterating over the conversations
-						for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) {
-							//Archiving the conversation
-							conversationInfo.setArchived(true);
-							
-							//Updating the conversations
-							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
-						}
-						
-						//Updating the list
-						conversationsBasePlugin.updateList(false);
-					}).show();
-				}
-				
-				//Finishing the action mode
-				actionMode.finish();
-				
-				//Returning true
-				return true;
-			}
-			//Checking if the item is the delete button
-			else if(menuItem.getItemId() == R.id.action_delete) {
-				//Displaying a dialog
-				//Displaying a dialog warning about the message types
-				new AlertDialog.Builder(Conversations.this)
-						//Setting the message
-						.setMessage(getResources().getQuantityString(R.plurals.message_confirm_deleteconversation, selectedConversations))
-						//Setting the button
-						.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
-						.setPositiveButton(R.string.action_delete, (dialog, which) -> {
-							//Creating the to remove list
-							ArrayList<ConversationManager.ConversationInfo> toRemove = new ArrayList<>();
-							
-							//Marking all selected conversations for removal
-							for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations)
-								if(conversationInfo.isSelected())
-									toRemove.add(conversationInfo);
-							
-							//Deleting the conversations
-							for(ConversationManager.ConversationInfo conversationInfo : toRemove) conversationInfo.delete(Conversations.this);
-							
-							//Updating the conversation activity list
-							LocalBroadcastManager.getInstance(Conversations.this).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-							
-							//Updating the list
-							conversationsBasePlugin.updateList(false);
-							
-							//Dismissing the dialog
-							dialog.dismiss();
-							
-							//Finishing the action mode
-							actionMode.finish();
-						})
-						//Creating the dialog
-						.create()
-						//Showing the dialog
-						.show();
-				
-				//Returning true
-				return true;
-			}
-			
-			//Returning false
-			return false;
-		}
-		
-		@Override
-		public void onDestroyActionMode(ActionMode actionMode) {
-			//Invalidating the action mode
-			Conversations.this.actionMode = null;
-			
-			//Deselecting all items
-			for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
-				if(!conversationInfo.isSelected()) continue;
-				conversationInfo.setSelected(false);
-				conversationInfo.updateSelected();
-			}
-			
-			//Resetting the selection
-			selectedConversations = mutedConversations = nonMutedConversations = archivedConversations = nonArchivedConversations = 0;
-		}
-		
-		@Override
-		public void onItemCheckedStateChanged(ConversationManager.ConversationInfo item, boolean checked) {
-			//Setting the item's checked state
-			item.setSelected(checked);
-			item.updateSelected();
-			
-			//Updating the selected conversations
-			int value = checked ? 1 : -1;
-			selectedConversations += value;
-			if(item.isMuted()) mutedConversations += value;
-			else nonMutedConversations += value;
-			if(item.isArchived()) archivedConversations += value;
-			else nonArchivedConversations += value;
-			
-			//Setting the name
-			actionMode.setTitle(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, selectedConversations));
-			
-			//Showing or hiding the mute / unmute buttons
-			if(mutedConversations > 0) actionMode.getMenu().findItem(R.id.action_unmute).setVisible(true);
-			else actionMode.getMenu().findItem(R.id.action_unmute).setVisible(false);
-			if(nonMutedConversations > 0) actionMode.getMenu().findItem(R.id.action_mute).setVisible(true);
-			else actionMode.getMenu().findItem(R.id.action_mute).setVisible(false);
-			
-			//Showing or hiding the archive / unarchive buttons
-			if(archivedConversations > 0) actionMode.getMenu().findItem(R.id.action_unarchive).setVisible(true);
-			else actionMode.getMenu().findItem(R.id.action_unarchive).setVisible(false);
-			if(nonArchivedConversations > 0) actionMode.getMenu().findItem(R.id.action_archive).setVisible(true);
-			else actionMode.getMenu().findItem(R.id.action_archive).setVisible(false);
-			
-			//Finishing the action mode if there are no more items selected
-			if(selectedConversations == 0) actionMode.finish();
-		}
-	};
+	private final CountingActionModeCallback actionModeCallbacks = new CountingActionModeCallback();
+	
 	/* private final AbsListView.MultiChoiceModeListener listMultiChoiceModeListener = new AbsListView.MultiChoiceModeListener() {
 		//Creating the selected conversations variable
 		private int selectedConversations = 0;
@@ -745,6 +439,9 @@ public class Conversations extends CompositeActivity {
 		//Enabling the toolbar
 		setSupportActionBar(findViewById(R.id.toolbar));
 		
+		//Getting the view model
+		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
+		
 		//Setting the plugin views
 		conversationsBasePlugin.setViews(findViewById(R.id.list), findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
@@ -760,12 +457,15 @@ public class Conversations extends CompositeActivity {
 		//Setting the listeners
 		findViewById(R.id.fab).setOnClickListener(view -> startActivity(new Intent(Conversations.this, NewMessage.class)));
 		
+		conversationsBasePlugin.addConversationsLoadedListener(() -> {
+			//Restoring the action mode
+			restoreActionMode();
+		});
 		conversationsBasePlugin.addUpdateListListener(() -> {
 			TextView noConversations = findViewById(R.id.no_conversations);
 			if(listingArchived) noConversations.setText(R.string.message_blankstate_conversations_archived);
 			else noConversations.setText(R.string.message_blankstate_conversations);
 		});
-		conversationsBasePlugin.addConversationsLoadedListener(() -> {for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) conversationInfo.setSelected(false);});
 		
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
@@ -890,6 +590,10 @@ public class Conversations extends CompositeActivity {
 		}
 	} */
 	
+	private boolean isSelectedActionMode(ConversationManager.ConversationInfo conversationInfo) {
+		return viewModel.actionModeSelections.contains(conversationInfo.getLocalID());
+	}
+	
 	class RecyclerAdapter extends ConversationsBase.RecyclerAdapter<ConversationManager.ConversationInfo.ItemViewHolder> {
 		//Creating the list values
 		private final List<ConversationManager.ConversationInfo> originalItems;
@@ -964,7 +668,7 @@ public class Conversations extends CompositeActivity {
 				//Checking if action mode is active
 				if(actionMode != null) {
 					//Toggling the item's checked state
-					actionModeCallbacks.onItemCheckedStateChanged(conversationInfo, !conversationInfo.isSelected());
+					actionModeCallbacks.onItemCheckedStateChanged(conversationInfo, !isSelectedActionMode(conversationInfo));
 					
 					return;
 				}
@@ -977,11 +681,11 @@ public class Conversations extends CompositeActivity {
 				//Returning if action mode isn't running
 				if(actionMode != null) return false;
 				
-				//Starting action mode
-				actionMode = startSupportActionMode(actionModeCallbacks);
+				//Starting the action mode
+				startActionMode();
 				
 				//Toggling the item's checked state
-				actionModeCallbacks.onItemCheckedStateChanged(conversationInfo, !conversationInfo.isSelected());
+				actionModeCallbacks.onItemCheckedStateChanged(conversationInfo, !isSelectedActionMode(conversationInfo));
 				/* RecyclerView.ViewHolder viewHolder = conversationInfo.getViewHolder();
 				if(viewHolder != null) {
 					viewHolder.itemView.cancelPendingInputEvents();
@@ -1249,6 +953,33 @@ public class Conversations extends CompositeActivity {
 		infoBarConnection.hide();
 	}
 	
+	void startActionMode() {
+		//Starting action mode
+		actionMode = startSupportActionMode(actionModeCallbacks);
+	}
+	
+	void restoreActionMode() {
+		//Returning if the action mode is already set up or there are no items selected
+		if(actionMode != null || viewModel.actionModeSelections.isEmpty()) return;
+		
+		//Calculating the values
+		for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
+			//Skipping the remainder of the iteration if the conversation is not selected
+			if(!isSelectedActionMode(conversationInfo)) continue;
+			
+			//Adding to the values
+			actionModeCallbacks.selectedConversations++;
+			if(conversationInfo.isMuted()) actionModeCallbacks.mutedConversations++;
+			else actionModeCallbacks.nonMutedConversations++;
+			if(conversationInfo.isArchived()) actionModeCallbacks.archivedConversations++;
+			else actionModeCallbacks.nonArchivedConversations++;
+		}
+		
+		//Starting the action mode
+		startActionMode();
+		actionModeCallbacks.updateActionModeTitle();
+	}
+	
 	void setAppBarState(byte state) {
 		//Returning if the requested state matches the current state
 		if(currentAppBarState == state) return;
@@ -1414,4 +1145,331 @@ public class Conversations extends CompositeActivity {
 			isServiceBound = false;
 		}
 	}; */
+	
+	private static class ActivityViewModel extends ViewModel {
+		final List<Long> actionModeSelections = new ArrayList<>();
+		
+		public ActivityViewModel() {
+			ConversationManager.ConversationInfo.setSelectionSource(actionModeSelections::contains);
+		}
+	}
+	
+	private class CountingActionModeCallback implements ActionMode.Callback {
+		//Creating the selected conversations variable
+		int selectedConversations = 0;
+		int mutedConversations = 0;
+		int nonMutedConversations = 0;
+		int archivedConversations = 0;
+		int nonArchivedConversations = 0;
+		
+		@Override
+		public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
+			MenuInflater inflater = actionMode.getMenuInflater();
+			inflater.inflate(R.menu.menu_conversation_actionmode, menu);
+			
+			return true;
+		}
+		
+		@Override
+		public boolean onPrepareActionMode(ActionMode actionMode, Menu menu) {
+			return false;
+		}
+		
+		@Override
+		public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
+			//Checking if the item is the mute button
+			if(menuItem.getItemId() == R.id.action_mute) {
+				//Creating the updated conversation list
+				final ArrayList<Long> updatedConversations = new ArrayList<>();
+				
+				//Looping through all conversations
+				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
+					//Skipping the remainder of the iteration if the conversation is not selected
+					if(!isSelectedActionMode(conversationInfo)) continue;
+					
+					//Checking if the conversation is not muted
+					if(!conversationInfo.isMuted()) {
+						//Muting the conversation
+						conversationInfo.setMuted(true);
+						
+						//Adding the conversation to the updated conversations list
+						updatedConversations.add(conversationInfo.getLocalID());
+					}
+				}
+				
+				//Checking if there are conversations to update in the database
+				if(!updatedConversations.isEmpty()) {
+					//Creating the content values
+					ContentValues contentValues = new ContentValues();
+					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, true);
+					
+					//Updating the conversations
+					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
+				}
+				
+				//Finishing the action mode
+				actionMode.finish();
+				
+				//Returning true
+				return true;
+			}
+			//Checking if the item is the unmute button
+			else if(menuItem.getItemId() == R.id.action_unmute) {
+				//Creating the updated conversation list
+				ArrayList<Long> updatedConversations = new ArrayList<>();
+				
+				//Looping through all conversations
+				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
+					//Skipping the remainder of the iteration if the conversation is not selected
+					if(!isSelectedActionMode(conversationInfo)) continue;
+					
+					//Checking if the conversation is muted
+					if(conversationInfo.isMuted()) {
+						//Unmuting the conversation
+						conversationInfo.setMuted(false);
+						
+						//Adding the conversation to the updated conversations list
+						updatedConversations.add(conversationInfo.getLocalID());
+					}
+				}
+				
+				//Checking if there are conversations to update in the database
+				if(!updatedConversations.isEmpty()) {
+					//Creating the content values
+					ContentValues contentValues = new ContentValues();
+					
+					//Setting the muted value
+					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, false);
+					
+					//Updating the conversations
+					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
+				}
+				
+				//Finishing the action mode
+				actionMode.finish();
+				
+				//Returning true
+				return true;
+			}
+			//Checking if the item is the archive button
+			else if(menuItem.getItemId() == R.id.action_archive) {
+				//Creating the updated conversation list
+				ArrayList<ConversationManager.ConversationInfo> updatedConversations = new ArrayList<>();
+				
+				//Looping through all conversations
+				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
+					//Skipping the remainder of the iteration if the conversation is not selected
+					if(!isSelectedActionMode(conversationInfo)) continue;
+					
+					//Archiving the conversation
+					conversationInfo.setArchived(true);
+					
+					//Adding the conversation to the updated conversations list
+					updatedConversations.add(conversationInfo);
+				}
+				
+				//Checking if there are conversations to update in the database
+				if(!updatedConversations.isEmpty()) {
+					//Updating the list
+					conversationsBasePlugin.updateList(false);
+					
+					//Creating the content values
+					ContentValues contentValues = new ContentValues();
+					
+					//Setting the archived value
+					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
+					
+					//Updating the conversations
+					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
+					
+					//Creating a snackbar
+					int affectedCount = updatedConversations.size();
+					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
+						//Creating the content values
+						ContentValues undoContentValues = new ContentValues();
+						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
+						
+						//Iterating over the conversations
+						for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) {
+							//Unarchiving the conversation
+							conversationInfo.setArchived(false);
+							
+							//Setting the archived value
+							contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
+							
+							//Updating the conversations
+							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
+						}
+						
+						//Updating the list
+						conversationsBasePlugin.updateList(false);
+					}).show();
+				}
+				
+				//Finishing the action mode
+				actionMode.finish();
+				
+				//Returning true
+				return true;
+			}
+			//Checking if the item is the unarchive button
+			else if(menuItem.getItemId() == R.id.action_unarchive) {
+				//Creating the updated conversation list
+				ArrayList<ConversationManager.ConversationInfo> updatedConversations = new ArrayList<>();
+				
+				//Looping through all conversations
+				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
+					//Skipping the remainder of the iteration if the conversation is not selected
+					if(!isSelectedActionMode(conversationInfo)) continue;
+					
+					//Unarchiving the conversation
+					conversationInfo.setArchived(false);
+					
+					//Adding the conversation to the updated conversations list
+					updatedConversations.add(conversationInfo);
+				}
+				
+				//Checking if there are conversations to update in the database
+				if(!updatedConversations.isEmpty()) {
+					//Updating the list
+					conversationsBasePlugin.updateList(false);
+					
+					//Creating the content values
+					ContentValues contentValues = new ContentValues();
+					
+					//Setting the archived value
+					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
+					
+					//Updating the conversations
+					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
+					
+					//Creating a snackbar
+					int affectedCount = updatedConversations.size();
+					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationunarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
+						//Creating the content values
+						ContentValues undoContentValues = new ContentValues();
+						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
+						
+						//Iterating over the conversations
+						for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) {
+							//Archiving the conversation
+							conversationInfo.setArchived(true);
+							
+							//Updating the conversations
+							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
+						}
+						
+						//Updating the list
+						conversationsBasePlugin.updateList(false);
+					}).show();
+				}
+				
+				//Finishing the action mode
+				actionMode.finish();
+				
+				//Returning true
+				return true;
+			}
+			//Checking if the item is the delete button
+			else if(menuItem.getItemId() == R.id.action_delete) {
+				//Displaying a dialog
+				new AlertDialog.Builder(Conversations.this)
+						//Setting the message
+						.setMessage(getResources().getQuantityString(R.plurals.message_confirm_deleteconversation, selectedConversations))
+						//Setting the button
+						.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
+						.setPositiveButton(R.string.action_delete, (dialog, which) -> {
+							//Creating the to remove list
+							ArrayList<ConversationManager.ConversationInfo> toRemove = new ArrayList<>();
+							
+							//Marking all selected conversations for removal
+							for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations)
+								if(isSelectedActionMode(conversationInfo)) toRemove.add(conversationInfo);
+							
+							//Deleting the conversations
+							for(ConversationManager.ConversationInfo conversationInfo : toRemove) conversationInfo.delete(Conversations.this);
+							
+							//Updating the conversation activity list
+							LocalBroadcastManager.getInstance(Conversations.this).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+							
+							//Updating the list
+							conversationsBasePlugin.updateList(false);
+							
+							//Dismissing the dialog
+							dialog.dismiss();
+							
+							//Finishing the action mode
+							actionMode.finish();
+						})
+						//Creating the dialog
+						.create()
+						//Showing the dialog
+						.show();
+				
+				//Returning true
+				return true;
+			}
+			
+			//Returning false
+			return false;
+		}
+		
+		@Override
+		public void onDestroyActionMode(ActionMode actionMode) {
+			//Invalidating the action mode
+			Conversations.this.actionMode = null;
+			
+			//Deselecting all items
+			List<Long> selectionsCopy = new ArrayList<>(viewModel.actionModeSelections);
+			viewModel.actionModeSelections.clear();
+			for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
+				if(!selectionsCopy.contains(conversationInfo.getLocalID())) continue;
+				conversationInfo.updateSelected();
+			}
+			
+			//Resetting the selection counts
+			selectedConversations = mutedConversations = nonMutedConversations = archivedConversations = nonArchivedConversations = 0;
+		}
+		
+		public void onItemCheckedStateToggled(ConversationManager.ConversationInfo item) {
+			onItemCheckedStateChanged(item, !isSelectedActionMode(item));
+		}
+		
+		public void onItemCheckedStateChanged(ConversationManager.ConversationInfo item, boolean checked) {
+			//Setting the item's checked state
+			if(checked) viewModel.actionModeSelections.add(item.getLocalID());
+			else viewModel.actionModeSelections.remove(item.getLocalID());
+			item.updateSelected();
+			
+			//Updating the selected conversations
+			int value = checked ? 1 : -1;
+			selectedConversations += value;
+			if(item.isMuted()) mutedConversations += value;
+			else nonMutedConversations += value;
+			if(item.isArchived()) archivedConversations += value;
+			else nonArchivedConversations += value;
+			
+			//Updating the title
+			updateActionModeTitle();
+			
+			//Showing or hiding the mute / unmute buttons
+			if(mutedConversations > 0) actionMode.getMenu().findItem(R.id.action_unmute).setVisible(true);
+			else actionMode.getMenu().findItem(R.id.action_unmute).setVisible(false);
+			if(nonMutedConversations > 0) actionMode.getMenu().findItem(R.id.action_mute).setVisible(true);
+			else actionMode.getMenu().findItem(R.id.action_mute).setVisible(false);
+			
+			//Showing or hiding the archive / unarchive buttons
+			if(archivedConversations > 0) actionMode.getMenu().findItem(R.id.action_unarchive).setVisible(true);
+			else actionMode.getMenu().findItem(R.id.action_unarchive).setVisible(false);
+			if(nonArchivedConversations > 0) actionMode.getMenu().findItem(R.id.action_archive).setVisible(true);
+			else actionMode.getMenu().findItem(R.id.action_archive).setVisible(false);
+			
+			//Finishing the action mode if there are no more items selected
+			if(selectedConversations == 0) actionMode.finish();
+		}
+		
+		public void updateActionModeTitle() {
+			actionMode.setTitle(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, selectedConversations));
+		}
+	}
 }

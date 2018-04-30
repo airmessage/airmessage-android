@@ -967,7 +967,7 @@ public class ConnectionService extends Service {
 					return;
 				}
 				
-				//Getting the input stream
+				//Getting the streams
 				inputStream = new BufferedInputStream(socket.getInputStream());
 				outputStream = new BufferedOutputStream(socket.getOutputStream());
 				
@@ -1458,10 +1458,14 @@ public class ConnectionService extends Service {
 		
 		void initiateClose() {
 			//Sending a message and finishing the threads
-			queuePacket(new PacketStruct(SharedValues.nhtClose, new byte[0], () -> {
+			if(writerThread == null) {
 				interrupt();
-				if(writerThread != null) writerThread.interrupt();
-			}));
+			} else {
+				queuePacket(new PacketStruct(SharedValues.nhtClose, new byte[0], () -> {
+					interrupt();
+					writerThread.interrupt();
+				}));
+			}
 			
 			//Updating the state
 			updateStateDisconnected(intentResultCodeConnection, false);
