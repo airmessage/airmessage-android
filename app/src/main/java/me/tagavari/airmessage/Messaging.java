@@ -349,12 +349,9 @@ public class Messaging extends CompositeActivity {
 				}
 				
 				//Finding the latest send effect
-				for(int i = viewModel.conversationItemList.size() - 1; i >= 0; i--) {
+				for(int i = viewModel.conversationItemList.size() - 1; i >= 0 && i >= viewModel.conversationItemList.size() - viewModel.conversationInfo.getUnreadMessageCount(); i--) {
 					//Getting the conversation item
 					ConversationManager.ConversationItem conversationItem = viewModel.conversationItemList.get(i);
-					
-					//Breaking from the loop if the item has already been viewed
-					if(viewModel.conversationItemList.size() - 1 >= viewModel.conversationInfo.getUnreadMessageCount()) break;
 					
 					//Skipping the remainder of the iteration if the item is not a message
 					if(!(conversationItem instanceof ConversationManager.MessageInfo)) continue;
@@ -2087,14 +2084,14 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		final class PoolSource {
-			static final int poolSize = 20;
+			static final int poolSize = 12;
 			
-			ConversationManager.MessageComponent.ViewHolder getComponent(ConversationManager.MessageComponent<ConversationManager.MessageComponent.ViewHolder> component, Context context) {
+			ConversationManager.MessageComponent.ViewHolder getComponent(ConversationManager.MessageComponent<ConversationManager.MessageComponent.ViewHolder> component, ViewGroup parent, Context context) {
 				Pools.SimplePool<ConversationManager.MessageComponent.ViewHolder> pool = (Pools.SimplePool<ConversationManager.MessageComponent.ViewHolder>) componentPoolList.get(component.getItemViewType());
-				if(pool == null) return component.createViewHolder(context, null);
+				if(pool == null) return component.createViewHolder(context, parent);
 				else {
 					ConversationManager.MessageComponent.ViewHolder viewHolder = pool.acquire();
-					return viewHolder == null ? component.createViewHolder(context, null) : viewHolder;
+					return viewHolder == null ? component.createViewHolder(context, parent) : viewHolder;
 				}
 			}
 			

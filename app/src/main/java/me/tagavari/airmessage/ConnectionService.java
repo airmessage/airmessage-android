@@ -36,8 +36,6 @@ import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.handshake.ClientHandshakeBuilder;
 import org.java_websocket.handshake.ServerHandshake;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -918,8 +916,8 @@ public class ConnectionService extends Service {
 		private final int port;
 		
 		private Socket socket;
-		private BufferedInputStream inputStream;
-		private BufferedOutputStream outputStream;
+		private InputStream inputStream;
+		private OutputStream outputStream;
 		private WriterThread writerThread = null;
 		
 		private Timer authenticationExpiryTimer = null;
@@ -968,8 +966,8 @@ public class ConnectionService extends Service {
 				}
 				
 				//Getting the streams
-				inputStream = new BufferedInputStream(socket.getInputStream());
-				outputStream = new BufferedOutputStream(socket.getOutputStream());
+				inputStream = socket.getInputStream();
+				outputStream = socket.getOutputStream();
 				
 				//Starting the writer thread
 				writerThread = new WriterThread();

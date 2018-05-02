@@ -2354,7 +2354,7 @@ class ConversationManager {
 				MessageComponent.ViewHolder componentViewHolder;
 				
 				List<MessageComponent.ViewHolder> list = componentViewHolderList.get(component.getItemViewType());
-				if(list == null || list.isEmpty()) componentViewHolder = poolSource.getComponent(component, context);
+				if(list == null || list.isEmpty()) componentViewHolder = poolSource.getComponent(component, viewHolder.containerMessagePart, context);
 				else {
 					componentViewHolder = list.get(0);
 					list.remove(0);
@@ -2384,10 +2384,15 @@ class ConversationManager {
 				for(MessageComponent.ViewHolder componentViewHolder : list) poolSource.releaseComponent(itemViewType, componentViewHolder);
 			}
 			
+			//Setting the alignment
+			viewHolder.spaceContent.setVisibility(isFromMe ? View.VISIBLE : View.GONE);
+			
 			//Setting the message part container's gravity
-			LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) viewHolder.containerMessagePart.getLayoutParams();
-			layoutParams.gravity = isFromMe ? Gravity.END : Gravity.START;
-			viewHolder.containerMessagePart.setLayoutParams(layoutParams);
+			/* {
+				LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) viewHolder.containerMessagePart.getLayoutParams();
+				layoutParams.gravity = isFromMe ? Gravity.END : Gravity.START;
+				viewHolder.containerMessagePart.setLayoutParams(layoutParams);
+			} */
 			
 			//Setting the gravity
 			//((LinearLayout) viewHolder.itemView).setGravity(isFromMe ? Gravity.END : Gravity.START);
@@ -2851,6 +2856,8 @@ class ConversationManager {
 			final ViewGroup containerContent;
 			final ViewGroup containerMessagePart;
 			
+			final View spaceContent;
+			
 			final TextSwitcher labelActivityStatus;
 			final View buttonSendEffectReplay;
 			
@@ -2875,6 +2882,8 @@ class ConversationManager {
 				
 				containerContent = view.findViewById(R.id.content_container);
 				containerMessagePart = containerContent.findViewById(R.id.messagepart_container);
+				
+				spaceContent = view.findViewById(R.id.space_content);
 				
 				labelActivityStatus = containerContent.findViewById(R.id.activitystatus);
 				buttonSendEffectReplay = containerContent.findViewById(R.id.sendeffect_replay);
@@ -3281,8 +3290,8 @@ class ConversationManager {
 			
 			{
 				//Setting the alignment
-				viewHolder.itemView.setForegroundGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
-				//((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
+				//viewHolder.itemView.setForegroundGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
+				((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
 				//FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) viewHolder.groupContainer.getLayoutParams();
 				//params.gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START) | Gravity.CENTER_VERTICAL;
 				
@@ -3671,7 +3680,8 @@ class ConversationManager {
 			
 			{
 				//Setting the alignment
-				viewHolder.itemView.setForegroundGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
+				//viewHolder.itemView.setForegroundGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
+				((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
 				/* RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) viewHolder.groupContainer.getLayoutParams();
 				if(getMessageInfo().isOutgoing()) {
 					params.removeRule(RelativeLayout.ALIGN_PARENT_START);
