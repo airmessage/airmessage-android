@@ -353,8 +353,6 @@ class ConversationManager {
 		private transient int currentUserViewIndex;
 		private transient LightConversationItem lastItem;
 		
-		private transient Messaging.EffectCallbacks effectCallbacks = null;
-		
 		//private int currentUserViewIndex = -1;
 		private transient Constants.ViewHolderSource<ItemViewHolder> viewHolderSource = null;
 		
@@ -1239,6 +1237,8 @@ class ConversationManager {
 			abstract void chatUpdateUnreadCount();
 			
 			abstract Messaging.AudioMessageManager getAudioMessageManager();
+			
+			abstract void playScreenEffect(String effect);
 		}
 		
 		int getNextUserColor() {
@@ -1616,17 +1616,12 @@ class ConversationManager {
 			}
 		}
 		
-		void setEffectCallbacks(Messaging.EffectCallbacks effectCallbacks) {
-			this.effectCallbacks = effectCallbacks;
-		}
-		
 		void requestScreenEffect(String effect) {
 			//Returning if the callback isn't set up
-			if(effectCallbacks == null) return;
+			if(activityCallbacks == null) return;
 			
 			//Setting and playing the effect
-			effectCallbacks.setCurrentScreenEffect(effect);
-			effectCallbacks.playCurrentScreenEffect();
+			activityCallbacks.playScreenEffect(effect);
 		}
 		
 		static abstract class BaseViewHolder extends RecyclerView.ViewHolder {
@@ -1717,7 +1712,8 @@ class ConversationManager {
 		private final String sender;
 		private final MessageTextInfo messageText;
 		private final ArrayList<AttachmentInfo> attachments;
-		private final String sendEffect;
+		private final String sendStyle;
+		private boolean sendStyleViewed;
 		private int messageState;
 		private int errorCode;
 		private long dateRead;
@@ -1730,7 +1726,7 @@ class ConversationManager {
 		private transient boolean isAnchoredBottom = false;
 		private transient boolean isShowingMessageState = false;
 		
-		MessageInfo(long localID, String guid, ConversationInfo conversationInfo, String sender, String messageText, ArrayList<AttachmentInfo> attachments, String sendEffect, long date, int messageState, int errorCode, long dateRead) {
+		MessageInfo(long localID, String guid, ConversationInfo conversationInfo, String sender, String messageText, ArrayList<AttachmentInfo> attachments, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, long dateRead) {
 			//Calling the super constructor
 			super(localID, guid, date, conversationInfo);
 			
@@ -1741,20 +1737,22 @@ class ConversationManager {
 			this.sender = sender;
 			this.messageText = messageText == null ? null : new MessageTextInfo(localID, guid, this, messageText);
 			this.attachments = attachments;
-			this.sendEffect = sendEffect == null || sendEffect.equals(" ") ? "" : sendEffect;
+			this.sendStyle = sendStyle;
+			this.sendStyleViewed = sendStyleViewed;
 			this.messageState = messageState;
 			this.errorCode = errorCode;
 			this.dateRead = dateRead;
 		}
 		
-		MessageInfo(long localID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String sendEffect, long date, int messageState, int errorCode, long dateRead) {
+		MessageInfo(long localID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, long dateRead) {
 			//Calling the super constructor
 			super(localID, guid, date, conversationInfo);
 			
 			//Setting the values
 			this.sender = sender;
 			this.messageText = messageText == null ? null : new MessageTextInfo(localID, guid, this, messageText);
-			this.sendEffect = sendEffect == null || sendEffect.equals(" ") ? "" : sendEffect;
+			this.sendStyle = sendStyle;
+			this.sendStyleViewed = sendStyleViewed;
 			this.attachments = new ArrayList<>();
 			this.messageState = messageState;
 			this.errorCode = errorCode;
@@ -2473,13 +2471,13 @@ class ConversationManager {
 			}
 			
 			//Checking if the message has no send effect
-			if(sendEffect.isEmpty()) {
+			if(sendStyle == null) {
 				//Hiding the "replay" button
 				viewHolder.buttonSendEffectReplay.setVisibility(View.GONE);
 			} else {
 				//Showing and configuring the "replay" button
 				viewHolder.buttonSendEffectReplay.setVisibility(View.VISIBLE);
-				viewHolder.buttonSendEffectReplay.setOnClickListener(clickedView -> getConversationInfo().requestScreenEffect(sendEffect));
+				viewHolder.buttonSendEffectReplay.setOnClickListener(clickedView -> getConversationInfo().requestScreenEffect(sendStyle));
 			}
 			
 			//Setting the text switcher's animations
@@ -2703,8 +2701,20 @@ class ConversationManager {
 			}
 		}
 		
-		String getSendEffect() {
-			return sendEffect;
+		String getSendStyle() {
+			return sendStyle;
+		}
+		
+		boolean getSendStyleViewed() {
+			return sendStyleViewed;
+		}
+		
+		void playMessageEffect() {
+			//TODO play the send style message effect
+		}
+		
+		void setSendStyleViewed(boolean sendStyleViewed) {
+			this.sendStyleViewed = sendStyleViewed;
 		}
 		
 		@Override
@@ -2715,7 +2725,7 @@ class ConversationManager {
 				attachmentStringRes.add(attachment.getContentType().getName());
 			
 			//Returning the summary
-			callback.onResult(false, getSummary(context, isOutgoing(), getMessageText(), sendEffect, attachmentStringRes));
+			callback.onResult(false, getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes));
 		}
 		
 		String getSummary(Context context) {
@@ -2725,7 +2735,7 @@ class ConversationManager {
 				attachmentStringRes.add(attachment.getContentType().getName());
 			
 			//Returning the result of the static method
-			return getSummary(context, isOutgoing(), getMessageText(), sendEffect, attachmentStringRes);
+			return getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes);
 		}
 		
 		static String getSummary(Context context, boolean isFromMe, String messageText, String sendStyle, ArrayList<Integer> attachmentStringRes) {
@@ -2736,7 +2746,7 @@ class ConversationManager {
 			String modifiedMessage = messageText != null ? messageText.replace('\n', ' ') : null;
 			
 			//Applying invisible ink
-			if(sendStyle.equals(Constants.appleSendStyleInvisibleInk))
+			if(Constants.appleSendStyleMsgInvisibleInk.equals(sendStyle))
 				modifiedMessage = context.getString(R.string.message_messageeffect_invisibleink);
 			
 			//Setting the text if there is text
@@ -2775,7 +2785,7 @@ class ConversationManager {
 				attachmentStringRes.add(attachment.getContentType().getName());
 			
 			//Returning the summary
-			return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), sendEffect, attachmentStringRes), getDate());
+			return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes), getDate());
 		}
 		
 		void addSticker(StickerInfo sticker) {
@@ -3444,7 +3454,7 @@ class ConversationManager {
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.FULL).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
 						//stringBuilder.append("Timestamp: " + getMessageInfo().getDate()).append('\n'); //TESTING date
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendEffect())); //Send effect
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
 						new AlertDialog.Builder(newContext)
@@ -3966,7 +3976,7 @@ class ConversationManager {
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_size, file != null ? Formatter.formatShortFileSize(newContext, file.length()) : newContext.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment size
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendEffect().isEmpty() ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendEffect())); //Send effect
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
 						new AlertDialog.Builder(newContext)

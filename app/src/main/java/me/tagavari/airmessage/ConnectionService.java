@@ -3384,11 +3384,11 @@ public class ConnectionService extends Service {
 							}
 							
 							//Checking if the conversation is in the foreground
-							if(foregroundConversations.contains(parentConversation.getLocalID())) {
+							/* if(foregroundConversations.contains(parentConversation.getLocalID())) {
 								//Displaying the send effect
-								if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).getSendEffect().isEmpty())
-									parentConversation.requestScreenEffect(((ConversationManager.MessageInfo) conversationItem).getSendEffect());
-							}
+								if(conversationItem instanceof ConversationManager.MessageInfo && ((ConversationManager.MessageInfo) conversationItem).getSendStyle() != null)
+									parentConversation.requestScreenEffect(((ConversationManager.MessageInfo) conversationItem).getSendStyle());
+							} */
 						} else {
 							//Updating the parent conversation's latest item
 							parentConversation.setLastItemUpdate(context, conversationItem);

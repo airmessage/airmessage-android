@@ -20,7 +20,6 @@ import android.support.annotation.NonNull;
 import android.support.customtabs.CustomTabsIntent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.view.ActionMode;
 import android.support.v7.widget.RecyclerView;
 import android.text.Spannable;
 import android.text.Spanned;
@@ -87,9 +86,9 @@ class Constants {
 	
 	static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	
-	static final String appleSendStyleInvisibleInk = "com.apple.MobileSMS.expressivesend.invisibleink";
-	static final String appleSendStyleConfetti = "com.apple.messages.effect.CKConfettiEffect";
-	static final String appleSendStyleFireworks = "com.apple.messages.effect.CKFireworksEffect";
+	static final String appleSendStyleMsgInvisibleInk = "com.apple.MobileSMS.expressivesend.invisibleink";
+	static final String appleSendStyleScrnConfetti = "com.apple.messages.effect.CKConfettiEffect";
+	static final String appleSendStyleScrnFireworks = "com.apple.messages.effect.CKFireworksEffect";
 	
 	static final String defaultNotificationSound = "content://settings/system/notification_sound";
 	

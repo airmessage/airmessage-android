@@ -106,7 +106,6 @@ public class Messaging extends CompositeActivity {
 	private PluginMessageBar.InfoBar infoBarConnection;
 	
 	private boolean currentScreenEffectPlaying = false;
-	private String currentScreenEffect = "";
 	
 	//Creating the state values
 	private static final byte appBarStateDefault = 0;
@@ -230,7 +229,7 @@ public class Messaging extends CompositeActivity {
 			if(message.isEmpty()) return;
 			
 			//Creating a message
-			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, message, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 			
 			//Writing the message to the database
 			new AddGhostMessageTask(getApplicationContext(), messageInfo, () -> {
@@ -301,7 +300,6 @@ public class Messaging extends CompositeActivity {
 				
 				//Setting the activity callbacks
 				viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
-				viewModel.conversationInfo.setEffectCallbacks(new EffectCallbacks(this)); //TODO merge activity callbacks with effect callbacks
 				
 				//Setting the list adapter
 				//messageList.setLayoutManager(new SpeedyLinearLayoutManager(this));
@@ -337,7 +335,6 @@ public class Messaging extends CompositeActivity {
 					
 					//Setting the activity callbacks
 					viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
-					viewModel.conversationInfo.setEffectCallbacks(new EffectCallbacks(this)); //TODO merge activity callbacks with effect callbacks
 					
 					//Setting the list adapter
 					messageListAdapter = new RecyclerAdapter(viewModel.conversationItemList);
@@ -348,7 +345,7 @@ public class Messaging extends CompositeActivity {
 					messageInputField.setHint(getInputBarMessage());
 				}
 				
-				//Finding the latest send effect
+				/* //Finding the latest send effect
 				for(int i = viewModel.conversationItemList.size() - 1; i >= 0 && i >= viewModel.conversationItemList.size() - viewModel.conversationInfo.getUnreadMessageCount(); i--) {
 					//Getting the conversation item
 					ConversationManager.ConversationItem conversationItem = viewModel.conversationItemList.get(i);
@@ -360,17 +357,17 @@ public class Messaging extends CompositeActivity {
 					ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
 					
 					//Skipping the remainder of the iteration if the message has no send effect
-					if(messageInfo.getSendEffect().isEmpty()) continue;
+					if(messageInfo.getSendStyle().isEmpty()) continue;
 					
 					//Setting the send effect
-					currentScreenEffect = messageInfo.getSendEffect();
+					currentScreenEffect = messageInfo.getSendStyle();
 					
 					//Breaking from the loop
 					break;
 				}
 				
 				//Playing the send effect if there is one
-				if(!currentScreenEffect.isEmpty()) playCurrentSendEffect();
+				if(!currentScreenEffect.isEmpty()) playCurrentScreenEffect(); */
 				
 				//Setting the last message count
 				viewModel.lastUnreadCount = viewModel.conversationInfo.getUnreadMessageCount();
@@ -1798,7 +1795,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void sendFile(File file) {
 		//Creating a message
-		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 		
 		//Starting the task
 		new SendFilePreparationTask(this, messageInfo, file).execute();
@@ -1806,7 +1803,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void sendFile(Uri uri) {
 		//Creating a message
-		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 		
 		//Starting the task
 		new SendFilePreparationTask(this, messageInfo, uri).execute();
@@ -1932,22 +1929,23 @@ public class Messaging extends CompositeActivity {
 		}
 	}
 	
-	void setCurrentScreenEffect(String screenEffect) {
-		currentScreenEffect = screenEffect;
-	}
-	
 	private static final long confettiDuration = 1000;
 	
-	void playCurrentSendEffect() {
+	boolean validateScreenEffect(String effect) {
+		return Constants.appleSendStyleScrnFireworks.equals(effect) ||
+				Constants.appleSendStyleScrnConfetti.equals(effect);
+	}
+	
+	void playScreenEffect(String effect) {
 		//Returning if an effect is already playing
 		if(currentScreenEffectPlaying) return;
 		currentScreenEffectPlaying = true;
 		
-		switch(currentScreenEffect) {
-			case Constants.appleSendStyleFireworks:
+		switch(effect) {
+			case Constants.appleSendStyleScrnFireworks:
 				currentScreenEffectPlaying = false;
 				break;
-			case Constants.appleSendStyleConfetti: {
+			case Constants.appleSendStyleScrnConfetti: {
 				//Activating the Konfetti view
 				KonfettiView konfettiView = findViewById(R.id.konfetti);
 				konfettiView.build()
@@ -1966,7 +1964,7 @@ public class Messaging extends CompositeActivity {
 						.addShapes(Shape.RECT, Shape.CIRCLE)
 						.addSizes(new Size(12, 5), new Size(16, 6))
 						.setPosition(-50F, konfettiView.getWidth() + 50F, -50F, -50F)
-						.stream(300, confettiDuration);
+						.streamFor(300, confettiDuration);
 				
 				//Setting the timer to mark the effect as finished
 				new Handler().postDelayed(() -> currentScreenEffectPlaying = false, confettiDuration);
@@ -2045,13 +2043,29 @@ public class Messaging extends CompositeActivity {
 			if(viewModel.isProgressiveLoadInProgress()) conversationItem = conversationItems.get(position - 1);
 			else conversationItem = conversationItems.get(position);
 			
-			if(conversationItem instanceof ConversationManager.MessageInfo) ((ConversationManager.MessageInfo.ViewHolder) holder).setPoolSource(poolSource);
+			//Checking if the item is a message
+			boolean isMessage = false;
+			if(conversationItem instanceof ConversationManager.MessageInfo) {
+				((ConversationManager.MessageInfo.ViewHolder) holder).setPoolSource(poolSource);
+				isMessage = true;
+			}
 			
 			//Creating the view
 			conversationItem.bindView(holder, Messaging.this);
 			
 			//Setting the view source
 			conversationItem.setViewHolderSource(new Constants.ViewHolderSourceImpl<RecyclerView.ViewHolder>(recyclerView, conversationItem.getLocalID()));
+			
+			//Checking if the item is a message
+			if(isMessage) {
+				ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
+				//Playing the message's effect if it hasn't been viewed yet
+				if(messageInfo.getSendStyle() != null && !messageInfo.getSendStyleViewed()) {
+					messageInfo.setSendStyleViewed(true);
+					if(validateScreenEffect(messageInfo.getSendStyle())) playScreenEffect(messageInfo.getSendStyle());
+					else messageInfo.playMessageEffect();
+				}
+			}
 		}
 		
 		@Override
@@ -2663,24 +2677,6 @@ public class Messaging extends CompositeActivity {
 		}
 	}
 	
-	static class EffectCallbacks {
-		WeakReference<Messaging> activityReference;
-		
-		EffectCallbacks(Messaging activity) {
-			activityReference = new WeakReference<>(activity);
-		}
-		
-		void setCurrentScreenEffect(String screenEffect) {
-			Messaging activity = activityReference.get();
-			if(activity != null) activity.setCurrentScreenEffect(screenEffect);
-		}
-		
-		void playCurrentScreenEffect() {
-			Messaging activity = activityReference.get();
-			if(activity != null) activity.playCurrentSendEffect();
-		}
-	}
-	
 	private static class AddGhostMessageTask extends AsyncTask<Void, Void, Void> {
 		private final WeakReference<Context> contextReference;
 		private final ConversationManager.MessageInfo messageInfo;
@@ -2811,6 +2807,12 @@ public class Messaging extends CompositeActivity {
 			
 			//Returning the view model's audio message manager
 			return activity.viewModel.audioMessageManager;
+		}
+		
+		@Override
+		void playScreenEffect(String screenEffect) {
+			Messaging activity = activityReference.get();
+			if(activity != null) activity.playScreenEffect(screenEffect);
 		}
 	}
 }
