@@ -2381,7 +2381,10 @@ class ConversationManager {
 			for(int i = 0; i < componentViewHolderList.size(); i++) {
 				int itemViewType = componentViewHolderList.keyAt(i);
 				List<MessageComponent.ViewHolder> list = componentViewHolderList.valueAt(i);
-				for(MessageComponent.ViewHolder componentViewHolder : list) poolSource.releaseComponent(itemViewType, componentViewHolder);
+				for(MessageComponent.ViewHolder componentViewHolder : list) {
+					componentViewHolder.releaseResources();
+					poolSource.releaseComponent(itemViewType, componentViewHolder);
+				}
 			}
 			
 			//Setting the alignment
@@ -3261,6 +3264,8 @@ class ConversationManager {
 				stickerContainer = view.findViewById(R.id.sticker_container);
 				tapbackContainer = view.findViewById(R.id.tapback_container);
 			}
+			
+			void releaseResources() {}
 		}
 	}
 	
@@ -4314,12 +4319,19 @@ class ConversationManager {
 				backgroundContent = groupContent.findViewById(R.id.content_background);
 				imageContent = groupContent.findViewById(R.id.content_view);
 			}
+			
+			@Override
+			void releaseResources() {
+				imageContent.setImageBitmap(null);
+			}
 		}
 	}
 	
 	static class AudioAttachmentInfo extends AttachmentInfo<AudioAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int itemViewType = MessageComponent.getNextItemViewType();
+		private static final int resDrawablePlay = R.drawable.play;
+		private static final int resDrawablePause = R.drawable.pause;
 		
 		private static final byte fileStateIdle = 0;
 		private static final byte fileStateLoading = 1;
@@ -4492,8 +4504,8 @@ class ConversationManager {
 		
 		private void updateMediaPlaying(ViewHolder viewHolder) {
 			viewHolder.contentIcon.setImageResource(isPlaying ?
-					R.drawable.pause :
-					R.drawable.play);
+					resDrawablePause :
+					resDrawablePlay);
 		}
 		
 		void setMediaProgress(int progress) {
@@ -4567,6 +4579,13 @@ class ConversationManager {
 				contentIcon = groupContent.findViewById(R.id.content_icon);
 				contentLabel = groupContent.findViewById(R.id.content_duration);
 				contentProgress = groupContent.findViewById(R.id.content_progress);
+			}
+			
+			@Override
+			void releaseResources() {
+				contentIcon.setImageResource(resDrawablePlay);
+				contentProgress.setProgress(0);
+				contentLabel.setText(Constants.getFormattedDuration(0));
 			}
 		}
 	}
@@ -4727,6 +4746,11 @@ class ConversationManager {
 				
 				backgroundContent = groupContent.findViewById(R.id.content_background);
 				imageContent = groupContent.findViewById(R.id.content_view);
+			}
+			
+			@Override
+			void releaseResources() {
+				imageContent.setImageBitmap(null);
 			}
 		}
 	}
