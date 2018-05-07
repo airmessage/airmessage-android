@@ -52,7 +52,7 @@ import java.util.Random;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-class Constants {
+public class Constants {
 	//Creating the constants
 	static final int intentPickMediaFile = 1;
 	static final int intentPickAnyFile = 2;
@@ -180,12 +180,12 @@ class Constants {
 		} */
 	}
 	
-	static int dpToPx(int dp) {
+	static int dpToPx(float dp) {
 		return (int) (dp * Resources.getSystem().getDisplayMetrics().density);
 	}
 	
-	static int pxToDp(int px) {
-		return (int) (px / Resources.getSystem().getDisplayMetrics().density);
+	static float pxToDp(int px) {
+		return px / Resources.getSystem().getDisplayMetrics().density;
 	}
 	
 	static void recursiveDelete(File file) {
@@ -699,5 +699,14 @@ class Constants {
 			in.close();
 			return out.toByteArray();
 		}
+	}
+	
+	static boolean validateScreenEffect(String effect) {
+		return Constants.appleSendStyleScrnFireworks.equals(effect) ||
+				Constants.appleSendStyleScrnConfetti.equals(effect);
+	}
+	
+	static boolean validatePassiveEffect(String effect) {
+		return Constants.appleSendStyleMsgInvisibleInk.equals(effect);
 	}
 }

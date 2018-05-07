@@ -4,10 +4,10 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
-import android.widget.ImageView;
 
-class RoundedImageView extends ImageView {
+class RoundedImageView extends AppCompatImageView {
 	private float[] radii = new float[8];
 	
 	public RoundedImageView(Context context) {

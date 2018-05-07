@@ -387,16 +387,16 @@ class BitmapCacheHelper {
 		private final String requestKey;
 		private final WeakReference<BitmapCacheHelper> superclassReference;
 		private final boolean resize;
-		private final int pxMinX, pxMinY;
+		private final int pxMaxX, pxMaxY;
 		
-		DecodeImageFileTask(String requestKey, BitmapCacheHelper superclass, boolean resize, int pxMinX, int pxMinY) {
+		DecodeImageFileTask(String requestKey, BitmapCacheHelper superclass, boolean resize, int pxMaxX, int pxMaxY) {
 			//Setting the values
 			this.requestKey = requestKey;
 			superclassReference = new WeakReference<>(superclass);
 			
 			this.resize = resize;
-			this.pxMinX = pxMinX;
-			this.pxMinY = pxMinY;
+			this.pxMaxX = pxMaxX;
+			this.pxMaxY = pxMaxY;
 		}
 		
 		@Override
@@ -436,7 +436,7 @@ class BitmapCacheHelper {
 				BitmapFactory.decodeFile(file.getPath(), options);
 				
 				//Calculating the optimal image dimensions
-				options.inSampleSize = calculateInSampleSize(options, pxMinX, pxMinY);
+				options.inSampleSize = calculateInSampleSize(options, pxMaxX, pxMaxY);
 				publishProgress(options.outWidth / options.inSampleSize, options.outHeight / options.inSampleSize);
 				
 				//Decoding the entire bitmap

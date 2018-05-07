@@ -605,6 +605,15 @@ public class Messaging extends CompositeActivity {
 		boolean showWarning = connectionService == null || (connectionService.getCurrentState() == ConnectionService.stateDisconnected && ConnectionService.getLastConnectionResult() != -1);
 		if(showWarning) showServerWarning(ConnectionService.getLastConnectionResult());
 		else hideServerWarning();
+		
+		//Notifying the views
+		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
+			for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) {
+				if(conversationItem instanceof ConversationManager.MessageInfo) {
+					((ConversationManager.MessageInfo) conversationItem).notifyResume();
+				}
+			}
+		}
 	}
 	
 	@Override
@@ -631,6 +640,15 @@ public class Messaging extends CompositeActivity {
 			//Breaking from the loop
 			break;
 		}
+		
+		//Notifying the views
+		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
+			for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) {
+				if(conversationItem instanceof ConversationManager.MessageInfo) {
+					((ConversationManager.MessageInfo) conversationItem).notifyPause();
+				}
+			}
+		}
 	}
 	
 	@Override
@@ -641,6 +659,15 @@ public class Messaging extends CompositeActivity {
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
+		
+		//Notifying the views
+		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
+			for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) {
+				if(conversationItem instanceof ConversationManager.MessageInfo) {
+					((ConversationManager.MessageInfo) conversationItem).notifyPause();
+				}
+			}
+		}
 	}
 	
 	@Override
@@ -649,7 +676,7 @@ public class Messaging extends CompositeActivity {
 		super.onDestroy();
 		
 		//Iterating over the loaded conversations
-		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext(); ) {
+		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			
@@ -666,6 +693,15 @@ public class Messaging extends CompositeActivity {
 			
 			//Breaking from the loop
 			break;
+		}
+		
+		//Notifying the views
+		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
+			for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) {
+				if(conversationItem instanceof ConversationManager.MessageInfo) {
+					((ConversationManager.MessageInfo) conversationItem).notifyPause();
+				}
+			}
 		}
 	}
 	
@@ -1854,38 +1890,8 @@ public class Messaging extends CompositeActivity {
 			
 			//Creating the attachment
 			ConversationManager.AttachmentInfo attachment;
-			if(targetFile != null) {
-				switch(ConversationManager.ContentType.getType(Constants.getMimeType(targetFile))) {
-					case IMAGE:
-						attachment = new ConversationManager.ImageAttachmentInfo(-1, null, messageInfo, targetFile.getName(), targetFile);
-						break;
-					case VIDEO:
-						attachment = new ConversationManager.VideoAttachmentInfo(-1, null, messageInfo, targetFile.getName(), targetFile);
-						break;
-					case AUDIO:
-						attachment = new ConversationManager.AudioAttachmentInfo(-1, null, messageInfo, targetFile.getName(), targetFile);
-						break;
-					default:
-						attachment = new ConversationManager.OtherAttachmentInfo(-1, null, messageInfo, targetFile.getName(), targetFile);
-						break;
-				}
-			} else {
-				String fileName = Constants.getFileName(context, targetUri);
-				switch(ConversationManager.ContentType.getType(Constants.getMimeType(context, targetUri))) {
-					case IMAGE:
-						attachment = new ConversationManager.ImageAttachmentInfo(-1, null, messageInfo, fileName, targetUri);
-						break;
-					case VIDEO:
-						attachment = new ConversationManager.VideoAttachmentInfo(-1, null, messageInfo, fileName, targetUri);
-						break;
-					case AUDIO:
-						attachment = new ConversationManager.AudioAttachmentInfo(-1, null, messageInfo, fileName, targetUri);
-						break;
-					default:
-						attachment = new ConversationManager.OtherAttachmentInfo(-1, null, messageInfo, fileName, targetUri);
-						break;
-				}
-			}
+			if(targetFile != null) attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, targetFile.getName(), Constants.getMimeType(targetFile), targetFile);
+			else attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, Constants.getFileName(context, targetUri), Constants.getMimeType(targetFile), targetUri);
 			
 			//Adding the item to the database
 			messageInfo.addAttachment(attachment);
@@ -1930,11 +1936,6 @@ public class Messaging extends CompositeActivity {
 	}
 	
 	private static final long confettiDuration = 1000;
-	
-	boolean validateScreenEffect(String effect) {
-		return Constants.appleSendStyleScrnFireworks.equals(effect) ||
-				Constants.appleSendStyleScrnConfetti.equals(effect);
-	}
 	
 	void playScreenEffect(String effect) {
 		//Returning if an effect is already playing
@@ -2034,6 +2035,15 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		@Override
+		public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
+			if(holder instanceof ConversationManager.MessageInfo.ViewHolder) {
+				for(ConversationManager.MessageComponent.ViewHolder attachmentHolder : ((ConversationManager.MessageInfo.ViewHolder) holder).messageComponents) {
+					attachmentHolder.cleanupState();
+				}
+			}
+		}
+		
+		@Override
 		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
 			//Returning if the item is the loading spinner
 			if(getItemViewType(position) == itemTypeLoadingBar) return;
@@ -2062,8 +2072,9 @@ public class Messaging extends CompositeActivity {
 				//Playing the message's effect if it hasn't been viewed yet
 				if(messageInfo.getSendStyle() != null && !messageInfo.getSendStyleViewed()) {
 					messageInfo.setSendStyleViewed(true);
-					if(validateScreenEffect(messageInfo.getSendStyle())) playScreenEffect(messageInfo.getSendStyle());
+					if(Constants.validateScreenEffect(messageInfo.getSendStyle())) playScreenEffect(messageInfo.getSendStyle());
 					else messageInfo.playMessageEffect();
+					new TaskMarkMessageSendStyleViewed().execute(messageInfo);
 				}
 			}
 		}
@@ -2146,6 +2157,14 @@ public class Messaging extends CompositeActivity {
 			
 			//Scrolling to the bottom
 			recyclerView.smoothScrollToPosition(getItemCount() - 1);
+		}
+	}
+	
+	private static class TaskMarkMessageSendStyleViewed extends AsyncTask<ConversationManager.MessageInfo, Void, Void> {
+		@Override
+		protected Void doInBackground(ConversationManager.MessageInfo... items) {
+			for(ConversationManager.MessageInfo item : items) DatabaseManager.getInstance().markSendStyleViewed(item.getLocalID());
+			return null;
 		}
 	}
 	

@@ -17,7 +17,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.DrawableRes;
-import android.support.annotation.StringRes;
 import android.support.v4.content.FileProvider;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
@@ -75,6 +74,7 @@ import java.util.Random;
 
 import java9.util.function.Consumer;
 import me.tagavari.airmessage.common.SharedValues;
+import me.tagavari.airmessage.view.InvisibleInkView;
 
 class ConversationManager {
 	//Message burst - Sending single messages one after the other
@@ -2336,10 +2336,10 @@ class ConversationManager {
 				//Sorting the components
 				for(MessageComponent.ViewHolder componentViewHolder : viewHolder.messageComponents) {
 					if(componentViewHolder instanceof MessageTextInfo.ViewHolder) viewAdder.accept(MessageTextInfo.itemViewType, componentViewHolder);
-					else if(componentViewHolder instanceof ImageAttachmentInfo.ViewHolder) viewAdder.accept(ImageAttachmentInfo.itemViewType, componentViewHolder);
-					else if(componentViewHolder instanceof AudioAttachmentInfo.ViewHolder) viewAdder.accept(AudioAttachmentInfo.itemViewType, componentViewHolder);
-					else if(componentViewHolder instanceof VideoAttachmentInfo.ViewHolder) viewAdder.accept(VideoAttachmentInfo.itemViewType, componentViewHolder);
-					else if(componentViewHolder instanceof OtherAttachmentInfo.ViewHolder) viewAdder.accept(OtherAttachmentInfo.itemViewType, componentViewHolder);
+					else if(componentViewHolder instanceof ImageAttachmentInfo.ViewHolder) viewAdder.accept(ImageAttachmentInfo.ITEM_VIEW_TYPE, componentViewHolder);
+					else if(componentViewHolder instanceof AudioAttachmentInfo.ViewHolder) viewAdder.accept(AudioAttachmentInfo.ITEM_VIEW_TYPE, componentViewHolder);
+					else if(componentViewHolder instanceof VideoAttachmentInfo.ViewHolder) viewAdder.accept(VideoAttachmentInfo.ITEM_VIEW_TYPE, componentViewHolder);
+					else if(componentViewHolder instanceof OtherAttachmentInfo.ViewHolder) viewAdder.accept(OtherAttachmentInfo.ITEM_VIEW_TYPE, componentViewHolder);
 				}
 				
 				//Clearing and removing the components
@@ -2471,7 +2471,7 @@ class ConversationManager {
 			}
 			
 			//Checking if the message has no send effect
-			if(sendStyle == null) {
+			if(sendStyle == null || !Constants.validateScreenEffect(sendStyle)) {
 				//Hiding the "replay" button
 				viewHolder.buttonSendEffectReplay.setVisibility(View.GONE);
 			} else {
@@ -2722,7 +2722,7 @@ class ConversationManager {
 			//Converting the attachment list to a string resource list
 			ArrayList<Integer> attachmentStringRes = new ArrayList<>();
 			for(AttachmentInfo attachment : attachments)
-				attachmentStringRes.add(attachment.getContentType().getName());
+				attachmentStringRes.add(getNameFromContentType(attachment.getContentType()));
 			
 			//Returning the summary
 			callback.onResult(false, getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes));
@@ -2732,7 +2732,7 @@ class ConversationManager {
 			//Converting the attachment list to a string resource list
 			ArrayList<Integer> attachmentStringRes = new ArrayList<>();
 			for(AttachmentInfo attachment : attachments)
-				attachmentStringRes.add(attachment.getContentType().getName());
+				attachmentStringRes.add(getNameFromContentType(attachment.getContentType()));
 			
 			//Returning the result of the static method
 			return getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes);
@@ -2782,7 +2782,7 @@ class ConversationManager {
 			//Converting the attachment list to a string resource list
 			ArrayList<Integer> attachmentStringRes = new ArrayList<>();
 			for(AttachmentInfo attachment : attachments)
-				attachmentStringRes.add(attachment.getContentType().getName());
+				attachmentStringRes.add(getNameFromContentType(attachment.getContentType()));
 			
 			//Returning the summary
 			return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes), getDate());
@@ -2856,6 +2856,16 @@ class ConversationManager {
 			if(messageText != null) messageText.buildTapbackView(messagePartContainer.getChildAt(0));
 			for(int i = 0; i < attachments.size(); i++) attachments.get(i).buildTapbackView(messagePartContainer.getChildAt((messageText == null ? 0 : 1) + i));
 		} */
+		
+		void notifyPause() {
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) viewHolder.pause();
+		}
+		
+		void notifyResume() {
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) viewHolder.resume();
+		}
 		
 		static class ViewHolder extends RecyclerView.ViewHolder {
 			final TextView labelTimeDivider;
@@ -2938,6 +2948,14 @@ class ConversationManager {
 			
 			void setPoolSource(Messaging.RecyclerAdapter.PoolSource poolSource) {
 				this.poolSource = poolSource;
+			}
+			
+			void pause() {
+				for(MessageComponent.ViewHolder holder : messageComponents) holder.pause();
+			}
+			
+			void resume() {
+				for(MessageComponent.ViewHolder holder : messageComponents) holder.resume();
 			}
 		}
 	}
@@ -3276,6 +3294,12 @@ class ConversationManager {
 			}
 			
 			void releaseResources() {}
+			
+			void cleanupState() {}
+			
+			void pause() {}
+			
+			void resume() {}
 		}
 	}
 	
@@ -3561,6 +3585,7 @@ class ConversationManager {
 	static abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> extends MessageComponent<VH> {
 		//Creating the values
 		final String fileName;
+		final String fileType;
 		File file = null;
 		byte[] fileChecksum = null;
 		Uri fileUri = null;
@@ -3635,39 +3660,38 @@ class ConversationManager {
 			}
 		};
 		
-		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName) {
+		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
 			//Calling the super constructor
 			super(localID, guid, message);
 			
 			//Setting the values
 			this.fileName = fileName;
+			this.fileType = fileType;
 		}
 		
-		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, File file) {
+		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, File file) {
 			//Calling the main constructor
-			this(localID, guid, message, fileName);
+			this(localID, guid, message, fileName, fileType);
 			
 			//Setting the file
 			if(file.exists()) this.file = file;
 		}
 		
-		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, byte[] fileChecksum) {
+		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, byte[] fileChecksum) {
 			//Calling the main constructor
-			this(localID, guid, message, fileName);
+			this(localID, guid, message, fileName, fileType);
 			
 			//Setting the checksum
 			this.fileChecksum = fileChecksum;
 		}
 		
-		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, Uri fileUri) {
+		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, Uri fileUri) {
 			//Calling the main constructor
-			this(localID, guid, message, fileName);
+			this(localID, guid, message, fileName, fileType);
 			
 			//Setting the uri
 			this.fileUri = fileUri;
 		}
-		
-		abstract ContentType getContentType();
 		
 		abstract void updateContentView(VH viewHolder, Context context);
 		
@@ -3972,7 +3996,7 @@ class ConversationManager {
 					case R.id.action_details: {
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(getContentType().getName()))).append('\n'); //Message type
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(getNameFromContentType(getContentType())))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_size, file != null ? Formatter.formatShortFileSize(newContext, file.length()) : newContext.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment size
@@ -4089,6 +4113,10 @@ class ConversationManager {
 			this.fileChecksum = fileChecksum;
 		}
 		
+		String getContentType() {
+			return fileType;
+		}
+		
 		//abstract ViewHolder createViewHolder(Context context, ViewGroup parent);
 		
 		static abstract class ViewHolder extends MessageComponent.ViewHolder {
@@ -4134,23 +4162,24 @@ class ConversationManager {
 	
 	static class ImageAttachmentInfo extends AttachmentInfo<ImageAttachmentInfo.ViewHolder> {
 		//Creating the reference values
-		static final int itemViewType = MessageComponent.getNextItemViewType();
+		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
+		static final String MIME_PREFIX = "image";
+		static final int RESOURCE_NAME = R.string.part_content_image;
 		
-		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName) {
-			super(localID, guid, message, fileName);
+		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
+			super(localID, guid, message, fileName, fileType);
 		}
 		
-		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, File file) {
-			super(localID, guid, message, fileName, file);
+		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, File file) {
+			super(localID, guid, message, fileName, fileType, file);
 		}
 		
-		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, Uri uri) {
-			super(localID, guid, message, fileName, uri);
+		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, byte[] fileChecksum) {
+			super(localID, guid, message, fileName, fileType, fileChecksum);
 		}
 		
-		@Override
-		ContentType getContentType() {
-			return ContentType.IMAGE;
+		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, Uri fileUri) {
+			super(localID, guid, message, fileName, fileType, fileUri);
 		}
 		
 		/* @Override
@@ -4260,11 +4289,16 @@ class ConversationManager {
 						//Setting the bitmap
 						newViewHolder.imageContent.setImageBitmap(bitmap);
 						
+						//Updating the view
+						viewHolder.inkView.setState(true);
+						//TODO update InvisibleInkView with bitmap
+						
 						//Fading in the view
 						if(wasTasked) {
 							newViewHolder.imageContent.setAlpha(0F);
 							newViewHolder.imageContent.animate().alpha(1).setDuration(300).start();
 						}
+						
 					}
 				}
 			}, true, pxBitmapSizeMax, pxBitmapSizeMax);
@@ -4282,6 +4316,9 @@ class ConversationManager {
 			if(alignToRight) viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
 			else viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 			viewHolder.imageContent.invalidate();
+			
+			if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+			else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 		}
 		
 		@Override
@@ -4311,7 +4348,7 @@ class ConversationManager {
 		
 		@Override
 		int getItemViewType() {
-			return itemViewType;
+			return ITEM_VIEW_TYPE;
 		}
 		
 		@Override
@@ -4322,12 +4359,30 @@ class ConversationManager {
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
 			final View backgroundContent;
 			final RoundedImageView imageContent;
+			final InvisibleInkView inkView;
 			
 			ViewHolder(View view) {
 				super(view);
 				
 				backgroundContent = groupContent.findViewById(R.id.content_background);
 				imageContent = groupContent.findViewById(R.id.content_view);
+				inkView = groupContent.findViewById(R.id.content_ink);
+			}
+			
+			@Override
+			void cleanupState() {
+				inkView.setState(false);
+				System.out.println("Cleanup state requested");
+			}
+			
+			@Override
+			void pause() {
+				inkView.onPause();
+			}
+			
+			@Override
+			void resume() {
+				inkView.onResume();
 			}
 			
 			@Override
@@ -4339,7 +4394,10 @@ class ConversationManager {
 	
 	static class AudioAttachmentInfo extends AttachmentInfo<AudioAttachmentInfo.ViewHolder> {
 		//Creating the reference values
-		static final int itemViewType = MessageComponent.getNextItemViewType();
+		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
+		static final String MIME_PREFIX = "image";
+		static final int RESOURCE_NAME = R.string.part_content_image;
+		
 		private static final int resDrawablePlay = R.drawable.play;
 		private static final int resDrawablePause = R.drawable.pause;
 		
@@ -4354,21 +4412,20 @@ class ConversationManager {
 		private boolean isPlaying = false;
 		private int mediaProgress = 0;
 		
-		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName) {
-			super(localID, guid, message, fileName);
+		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
+			super(localID, guid, message, fileName, fileType);
 		}
 		
-		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, File file) {
-			super(localID, guid, message, fileName, file);
+		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, File file) {
+			super(localID, guid, message, fileName, fileType, file);
 		}
 		
-		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, Uri uri) {
-			super(localID, guid, message, fileName, uri);
+		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, byte[] fileChecksum) {
+			super(localID, guid, message, fileName, fileType, fileChecksum);
 		}
 		
-		@Override
-		ContentType getContentType() {
-			return ContentType.AUDIO;
+		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, Uri fileUri) {
+			super(localID, guid, message, fileName, fileType, fileUri);
 		}
 		
 		/* @Override
@@ -4498,7 +4555,7 @@ class ConversationManager {
 		
 		@Override
 		int getItemViewType() {
-			return itemViewType;
+			return ITEM_VIEW_TYPE;
 		}
 		
 		void setMediaPlaying(boolean playing) {
@@ -4602,23 +4659,24 @@ class ConversationManager {
 	
 	static class VideoAttachmentInfo extends AttachmentInfo<VideoAttachmentInfo.ViewHolder> {
 		//Creating the reference values
-		static final int itemViewType = MessageComponent.getNextItemViewType();
+		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
+		static final String MIME_PREFIX = "image";
+		static final int RESOURCE_NAME = R.string.part_content_image;
 		
-		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName) {
-			super(localID, guid, message, fileName);
+		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
+			super(localID, guid, message, fileName, fileType);
 		}
 		
-		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, File file) {
-			super(localID, guid, message, fileName, file);
+		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, File file) {
+			super(localID, guid, message, fileName, fileType, file);
 		}
 		
-		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, Uri uri) {
-			super(localID, guid, message, fileName, uri);
+		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, byte[] fileChecksum) {
+			super(localID, guid, message, fileName, fileType, fileChecksum);
 		}
 		
-		@Override
-		ContentType getContentType() {
-			return ContentType.VIDEO;
+		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, Uri fileUri) {
+			super(localID, guid, message, fileName, fileType, fileUri);
 		}
 		
 		@Override
@@ -4739,7 +4797,7 @@ class ConversationManager {
 		
 		@Override
 		int getItemViewType() {
-			return itemViewType;
+			return ITEM_VIEW_TYPE;
 		}
 		
 		@Override
@@ -4767,23 +4825,24 @@ class ConversationManager {
 	
 	static class OtherAttachmentInfo extends AttachmentInfo<OtherAttachmentInfo.ViewHolder> {
 		//Creating the reference values
-		static final int itemViewType = MessageComponent.getNextItemViewType();
+		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
+		static final String MIME_PREFIX = "other";
+		static final int RESOURCE_NAME = R.string.part_content_other;
 		
-		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName) {
-			super(localID, guid, message, fileName);
+		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
+			super(localID, guid, message, fileName, fileType);
 		}
 		
-		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, File file) {
-			super(localID, guid, message, fileName, file);
+		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, File file) {
+			super(localID, guid, message, fileName, fileType, file);
 		}
 		
-		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, Uri uri) {
-			super(localID, guid, message, fileName, uri);
+		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, byte[] fileChecksum) {
+			super(localID, guid, message, fileName, fileType, fileChecksum);
 		}
 		
-		@Override
-		ContentType getContentType() {
-			return ContentType.OTHER;
+		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, Uri fileUri) {
+			super(localID, guid, message, fileName, fileType, fileUri);
 		}
 		
 		@Override
@@ -4834,7 +4893,7 @@ class ConversationManager {
 		
 		@Override
 		int getItemViewType() {
-			return itemViewType;
+			return ITEM_VIEW_TYPE;
 		}
 		
 		@Override
@@ -5756,60 +5815,33 @@ class ConversationManager {
 		}
 	}
 	
-	enum ContentType {
-		//TEXT (0),
-		IMAGE(1, "image", R.string.part_content_image),
-		VIDEO(2, "video", R.string.part_content_video),
-		AUDIO(3, "audio", R.string.part_content_audio),
-		OTHER(4, "other", R.string.part_content_other);
-		
-		//Creating the values
-		private final int identifier;
-		private final String mimeTypeLabel;
-		@StringRes
-		private final int name;
-		
-		ContentType(int identifier) {
-			this.identifier = identifier;
-			this.mimeTypeLabel = null;
-			this.name = -1;
-		}
-		
-		ContentType(int identifier, String mimeTypeLabel, @StringRes int name) {
-			this.identifier = identifier;
-			this.mimeTypeLabel = mimeTypeLabel;
-			this.name = name;
-		}
-		
-		public int getIdentifier() {
-			return identifier;
-		}
-		
-		public String getMimeTypeLabel() {
-			return mimeTypeLabel;
-		}
-		
-		@StringRes
-		public int getName() {
-			return name;
-		}
-		
-		public static ContentType fromIdentifier(int identifier) {
-			//Returning the content type
-			for(ContentType contentType : values())
-				if(contentType.identifier == identifier) return contentType;
-			
-			//Returning null
-			return null;
-		}
-		
-		public static ContentType getType(String mimeType) {
-			//Returning the time
-			if(mimeType == null || mimeType.isEmpty()) return OTHER;
-			if(mimeType.startsWith(IMAGE.getMimeTypeLabel())) return IMAGE;
-			if(mimeType.startsWith(VIDEO.getMimeTypeLabel())) return VIDEO;
-			if(mimeType.startsWith(AUDIO.getMimeTypeLabel())) return AUDIO;
-			return OTHER;
-		}
+	static int getNameFromContentType(String mimeType) {
+		//Returning the type
+		if(mimeType == null || mimeType.isEmpty()) return OtherAttachmentInfo.RESOURCE_NAME;
+		else if(mimeType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return ImageAttachmentInfo.RESOURCE_NAME;
+		else if(mimeType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return VideoAttachmentInfo.RESOURCE_NAME;
+		else if(mimeType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return AudioAttachmentInfo.RESOURCE_NAME;
+		else return OtherAttachmentInfo.RESOURCE_NAME;
+	}
+	
+	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType) {
+		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType);
+		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType);
+		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType);
+		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType);
+	}
+	
+	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, File file) {
+		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, file);
+		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, file);
+		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, file);
+		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, file);
+	}
+	
+	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, Uri fileUri) {
+		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileUri);
+		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileUri);
+		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileUri);
+		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileUri);
 	}
 }

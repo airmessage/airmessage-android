@@ -109,7 +109,7 @@ dependencies {
 	implementation "in.srain.cube:grid-view-with-header-footer:1.0.12"
 
 	//Services
-	implementation "com.google.firebase:firebase-core:15.0.0"
+	implementation "com.google.firebase:firebase-core:15.0.2"
 	implementation("com.crashlytics.sdk.android:crashlytics:2.9.1@aar") {
 		transitive = true
 	}
