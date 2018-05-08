@@ -9,16 +9,24 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.SystemClock;
+import android.renderscript.Allocation;
+import android.renderscript.Element;
+import android.renderscript.RenderScript;
+import android.renderscript.ScriptIntrinsicBlur;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -35,6 +43,10 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	private static final float particleVelocity = 0.01F;
 	private static final float particleRadius = 0.7F;
 	private static final int blurRadius = 50;
+	//private static final int blurRadius = 25;
+	
+	private static final int timeRevealTransition = 500; //0.5 seconds
+	private static final int timeRevealStay = 9 * 1000; //8 seconds
 	
 	//Creating the attribute values
 	private final int targetViewID;
@@ -52,6 +64,34 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	private final AtomicInteger viewHeight = new AtomicInteger();
 	private Bitmap backgroundBitmap = null;
 	
+	//Creating the threading values
+	private Thread viewThread = null;
+	private boolean surfaceAvailable = false;
+	private volatile boolean viewRequestedRunning = false;
+	private volatile boolean viewRunning = false;
+	private volatile boolean viewUpdateRequested = false;
+	private volatile boolean viewRevealRequested = false;
+	private volatile boolean viewRevealRunning = false;
+	
+	private boolean firstLayoutPassCompleted = false;
+	private boolean firstStartRequestCompleted = false;
+	
+	//Creating the view values
+	private final GestureDetector.SimpleOnGestureListener gestureListener = new GestureDetector.SimpleOnGestureListener() {
+		/* @Override
+		public boolean onDown(MotionEvent event) {
+			Toast.makeText(getContext(), "Down press!", Toast.LENGTH_SHORT).show();
+			return true;
+		} */
+		
+		@Override
+		public boolean onSingleTapConfirmed(MotionEvent event) {
+			Toast.makeText(getContext(), "Single tap press!", Toast.LENGTH_SHORT).show();
+			return true;
+		}
+	};
+	private final GestureDetector gestureDetector = new GestureDetector(getContext(), gestureListener);
+	
 	//Creating the other values
 	private final Random random = new Random();
 	private int visiblePixelCount;
@@ -60,16 +100,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	private float particleVelocityPx;
 	private float particleRadiusPx;
 	private long lastTimeCheck = getTime();
-	
-	//Creating the threading values
-	private Thread viewThread = null;
-	private boolean surfaceAvailable = false;
-	private volatile boolean viewRequestedRunning = false;
-	private volatile boolean viewRunning = false;
-	private volatile boolean viewUpdateRequested = false;
-	
-	private boolean firstLayoutPassCompleted = false;
-	private boolean firstStartRequestCompleted = false;
 	
 	public InvisibleInkView(Context context, @Nullable AttributeSet attrs) {
 		super(context, attrs);
@@ -97,6 +127,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		voidPaint.setColor(Color.BLACK);
 		
 		backgroundPaint = new Paint();
+		backgroundPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER));
 		
 		particlePaint = new Paint();
 		particlePaint.setAntiAlias(true);
@@ -109,7 +140,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 			public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
 				//Setting the drawing surface as available
 				surfaceAvailable = true;
-				System.out.println("PRFX1 Surface now available!");
 				
 				//Drawing a black box
 				Canvas canvas = lockCanvas();
@@ -146,7 +176,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 			@Override
 			public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
 				surfaceAvailable = false;
-				System.out.println("PRFX1 Surface no longer available!");
 				onPause();
 				return true;
 			}
@@ -160,13 +189,16 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	
 	@Override
 	public void run() {
-		System.out.println("PRFX1 Thread started!");
 		Canvas canvas;
 		float[] drawParticlePositions = new float[2];
 		float drawParticleProgress;
 		
 		Path clipPath = new Path();
 		RectF clipRect = new RectF();
+		
+		int revealTime = 0;
+		int startAlpha = 0xFF;
+		int targetAlpha = startAlpha;
 		
 		while(viewRunning) {
 			//Returning if the view isn't valid
@@ -197,20 +229,44 @@ public class InvisibleInkView extends TextureView implements Runnable {
 					
 					//Updating the view
 					while(!processTargetView()) {
-						System.out.println("PRFX1 View processing failed!");
 						try {
 							Thread.sleep(100);
 						} catch(InterruptedException exception) {
 							exception.printStackTrace();
 						}
 					}
-					System.out.println("PRFX1 View processed!");
 					
 					viewUpdateRequested = false;
 				}
 				
 				//Returning if the view isn't valid
 				if(!isAttachedToWindow() || !isAvailable()) return;
+				
+				//Calculating the time difference
+				long currentTime = getTime();
+				int timeDiff = (int) (currentTime - lastTimeCheck);
+				lastTimeCheck = currentTime;
+				
+				//Advancing the reveal time
+				if(revealTime > 0) {
+					revealTime = Math.max(revealTime - timeDiff, 0);
+					if(revealTime > timeRevealTransition + timeRevealStay) //Fade out stage
+						targetAlpha = interpolateInt(0x00, startAlpha, (revealTime - (timeRevealTransition + timeRevealStay)) / (float) timeRevealTransition);
+					else if(revealTime > timeRevealTransition) //Stay stage
+						targetAlpha = 0x00;
+					else //Fade in stage
+						targetAlpha = interpolateInt(0xFF, 0x00, revealTime / (float) timeRevealTransition);
+				} else viewRevealRunning = false;
+				
+				//Checking if a reveal had been requested
+				if(viewRevealRequested) {
+					//Setting the reveal time
+					revealTime = timeRevealTransition * 2 + timeRevealStay;
+					startAlpha = targetAlpha;
+					
+					viewRevealRequested = false;
+					viewRevealRunning = true;
+				}
 				
 				//Clearing the canvas
 				if(!viewRunning) return;
@@ -232,12 +288,10 @@ public class InvisibleInkView extends TextureView implements Runnable {
 				
 				//Drawing the background
 				if(!viewRunning) return;
-				if(backgroundBitmap != null) canvas.drawBitmap(backgroundBitmap, 0, 0, backgroundPaint);
-				
-				//Calculating the time difference
-				long currentTime = getTime();
-				int timeDiff = (int) (currentTime - lastTimeCheck);
-				lastTimeCheck = currentTime;
+				if(backgroundBitmap != null) {
+					backgroundPaint.setAlpha(targetAlpha);
+					canvas.drawBitmap(backgroundBitmap, 0, 0, backgroundPaint);
+				}
 				
 				//Drawing the particles
 				if(particleList == null) continue;
@@ -247,7 +301,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 					
 					//Configuring the paint
 					//particlePaint.setShader(new RadialGradient(drawParticlePositions[0] * (float) viewWidth, drawParticlePositions[1] * (float) viewHeight, particleRadiusPx, Color.argb(calculateAlpha(drawParticleProgress), 255, 255, 255), 0x00FFFFFF, Shader.TileMode.CLAMP));
-					particlePaint.setColor(Color.argb(calculateAlpha(drawParticleProgress), 255, 255, 255));
+					particlePaint.setColor(Color.argb(Math.max(calculateAlpha(drawParticleProgress) - (0xFF - targetAlpha), 0), 0xFF, 0xFF, 0xFF));
 					
 					if(!viewRunning) return;
 					canvas.drawCircle(drawParticlePositions[0] * (float) viewWidth.get(), drawParticlePositions[1] * (float) viewHeight.get(), particleRadiusPx, particlePaint);
@@ -307,7 +361,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	
 	@Override
 	protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
-		System.out.println("PRFX1 View size changed!");
 		if(isInEditMode()) return;
 		
 		//Setting the view sizes
@@ -328,8 +381,12 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		if(isFirst && surfaceAvailable && firstStartRequestCompleted) startThread();
 	}
 	
+	@Override
+	public boolean onTouchEvent(MotionEvent event) {
+		return gestureDetector.onTouchEvent(event);
+	}
+	
 	boolean processTargetView() {
-		System.out.println("PRFX1 Target view requested");
 		//Rebuilding the visibility map
 		if(!calculateVisibilityMap()) return false;
 		
@@ -362,7 +419,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	private void start() {
 		//Returning if the view is already running
 		if(viewRunning) return;
-		System.out.println("PRFX1 Starting invisible ink view renderer! (Can start thread = " + firstLayoutPassCompleted + " & " + surfaceAvailable + ")");
 		
 		//Setting the view as running
 		viewRunning = true;
@@ -421,14 +477,15 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		backgroundBitmap = targetView.getDrawingCache().copy(Bitmap.Config.ARGB_8888, false);
 		
 		//Mapping the bitmap's opacity
-		visibilityMap = new boolean[backgroundBitmap.getWidth()][backgroundBitmap.getHeight()];
+		/* visibilityMap = new boolean[backgroundBitmap.getWidth()][backgroundBitmap.getHeight()];
 		for(int x = 0; x < backgroundBitmap.getWidth(); x++) {
 			for(int y = 0; y < backgroundBitmap.getHeight(); y++) {
 				boolean isVisible = Color.alpha(backgroundBitmap.getPixel(x, y)) > 255 / 2;
 				visibilityMap[x][y] = isVisible;
 				if(isVisible) visiblePixelCount++;
 			}
-		}
+		} */
+		visiblePixelCount = backgroundBitmap.getWidth() * backgroundBitmap.getHeight();
 		
 		//Destroying the drawing cache
 		targetView.destroyDrawingCache();
@@ -439,12 +496,18 @@ public class InvisibleInkView extends TextureView implements Runnable {
 			Bitmap targetBitmap = ((BitmapDrawable) ((ImageView) targetView).getDrawable()).getBitmap();
 			if(targetBitmap == null) backgroundBitmap = null;
 			else backgroundBitmap = stackBlur(targetBitmap, (float) viewWidth.get() / (float) targetBitmap.getWidth(), blurRadius);
+			//else backgroundBitmap = renderScriptBlur(getContext(), targetBitmap, viewWidth.get(), viewHeight.get(), blurRadius);
 		} else {
 			//Invalidating the bitmap
 			backgroundBitmap = null;
 		}
 		
 		return true;
+	}
+	
+	public boolean reveal() {
+		viewRevealRequested = true;
+		return viewRevealRunning;
 	}
 	
 	public void setRadii(float topLeft, float topRight, float bottomRight, float bottomLeft) {
@@ -694,6 +757,24 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		return (bitmap);
 	}
 	
+	public static Bitmap renderScriptBlur(Context context, Bitmap image, int imageWidth, int imageHeight, float blurRadius) {
+		Bitmap inputBitmap = Bitmap.createScaledBitmap(image, imageWidth, imageHeight, false);
+		Bitmap outputBitmap = Bitmap.createBitmap(inputBitmap);
+		
+		RenderScript rs = RenderScript.create(context);
+		
+		ScriptIntrinsicBlur intrinsicBlur = ScriptIntrinsicBlur.create(rs, Element.U8_4(rs));
+		Allocation tmpIn = Allocation.createFromBitmap(rs, inputBitmap);
+		Allocation tmpOut = Allocation.createFromBitmap(rs, outputBitmap);
+		
+		intrinsicBlur.setRadius(blurRadius);
+		intrinsicBlur.setInput(tmpIn);
+		intrinsicBlur.forEach(tmpOut);
+		tmpOut.copyTo(outputBitmap);
+		
+		return outputBitmap;
+	}
+	
 	/**
 	 * A class that represents a particle of the invisible ink
 	 * The coordinates represent values 0.0 to 1.0, mapped to the view's size
@@ -765,5 +846,9 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	
 	private static float pxToDp(float px) {
 		return px / Resources.getSystem().getDisplayMetrics().density;
+	}
+	
+	private static int interpolateInt(int start, int end, float progress) {
+		return start + (int) ((end - start) * progress);
 	}
 }

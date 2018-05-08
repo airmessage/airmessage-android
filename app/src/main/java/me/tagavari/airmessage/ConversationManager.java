@@ -4326,24 +4326,31 @@ class ConversationManager {
 			//Returning if there is no content
 			if(file == null) return;
 			
-			//Getting the file extension
-			String fileName = file.getName();
-			int substringStart = file.getName().lastIndexOf(".") + 1;
-			if(fileName.length() <= substringStart) return;
+			//Getting the view holder
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder == null) return;
 			
-			//Getting the file mime type
-			String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substring(substringStart));
-			
-			//Creating a content URI
-			Uri content = FileProvider.getUriForFile(activity, MainApplication.fileAuthority, file);
-			
-			//Launching the content viewer
-			Intent intent = new Intent();
-			intent.setAction(Intent.ACTION_VIEW);
-			intent.setDataAndType(content, mimeType);
-			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-			if(intent.resolveActivity(activity.getPackageManager()) != null) activity.startActivity(intent);
-			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
+			//Revealing the ink view (and checking if is already running a reveal)
+			if(viewHolder.inkView.reveal()) {
+				//Getting the file extension
+				String fileName = file.getName();
+				int substringStart = file.getName().lastIndexOf(".") + 1;
+				if(fileName.length() <= substringStart) return;
+				
+				//Getting the file mime type
+				String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substring(substringStart));
+				
+				//Creating a content URI
+				Uri content = FileProvider.getUriForFile(activity, MainApplication.fileAuthority, file);
+				
+				//Launching the content viewer
+				Intent intent = new Intent();
+				intent.setAction(Intent.ACTION_VIEW);
+				intent.setDataAndType(content, mimeType);
+				intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+				if(intent.resolveActivity(activity.getPackageManager()) != null) activity.startActivity(intent);
+				else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
+			}
 		}
 		
 		@Override
