@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:id="@+id/content_text"
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content">
@@ -10,24 +11,39 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_gravity="center"
-		android:orientation="vertical" >
+		android:orientation="vertical">
 		
-		<TextView
-			android:id="@+id/message"
+		<android.support.constraint.ConstraintLayout
+			android:id="@+id/content"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:minHeight="@dimen/messagebubble_minheight"
-			android:gravity="center_vertical"
-			android:autoLink="all"
-			android:background="@drawable/rounded_rectangle"
-			android:backgroundTint="@color/colorMessageOutgoing"
-			android:paddingBottom="@dimen/messagebubble_padding_y"
-			android:paddingLeft="@dimen/messagebubble_padding_x"
-			android:paddingRight="@dimen/messagebubble_padding_x"
-			android:paddingTop="@dimen/messagebubble_padding_y"
-			android:text="@string/placeholder_message"
-			android:textColor="?android:attr/textColorPrimary"
-			android:textColorLink="?android:attr/colorBackgroundFloating" />
+			android:gravity="center_vertical">
+			<TextView
+				android:id="@+id/message"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:autoLink="all"
+				android:background="@drawable/rounded_rectangle"
+				android:backgroundTint="@color/colorMessageOutgoing"
+				android:paddingBottom="@dimen/messagebubble_padding_y"
+				android:paddingLeft="@dimen/messagebubble_padding_x"
+				android:paddingRight="@dimen/messagebubble_padding_x"
+				android:paddingTop="@dimen/messagebubble_padding_y"
+				android:text="@string/placeholder_message"
+				android:textColor="?android:attr/textColorPrimary"
+				android:textColorLink="?android:attr/colorBackgroundFloating" />
+			
+			<me.tagavari.airmessage.view.InvisibleInkView
+				android:id="@+id/content_ink"
+				android:layout_width="0px"
+				android:layout_height="0px"
+				app:layout_constraintLeft_toLeftOf="@+id/message"
+				app:layout_constraintRight_toRightOf="@+id/message"
+				app:layout_constraintTop_toTopOf="@+id/message"
+				app:layout_constraintBottom_toBottomOf="@+id/message"
+				app:target="@+id/message" />
+		</android.support.constraint.ConstraintLayout>
 		
 		<include layout="@layout/layout_tapbackcontainer" />
 	</LinearLayout>

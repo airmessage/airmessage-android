@@ -1,5 +1,6 @@
 package me.tagavari.airmessage;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
@@ -3361,7 +3362,8 @@ class ConversationManager {
 			updateViewColor(viewHolder, context);
 			
 			//Assigning the interaction listeners
-			assignInteractionListeners(viewHolder.labelMessage);
+			//assignInteractionListeners(viewHolder);
+			assignInteractionListenersLegacy(viewHolder.labelMessage);
 			
 			//Getting the maximum content width
 			int maxContentWidth = (int) Math.min(context.getResources().getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, context.getResources().getDisplayMetrics().widthPixels * .7F);
@@ -3377,6 +3379,13 @@ class ConversationManager {
 			
 			//Building the common views
 			buildCommonViews(viewHolder, context);
+			
+			//Setting up the message effects
+			if(Constants.appleSendStyleMsgInvisibleInk.equals(getMessageInfo().getSendStyle())) {
+				viewHolder.inkView.setVisibility(View.VISIBLE);
+				viewHolder.inkView.setState(true);
+			}
+			else viewHolder.inkView.setVisibility(View.GONE);
 		}
 		
 		private void setupTextLinks(TextView textView) {
@@ -3385,7 +3394,41 @@ class ConversationManager {
 			textView.setMovementMethod(LinkMovementMethod.getInstance());
 		}
 		
-		private void assignInteractionListeners(TextView textView) {
+		/* @SuppressLint("ClickableViewAccessibility")
+		private void assignInteractionListeners(ViewHolder viewHolder) {
+			//Setting the long click listener
+			viewHolder.content.setOnLongClickListener(clickedView -> {
+				//Getting the context
+				Context context = clickedView.getContext();
+				
+				//Returning if the view is not an activity
+				//if(!(context instanceof Activity)) return false;
+				
+				//Displaying the context menu
+				displayContextMenu(context, clickedView);
+				
+				//Disabling link clicks
+				ViewHolder newViewHolder = getViewHolder();
+				if(newViewHolder != null) newViewHolder.labelMessage.setLinksClickable(false);
+				
+				//Returning
+				return true;
+			});
+			
+			//Setting the touch listener
+			viewHolder.content.setOnTouchListener((View view, MotionEvent event) -> {
+				ViewHolder newViewHolder = getViewHolder();
+				if(newViewHolder != null) {
+					if(event.getAction() == MotionEvent.ACTION_DOWN) newViewHolder.inkView.reveal();
+					else if(event.getAction() == MotionEvent.ACTION_UP) new Handler(Looper.getMainLooper()).postDelayed(() -> newViewHolder.labelMessage.setLinksClickable(true), 0);
+				}
+				
+				return view.onTouchEvent(event);
+			});
+		} */
+		
+		@SuppressLint("ClickableViewAccessibility")
+		private void assignInteractionListenersLegacy(TextView textView) {
 			//Setting the long click listener
 			textView.setOnLongClickListener(clickedView -> {
 				//Getting the context
@@ -3406,7 +3449,10 @@ class ConversationManager {
 			
 			//Setting the touch listener
 			textView.setOnTouchListener((View view, MotionEvent event) -> {
-				if(event.getAction() == MotionEvent.ACTION_UP) {
+				if(event.getAction() == MotionEvent.ACTION_DOWN) {
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder != null) newViewHolder.inkView.reveal();
+				} else if(event.getAction() == MotionEvent.ACTION_UP) {
 					new Handler(Looper.getMainLooper()).postDelayed(() -> ((TextView) view).setLinksClickable(true), 0);
 				}
 				
@@ -3435,6 +3481,8 @@ class ConversationManager {
 			viewHolder.labelMessage.setLinkTextColor(textColor);
 			viewHolder.labelMessage.setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
 			
+			viewHolder.inkView.setBackgroundColor(backgroundColor);
+			
 			//Setting up the text links (to update the toolbar color in Chrome's custom tabs)
 			setupTextLinks(viewHolder.labelMessage);
 		}
@@ -3443,6 +3491,12 @@ class ConversationManager {
 		void updateViewEdges(ViewHolder viewHolder, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Updating the text view's background
 			viewHolder.labelMessage.setBackground(Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
+			
+			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
+			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
+			
+			if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+			else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 		}
 		
 		@Override
@@ -3572,12 +3626,21 @@ class ConversationManager {
 		}
 		
 		static class ViewHolder extends MessageComponent.ViewHolder {
+			final ViewGroup content;
 			final TextView labelMessage;
+			final InvisibleInkView inkView;
 			
 			ViewHolder(View view) {
 				super(view);
 				
-				labelMessage = view.findViewById(R.id.message);
+				content = view.findViewById(R.id.content);
+				labelMessage = content.findViewById(R.id.message);
+				inkView = content.findViewById(R.id.content_ink);
+			}
+			
+			@Override
+			void cleanupState() {
+				inkView.setState(false);
 			}
 		}
 	}
@@ -4290,7 +4353,11 @@ class ConversationManager {
 						newViewHolder.imageContent.setImageBitmap(bitmap);
 						
 						//Updating the view
-						viewHolder.inkView.setState(true);
+						if(Constants.appleSendStyleMsgInvisibleInk.equals(getMessageInfo().getSendStyle())) {
+							viewHolder.inkView.setVisibility(View.VISIBLE);
+							viewHolder.inkView.setState(true);
+						}
+						else viewHolder.inkView.setVisibility(View.GONE);
 						//TODO update InvisibleInkView with bitmap
 						
 						//Fading in the view
@@ -4379,17 +4446,16 @@ class ConversationManager {
 			@Override
 			void cleanupState() {
 				inkView.setState(false);
-				System.out.println("Cleanup state requested");
 			}
 			
 			@Override
 			void pause() {
-				inkView.onPause();
+				//inkView.onPause();
 			}
 			
 			@Override
 			void resume() {
-				inkView.onResume();
+				//inkView.onResume();
 			}
 			
 			@Override
