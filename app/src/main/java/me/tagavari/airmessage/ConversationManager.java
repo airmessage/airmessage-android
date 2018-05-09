@@ -8,6 +8,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -1858,7 +1859,7 @@ class ConversationManager {
 				boolean itemAnchoredTop = messageText != null || attachmentIndex > 0 || isAnchoredTop;
 				boolean itemAnchoredBottom = attachmentIndex < attachments.size() - 1 || isAnchoredBottom;
 				
-				//Updating the padding
+				//Updating the uper padding
 				attachmentViewHolder.itemView.setPadding(attachmentViewHolder.itemView.getPaddingLeft(), attachmentIndex + messageTextDiff > 0 ? Constants.dpToPx(dpInterMessagePadding) : 0, attachmentViewHolder.itemView.getPaddingRight(), attachmentViewHolder.itemView.getPaddingBottom());
 				
 				//Updating the attachment's edges
@@ -2387,7 +2388,8 @@ class ConversationManager {
 			}
 			
 			//Setting the alignment
-			viewHolder.spaceContent.setVisibility(isFromMe ? View.VISIBLE : View.GONE);
+			//viewHolder.spaceContent.setVisibility(isFromMe ? View.VISIBLE : View.GONE);
+			//viewHolder.spaceContent.setVisibility(View.GONE);
 			
 			//Setting the message part container's gravity
 			/* {
@@ -2400,6 +2402,16 @@ class ConversationManager {
 			//((LinearLayout) viewHolder.itemView).setGravity(isFromMe ? Gravity.END : Gravity.START);
 			//((LinearLayout) viewHolder.containerMessagePart).setGravity(isFromMe ? Gravity.END : Gravity.START);
 			//((LinearLayout.LayoutParams) viewHolder.containerMessagePart.getLayoutParams()).gravity = isFromMe ? Gravity.END : Gravity.START;
+			{
+				RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) viewHolder.containerContent.getLayoutParams();
+				if(isFromMe) {
+					params.addRule(RelativeLayout.ALIGN_PARENT_END);
+					params.removeRule(RelativeLayout.ALIGN_PARENT_START);
+				} else {
+					params.addRule(RelativeLayout.ALIGN_PARENT_START);
+					params.removeRule(RelativeLayout.ALIGN_PARENT_END);
+				}
+			}
 			
 			//Checking if the message is outgoing
 			if(isFromMe) {
@@ -2493,6 +2505,14 @@ class ConversationManager {
 			
 			//Updating the view state display
 			prepareActivityStateDisplay(viewHolder, context);
+			
+			//Enforcing the maximum view width
+			{
+				int maxWidth = getMaxMessageWidth(context.getResources());
+				viewHolder.containerMessagePart.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+				if(viewHolder.containerMessagePart.getMeasuredWidth() > maxWidth) viewHolder.containerMessagePart.getLayoutParams().width = maxWidth;
+				else viewHolder.containerMessagePart.getLayoutParams().width = LinearLayout.LayoutParams.MATCH_PARENT;
+			}
 			
 			//Updating the view color
 			updateViewColor(viewHolder, context, false);
@@ -2880,7 +2900,7 @@ class ConversationManager {
 			final ViewGroup containerContent;
 			final ViewGroup containerMessagePart;
 			
-			final View spaceContent;
+			//final View spaceContent;
 			
 			final TextSwitcher labelActivityStatus;
 			final View buttonSendEffectReplay;
@@ -2907,7 +2927,7 @@ class ConversationManager {
 				containerContent = view.findViewById(R.id.content_container);
 				containerMessagePart = containerContent.findViewById(R.id.messagepart_container);
 				
-				spaceContent = view.findViewById(R.id.space_content);
+				//spaceContent = view.findViewById(R.id.space_content);
 				
 				labelActivityStatus = containerContent.findViewById(R.id.activitystatus);
 				buttonSendEffectReplay = containerContent.findViewById(R.id.sendeffect_replay);
@@ -3366,16 +3386,17 @@ class ConversationManager {
 			assignInteractionListenersLegacy(viewHolder.labelMessage);
 			
 			//Getting the maximum content width
-			int maxContentWidth = (int) Math.min(context.getResources().getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, context.getResources().getDisplayMetrics().widthPixels * .7F);
+			//int maxContentWidth = (int) Math.min(context.getResources().getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, context.getResources().getDisplayMetrics().widthPixels * .7F);
 			
 			//Enforcing the maximum content width
 			/* View contentView = convertView.findViewById(R.id.content);
 			contentView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 			if(contentView.getMeasuredWidth() > maxContentWidth) contentView.getLayoutParams().width = maxContentWidth; */
 			
-			viewHolder.labelMessage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+			//viewHolder.labelMessage.setMaxWidth(maxContentWidth);
+			/* viewHolder.labelMessage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 			if(viewHolder.labelMessage.getMeasuredWidth() > maxContentWidth) viewHolder.labelMessage.getLayoutParams().width = maxContentWidth;
-			else viewHolder.labelMessage.getLayoutParams().width = ViewGroup.LayoutParams.WRAP_CONTENT;
+			else viewHolder.labelMessage.getLayoutParams().width = ViewGroup.LayoutParams.WRAP_CONTENT; */
 			
 			//Building the common views
 			buildCommonViews(viewHolder, context);
@@ -4398,7 +4419,7 @@ class ConversationManager {
 			if(viewHolder == null) return;
 			
 			//Revealing the ink view (and checking if is already running a reveal)
-			if(viewHolder.inkView.reveal()) {
+			if(viewHolder.inkView.getVisibility() != View.VISIBLE || viewHolder.inkView.reveal()) {
 				//Getting the file extension
 				String fileName = file.getName();
 				int substringStart = file.getName().lastIndexOf(".") + 1;
@@ -5916,5 +5937,9 @@ class ConversationManager {
 		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileUri);
 		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileUri);
 		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileUri);
+	}
+	
+	private static int getMaxMessageWidth(Resources resources) {
+		return (int) Math.min(resources.getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, resources.getDisplayMetrics().widthPixels * .7F);
 	}
 }

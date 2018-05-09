@@ -1810,7 +1810,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				}
 				
 				//Creating the attachment
-				ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(localID, attachmentStruct.guid, messageInfo, attachmentStruct.type, attachmentStruct.name);
+				ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(localID, attachmentStruct.guid, messageInfo, attachmentStruct.name, attachmentStruct.type);
 				
 				//Adding the attachment to the message
 				messageInfo.addAttachment(attachment);

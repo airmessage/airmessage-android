@@ -46,15 +46,9 @@
 			android:layout_height="@dimen/profile_size"
 			android:layout="@layout/reference_user" />
 		<!-- Layout -->
-		<LinearLayout
+		<RelativeLayout
 			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:orientation="horizontal">
-			<View
-				android:id="@+id/space_content"
-				android:layout_width="0dp"
-				android:layout_height="0px"
-				android:layout_weight="1" />
+			android:layout_height="wrap_content">
 			<LinearLayout
 				android:id="@+id/content_container"
 				android:layout_width="wrap_content"
@@ -150,6 +144,6 @@
 				android:src="@drawable/error"
 				android:tint="@color/colorError"
 				android:visibility="gone" />
-		</LinearLayout>
+		</RelativeLayout>
 	</RelativeLayout>
 </LinearLayout>
