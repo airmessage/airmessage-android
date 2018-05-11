@@ -168,6 +168,29 @@ class ConversationsBase extends ActivityPlugin {
 		timeUpdateHandler.postDelayed(timeUpdateHandlerRunnable, timeUpdateHandlerDelay);
 	}
 	
+	@Override
+	public void onResume() {
+		//Calling the super method
+		super.onResume();
+		
+		//Refreshing the list
+		updateList(false);
+	}
+	
+	@Override
+	public void onStop() {
+		//Calling the super method
+		super.onStop();
+		
+		//Removing the broadcast listeners
+		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
+		localBroadcastManager.unregisterReceiver(massRetrievalStateBroadcastReceiver);
+		localBroadcastManager.unregisterReceiver(updateConversationsBroadcastReceiver);
+		
+		//Stopping the time updater
+		timeUpdateHandler.removeCallbacks(timeUpdateHandlerRunnable);
+	}
+	
 	void setViews(RecyclerView recyclerView, ProgressBar massRetrievalProgressBar, TextView noConversationsLabel) {
 		//Setting the views
 		this.recyclerView = recyclerView;
@@ -428,29 +451,6 @@ class ConversationsBase extends ActivityPlugin {
 			notifyDataSetChanged();
 		}
 	} */
-	
-	@Override
-	public void onResume() {
-		//Calling the super method
-		super.onResume();
-		
-		//Refreshing the list
-		updateList(false);
-	}
-	
-	@Override
-	public void onStop() {
-		//Calling the super method
-		super.onStop();
-		
-		//Removing the broadcast listeners
-		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
-		localBroadcastManager.unregisterReceiver(massRetrievalStateBroadcastReceiver);
-		localBroadcastManager.unregisterReceiver(updateConversationsBroadcastReceiver);
-		
-		//Stopping the time updater
-		timeUpdateHandler.removeCallbacks(timeUpdateHandlerRunnable);
-	}
 	
 	void updateList(boolean forceUpdate) {
 		//Returning if the conversations aren't ready

@@ -3314,7 +3314,7 @@ public class ConnectionService extends Service {
 			Collections.sort(newCompleteConversationItems, ConversationManager.conversationItemComparator);
 			
 			//Getting the loaded conversations
-			List<Long> foregroundConversations = Messaging.getForegroundConversations();
+			//List<Long> foregroundConversations = Messaging.getForegroundConversations();
 			List<Long> loadedConversations = Messaging.getLoadedConversations();
 			
 			//Checking if the conversations are loaded in memory
@@ -3346,7 +3346,7 @@ public class ConnectionService extends Service {
 					if(loadedConversations.contains(parentConversation.getLocalID())) parentConversation.addConversationItems(context, conversationItems);
 					
 					//Iterating over the conversation items
-					for(ConversationManager.ConversationItem conversationItem : newCompleteConversationGroups.valueAt(i)) {
+					for(ConversationManager.ConversationItem conversationItem : conversationItems) {
 						//Setting the conversation item's parent conversation to the found one (the one provided from the DB is not the same as the one in memory)
 						conversationItem.setConversationInfo(parentConversation);
 						
@@ -3393,18 +3393,20 @@ public class ConnectionService extends Service {
 							//Updating the parent conversation's latest item
 							parentConversation.setLastItemUpdate(context, conversationItem);
 						}
-						
-						//Sending notifications
-						if(conversationItem instanceof ConversationManager.MessageInfo)
-							NotificationUtils.sendNotification(context, (ConversationManager.MessageInfo) conversationItem);
-						
-						//Downloading the items automatically (if requested)
-						if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_storage_autodownload_key), false) &&
-								conversationItem instanceof ConversationManager.MessageInfo) {
-							for(ConversationManager.AttachmentInfo attachmentInfo : ((ConversationManager.MessageInfo) conversationItem).getAttachments())
-								attachmentInfo.downloadContent(context);
-						}
 					}
+				}
+			}
+			
+			for(ConversationManager.ConversationItem conversationItem : newCompleteConversationItems) {
+				//Sending notifications
+				if(conversationItem instanceof ConversationManager.MessageInfo)
+					NotificationUtils.sendNotification(context, (ConversationManager.MessageInfo) conversationItem);
+				
+				//Downloading the items automatically (if requested)
+				if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_storage_autodownload_key), false) &&
+						conversationItem instanceof ConversationManager.MessageInfo) {
+					for(ConversationManager.AttachmentInfo attachmentInfo : ((ConversationManager.MessageInfo) conversationItem).getAttachments())
+						attachmentInfo.downloadContent(context);
 				}
 			}
 			

@@ -261,6 +261,23 @@ public class MainApplication extends Application {
 		return !getConnectivitySharedPrefs().getString(sharedPreferencesConnectivityKeyHostname, "").isEmpty();
 	}
 	
+	@Override
+	public void onTrimMemory(int level) {
+		super.onTrimMemory(level);
+		
+		if(level >= TRIM_MEMORY_BACKGROUND) {
+			//Clearing the messages
+			conversationReference.clear();
+			
+		}
+		
+		if(level >= TRIM_MEMORY_MODERATE) {
+			//Clearing the caches
+			bitmapCacheHelper.clearCache();
+			userCacheHelper.clearCache();
+		}
+	}
+	
 	static final String darkModeFollowSystem = "follow_system";
 	static final String darkModeAutomatic = "auto";
 	static final String darkModeAlwaysLight = "off";
