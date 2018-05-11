@@ -86,9 +86,19 @@ public class Constants {
 	
 	static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	
-	static final String appleSendStyleMsgInvisibleInk = "com.apple.MobileSMS.expressivesend.invisibleink";
+	static final String appleSendStyleBubbleSlam = "com.apple.MobileSMS.expressivesend.impact";
+	static final String appleSendStyleBubbleLoud = "com.apple.MobileSMS.expressivesend.loud";
+	static final String appleSendStyleBubbleGentle = "com.apple.MobileSMS.expressivesend.gentle";
+	static final String appleSendStyleBubbleInvisibleInk = "com.apple.MobileSMS.expressivesend.invisibleink";
+	static final String appleSendStyleScrnEcho = "com.apple.messages.effect.CKEchoEffect";
+	static final String appleSendStyleScrnSpotlight = "com.apple.messages.effect.CKSpotlightEffect";
+	static final String appleSendStyleScrnBalloons = "com.apple.messages.effect.CKHappyBirthdayEffect";
 	static final String appleSendStyleScrnConfetti = "com.apple.messages.effect.CKConfettiEffect";
+	static final String appleSendStyleScrnLove = "com.apple.messages.effect.CKHeartEffect";
+	static final String appleSendStyleScrnLasers = "com.apple.messages.effect.CKLasersEffect";
 	static final String appleSendStyleScrnFireworks = "com.apple.messages.effect.CKFireworksEffect";
+	static final String appleSendStyleScrnShootingStar = "com.apple.messages.effect.CKShootingStarEffect";
+	static final String appleSendStyleScrnCelebration = "com.apple.messages.effect.CKSparklesEffect";
 	
 	static final String defaultNotificationSound = "content://settings/system/notification_sound";
 	
@@ -701,12 +711,30 @@ public class Constants {
 		}
 	}
 	
+	static boolean validateEffect(String effect) {
+		return validateScreenEffect(effect) || validateBubbleEffect(effect) || validatePassiveEffect(effect);
+	}
+	
 	static boolean validateScreenEffect(String effect) {
-		return Constants.appleSendStyleScrnFireworks.equals(effect) ||
-				Constants.appleSendStyleScrnConfetti.equals(effect);
+		return appleSendStyleScrnEcho.equals(effect) ||
+				appleSendStyleScrnSpotlight.equals(effect) ||
+				appleSendStyleScrnBalloons.equals(effect) ||
+				appleSendStyleScrnConfetti.equals(effect) ||
+				appleSendStyleScrnLove.equals(effect) ||
+				appleSendStyleScrnLasers.equals(effect) ||
+				appleSendStyleScrnFireworks.equals(effect) ||
+				appleSendStyleScrnShootingStar.equals(effect) ||
+				appleSendStyleScrnCelebration.equals(effect);
+	}
+	
+	static boolean validateBubbleEffect(String effect) {
+		return appleSendStyleBubbleSlam.equals(effect) ||
+				appleSendStyleBubbleLoud.equals(effect) ||
+				appleSendStyleBubbleGentle.equals(effect) ||
+				appleSendStyleBubbleInvisibleInk.equals(effect);
 	}
 	
 	static boolean validatePassiveEffect(String effect) {
-		return Constants.appleSendStyleMsgInvisibleInk.equals(effect);
+		return appleSendStyleBubbleInvisibleInk.equals(effect);
 	}
 }

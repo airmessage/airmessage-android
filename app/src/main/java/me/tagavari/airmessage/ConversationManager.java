@@ -19,6 +19,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.DrawableRes;
+import android.support.constraint.ConstraintLayout;
 import android.support.v4.content.FileProvider;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
@@ -37,6 +38,7 @@ import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.OvershootInterpolator;
@@ -1083,8 +1085,25 @@ class ConversationManager {
 				
 				//Updating the new messages
 				if(!newMessages.isEmpty()) {
-					for(ConversationItem item : newMessages) updater.listUpdateInserted(conversationItems.indexOf(item));
-					updater.listScrollToBottom();
+					boolean applicableScrollTargetsExist = false;
+					int[] indices = new int[newMessages.size()];
+					int incomingMessagesCount = 0;
+					for(ConversationItem newItem : newMessages) {
+						//Finding the item index
+						int itemIndex = conversationItems.indexOf(newItem);
+						
+						//Notifying the list
+						updater.listUpdateInserted(itemIndex);
+						
+						//Setting the applicable scroll targets exist flag
+						if(!applicableScrollTargetsExist && (!(newItem instanceof MessageInfo) || !((MessageInfo) newItem).isOutgoing())) applicableScrollTargetsExist = true;
+						
+						//Adding the item index
+						indices[incomingMessagesCount++] = itemIndex;
+					}
+					
+					//Scrolling the list
+					if(applicableScrollTargetsExist) updater.listAttemptScrollToBottom(Arrays.copyOf(indices, incomingMessagesCount));
 				}
 				
 				//Updating the unread messages
@@ -1234,6 +1253,7 @@ class ConversationManager {
 			abstract void listUpdateMove(int from, int to);
 			abstract void listUpdateUnread();
 			abstract void listScrollToBottom();
+			abstract void listAttemptScrollToBottom(int... newIndices);
 			
 			abstract void chatUpdateTitle();
 			abstract void chatUpdateUnreadCount();
@@ -1944,9 +1964,9 @@ class ConversationManager {
 								ViewHolder newViewHolder = getViewHolder();
 								if(newViewHolder == null) return;
 								
-								//Restoring the content container
-								newViewHolder.containerContent.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
-								newViewHolder.containerContent.requestLayout();
+								//Restoring the content container TODO fix
+								//newViewHolder.containerContent.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+								//newViewHolder.containerContent.requestLayout();
 							});
 						}
 						
@@ -1993,13 +2013,14 @@ class ConversationManager {
 							newViewHolder.labelActivityStatus.setVisibility(View.GONE);
 							
 							//Restoring the content container
-							newViewHolder.containerContent.post(() -> {
+							//TODO fix
+							/* newViewHolder.containerContent.post(() -> {
 								ViewHolder anotherNewViewHolder = getViewHolder();
 								if(anotherNewViewHolder == null) return;
 								
 								anotherNewViewHolder.containerContent.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
 								anotherNewViewHolder.containerContent.requestLayout();
-							});
+							}); */
 						}
 						
 						@Override
@@ -2388,28 +2409,14 @@ class ConversationManager {
 			}
 			
 			//Setting the alignment
-			//viewHolder.spaceContent.setVisibility(isFromMe ? View.VISIBLE : View.GONE);
-			//viewHolder.spaceContent.setVisibility(View.GONE);
-			
-			//Setting the message part container's gravity
-			/* {
-				LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) viewHolder.containerMessagePart.getLayoutParams();
-				layoutParams.gravity = isFromMe ? Gravity.END : Gravity.START;
-				viewHolder.containerMessagePart.setLayoutParams(layoutParams);
-			} */
-			
-			//Setting the gravity
-			//((LinearLayout) viewHolder.itemView).setGravity(isFromMe ? Gravity.END : Gravity.START);
-			//((LinearLayout) viewHolder.containerMessagePart).setGravity(isFromMe ? Gravity.END : Gravity.START);
-			//((LinearLayout.LayoutParams) viewHolder.containerMessagePart.getLayoutParams()).gravity = isFromMe ? Gravity.END : Gravity.START;
 			{
-				RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) viewHolder.containerContent.getLayoutParams();
+				ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) viewHolder.containerMessagePart.getLayoutParams();
 				if(isFromMe) {
-					params.addRule(RelativeLayout.ALIGN_PARENT_END);
-					params.removeRule(RelativeLayout.ALIGN_PARENT_START);
+					params.startToStart = ConstraintLayout.LayoutParams.UNSET;
+					params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
 				} else {
-					params.addRule(RelativeLayout.ALIGN_PARENT_START);
-					params.removeRule(RelativeLayout.ALIGN_PARENT_END);
+					params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+					params.endToEnd = ConstraintLayout.LayoutParams.UNSET;
 				}
 			}
 			
@@ -2484,13 +2491,13 @@ class ConversationManager {
 			}
 			
 			//Checking if the message has no send effect
-			if(sendStyle == null || !Constants.validateScreenEffect(sendStyle)) {
+			if(sendStyle == null || (!Constants.validateBubbleEffect(sendStyle) && !Constants.validateScreenEffect(sendStyle))) {
 				//Hiding the "replay" button
 				viewHolder.buttonSendEffectReplay.setVisibility(View.GONE);
 			} else {
 				//Showing and configuring the "replay" button
 				viewHolder.buttonSendEffectReplay.setVisibility(View.VISIBLE);
-				viewHolder.buttonSendEffectReplay.setOnClickListener(clickedView -> getConversationInfo().requestScreenEffect(sendStyle));
+				viewHolder.buttonSendEffectReplay.setOnClickListener(clickedView -> playEffect());
 			}
 			
 			//Setting the text switcher's animations
@@ -2507,12 +2514,12 @@ class ConversationManager {
 			prepareActivityStateDisplay(viewHolder, context);
 			
 			//Enforcing the maximum view width
-			{
+			/* {
 				int maxWidth = getMaxMessageWidth(context.getResources());
 				viewHolder.containerMessagePart.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 				if(viewHolder.containerMessagePart.getMeasuredWidth() > maxWidth) viewHolder.containerMessagePart.getLayoutParams().width = maxWidth;
 				else viewHolder.containerMessagePart.getLayoutParams().width = LinearLayout.LayoutParams.MATCH_PARENT;
-			}
+			} */
 			
 			//Updating the view color
 			updateViewColor(viewHolder, context, false);
@@ -2730,8 +2737,42 @@ class ConversationManager {
 			return sendStyleViewed;
 		}
 		
-		void playMessageEffect() {
-			//TODO play the send style message effect
+		void playEffect() {
+			//Returning if there is no effect or the effect is passive
+			if(sendStyle == null || Constants.validatePassiveEffect(sendStyle)) return;
+			
+			switch(sendStyle) {
+				default:
+					//Requesting the screen effect
+					getConversationInfo().requestScreenEffect(sendStyle);
+					break;
+				case Constants.appleSendStyleBubbleSlam: {
+					//Getting the view holder
+					ViewHolder viewHolder = getViewHolder();
+					if(viewHolder == null) break;
+					
+					//Animating the message part container
+					viewHolder.containerMessagePart.setRotation(Constants.getRandom().nextFloat() * 15F * 2F - 15F);
+					viewHolder.containerMessagePart.setScaleX(3);
+					viewHolder.containerMessagePart.setScaleY(3);
+					viewHolder.containerMessagePart.setAlpha(0.0F);
+					viewHolder.containerMessagePart.setTranslationY(Constants.dpToPx(5));
+					viewHolder.containerMessagePart.animate()
+							.rotation(0)
+							.scaleX(1)
+							.scaleY(1)
+							.translationY(0)
+							.alpha(1)
+							.setInterpolator(new AccelerateInterpolator(1.1F))
+							.start();
+					
+					break;
+				}
+				case Constants.appleSendStyleBubbleLoud:
+					break;
+				case Constants.appleSendStyleBubbleGentle:
+					break;
+			}
 		}
 		
 		void setSendStyleViewed(boolean sendStyleViewed) {
@@ -2767,7 +2808,7 @@ class ConversationManager {
 			String modifiedMessage = messageText != null ? messageText.replace('\n', ' ') : null;
 			
 			//Applying invisible ink
-			if(Constants.appleSendStyleMsgInvisibleInk.equals(sendStyle))
+			if(Constants.appleSendStyleBubbleInvisibleInk.equals(sendStyle))
 				modifiedMessage = context.getString(R.string.message_messageeffect_invisibleink);
 			
 			//Setting the text if there is text
@@ -2892,12 +2933,12 @@ class ConversationManager {
 			final TextView labelTimeDivider;
 			final TextView labelSender;
 			
-			private ViewStub profileStub;
-			private ViewGroup profileGroup = null;
-			private ImageView profileDefault = null;
-			private ImageView profileImage = null;
+			ViewStub profileStub;
+			ViewGroup profileGroup = null;
+			ImageView profileDefault = null;
+			ImageView profileImage = null;
 			
-			final ViewGroup containerContent;
+			//final ViewGroup containerContent;
 			final ViewGroup containerMessagePart;
 			
 			//final View spaceContent;
@@ -2924,31 +2965,16 @@ class ConversationManager {
 					profileImage = view.findViewById(R.id.profile_image);
 				}
 				
-				containerContent = view.findViewById(R.id.content_container);
-				containerMessagePart = containerContent.findViewById(R.id.messagepart_container);
+				//containerContent = view.findViewById(R.id.content_container);
+				containerMessagePart = view.findViewById(R.id.messagepart_container);
 				
 				//spaceContent = view.findViewById(R.id.space_content);
 				
-				labelActivityStatus = containerContent.findViewById(R.id.activitystatus);
-				buttonSendEffectReplay = containerContent.findViewById(R.id.sendeffect_replay);
+				labelActivityStatus = view.findViewById(R.id.activitystatus);
+				buttonSendEffectReplay = view.findViewById(R.id.sendeffect_replay);
 				
 				progressSend = view.findViewById(R.id.send_progress);
 				buttonSendError = view.findViewById(R.id.send_error);
-			}
-			
-			ViewGroup getProfileGroup() {
-				inflateProfile();
-				return profileGroup;
-			}
-			
-			ImageView getProfileDefault() {
-				inflateProfile();
-				return profileDefault;
-			}
-			
-			ImageView getProfileImage() {
-				inflateProfile();
-				return profileImage;
 			}
 			
 			private void inflateProfile() {
@@ -3393,7 +3419,7 @@ class ConversationManager {
 			contentView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 			if(contentView.getMeasuredWidth() > maxContentWidth) contentView.getLayoutParams().width = maxContentWidth; */
 			
-			//viewHolder.labelMessage.setMaxWidth(maxContentWidth);
+			viewHolder.labelMessage.setMaxWidth(getMaxMessageWidth(context.getResources()));
 			/* viewHolder.labelMessage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 			if(viewHolder.labelMessage.getMeasuredWidth() > maxContentWidth) viewHolder.labelMessage.getLayoutParams().width = maxContentWidth;
 			else viewHolder.labelMessage.getLayoutParams().width = ViewGroup.LayoutParams.WRAP_CONTENT; */
@@ -3402,7 +3428,7 @@ class ConversationManager {
 			buildCommonViews(viewHolder, context);
 			
 			//Setting up the message effects
-			if(Constants.appleSendStyleMsgInvisibleInk.equals(getMessageInfo().getSendStyle())) {
+			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) {
 				viewHolder.inkView.setVisibility(View.VISIBLE);
 				viewHolder.inkView.setState(true);
 			}
@@ -4374,7 +4400,7 @@ class ConversationManager {
 						newViewHolder.imageContent.setImageBitmap(bitmap);
 						
 						//Updating the view
-						if(Constants.appleSendStyleMsgInvisibleInk.equals(getMessageInfo().getSendStyle())) {
+						if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) {
 							viewHolder.inkView.setVisibility(View.VISIBLE);
 							viewHolder.inkView.setState(true);
 						}

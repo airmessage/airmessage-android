@@ -1891,7 +1891,7 @@ public class Messaging extends CompositeActivity {
 			//Creating the attachment
 			ConversationManager.AttachmentInfo attachment;
 			if(targetFile != null) attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, targetFile.getName(), Constants.getMimeType(targetFile), targetFile);
-			else attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, Constants.getFileName(context, targetUri), Constants.getMimeType(targetFile), targetUri);
+			else attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, Constants.getFileName(context, targetUri), Constants.getMimeType(context, targetUri), targetUri);
 			
 			//Adding the item to the database
 			messageInfo.addAttachment(attachment);
@@ -2021,7 +2021,7 @@ public class Messaging extends CompositeActivity {
 			//Returning the correct view holder
 			switch(viewType) {
 				case ConversationManager.ConversationItem.viewTypeMessage:
-					return new ConversationManager.MessageInfo.ViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_message, parent, false));
+					return new ConversationManager.MessageInfo.ViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_messageimp, parent, false));
 				case ConversationManager.ConversationItem.viewTypeAction:
 					return new ConversationManager.ActionLineViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_action, parent, false));
 				case itemTypeLoadingBar: {
@@ -2072,8 +2072,9 @@ public class Messaging extends CompositeActivity {
 				//Playing the message's effect if it hasn't been viewed yet
 				if(messageInfo.getSendStyle() != null && !messageInfo.getSendStyleViewed()) {
 					messageInfo.setSendStyleViewed(true);
-					if(Constants.validateScreenEffect(messageInfo.getSendStyle())) playScreenEffect(messageInfo.getSendStyle());
-					else messageInfo.playMessageEffect();
+					messageInfo.playEffect();
+					/* if(Constants.validateScreenEffect(messageInfo.getSendStyle())) playScreenEffect(messageInfo.getSendStyle());
+					else messageInfo.playEffect(); */
 					new TaskMarkMessageSendStyleViewed().execute(messageInfo);
 				}
 			}
@@ -2149,6 +2150,10 @@ public class Messaging extends CompositeActivity {
 		
 		boolean isScrolledToBottom() {
 			return ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
+		}
+		
+		boolean isDirectlyBelowFrame(int index) {
+			return ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() + 1 == index;
 		}
 		
 		void scrollToBottom() {
@@ -2789,6 +2794,25 @@ public class Messaging extends CompositeActivity {
 			
 			//Updating the adapter
 			activity.messageListAdapter.scrollToBottom();
+		}
+		
+		@Override
+		void listAttemptScrollToBottom(int... newIndices) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the adapter
+			boolean newMessageAdded = false;
+			for(int index : newIndices) {
+				if(activity.messageListAdapter.isDirectlyBelowFrame(index)) {
+					newMessageAdded = true;
+					break;
+				}
+			}
+			
+			//Scrolling to the bottom of the list
+			if(newMessageAdded) activity.messageListAdapter.scrollToBottom();
 		}
 		
 		@Override

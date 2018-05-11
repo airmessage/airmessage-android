@@ -1705,9 +1705,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 								boolean entryFound = false;
 								boolean sendStyleViewed = false;
 								try(Cursor messageCursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED}, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)}, null, null, null)) {
-									if(cursor.moveToFirst()) {
-										sendStyleViewed = messageCursor.getInt(messageCursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED)) != 0;
+									if(messageCursor.moveToFirst()) {
 										entryFound = true;
+										sendStyleViewed = messageCursor.getInt(messageCursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED)) != 0;
 									}
 								}
 								
