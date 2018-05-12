@@ -22,11 +22,19 @@
 		app:layout_constraintTop_toTopOf="parent" />
 	<!-- Profile picture guideline -->
 	<!-- <android.support.constraint.Guideline
-		android:id="@+id/guideline_profile"
+		android:id="@+id/guideline_start"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
 		app:layout_constraintGuide_begin="56dp" /> -->
+	<!-- End barrier -->
+	<android.support.constraint.Barrier
+		android:id="@+id/barrier_alert"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		app:barrierDirection="start"
+		app:constraint_referenced_ids="send_progress,send_error"/>
+	
 	<!-- User icon -->
 	<FrameLayout
 		android:layout_width="wrap_content"
@@ -63,6 +71,7 @@
 		android:layout_gravity="start"
 		android:orientation="vertical"
 		android:layout_marginStart="56dp"
+		android:layout_marginEnd="8dp"
 		app:layout_constraintStart_toStartOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/sender"
 		android:clipToPadding="false" />
@@ -71,9 +80,8 @@
 		android:id="@+id/send_progress"
 		android:layout_width="20dp"
 		android:layout_height="20dp"
-		android:layout_marginStart="8dp"
-		android:layout_marginTop="10dp"
-		app:layout_constraintStart_toStartOf="@id/messagepart_container"
+		android:layout_marginEnd="8dp"
+		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintTop_toTopOf="@id/messagepart_container"
 		app:matProg_barColor="@color/colorMessageOutgoingAccent"
 		app:matProg_barWidth="2dp"
@@ -83,18 +91,16 @@
 		android:id="@+id/send_error"
 		android:layout_width="20dp"
 		android:layout_height="20dp"
-		android:layout_marginStart="8dp"
-		android:layout_marginTop="10dp"
+		android:layout_marginEnd="8dp"
 		android:background="?android:attr/selectableItemBackgroundBorderless"
 		android:src="@drawable/error"
 		android:tint="@color/colorError"
-		app:layout_constraintStart_toStartOf="@id/messagepart_container"
+		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintTop_toTopOf="@id/messagepart_container" />
-	
 	<!-- Activity status -->
 	<TextSwitcher
 		android:id="@+id/activitystatus"
-		android:layout_width="wrap_content"
+		android:layout_width="200dp"
 		android:layout_height="wrap_content"
 		android:layout_gravity="end"
 		android:layout_marginLeft="11.5dp"

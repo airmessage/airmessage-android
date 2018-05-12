@@ -2753,6 +2753,7 @@ public class Messaging extends CompositeActivity {
 			//Updating the adapter
 			activity.messageList.getRecycledViewPool().clear();
 			activity.messageListAdapter.notifyDataSetChanged();
+			//activity.messageList.scheduleLayoutAnimation();
 		}
 		
 		@Override

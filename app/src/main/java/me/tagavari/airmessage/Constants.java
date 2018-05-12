@@ -730,11 +730,14 @@ public class Constants {
 	static boolean validateBubbleEffect(String effect) {
 		return appleSendStyleBubbleSlam.equals(effect) ||
 				appleSendStyleBubbleLoud.equals(effect) ||
-				appleSendStyleBubbleGentle.equals(effect) ||
-				appleSendStyleBubbleInvisibleInk.equals(effect);
+				appleSendStyleBubbleGentle.equals(effect);
 	}
 	
 	static boolean validatePassiveEffect(String effect) {
 		return appleSendStyleBubbleInvisibleInk.equals(effect);
+	}
+	
+	static float interpolate(float start, float end, float progress) {
+		return start + (end - start) * progress;
 	}
 }

@@ -1,5 +1,6 @@
 package me.tagavari.airmessage;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -26,6 +27,7 @@ import android.text.Html;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
+import android.transition.TransitionManager;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -41,6 +43,7 @@ import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.view.animation.BounceInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.view.animation.ScaleAnimation;
 import android.webkit.MimeTypeMap;
@@ -1947,7 +1950,7 @@ class ConversationManager {
 					viewHolder.labelActivityStatus.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 					
 					//Expanding the parent view
-					ViewGroup parentView = (ViewGroup) viewHolder.labelActivityStatus.getParent();
+					ViewGroup parentView = (ViewGroup) viewHolder.itemView;
 					parentView.getLayoutParams().height = parentView.getHeight(); //Freezing the parent view height (to prevent it from expanding for a few moments before the label's view pass)
 					ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) viewHolder.labelActivityStatus.getLayoutParams();
 					Constants.ResizeAnimation parentAnim = new Constants.ResizeAnimation(parentView, parentView.getHeight(), parentView.getHeight() + (viewHolder.labelActivityStatus.getMeasuredHeight() + layoutParams.topMargin + layoutParams.bottomMargin));
@@ -1964,9 +1967,9 @@ class ConversationManager {
 								ViewHolder newViewHolder = getViewHolder();
 								if(newViewHolder == null) return;
 								
-								//Restoring the content container TODO fix
-								//newViewHolder.containerContent.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
-								//newViewHolder.containerContent.requestLayout();
+								//Restoring the content container's size
+								newViewHolder.itemView.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+								newViewHolder.itemView.requestLayout();
 							});
 						}
 						
@@ -1984,8 +1987,8 @@ class ConversationManager {
 						@Override
 						public void onAnimationEnd(Animation animation) {
 							//Setting the label's visibility
-							View view = getView();
-							if(view != null) view.findViewById(R.id.activitystatus).setVisibility(View.GONE);
+							ViewHolder newViewHolder = getViewHolder();
+							if(newViewHolder != null) newViewHolder.labelActivityStatus.setVisibility(View.GONE);
 						}
 						
 						@Override
@@ -2013,14 +2016,13 @@ class ConversationManager {
 							newViewHolder.labelActivityStatus.setVisibility(View.GONE);
 							
 							//Restoring the content container
-							//TODO fix
-							/* newViewHolder.containerContent.post(() -> {
+							newViewHolder.itemView.post(() -> {
 								ViewHolder anotherNewViewHolder = getViewHolder();
 								if(anotherNewViewHolder == null) return;
 								
-								anotherNewViewHolder.containerContent.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
-								anotherNewViewHolder.containerContent.requestLayout();
-							}); */
+								anotherNewViewHolder.itemView.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+								anotherNewViewHolder.itemView.requestLayout();
+							});
 						}
 						
 						@Override
@@ -2197,6 +2199,7 @@ class ConversationManager {
 						if(viewHolder == null) return;
 						
 						//Hiding the progress bar
+						TransitionManager.beginDelayedTransition((ViewGroup) viewHolder.itemView);
 						viewHolder.progressSend.setVisibility(View.GONE);
 					}
 					
@@ -2413,7 +2416,7 @@ class ConversationManager {
 				ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) viewHolder.containerMessagePart.getLayoutParams();
 				if(isFromMe) {
 					params.startToStart = ConstraintLayout.LayoutParams.UNSET;
-					params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+					params.endToEnd = R.id.barrier_alert;
 				} else {
 					params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
 					params.endToEnd = ConstraintLayout.LayoutParams.UNSET;
@@ -2756,22 +2759,85 @@ class ConversationManager {
 					viewHolder.containerMessagePart.setScaleX(3);
 					viewHolder.containerMessagePart.setScaleY(3);
 					viewHolder.containerMessagePart.setAlpha(0.0F);
+					viewHolder.containerMessagePart.setPivotX(viewHolder.containerMessagePart.getWidth() / 2);
+					viewHolder.containerMessagePart.setPivotY(viewHolder.containerMessagePart.getHeight() / 2);
 					viewHolder.containerMessagePart.setTranslationY(Constants.dpToPx(5));
 					viewHolder.containerMessagePart.animate()
+							.alpha(1)
+							.setInterpolator(new AccelerateInterpolator())
+							.setDuration(400)
+							.start();
+					viewHolder.containerMessagePart.animate()
 							.rotation(0)
+							.translationY(0)
+							.setInterpolator(new AccelerateDecelerateInterpolator())
+							.setDuration(1000)
+							.start();
+					viewHolder.containerMessagePart.animate()
 							.scaleX(1)
 							.scaleY(1)
-							.translationY(0)
-							.alpha(1)
-							.setInterpolator(new AccelerateInterpolator(1.1F))
+							//.setInterpolator(new AccelerateInterpolator(1.1F))
+							.setInterpolator(new BounceInterpolator())
+							.setDuration(1000)
 							.start();
 					
 					break;
 				}
-				case Constants.appleSendStyleBubbleLoud:
+				case Constants.appleSendStyleBubbleLoud: {
+					//Getting the view holder
+					ViewHolder viewHolder = getViewHolder();
+					if(viewHolder == null) break;
+					
+					viewHolder.containerMessagePart.setPivotX(isOutgoing() ? viewHolder.containerMessagePart.getWidth() : 0);
+					viewHolder.containerMessagePart.setPivotY(viewHolder.containerMessagePart.getHeight() / 2);
+					ValueAnimator animator = ValueAnimator.ofFloat(0, 1);
+					animator.setDuration(2 * 1000);
+					animator.addUpdateListener(animation -> {
+						float val = (float) animation.getAnimatedValue();
+						float rotationValue = (float) (Math.sin(20F * Math.PI * val + Math.PI * -0.5F) * Math.sin(Math.PI * val));
+						float scaleValue;
+						if(val < 0.8F) scaleValue = (float) (Math.cos((val * (1F / 0.8F) + 1) * Math.PI) / 2F) + 0.5F;
+						else scaleValue = (float) (Math.cos(((val - 0.8F) * 5F) * Math.PI) / 2F) + 0.5F;
+						
+						//Getting the view holder
+						ViewHolder newViewHolder = getViewHolder();
+						if(newViewHolder == null) {
+							animator.cancel();
+							viewHolder.containerMessagePart.setRotation(0);
+							viewHolder.containerMessagePart.setScaleX(1);
+							viewHolder.containerMessagePart.setScaleY(1);
+							return;
+						}
+						
+						//Applying the transformations
+						newViewHolder.containerMessagePart.setRotation(rotationValue * 5);
+						newViewHolder.containerMessagePart.setScaleX(Constants.interpolate(1, 2, scaleValue));
+						newViewHolder.containerMessagePart.setScaleY(Constants.interpolate(1, 2, scaleValue));
+					});
+					animator.start();
+					
 					break;
-				case Constants.appleSendStyleBubbleGentle:
+				}
+				case Constants.appleSendStyleBubbleGentle: {
+					//Getting the view holder
+					ViewHolder viewHolder = getViewHolder();
+					if(viewHolder == null) break;
+					
+					//Animating the message part container
+					viewHolder.containerMessagePart.setPivotX(isOutgoing() ? viewHolder.containerMessagePart.getWidth() : 0);
+					viewHolder.containerMessagePart.setPivotY(viewHolder.containerMessagePart.getHeight() / 2);
+					viewHolder.containerMessagePart.setScaleX(0.6F);
+					viewHolder.containerMessagePart.setScaleY(0.6F);
+					viewHolder.containerMessagePart.animate()
+							.setStartDelay(1500)
+							.scaleX(1)
+							.scaleY(1)
+							.setInterpolator(new AccelerateDecelerateInterpolator())
+							.setDuration(2 * 1000)
+							.start();
+					
 					break;
+				}
 			}
 		}
 		
