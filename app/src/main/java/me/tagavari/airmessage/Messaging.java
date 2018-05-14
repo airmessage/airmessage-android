@@ -1973,7 +1973,7 @@ public class Messaging extends CompositeActivity {
 						.streamFor(300, confettiDuration);
 				
 				//Setting the timer to mark the effect as finished
-				new Handler().postDelayed(() -> currentScreenEffectPlaying = false, confettiDuration);
+				new Handler().postDelayed(() -> currentScreenEffectPlaying = false, confettiDuration * 5);
 				
 				break;
 			}
