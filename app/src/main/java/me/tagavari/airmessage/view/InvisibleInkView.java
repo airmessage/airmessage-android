@@ -231,11 +231,11 @@ public class InvisibleInkView extends TextureView implements Runnable {
 					if(revealTime > 0) {
 						revealTime = Math.max(revealTime - timeDiff, 0);
 						if(revealTime > timeRevealTransition + timeRevealStay) //Fade out stage
-							targetAlpha = interpolateInt(0x00, startAlpha, (revealTime - (timeRevealTransition + timeRevealStay)) / (float) timeRevealTransition);
+							targetAlpha = lerpInt(0x00, startAlpha, (revealTime - (timeRevealTransition + timeRevealStay)) / (float) timeRevealTransition);
 						else if(revealTime > timeRevealTransition) //Stay stage
 							targetAlpha = 0x00;
 						else //Fade in stage
-							targetAlpha = interpolateInt(0xFF, 0x00, revealTime / (float) timeRevealTransition);
+							targetAlpha = lerpInt(0xFF, 0x00, revealTime / (float) timeRevealTransition);
 					} else viewRevealRunning = false;
 					
 					//Checking if a reveal had been requested
@@ -768,24 +768,28 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	/**
 	 * A class that represents a particle of the invisible ink
 	 * The coordinates represent values 0.0 to 1.0, mapped to the view's size
-	 * The creation date is used for lifetime
+	 * The creation date is used for timeLived
 	 */
 	private class Particle {
-		float x;
-		float y;
-		float velX;
-		float velY;
+		float x, y;
+		float velX, velY;
 		int cycleTime;
 		
-		public Particle() {
+		Particle() {
 			//Prewarming
-			updateLocation();
+			generateState();
 			cycleTime = random.nextInt(particleLifetime);
 		}
 		
-		void updateLocation() {
+		void generateState() {
+			//Picking a random location
 			x = random.nextFloat();
 			y = random.nextFloat();
+			
+			//Picking a new velocity
+			float direction = random.nextFloat() * 360;
+			velX = (float) Math.cos(direction) - (float) Math.sin(direction);
+			velY = (float) Math.sin(direction) + (float) Math.cos(direction);
 		}
 		
 		private void cycleParticle(int timeDiff) {
@@ -795,20 +799,17 @@ public class InvisibleInkView extends TextureView implements Runnable {
 				//Cycling the time
 				cycleTime = newTime % particleLifetime;
 				
-				//Picking a new location
-				updateLocation();
+				//Regenerating the state
+				generateState();
 				
-				//Picking a new velocity
-				float direction = random.nextFloat() * 360;
-				velX = (float) Math.cos(direction) - (float) Math.sin(direction);
-				velY = (float) Math.sin(direction) + (float) Math.cos(direction);
+				
 			} else cycleTime = newTime;
 		}
 		
 		/**
-		 * Calculates the values required for the frame, recycling the particle if it has exceeded its lifetime
+		 * Calculates the values required for the frame, recycling the particle if it has exceeded its timeLived
 		 * @param locOut The X and the Y location of the particle
-		 * @return The progress of the particle (lifetime)
+		 * @return The progress of the particle (timeLived)
 		 */
 		float calculateFrame(int timeDiff, float[] locOut) {
 			//Cycling the particle (making a new particle with the current instance) if needed
@@ -838,7 +839,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		return px / Resources.getSystem().getDisplayMetrics().density;
 	}
 	
-	private static int interpolateInt(int start, int end, float progress) {
+	private static int lerpInt(int start, int end, float progress) {
 		return start + (int) ((end - start) * progress);
 	}
 }

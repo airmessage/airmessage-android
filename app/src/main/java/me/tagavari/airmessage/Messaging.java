@@ -84,6 +84,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import me.tagavari.airmessage.common.SharedValues;
+import me.tagavari.airmessage.view.AppleEffectView;
 import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
@@ -150,6 +151,7 @@ public class Messaging extends CompositeActivity {
 	private TextView recordingTimeLabel;
 	private FloatingActionButton bottomFAB;
 	private TextView bottomFABBadge;
+	private AppleEffectView appleEffectView;
 	private final RecyclerView.OnScrollListener messageListScrollListener = new RecyclerView.OnScrollListener() {
 		@Override
 		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
@@ -446,6 +448,7 @@ public class Messaging extends CompositeActivity {
 		recordingTimeLabel = inputBar.findViewById(R.id.recordingtime);
 		bottomFAB = findViewById(R.id.fab_bottom);
 		bottomFABBadge = findViewById(R.id.fab_bottom_badge);
+		appleEffectView = findViewById(R.id.effect_foreground);
 		
 		//Setting the plugin views
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
@@ -493,6 +496,7 @@ public class Messaging extends CompositeActivity {
 		inputBar.findViewById(R.id.button_attach).setOnClickListener(view -> requestAnyFile());
 		contentRecordButton.setOnTouchListener(recordingTouchListener);
 		bottomFAB.setOnClickListener(view -> messageListAdapter.scrollToBottom());
+		appleEffectView.setFinishListener(() -> currentScreenEffectPlaying = false);
 		
 		/* //Checking if there is already a conversation info available
 		if(viewModel.conversationInfo != null) {
@@ -1937,14 +1941,15 @@ public class Messaging extends CompositeActivity {
 	
 	private static final long confettiDuration = 1000;
 	
-	void playScreenEffect(String effect) {
+	void playScreenEffect(String effect, View target) {
 		//Returning if an effect is already playing
 		if(currentScreenEffectPlaying) return;
 		currentScreenEffectPlaying = true;
 		
 		switch(effect) {
-			case Constants.appleSendStyleScrnFireworks:
-				currentScreenEffectPlaying = false;
+			case Constants.appleSendStyleScrnEcho:
+				//Activating the effect view
+				appleEffectView.playEcho(target);
 				break;
 			case Constants.appleSendStyleScrnConfetti: {
 				//Activating the Konfetti view
@@ -2072,7 +2077,7 @@ public class Messaging extends CompositeActivity {
 				//Playing the message's effect if it hasn't been viewed yet
 				if(messageInfo.getSendStyle() != null && !messageInfo.getSendStyleViewed()) {
 					messageInfo.setSendStyleViewed(true);
-					messageInfo.playEffect();
+					messageInfo.playEffect((ConversationManager.MessageInfo.ViewHolder) holder);
 					/* if(Constants.validateScreenEffect(messageInfo.getSendStyle())) playScreenEffect(messageInfo.getSendStyle());
 					else messageInfo.playEffect(); */
 					new TaskMarkMessageSendStyleViewed().execute(messageInfo);
@@ -2854,9 +2859,9 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		@Override
-		void playScreenEffect(String screenEffect) {
+		void playScreenEffect(String screenEffect, View target) {
 			Messaging activity = activityReference.get();
-			if(activity != null) activity.playScreenEffect(screenEffect);
+			if(activity != null) activity.playScreenEffect(screenEffect, target);
 		}
 	}
 }

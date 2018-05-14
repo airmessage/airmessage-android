@@ -1263,7 +1263,7 @@ class ConversationManager {
 			
 			abstract Messaging.AudioMessageManager getAudioMessageManager();
 			
-			abstract void playScreenEffect(String effect);
+			abstract void playScreenEffect(String effect, View target);
 		}
 		
 		int getNextUserColor() {
@@ -1641,12 +1641,12 @@ class ConversationManager {
 			}
 		}
 		
-		void requestScreenEffect(String effect) {
+		void requestScreenEffect(String effect, View target) {
 			//Returning if the callback isn't set up
 			if(activityCallbacks == null) return;
 			
 			//Setting and playing the effect
-			activityCallbacks.playScreenEffect(effect);
+			activityCallbacks.playScreenEffect(effect, target);
 		}
 		
 		static abstract class BaseViewHolder extends RecyclerView.ViewHolder {
@@ -1750,6 +1750,9 @@ class ConversationManager {
 		private transient boolean isAnchoredTop = false;
 		private transient boolean isAnchoredBottom = false;
 		private transient boolean isShowingMessageState = false;
+		
+		//Creating the other values
+		private transient boolean playEffectRequested = false;
 		
 		MessageInfo(long localID, String guid, ConversationInfo conversationInfo, String sender, String messageText, ArrayList<AttachmentInfo> attachments, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, long dateRead) {
 			//Calling the super constructor
@@ -2541,6 +2544,12 @@ class ConversationManager {
 			
 			//Restoring the upload state
 			restoreUploadState(viewHolder);
+			
+			//Playing the screen effect if requested
+			if(playEffectRequested) {
+				playEffect(viewHolder);
+				playEffectRequested = false;
+			}
 		}
 		
 		@Override
@@ -2741,108 +2750,110 @@ class ConversationManager {
 		}
 		
 		void playEffect() {
-			//Returning if there is no effect or the effect is passive
-			if(sendStyle == null || Constants.validatePassiveEffect(sendStyle)) return;
+			//Calling the overload method
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder == null) playEffectRequested = true;
+			else playEffect(viewHolder);
+		}
+		
+		void playEffect(ViewHolder viewHolder) {
+			//Returning if there is no playable effect
+			if(sendStyle == null || (!Constants.validateBubbleEffect(sendStyle) && !Constants.validateScreenEffect(sendStyle))) return;
 			
 			switch(sendStyle) {
 				default:
-					//Requesting the screen effect
-					getConversationInfo().requestScreenEffect(sendStyle);
+					//Playing the screen effect
+					viewHolder.containerMessagePart.post(() -> getConversationInfo().requestScreenEffect(sendStyle, viewHolder.containerMessagePart));
+					System.out.println("Screen effect requested!");
 					break;
 				case Constants.appleSendStyleBubbleSlam: {
-					//Getting the view holder
-					ViewHolder viewHolder = getViewHolder();
-					if(viewHolder == null) break;
-					
-					//Animating the message part container
-					viewHolder.containerMessagePart.setRotation(Constants.getRandom().nextFloat() * 15F * 2F - 15F);
-					viewHolder.containerMessagePart.setScaleX(3);
-					viewHolder.containerMessagePart.setScaleY(3);
-					viewHolder.containerMessagePart.setAlpha(0.0F);
-					viewHolder.containerMessagePart.setPivotX(viewHolder.containerMessagePart.getWidth() / 2);
-					viewHolder.containerMessagePart.setPivotY(viewHolder.containerMessagePart.getHeight() / 2);
-					viewHolder.containerMessagePart.setTranslationY(Constants.dpToPx(5));
-					viewHolder.containerMessagePart.animate()
-							.alpha(1)
-							.setInterpolator(new AccelerateInterpolator())
-							.setDuration(400)
-							.start();
-					viewHolder.containerMessagePart.animate()
-							.rotation(0)
-							.translationY(0)
-							.setInterpolator(new AccelerateDecelerateInterpolator())
-							.setDuration(1000)
-							.start();
-					viewHolder.containerMessagePart.animate()
-							.scaleX(1)
-							.scaleY(1)
-							//.setInterpolator(new AccelerateInterpolator(1.1F))
-							.setInterpolator(new BounceInterpolator())
-							.setDuration(1000)
-							.start();
+					viewHolder.containerMessagePart.post(() -> {
+						//Animating the message part container
+						viewHolder.containerMessagePart.setRotation(Constants.getRandom().nextFloat() * 15F * 2F - 15F);
+						viewHolder.containerMessagePart.setScaleX(3);
+						viewHolder.containerMessagePart.setScaleY(3);
+						viewHolder.containerMessagePart.setAlpha(0.0F);
+						viewHolder.containerMessagePart.setPivotX(viewHolder.containerMessagePart.getWidth() / 2);
+						viewHolder.containerMessagePart.setPivotY(viewHolder.containerMessagePart.getHeight() / 2);
+						viewHolder.containerMessagePart.setTranslationY(Constants.dpToPx(5));
+						viewHolder.containerMessagePart.animate()
+								.alpha(1)
+								.setInterpolator(new AccelerateInterpolator())
+								.setDuration(400)
+								.start();
+						viewHolder.containerMessagePart.animate()
+								.rotation(0)
+								.translationY(0)
+								.setInterpolator(new AccelerateDecelerateInterpolator())
+								.setDuration(1000)
+								.start();
+						viewHolder.containerMessagePart.animate()
+								.scaleX(1)
+								.scaleY(1)
+								//.setInterpolator(new AccelerateInterpolator(1.1F))
+								.setInterpolator(new BounceInterpolator())
+								.setDuration(1000)
+								.start();
+					});
 					
 					break;
 				}
 				case Constants.appleSendStyleBubbleLoud: {
-					//Getting the view holder
-					ViewHolder viewHolder = getViewHolder();
-					if(viewHolder == null) break;
-					
-					viewHolder.containerMessagePart.setPivotX(isOutgoing() ? viewHolder.containerMessagePart.getWidth() : 0);
-					viewHolder.containerMessagePart.setPivotY(viewHolder.containerMessagePart.getHeight() / 2);
-					ValueAnimator animator = ValueAnimator.ofFloat(0, 1);
-					animator.setDuration(2 * 1000);
-					animator.addUpdateListener(animation -> {
-						float val = (float) animation.getAnimatedValue();
-						float rotationValue = (float) (Math.sin(20F * Math.PI * val + Math.PI * -0.5F) * Math.sin(Math.PI * val));
-						float scaleValue;
-						if(val < 0.8F) scaleValue = (float) (Math.cos((val * (1F / 0.8F) + 1) * Math.PI) / 2F) + 0.5F;
-						else scaleValue = (float) (Math.cos(((val - 0.8F) * 5F) * Math.PI) / 2F) + 0.5F;
-						
-						//Getting the view holder
-						ViewHolder newViewHolder = getViewHolder();
-						if(newViewHolder == null) {
-							animator.cancel();
-							viewHolder.containerMessagePart.setRotation(0);
-							viewHolder.containerMessagePart.setScaleX(1);
-							viewHolder.containerMessagePart.setScaleY(1);
-							return;
-						}
-						
-						//Applying the transformations
-						newViewHolder.containerMessagePart.setRotation(rotationValue * 5);
-						newViewHolder.containerMessagePart.setScaleX(Constants.interpolate(1, 2, scaleValue));
-						newViewHolder.containerMessagePart.setScaleY(Constants.interpolate(1, 2, scaleValue));
+					viewHolder.containerMessagePart.post(() -> {
+						viewHolder.containerMessagePart.setPivotX(isOutgoing() ? viewHolder.containerMessagePart.getWidth() : 0);
+						viewHolder.containerMessagePart.setPivotY(viewHolder.containerMessagePart.getHeight() / 2);
+						ValueAnimator animator = ValueAnimator.ofFloat(0, 1);
+						animator.setDuration(2 * 1000);
+						animator.addUpdateListener(animation -> {
+							float val = (float) animation.getAnimatedValue();
+							float rotationValue = (float) (Math.sin(20F * Math.PI * val + Math.PI * -0.5F) * Math.sin(Math.PI * val));
+							float scaleValue;
+							if(val < 0.8F) scaleValue = (float) (Math.cos((val * (1F / 0.8F) + 1) * Math.PI) / 2F) + 0.5F;
+							else scaleValue = (float) (Math.cos(((val - 0.8F) * 5F) * Math.PI) / 2F) + 0.5F;
+							
+							//Getting the view holder
+							ViewHolder newViewHolder = getViewHolder();
+							if(newViewHolder == null) {
+								animator.cancel();
+								viewHolder.containerMessagePart.setRotation(0);
+								viewHolder.containerMessagePart.setScaleX(1);
+								viewHolder.containerMessagePart.setScaleY(1);
+								return;
+							}
+							
+							//Applying the transformations
+							newViewHolder.containerMessagePart.setRotation(rotationValue * 5);
+							newViewHolder.containerMessagePart.setScaleX(Constants.interpolate(1, 2, scaleValue));
+							newViewHolder.containerMessagePart.setScaleY(Constants.interpolate(1, 2, scaleValue));
+						});
+						animator.start();
 					});
-					animator.start();
 					
 					break;
 				}
 				case Constants.appleSendStyleBubbleGentle: {
-					//Getting the view holder
-					ViewHolder viewHolder = getViewHolder();
-					if(viewHolder == null) break;
-					
-					//Animating the message part container
-					viewHolder.containerMessagePart.setPivotX(isOutgoing() ? viewHolder.containerMessagePart.getWidth() : 0);
-					viewHolder.containerMessagePart.setPivotY(viewHolder.containerMessagePart.getHeight() / 2);
-					viewHolder.containerMessagePart.setScaleX(0.6F);
-					viewHolder.containerMessagePart.setScaleY(0.6F);
-					viewHolder.containerMessagePart.animate()
-							.setStartDelay(1500)
-							.scaleX(1)
-							.scaleY(1)
-							.setInterpolator(new AccelerateDecelerateInterpolator())
-							.setDuration(2 * 1000)
-							.start();
+					viewHolder.containerMessagePart.post(() -> {
+						//Animating the message part container
+						viewHolder.containerMessagePart.setPivotX(isOutgoing() ? viewHolder.containerMessagePart.getWidth() : 0);
+						viewHolder.containerMessagePart.setPivotY(viewHolder.containerMessagePart.getHeight() / 2);
+						viewHolder.containerMessagePart.setScaleX(0.6F);
+						viewHolder.containerMessagePart.setScaleY(0.6F);
+						viewHolder.containerMessagePart.animate()
+								.setStartDelay(1500)
+								.scaleX(1)
+								.scaleY(1)
+								.setInterpolator(new AccelerateDecelerateInterpolator())
+								.setDuration(2 * 1000)
+								.start();
+					});
 					
 					break;
 				}
 			}
 		}
 		
-		void setSendStyleViewed(boolean sendStyleViewed) {
-			this.sendStyleViewed = sendStyleViewed;
+		void setSendStyleViewed(boolean value) {
+			sendStyleViewed = value;
 		}
 		
 		@Override

@@ -123,6 +123,11 @@
 				app:layout_constraintRight_toRightOf="parent"
 				app:layout_constraintTop_toTopOf="parent"
 				app:stackFromEnd="true" />
+			<!-- Foreground effect view -->
+			<me.tagavari.airmessage.view.AppleEffectView
+				android:id="@+id/effect_foreground"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent" />
 			<!-- Konfetti view -->
 			<nl.dionsegijn.konfetti.KonfettiView
 				android:id="@+id/konfetti"
@@ -155,7 +160,7 @@
 				android:paddingRight="6dp"
 				android:scaleX="0"
 				android:scaleY="0"
-				android:text="1"
+				android:text="0"
 				android:textColor="@android:color/primary_text_dark"
 				android:textSize="12sp"
 				android:translationX="-6dp"
