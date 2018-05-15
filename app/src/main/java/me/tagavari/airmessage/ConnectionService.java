@@ -36,8 +36,6 @@ import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.handshake.ClientHandshakeBuilder;
 import org.java_websocket.handshake.ServerHandshake;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -918,8 +916,8 @@ public class ConnectionService extends Service {
 		private final int port;
 		
 		private Socket socket;
-		private BufferedInputStream inputStream;
-		private BufferedOutputStream outputStream;
+		private InputStream inputStream;
+		private OutputStream outputStream;
 		private WriterThread writerThread = null;
 		
 		private Timer authenticationExpiryTimer = null;
@@ -968,8 +966,8 @@ public class ConnectionService extends Service {
 				}
 				
 				//Getting the streams
-				inputStream = new BufferedInputStream(socket.getInputStream());
-				outputStream = new BufferedOutputStream(socket.getOutputStream());
+				inputStream = socket.getInputStream();
+				outputStream = socket.getOutputStream();
 				
 				//Starting the writer thread
 				writerThread = new WriterThread();
@@ -3316,7 +3314,7 @@ public class ConnectionService extends Service {
 			Collections.sort(newCompleteConversationItems, ConversationManager.conversationItemComparator);
 			
 			//Getting the loaded conversations
-			List<Long> foregroundConversations = Messaging.getForegroundConversations();
+			//List<Long> foregroundConversations = Messaging.getForegroundConversations();
 			List<Long> loadedConversations = Messaging.getLoadedConversations();
 			
 			//Checking if the conversations are loaded in memory
@@ -3345,10 +3343,17 @@ public class ConnectionService extends Service {
 					List<ConversationManager.ConversationItem> conversationItems = newCompleteConversationGroups.valueAt(i);
 					
 					//Adding the conversation items if the conversation is loaded
-					if(loadedConversations.contains(parentConversation.getLocalID())) parentConversation.addConversationItems(context, conversationItems);
+					//if(loadedConversations.contains(parentConversation.getLocalID()))
+					
+					//Add items no matter if the conversation is loaded (will simply check if conversation items are still available in memory)
+					{
+						boolean addItemResult = parentConversation.addConversationItems(context, conversationItems);
+						//Setting the last item if the conversation items couldn't be added
+						if(!addItemResult) parentConversation.setLastItemUpdate(context, conversationItems.get(conversationItems.size() - 1));
+					}
 					
 					//Iterating over the conversation items
-					for(ConversationManager.ConversationItem conversationItem : newCompleteConversationGroups.valueAt(i)) {
+					for(ConversationManager.ConversationItem conversationItem : conversationItems) {
 						//Setting the conversation item's parent conversation to the found one (the one provided from the DB is not the same as the one in memory)
 						conversationItem.setConversationInfo(parentConversation);
 						
@@ -3358,55 +3363,41 @@ public class ConnectionService extends Service {
 						if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing()) parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
 						parentConversation.updateUnreadStatus(context);
 						
-						//Checking if the conversation is loaded
-						if(loadedConversations.contains(parentConversation.getLocalID())) {
-							//Adding the conversation item to its parent conversation
-							//parentConversation.addConversationItem(context, conversationItem);
+						//Renaming the conversation
+						if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) parentConversation.setTitle(context, ((ConversationManager.ChatRenameActionInfo) conversationItem).title);
+						else if(conversationItem instanceof ConversationManager.GroupActionInfo) {
+							//Converting the item to a group action info
+							ConversationManager.GroupActionInfo groupActionInfo = (ConversationManager.GroupActionInfo) conversationItem;
 							
-							//Renaming the conversation
-							if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) parentConversation.setTitle(context, ((ConversationManager.ChatRenameActionInfo) conversationItem).title);
-							else if(conversationItem instanceof ConversationManager.GroupActionInfo) {
-								//Converting the item to a group action info
-								ConversationManager.GroupActionInfo groupActionInfo = (ConversationManager.GroupActionInfo) conversationItem;
-								
-								//Finding the conversation member
-								ConversationManager.MemberInfo member = parentConversation.findConversationMember(groupActionInfo.other);
-								
-								if(groupActionInfo.actionType == Constants.groupActionInvite) {
-									//Adding the member in memory
-									if(member == null) {
-										member = new ConversationManager.MemberInfo(groupActionInfo.other, groupActionInfo.color);
-										parentConversation.getConversationMembers().add(member);
-									}
-								} else if(groupActionInfo.actionType == Constants.groupActionLeave) {
-									//Removing the member in memory
-									if(member != null && parentConversation.getConversationMembers().contains(member))
-										parentConversation.getConversationMembers().remove(member);
+							//Finding the conversation member
+							ConversationManager.MemberInfo member = parentConversation.findConversationMember(groupActionInfo.other);
+							
+							if(groupActionInfo.actionType == Constants.groupActionInvite) {
+								//Adding the member in memory
+								if(member == null) {
+									member = new ConversationManager.MemberInfo(groupActionInfo.other, groupActionInfo.color);
+									parentConversation.getConversationMembers().add(member);
 								}
+							} else if(groupActionInfo.actionType == Constants.groupActionLeave) {
+								//Removing the member in memory
+								if(member != null && parentConversation.getConversationMembers().contains(member))
+									parentConversation.getConversationMembers().remove(member);
 							}
-							
-							//Checking if the conversation is in the foreground
-							if(foregroundConversations.contains(parentConversation.getLocalID())) {
-								//Displaying the send effect
-								if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).getSendEffect().isEmpty())
-									parentConversation.requestScreenEffect(((ConversationManager.MessageInfo) conversationItem).getSendEffect());
-							}
-						} else {
-							//Updating the parent conversation's latest item
-							parentConversation.setLastItemUpdate(context, conversationItem);
-						}
-						
-						//Sending notifications
-						if(conversationItem instanceof ConversationManager.MessageInfo)
-							NotificationUtils.sendNotification(context, (ConversationManager.MessageInfo) conversationItem);
-						
-						//Downloading the items automatically (if requested)
-						if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_storage_autodownload_key), false) &&
-								conversationItem instanceof ConversationManager.MessageInfo) {
-							for(ConversationManager.AttachmentInfo attachmentInfo : ((ConversationManager.MessageInfo) conversationItem).getAttachments())
-								attachmentInfo.downloadContent(context);
 						}
 					}
+				}
+			}
+			
+			for(ConversationManager.ConversationItem conversationItem : newCompleteConversationItems) {
+				//Sending notifications
+				if(conversationItem instanceof ConversationManager.MessageInfo)
+					NotificationUtils.sendNotification(context, (ConversationManager.MessageInfo) conversationItem);
+				
+				//Downloading the items automatically (if requested)
+				if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_storage_autodownload_key), false) &&
+						conversationItem instanceof ConversationManager.MessageInfo) {
+					for(ConversationManager.AttachmentInfo attachmentInfo : ((ConversationManager.MessageInfo) conversationItem).getAttachments())
+						attachmentInfo.downloadContent(context);
 				}
 			}
 			

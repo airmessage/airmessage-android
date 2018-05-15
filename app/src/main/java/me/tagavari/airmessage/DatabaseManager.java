@@ -8,19 +8,23 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.provider.BaseColumns;
 import android.util.Base64;
+import android.util.LongSparseArray;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
 import me.tagavari.airmessage.common.SharedValues;
 
 class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
-	private static final int DATABASE_VERSION = 4;
+	private static final int DATABASE_VERSION = 5;
 	private static final String DATABASE_NAME = "messages.db";
 	
 	//Creating the fetch statements
@@ -71,7 +75,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.MessageEntry.COLUMN_NAME_ERROR + " INTEGER, " +
 			Contract.MessageEntry.COLUMN_NAME_DATEREAD + " INTEGER, " +
 			Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " TEXT, " +
-			Contract.MessageEntry.COLUMN_NAME_SENDSTYLE + " TEXT NOT NULL DEFAULT '', " +
+			Contract.MessageEntry.COLUMN_NAME_SENDSTYLE + " TEXT, " +
+			Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED + " INTEGER NOT NULL DEFAULT 0, " +
 			Contract.MessageEntry.COLUMN_NAME_CHAT + " INTEGER NOT NULL" +
 			");";
 	private static final String SQL_CREATE_TABLE_CONVERSATIONS = "CREATE TABLE " + Contract.ConversationEntry.TABLE_NAME + " (" +
@@ -94,9 +99,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.AttachmentEntry._ID + " INTEGER PRIMARY KEY UNIQUE, " +
 			Contract.AttachmentEntry.COLUMN_NAME_GUID + " TEXT UNIQUE," +
 			Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " INTEGER NOT NULL," +
-			//Contract.AttachmentEntry.COLUMN_NAME_DATA + " INTEGER NOT NULL," +
-			Contract.AttachmentEntry.COLUMN_NAME_TYPE + " INTEGER NOT NULL," +
 			Contract.AttachmentEntry.COLUMN_NAME_FILENAME + " TEXT," +
+			Contract.AttachmentEntry.COLUMN_NAME_FILETYPE + " TEXT NOT NULL," +
 			Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + " TEXT," +
 			Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " TEXT" +
 			");";
@@ -145,42 +149,160 @@ class DatabaseManager extends SQLiteOpenHelper {
 		switch(oldVersion) {
 			case 1:
 				//Adding the "date read" column
-				database.execSQL("ALTER TABLE " + Contract.MessageEntry.TABLE_NAME + " ADD " + Contract.MessageEntry.COLUMN_NAME_DATEREAD + " INTEGER;");
+				database.execSQL("ALTER TABLE messages ADD date_read INTEGER;");
 				
 				//Adding the sticker and tapback tables
-				database.execSQL(SQL_CREATE_TABLE_STICKER);
-				database.execSQL(SQL_CREATE_TABLE_TAPBACK);
-			case 2:
+				database.execSQL("CREATE TABLE sticker (" +
+						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE," +
+						"guid TEXT UNIQUE," +
+						"message INTEGER NOT NULL," +
+						"message_index INTEGER NOT NULL," +
+						"sender TEXT," +
+						"date INTEGER NOT NULL," +
+						"data BLOB NOT NULL" +
+						");");
+				database.execSQL("CREATE TABLE tapback (" +
+						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+						"message INTEGER NOT NULL," +
+						"message_index INTEGER NOT NULL," +
+						"sender TEXT," +
+						"code INTEGER NOT NULL" +
+						");");
+			case 2: {
 				//Adding the "unread messages" column
-				database.execSQL("ALTER TABLE " + Contract.ConversationEntry.TABLE_NAME + " ADD " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " INTEGER NOT NULL DEFAULT 0;");
+				database.execSQL("ALTER TABLE conversations ADD unread_message_count INTEGER NOT NULL DEFAULT 0;");
 				
 				//Adding the sticker and tapback tables (because for some reason they don't exist sometimes)
-				database.execSQL(SQL_CREATE_TABLE_STICKER.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
-				database.execSQL(SQL_CREATE_TABLE_TAPBACK.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"));
+				database.execSQL("CREATE TABLE IF NOT EXISTS sticker (" +
+						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE," +
+						"guid TEXT UNIQUE," +
+						"message INTEGER NOT NULL," +
+						"message_index INTEGER NOT NULL," +
+						"sender TEXT," +
+						"date INTEGER NOT NULL," +
+						"data BLOB NOT NULL" +
+						");");
+				database.execSQL("CREATE TABLE IF NOT EXISTS tapback (" +
+						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+						"message INTEGER NOT NULL," +
+						"message_index INTEGER NOT NULL," +
+						"sender TEXT," +
+						"code INTEGER NOT NULL" +
+						");");
 				
 				//Decompressing the sticker data
 				{
-					Cursor cursor = database.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_DATA}, null, null, null, null, null);
-					int indexID = cursor.getColumnIndex(Contract.StickerEntry._ID);
-					int indexData = cursor.getColumnIndex(Contract.StickerEntry.COLUMN_NAME_DATA);
+					Cursor cursor = database.query("sticker", new String[]{BaseColumns._ID, "data"}, null, null, null, null, null);
+					int indexID = cursor.getColumnIndex(BaseColumns._ID);
+					int indexData = cursor.getColumnIndex("data");
 					
 					ContentValues contentValues;
 					while(cursor.moveToNext()) {
 						contentValues = new ContentValues();
 						try {
-							contentValues.put(Contract.StickerEntry.COLUMN_NAME_DATA, SharedValues.decompressLegacyV2(cursor.getBlob(indexData)));
+							contentValues.put("data", SharedValues.decompressLegacyV2(cursor.getBlob(indexData)));
 						} catch(IOException | DataFormatException exception) {
 							exception.printStackTrace();
 							continue;
 						}
-						database.update(Contract.StickerEntry.TABLE_NAME, contentValues, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(cursor.getLong(indexID))});
+						database.update("sticker", contentValues, BaseColumns._ID + " = ?", new String[]{Long.toString(cursor.getLong(indexID))});
 					}
 					
 					cursor.close();
 				}
+			}
 			case 3:
 				//Removing the "last viewed" column (it is now obsolete)
-				dropColumn(database, Contract.ConversationEntry.TABLE_NAME, "last_viewed");
+				dropColumn(database, "conversations", "last_viewed", false);
+			case 4: {
+				//Adding the "send style viewed" column
+				database.execSQL("ALTER TABLE messages ADD send_style_viewed INTEGER NOT NULL DEFAULT 0;");
+				
+				//Updating all applicable values to already seen
+				{
+					ContentValues contentValues = new ContentValues();
+					contentValues.put("send_style_viewed", 1);
+					database.update("messages", contentValues, "send_style_viewed != ?", new String[]{""});
+				}
+				
+				//Rebuilding the messages table (to remove the "not null" modifier of the send style
+				rebuildTable(database, "messages", "CREATE TABLE messages (" +
+						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+						"guid TEXT UNIQUE, " +
+						"sender TEXT, " +
+						"other TEXT, " +
+						"date INTEGER NOT NULL, " +
+						"item_type INTEGER NOT NULL, " +
+						"item_subtype INTEGER, " +
+						"state INTEGER, " +
+						"error INTEGER, " +
+						"date_read INTEGER, " +
+						"message_text TEXT, " +
+						"send_style TEXT, " +
+						"send_style_viewed INTEGER NOT NULL DEFAULT 0, " +
+						"chat INTEGER NOT NULL" +
+						");", false);
+				
+				//Setting all empty send style strings to null
+				{
+					ContentValues contentValues = new ContentValues();
+					contentValues.putNull("send_style");
+					database.update(Contract.MessageEntry.TABLE_NAME, contentValues, "send_style = ?", new String[]{""});
+				}
+				
+				{
+					//Reading the message types
+					LongSparseArray<String> attachmentTypeList = new LongSparseArray<>();
+					try(Cursor cursor = database.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{BaseColumns._ID, "type"}, null, null, null, null, null)) {
+						int indexColumn = cursor.getColumnIndexOrThrow(BaseColumns._ID);
+						int indexType = cursor.getColumnIndexOrThrow("type");
+						
+						//Converting the type ID to a content type
+						while(cursor.moveToNext()) {
+							String mimeType;
+							switch(cursor.getInt(indexType)) {
+								case 1:
+									mimeType = "image";
+									break;
+								case 2:
+									mimeType = "video";
+									break;
+								case 3:
+									mimeType = "audio";
+									break;
+								default: //case 4
+									mimeType = "other";
+							}
+							
+							attachmentTypeList.append(cursor.getLong(indexColumn), mimeType);
+						}
+					}
+					
+					//Dropping the type ID column
+					dropColumn(database, "attachments", "type", false);
+					
+					//Adding the type column (allowing null values)
+					database.execSQL("ALTER TABLE attachments ADD type TEXT;");
+					
+					//Restoring the values
+					ContentValues contentValues = new ContentValues();
+					for(int i = 0; i < attachmentTypeList.size(); i++) {
+						contentValues.put("type", attachmentTypeList.valueAt(i));
+						database.update("attachments", contentValues, BaseColumns._ID + " = ?", new String[]{Long.toString(attachmentTypeList.keyAt(i))});
+					}
+					
+					//Rebuilding the table (to disallow null values in the type column)
+					rebuildTable(database, "attachments", "CREATE TABLE attachments (" +
+							BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+							Contract.AttachmentEntry.COLUMN_NAME_GUID + " TEXT UNIQUE," +
+							Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " INTEGER NOT NULL," +
+							Contract.AttachmentEntry.COLUMN_NAME_FILENAME + " TEXT," +
+							Contract.AttachmentEntry.COLUMN_NAME_FILETYPE + " TEXT NOT NULL," +
+							Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + " TEXT," +
+							Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " TEXT" +
+							");", false);
+				}
+			}
 		}
 	}
 	
@@ -214,6 +336,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			static final String COLUMN_NAME_DATEREAD = "date_read";
 			static final String COLUMN_NAME_MESSAGETEXT = "message_text";
 			static final String COLUMN_NAME_SENDSTYLE = "send_style";
+			static final String COLUMN_NAME_SENDSTYLEVIEWED = "send_style_viewed";
 			static final String COLUMN_NAME_CHAT = "chat";
 		}
 		
@@ -241,8 +364,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			static final String TABLE_NAME = "attachments";
 			static final String COLUMN_NAME_GUID = "guid";
 			static final String COLUMN_NAME_MESSAGE = "message";
-			//static final String COLUMN_NAME_DATA = "has_data";
-			static final String COLUMN_NAME_TYPE = "type";
+			static final String COLUMN_NAME_FILETYPE = "type"; //The MIME type of the file
 			static final String COLUMN_NAME_FILENAME = "name";
 			static final String COLUMN_NAME_FILEPATH = "path";
 			static final String COLUMN_NAME_FILECHECKSUM = "checksum";
@@ -285,31 +407,122 @@ class DatabaseManager extends SQLiteOpenHelper {
 		instance.close();
 	}
 	
-	private void dropColumn(SQLiteDatabase writableDatabase, String tableName, String columnName) {
-		//Fetching the column names of the table
-		String columnNames[] = getColumnNames(writableDatabase, tableName);
-		StringBuilder columnTargetSB = new StringBuilder();
-		if(columnNames.length > 0) {
-			columnTargetSB.append(columnNames[0]);
-			for(int i = 1; i < columnNames.length; i++) {
-				String column = columnNames[i];
-				if(!column.equals(columnName)) columnTargetSB.append(',').append(column);
+	private void dropColumn(SQLiteDatabase writableDatabase, String tableName, String columnName, boolean useTransaction) {
+		//Extracting information from the table's creation command
+		Pattern columnsPattern = Pattern.compile("(?<=\\().*?(?=\\))");
+		String originalCreationCommand;
+		try(Cursor cursor = writableDatabase.query("sqlite_master", new String[]{"sql"}, "tbl_name = ? AND type = 'table'", new String[]{tableName}, null, null, null)) {
+			cursor.moveToNext();
+			originalCreationCommand = cursor.getString(0);
+		}
+		String[] columnCodes;
+		String tableCommandStart;
+		String tableCommandEnd;
+		{
+			Matcher columnMatcher = columnsPattern.matcher(originalCreationCommand);
+			columnMatcher.find();
+			tableCommandStart = originalCreationCommand.substring(0, columnMatcher.start());
+			tableCommandEnd = originalCreationCommand.substring(columnMatcher.end(), originalCreationCommand.length());
+			columnCodes = columnMatcher.group().split(", ?");
+		}
+		
+		//Rebuilding the creation command without the specified column
+		StringBuilder creationCommandSB = new StringBuilder();
+		creationCommandSB.append(tableCommandStart);
+		if(columnCodes.length > 0) {
+			creationCommandSB.append(columnCodes[0]);
+			for(int i = 1; i < columnCodes.length; i++) {
+				String column = columnCodes[i];
+				if(!column.startsWith(columnName)) creationCommandSB.append(',').append(column);
 			}
 		}
-		String columnTarget = columnTargetSB.toString();
+		creationCommandSB.append(tableCommandEnd);
+		String creationCommand = creationCommandSB.toString();
+		
+		//Fetching the raw column names of the table
+		String columnTarget;
+		{
+			String columnNames[] = getColumnNames(writableDatabase, tableName);
+			StringBuilder columnTargetSB = new StringBuilder();
+			if(columnNames.length > 0) {
+				columnTargetSB.append(columnNames[0]);
+				for(int i = 1; i < columnNames.length; i++) {
+					String column = columnNames[i];
+					if(!column.equals(columnName)) columnTargetSB.append(',').append(column);
+				}
+			}
+			columnTarget = columnTargetSB.toString();
+		}
 		
 		//Dropping the column
-		writableDatabase.beginTransaction();
+		if(useTransaction) writableDatabase.beginTransaction();
 		try {
 			writableDatabase.execSQL("CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnTarget + ");");
 			writableDatabase.execSQL("INSERT INTO " + tableName + "_backup SELECT " + columnTarget + " FROM " + tableName + ";");
 			writableDatabase.execSQL("DROP TABLE " + tableName + ";");
-			writableDatabase.execSQL("CREATE TABLE " + tableName + "(" + columnTarget + ");");
+			//writableDatabase.execSQL("CREATE TABLE " + tableName + "(" + columnTarget + ");");
+			writableDatabase.execSQL(creationCommand);
 			writableDatabase.execSQL("INSERT INTO " + tableName + " SELECT " + columnTarget + " FROM " + tableName + "_backup;");
 			writableDatabase.execSQL("DROP TABLE " + tableName + "_backup;");
-			writableDatabase.setTransactionSuccessful();
+			if(useTransaction) writableDatabase.setTransactionSuccessful();
 		} finally {
-			writableDatabase.endTransaction();
+			if(useTransaction) writableDatabase.endTransaction();
+		}
+	}
+	
+	private void rebuildTable(SQLiteDatabase writableDatabase, String tableName, String creationCommand, boolean useTransaction) {
+		//Getting the column names form the table and sorting them
+		String[] columnNames = getColumnNames(writableDatabase, tableName);
+		Arrays.sort(columnNames);
+		
+		StringBuilder columnTargetSB = new StringBuilder();
+		if(columnNames.length > 0) {
+			columnTargetSB.append(columnNames[0]);
+			for(int i = 1; i < columnNames.length; i++) columnTargetSB.append(',').append(columnNames[i]);
+		}
+		String columnTarget = columnTargetSB.toString();
+		
+		{
+			//Extracting information from the table's creation command
+			Pattern columnsPattern = Pattern.compile("(?<=\\().*?(?=\\))");
+			String[] columnCodes;
+			String tableCommandStart;
+			String tableCommandEnd;
+			{
+				Matcher columnMatcher = columnsPattern.matcher(creationCommand);
+				columnMatcher.find();
+				tableCommandStart = creationCommand.substring(0, columnMatcher.start());
+				tableCommandEnd = creationCommand.substring(columnMatcher.end(), creationCommand.length());
+				columnCodes = columnMatcher.group().split(", ?");
+			}
+			
+			//Sorting the column codes
+			Arrays.sort(columnCodes);
+			
+			//Rebuilding the creation command without the specified column
+			StringBuilder creationCommandSB = new StringBuilder();
+			creationCommandSB.append(tableCommandStart);
+			if(columnCodes.length > 0) {
+				creationCommandSB.append(columnCodes[0]);
+				for(int i = 1; i < columnCodes.length; i++) creationCommandSB.append(',').append(columnCodes[i]);
+			}
+			creationCommandSB.append(tableCommandEnd);
+			creationCommand = creationCommandSB.toString();
+		}
+		
+		//Dropping the column
+		if(useTransaction) writableDatabase.beginTransaction();
+		try {
+			writableDatabase.execSQL("CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnTarget + ");");
+			writableDatabase.execSQL("INSERT INTO " + tableName + "_backup SELECT " + columnTarget + " FROM " + tableName + ";");
+			writableDatabase.execSQL("DROP TABLE " + tableName + ";");
+			//writableDatabase.execSQL("CREATE TABLE " + tableName + "(" + columnTarget + ");");
+			writableDatabase.execSQL(creationCommand);
+			writableDatabase.execSQL("INSERT INTO " + tableName + " SELECT " + columnTarget + " FROM " + tableName + "_backup;");
+			writableDatabase.execSQL("DROP TABLE " + tableName + "_backup;");
+			if(useTransaction) writableDatabase.setTransactionSuccessful();
+		} finally {
+			if(useTransaction) writableDatabase.endTransaction();
 		}
 	}
 	
@@ -323,8 +536,17 @@ class DatabaseManager extends SQLiteOpenHelper {
 	}
 	
 	private String[] getColumnNames(SQLiteDatabase readableDatabase, String tableName) {
-		try(Cursor cursor = readableDatabase.query(tableName, null, null, null, null, null, null)) {
+		//Android method, sometimes messes with column order which can cause data corruption
+		/* try(Cursor cursor = readableDatabase.query(tableName, null, null, null, null, null, null)) {
 			return cursor.getColumnNames();
+		} */
+		
+		try(Cursor cursor = readableDatabase.rawQuery("PRAGMA table_info(" + tableName + ")", null)) {
+			int nameIndex = cursor.getColumnIndexOrThrow("name");
+			String[] columns = new String[cursor.getCount()];
+			int i = 0;
+			while(cursor.moveToNext()) columns[i++] = cursor.getString(nameIndex);
+			return columns;
 		}
 	}
 	
@@ -356,8 +578,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 			String service = cursor.getString(indexChatService);
 			String chatTitle = cursor.getString(indexChatName);
 			int chatUnreadMessages = cursor.getInt(indexChatUnreadMessages);
-			boolean chatArchived = cursor.getInt(indexChatArchived) == 1;
-			boolean chatMuted = cursor.getInt(indexChatMuted) == 1;
+			boolean chatArchived = cursor.getInt(indexChatArchived) != 0;
+			boolean chatMuted = cursor.getInt(indexChatMuted) != 0;
 			int chatColor = cursor.getInt(indexChatColor);
 			ConversationManager.LightConversationItem lightItem = getLightItem(context, chatID);
 			
@@ -419,8 +641,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 			String service = cursor.getString(indexChatService);
 			String chatName = cursor.getString(indexChatName);
 			int chatUnreadMessages = cursor.getInt(indexChatUnreadMessages);
-			boolean chatArchived = cursor.getInt(indexChatArchived) == 1;
-			boolean chatMuted = cursor.getInt(indexChatMuted) == 1;
+			boolean chatArchived = cursor.getInt(indexChatArchived) != 0;
+			boolean chatMuted = cursor.getInt(indexChatMuted) != 0;
 			int chatColor = cursor.getInt(indexChatColor);
 			ConversationManager.LightConversationItem lightItem = getLightItem(context, chatID);
 			
@@ -483,6 +705,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		int errorIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ERROR);
 		int dateReadIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATEREAD);
 		int sendStyleIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
+		int sendStyleViewedIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED);
 		int messageTextIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
 		int otherIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER);
 		
@@ -502,21 +725,22 @@ class DatabaseManager extends SQLiteOpenHelper {
 				int errorCode = cursor.getInt(errorIndex);
 				long dateRead = cursor.getLong(dateReadIndex);
 				String sendStyle = cursor.getString(sendStyleIndex);
+				boolean sendStyleViewed = cursor.getInt(sendStyleViewedIndex) != 0;
 				String message = cursor.getString(messageTextIndex);
 				
 				//Creating the conversation item
-				ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(identifier, guid, conversationInfo, sender, message, sendStyle, date, stateCode, errorCode, dateRead);
+				ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(identifier, guid, conversationInfo, sender, message, sendStyle, sendStyleViewed, date, stateCode, errorCode, dateRead);
 				
 				{
 					//Querying the database for attachments
-					Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry._ID, Contract.AttachmentEntry.COLUMN_NAME_GUID, Contract.AttachmentEntry.COLUMN_NAME_TYPE, Contract.AttachmentEntry.COLUMN_NAME_FILENAME, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM},
+					Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry._ID, Contract.AttachmentEntry.COLUMN_NAME_GUID, Contract.AttachmentEntry.COLUMN_NAME_FILETYPE, Contract.AttachmentEntry.COLUMN_NAME_FILENAME, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM},
 							Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
 					
 					//Getting the indexes
 					int aIdentifierIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry._ID);
 					int aGuidIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_GUID);
 					int aFilePathIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
-					int aContentTypeIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_TYPE);
+					int aFileTypeIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE);
 					int aFileNameIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILENAME);
 					int aChecksumIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM);
 					
@@ -524,7 +748,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					while(attachmentCursor.moveToNext()) {
 						//Getting the attachment data
 						File file = attachmentCursor.isNull(aFilePathIndex) ? null : ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentCursor.getString(aFilePathIndex));
-						ConversationManager.ContentType contentType = ConversationManager.ContentType.fromIdentifier(attachmentCursor.getInt(aContentTypeIndex));
+						String fileType = attachmentCursor.getString(aFileTypeIndex);
 						String fileName = attachmentCursor.getString(aFileNameIndex);
 						String stringChecksum = attachmentCursor.getString(aChecksumIndex);
 						byte[] fileChecksum = stringChecksum == null ? null : Base64.decode(stringChecksum, Base64.NO_WRAP);
@@ -535,26 +759,15 @@ class DatabaseManager extends SQLiteOpenHelper {
 						
 						//Checking if the attachment has data
 						if(file != null && file.exists() && file.isFile()) {
-							//Creating the attachment
-							ConversationManager.AttachmentInfo attachment;
-							if(contentType == ConversationManager.ContentType.IMAGE) attachment = new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
-							else if(contentType == ConversationManager.ContentType.AUDIO) attachment = new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
-							else if(contentType == ConversationManager.ContentType.VIDEO) attachment = new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
-							else attachment = new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
-							
 							//Adding the attachment to the message
-							messageInfo.addAttachment(attachment);
+							messageInfo.addAttachment(ConversationManager.createAttachmentInfoFromType(fileID, fileGuid, messageInfo, fileName, fileType, file));
 						} else {
 							//Deleting the file if it is a directory
 							if(file != null && file.exists() && file.isDirectory())
 								Constants.recursiveDelete(file);
 							
 							//Creating the attachment
-							ConversationManager.AttachmentInfo attachment;
-							if(contentType == ConversationManager.ContentType.IMAGE) attachment = new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
-							else if(contentType == ConversationManager.ContentType.VIDEO) attachment = new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
-							else if(contentType == ConversationManager.ContentType.AUDIO) attachment = new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
-							else attachment = new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
+							ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(fileID, fileGuid, messageInfo, fileName, fileType);
 							if(fileChecksum != null) attachment.setFileChecksum(fileChecksum);
 							
 							//Adding the attachment to the message
@@ -676,6 +889,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		int errorIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ERROR);
 		int dateReadIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATEREAD);
 		int sendStyleIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
+		int sendStyleViewedIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED);
 		int messageTextIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
 		int otherIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER);
 		
@@ -695,21 +909,22 @@ class DatabaseManager extends SQLiteOpenHelper {
 				int errorCode = cursor.getInt(errorIndex);
 				long dateRead = cursor.getLong(dateReadIndex);
 				String sendStyle = cursor.getString(sendStyleIndex);
+				boolean sendStyleViewed = cursor.getInt(sendStyleViewedIndex) != 0;
 				String message = cursor.getString(messageTextIndex);
 				
 				//Creating the conversation item
-				ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(identifier, guid, conversationInfo, sender, message, sendStyle, date, stateCode, errorCode, dateRead);
+				ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(identifier, guid, conversationInfo, sender, message, sendStyle, sendStyleViewed, date, stateCode, errorCode, dateRead);
 				
 				{
 					//Querying the database for attachments
-					Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry._ID, Contract.AttachmentEntry.COLUMN_NAME_GUID, Contract.AttachmentEntry.COLUMN_NAME_TYPE, Contract.AttachmentEntry.COLUMN_NAME_FILENAME, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM},
+					Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry._ID, Contract.AttachmentEntry.COLUMN_NAME_GUID, Contract.AttachmentEntry.COLUMN_NAME_FILETYPE, Contract.AttachmentEntry.COLUMN_NAME_FILENAME, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM},
 							Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(identifier)}, null, null, null);
 					
 					//Getting the indexes
 					int aIdentifierIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry._ID);
 					int aGuidIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_GUID);
 					int aFilePathIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
-					int aContentTypeIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_TYPE);
+					int aFileTypeIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE);
 					int aFileNameIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILENAME);
 					int aChecksumIndex = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM);
 					
@@ -717,7 +932,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					while(attachmentCursor.moveToNext()) {
 						//Getting the attachment data
 						File file = attachmentCursor.isNull(aFilePathIndex) ? null : ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentCursor.getString(aFilePathIndex));
-						ConversationManager.ContentType contentType = ConversationManager.ContentType.fromIdentifier(attachmentCursor.getInt(aContentTypeIndex));
+						String fileType = attachmentCursor.getString(aFileTypeIndex);
 						String fileName = attachmentCursor.getString(aFileNameIndex);
 						String stringChecksum = attachmentCursor.getString(aChecksumIndex);
 						byte[] fileChecksum = stringChecksum == null ? null : Base64.decode(stringChecksum, Base64.NO_WRAP);
@@ -728,26 +943,15 @@ class DatabaseManager extends SQLiteOpenHelper {
 						
 						//Checking if the attachment has data
 						if(file != null && file.exists() && file.isFile()) {
-							//Creating the attachment
-							ConversationManager.AttachmentInfo attachment;
-							if(contentType == ConversationManager.ContentType.IMAGE) attachment = new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
-							else if(contentType == ConversationManager.ContentType.AUDIO) attachment = new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
-							else if(contentType == ConversationManager.ContentType.VIDEO) attachment = new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
-							else attachment = new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, file);
-							
 							//Adding the attachment to the message
-							messageInfo.addAttachment(attachment);
+							messageInfo.addAttachment(ConversationManager.createAttachmentInfoFromType(fileID, fileGuid, messageInfo, fileName, fileType, file));
 						} else {
 							//Deleting the file if it is a directory
 							if(file != null && file.exists() && file.isDirectory())
 								Constants.recursiveDelete(file);
 							
 							//Creating the attachment
-							ConversationManager.AttachmentInfo attachment;
-							if(contentType == ConversationManager.ContentType.IMAGE) attachment = new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
-							else if(contentType == ConversationManager.ContentType.VIDEO) attachment = new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
-							else if(contentType == ConversationManager.ContentType.AUDIO) attachment = new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
-							else attachment = new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName);
+							ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(fileID, fileGuid, messageInfo, fileName, fileType);
 							if(fileChecksum != null) attachment.setFileChecksum(fileChecksum);
 							
 							//Adding the attachment to the message
@@ -842,7 +1046,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 	void invalidateAttachment(long localID) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
-		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, (String) null);
+		contentValues.putNull(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
 		
 		//Updating the database
 		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(localID)});
@@ -949,7 +1153,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				//Retrieving the attachments
 				cursor = database.query(Contract.AttachmentEntry.TABLE_NAME,
-						new String[]{Contract.AttachmentEntry.COLUMN_NAME_TYPE},
+						new String[]{Contract.AttachmentEntry.COLUMN_NAME_FILETYPE},
 						Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(lastItemID)},
 						null, null, null);
 				
@@ -961,8 +1165,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				//Getting the attachment string resources
 				ArrayList<Integer> attachmentStringRes = new ArrayList<>();
-				int indexType = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_TYPE);
-				do attachmentStringRes.add(ConversationManager.ContentType.fromIdentifier(cursor.getInt(indexType)).getName());
+				int indexType = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE);
+				do attachmentStringRes.add(ConversationManager.getNameFromContentType(cursor.getString(indexType)));
 				while(cursor.moveToNext());
 				
 				//Closing the cursor
@@ -1307,8 +1511,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 		String service = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICE));
 		String chatTitle = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_NAME));
 		int chatUnreadMessages = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT));
-		boolean chatArchived = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED)) == 1;
-		boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) == 1;
+		boolean chatArchived = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED)) != 0;
+		boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) != 0;
 		int chatColor = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR));
 		ConversationManager.LightConversationItem lightItem = getLightItem(context, localID);
 		
@@ -1360,8 +1564,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 			String service = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICE));
 			String chatTitle = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_NAME));
 			int chatUnreadMessages = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT));
-			boolean chatArchived = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED)) == 1;
-			boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) == 1;
+			boolean chatArchived = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED)) != 0;
+			boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) != 0;
 			int chatColor = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR));
 			ConversationManager.LightConversationItem lightItem = getLightItem(context, localID);
 			
@@ -1411,7 +1615,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Checking if the message is a text message
 				if(messageStruct.text != null && messageStruct.attachments.isEmpty()) {
 					//Finding a matching row
-					try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID},
+					try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID, Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED},
 							Contract.MessageEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " = ?",
 							new String[]{Integer.toString(SharedValues.MessageInfo.stateCodeGhost), messageStruct.text},
 							null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " DESC", "1")) {
@@ -1435,8 +1639,11 @@ class DatabaseManager extends SQLiteOpenHelper {
 							ArrayList<ConversationManager.StickerInfo> stickers = addMessageStickers(messageID, messageStruct.stickers);
 							ArrayList<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(messageID, messageStruct.tapbacks);
 							
+							//Getting the client-relevant message information
+							boolean sendStyleViewed = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED)) != 0;
+							
 							//Creating and returning the message
-							ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, messageStruct.dateRead);
+							ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, messageStruct.dateRead);
 							for(ConversationManager.StickerInfo sticker : stickers) messageInfo.addSticker(sticker);
 							for(ConversationManager.TapbackInfo tapback : tapbacks) messageInfo.addTapback(tapback);
 							return messageInfo;
@@ -1494,38 +1701,36 @@ class DatabaseManager extends SQLiteOpenHelper {
 								ArrayList<ConversationManager.StickerInfo> stickers = addMessageStickers(messageID, messageStruct.stickers);
 								ArrayList<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(messageID, messageStruct.tapbacks);
 								
-								//Creating the message
-								ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, messageStruct.dateRead);
-								for(ConversationManager.StickerInfo sticker : stickers) messageInfo.addSticker(sticker);
-								for(ConversationManager.TapbackInfo tapback : tapbacks) messageInfo.addTapback(tapback);
-								
-								//Creating the attachment
-								SharedValues.AttachmentInfo attachmentStruct = messageStruct.attachments.get(0);
-								ConversationManager.AttachmentInfo attachment;
-								ConversationManager.ContentType contentType = ConversationManager.ContentType.getType(attachmentStruct.type);
-								switch(contentType) {
-									case IMAGE:
-										attachment = new ConversationManager.ImageAttachmentInfo(attachmentID, attachmentStruct.guid, messageInfo, attachmentStruct.name, attachmentFile);
-										break;
-									case VIDEO:
-										attachment = new ConversationManager.VideoAttachmentInfo(attachmentID, attachmentStruct.guid, messageInfo, attachmentStruct.name, attachmentFile);
-										break;
-									case AUDIO:
-										attachment = new ConversationManager.AudioAttachmentInfo(attachmentID, attachmentStruct.guid, messageInfo, attachmentStruct.name, attachmentFile);
-										break;
-									default:
-										attachment = new ConversationManager.OtherAttachmentInfo(attachmentID, attachmentStruct.guid, messageInfo, attachmentStruct.name, attachmentFile);
-										break;
+								//Fetching the message information
+								boolean entryFound = false;
+								boolean sendStyleViewed = false;
+								try(Cursor messageCursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED}, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)}, null, null, null)) {
+									if(messageCursor.moveToFirst()) {
+										entryFound = true;
+										sendStyleViewed = messageCursor.getInt(messageCursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED)) != 0;
+									}
 								}
 								
-								//Setting the checksum
-								attachment.setFileChecksum(attachmentStruct.checksum);
-								
-								//Adding the attachment
-								messageInfo.addAttachment(attachment);
-								
-								//Returning the message
-								return messageInfo;
+								//Checking if an entry was found
+								if(entryFound) {
+									//Creating the message
+									ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, messageStruct.dateRead);
+									for(ConversationManager.StickerInfo sticker : stickers) messageInfo.addSticker(sticker);
+									for(ConversationManager.TapbackInfo tapback : tapbacks) messageInfo.addTapback(tapback);
+									
+									//Creating the attachment
+									SharedValues.AttachmentInfo attachmentStruct = messageStruct.attachments.get(0);
+									ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(attachmentID, attachmentStruct.guid, messageInfo, attachmentStruct.name, attachmentStruct.type, attachmentFile);
+									
+									//Setting the checksum
+									attachment.setFileChecksum(attachmentStruct.checksum);
+									
+									//Adding the attachment
+									messageInfo.addAttachment(attachment);
+									
+									//Returning the message
+									return messageInfo;
+								}
 							}
 						}
 					}
@@ -1578,7 +1783,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			ArrayList<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(messageLocalID, messageInfoStruct.tapbacks);
 			
 			//Creating the message info
-			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageLocalID, messageInfoStruct.guid, conversationInfo, messageInfoStruct.sender, messageInfoStruct.text, new ArrayList<>(), messageInfoStruct.sendEffect, messageInfoStruct.date, messageInfoStruct.stateCode, messageInfoStruct.errorCode, messageInfoStruct.dateRead);
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageLocalID, messageInfoStruct.guid, conversationInfo, messageInfoStruct.sender, messageInfoStruct.text, new ArrayList<>(), messageInfoStruct.sendEffect, false, messageInfoStruct.date, messageInfoStruct.stateCode, messageInfoStruct.errorCode, messageInfoStruct.dateRead);
 			for(ConversationManager.StickerInfo sticker : stickers) messageInfo.addSticker(sticker);
 			for(ConversationManager.TapbackInfo tapback : tapbacks) messageInfo.addTapback(tapback);
 			
@@ -1588,7 +1793,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				contentValues.clear();
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, attachmentStruct.guid);
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, messageLocalID);
-				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_TYPE, ConversationManager.ContentType.getType(attachmentStruct.type).getIdentifier());
+				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE, attachmentStruct.type);
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILENAME, attachmentStruct.name);
 				if(attachmentStruct.checksum != null) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM, Base64.encodeToString(attachmentStruct.checksum, Base64.NO_WRAP));
 				
@@ -1605,12 +1810,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				}
 				
 				//Creating the attachment
-				ConversationManager.AttachmentInfo attachment;
-				ConversationManager.ContentType contentType = ConversationManager.ContentType.getType(attachmentStruct.type);
-				if(contentType == ConversationManager.ContentType.IMAGE) attachment = new ConversationManager.ImageAttachmentInfo(localID, attachmentStruct.guid, messageInfo, attachmentStruct.name);
-				else if(contentType == ConversationManager.ContentType.VIDEO) attachment = new ConversationManager.VideoAttachmentInfo(localID, attachmentStruct.guid, messageInfo, attachmentStruct.name);
-				else if(contentType == ConversationManager.ContentType.AUDIO) attachment = new ConversationManager.AudioAttachmentInfo(localID, attachmentStruct.guid, messageInfo, attachmentStruct.name);
-				else attachment = new ConversationManager.OtherAttachmentInfo(localID, attachmentStruct.guid, messageInfo, attachmentStruct.name);
+				ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(localID, attachmentStruct.guid, messageInfo, attachmentStruct.name, attachmentStruct.type);
 				
 				//Adding the attachment to the message
 				messageInfo.addAttachment(attachment);
@@ -1699,7 +1899,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, messageInfo.getMessageState());
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, messageInfo.getErrorCode());
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, messageInfo.getDateRead());
-			if(messageInfo.getSendEffect() != null) contentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE, messageInfo.getSendEffect());
+			if(messageInfo.getSendStyle() != null) contentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE, messageInfo.getSendStyle());
 			
 			//Inserting the conversation into the database
 			try {
@@ -1718,7 +1918,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				contentValues.clear();
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, attachment.guid);
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, itemLocalID);
-				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_TYPE, attachment.getContentType().getIdentifier());
+				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE, attachment.getContentType());
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILENAME, attachment.fileName);
 				if(attachment.file != null) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, ConversationManager.AttachmentInfo.getRelativePath(MainApplication.getInstance(), attachment.file));
 				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM, attachment.fileChecksum);
@@ -2010,7 +2210,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		ContentValues contentValues = new ContentValues();
 		
 		//Setting the text to null
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT, (String) null);
+		contentValues.putNull(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
 		
 		//Updating the data
 		getWritableDatabase().update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
@@ -2252,6 +2452,12 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Deleting the tapback
 		database.delete(Contract.TapbackEntry.TABLE_NAME, Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_SENDER + " = ?", new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex), tapback.sender});
+	}
+	
+	void markSendStyleViewed(long messageID) {
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED, 1);
+		getWritableDatabase().update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 	}
 	
 	/* static ArrayList<BlockedAddresses.BlockedAddress> fetchBlockedAddresses(SQLiteDatabase readableDatabase) {

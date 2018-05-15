@@ -1,19 +1,19 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
-    <item android:id="@+id/action_mute"
-        android:icon="@drawable/notifications_off"
-        android:title="@string/action_mute" />
-
     <item android:id="@+id/action_unmute"
         android:icon="@drawable/notifications_on"
         android:title="@string/action_unmute" />
     
+    <item android:id="@+id/action_mute"
+        android:icon="@drawable/notifications_off"
+        android:title="@string/action_mute" />
+	
+	<item android:id="@+id/action_unarchive"
+		android:icon="@drawable/unarchive"
+		android:title="@string/action_unarchive" />
+    
     <item android:id="@+id/action_archive"
         android:icon="@drawable/archive"
         android:title="@string/action_archive" />
-    
-    <item android:id="@+id/action_unarchive"
-        android:icon="@drawable/unarchive"
-        android:title="@string/action_unarchive" />
 
     <item android:id="@+id/action_delete"
         android:icon="@drawable/delete"

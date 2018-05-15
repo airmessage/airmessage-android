@@ -84,6 +84,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import me.tagavari.airmessage.common.SharedValues;
+import me.tagavari.airmessage.view.AppleEffectView;
 import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
@@ -106,7 +107,6 @@ public class Messaging extends CompositeActivity {
 	private PluginMessageBar.InfoBar infoBarConnection;
 	
 	private boolean currentScreenEffectPlaying = false;
-	private String currentScreenEffect = "";
 	
 	//Creating the state values
 	private static final byte appBarStateDefault = 0;
@@ -151,6 +151,7 @@ public class Messaging extends CompositeActivity {
 	private TextView recordingTimeLabel;
 	private FloatingActionButton bottomFAB;
 	private TextView bottomFABBadge;
+	private AppleEffectView appleEffectView;
 	private final RecyclerView.OnScrollListener messageListScrollListener = new RecyclerView.OnScrollListener() {
 		@Override
 		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
@@ -175,7 +176,7 @@ public class Messaging extends CompositeActivity {
 	private MenuItem unarchiveMenuItem;
 	
 	//Creating the other values
-	private RecyclerAdapter messageListAdapter = null;
+	private final RecyclerAdapter messageListAdapter = new RecyclerAdapter();
 	private boolean messageBoxHasText = false;
 	private ActivityManager.TaskDescription lastTaskDescription;
 	
@@ -230,7 +231,7 @@ public class Messaging extends CompositeActivity {
 			if(message.isEmpty()) return;
 			
 			//Creating a message
-			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, message, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 			
 			//Writing the message to the database
 			new AddGhostMessageTask(getApplicationContext(), messageInfo, () -> {
@@ -271,7 +272,6 @@ public class Messaging extends CompositeActivity {
 			return false;
 		}
 	};
-	private boolean messagesStateRebuildRequired = true;
 	private final Observer<Byte> messagesStateObserver = state -> {
 		switch(state) {
 			case ActivityViewModel.messagesStateLoadingConversation:
@@ -293,6 +293,9 @@ public class Messaging extends CompositeActivity {
 					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), viewModel.conversationInfo.getConversationColor()));
 				});
 				
+				//Coloring the UI
+				colorUI(findViewById(android.R.id.content));
+				
 				//Setting up the menu buttons
 				if(menuLoaded) {
 					if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
@@ -301,13 +304,6 @@ public class Messaging extends CompositeActivity {
 				
 				//Setting the activity callbacks
 				viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
-				viewModel.conversationInfo.setEffectCallbacks(new EffectCallbacks(this)); //TODO merge activity callbacks with effect callbacks
-				
-				//Setting the list adapter
-				//messageList.setLayoutManager(new SpeedyLinearLayoutManager(this));
-				messageListAdapter = new RecyclerAdapter(viewModel.conversationItemList);
-				messageList.setAdapter(messageListAdapter);
-				messageList.addOnScrollListener(messageListScrollListener);
 				
 				//Setting the message input field hint
 				messageInputField.setHint(getInputBarMessage());
@@ -322,39 +318,33 @@ public class Messaging extends CompositeActivity {
 				
 				setMessageBarState(true);
 				
-				if(messagesStateRebuildRequired) {
-					//Setting the conversation title
-					viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
-						getSupportActionBar().setTitle(result);
-						setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), viewModel.conversationInfo.getConversationColor()));
-					});
-					
-					//Setting up the menu buttons
-					if(menuLoaded) {
-						if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
-						else archiveMenuItem.setVisible(true);
-					}
-					
-					//Setting the activity callbacks
-					viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
-					viewModel.conversationInfo.setEffectCallbacks(new EffectCallbacks(this)); //TODO merge activity callbacks with effect callbacks
-					
-					//Setting the list adapter
-					messageListAdapter = new RecyclerAdapter(viewModel.conversationItemList);
-					messageList.setAdapter(messageListAdapter);
-					messageList.addOnScrollListener(messageListScrollListener);
-					
-					//Setting the message input field hint
-					messageInputField.setHint(getInputBarMessage());
+				//Setting the conversation title
+				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
+					getSupportActionBar().setTitle(result);
+					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), viewModel.conversationInfo.getConversationColor()));
+				});
+				
+				//Setting up the menu buttons
+				if(menuLoaded) {
+					if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
+					else archiveMenuItem.setVisible(true);
 				}
 				
-				//Finding the latest send effect
-				for(int i = viewModel.conversationItemList.size() - 1; i >= 0; i--) {
+				//Setting the activity callbacks
+				viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
+				
+				//Setting the list adapter
+				messageListAdapter.setItemList(viewModel.conversationItemList);
+				messageList.setAdapter(messageListAdapter);
+				messageList.addOnScrollListener(messageListScrollListener);
+				
+				//Setting the message input field hint
+				messageInputField.setHint(getInputBarMessage());
+				
+				/* //Finding the latest send effect
+				for(int i = viewModel.conversationItemList.size() - 1; i >= 0 && i >= viewModel.conversationItemList.size() - viewModel.conversationInfo.getUnreadMessageCount(); i--) {
 					//Getting the conversation item
 					ConversationManager.ConversationItem conversationItem = viewModel.conversationItemList.get(i);
-					
-					//Breaking from the loop if the item has already been viewed
-					if(viewModel.conversationItemList.size() - 1 >= viewModel.conversationInfo.getUnreadMessageCount()) break;
 					
 					//Skipping the remainder of the iteration if the item is not a message
 					if(!(conversationItem instanceof ConversationManager.MessageInfo)) continue;
@@ -363,17 +353,17 @@ public class Messaging extends CompositeActivity {
 					ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
 					
 					//Skipping the remainder of the iteration if the message has no send effect
-					if(messageInfo.getSendEffect().isEmpty()) continue;
+					if(messageInfo.getSendStyle().isEmpty()) continue;
 					
 					//Setting the send effect
-					currentScreenEffect = messageInfo.getSendEffect();
+					currentScreenEffect = messageInfo.getSendStyle();
 					
 					//Breaking from the loop
 					break;
 				}
 				
 				//Playing the send effect if there is one
-				if(!currentScreenEffect.isEmpty()) playCurrentSendEffect();
+				if(!currentScreenEffect.isEmpty()) playCurrentScreenEffect(); */
 				
 				//Setting the last message count
 				viewModel.lastUnreadCount = viewModel.conversationInfo.getUnreadMessageCount();
@@ -408,8 +398,6 @@ public class Messaging extends CompositeActivity {
 				
 				break;
 		}
-		
-		messagesStateRebuildRequired = false;
 	};
 	
 	public Messaging() {
@@ -452,6 +440,7 @@ public class Messaging extends CompositeActivity {
 		recordingTimeLabel = inputBar.findViewById(R.id.recordingtime);
 		bottomFAB = findViewById(R.id.fab_bottom);
 		bottomFABBadge = findViewById(R.id.fab_bottom_badge);
+		appleEffectView = findViewById(R.id.effect_foreground);
 		
 		//Setting the plugin views
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
@@ -499,6 +488,7 @@ public class Messaging extends CompositeActivity {
 		inputBar.findViewById(R.id.button_attach).setOnClickListener(view -> requestAnyFile());
 		contentRecordButton.setOnTouchListener(recordingTouchListener);
 		bottomFAB.setOnClickListener(view -> messageListAdapter.scrollToBottom());
+		appleEffectView.setFinishListener(() -> currentScreenEffectPlaying = false);
 		
 		/* //Checking if there is already a conversation info available
 		if(viewModel.conversationInfo != null) {
@@ -589,11 +579,11 @@ public class Messaging extends CompositeActivity {
 		//Adding the phantom reference
 		foregroundConversations.add(new WeakReference<>(this));
 		
+		//Clearing the notifications
+		((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel((int) viewModel.conversationID);
+		
 		//Checking if the conversation is valid
 		if(viewModel.conversationInfo != null) {
-			//Clearing the notifications
-			((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel((int) viewModel.conversationInfo.getLocalID());
-			
 			//Coloring the UI
 			colorUI(findViewById(android.R.id.content));
 			
@@ -611,6 +601,15 @@ public class Messaging extends CompositeActivity {
 		boolean showWarning = connectionService == null || (connectionService.getCurrentState() == ConnectionService.stateDisconnected && ConnectionService.getLastConnectionResult() != -1);
 		if(showWarning) showServerWarning(ConnectionService.getLastConnectionResult());
 		else hideServerWarning();
+		
+		//Notifying the views
+		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
+			for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) {
+				if(conversationItem instanceof ConversationManager.MessageInfo) {
+					((ConversationManager.MessageInfo) conversationItem).notifyResume();
+				}
+			}
+		}
 	}
 	
 	@Override
@@ -637,6 +636,15 @@ public class Messaging extends CompositeActivity {
 			//Breaking from the loop
 			break;
 		}
+		
+		//Notifying the views
+		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
+			for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) {
+				if(conversationItem instanceof ConversationManager.MessageInfo) {
+					((ConversationManager.MessageInfo) conversationItem).notifyPause();
+				}
+			}
+		}
 	}
 	
 	@Override
@@ -647,6 +655,15 @@ public class Messaging extends CompositeActivity {
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
+		
+		//Notifying the views
+		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
+			for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) {
+				if(conversationItem instanceof ConversationManager.MessageInfo) {
+					((ConversationManager.MessageInfo) conversationItem).notifyPause();
+				}
+			}
+		}
 	}
 	
 	@Override
@@ -655,7 +672,7 @@ public class Messaging extends CompositeActivity {
 		super.onDestroy();
 		
 		//Iterating over the loaded conversations
-		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext(); ) {
+		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			
@@ -672,6 +689,15 @@ public class Messaging extends CompositeActivity {
 			
 			//Breaking from the loop
 			break;
+		}
+		
+		//Notifying the views
+		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
+			for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) {
+				if(conversationItem instanceof ConversationManager.MessageInfo) {
+					((ConversationManager.MessageInfo) conversationItem).notifyPause();
+				}
+			}
 		}
 	}
 	
@@ -1801,7 +1827,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void sendFile(File file) {
 		//Creating a message
-		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 		
 		//Starting the task
 		new SendFilePreparationTask(this, messageInfo, file).execute();
@@ -1809,7 +1835,7 @@ public class Messaging extends CompositeActivity {
 	
 	private void sendFile(Uri uri) {
 		//Creating a message
-		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, "", System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 		
 		//Starting the task
 		new SendFilePreparationTask(this, messageInfo, uri).execute();
@@ -1860,38 +1886,8 @@ public class Messaging extends CompositeActivity {
 			
 			//Creating the attachment
 			ConversationManager.AttachmentInfo attachment;
-			if(targetFile != null) {
-				switch(ConversationManager.ContentType.getType(Constants.getMimeType(targetFile))) {
-					case IMAGE:
-						attachment = new ConversationManager.ImageAttachmentInfo(-1, null, messageInfo, targetFile.getName(), targetFile);
-						break;
-					case VIDEO:
-						attachment = new ConversationManager.VideoAttachmentInfo(-1, null, messageInfo, targetFile.getName(), targetFile);
-						break;
-					case AUDIO:
-						attachment = new ConversationManager.AudioAttachmentInfo(-1, null, messageInfo, targetFile.getName(), targetFile);
-						break;
-					default:
-						attachment = new ConversationManager.OtherAttachmentInfo(-1, null, messageInfo, targetFile.getName(), targetFile);
-						break;
-				}
-			} else {
-				String fileName = Constants.getFileName(context, targetUri);
-				switch(ConversationManager.ContentType.getType(Constants.getMimeType(context, targetUri))) {
-					case IMAGE:
-						attachment = new ConversationManager.ImageAttachmentInfo(-1, null, messageInfo, fileName, targetUri);
-						break;
-					case VIDEO:
-						attachment = new ConversationManager.VideoAttachmentInfo(-1, null, messageInfo, fileName, targetUri);
-						break;
-					case AUDIO:
-						attachment = new ConversationManager.AudioAttachmentInfo(-1, null, messageInfo, fileName, targetUri);
-						break;
-					default:
-						attachment = new ConversationManager.OtherAttachmentInfo(-1, null, messageInfo, fileName, targetUri);
-						break;
-				}
-			}
+			if(targetFile != null) attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, targetFile.getName(), Constants.getMimeType(targetFile), targetFile);
+			else attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, Constants.getFileName(context, targetUri), Constants.getMimeType(context, targetUri), targetUri);
 			
 			//Adding the item to the database
 			messageInfo.addAttachment(attachment);
@@ -1935,22 +1931,19 @@ public class Messaging extends CompositeActivity {
 		}
 	}
 	
-	void setCurrentScreenEffect(String screenEffect) {
-		currentScreenEffect = screenEffect;
-	}
-	
 	private static final long confettiDuration = 1000;
 	
-	void playCurrentSendEffect() {
+	void playScreenEffect(String effect, View target) {
 		//Returning if an effect is already playing
 		if(currentScreenEffectPlaying) return;
 		currentScreenEffectPlaying = true;
 		
-		switch(currentScreenEffect) {
-			case Constants.appleSendStyleFireworks:
-				currentScreenEffectPlaying = false;
+		switch(effect) {
+			case Constants.appleSendStyleScrnEcho:
+				//Activating the effect view
+				appleEffectView.playEcho(target);
 				break;
-			case Constants.appleSendStyleConfetti: {
+			case Constants.appleSendStyleScrnConfetti: {
 				//Activating the Konfetti view
 				KonfettiView konfettiView = findViewById(R.id.konfetti);
 				konfettiView.build()
@@ -1969,10 +1962,10 @@ public class Messaging extends CompositeActivity {
 						.addShapes(Shape.RECT, Shape.CIRCLE)
 						.addSizes(new Size(12, 5), new Size(16, 6))
 						.setPosition(-50F, konfettiView.getWidth() + 50F, -50F, -50F)
-						.stream(300, confettiDuration);
+						.streamFor(300, confettiDuration);
 				
 				//Setting the timer to mark the effect as finished
-				new Handler().postDelayed(() -> currentScreenEffectPlaying = false, confettiDuration);
+				new Handler().postDelayed(() -> currentScreenEffectPlaying = false, confettiDuration * 5);
 				
 				break;
 			}
@@ -1997,19 +1990,25 @@ public class Messaging extends CompositeActivity {
 		private static final int itemTypeLoadingBar = -1;
 		
 		//Creating the values
-		private final ArrayList<ConversationManager.ConversationItem> conversationItems;
+		private ArrayList<ConversationManager.ConversationItem> conversationItems = null;
 		private RecyclerView recyclerView;
 		
 		//Creating the pools
 		private final SparseArray<Pools.SimplePool<? extends RecyclerView.ViewHolder>> componentPoolList = new SparseArray<>();
 		private final PoolSource poolSource = new PoolSource();
 		
-		RecyclerAdapter(ArrayList<ConversationManager.ConversationItem> items) {
+		RecyclerAdapter() {
+			//Enabling stable IDs
+			setHasStableIds(true);
+		}
+		
+		void setItemList(ArrayList<ConversationManager.ConversationItem> items) {
 			//Setting the conversation items
 			conversationItems = items;
 			
-			//Enabling stable IDs
-			setHasStableIds(true);
+			//Updating the view
+			//messageList.getRecycledViewPool().clear();
+			notifyDataSetChanged();
 		}
 		
 		@Override
@@ -2025,7 +2024,7 @@ public class Messaging extends CompositeActivity {
 			//Returning the correct view holder
 			switch(viewType) {
 				case ConversationManager.ConversationItem.viewTypeMessage:
-					return new ConversationManager.MessageInfo.ViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_message, parent, false));
+					return new ConversationManager.MessageInfo.ViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_messageimp, parent, false));
 				case ConversationManager.ConversationItem.viewTypeAction:
 					return new ConversationManager.ActionLineViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_action, parent, false));
 				case itemTypeLoadingBar: {
@@ -2039,22 +2038,49 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		@Override
+		public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
+			if(holder instanceof ConversationManager.MessageInfo.ViewHolder) {
+				for(ConversationManager.MessageComponent.ViewHolder attachmentHolder : ((ConversationManager.MessageInfo.ViewHolder) holder).messageComponents) {
+					attachmentHolder.cleanupState();
+				}
+			}
+		}
+		
+		@Override
 		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-			//Returning if the item is the loading spinner
-			if(getItemViewType(position) == itemTypeLoadingBar) return;
+			//Returning if there are no items or the item is the loading spinner
+			if(conversationItems == null || getItemViewType(position) == itemTypeLoadingBar) return;
 			
 			//Getting the item
 			ConversationManager.ConversationItem conversationItem;
 			if(viewModel.isProgressiveLoadInProgress()) conversationItem = conversationItems.get(position - 1);
 			else conversationItem = conversationItems.get(position);
 			
-			if(conversationItem instanceof ConversationManager.MessageInfo) ((ConversationManager.MessageInfo.ViewHolder) holder).setPoolSource(poolSource);
+			//Checking if the item is a message
+			boolean isMessage = false;
+			if(conversationItem instanceof ConversationManager.MessageInfo) {
+				((ConversationManager.MessageInfo.ViewHolder) holder).setPoolSource(poolSource);
+				isMessage = true;
+			}
 			
 			//Creating the view
 			conversationItem.bindView(holder, Messaging.this);
 			
 			//Setting the view source
 			conversationItem.setViewHolderSource(new Constants.ViewHolderSourceImpl<RecyclerView.ViewHolder>(recyclerView, conversationItem.getLocalID()));
+			
+			//Checking if the item is a message
+			if(isMessage) {
+				ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
+				//Playing the message's effect if it hasn't been viewed yet
+				if(messageInfo.getSendStyle() != null && !messageInfo.getSendStyleViewed()) {
+					messageInfo.setSendStyleViewed(true);
+					messageInfo.playEffect((ConversationManager.MessageInfo.ViewHolder) holder);
+					/* if(Constants.validateScreenEffect(messageInfo.getSendStyle())) playScreenEffect(messageInfo.getSendStyle());
+					else messageInfo.playEffect(); */
+					new TaskMarkMessageSendStyleViewed().execute(messageInfo);
+				}
+			}
 		}
 		
 		@Override
@@ -2065,6 +2091,7 @@ public class Messaging extends CompositeActivity {
 		
 		@Override
 		public int getItemCount() {
+			if(conversationItems == null) return 0;
 			int size = conversationItems.size();
 			if(viewModel.isProgressiveLoadInProgress()) size += 1;
 			return size;
@@ -2072,12 +2099,14 @@ public class Messaging extends CompositeActivity {
 		
 		@Override
 		public int getItemViewType(int position) {
+			if(conversationItems == null) return 0;
 			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
 			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getItemViewType();
 		}
 		
 		@Override
 		public long getItemId(int position) {
+			if(conversationItems == null) return 0;
 			if(isViewLoadingSpinner(position)) return -1;
 			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getLocalID();
 		}
@@ -2087,14 +2116,14 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		final class PoolSource {
-			static final int poolSize = 20;
+			static final int poolSize = 12;
 			
-			ConversationManager.MessageComponent.ViewHolder getComponent(ConversationManager.MessageComponent<ConversationManager.MessageComponent.ViewHolder> component, Context context) {
+			ConversationManager.MessageComponent.ViewHolder getComponent(ConversationManager.MessageComponent<ConversationManager.MessageComponent.ViewHolder> component, ViewGroup parent, Context context) {
 				Pools.SimplePool<ConversationManager.MessageComponent.ViewHolder> pool = (Pools.SimplePool<ConversationManager.MessageComponent.ViewHolder>) componentPoolList.get(component.getItemViewType());
-				if(pool == null) return component.createViewHolder(context, null);
+				if(pool == null) return component.createViewHolder(context, parent);
 				else {
 					ConversationManager.MessageComponent.ViewHolder viewHolder = pool.acquire();
-					return viewHolder == null ? component.createViewHolder(context, null) : viewHolder;
+					return viewHolder == null ? component.createViewHolder(context, parent) : viewHolder;
 				}
 			}
 			
@@ -2129,12 +2158,24 @@ public class Messaging extends CompositeActivity {
 			return ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
 		}
 		
+		boolean isDirectlyBelowFrame(int index) {
+			return ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() + 1 == index;
+		}
+		
 		void scrollToBottom() {
 			//Returning if the list has already been scrolled to the bottom
 			if(isScrolledToBottom()) return;
 			
 			//Scrolling to the bottom
 			recyclerView.smoothScrollToPosition(getItemCount() - 1);
+		}
+	}
+	
+	private static class TaskMarkMessageSendStyleViewed extends AsyncTask<ConversationManager.MessageInfo, Void, Void> {
+		@Override
+		protected Void doInBackground(ConversationManager.MessageInfo... items) {
+			for(ConversationManager.MessageInfo item : items) DatabaseManager.getInstance().markSendStyleViewed(item.getLocalID());
+			return null;
 		}
 	}
 	
@@ -2209,8 +2250,8 @@ public class Messaging extends CompositeActivity {
 		//Creating the conversation values
 		private long conversationID;
 		private ConversationManager.ConversationInfo conversationInfo;
-		private ArrayList<ConversationManager.ConversationItem> conversationItemList = new ArrayList<>();
-		private ArrayList<ConversationManager.MessageInfo> conversationGhostList = new ArrayList<>();
+		private ArrayList<ConversationManager.ConversationItem> conversationItemList;
+		private ArrayList<ConversationManager.MessageInfo> conversationGhostList;
 		
 		//Creating the attachment values
 		File targetFile = null;
@@ -2254,7 +2295,7 @@ public class Messaging extends CompositeActivity {
 			//Checking if the conversation is valid
 			if(conversationInfo != null) {
 				//Clearing the messages
-				conversationInfo.clearMessages();
+				//conversationInfo.clearMessages();
 				
 				//Updating the conversation's unread message count
 				conversationInfo.updateUnreadStatus(MainApplication.getInstance());
@@ -2296,47 +2337,63 @@ public class Messaging extends CompositeActivity {
 			//Updating the state
 			messagesState.setValue(messagesStateLoadingMessages);
 			
-			//Loading the messages
-			new AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationItem>>() {
-				@Override
-				protected ArrayList<ConversationManager.ConversationItem> doInBackground(Void... params) {
-					//Loading the conversation items
-					ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0);
-					
-					//Setting up the conversation item relations
-					ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
-					
-					//Returning the conversation items
-					return conversationItems;
-				}
+			//Checking if the conversation already has lists
+			ArrayList<ConversationManager.ConversationItem> existingConversationItems = conversationInfo.getConversationItems();
+			ArrayList<ConversationManager.MessageInfo> existingGhostMessages = conversationInfo.getGhostMessages();
+			if(existingConversationItems != null && existingGhostMessages != null) {
+				//Setting the lists
+				conversationItemList = existingConversationItems;
+				conversationGhostList = existingGhostMessages;
 				
-				@Override
-				protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> messages) {
-					//Returning if the conversation isn't loaded anymore
-					if(!ConversationManager.getLoadedConversations().contains(conversationInfo)) return;
-					
-					//Checking if the messages are invalid
-					if(messages == null) {
-						//Setting the state
-						messagesState.setValue(messagesStateFailedMessages);
+				//Marking all messages as read (list will always be scrolled to the bottom)
+				conversationInfo.setUnreadMessageCount(0);
+				
+				//Setting the state
+				messagesState.setValue(messagesStateReady);
+			} else {
+				//Loading the messages
+				new AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationItem>>() {
+					@Override
+					protected ArrayList<ConversationManager.ConversationItem> doInBackground(Void... params) {
+						//Loading the conversation items
+						ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0);
 						
-						//Returning
-						return;
+						//Setting up the conversation item relations
+						ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
+						
+						//Returning the conversation items
+						return conversationItems;
 					}
 					
-					//Setting the state
-					messagesState.setValue(messagesStateReady);
-					
-					//Recording the lists in the conversation info
-					conversationInfo.setConversationItems(conversationItemList, conversationGhostList);
-					
-					//Replacing the conversation items
-					conversationInfo.replaceConversationItems(MainApplication.getInstance(), messages);
-					
-					//Marking all messages as read (list will always be scrolled to the bottom)
-					conversationInfo.setUnreadMessageCount(0);
-				}
-			}.execute();
+					@Override
+					protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> messages) {
+						//Checking if the messages are invalid
+						if(messages == null) {
+							//Setting the state
+							messagesState.setValue(messagesStateFailedMessages);
+							
+							//Returning
+							return;
+						}
+						
+						//Creating the lists
+						conversationItemList = new ArrayList<>();
+						conversationGhostList = new ArrayList<>();
+						
+						//Recording the lists in the conversation info
+						conversationInfo.setConversationLists(conversationItemList, conversationGhostList);
+						
+						//Replacing the conversation items
+						conversationInfo.replaceConversationItems(MainApplication.getInstance(), messages);
+						
+						//Marking all messages as read (list will always be scrolled to the bottom)
+						conversationInfo.setUnreadMessageCount(0);
+						
+						//Setting the state
+						messagesState.setValue(messagesStateReady);
+					}
+				}.execute();
+			}
 		}
 		
 		@SuppressLint("StaticFieldLeak")
@@ -2666,24 +2723,6 @@ public class Messaging extends CompositeActivity {
 		}
 	}
 	
-	static class EffectCallbacks {
-		WeakReference<Messaging> activityReference;
-		
-		EffectCallbacks(Messaging activity) {
-			activityReference = new WeakReference<>(activity);
-		}
-		
-		void setCurrentScreenEffect(String screenEffect) {
-			Messaging activity = activityReference.get();
-			if(activity != null) activity.setCurrentScreenEffect(screenEffect);
-		}
-		
-		void playCurrentScreenEffect() {
-			Messaging activity = activityReference.get();
-			if(activity != null) activity.playCurrentSendEffect();
-		}
-	}
-	
 	private static class AddGhostMessageTask extends AsyncTask<Void, Void, Void> {
 		private final WeakReference<Context> contextReference;
 		private final ConversationManager.MessageInfo messageInfo;
@@ -2736,6 +2775,7 @@ public class Messaging extends CompositeActivity {
 			//Updating the adapter
 			activity.messageList.getRecycledViewPool().clear();
 			activity.messageListAdapter.notifyDataSetChanged();
+			//activity.messageList.scheduleLayoutAnimation();
 		}
 		
 		@Override
@@ -2780,6 +2820,25 @@ public class Messaging extends CompositeActivity {
 		}
 		
 		@Override
+		void listAttemptScrollToBottom(int... newIndices) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the adapter
+			boolean newMessageAdded = false;
+			for(int index : newIndices) {
+				if(activity.messageListAdapter.isDirectlyBelowFrame(index)) {
+					newMessageAdded = true;
+					break;
+				}
+			}
+			
+			//Scrolling to the bottom of the list
+			if(newMessageAdded) activity.messageListAdapter.scrollToBottom();
+		}
+		
+		@Override
 		void chatUpdateTitle() {
 			//Getting the activity
 			Messaging activity = activityReference.get();
@@ -2814,6 +2873,12 @@ public class Messaging extends CompositeActivity {
 			
 			//Returning the view model's audio message manager
 			return activity.viewModel.audioMessageManager;
+		}
+		
+		@Override
+		void playScreenEffect(String screenEffect, View target) {
+			Messaging activity = activityReference.get();
+			if(activity != null) activity.playScreenEffect(screenEffect, target);
 		}
 	}
 }
