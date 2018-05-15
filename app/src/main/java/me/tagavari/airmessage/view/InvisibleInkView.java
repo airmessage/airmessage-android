@@ -22,6 +22,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import com.crashlytics.android.Crashlytics;
+
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -296,6 +298,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 			}
 		} catch(Exception exception) {
 			exception.printStackTrace();
+			Crashlytics.logException(exception);
 		} finally {
 			stop();
 		}

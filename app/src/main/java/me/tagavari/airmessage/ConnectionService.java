@@ -1043,7 +1043,7 @@ public class ConnectionService extends Service {
 					
 					//Reading the content
 					byte[] content = new byte[contentLen];
-					{
+					if(contentLen > 0) {
 						int bytesRemaining = contentLen;
 						int offset = 0;
 						int readCount;
@@ -3390,12 +3390,10 @@ public class ConnectionService extends Service {
 			
 			for(ConversationManager.ConversationItem conversationItem : newCompleteConversationItems) {
 				//Sending notifications
-				if(conversationItem instanceof ConversationManager.MessageInfo)
-					NotificationUtils.sendNotification(context, (ConversationManager.MessageInfo) conversationItem);
+				if(conversationItem instanceof ConversationManager.MessageInfo) NotificationUtils.sendNotification(context, (ConversationManager.MessageInfo) conversationItem);
 				
 				//Downloading the items automatically (if requested)
-				if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_storage_autodownload_key), false) &&
-						conversationItem instanceof ConversationManager.MessageInfo) {
+				if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_storage_autodownload_key), false) && conversationItem instanceof ConversationManager.MessageInfo) {
 					for(ConversationManager.AttachmentInfo attachmentInfo : ((ConversationManager.MessageInfo) conversationItem).getAttachments())
 						attachmentInfo.downloadContent(context);
 				}

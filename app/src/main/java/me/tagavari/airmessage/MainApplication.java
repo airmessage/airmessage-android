@@ -16,7 +16,6 @@ import android.support.v7.app.AppCompatDelegate;
 
 import com.crashlytics.android.Crashlytics;
 import com.crashlytics.android.core.CrashlyticsCore;
-import com.squareup.leakcanary.LeakCanary;
 
 import java.io.File;
 import java.lang.ref.SoftReference;
@@ -57,12 +56,12 @@ public class MainApplication extends Application {
 		//Calling the super method
 		super.onCreate();
 		
-		if(LeakCanary.isInAnalyzerProcess(this)) {
+		/* if(LeakCanary.isInAnalyzerProcess(this)) {
 			// This process is dedicated to LeakCanary for heap analysis.
 			// You should not init your app in this process.
 			return;
 		}
-		LeakCanary.install(this);
+		LeakCanary.install(this); */
 		
 		//Configuring crash reporting
 		configureCrashReporting();
@@ -123,13 +122,10 @@ public class MainApplication extends Application {
 	}
 	
 	private void configureCrashReporting() {
-		// Set up Crashlytics, disabled for debug builds
-		Crashlytics crashlyticsKit = new Crashlytics.Builder()
-				.core(new CrashlyticsCore.Builder().disabled(BuildConfig.DEBUG).build())
-				.build();
-		
-		// Initialize Fabric with the debug-disabled crashlytics
-		Fabric.with(this, crashlyticsKit);
+		//Initializing crashlytics, disabling in debug mode
+		//CrashlyticsCore core = new CrashlyticsCore.Builder().build();
+		CrashlyticsCore core = new CrashlyticsCore.Builder().disabled(BuildConfig.DEBUG).build();
+		Fabric.with(this, new Crashlytics.Builder().core(core).build());
 	}
 	
 	private static final String oldSharedPrefsName = "me.tagavari.airmessage.MAIN_PREFERENCES";

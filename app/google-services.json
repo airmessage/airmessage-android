@@ -15,6 +15,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "369596104909-mql3j146qfsdiarht4ct6g2jbi4urgbm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "me.tagavari.airmessage",
+            "certificate_hash": "caa5c2486a80d81b74eb9226da40bd5864b3d900"
+          }
+        },
+        {
+          "client_id": "369596104909-5t92g39r31nljpl44i5vffmt3ro6bfm1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "me.tagavari.airmessage",
+            "certificate_hash": "7829b44fd8159d3cca4279a49b8c7b17705b2c0f"
+          }
+        },
+        {
           "client_id": "369596104909-ev1m9m5a31i9len8jpm7os2h49b9q0ql.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

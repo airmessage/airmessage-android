@@ -201,7 +201,8 @@ public class Constants {
 	static void recursiveDelete(File file) {
 		if(file.isFile()) file.delete();
 		else {
-			for(File childFiles : file.listFiles()) recursiveDelete(childFiles);
+			File[] childFiles = file.listFiles();
+			if(childFiles != null) for(File child : childFiles) recursiveDelete(child);
 			file.delete();
 		}
 	}
