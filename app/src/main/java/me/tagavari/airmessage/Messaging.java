@@ -176,7 +176,7 @@ public class Messaging extends CompositeActivity {
 	private MenuItem unarchiveMenuItem;
 	
 	//Creating the other values
-	private RecyclerAdapter messageListAdapter = null;
+	private final RecyclerAdapter messageListAdapter = new RecyclerAdapter();
 	private boolean messageBoxHasText = false;
 	private ActivityManager.TaskDescription lastTaskDescription;
 	
@@ -272,7 +272,6 @@ public class Messaging extends CompositeActivity {
 			return false;
 		}
 	};
-	private boolean messagesStateRebuildRequired = true;
 	private final Observer<Byte> messagesStateObserver = state -> {
 		switch(state) {
 			case ActivityViewModel.messagesStateLoadingConversation:
@@ -294,6 +293,9 @@ public class Messaging extends CompositeActivity {
 					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), viewModel.conversationInfo.getConversationColor()));
 				});
 				
+				//Coloring the UI
+				colorUI(findViewById(android.R.id.content));
+				
 				//Setting up the menu buttons
 				if(menuLoaded) {
 					if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
@@ -302,12 +304,6 @@ public class Messaging extends CompositeActivity {
 				
 				//Setting the activity callbacks
 				viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
-				
-				//Setting the list adapter
-				//messageList.setLayoutManager(new SpeedyLinearLayoutManager(this));
-				messageListAdapter = new RecyclerAdapter(viewModel.conversationItemList);
-				messageList.setAdapter(messageListAdapter);
-				messageList.addOnScrollListener(messageListScrollListener);
 				
 				//Setting the message input field hint
 				messageInputField.setHint(getInputBarMessage());
@@ -322,30 +318,28 @@ public class Messaging extends CompositeActivity {
 				
 				setMessageBarState(true);
 				
-				if(messagesStateRebuildRequired) {
-					//Setting the conversation title
-					viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
-						getSupportActionBar().setTitle(result);
-						setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), viewModel.conversationInfo.getConversationColor()));
-					});
-					
-					//Setting up the menu buttons
-					if(menuLoaded) {
-						if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
-						else archiveMenuItem.setVisible(true);
-					}
-					
-					//Setting the activity callbacks
-					viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
-					
-					//Setting the list adapter
-					messageListAdapter = new RecyclerAdapter(viewModel.conversationItemList);
-					messageList.setAdapter(messageListAdapter);
-					messageList.addOnScrollListener(messageListScrollListener);
-					
-					//Setting the message input field hint
-					messageInputField.setHint(getInputBarMessage());
+				//Setting the conversation title
+				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
+					getSupportActionBar().setTitle(result);
+					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), viewModel.conversationInfo.getConversationColor()));
+				});
+				
+				//Setting up the menu buttons
+				if(menuLoaded) {
+					if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
+					else archiveMenuItem.setVisible(true);
 				}
+				
+				//Setting the activity callbacks
+				viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
+				
+				//Setting the list adapter
+				messageListAdapter.setItemList(viewModel.conversationItemList);
+				messageList.setAdapter(messageListAdapter);
+				messageList.addOnScrollListener(messageListScrollListener);
+				
+				//Setting the message input field hint
+				messageInputField.setHint(getInputBarMessage());
 				
 				/* //Finding the latest send effect
 				for(int i = viewModel.conversationItemList.size() - 1; i >= 0 && i >= viewModel.conversationItemList.size() - viewModel.conversationInfo.getUnreadMessageCount(); i--) {
@@ -404,8 +398,6 @@ public class Messaging extends CompositeActivity {
 				
 				break;
 		}
-		
-		messagesStateRebuildRequired = false;
 	};
 	
 	public Messaging() {
@@ -587,11 +579,11 @@ public class Messaging extends CompositeActivity {
 		//Adding the phantom reference
 		foregroundConversations.add(new WeakReference<>(this));
 		
+		//Clearing the notifications
+		((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel((int) viewModel.conversationID);
+		
 		//Checking if the conversation is valid
 		if(viewModel.conversationInfo != null) {
-			//Clearing the notifications
-			((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel((int) viewModel.conversationInfo.getLocalID());
-			
 			//Coloring the UI
 			colorUI(findViewById(android.R.id.content));
 			
@@ -1998,19 +1990,25 @@ public class Messaging extends CompositeActivity {
 		private static final int itemTypeLoadingBar = -1;
 		
 		//Creating the values
-		private final ArrayList<ConversationManager.ConversationItem> conversationItems;
+		private ArrayList<ConversationManager.ConversationItem> conversationItems = null;
 		private RecyclerView recyclerView;
 		
 		//Creating the pools
 		private final SparseArray<Pools.SimplePool<? extends RecyclerView.ViewHolder>> componentPoolList = new SparseArray<>();
 		private final PoolSource poolSource = new PoolSource();
 		
-		RecyclerAdapter(ArrayList<ConversationManager.ConversationItem> items) {
+		RecyclerAdapter() {
+			//Enabling stable IDs
+			setHasStableIds(true);
+		}
+		
+		void setItemList(ArrayList<ConversationManager.ConversationItem> items) {
 			//Setting the conversation items
 			conversationItems = items;
 			
-			//Enabling stable IDs
-			setHasStableIds(true);
+			//Updating the view
+			//messageList.getRecycledViewPool().clear();
+			notifyDataSetChanged();
 		}
 		
 		@Override
@@ -2050,8 +2048,8 @@ public class Messaging extends CompositeActivity {
 		
 		@Override
 		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-			//Returning if the item is the loading spinner
-			if(getItemViewType(position) == itemTypeLoadingBar) return;
+			//Returning if there are no items or the item is the loading spinner
+			if(conversationItems == null || getItemViewType(position) == itemTypeLoadingBar) return;
 			
 			//Getting the item
 			ConversationManager.ConversationItem conversationItem;
@@ -2093,6 +2091,7 @@ public class Messaging extends CompositeActivity {
 		
 		@Override
 		public int getItemCount() {
+			if(conversationItems == null) return 0;
 			int size = conversationItems.size();
 			if(viewModel.isProgressiveLoadInProgress()) size += 1;
 			return size;
@@ -2100,12 +2099,14 @@ public class Messaging extends CompositeActivity {
 		
 		@Override
 		public int getItemViewType(int position) {
+			if(conversationItems == null) return 0;
 			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
 			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getItemViewType();
 		}
 		
 		@Override
 		public long getItemId(int position) {
+			if(conversationItems == null) return 0;
 			if(isViewLoadingSpinner(position)) return -1;
 			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getLocalID();
 		}
@@ -2249,8 +2250,8 @@ public class Messaging extends CompositeActivity {
 		//Creating the conversation values
 		private long conversationID;
 		private ConversationManager.ConversationInfo conversationInfo;
-		private ArrayList<ConversationManager.ConversationItem> conversationItemList = new ArrayList<>();
-		private ArrayList<ConversationManager.MessageInfo> conversationGhostList = new ArrayList<>();
+		private ArrayList<ConversationManager.ConversationItem> conversationItemList;
+		private ArrayList<ConversationManager.MessageInfo> conversationGhostList;
 		
 		//Creating the attachment values
 		File targetFile = null;
@@ -2294,7 +2295,7 @@ public class Messaging extends CompositeActivity {
 			//Checking if the conversation is valid
 			if(conversationInfo != null) {
 				//Clearing the messages
-				conversationInfo.clearMessages();
+				//conversationInfo.clearMessages();
 				
 				//Updating the conversation's unread message count
 				conversationInfo.updateUnreadStatus(MainApplication.getInstance());
@@ -2336,47 +2337,63 @@ public class Messaging extends CompositeActivity {
 			//Updating the state
 			messagesState.setValue(messagesStateLoadingMessages);
 			
-			//Loading the messages
-			new AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationItem>>() {
-				@Override
-				protected ArrayList<ConversationManager.ConversationItem> doInBackground(Void... params) {
-					//Loading the conversation items
-					ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0);
-					
-					//Setting up the conversation item relations
-					ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
-					
-					//Returning the conversation items
-					return conversationItems;
-				}
+			//Checking if the conversation already has lists
+			ArrayList<ConversationManager.ConversationItem> existingConversationItems = conversationInfo.getConversationItems();
+			ArrayList<ConversationManager.MessageInfo> existingGhostMessages = conversationInfo.getGhostMessages();
+			if(existingConversationItems != null && existingGhostMessages != null) {
+				//Setting the lists
+				conversationItemList = existingConversationItems;
+				conversationGhostList = existingGhostMessages;
 				
-				@Override
-				protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> messages) {
-					//Returning if the conversation isn't loaded anymore
-					if(!ConversationManager.getLoadedConversations().contains(conversationInfo)) return;
-					
-					//Checking if the messages are invalid
-					if(messages == null) {
-						//Setting the state
-						messagesState.setValue(messagesStateFailedMessages);
+				//Marking all messages as read (list will always be scrolled to the bottom)
+				conversationInfo.setUnreadMessageCount(0);
+				
+				//Setting the state
+				messagesState.setValue(messagesStateReady);
+			} else {
+				//Loading the messages
+				new AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationItem>>() {
+					@Override
+					protected ArrayList<ConversationManager.ConversationItem> doInBackground(Void... params) {
+						//Loading the conversation items
+						ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0);
 						
-						//Returning
-						return;
+						//Setting up the conversation item relations
+						ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
+						
+						//Returning the conversation items
+						return conversationItems;
 					}
 					
-					//Setting the state
-					messagesState.setValue(messagesStateReady);
-					
-					//Recording the lists in the conversation info
-					conversationInfo.setConversationItems(conversationItemList, conversationGhostList);
-					
-					//Replacing the conversation items
-					conversationInfo.replaceConversationItems(MainApplication.getInstance(), messages);
-					
-					//Marking all messages as read (list will always be scrolled to the bottom)
-					conversationInfo.setUnreadMessageCount(0);
-				}
-			}.execute();
+					@Override
+					protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> messages) {
+						//Checking if the messages are invalid
+						if(messages == null) {
+							//Setting the state
+							messagesState.setValue(messagesStateFailedMessages);
+							
+							//Returning
+							return;
+						}
+						
+						//Creating the lists
+						conversationItemList = new ArrayList<>();
+						conversationGhostList = new ArrayList<>();
+						
+						//Recording the lists in the conversation info
+						conversationInfo.setConversationLists(conversationItemList, conversationGhostList);
+						
+						//Replacing the conversation items
+						conversationInfo.replaceConversationItems(MainApplication.getInstance(), messages);
+						
+						//Marking all messages as read (list will always be scrolled to the bottom)
+						conversationInfo.setUnreadMessageCount(0);
+						
+						//Setting the state
+						messagesState.setValue(messagesStateReady);
+					}
+				}.execute();
+			}
 		}
 		
 		@SuppressLint("StaticFieldLeak")

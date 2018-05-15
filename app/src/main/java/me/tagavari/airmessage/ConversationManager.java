@@ -398,7 +398,7 @@ class ConversationManager {
 			this.conversationColor = conversationColor;
 		}
 		
-		void setConversationItems(ArrayList<ConversationItem> items, ArrayList<MessageInfo> ghostItems) {
+		void setConversationLists(ArrayList<ConversationItem> items, ArrayList<MessageInfo> ghostItems) {
 			conversationItemsReference = new WeakReference<>(items);
 			ghostMessagesReference = new WeakReference<>(ghostItems);
 		}
@@ -876,12 +876,7 @@ class ConversationManager {
 		void setLastItemUpdate(Context context, ConversationItem lastConversationItem) {
 			//Setting the last item
 			lastItem = new LightConversationItem("", lastConversationItem.getDate());
-			lastConversationItem.getSummary(context, new Constants.ResultCallback<String>() {
-				@Override
-				public void onResult(boolean wasTasked, String result) {
-					lastItem.setMessage(result);
-				}
-			});
+			lastConversationItem.getSummary(context, (wasTasked, result) -> lastItem.setMessage((String) result));
 		}
 		
 		void updateLastItem(Context context) {
@@ -902,12 +897,12 @@ class ConversationManager {
 			});
 		}
 		
-		void addConversationItems(Context context, List<ConversationItem> list) {
+		boolean addConversationItems(Context context, List<ConversationItem> list) {
 			//Getting the lists
 			ArrayList<ConversationItem> conversationItems = getConversationItems();
-			if(conversationItems == null) return;
+			if(conversationItems == null) return false;
 			ArrayList<MessageInfo> ghostMessages = getGhostMessages();
-			if(ghostMessages == null) return;
+			if(ghostMessages == null) return false;
 			
 			//Getting the adapter updater
 			ActivityCallbacks updater = getActivityCallbacks();
@@ -1112,6 +1107,9 @@ class ConversationManager {
 				//Updating the unread messages
 				updater.listUpdateUnread();
 			}
+			
+			//Returning true
+			return true;
 		}
 		
 		private static class ConversationItemMoveRecord {
@@ -2764,7 +2762,6 @@ class ConversationManager {
 				default:
 					//Playing the screen effect
 					viewHolder.containerMessagePart.post(() -> getConversationInfo().requestScreenEffect(sendStyle, viewHolder.containerMessagePart));
-					System.out.println("Screen effect requested!");
 					break;
 				case Constants.appleSendStyleBubbleSlam: {
 					viewHolder.containerMessagePart.post(() -> {
