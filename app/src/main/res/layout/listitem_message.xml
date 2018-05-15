@@ -46,110 +46,109 @@
 			android:layout_height="@dimen/profile_size"
 			android:layout="@layout/reference_user" />
 		<!-- Layout -->
-		<LinearLayout
+		<RelativeLayout
+			android:id="@+id/content_container"
 			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:orientation="horizontal">
-			<View
-				android:id="@+id/space_content"
-				android:layout_width="0dp"
-				android:layout_height="0px"
-				android:layout_weight="1" />
+			android:layout_height="wrap_content">
 			<LinearLayout
-				android:id="@+id/content_container"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_marginStart="44dp"
-				android:orientation="vertical">
+				android:orientation="horizontal">
 				<LinearLayout
-					android:id="@+id/messagepart_container"
-					android:layout_width="match_parent"
-					android:layout_height="wrap_content"
-					android:orientation="vertical" />
-				<!-- <TextView
-					android:id="@+id/status"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_gravity="start"
-					android:layout_marginStart="10dp"
-					android:text="@string/placeholder_time"
-					android:textColor="?android:textColorSecondary"
-					android:visibility="gone" /> -->
-				<!-- TODO find a better solution to the width -->
-				<TextSwitcher
-					android:id="@+id/activitystatus"
-					android:layout_width="200dp"
-					android:layout_height="wrap_content"
-					android:layout_gravity="end"
-					android:layout_marginLeft="11.5dp"
-					android:layout_marginRight="11.5dp"
-					android:layout_marginTop="2.5dp"
-					android:padding="2.5dp"
-					android:textColor="?android:textColorSecondary"
-					android:visibility="gone" >
-					<TextView
-						android:layout_width="match_parent"
-						android:layout_height="wrap_content"
-						android:textAlignment="viewEnd" />
-					
-					<TextView
-						android:layout_width="match_parent"
-						android:layout_height="wrap_content"
-						android:textAlignment="viewEnd" />
-				</TextSwitcher>
-				
-				<LinearLayout
-					android:id="@+id/sendeffect_replay"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:layout_gravity="end"
-					android:layout_marginLeft="11.5dp"
-					android:layout_marginRight="11.5dp"
-					android:layout_marginTop="2.5dp"
-					android:background="?android:attr/selectableItemBackground"
-					android:clickable="true"
-					android:focusable="true"
-					android:orientation="horizontal"
-					android:padding="2.5dp"
-					android:visibility="gone">
-					
-					<ImageView
-						android:layout_width="14sp"
-						android:layout_height="14sp"
-						android:layout_gravity="center"
-						android:src="@drawable/replay"
-						android:tint="@color/colorPrimary" />
-					
-					<TextView
+					android:orientation="vertical">
+					<LinearLayout
+						android:id="@+id/messagepart_container"
 						android:layout_width="wrap_content"
 						android:layout_height="wrap_content"
-						android:layout_gravity="center"
-						android:text="@string/action_replay"
-						android:textColor="@color/colorPrimary" />
+						android:orientation="vertical" />
+					<!-- <TextView
+						android:id="@+id/status"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_gravity="start"
+						android:layout_marginStart="10dp"
+						android:text="@string/placeholder_time"
+						android:textColor="?android:textColorSecondary"
+						android:visibility="gone" /> -->
+					<!-- TODO find a better solution to the width -->
+					<TextSwitcher
+						android:id="@+id/activitystatus"
+						android:layout_width="200dp"
+						android:layout_height="wrap_content"
+						android:layout_gravity="end"
+						android:layout_marginLeft="11.5dp"
+						android:layout_marginRight="11.5dp"
+						android:layout_marginTop="2.5dp"
+						android:padding="2.5dp"
+						android:textColor="?android:textColorSecondary"
+						android:visibility="gone" >
+						<TextView
+							android:layout_width="match_parent"
+							android:layout_height="wrap_content"
+							android:textAlignment="viewEnd" />
+						
+						<TextView
+							android:layout_width="match_parent"
+							android:layout_height="wrap_content"
+							android:textAlignment="viewEnd" />
+					</TextSwitcher>
+					
+					<LinearLayout
+						android:id="@+id/sendeffect_replay"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_gravity="end"
+						android:layout_marginLeft="11.5dp"
+						android:layout_marginRight="11.5dp"
+						android:layout_marginTop="2.5dp"
+						android:background="?android:attr/selectableItemBackground"
+						android:clickable="true"
+						android:focusable="true"
+						android:orientation="horizontal"
+						android:padding="2.5dp"
+						android:visibility="gone">
+						
+						<ImageView
+							android:layout_width="14sp"
+							android:layout_height="14sp"
+							android:layout_gravity="center"
+							android:src="@drawable/replay"
+							android:tint="@color/colorPrimary" />
+						
+						<TextView
+							android:layout_width="wrap_content"
+							android:layout_height="wrap_content"
+							android:layout_gravity="center"
+							android:text="@string/action_replay"
+							android:textColor="@color/colorPrimary" />
+					</LinearLayout>
 				</LinearLayout>
 				
+				<!-- Send progress -->
+				<com.pnikosis.materialishprogress.ProgressWheel
+					android:id="@+id/send_progress"
+					android:layout_width="20dp"
+					android:layout_height="20dp"
+					android:layout_marginStart="8dp"
+					android:layout_marginTop="10dp"
+					android:visibility="gone"
+					app:matProg_barColor="@color/colorMessageOutgoingAccent"
+					app:matProg_barWidth="2dp"
+					app:matProg_progressIndeterminate="true" />
+				<ImageButton
+					android:id="@+id/send_error"
+					android:layout_width="20dp"
+					android:layout_height="20dp"
+					android:layout_marginStart="8dp"
+					android:layout_marginTop="10dp"
+					android:background="?android:attr/selectableItemBackgroundBorderless"
+					android:src="@drawable/error"
+					android:tint="@color/colorError"
+					android:visibility="gone" />
 			</LinearLayout>
-			<!-- Send progress -->
-			<com.pnikosis.materialishprogress.ProgressWheel
-				android:id="@+id/send_progress"
-				android:layout_width="20dp"
-				android:layout_height="20dp"
-				android:layout_marginStart="8dp"
-				android:layout_marginTop="10dp"
-				android:visibility="gone"
-				app:matProg_barColor="@color/colorMessageOutgoingAccent"
-				app:matProg_barWidth="2dp"
-				app:matProg_progressIndeterminate="true" />
-			<ImageButton
-				android:id="@+id/send_error"
-				android:layout_width="20dp"
-				android:layout_height="20dp"
-				android:layout_marginStart="8dp"
-				android:layout_marginTop="10dp"
-				android:background="?android:attr/selectableItemBackgroundBorderless"
-				android:src="@drawable/error"
-				android:tint="@color/colorError"
-				android:visibility="gone" />
-		</LinearLayout>
+		</RelativeLayout>
 	</RelativeLayout>
 </LinearLayout>

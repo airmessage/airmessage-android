@@ -20,7 +20,6 @@ import android.support.annotation.NonNull;
 import android.support.customtabs.CustomTabsIntent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.view.ActionMode;
 import android.support.v7.widget.RecyclerView;
 import android.text.Spannable;
 import android.text.Spanned;
@@ -53,7 +52,7 @@ import java.util.Random;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-class Constants {
+public class Constants {
 	//Creating the constants
 	static final int intentPickMediaFile = 1;
 	static final int intentPickAnyFile = 2;
@@ -87,9 +86,19 @@ class Constants {
 	
 	static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	
-	static final String appleSendStyleInvisibleInk = "com.apple.MobileSMS.expressivesend.invisibleink";
-	static final String appleSendStyleConfetti = "com.apple.messages.effect.CKConfettiEffect";
-	static final String appleSendStyleFireworks = "com.apple.messages.effect.CKFireworksEffect";
+	static final String appleSendStyleBubbleSlam = "com.apple.MobileSMS.expressivesend.impact";
+	static final String appleSendStyleBubbleLoud = "com.apple.MobileSMS.expressivesend.loud";
+	static final String appleSendStyleBubbleGentle = "com.apple.MobileSMS.expressivesend.gentle";
+	static final String appleSendStyleBubbleInvisibleInk = "com.apple.MobileSMS.expressivesend.invisibleink";
+	static final String appleSendStyleScrnEcho = "com.apple.messages.effect.CKEchoEffect";
+	static final String appleSendStyleScrnSpotlight = "com.apple.messages.effect.CKSpotlightEffect";
+	static final String appleSendStyleScrnBalloons = "com.apple.messages.effect.CKHappyBirthdayEffect";
+	static final String appleSendStyleScrnConfetti = "com.apple.messages.effect.CKConfettiEffect";
+	static final String appleSendStyleScrnLove = "com.apple.messages.effect.CKHeartEffect";
+	static final String appleSendStyleScrnLasers = "com.apple.messages.effect.CKLasersEffect";
+	static final String appleSendStyleScrnFireworks = "com.apple.messages.effect.CKFireworksEffect";
+	static final String appleSendStyleScrnShootingStar = "com.apple.messages.effect.CKShootingStarEffect";
+	static final String appleSendStyleScrnCelebration = "com.apple.messages.effect.CKSparklesEffect";
 	
 	static final String defaultNotificationSound = "content://settings/system/notification_sound";
 	
@@ -181,12 +190,12 @@ class Constants {
 		} */
 	}
 	
-	static int dpToPx(int dp) {
+	static int dpToPx(float dp) {
 		return (int) (dp * Resources.getSystem().getDisplayMetrics().density);
 	}
 	
-	static int pxToDp(int px) {
-		return (int) (px / Resources.getSystem().getDisplayMetrics().density);
+	static float pxToDp(int px) {
+		return px / Resources.getSystem().getDisplayMetrics().density;
 	}
 	
 	static void recursiveDelete(File file) {
@@ -700,5 +709,35 @@ class Constants {
 			in.close();
 			return out.toByteArray();
 		}
+	}
+	
+	static boolean validateEffect(String effect) {
+		return validateScreenEffect(effect) || validateBubbleEffect(effect) || validatePassiveEffect(effect);
+	}
+	
+	static boolean validateScreenEffect(String effect) {
+		return appleSendStyleScrnEcho.equals(effect) ||
+				appleSendStyleScrnSpotlight.equals(effect) ||
+				appleSendStyleScrnBalloons.equals(effect) ||
+				appleSendStyleScrnConfetti.equals(effect) ||
+				appleSendStyleScrnLove.equals(effect) ||
+				appleSendStyleScrnLasers.equals(effect) ||
+				appleSendStyleScrnFireworks.equals(effect) ||
+				appleSendStyleScrnShootingStar.equals(effect) ||
+				appleSendStyleScrnCelebration.equals(effect);
+	}
+	
+	static boolean validateBubbleEffect(String effect) {
+		return appleSendStyleBubbleSlam.equals(effect) ||
+				appleSendStyleBubbleLoud.equals(effect) ||
+				appleSendStyleBubbleGentle.equals(effect);
+	}
+	
+	static boolean validatePassiveEffect(String effect) {
+		return appleSendStyleBubbleInvisibleInk.equals(effect);
+	}
+	
+	static float interpolate(float start, float end, float progress) {
+		return start + (end - start) * progress;
 	}
 }

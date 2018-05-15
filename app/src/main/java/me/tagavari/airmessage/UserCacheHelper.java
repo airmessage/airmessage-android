@@ -281,4 +281,9 @@ class UserCacheHelper {
 		
 		abstract void onUserFetched(UserInfo userInfo, boolean wasTasked);
 	}
+	
+	void clearCache() {
+		userCache.evictAll();
+		failedCache.clear();
+	}
 }

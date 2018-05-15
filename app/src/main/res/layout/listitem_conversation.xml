@@ -1,20 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<android.support.constraint.ConstraintLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:layout_width="match_parent"
-	android:layout_height="wrap_content"
+	android:layout_height="72dp"
 	android:background="?android:attr/selectableItemBackground"
-	android:orientation="horizontal"
-	android:paddingBottom="15dp"
-	android:paddingLeft="10dp"
-	android:paddingRight="10dp"
-	android:paddingTop="15dp">
+	android:orientation="horizontal">
 	<!-- Conversation Icon -->
 	<RelativeLayout
 		android:id="@+id/conversationicon"
 		android:layout_width="@dimen/profile_size"
-		android:layout_height="@dimen/profile_size">
+		android:layout_height="@dimen/profile_size"
+		android:layout_marginLeft="16dp"
+		android:layout_marginRight="16dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent">
 		<!-- 1 user -->
 		<ViewStub
 			android:layout_width="match_parent"
@@ -51,76 +52,85 @@
 				android:src="@drawable/check" />
 		</RelativeLayout>
 	</RelativeLayout>
-	
-	<android.support.constraint.ConstraintLayout
-		android:layout_width="match_parent"
+	<!-- Message details -->
+	<TextView
+		android:id="@+id/title"
+		android:layout_width="0px"
 		android:layout_height="wrap_content"
-		android:layout_marginStart="10dp">
-		<!-- Message details -->
-		<TextView
-			android:id="@+id/title"
-			android:layout_width="0px"
-			android:layout_height="wrap_content"
-			android:ellipsize="end"
-			android:maxLines="1"
-			android:text="@string/placeholder_title"
-			android:textColor="?android:attr/textColorPrimary"
-			android:textSize="16sp"
-			app:layout_constraintEnd_toStartOf="@+id/flag_muted"
-			app:layout_constraintStart_toStartOf="parent" />
-		
-		<TextView
-			android:id="@+id/message"
-			android:layout_width="0px"
-			android:layout_height="wrap_content"
-			android:ellipsize="end"
-			android:maxLines="1"
-			android:text="@string/placeholder_message"
-			android:textColor="?android:textColorSecondary"
-			android:textSize="14sp"
-			app:layout_constraintEnd_toStartOf="@+id/unread"
-			app:layout_constraintStart_toStartOf="parent"
-			app:layout_constraintTop_toBottomOf="@+id/title" />
-		<!-- Conversation flags -->
-		<ImageView
-			android:id="@+id/flag_muted"
-			android:layout_width="16dp"
-			android:layout_height="16dp"
-			android:layout_marginEnd="6dp"
-			android:src="@drawable/notifications_off"
-			android:tint="?android:attr/textColorSecondary"
-			app:layout_constraintBottom_toBottomOf="@+id/time"
-			app:layout_constraintEnd_toStartOf="@+id/time"
-			app:layout_constraintTop_toTopOf="@+id/time" />
-		
-		<TextView
-			android:id="@+id/time"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:ellipsize="end"
-			android:maxLines="1"
-			android:text="@string/placeholder_time"
-			android:textColor="?android:attr/textColorSecondary"
-			app:layout_constraintEnd_toEndOf="parent" />
-		
-		<TextView
-			android:id="@+id/unread"
-			android:layout_width="wrap_content"
-			android:layout_height="19dp"
-			android:minWidth="19dp"
-			android:background="@drawable/rounded_circle"
-			android:backgroundTint="@color/colorPrimary"
-			android:maxLines="1"
-			android:text="1"
-			android:paddingLeft="6dp"
-			android:paddingRight="6dp"
-			android:gravity="center"
-			android:textColor="@android:color/white"
-			android:textSize="12sp"
-			app:layout_constraintBottom_toBottomOf="@+id/message"
-			app:layout_constraintEnd_toEndOf="parent"
-			app:layout_constraintTop_toTopOf="@+id/message" />
-	</android.support.constraint.ConstraintLayout>
+		android:ellipsize="end"
+		android:maxLines="1"
+		android:text="@string/placeholder_title"
+		android:textColor="?android:attr/textColorPrimary"
+		android:textSize="16sp"
+		android:layout_marginLeft="16dp"
+		android:layout_marginRight="16dp"
+		app:layout_constraintVertical_chainStyle="packed"
+		app:layout_constraintTop_toTopOf="parent"
+		app:layout_constraintBottom_toTopOf="@id/message"
+		app:layout_constraintEnd_toStartOf="@id/flag_muted"
+		app:layout_constraintStart_toEndOf="@id/conversationicon" />
+	
+	<TextView
+		android:id="@+id/message"
+		android:layout_width="0px"
+		android:layout_height="wrap_content"
+		android:ellipsize="end"
+		android:maxLines="1"
+		android:text="@string/placeholder_message"
+		android:textColor="?android:textColorSecondary"
+		android:textSize="14sp"
+		android:layout_marginLeft="16dp"
+		android:layout_marginRight="16dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/title"
+		app:layout_constraintEnd_toStartOf="@id/unread"
+		app:layout_constraintStart_toEndOf="@id/conversationicon" />
+	<!-- Conversation flags -->
+	<ImageView
+		android:id="@+id/flag_muted"
+		android:layout_width="16dp"
+		android:layout_height="16dp"
+		android:layout_marginRight="8dp"
+		android:layout_marginLeft="8dp"
+		android:src="@drawable/notifications_off"
+		android:tint="?android:attr/textColorSecondary"
+		app:layout_constraintEnd_toStartOf="@+id/time"
+		app:layout_constraintBottom_toBottomOf="@id/title"
+		app:layout_constraintTop_toTopOf="@id/title" />
+	
+	<TextView
+		android:id="@+id/time"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:ellipsize="end"
+		android:maxLines="1"
+		android:text="@string/placeholder_time"
+		android:layout_marginLeft="16dp"
+		android:layout_marginRight="16dp"
+		android:textColor="?android:attr/textColorSecondary"
+		app:layout_constraintBottom_toBottomOf="@id/title"
+		app:layout_constraintTop_toTopOf="@id/title"
+		app:layout_constraintEnd_toEndOf="parent" />
+	
+	<TextView
+		android:id="@+id/unread"
+		android:layout_width="wrap_content"
+		android:layout_height="19dp"
+		android:background="@drawable/rounded_circle"
+		android:backgroundTint="@color/colorPrimary"
+		android:layout_marginLeft="16dp"
+		android:layout_marginRight="16dp"
+		android:maxLines="1"
+		android:minWidth="19dp"
+		android:paddingLeft="6dp"
+		android:paddingRight="6dp"
+		android:text="0"
+		android:gravity="center"
+		android:textColor="@android:color/white"
+		android:textSize="12sp"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintBottom_toBottomOf="@id/message"
+		app:layout_constraintTop_toTopOf="@id/message" />
 	<!-- <LinearLayout
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
@@ -180,4 +190,4 @@
 				android:textColor="?android:textColorSecondary" />
 		</LinearLayout>
 	</LinearLayout> -->
-</LinearLayout>
+</android.support.constraint.ConstraintLayout>
