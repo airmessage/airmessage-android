@@ -16,13 +16,13 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import com.pascalwelsch.compositeandroid.activity.ActivityPlugin;
-
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
-class ConversationsBase extends ActivityPlugin {
+import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
+
+class ConversationsBase extends AppCompatActivityPlugin {
 	//Creating the reference values
 	//static final String localBCRemoveConversation = "LocalMSG-Conversations-RemoveConversation";
 	//static final String localBCPurgeConversations = "LocalMSG-Conversations-PurgeConversations";

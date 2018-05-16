@@ -34,18 +34,17 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
-
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
 import me.tagavari.airmessage.common.SharedValues;
+import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 
-public class Conversations extends CompositeActivity {
+public class Conversations extends AppCompatCompositeActivity {
 	//Creating the plugin values
-	private ConversationsBase conversationsBasePlugin = null;
-	private PluginMessageBar pluginMessageBar = null;
+	private ConversationsBase conversationsBasePlugin;
+	private PluginMessageBar pluginMessageBar;
 	
 	//Creating the view model and info bar values
 	private ActivityViewModel viewModel;

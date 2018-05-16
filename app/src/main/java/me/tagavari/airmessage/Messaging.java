@@ -74,8 +74,6 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
-
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -84,12 +82,13 @@ import java.util.Iterator;
 import java.util.List;
 
 import me.tagavari.airmessage.common.SharedValues;
+import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.view.AppleEffectView;
 import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
 
-public class Messaging extends CompositeActivity {
+public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
 	private static final int quickScrollFABThreshold = 3;
 	static final int messageChunkSize = 50;

@@ -13,12 +13,12 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 
-import com.pascalwelsch.compositeandroid.activity.CompositeActivity;
-
 import java.util.ArrayList;
 import java.util.List;
 
-public class ShareHandler extends CompositeActivity {
+import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
+
+public class ShareHandler extends AppCompatCompositeActivity {
 	//Creating the plugin values
 	private ConversationsBase conversationsBasePlugin;
 	
