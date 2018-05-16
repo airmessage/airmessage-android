@@ -7,11 +7,11 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.pascalwelsch.compositeandroid.activity.ActivityPlugin;
-
 import org.jetbrains.annotations.NotNull;
 
-class PluginMessageBar extends ActivityPlugin {
+import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
+
+class PluginMessageBar extends AppCompatActivityPlugin {
 	//Creating the view values
 	private ViewGroup parentView;
 	

@@ -8,9 +8,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 
-import com.pascalwelsch.compositeandroid.activity.ActivityPlugin;
+import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
 
-public class PluginThemeUpdater extends ActivityPlugin {
+public class PluginThemeUpdater extends AppCompatActivityPlugin {
 	private int currentNightMode;
 	
 	@Override

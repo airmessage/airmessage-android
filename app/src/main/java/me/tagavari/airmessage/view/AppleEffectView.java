@@ -217,6 +217,111 @@ public class AppleEffectView extends View {
 		}
 	}
 	
+	/* private class BalloonRenderer extends EffectRenderer {
+		//Creating the reference values
+		private static final int balloonCountMin = 4;
+		private static final int balloonCountMax = 6;
+		private static final int lifetime = 3 * 1000; //3 seconds
+		private static final float dpSquaredToBubbleCountRatio = 100F / 300441F; //100 bubbles on Nexus 5X
+		
+		//Creating the other values
+		private final Random random = new Random();
+		private final long startTime;
+		private int lastTimeLived = 0;
+		private final Balloon[] balloonList;
+		
+		BalloonRenderer() {
+			//Recording the start time
+			startTime = getTime();
+			
+			//Adding the balloons
+			balloonList = new Balloon[balloonCountMin + random.nextInt(balloonCountMax - balloonCountMin + 1)];
+			for(int i = 0; i < balloonList.length; i++) balloonList[i] = new Balloon();
+		}
+		
+		private final RectF renderRectOut = new RectF();
+		@Override
+		void draw(Canvas canvas) {
+			//Calculating the time
+			int timeLived = (int) (getTime() - startTime);
+			int timeDiff = timeLived - lastTimeLived;
+			lastTimeLived = timeLived;
+			
+			//Checking if the time to live is up
+			if(timeLived >= lifetime) {
+				//Removing the renderer
+				resetRenderer();
+				return;
+			}
+			
+			//Iterating over the bubbles
+			for(int i = 0; i < Math.min(lerpInt(0, bubbleList.length, (float) timeLived / (float) (lifetime - Bubble.lifetimeTotal)), bubbleList.length); i++) {
+				//Getting the bubble
+				Bubble bubble = bubbleList[i];
+				
+				//Calculating the frame
+				float progress = bubble.calculateFrame(timeDiff, renderRectOut);
+				
+				//Skipping the remainder of the iteration if the particle isn't running
+				if(progress == 0) continue;
+				
+				//Creating the rectangle
+				canvas.drawBitmap(image, null, renderRectOut, null);
+			}
+		}
+		
+		private class Balloon {
+			//Creating the reference values
+			private final float rotationOffset = 15;
+			private final float horizontalDistance = dpToPx(50);
+			private final float verticalDistance = dpToPx(60);
+			private final float yStartOffset = dpToPx(20);
+			private static final float scaleTarget = 1.2F;
+			
+			//Creating the other values
+			float posX;
+			float scale;
+			float rotation; //0 = upright
+			float velX, velY;
+			
+			Balloon() {
+				generateState();
+			}
+			
+			void generateState() {
+				//Picking a location
+				posX = random.nextFloat();
+				scale = 0.5F + random.nextFloat(); //0.5 to 1.5
+				
+				//Picking a rotation
+				rotation = 180F + (random.nextFloat() * rotationOffset * 2 - rotationOffset);
+				//float direction = random.nextFloat() * 2;
+				float rotationRad = (float) Math.toRadians(rotation);
+				velX = (float) Math.cos(rotationRad) - (float) Math.sin(rotationRad);
+				velY = (float) Math.sin(rotationRad) + (float) Math.cos(rotationRad);
+			}
+			
+			Path calculateFrame(int timePassed) {
+				//Calculating the position
+				float posXPx = posX * viewWidth + velX * timePassed;
+				float posYPx = viewHeight + yStartOffset + velY * timePassed;
+				
+				//Calculating the view scale
+				float scaleProgress = calcViewScaleProgress(absoluteProgress);
+				float scale = lerpFloat(0, scaleTarget, 1F - (1F - scaleProgress) * (1F - scaleProgress));
+				//float scale = lerpFloat(0, scaleTarget, scaleProgress);
+				
+				rectOut.left = posXPx - imageWidth * scale / 2F;
+				rectOut.right = posXPx + imageWidth * scale / 2F;
+				rectOut.top = posYPx - imageHeight * scale / 2F;
+				rectOut.bottom = posYPx + imageHeight * scale / 2F;
+				
+				//Returning the view's alpha target
+				return absoluteProgress;
+			}
+		}
+	} */
+	
 	void resetRenderer() {
 		//Invalidating the renderer
 		renderer = null;

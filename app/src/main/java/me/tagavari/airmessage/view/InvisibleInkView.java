@@ -22,6 +22,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import com.crashlytics.android.Crashlytics;
+
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -296,6 +298,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 			}
 		} catch(Exception exception) {
 			exception.printStackTrace();
+			Crashlytics.logException(exception);
 		} finally {
 			stop();
 		}
@@ -787,7 +790,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 			y = random.nextFloat();
 			
 			//Picking a new velocity
-			float direction = random.nextFloat() * 360;
+			float direction = random.nextFloat() * (float) Math.PI * 2F;
 			velX = (float) Math.cos(direction) - (float) Math.sin(direction);
 			velY = (float) Math.sin(direction) + (float) Math.cos(direction);
 		}

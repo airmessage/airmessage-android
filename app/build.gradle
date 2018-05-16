@@ -3,37 +3,26 @@ def keystorePropertiesFile = rootProject.file(".signing/keystore.properties")
 def keystoreProperties = new Properties()
 keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
-apply plugin: 'com.android.application'
-apply plugin: 'io.fabric'
-
-buildscript {
-	repositories {
-		maven {
-			url 'https://maven.fabric.io/public'
-		}
-	}
-	dependencies {
-		classpath 'io.fabric.tools:gradle:1.25.1'
-	}
-}
+apply plugin: "com.android.application"
+apply plugin: "io.fabric"
 
 android {
 	signingConfigs {
 		config {
-			storeFile file(keystoreProperties['storeFile'])
-			storePassword keystoreProperties['storePassword']
-			keyAlias keystoreProperties['keyAlias']
-			keyPassword keystoreProperties['keyPassword']
+			storeFile file(keystoreProperties["storeFile"])
+			storePassword keystoreProperties["storePassword"]
+			keyAlias keystoreProperties["keyAlias"]
+			keyPassword keystoreProperties["keyPassword"]
 		}
 	}
 	compileSdkVersion 27
-	buildToolsVersion '27.0.3'
+	buildToolsVersion "27.0.3"
 	defaultConfig {
-		applicationId 'me.tagavari.airmessage'
+		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
 		targetSdkVersion 27
-		versionCode 27
-		versionName "0.2.1.2"
+		versionCode 28
+		versionName "0.2.1.3"
 
 		resConfigs "en", "fr"
 	}
@@ -45,14 +34,14 @@ android {
 			shrinkResources true
 
 			useProguard true
-			proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro' */
+			proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro" */
 		}
 		release {
 			/* minifyEnabled true
 			shrinkResources true
 
 			useProguard true
-			proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro' */
+			proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro" */
 
 			signingConfig signingConfigs.config
 		}
@@ -63,8 +52,8 @@ android {
 	productFlavors {
 	}
 	packagingOptions {
-		exclude 'META-INF/DEPENDENCIES'
-		exclude 'META-INF/LICENSE'
+		exclude "META-INF/DEPENDENCIES"
+		exclude "META-INF/LICENSE"
 	}
 	dexOptions {
 		javaMaxHeapSize "5g"
@@ -79,7 +68,7 @@ android {
 }
 
 dependencies {
-	//implementation fileTree(include: ['*.jar'], dir: 'libs')
+	//implementation fileTree(include: ["*.jar"], dir: "libs")
 	testImplementation "junit:junit:4.12"
 
 	//Support library
@@ -110,28 +99,25 @@ dependencies {
 
 	//Services
 	implementation "com.google.firebase:firebase-core:15.0.2"
-	implementation("com.crashlytics.sdk.android:crashlytics:2.9.1@aar") {
-		transitive = true
-	}
+	implementation "com.crashlytics.sdk.android:crashlytics:2.9.2"
 
 	//Helper
-	implementation "com.pascalwelsch.compositeandroid:activity:27.0.0"
-	implementation 'com.takisoft.fix:preference-v7-ringtone:27.1.0.0'
+	implementation "com.takisoft.fix:preference-v7-ringtone:27.1.0.0"
 
 	//Backend
 	implementation "org.java-websocket:Java-WebSocket:1.3.7"
 	implementation "org.jetbrains.kotlin:kotlin-stdlib:1.2.30"
 
 	//Debugging
-	debugImplementation 'com.squareup.leakcanary:leakcanary-android:1.5.4'
-	releaseImplementation 'com.squareup.leakcanary:leakcanary-android-no-op:1.5.4'
+	//debugImplementation "com.squareup.leakcanary:leakcanary-android:1.5.4"
+	//releaseImplementation "com.squareup.leakcanary:leakcanary-android-no-op:1.5.4"
 }
 
 repositories {
 	maven {
-		url 'https://maven.google.com'
-		// Alternative URL is 'https://dl.google.com/dl/android/maven2/'
+		url "https://maven.google.com"
+		// Alternative URL is "https://dl.google.com/dl/android/maven2/"
 	}
 }
 
-apply plugin: 'com.google.gms.google-services'
+apply plugin: "com.google.gms.google-services"
