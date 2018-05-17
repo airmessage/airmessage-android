@@ -6,4 +6,9 @@
 	<declare-styleable name="InvisibleInkView">
 		<attr name="target" format="reference" />
 	</declare-styleable>
+	
+	<declare-styleable name="EffectBalloon">
+		<attr name="effectballoon_color_light" format="color" />
+		<attr name="effectballoon_color_dark" format="color" />
+	</declare-styleable>
 </resources>

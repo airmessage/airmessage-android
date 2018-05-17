@@ -94,7 +94,7 @@ dependencies {
 
 	implementation "com.pnikosis:materialish-progress:1.7"
 	implementation "de.hdodenhof:circleimageview:2.2.0"
-	implementation "nl.dionsegijn:konfetti:1.1.1"
+	implementation "nl.dionsegijn:konfetti:1.1.2"
 	implementation "in.srain.cube:grid-view-with-header-footer:1.0.12"
 
 	//Services

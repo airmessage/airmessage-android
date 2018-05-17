@@ -122,7 +122,7 @@ public class MainApplication extends Application {
 	}
 	
 	private void configureCrashReporting() {
-		//Initializing crashlytics, disabling in debug mode
+		//Initializing crashlytics, disabled in debug mode
 		//CrashlyticsCore core = new CrashlyticsCore.Builder().build();
 		CrashlyticsCore core = new CrashlyticsCore.Builder().disabled(BuildConfig.DEBUG).build();
 		Fabric.with(this, new Crashlytics.Builder().core(core).build());

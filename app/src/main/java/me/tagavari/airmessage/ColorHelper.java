@@ -3,7 +3,7 @@ package me.tagavari.airmessage;
 import android.graphics.Color;
 import android.support.v4.graphics.ColorUtils;
 
-class ColorHelper {
+public class ColorHelper {
 	//Creating the reference values
 	private static final float lightColorRatio = 1.2F;
 	private static final float darkColorRatio = 0.8F;
@@ -18,11 +18,11 @@ class ColorHelper {
 		return modifyColorAdd(color, darkColorDiff);
 	} */
 	
-	static int lightenColor(int color) {
+	public static int lightenColor(int color) {
 		return modifyColorRaw(color, lightColorRatio);
 	}
 	
-	static int darkenColor(int color) {
+	public static int darkenColor(int color) {
 		return modifyColorRaw(color, darkColorRatio);
 	}
 	
@@ -34,7 +34,7 @@ class ColorHelper {
 		return Color.argb(a, clamp(r, 0, 255), clamp(g, 0, 255), clamp(b, 0, 255));
 	}
 	
-	private static int modifyColorMultiply(int color, float factor) {
+	public static int modifyColorMultiply(int color, float factor) {
 		float[] hsl = new float[3];
 		ColorUtils.colorToHSL(color, hsl);
 		hsl[2] = clamp(hsl[2] * factor, 0F, 1F);
@@ -42,7 +42,7 @@ class ColorHelper {
 		return ColorUtils.HSLToColor(hsl);
 	}
 	
-	private static int modifyColorAdd(int color, float amount) {
+	public static int modifyColorAdd(int color, float amount) {
 		float[] hsl = new float[3];
 		ColorUtils.colorToHSL(color, hsl);
 		hsl[2] = clamp(hsl[2] + amount, 0F, 1F);
