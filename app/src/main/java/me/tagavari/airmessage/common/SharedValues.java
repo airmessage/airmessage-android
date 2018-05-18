@@ -3,12 +3,23 @@ package me.tagavari.airmessage.common;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import java.security.spec.KeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class SharedValues {
 	/* COMMUNICATIONS VERSION CHANGES
@@ -16,7 +27,7 @@ public class SharedValues {
 	*  2 - Serialization changes
 	*  3 - Reworked without WS layer
 	*/
-	public static final int mmCommunicationsVersion = 3;
+	public static final int mmCommunicationsVersion = 4;
 	
 	public static final String headerCommVer = "MMS-Comm-Version";
 	public static final String headerSoftVersion = "MMS-Soft-Version";
@@ -47,6 +58,7 @@ public class SharedValues {
 	public static final int nhtClose = -1;
 	public static final int nhtPing = -2;
 	public static final int nhtPong = -3;
+	public static final int nhtInformation = -4;
 	public static final int nhtAuthentication = 0;
 	public static final int nhtMessageUpdate = 1;
 	public static final int nhtTimeRetrieval = 2;
@@ -69,6 +81,7 @@ public class SharedValues {
 	public static final int nhtAuthenticationVersionMismatch = 3;
 	
 	public static final String hashAlgorithm = "MD5";
+	public static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
 	
 	public static class ConversationInfo implements Serializable {
 		private static final long serialVersionUID = 100;
@@ -407,5 +420,70 @@ public class SharedValues {
 		}
 		outputStream.close();
 		return outputStream.toByteArray();
+	}
+	
+	public static class EncryptedData implements Serializable {
+		//private static final long serialVersionUID = 0;
+		public byte[] data;
+		private transient String password = null;
+		
+		public EncryptedData(byte[] data, String password) {
+			this.data = data;
+			this.password = password;
+		}
+		
+		private void readObject(ObjectInputStream stream) throws ClassNotFoundException, ClassCastException, IOException, GeneralSecurityException {
+			//Reading the data
+			byte[] salt = new byte[8];
+			byte[] iv = new byte[12];
+			
+			stream.readFully(salt);
+			stream.readFully(iv);
+			
+			int dataLength = stream.readInt();
+			byte[] encryptedData = new byte[dataLength];
+			stream.readFully(encryptedData);
+			
+			//Deciphering the data
+			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+			KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, 10000, 128);
+			SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
+			SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), "AES");
+			
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+			cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, new IvParameterSpec(iv));
+			
+			data = cipher.doFinal(data);
+		}
+		
+		private void writeObject(ObjectOutputStream stream) throws IOException, GeneralSecurityException {
+			//Creating a secure random
+			SecureRandom random = new SecureRandom();
+			
+			//Generating a salt
+			byte[] salt = new byte[8];
+			random.nextBytes(salt);
+			
+			//Creating the key
+			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+			KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, 10000, 128);
+			SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
+			SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), "AES");
+			
+			//Generating the IV
+			byte[] iv = new byte[12];
+			random.nextBytes(iv);
+			IvParameterSpec ivSpec = new IvParameterSpec(iv);
+			
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+			cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
+			
+			//Writing the data
+			stream.write(salt);
+			stream.write(iv);
+			byte[] encryptedData = cipher.doFinal(data);
+			stream.writeInt(encryptedData.length);
+			stream.write(encryptedData);
+		}
 	}
 }

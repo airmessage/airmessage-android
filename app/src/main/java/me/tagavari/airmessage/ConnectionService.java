@@ -82,7 +82,7 @@ import me.tagavari.airmessage.common.SharedValues;
 
 public class ConnectionService extends Service {
 	//Creating the reference values
-	private static final int[] applicableCommunicationsVersions = {SharedValues.mmCommunicationsVersion, 2};
+	private static final int[] applicableCommunicationsVersions = {SharedValues.mmCommunicationsVersion, 3, 2};
 	private static final int notificationID = -1;
 	
 	static final String localBCStateUpdate = "LocalMSG-ConnectionService-State";
@@ -625,6 +625,13 @@ public class ConnectionService extends Service {
 		}
 	} */
 	
+	private abstract class ConnectionManager {
+		abstract void connect(byte launchID, String hostname, String password, int port);
+		abstract void disconnect();
+		
+		
+	}
+	
 	private class MMWebSocketClient extends WebSocketClient {
 		//Creating the values
 		private final byte launchID;
@@ -920,7 +927,8 @@ public class ConnectionService extends Service {
 		private OutputStream outputStream;
 		private WriterThread writerThread = null;
 		
-		private Timer authenticationExpiryTimer = null;
+		private Timer informationPacketTimer = null;
+		private Timer handshakeExpiryTimer = null;
 		
 		ConnectionThread(byte launchID, String hostname, String password, int port) {
 			this.launchID = launchID;
@@ -983,33 +991,44 @@ public class ConnectionService extends Service {
 				return;
 			}
 			
-			//Sending the registration data
-			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-				out.writeInt(applicableCommunicationsVersions.length);
-				for(int version : applicableCommunicationsVersions) out.writeInt(version);
-				out.writeUTF(password);
-				out.flush();
-				
-				queuePacket(new PacketStruct(SharedValues.nhtAuthentication, bos.toByteArray()));
-			} catch(IOException exception) {
-				//Logging the error
-				exception.printStackTrace();
-				Crashlytics.logException(exception);
-				
-				//Closing the connection
-				closeConnection(intentResultCodeInternalException, true);
-				
-				return;
-			}
+			//Setting the information packet timer
+			informationPacketTimer = new Timer();
+			informationPacketTimer.schedule(new TimerTask() {
+				@Override
+				public void run() {
+					informationPacketTimer.cancel();
+					informationPacketTimer = null;
+					
+					//Setting the protocol version to 3
+					new Handler(Looper.getMainLooper()).post(() -> activeCommunicationsVersion = 3);
+					
+					//Sending the registration data
+					try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+						out.writeInt(applicableCommunicationsVersions.length);
+						for(int version : applicableCommunicationsVersions) out.writeInt(version);
+						out.writeUTF(password);
+						out.flush();
+						
+						queuePacket(new PacketStruct(SharedValues.nhtAuthentication, bos.toByteArray()));
+					} catch(IOException exception) {
+						//Logging the error
+						exception.printStackTrace();
+						Crashlytics.logException(exception);
+						
+						//Closing the connection
+						closeConnection(intentResultCodeInternalException, true);
+					}
+				}
+			}, 3000);
 			
-			//Starting the authentication timer
-			authenticationExpiryTimer = new Timer();
-			authenticationExpiryTimer.schedule(new TimerTask() {
+			//Starting the handshake timer
+			handshakeExpiryTimer = new Timer();
+			handshakeExpiryTimer.schedule(new TimerTask() {
 				@Override
 				public void run() {
 					//Stopping the expiry timer
-					authenticationExpiryTimer.cancel();
-					authenticationExpiryTimer = null;
+					handshakeExpiryTimer.cancel();
+					handshakeExpiryTimer = null;
 					
 					//Closing the connection
 					closeConnection(intentResultCodeConnection, true);
@@ -1192,11 +1211,63 @@ public class ConnectionService extends Service {
 				case SharedValues.nhtPing:
 					queuePacket(new PacketStruct(SharedValues.nhtPong, new byte[0]));
 					break;
+				case SharedValues.nhtInformation: {
+					//Stopping the information timer
+					if(informationPacketTimer != null) {
+						informationPacketTimer.cancel();
+						informationPacketTimer = null;
+					}
+					
+					//Reading the version
+					int communicationsVersion = ByteBuffer.wrap(data).getInt();
+					
+					//Checking if the version is applicable
+					boolean versionApplicable = false;
+					for(int version : applicableCommunicationsVersions) {
+						if(version == communicationsVersion) {
+							versionApplicable = true;
+							break;
+						}
+					}
+					
+					//Checking if there is no applicable version
+					if(!versionApplicable) {
+						//Getting the result code
+						int resultCode = communicationsVersion > SharedValues.mmCommunicationsVersion ? intentResultCodeClientOutdated : intentResultCodeServerOutdated;
+						
+						
+						//Closing the connection
+						initiateClose(resultCode, false);
+						
+						//Breaking
+						break;
+					}
+					
+					//Setting the version
+					new Handler(Looper.getMainLooper()).post(() -> activeCommunicationsVersion = communicationsVersion);
+					
+					//Sending an authentication request
+					try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+						out.writeInt(applicableCommunicationsVersions.length);
+						for(int version : applicableCommunicationsVersions) out.writeInt(version);
+						out.writeUTF(password);
+						out.flush();
+						
+						queuePacket(new PacketStruct(SharedValues.nhtAuthentication, bos.toByteArray()));
+					} catch(IOException exception) {
+						//Logging the error
+						exception.printStackTrace();
+						Crashlytics.logException(exception);
+						
+						//Closing the connection
+						closeConnection(intentResultCodeInternalException, true);
+					}
+				}
 				case SharedValues.nhtAuthentication: {
-					//Stopping the authentication timer
-					if(authenticationExpiryTimer != null) {
-						authenticationExpiryTimer.cancel();
-						authenticationExpiryTimer = null;
+					//Stopping the handshake timer
+					if(handshakeExpiryTimer != null) {
+						handshakeExpiryTimer.cancel();
+						handshakeExpiryTimer = null;
 					}
 					
 					try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
@@ -1454,7 +1525,7 @@ public class ConnectionService extends Service {
 			queuePacket(new PacketStruct(SharedValues.nhtPing, new byte[0]));
 		}
 		
-		void initiateClose() {
+		void initiateClose(int resultCode, boolean forwardRequest) {
 			//Sending a message and finishing the threads
 			if(writerThread == null) {
 				interrupt();
@@ -1466,7 +1537,7 @@ public class ConnectionService extends Service {
 			}
 			
 			//Updating the state
-			updateStateDisconnected(intentResultCodeConnection, false);
+			updateStateDisconnected(resultCode, forwardRequest);
 		}
 		
 		private void closeConnection(int reason, boolean forwardRequest) {
@@ -1483,9 +1554,10 @@ public class ConnectionService extends Service {
 				outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(messageType).putInt(data.length).array());
 				outputStream.write(data);
 				if(flush) outputStream.flush();
+				Thread.sleep(2000);
 				
 				return true;
-			} catch(IOException exception) {
+			} catch(IOException | InterruptedException exception) {
 				exception.printStackTrace();
 				
 				if(socket.isConnected()) {
@@ -1495,6 +1567,8 @@ public class ConnectionService extends Service {
 				}
 				
 				return false;
+			} finally {
+				System.out.println("Finished sending data.");
 			}
 		}
 		
