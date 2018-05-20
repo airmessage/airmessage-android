@@ -50,6 +50,7 @@ import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.NotYetConnectedException;
 import java.security.DigestInputStream;
@@ -59,6 +60,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -120,20 +122,21 @@ public class ConnectionService extends Service {
 	
 	private PendingIntent pingPendingIntent;
 	
+	private final List<ConnectionManager> connectionManagerPriorityList = Arrays.asList(new ClientProtocol3(), new ClientProtocol2());
+	
 	//Creating the access values
 	private static WeakReference<ConnectionService> serviceReference = null;
 	
 	//Creating the connection values
 	static String hostname = null;
 	static String password = null;
-	private int currentState = stateDisconnected;
-	private ConnectionThread connectionThread = null;
+	private ConnectionManager currentConnectionManager = null;
 	static int lastConnectionResult = -1;
 	private boolean flagMarkEndTime = false; //Marks the time that the connection is closed, so that missed messages can be fetched since that time when reconnecting
 	private boolean flagDropReconnect = false; //Automatically starts a new connection when the connection is closed
 	private boolean massRetrievalInProgress = false;
-	private int massRetrievalProgress = -1;
-	private int massRetrievalProgressCount = -1;
+	private int massRetrievalProgress = -1; //Current mass retrieval progress (amount of conversations + messages)
+	private int massRetrievalProgressCount = -1; //Total mass retrieval potential (amount of conversations + messages)
 	private final Handler massRetrievalTimeoutHandler = new Handler();
 	private final Runnable massRetrievalTimeoutRunnable = () -> {
 		//Returning if the state matches
@@ -165,15 +168,10 @@ public class ConnectionService extends Service {
 	private final BroadcastReceiver pingBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			if(currentState != stateConnected) return;
+			if(currentConnectionManager == null || currentConnectionManager.getState() != stateConnected) return;
 			
 			//Pinging the server
-			if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
-				if(wsClient == null || !wsClient.isOpen()) return;
-				wsClient.sendPing();
-			} else {
-				connectionThread.sendPing();
-			}
+			currentConnectionManager.sendPing();
 			
 			//Rescheduling the ping
 			schedulePing();
@@ -198,7 +196,6 @@ public class ConnectionService extends Service {
 	private short currentRequestID = 0;
 	private boolean shutdownRequested = false;
 	
-	private MMWebSocketClient wsClient = null;
 	private final ArrayList<ConversationInfoRequest> pendingConversations = new ArrayList<>();
 	private final Handler mainHandler = new Handler(Looper.getMainLooper());
 	
@@ -220,7 +217,8 @@ public class ConnectionService extends Service {
 	}
 	
 	int getCurrentState() {
-		return currentState;
+		if(currentConnectionManager == null) return stateDisconnected;
+		else return currentConnectionManager.getState();
 	}
 	
 	static int getLastConnectionResult() {
@@ -229,6 +227,12 @@ public class ConnectionService extends Service {
 	
 	static byte getNextLaunchID() {
 		return ++currentLaunchID;
+	}
+	
+	static ConnectionManager getStaticConnectionManager() {
+		ConnectionService service = getInstance();
+		if(service == null) return null;
+		return service.currentConnectionManager;
 	}
 	
 	@Override
@@ -252,6 +256,7 @@ public class ConnectionService extends Service {
 	
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
+		System.out.println("onStartCommand!");
 		//Getting the intent action
 		String intentAction = intent == null ? null : intent.getAction();
 		
@@ -282,6 +287,7 @@ public class ConnectionService extends Service {
 		}
 		//Reconnecting the client if requested
 		else if(getCurrentState() == stateDisconnected || selfIntentActionConnect.equals(intentAction)) connect(intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : getNextLaunchID());
+		System.out.println("Current state: " + getCurrentState());
 		
 		//Setting the service as not shutting down
 		shutdownRequested = false;
@@ -306,24 +312,9 @@ public class ConnectionService extends Service {
 		unregisterReceiver(pingBroadcastReceiver);
 	}
 	
-	static String prepareHostnameProtocol2(String hostname) {
-		//Checking if the hostname doesn't have a port
-		if(!regExValidPort.matcher(hostname).find()) {
-			//Adding the default port
-			hostname += ':' + Integer.toString(Constants.defaultPort);
-		}
+	/* void setForegroundState(boolean foregroundState) {
+		int currentState = getCurrentState();
 		
-		//Checking if the hostname doesn't have a protocol
-		if(!regExValidProtocol.matcher(hostname).find()) {
-			//Adding the default protocol
-			hostname = Constants.defaultProtocol + hostname;
-		}
-		
-		//Returning the hostname
-		return hostname;
-	}
-	
-	void setForegroundState(boolean foregroundState) {
 		if(foregroundState) {
 			Notification notification;
 			if(currentState == stateConnected) notification = getBackgroundNotification(true);
@@ -339,7 +330,7 @@ public class ConnectionService extends Service {
 				stopForeground(true);
 			}
 		}
-	}
+	} */
 	
 	private boolean foregroundServiceRequested() {
 		return true;
@@ -351,9 +342,9 @@ public class ConnectionService extends Service {
 		//return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_disconnectionnotification_key), true);
 	}
 	
-	private void connect(byte launchID) {
+	private boolean connect(byte launchID) {
 		//Closing the current connection if it exists
-		if(currentState != stateDisconnected) disconnect();
+		//if(getCurrentState() != stateDisconnected) disconnect();
 		
 		//Returning if there is no connection
 		{
@@ -369,7 +360,7 @@ public class ConnectionService extends Service {
 						.putExtra(Constants.intentParamCode, intentResultCodeConnection)
 						.putExtra(Constants.intentParamLaunchID, launchID));
 				
-				return;
+				return false;
 			}
 		}
 		
@@ -391,140 +382,32 @@ public class ConnectionService extends Service {
 					.putExtra(Constants.intentParamCode, intentResultCodeConnection)
 					.putExtra(Constants.intentParamLaunchID, launchID));
 			
-			return;
+			return false;
 		}
 		
-		//Parsing the hostname
-		String cleanHostname = hostname;
-		int port = Constants.defaultPort;
-		if(regExValidPort.matcher(cleanHostname).find()) {
-			String[] targetDetails = hostname.split(":");
-			cleanHostname = targetDetails[0];
-			port = Integer.parseInt(targetDetails[1]);
-		}
+		//Connecting through the top of the priority queue
+		boolean result = connectionManagerPriorityList.get(0).connect(launchID);
 		
-		//Starting the connection
-		connectionThread = new ConnectionThread(launchID, cleanHostname, password, port);
-		connectionThread.start();
-		
-		//Setting the state as connecting
-		currentState = stateConnecting;
-		
-		//Updating the notification
-		postConnectedNotification(false);
-		
-		//Notifying the connection listeners
-		LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-				.putExtra(Constants.intentParamState, stateConnecting)
-				.putExtra(Constants.intentParamLaunchID, launchID));
-	}
-	
-	private void connectProtocol2(byte launchID) {
-		//Checking if the client is valid
-		if(wsClient != null) {
-			//Clearing the reconnection flag
-			flagDropReconnect = false;
-			
-			//Closing the client
-			wsClient.close();
-			wsClient = null;
-		}
-		
-		//Returning if there is no connection
-		{
-			NetworkInfo activeNetwork = ((ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
-			boolean isConnected = activeNetwork != null && activeNetwork.isConnected();
-			if(!isConnected) {
-				//Updating the notification
-				postDisconnectedNotification(true);
-				
-				//Notifying the connection listeners
-				LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-						.putExtra(Constants.intentParamState, stateDisconnected)
-						.putExtra(Constants.intentParamCode, intentResultCodeConnection)
-						.putExtra(Constants.intentParamLaunchID, launchID));
-				
-				return;
-			}
-		}
-		
-		//Preparing the WS client
-		try {
-			//Creating the WS client
-			wsClient = new MMWebSocketClient(launchID, new URI(prepareHostnameProtocol2(hostname)), new DraftMMS());
-			wsClient.setConnectionLostTimeout(0);
-			
-			//Creating the SSL context
-			SSLContext sslContext = SSLContext.getInstance("TLS");
-			
-			TrustManager[] trustAllCerts = new TrustManager[]{
-					new X509TrustManager() {
-						public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-							return new X509Certificate[0];
-						}
-						
-						public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
-						}
-						
-						public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
-						}
-					}
-			};
-			
-			sslContext.init(null, trustAllCerts, new SecureRandom());
-			
-			//Using the secure socket
-			wsClient.setSocket(sslContext.getSocketFactory().createSocket());
-		} catch(Exception exception) {
-			//Printing the stack trace
-			exception.printStackTrace();
+		if(result) {
+			//Updating the notification
+			postConnectedNotification(false);
 			
 			//Notifying the connection listeners
-			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-					.putExtra(Constants.intentParamState, stateDisconnected)
-					.putExtra(Constants.intentParamCode, intentResultCodeInternalException)
-					.putExtra(Constants.intentParamLaunchID, launchID));
-			
-			//Updating the notification state
+			broadcastState(stateConnecting, 0, launchID);
+		} else {
+			//Updating the notification
 			postDisconnectedNotification(false);
 			
-			//Finishing the service
-			//finishService();
-			
-			//Returning
-			return;
+			//Notifying the connection listeners
+			broadcastState(stateDisconnected, intentResultCodeInternalException, launchID);
 		}
 		
-		//Connecting
-		wsClient.connect();
-		
-		//Setting the state
-		currentState = stateConnecting;
-		
-		//Updating the notification
-		postConnectedNotification(false);
-		
-		//Notifying the connection listeners
-		LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-				.putExtra(Constants.intentParamState, stateConnecting)
-				.putExtra(Constants.intentParamLaunchID, launchID));
+		//Returning the result
+		return result;
 	}
 	
-	public void disconnect() {
-		//Returning if the client is disconnected
-		if(currentState == stateDisconnected) return;
-		
-		//Setting the state as disconnected
-		//currentState = stateDisconnected;
-		
-		//Removing the reconnection flag
-		flagDropReconnect = false;
-		
-		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
-			if(wsClient != null && wsClient.isOpen()) wsClient.close();
-		} else {
-			connectionThread.initiateClose();
-		}
+	void disconnect() {
+		if(currentConnectionManager != null) currentConnectionManager.disconnect();
 	}
 	
 	public void reconnect() {
@@ -625,150 +508,890 @@ public class ConnectionService extends Service {
 		}
 	} */
 	
-	private abstract class ConnectionManager {
-		abstract void connect(byte launchID, String hostname, String password, int port);
-		abstract void disconnect();
-		
-		
+	/**
+	 * Sends a broadcast to the listeners
+	 * @param state the state of the connection
+	 * @param code the error code, if the state is disconnected
+	 * @param launchID the launch ID of the connection
+	 */
+	void broadcastState(int state, int code, byte launchID) {
+		//Notifying the connection listeners
+		LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
+				.putExtra(Constants.intentParamState, state)
+				.putExtra(Constants.intentParamCode, code)
+				.putExtra(Constants.intentParamLaunchID, launchID));
 	}
 	
-	private class MMWebSocketClient extends WebSocketClient {
-		//Creating the values
-		private final byte launchID;
+	private abstract class ConnectionManager {
+		byte launchID;
 		
-		MMWebSocketClient(byte launchID, URI serverUri) {
-			super(serverUri);
+		/**
+		 * Connects to the server
+		 * @param launchID an ID to represent and track this connection
+		 * @return whether or not the request was successful
+		 */
+		boolean connect(byte launchID) {
+			currentConnectionManager = this;
 			this.launchID = launchID;
+			return false;
 		}
 		
-		MMWebSocketClient(byte launchID, URI serverUri, Draft draft) {
-			super(serverUri, draft);
-			this.launchID = launchID;
+		/**
+		 * Disconnects the connection manager from the server
+		 */
+		void disconnect() {
+			flagDropReconnect = false;
+		};
+		
+		/**
+		 * Get the current state of the connection manager
+		 * @return an integer representing the state
+		 */
+		abstract int getState();
+		
+		/**
+		 * Sends a ping packet to the server
+		 * @return whether or not the message was successfuly sent
+		 */
+		abstract boolean sendPing();
+		
+		/**
+		 * Requests a message to be sent to the specified conversation
+		 * @param requestID the ID of the request
+		 * @param chatGUID the GUID of the target conversation
+		 * @param message the message to send
+		 * @return whether or not the request was successfully sent
+		 */
+		abstract boolean sendMessage(short requestID, String chatGUID, String message);
+		
+		/**
+		 * Requests a message to be send to the specified conversation members via the service
+		 * @param requestID the ID of the request
+		 * @param chatMembers the members to send the message to
+		 * @param message the message to send
+		 * @param service the service to send the message across
+		 * @return whether or not the request was successfully sent
+		 */
+		abstract boolean sendMessage(short requestID, String[] chatMembers, String message, String service);
+		
+		/**
+		 * Requests the download of a remote attachment
+		 * @param requestID the ID of the request
+		 * @return whether or not the request was successful
+		 */
+		abstract boolean addDownloadRequest(short requestID, String attachmentGUID);
+		
+		/**
+		 * Uploads a file chunk to be sent to the specified conversation
+		 * @param requestID the ID of the request
+		 * @param requestIndex the index of the request
+		 * @param conversationGUID the conversation to send the file to
+		 * @param data the transmission-ready bytes of the file chunk
+		 * @param fileName the name of the file to send
+		 * @param isLast whether or not this is the last file packet
+		 * @return whether or not the action was successful
+		 */
+		abstract boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast);
+		
+		/**
+		 * Uploads a file chunk to be sent to the specified conversation members
+		 * @param requestID the ID of the request
+		 * @param requestIndex the index of the request
+		 * @param conversationMembers the members of the conversation to send the file to
+		 * @param data the transmission-ready bytes of the file chunk
+		 * @param fileName the name of the file to send
+		 * @param service the service to send the file across
+		 * @param isLast whether or not this is the last file packet
+		 * @return whether or not the action was successful
+		 */
+		abstract boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast);
+		
+		/**
+		 * Prepares data before being sent, usually by compressing it
+		 * @param data the data to be sent
+		 * @param length the length of the data in the array
+		 */
+		abstract byte[] prepareTransferableData(byte[] data, int length) throws IOException;
+		
+		/**
+		 * Sends a request to fetch conversation information
+		 * @param list the list of conversation requests
+		 * @return whether or not the request was successfully sent
+		 */
+		abstract boolean sendConversationInfoRequest(List<ConversationInfoRequest> list);
+		
+		/**
+		 * Requests a time range-based message retrieval
+		 * @param timeLower the lower time range limit
+		 * @param timeUpper the upper time range limit
+		 * @return whether or not the request was successfully sent
+		 */
+		abstract boolean requestRetrievalTime(long timeLower, long timeUpper);
+		
+		/**
+		 * Requests a mass message retrieval
+		 * @return whether or not the request was successfully sent
+		 */
+		abstract boolean requestRetrievalAll();
+		
+		/**
+		 * Forwards a request to the next connection manager
+		 * @param launchID an ID used to identify connection attempts
+		 * @param thread whether or not to use a new thread
+		 * @return if the request was forwarded
+		 */
+		boolean forwardRequest(byte launchID, boolean thread) {
+			int targetIndex = connectionManagerPriorityList.indexOf(this) + 1;
+			if(targetIndex == connectionManagerPriorityList.size()) return false;
+			if(thread) {
+				new Handler(Looper.getMainLooper()).post(() -> {
+					if(currentLaunchID == launchID) connectionManagerPriorityList.get(targetIndex).connect(launchID);
+				});
+			} else connectionManagerPriorityList.get(targetIndex).connect(launchID);
+			return true;
+		}
+	}
+	
+	private class ClientProtocol3 extends ConnectionManager {
+		private int currentState = stateDisconnected;
+		private ConnectionThread connectionThread = null;
+		
+		@Override
+		boolean connect(byte launchID) {
+			//Calling the super method
+			super.connect(launchID);
+			
+			//Parsing the hostname
+			String cleanHostname = hostname;
+			int port = Constants.defaultPort;
+			if(regExValidPort.matcher(cleanHostname).find()) {
+				String[] targetDetails = hostname.split(":");
+				cleanHostname = targetDetails[0];
+				port = Integer.parseInt(targetDetails[1]);
+			}
+			
+			//Setting the state as connecting
+			currentState = stateConnecting;
+			
+			//Starting the connection
+			connectionThread = new ConnectionThread(launchID, cleanHostname, password, port);
+			connectionThread.start();
+			
+			//Returning true
+			return true;
 		}
 		
 		@Override
-		public void onOpen(ServerHandshake handshake) {
-			//Checking if this is the most recent launch
-			if(currentLaunchID == launchID) {
-				//Setting the state
-				currentState = stateConnected;
+		void disconnect() {
+			super.disconnect();
+			currentState = stateDisconnected;
+			connectionThread.initiateClose(intentResultCodeConnection, false);
+		}
+		
+		@Override
+		int getState() {
+			return currentState;
+		}
+		
+		private boolean queuePacket(PacketStruct packet) {
+			return connectionThread != null && connectionThread.queuePacket(packet);
+		}
+		
+		@Override
+		boolean sendPing() {
+			if(connectionThread == null) return false;
+			connectionThread.sendPing();
+			return true;
+			//queuePacket(new PacketStruct(SharedValues.nhtPing, new byte[0]));
+		}
+		
+		@Override
+		byte[] prepareTransferableData(byte[] data, int length) throws IOException {
+			return Constants.compressGZIP(data, length);
+		}
+		
+		@Override
+		boolean sendMessage(short requestID, String chatGUID, String message) {
+			//Returning false if there is no connection thread
+			if(connectionThread == null) return false;
+			
+			byte[] packetData;
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				//Adding the data
+				out.writeShort(requestID); //Request ID
+				out.writeUTF(chatGUID); //Chat GUID
+				out.writeUTF(message); //Message
+				out.flush();
 				
-				//Setting the last connection result
-				lastConnectionResult = intentResultCodeSuccess;
+				packetData = bos.toByteArray();
+			} catch(IOException exception) {
+				//Printing the stack trace
+				exception.printStackTrace();
+				
+				//Returning false
+				return false;
+			}
+			
+			//Sending the message
+			connectionThread.queuePacket(new PacketStruct(SharedValues.nhtSendTextExisting, packetData));
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean sendMessage(short requestID, String[] chatMembers, String message, String service) {
+			//Returning false if there is no connection thread
+			if(connectionThread == null) return false;
+			
+			byte[] packetData;
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				//Adding the data
+				out.writeShort(requestID); //Request ID
+				out.writeInt(chatMembers.length); //Members
+				for(String item : chatMembers) out.writeUTF(item);
+				out.writeUTF(message); //Message
+				out.writeUTF(service); //Service
+				out.flush();
+				
+				packetData = bos.toByteArray();
+			} catch(IOException exception) {
+				//Printing the stack trace
+				exception.printStackTrace();
+				
+				//Returning false
+				return false;
+			}
+			
+			//Sending the message
+			connectionThread.queuePacket(new PacketStruct(SharedValues.nhtSendTextNew, packetData));
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean addDownloadRequest(short requestID, String attachmentGUID) {
+			//Preparing to serialize the request
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				//Adding the data
+				out.writeShort(requestID); //Request ID
+				out.writeUTF(attachmentGUID); //File GUID
+				out.writeInt(attachmentChunkSize); //Chunk size
+				out.flush();
+				
+				//Sending the message
+				boolean requestQueued = queuePacket(new PacketStruct(SharedValues.nhtAttachmentReq, bos.toByteArray()));
+				if(!requestQueued) return false;
+			} catch(IOException exception) {
+				//Printing the stack trace
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
+			}
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean sendConversationInfoRequest(List<ConversationInfoRequest> list) {
+			//Returning false if there is no connection thread
+			if(connectionThread == null) return false;
+			
+			//Creating the guid list
+			ArrayList<String> guidList;
+			
+			//Locking the pending conversations
+			synchronized(list) {
+				//Returning false if there are no pending conversations
+				if(list.isEmpty()) return false;
+				
+				//Converting the conversation info list to a string list
+				guidList = new ArrayList<>();
+				for(ConversationInfoRequest conversationInfoRequest : list)
+					guidList.add(conversationInfoRequest.conversationInfo.getGuid());
+			}
+			
+			//Requesting information on new conversations
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				out.writeInt(guidList.size());
+				for(String item : guidList) out.writeUTF(item);
+				out.flush();
+				
+				//Sending the message
+				connectionThread.queuePacket(new PacketStruct(SharedValues.nhtChatInfo, bos.toByteArray()));
+			} catch(IOException exception) {
+				//Logging the exception
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
+			}
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast) {
+			//Returning false if there is no connection thread
+			if(connectionThread == null) return false;
+			
+			//Adding the data
+			byte[] packetData;
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				out.writeShort(requestID); //Request identifier
+				out.writeInt(requestIndex); //Request index
+				out.writeUTF(conversationGUID); //Chat GUID
+				out.writeInt(data.length); //File bytes
+				out.write(data);
+				if(requestIndex == 0) out.writeUTF(fileName);
+				out.writeBoolean(isLast); //Is last message
+				out.flush();
+				
+				packetData = bos.toByteArray();
+			} catch(IOException exception) {
+				//Logging the exception
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
+			}
+			
+			//Sending the message
+			connectionThread.sendDataSync(SharedValues.nhtSendFileNew, packetData, true);
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast) {
+			//Returning false if there is no connection thread
+			if(connectionThread == null) return false;
+			
+			//Adding the data
+			byte[] packetData;
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				out.writeShort(requestID); //Request identifier
+				out.writeInt(requestIndex); //Request index
+				out.writeInt(conversationMembers.length); //Chat members
+				for(String item : conversationMembers) out.writeUTF(item);
+				out.writeInt(data.length); //File bytes
+				out.write(data);
+				if(requestIndex == 0) {
+					out.writeUTF(fileName); //File name
+					out.writeUTF(service); //Service
+				}
+				out.writeBoolean(isLast); //Is last message
+				out.flush();
+				
+				packetData = bos.toByteArray();
+			} catch(IOException exception) {
+				//Logging the exception
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
+			}
+			
+			//Sending the message
+			connectionThread.sendDataSync(SharedValues.nhtSendFileNew, packetData, true);
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean requestRetrievalTime(long timeLower, long timeUpper) {
+			//Returning false if there is no connection thread
+			if(connectionThread == null) return false;
+			
+			//Building the request
+			byte[] packetData;
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				out.writeLong(timeLower);
+				out.writeLong(timeUpper);
+				out.flush();
+				
+				//Sending the message
+				packetData = bos.toByteArray();
+			} catch(IOException exception) {
+				//Logging the exception
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
+			}
+			
+			//Sending the message
+			connectionThread.queuePacket(new PacketStruct(SharedValues.nhtTimeRetrieval, packetData));
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean requestRetrievalAll() {
+			//Returning false if there is no connection thread
+			if(connectionThread == null) return false;
+			
+			//Queuing the packet
+			queuePacket(new PacketStruct(SharedValues.nhtMassRetrieval, new byte[0]));
+			
+			//Returning true
+			return true;
+		}
+		
+		private class ConnectionThread extends Thread {
+			private static final long authenticationTime = 1000 * 10; //10 seconds
+			
+			private final byte launchID;
+			private final String hostname;
+			private final String password;
+			private final int port;
+			
+			private Socket socket;
+			private InputStream inputStream;
+			private OutputStream outputStream;
+			private WriterThread writerThread = null;
+			private Timer authenticationExpiryTimer = null;
+			
+			ConnectionThread(byte launchID, String hostname, String password, int port) {
+				this.launchID = launchID;
+				this.hostname = hostname;
+				this.password = password;
+				this.port = port;
+			}
+			
+			@Override
+			public void run() {
+				try {
+					//Returning if the thread is interrupted
+					if(isInterrupted()) return;
+					
+					//Creating the SSL context
+					SSLContext sslContext = SSLContext.getInstance("TLS");
+					TrustManager[] trustAllCerts = new TrustManager[]{
+							new X509TrustManager() {
+								public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+									return new X509Certificate[0];
+								}
+								
+								public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {}
+								
+								public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {}
+							}
+					};
+					sslContext.init(null, trustAllCerts, new SecureRandom());
+					
+					//Connecting to the server
+					socket = sslContext.getSocketFactory().createSocket();
+					//socket.setKeepAlive(true);
+					socket.connect(new InetSocketAddress(hostname, port), 10 * 1000);
+					
+					//Returning if the thread is interrupted
+					if(isInterrupted()) {
+						try {
+							socket.close();
+						} catch(IOException exception) {
+							exception.printStackTrace();
+						}
+						return;
+					}
+					
+					//Getting the streams
+					inputStream = socket.getInputStream();
+					outputStream = socket.getOutputStream();
+					
+					//Starting the writer thread
+					writerThread = new WriterThread();
+					writerThread.start();
+				} catch(IOException | NoSuchAlgorithmException | KeyManagementException exception) {
+					//Printing the stack trace
+					exception.printStackTrace();
+					
+					//Updating the state
+					updateStateDisconnected(intentResultCodeConnection, true);
+					
+					//Returning
+					return;
+				}
+				
+				//Sending the registration data
+				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+					out.writeInt(applicableCommunicationsVersions.length);
+					for(int version : applicableCommunicationsVersions) out.writeInt(version);
+					out.writeUTF(password);
+					out.flush();
+					
+					queuePacket(new PacketStruct(SharedValues.nhtAuthentication, bos.toByteArray()));
+				} catch(IOException exception) {
+					//Logging the error
+					exception.printStackTrace();
+					Crashlytics.logException(exception);
+					
+					//Closing the connection
+					closeConnection(intentResultCodeInternalException, true);
+				}
+				
+				//Starting the authentication timer
+				authenticationExpiryTimer = new Timer();
+				authenticationExpiryTimer.schedule(new TimerTask() {
+					@Override
+					public void run() {
+						//Stopping the expiry timer
+						authenticationExpiryTimer.cancel();
+						authenticationExpiryTimer = null;
+						
+						//Closing the connection
+						closeConnection(intentResultCodeConnection, true);
+					}
+				}, authenticationTime);
+				
+				//Reading from the input stream
+				while(!isInterrupted()) {
+					try {
+						//Reading the header data
+						byte[] header = new byte[Integer.SIZE / 8 * 2];
+						{
+							int bytesRemaining = header.length;
+							int offset = 0;
+							int readCount;
+							
+							while(bytesRemaining > 0) {
+								readCount = inputStream.read(header, offset, bytesRemaining);
+								if(readCount == -1) { //No data read, stream is closed
+									closeConnection(intentResultCodeConnection, false);
+									return;
+								}
+								
+								offset += readCount;
+								bytesRemaining -= readCount;
+							}
+						}
+						ByteBuffer headerBuffer = ByteBuffer.wrap(header);
+						int messageType = headerBuffer.getInt();
+						int contentLen = headerBuffer.getInt();
+						
+						//Reading the content
+						byte[] content = new byte[contentLen];
+						if(contentLen > 0) {
+							int bytesRemaining = contentLen;
+							int offset = 0;
+							int readCount;
+							while(bytesRemaining > 0) {
+								readCount = inputStream.read(content, offset, bytesRemaining);
+								if(readCount == -1) { //No data read, stream is closed
+									closeConnection(intentResultCodeConnection, false);
+									return;
+								}
+								
+								offset += readCount;
+								bytesRemaining -= readCount;
+							}
+						}
+						
+						//Processing the data
+						processData(messageType, content);
+					} catch(SSLHandshakeException exception) {
+						//Closing the connection
+						exception.printStackTrace();
+						closeConnection(intentResultCodeConnection, true);
+						
+						//Breaking
+						break;
+					} catch(IOException exception) {
+						//Closing the connection
+						exception.printStackTrace();
+						closeConnection(intentResultCodeConnection, false);
+						
+						//Breaking
+						break;
+					}
+				}
+				
+				//Closing the socket
+				try {
+					socket.close();
+				} catch(IOException exception) {
+					exception.printStackTrace();
+				}
+			}
+			
+			private void updateStateDisconnected(int reason, boolean forwardRequest) {
+				//Attempting to connect via the legacy method
+				if(!forwardRequest || !forwardRequest(launchID, true)) {
+					new Handler(Looper.getMainLooper()).post(() -> {
+						//Cancelling the mass retrieval if there is one in progress
+						if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
+						
+						//Checking if this is the most recent launch
+						if(currentLaunchID == launchID) {
+							//Setting the state
+							currentState = stateDisconnected;
+							
+							//Setting the last connection result
+							lastConnectionResult = reason;
+							
+							//Notifying the connection listeners
+							LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
+									.putExtra(Constants.intentParamState, stateDisconnected)
+									.putExtra(Constants.intentParamCode, reason)
+									.putExtra(Constants.intentParamLaunchID, launchID));
+							
+							//Updating the notification state
+							if(!shutdownRequested) postDisconnectedNotification(false);
+							
+							//Checking if the end time should be marked
+							if(flagMarkEndTime) {
+								//Writing the time to shared preferences
+								SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+								SharedPreferences.Editor editor = sharedPrefs.edit();
+								editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+								editor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
+								editor.commit();
+							}
+							
+							//Checking if a connection existed for reconnection and the preference is enabled
+							if(flagDropReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
+								//Reconnecting
+								new Handler().postDelayed(() -> {
+									if(currentState == stateDisconnected && currentLaunchID == launchID) connect(getNextLaunchID());
+								}, dropReconnectDelayMillis);
+							}
+							
+							//Clearing the flags
+							flagMarkEndTime = flagDropReconnect = false;
+						}
+					});
+				}
+			}
+			
+			private void updateStateConnected() {
+				//Running on the main thread
+				new Handler(Looper.getMainLooper()).post(() -> {
+					//Checking if this is the most recent launch
+					if(currentLaunchID == launchID) {
+						//Setting the last connection result
+						lastConnectionResult = intentResultCodeSuccess;
+						
+						//Setting the state
+						currentState = stateConnected;
+						
+						//Retrieving the pending conversation info
+						sendConversationInfoRequest(pendingConversations);
+						
+						//Setting the flags
+						flagMarkEndTime = flagDropReconnect = true;
+						
+						//Getting the last connection time
+						SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+						String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
+						
+						//Checking if the last connection is the same as the current one
+						if(hostname.equals(lastConnectionHostname)) {
+							//Getting the last connection time
+							long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, -1);
+							
+							//Fetching the messages since the last connection time
+							retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
+						}
+					}
+				});
 				
 				//Notifying the connection listeners
 				LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
 						.putExtra(Constants.intentParamState, stateConnected)
 						.putExtra(Constants.intentParamLaunchID, launchID));
 				
-				//Recording the server versions
-				{
-					String commVer = handshake.getFieldValue(SharedValues.headerCommVer);
-					if(commVer.matches("^\\d+$")) activeCommunicationsVersion = Integer.parseInt(commVer);
-				}
-				
-				//Retrieving the pending conversation info
-				retrievePendingConversationInfo();
-				
 				//Updating the notification
 				if(foregroundServiceRequested()) postConnectedNotification(true);
 				else clearNotification();
 				
-				//Setting the connection as existing
-				flagMarkEndTime = flagDropReconnect = true;
-				
-				//Getting the last connection time
-				SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-				String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
-				
-				//Checking if the last connection is the same as the current one
-				if(hostname.equals(lastConnectionHostname)) {
-					//Getting the last connection time
-					long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, -1);
-					
-					//Fetching the messages since the last connection time
-					retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
-				}
-				
 				//Scheduling the ping
 				schedulePing();
 			}
-		}
-		
-		@Override
-		public void onMessage(String message) {}
-		
-		@Override
-		public void onMessage(ByteBuffer bytes) {
-			//Updating the scheduled ping
-			schedulePing();
 			
-			//Processing the message
-			byte[] array = new byte[bytes.remaining()];
-			bytes.get(array);
-			
-			try(ByteArrayInputStream bis = new ByteArrayInputStream(array); ObjectInputStream in = new ObjectInputStream(bis)) {
-				switch(in.readByte()) { //Reading the message type and making a switch statement
-					case SharedValues.wsFrameUpdate: { //New messages received
-						final ArrayList<SharedValues.ConversationItem> receivedItems = (ArrayList<SharedValues.ConversationItem>) in.readObject();
+			private void processData(int messageType, byte[] data) {
+				switch(messageType) {
+					case SharedValues.nhtClose:
+						closeConnection(intentResultCodeConnection, false);
+						break;
+					case SharedValues.nhtPing:
+						queuePacket(new PacketStruct(SharedValues.nhtPong, new byte[0]));
+						break;
+					case SharedValues.nhtAuthentication: {
+						//Stopping the authentication timer
+						if(authenticationExpiryTimer != null) {
+							authenticationExpiryTimer.cancel();
+							authenticationExpiryTimer = null;
+						}
 						
-						//Processing the messages
-						processMessageUpdate(receivedItems, true);
+						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
+							//Recording the communications version
+							int communicationsVersion = in.readInt();
+							new Handler(Looper.getMainLooper()).post(() -> activeCommunicationsVersion = communicationsVersion);
+							
+							//Attempting to find a matching protocol version
+							boolean versionsApplicable = false;
+							for(int version : applicableCommunicationsVersions) {
+								if(communicationsVersion == version) {
+									versionsApplicable = true;
+									break;
+								}
+							}
+							
+							int result;
+							
+							//Checking if there is a matching version
+							if(versionsApplicable) {
+								//Checking the result
+								result = in.readInt();
+								
+								//Translating the result to the local value
+								switch(result) {
+									case SharedValues.nhtAuthenticationOK:
+										result = intentResultCodeSuccess;
+										break;
+									case SharedValues.nhtAuthenticationUnauthorized:
+										result = intentResultCodeUnauthorized;
+										break;
+									case SharedValues.nhtAuthenticationBadRequest:
+										result = intentResultCodeBadRequest;
+										break;
+									case SharedValues.nhtAuthenticationVersionMismatch:
+										if(SharedValues.mmCommunicationsVersion > communicationsVersion) result = intentResultCodeServerOutdated;
+										else result = intentResultCodeClientOutdated;
+										break;
+								}
+							} else {
+								if(SharedValues.mmCommunicationsVersion > communicationsVersion) result = intentResultCodeServerOutdated;
+								else result = intentResultCodeClientOutdated;
+							}
+							
+							if(result == intentResultCodeSuccess) {
+								//Calling the success
+								updateStateConnected();
+							} else {
+								//Terminating the connection
+								closeConnection(result, false);
+							}
+						} catch(IOException | RuntimeException exception) {
+							exception.printStackTrace();
+						}
 						
 						break;
 					}
-					case SharedValues.wsFrameTimeRetrieval: { //Time retrieval
-						final ArrayList<SharedValues.ConversationItem> receivedItems = (ArrayList<SharedValues.ConversationItem>) in.readObject();
+					case SharedValues.nhtMessageUpdate:
+					case SharedValues.nhtTimeRetrieval: {
+						//Reading the list
+						List<SharedValues.ConversationItem> list;
+						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
+							int count = in.readInt();
+							list = new ArrayList<>(count);
+							for(int i = 0; i < count; i++) list.add((SharedValues.ConversationItem) in.readObject());
+						} catch(IOException | RuntimeException | ClassNotFoundException exception) {
+							exception.printStackTrace();
+							break;
+						}
 						
 						//Processing the messages
-						processMessageUpdate(receivedItems, true);
+						processMessageUpdate(list, true);
 						
 						break;
 					}
-					case SharedValues.wsFrameMassRetrieval: { //Mass retrieval
-						//Breaking if the client isn't looking for a mass retrieval
-						if(!massRetrievalInProgress) break;
+					case SharedValues.nhtMassRetrieval: {
+						//Reading the lists
+						List<SharedValues.ConversationItem> listItems;
+						List<SharedValues.ConversationInfo> listConversations;
+						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
+							int count = in.readInt();
+							listItems = new ArrayList<>(count);
+							for(int i = 0; i < count; i++) listItems.add((SharedValues.ConversationItem) in.readObject());
+							
+							count = in.readInt();
+							listConversations = new ArrayList<>(count);
+							for(int i = 0; i < count; i++) listConversations.add((SharedValues.ConversationInfo) in.readObject());
+						} catch(IOException | RuntimeException | ClassNotFoundException exception) {
+							exception.printStackTrace();
+							break;
+						}
 						
+						//Processing the messages
+						processMassRetrievalResult(listItems, listConversations);
+						
+						break;
+					}
+					case SharedValues.nhtChatInfo: {
+						//Reading the list
+						List<SharedValues.ConversationInfo> list;
+						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
+							int count = in.readInt();
+							list = new ArrayList<>(count);
+							for(int i = 0; i < count; i++) list.add((SharedValues.ConversationInfo) in.readObject());
+						} catch(IOException | RuntimeException | ClassNotFoundException exception) {
+							exception.printStackTrace();
+							break;
+						}
+						
+						//Processing the conversations
+						processChatInfoResponse(list);
+						
+						break;
+					}
+					case SharedValues.nhtModifierUpdate: {
+						//Reading the list
+						List<SharedValues.ModifierInfo> list;
+						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
+							int count = in.readInt();
+							list = new ArrayList<>(count);
+							for(int i = 0; i < count; i++) list.add((SharedValues.ModifierInfo) in.readObject());
+						} catch(IOException | RuntimeException | ClassNotFoundException exception) {
+							exception.printStackTrace();
+							break;
+						}
+						
+						//Processing the conversations
+						processModifierUpdate(list);
+						
+						break;
+					}
+					case SharedValues.nhtAttachmentReq: {
 						//Reading the data
-						final ArrayList<SharedValues.ConversationItem> receivedItems = (ArrayList<SharedValues.ConversationItem>) in.readObject();
-						final ArrayList<SharedValues.ConversationInfo> receivedConversations = (ArrayList<SharedValues.ConversationInfo>) in.readObject();
-						
-						//Processing the messages
-						processMassRetrievalResult(receivedItems, receivedConversations);
-						
-						break;
-					}
-					case SharedValues.wsFrameChatInfo: { //Chat information
-						final ArrayList<SharedValues.ConversationInfo> receivedItems = (ArrayList<SharedValues.ConversationInfo>) in.readObject();
-						
-						//Processing the conversations
-						processChatInfoResponse(receivedItems);
-						
-						break;
-					}
-					case SharedValues.wsFrameModifierUpdate: { //Message modifier update
-						final ArrayList<SharedValues.ModifierInfo> receivedItems = (ArrayList<SharedValues.ModifierInfo>) in.readObject();
-						
-						//Processing the conversations
-						processModifierUpdate(receivedItems);
-						
-						break;
-					}
-					case SharedValues.wsFrameAttachmentReq: { //Attachment data received
-						final String guid = in.readUTF();
-						final short requestID = in.readShort();
-						final int requestIndex = in.readInt();
-						final byte[] compressedBytes = (byte[]) in.readObject();
+						final short requestID;
+						final String fileGUID;
+						final int requestIndex;
+						final byte[] compressedBytes;
 						final long fileSize;
-						if(requestIndex == 0) fileSize = in.readLong();
-						else fileSize = -1;
-						final boolean isLast = in.readBoolean();
+						final boolean isLast;
+						
+						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
+							requestID = in.readShort();
+							fileGUID = in.readUTF();
+							requestIndex = in.readInt();
+							compressedBytes = new byte[in.readInt()];
+							in.readFully(compressedBytes);
+							if(requestIndex == 0) fileSize = in.readLong();
+							else fileSize = -1;
+							isLast = in.readBoolean();
+						} catch(IOException | RuntimeException exception) {
+							exception.printStackTrace();
+							break;
+						}
 						
 						//Running on the UI thread
 						mainHandler.post(() -> {
 							//Searching for a matching request
 							for(FileDownloadRequest request : fileDownloadRequests) {
-								if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
+								if(request.requestID != requestID || !request.attachmentGUID.equals(fileGUID)) continue;
 								if(requestIndex == 0) request.setFileSize(fileSize);
 								request.processFileFragment(ConnectionService.this, compressedBytes, requestIndex, isLast, activeCommunicationsVersion);
 								if(isLast) fileDownloadRequests.remove(request);
@@ -778,41 +1401,66 @@ public class ConnectionService extends Service {
 						
 						break;
 					}
-					case SharedValues.wsFrameAttachmentReqConfirmed: { //Attachment data request received
-						final short requestID = in.readShort();
-						final String guid = in.readUTF();
+					case SharedValues.nhtAttachmentReqConfirm: {
+						//Reading the data
+						final short requestID;
+						final String fileGUID;
+						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
+							requestID = in.readShort();
+							fileGUID = in.readUTF();
+						} catch(IOException | RuntimeException exception) {
+							exception.printStackTrace();
+							break;
+						}
 						
 						//Running on the UI thread
 						mainHandler.post(() -> {
 							//Searching for a matching request
 							for(FileDownloadRequest request : fileDownloadRequests) {
-								if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
+								if(request.requestID != requestID || !request.attachmentGUID.equals(fileGUID)) continue;
 								request.stopTimer(true);
 								request.onResponseReceived();
 								break;
 							}
 						});
+						
 						break;
 					}
-					case SharedValues.wsFrameAttachmentReqFailed: { //Attachment data request failed
-						final short requestID = in.readShort();
-						final String guid = in.readUTF();
+					case SharedValues.nhtAttachmentReqFail: {
+						//Reading the data
+						final short requestID;
+						final String fileGUID;
+						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
+							requestID = in.readShort();
+							fileGUID = in.readUTF();
+						} catch(IOException | RuntimeException exception) {
+							exception.printStackTrace();
+							break;
+						}
 						
 						//Running on the UI thread
 						mainHandler.post(() -> {
 							//Searching for a matching request
 							for(FileDownloadRequest request : fileDownloadRequests) {
-								if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
+								if(request.requestID != requestID || !request.attachmentGUID.equals(fileGUID)) continue;
 								request.failDownload();
 								break;
 							}
 						});
+						
 						break;
 					}
-					case SharedValues.wsFrameSendResult: {
-						//Reading the info
-						short requestID = in.readShort();
-						final boolean success = in.readBoolean();
+					case SharedValues.nhtSendResult: {
+						//Reading the data
+						final short requestID;
+						final boolean result;
+						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
+							requestID = in.readShort();
+							result = in.readBoolean();
+						} catch(IOException | RuntimeException exception) {
+							exception.printStackTrace();
+							break;
+						}
 						
 						//Getting the message response manager
 						final MessageResponseManager messageResponseManager = messageSendRequests.get(requestID);
@@ -824,127 +1472,171 @@ public class ConnectionService extends Service {
 							//Running on the UI thread
 							new Handler(Looper.getMainLooper()).post(() -> {
 								//Telling the listener
-								if(success) messageResponseManager.onSuccess();
+								if(result) messageResponseManager.onSuccess();
 								else messageResponseManager.onFail(messageSendExternalException);
 							});
 						}
+						
+						break;
 					}
 				}
-			} catch(IOException | ClassNotFoundException | ClassCastException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
 			}
-		}
-		
-		@Override
-		public void onClose(int uselessCode, String reasonString, boolean remote) {
-			//Cancelling the mass retrieval if there is one in progress
-			if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
 			
-			//Checking if this is the most recent launch
-			if(currentLaunchID == launchID) {
-				//Getting the code from the message
-				int code = -1;
-				String errorCodeString = reasonString.substring(reasonString.lastIndexOf(' ') + 1);
-				if(errorCodeString.matches("^\\d+$")) code = Integer.parseInt(errorCodeString);
-				
-				//Determining the broadcast value
-				int clientReason;
-				switch(code) {
-					default:
-						clientReason = intentResultCodeConnection;
-						break;
-					case SharedValues.resultBadRequest:
-						clientReason = intentResultCodeBadRequest;
-						break;
-					case SharedValues.resultClientOutdated:
-						clientReason = intentResultCodeClientOutdated;
-						break;
-					case SharedValues.resultServerOutdated:
-						clientReason = intentResultCodeServerOutdated;
-						break;
-					case SharedValues.resultUnauthorized:
-						clientReason = intentResultCodeUnauthorized;
-				}
-				
-				//Setting the state
-				currentState = stateDisconnected;
-				
-				//Setting the last connection result
-				lastConnectionResult = clientReason;
-				
-				//Notifying the connection listeners
-				LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-						.putExtra(Constants.intentParamState, stateDisconnected)
-						.putExtra(Constants.intentParamCode, clientReason)
-						.putExtra(Constants.intentParamLaunchID, launchID));
-				
-				//Checking if the end time should be marked
-				if(flagMarkEndTime) {
-					//Writing the time to shared preferences
-					SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-					SharedPreferences.Editor editor = sharedPrefs.edit();
-					editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
-					editor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
-					editor.commit();
-				}
-				
-				//Checking if a connection existed for reconnection and the preference is enabled
-				if(flagDropReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
-					//Reconnecting
-					new Handler().postDelayed(() -> {
-						if(currentState == stateDisconnected) connectProtocol2(getNextLaunchID());
-					}, dropReconnectDelayMillis);
-				}
-				
-				//Clearing the flags
-				flagMarkEndTime = flagDropReconnect = false;
-				
-				//Posting the disconnected notification
-				if(!shutdownRequested) postDisconnectedNotification(false);
-				
-				//Removing the scheduled ping
-				//unschedulePing();
+			boolean queuePacket(PacketStruct packet) {
+				if(writerThread == null) return false;
+				writerThread.uploadQueue.add(packet);
+				return true;
 			}
-		}
-		
-		@Override
-		public void onError(Exception exception) {
-			exception.printStackTrace();
+			
+			void sendPing() {
+				queuePacket(new PacketStruct(SharedValues.nhtPing, new byte[0]));
+			}
+			
+			void initiateClose(int resultCode, boolean forwardRequest) {
+				//Sending a message and finishing the threads
+				if(writerThread == null) {
+					interrupt();
+				} else {
+					queuePacket(new PacketStruct(SharedValues.nhtClose, new byte[0], () -> {
+						interrupt();
+						writerThread.interrupt();
+					}));
+				}
+				
+				//Updating the state
+				updateStateDisconnected(resultCode, forwardRequest);
+			}
+			
+			private void closeConnection(int reason, boolean forwardRequest) {
+				//Finishing the threads
+				if(writerThread != null) writerThread.interrupt();
+				interrupt();
+				
+				//Updating the state
+				updateStateDisconnected(reason, forwardRequest);
+			}
+			
+			synchronized boolean sendDataSync(int messageType, byte[] data, boolean flush) {
+				try {
+					//Writing the message
+					outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(messageType).putInt(data.length).array());
+					outputStream.write(data);
+					if(flush) outputStream.flush();
+					Thread.sleep(2000);
+					
+					//Returning true
+					return true;
+				} catch(InterruptedException exception) {
+					//Closing the connection
+					closeConnection(intentResultCodeConnection, false);
+					
+					//Returning false
+					return false;
+				} catch(IOException exception) {
+					//Logging the exception
+					exception.printStackTrace();
+					
+					//Closing the connection
+					if(socket.isConnected()) {
+						closeConnection(intentResultCodeConnection, false);
+					} else {
+						Crashlytics.logException(exception);
+					}
+					
+					//Returning false
+					return false;
+				}
+			}
+			
+			private class WriterThread extends Thread {
+				//Creating the queue
+				final BlockingQueue<PacketStruct> uploadQueue = new LinkedBlockingQueue<>();
+				
+				@Override
+				public void run() {
+					PacketStruct packet;
+					
+					try {
+						while(!isInterrupted()) {
+							try {
+								packet = uploadQueue.take();
+								
+								try {
+									//outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(packet.type).putInt(packet.content.length).array());
+									//outputStream.write(packet.content);
+									sendDataSync(packet.type, packet.content, false);
+								} finally {
+									if(packet.sentRunnable != null) packet.sentRunnable.run();
+								}
+								
+								while((packet = uploadQueue.poll()) != null) {
+									try {
+										//outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(packet.type).putInt(packet.content.length).array());
+										//outputStream.write(packet.content);
+										sendDataSync(packet.type, packet.content, false);
+									} finally {
+										if(packet.sentRunnable != null) packet.sentRunnable.run();
+									}
+								}
+								
+								outputStream.flush();
+							} catch(IOException exception) {
+								exception.printStackTrace();
+								
+								if(socket.isConnected()) {
+									closeConnection(intentResultCodeConnection, false);
+								} else {
+									Crashlytics.logException(exception);
+								}
+							}
+						}
+						
+						closeConnection(intentResultCodeConnection, false);
+					} catch(InterruptedException exception) {
+						exception.printStackTrace();
+						//closeConnection(intentResultCodeConnection, false); //Can only be interrupted from closeConnection, so this is pointless
+						
+						return;
+					}
+				}
+				
+				private void sendPacket(PacketStruct packet) throws IOException {
+					outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(packet.type).putInt(packet.content.length).array());
+					outputStream.write(packet.content);
+					outputStream.flush();
+				}
+			}
 		}
 	}
 	
-	private class ConnectionThread extends Thread {
-		private static final long authenticationTime = 1000 * 10; //10 seconds
-		
-		private final byte launchID;
-		private final String hostname;
-		private final String password;
-		private final int port;
-		
-		private Socket socket;
-		private InputStream inputStream;
-		private OutputStream outputStream;
-		private WriterThread writerThread = null;
-		
-		private Timer informationPacketTimer = null;
-		private Timer handshakeExpiryTimer = null;
-		
-		ConnectionThread(byte launchID, String hostname, String password, int port) {
-			this.launchID = launchID;
-			this.hostname = hostname;
-			this.password = password;
-			this.port = port;
-		}
+	private class ClientProtocol2 extends ConnectionManager {
+		//Creating the connection values
+		private MMWebSocketClient wsClient = null;
 		
 		@Override
-		public void run() {
+		boolean connect(byte launchID) {
+			//Calling the super method
+			super.connect(launchID);
+			
+			//Checking if the client is valid
+			if(wsClient != null) {
+				//Clearing the reconnection flag
+				flagDropReconnect = false;
+				
+				//Closing the client
+				wsClient.close();
+				wsClient = null;
+			}
+			
+			//Preparing the WS client
 			try {
-				//Returning if the thread is interrupted
-				if(isInterrupted()) return;
+				//Creating the WS client
+				wsClient = new MMWebSocketClient(launchID, new URI(prepareHostname(hostname)), new DraftMMS());
+				wsClient.setConnectionLostTimeout(0);
 				
 				//Creating the SSL context
 				SSLContext sslContext = SSLContext.getInstance("TLS");
+				
 				TrustManager[] trustAllCerts = new TrustManager[]{
 						new X509TrustManager() {
 							public java.security.cert.X509Certificate[] getAcceptedIssuers() {
@@ -956,223 +1648,413 @@ public class ConnectionService extends Service {
 							public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {}
 						}
 				};
+				
 				sslContext.init(null, trustAllCerts, new SecureRandom());
 				
-				//Connecting to the server
-				socket = sslContext.getSocketFactory().createSocket();
-				//socket.setKeepAlive(true);
-				socket.connect(new InetSocketAddress(hostname, port), 10 * 1000);
-				
-				//Returning if the thread is interrupted
-				if(isInterrupted()) {
-					try {
-						socket.close();
-					} catch(IOException exception) {
-						exception.printStackTrace();
-					}
-					return;
-				}
-				
-				//Getting the streams
-				inputStream = socket.getInputStream();
-				outputStream = socket.getOutputStream();
-				
-				//Starting the writer thread
-				writerThread = new WriterThread();
-				writerThread.start();
-			} catch(IOException | NoSuchAlgorithmException | KeyManagementException exception) {
+				//Using the secure socket
+				wsClient.setSocket(sslContext.getSocketFactory().createSocket());
+			} catch(IOException | KeyManagementException | URISyntaxException | NoSuchAlgorithmException exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
 				
-				//Updating the state
-				updateStateDisconnected(intentResultCodeConnection, true);
+				//Finishing the service
+				//finishService();
 				
-				//Returning
-				return;
+				//Notifying the connection listeners
+				broadcastState(stateDisconnected, intentResultCodeInternalException, launchID);
+				
+				//Returning false
+				return false;
 			}
 			
-			//Setting the information packet timer
-			informationPacketTimer = new Timer();
-			informationPacketTimer.schedule(new TimerTask() {
-				@Override
-				public void run() {
-					informationPacketTimer.cancel();
-					informationPacketTimer = null;
-					
-					//Setting the protocol version to 3
-					new Handler(Looper.getMainLooper()).post(() -> activeCommunicationsVersion = 3);
-					
-					//Sending the registration data
-					try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-						out.writeInt(applicableCommunicationsVersions.length);
-						for(int version : applicableCommunicationsVersions) out.writeInt(version);
-						out.writeUTF(password);
-						out.flush();
-						
-						queuePacket(new PacketStruct(SharedValues.nhtAuthentication, bos.toByteArray()));
-					} catch(IOException exception) {
-						//Logging the error
-						exception.printStackTrace();
-						Crashlytics.logException(exception);
-						
-						//Closing the connection
-						closeConnection(intentResultCodeInternalException, true);
-					}
-				}
-			}, 3000);
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		void disconnect() {
+			super.disconnect();
+			if(wsClient != null && wsClient.isOpen()) wsClient.close();
+		}
+		
+		@Override
+		int getState() {
+			if(wsClient.isClosed()) return stateDisconnected;
+			else if(wsClient.isConnecting()) return stateConnecting;
+			else return stateConnected;
+		}
+		
+		@Override
+		boolean sendPing() {
+			//Returning if the connection is invalid
+			if(wsClient == null || !wsClient.isOpen()) return false;
 			
-			//Starting the handshake timer
-			handshakeExpiryTimer = new Timer();
-			handshakeExpiryTimer.schedule(new TimerTask() {
-				@Override
-				public void run() {
-					//Stopping the expiry timer
-					handshakeExpiryTimer.cancel();
-					handshakeExpiryTimer = null;
-					
-					//Closing the connection
-					closeConnection(intentResultCodeConnection, true);
-				}
-			}, authenticationTime);
+			//Pinging the server
+			wsClient.sendPing();
 			
-			//Reading from the input stream
-			while(!isInterrupted()) {
-				try {
-					//Reading the header data
-					byte[] header = new byte[Integer.SIZE / 8 * 2];
-					{
-						int bytesRemaining = header.length;
-						int offset = 0;
-						int readCount;
-						
-						while(bytesRemaining > 0) {
-							readCount = inputStream.read(header, offset, bytesRemaining);
-							if(readCount == -1) { //No data read, stream is closed
-								closeConnection(intentResultCodeConnection, false);
-								return;
-							}
-							
-							offset += readCount;
-							bytesRemaining -= readCount;
-						}
-					}
-					ByteBuffer headerBuffer = ByteBuffer.wrap(header);
-					int messageType = headerBuffer.getInt();
-					int contentLen = headerBuffer.getInt();
-					
-					//Reading the content
-					byte[] content = new byte[contentLen];
-					if(contentLen > 0) {
-						int bytesRemaining = contentLen;
-						int offset = 0;
-						int readCount;
-						while(bytesRemaining > 0) {
-							readCount = inputStream.read(content, offset, bytesRemaining);
-							if(readCount == -1) { //No data read, stream is closed
-								closeConnection(intentResultCodeConnection, false);
-								return;
-							}
-							
-							offset += readCount;
-							bytesRemaining -= readCount;
-						}
-					}
-					
-					//Processing the data
-					processData(messageType, content);
-				} catch(SSLHandshakeException exception) {
-					//Closing the connection
-					exception.printStackTrace();
-					closeConnection(intentResultCodeConnection, true);
-					
-					//Breaking
-					break;
-				} catch(IOException exception) {
-					//Closing the connection
-					exception.printStackTrace();
-					closeConnection(intentResultCodeConnection, false);
-					
-					//Breaking
-					break;
-				}
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		byte[] prepareTransferableData(byte[] data, int length) throws IOException {
+			return SharedValues.compressLegacyV2(data, length);
+		}
+		
+		@Override
+		boolean sendMessage(short requestID, String chatGUID, String message) {
+			//Returning if the connection is invalid
+			if(wsClient == null || !wsClient.isOpen()) return false;
+			
+			byte[] packetData;
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				//Adding the data
+				out.writeByte(SharedValues.wsFrameSendTextExisting); //Message type - send existing text
+				out.writeShort(requestID); //Request ID
+				out.writeUTF(chatGUID); //Chat GUID
+				out.writeUTF(message); //Message
+				out.flush();
+				
+				packetData = bos.toByteArray();
+			} catch(IOException exception) {
+				//Printing the stack trace
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
 			}
 			
-			//Closing the socket
-			try {
-				socket.close();
+			//Sending the message
+			wsClient.send(packetData);
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean sendMessage(short requestID, String[] chatMembers, String message, String service) {
+			//Returning if the connection is invalid
+			if(wsClient == null || !wsClient.isOpen()) return false;
+			
+			byte[] packetData;
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				//Adding the data
+				out.writeByte(SharedValues.wsFrameSendTextNew); //Message type - send new text
+				out.writeShort(requestID); //Request ID
+				out.writeObject(chatMembers); //Chat recipients
+				out.writeUTF(message); //Message
+				out.writeUTF(service); //Service
+				out.flush();
+				
+				packetData = bos.toByteArray();
+			} catch(IOException exception) {
+				//Printing the stack trace
+				exception.printStackTrace();
+				
+				//Returning false
+				return false;
+			}
+			
+			//Sending the message
+			wsClient.send(packetData);
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean addDownloadRequest(short requestID, String attachmentGUID) {
+			//Returning if the connection is invalid
+			if(wsClient == null || !wsClient.isOpen()) return false;
+			
+			//Preparing to serialize the request
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				//Adding the data
+				out.writeByte(SharedValues.wsFrameAttachmentReq); //Message type - attachment request
+				out.writeShort(requestID); //Request ID
+				out.writeUTF(attachmentGUID); //File GUID
+				out.writeInt(attachmentChunkSize); //Chunk size
+				out.flush();
+				
+				//Sending the message
+				wsClient.send(bos.toByteArray());
+			} catch(IOException | NotYetConnectedException exception) {
+				//Printing the stack trace
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
+			}
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast) {
+			//Returning if the connection is invalid
+			if(wsClient == null || !wsClient.isOpen()) return false;
+			
+			//Adding the data
+			byte[] packetData;
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				out.writeByte(SharedValues.wsFrameSendFileExisting); //Message type - send existing file
+				out.writeShort(requestID); //Request identifier
+				out.writeInt(requestIndex); //Request index
+				out.writeUTF(conversationGUID); //Chat GUID
+				out.writeObject(data); //File bytes
+				out.reset();
+				if(requestIndex == 0) out.writeUTF(fileName);
+				out.writeBoolean(isLast); //Is last message
+				out.flush();
+				
+				packetData = bos.toByteArray();
+			} catch(IOException exception) {
+				//Logging the error
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
+			}
+			
+			//Sending the message
+			wsClient.send(packetData);
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast) {
+			//Returning if the connection is invalid
+			if(wsClient == null || !wsClient.isOpen()) return false;
+			
+			//Adding the data
+			byte[] packetData;
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				out.writeByte(SharedValues.wsFrameSendFileNew); //Message type - send new file
+				out.writeShort(requestID); //Request identifier
+				out.writeInt(requestIndex); //Request index
+				out.writeObject(conversationMembers); //Chat recipients
+				out.writeObject(data); //File bytes
+				out.reset();
+				if(requestIndex == 0) {
+					out.writeUTF(fileName); //File name
+					out.writeUTF(service); //Service
+				}
+				out.writeBoolean(isLast); //Is last message
+				out.flush();
+				
+				packetData = bos.toByteArray();
+			} catch(IOException exception) {
+				//Logging the exception
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
+			}
+			
+			//Sending the message
+			wsClient.send(packetData);
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean sendConversationInfoRequest(List<ConversationInfoRequest> list) {
+			//Returning if the connection is invalid
+			if(wsClient == null || !wsClient.isOpen()) return false;
+			
+			//Creating the guid list
+			ArrayList<String> guidList;
+			
+			//Locking the pending conversations
+			synchronized(list) {
+				//Returning true if there are no pending conversations
+				if(list.isEmpty()) return true;
+				
+				//Converting the conversation info list to a string list
+				guidList = new ArrayList<>();
+				for(ConversationInfoRequest conversationInfoRequest : list)
+					guidList.add(conversationInfoRequest.conversationInfo.getGuid());
+			}
+			
+			//Requesting information on new conversations
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				//Adding the data
+				out.writeByte(SharedValues.wsFrameChatInfo); //Message type - chat info
+				out.writeObject(guidList); //Conversation list
+				out.flush();
+				
+				//Sending the message
+				wsClient.send(bos.toByteArray());
 			} catch(IOException exception) {
 				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
+			}
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean requestRetrievalTime(long timeLower, long timeUpper) {
+			//Returning if the connection is invalid
+			if(wsClient == null || !wsClient.isOpen()) return false;
+			
+			//Preparing to serialize the request
+			byte[] packetData;
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				//Adding the data
+				out.writeByte(SharedValues.wsFrameTimeRetrieval); //Message type - time-based retrieval
+				out.writeLong(timeLower); //Lower time
+				out.writeLong(timeUpper); //Upper time
+				out.flush();
+				
+				//Sending the message
+				packetData = bos.toByteArray();
+			} catch(IOException exception) {
+				//Logging the exception
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
+			}
+			
+			//Sending the message
+			wsClient.send(packetData);
+			
+			//Returning true
+			return true;
+		}
+		
+		@Override
+		boolean requestRetrievalAll() {
+			//Returning if the connection is invalid
+			if(wsClient == null || !wsClient.isOpen()) return false;
+			
+			//Building the request
+			byte[] packetData;
+			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				//Adding the data
+				out.writeByte(SharedValues.wsFrameMassRetrieval); //Message type - Mass retrieval request
+				out.flush();
+				
+				packetData = bos.toByteArray();
+			} catch(IOException exception) {
+				//Logging the error
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				//Returning false
+				return false;
+			}
+			
+			//Sending the message
+			wsClient.send(packetData);
+			
+			//Returning true
+			return true;
+		}
+		
+		private class DraftMMS extends Draft_6455 {
+			@Override
+			public ClientHandshakeBuilder postProcessHandshakeRequestAsClient(ClientHandshakeBuilder request) {
+				//Calling the super method
+				super.postProcessHandshakeRequestAsClient(request);
+				
+				//Building the delimited applicable communications version string
+				StringBuilder applicableVersionsSB = new StringBuilder(Integer.toString(applicableCommunicationsVersions[0]));
+				for(int i = 1; i < applicableCommunicationsVersions.length; i++) applicableVersionsSB.append('|').append(applicableCommunicationsVersions[i]);
+				
+				//Adding the communications version and password to the handshake request
+				request.put(SharedValues.headerCommVer, applicableVersionsSB.toString());
+				request.put(SharedValues.headerPassword, password);
+				
+				//Returning the request
+				return request;
+			}
+		
+		/* @Override
+		public HandshakeState acceptHandshakeAsClient(ClientHandshake request, ServerHandshake response) throws InvalidHandshakeException {
+			//Returning not matched if the super method rejects the request
+			if(super.acceptHandshakeAsClient(request, response) == HandshakeState.NOT_MATCHED)
+				return HandshakeState.NOT_MATCHED;
+			
+			//Returning not matched if the client didn't provide a protocol or provided an incompatible one
+			if(!request.hasFieldValue(headerWebSocketProtocol) ||
+					!request.getFieldValue(headerWebSocketProtocol).equalsIgnoreCase(protocolVersion))
+				return HandshakeState.NOT_MATCHED;
+			
+			//Returning matched
+			return HandshakeState.MATCHED;
+		} */
+			
+			@Override
+			public boolean equals(Object o) {
+				if( this == o ) return true;
+				if( o == null || getClass() != o.getClass() ) return false;
+				
+				DraftMMS that = ( DraftMMS ) o;
+				
+				return getExtension() != null ? getExtension().equals( that.getExtension() ) : that.getExtension() == null;
+			}
+			
+			@Override
+			public Draft copyInstance() {
+				return new DraftMMS();
 			}
 		}
 		
-		private void updateStateDisconnected(int reason, boolean forwardRequest) {
-			//Attempting to connect via the legacy method
-			if(forwardRequest) {
-				new Handler(Looper.getMainLooper()).post(() -> {
-					if(currentLaunchID == launchID) connectProtocol2(launchID);
-				});
-			} else {
-				new Handler(Looper.getMainLooper()).post(() -> {
-					//Cancelling the mass retrieval if there is one in progress
-					if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
-					
-					//Checking if this is the most recent launch
-					if(currentLaunchID == launchID) {
-						//Setting the state
-						currentState = stateDisconnected;
-						
-						//Setting the last connection result
-						lastConnectionResult = reason;
-						
-						//Notifying the connection listeners
-						LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-								.putExtra(Constants.intentParamState, stateDisconnected)
-								.putExtra(Constants.intentParamCode, reason)
-								.putExtra(Constants.intentParamLaunchID, launchID));
-						
-						//Updating the notification state
-						if(!shutdownRequested) postDisconnectedNotification(false);
-						
-						//Checking if the end time should be marked
-						if(flagMarkEndTime) {
-							//Writing the time to shared preferences
-							SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-							SharedPreferences.Editor editor = sharedPrefs.edit();
-							editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
-							editor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
-							editor.commit();
-						}
-						
-						//Checking if a connection existed for reconnection and the preference is enabled
-						if(flagDropReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
-							//Reconnecting
-							new Handler().postDelayed(() -> {
-								if(currentState == stateDisconnected) connectProtocol2(getNextLaunchID());
-							}, dropReconnectDelayMillis);
-						}
-						
-						//Clearing the flags
-						flagMarkEndTime = flagDropReconnect = false;
-					}
-				});
+		private class MMWebSocketClient extends WebSocketClient {
+			//Creating the values
+			private final byte launchID;
+			
+			MMWebSocketClient(byte launchID, URI serverUri) {
+				super(serverUri);
+				this.launchID = launchID;
 			}
-		}
-		
-		private void updateStateConnected() {
-			//Running on the main thread
-			new Handler(Looper.getMainLooper()).post(() -> {
+			
+			MMWebSocketClient(byte launchID, URI serverUri, Draft draft) {
+				super(serverUri, draft);
+				this.launchID = launchID;
+			}
+			
+			@Override
+			public void onOpen(ServerHandshake handshake) {
 				//Checking if this is the most recent launch
 				if(currentLaunchID == launchID) {
 					//Setting the last connection result
 					lastConnectionResult = intentResultCodeSuccess;
 					
-					//Setting the state
-					currentState = stateConnected;
+					//Notifying the connection listeners
+					LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
+							.putExtra(Constants.intentParamState, stateConnected)
+							.putExtra(Constants.intentParamLaunchID, launchID));
+					
+					//Recording the server version
+					{
+						String commVer = handshake.getFieldValue(SharedValues.headerCommVer);
+						if(commVer.matches("^\\d+$")) activeCommunicationsVersion = Integer.parseInt(commVer);
+					}
 					
 					//Retrieving the pending conversation info
-					retrievePendingConversationInfo();
+					sendConversationInfoRequest(pendingConversations);
 					
-					//Setting the flags
+					//Updating the notification
+					if(foregroundServiceRequested()) postConnectedNotification(true);
+					else clearNotification();
+					
+					//Setting the connection as existing
 					flagMarkEndTime = flagDropReconnect = true;
 					
 					//Getting the last connection time
@@ -1187,448 +2069,243 @@ public class ConnectionService extends Service {
 						//Fetching the messages since the last connection time
 						retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
 					}
-				}
-			});
-			
-			//Notifying the connection listeners
-			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-					.putExtra(Constants.intentParamState, stateConnected)
-					.putExtra(Constants.intentParamLaunchID, launchID));
-			
-			//Updating the notification
-			if(foregroundServiceRequested()) postConnectedNotification(true);
-			else clearNotification();
-			
-			//Scheduling the ping
-			schedulePing();
-		}
-		
-		private void processData(int messageType, byte[] data) {
-			switch(messageType) {
-				case SharedValues.nhtClose:
-					closeConnection(intentResultCodeConnection, false);
-					break;
-				case SharedValues.nhtPing:
-					queuePacket(new PacketStruct(SharedValues.nhtPong, new byte[0]));
-					break;
-				case SharedValues.nhtInformation: {
-					//Stopping the information timer
-					if(informationPacketTimer != null) {
-						informationPacketTimer.cancel();
-						informationPacketTimer = null;
-					}
 					
-					//Reading the version
-					int communicationsVersion = ByteBuffer.wrap(data).getInt();
-					
-					//Checking if the version is applicable
-					boolean versionApplicable = false;
-					for(int version : applicableCommunicationsVersions) {
-						if(version == communicationsVersion) {
-							versionApplicable = true;
-							break;
-						}
-					}
-					
-					//Checking if there is no applicable version
-					if(!versionApplicable) {
-						//Getting the result code
-						int resultCode = communicationsVersion > SharedValues.mmCommunicationsVersion ? intentResultCodeClientOutdated : intentResultCodeServerOutdated;
-						
-						
-						//Closing the connection
-						initiateClose(resultCode, false);
-						
-						//Breaking
-						break;
-					}
-					
-					//Setting the version
-					new Handler(Looper.getMainLooper()).post(() -> activeCommunicationsVersion = communicationsVersion);
-					
-					//Sending an authentication request
-					try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-						out.writeInt(applicableCommunicationsVersions.length);
-						for(int version : applicableCommunicationsVersions) out.writeInt(version);
-						out.writeUTF(password);
-						out.flush();
-						
-						queuePacket(new PacketStruct(SharedValues.nhtAuthentication, bos.toByteArray()));
-					} catch(IOException exception) {
-						//Logging the error
-						exception.printStackTrace();
-						Crashlytics.logException(exception);
-						
-						//Closing the connection
-						closeConnection(intentResultCodeInternalException, true);
-					}
-				}
-				case SharedValues.nhtAuthentication: {
-					//Stopping the handshake timer
-					if(handshakeExpiryTimer != null) {
-						handshakeExpiryTimer.cancel();
-						handshakeExpiryTimer = null;
-					}
-					
-					try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-						//Recording the communications version
-						int communicationsVersion = in.readInt();
-						new Handler(Looper.getMainLooper()).post(() -> activeCommunicationsVersion = communicationsVersion);
-						
-						//Attempting to find a matching protocol version
-						boolean versionsApplicable = false;
-						for(int version : applicableCommunicationsVersions) {
-							if(communicationsVersion == version) {
-								versionsApplicable = true;
-								break;
-							}
-						}
-						
-						int result;
-						
-						//Checking if there is a matching version
-						if(versionsApplicable) {
-							//Checking the result
-							result = in.readInt();
-							
-							//Translating the result to the local value
-							switch(result) {
-								case SharedValues.nhtAuthenticationOK:
-									result = intentResultCodeSuccess;
-									break;
-								case SharedValues.nhtAuthenticationUnauthorized:
-									result = intentResultCodeUnauthorized;
-									break;
-								case SharedValues.nhtAuthenticationBadRequest:
-									result = intentResultCodeBadRequest;
-									break;
-								case SharedValues.nhtAuthenticationVersionMismatch:
-									if(SharedValues.mmCommunicationsVersion > communicationsVersion) result = intentResultCodeServerOutdated;
-									else result = intentResultCodeClientOutdated;
-									break;
-							}
-						} else {
-							if(SharedValues.mmCommunicationsVersion > communicationsVersion) result = intentResultCodeServerOutdated;
-							else result = intentResultCodeClientOutdated;
-						}
-						
-						if(result == intentResultCodeSuccess) {
-							//Calling the success
-							updateStateConnected();
-						} else {
-							//Terminating the connection
-							closeConnection(result, false);
-						}
-					} catch(IOException | RuntimeException exception) {
-						exception.printStackTrace();
-					}
-					
-					break;
-				}
-				case SharedValues.nhtMessageUpdate:
-				case SharedValues.nhtTimeRetrieval: {
-					//Reading the list
-					List<SharedValues.ConversationItem> list;
-					try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-						int count = in.readInt();
-						list = new ArrayList<>(count);
-						for(int i = 0; i < count; i++) list.add((SharedValues.ConversationItem) in.readObject());
-					} catch(IOException | RuntimeException | ClassNotFoundException exception) {
-						exception.printStackTrace();
-						break;
-					}
-					
-					//Processing the messages
-					processMessageUpdate(list, true);
-					
-					break;
-				}
-				case SharedValues.nhtMassRetrieval: {
-					//Reading the lists
-					List<SharedValues.ConversationItem> listItems;
-					List<SharedValues.ConversationInfo> listConversations;
-					try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-						int count = in.readInt();
-						listItems = new ArrayList<>(count);
-						for(int i = 0; i < count; i++) listItems.add((SharedValues.ConversationItem) in.readObject());
-						
-						count = in.readInt();
-						listConversations = new ArrayList<>(count);
-						for(int i = 0; i < count; i++) listConversations.add((SharedValues.ConversationInfo) in.readObject());
-					} catch(IOException | RuntimeException | ClassNotFoundException exception) {
-						exception.printStackTrace();
-						break;
-					}
-					
-					//Processing the messages
-					processMassRetrievalResult(listItems, listConversations);
-					
-					break;
-				}
-				case SharedValues.nhtChatInfo: {
-					//Reading the list
-					List<SharedValues.ConversationInfo> list;
-					try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-						int count = in.readInt();
-						list = new ArrayList<>(count);
-						for(int i = 0; i < count; i++) list.add((SharedValues.ConversationInfo) in.readObject());
-					} catch(IOException | RuntimeException | ClassNotFoundException exception) {
-						exception.printStackTrace();
-						break;
-					}
-					
-					//Processing the conversations
-					processChatInfoResponse(list);
-					
-					break;
-				}
-				case SharedValues.nhtModifierUpdate: {
-					//Reading the list
-					List<SharedValues.ModifierInfo> list;
-					try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-						int count = in.readInt();
-						list = new ArrayList<>(count);
-						for(int i = 0; i < count; i++) list.add((SharedValues.ModifierInfo) in.readObject());
-					} catch(IOException | RuntimeException | ClassNotFoundException exception) {
-						exception.printStackTrace();
-						break;
-					}
-					
-					//Processing the conversations
-					processModifierUpdate(list);
-					
-					break;
-				}
-				case SharedValues.nhtAttachmentReq: {
-					//Reading the data
-					final short requestID;
-					final String fileGUID;
-					final int requestIndex;
-					final byte[] compressedBytes;
-					final long fileSize;
-					final boolean isLast;
-					
-					try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-						requestID = in.readShort();
-						fileGUID = in.readUTF();
-						requestIndex = in.readInt();
-						compressedBytes = new byte[in.readInt()];
-						in.readFully(compressedBytes);
-						if(requestIndex == 0) fileSize = in.readLong();
-						else fileSize = -1;
-						isLast = in.readBoolean();
-					} catch(IOException | RuntimeException exception) {
-						exception.printStackTrace();
-						break;
-					}
-					
-					//Running on the UI thread
-					mainHandler.post(() -> {
-						//Searching for a matching request
-						for(FileDownloadRequest request : fileDownloadRequests) {
-							if(request.requestID != requestID || !request.attachmentGUID.equals(fileGUID)) continue;
-							if(requestIndex == 0) request.setFileSize(fileSize);
-							request.processFileFragment(ConnectionService.this, compressedBytes, requestIndex, isLast, activeCommunicationsVersion);
-							if(isLast) fileDownloadRequests.remove(request);
-							break;
-						}
-					});
-					
-					break;
-				}
-				case SharedValues.nhtAttachmentReqConfirm: {
-					//Reading the data
-					final short requestID;
-					final String fileGUID;
-					try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-						requestID = in.readShort();
-						fileGUID = in.readUTF();
-					} catch(IOException | RuntimeException exception) {
-						exception.printStackTrace();
-						break;
-					}
-					
-					//Running on the UI thread
-					mainHandler.post(() -> {
-						//Searching for a matching request
-						for(FileDownloadRequest request : fileDownloadRequests) {
-							if(request.requestID != requestID || !request.attachmentGUID.equals(fileGUID)) continue;
-							request.stopTimer(true);
-							request.onResponseReceived();
-							break;
-						}
-					});
-					
-					break;
-				}
-				case SharedValues.nhtAttachmentReqFail: {
-					//Reading the data
-					final short requestID;
-					final String fileGUID;
-					try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-						requestID = in.readShort();
-						fileGUID = in.readUTF();
-					} catch(IOException | RuntimeException exception) {
-						exception.printStackTrace();
-						break;
-					}
-					
-					//Running on the UI thread
-					mainHandler.post(() -> {
-						//Searching for a matching request
-						for(FileDownloadRequest request : fileDownloadRequests) {
-							if(request.requestID != requestID || !request.attachmentGUID.equals(fileGUID)) continue;
-							request.failDownload();
-							break;
-						}
-					});
-					
-					break;
-				}
-				case SharedValues.nhtSendResult: {
-					//Reading the data
-					final short requestID;
-					final boolean result;
-					try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-						requestID = in.readShort();
-						result = in.readBoolean();
-					} catch(IOException | RuntimeException exception) {
-						exception.printStackTrace();
-						break;
-					}
-					
-					//Getting the message response manager
-					final MessageResponseManager messageResponseManager = messageSendRequests.get(requestID);
-					if(messageResponseManager != null) {
-						//Removing the request
-						messageSendRequests.remove(requestID);
-						messageResponseManager.stopTimer(false);
-						
-						//Running on the UI thread
-						new Handler(Looper.getMainLooper()).post(() -> {
-							//Telling the listener
-							if(result) messageResponseManager.onSuccess();
-							else messageResponseManager.onFail(messageSendExternalException);
-						});
-					}
-					
-					break;
+					//Scheduling the ping
+					schedulePing();
 				}
 			}
-		}
-		
-		void queuePacket(PacketStruct packet) {
-			if(writerThread != null) writerThread.uploadQueue.add(packet);
-		}
-		
-		void sendPing() {
-			queuePacket(new PacketStruct(SharedValues.nhtPing, new byte[0]));
-		}
-		
-		void initiateClose(int resultCode, boolean forwardRequest) {
-			//Sending a message and finishing the threads
-			if(writerThread == null) {
-				interrupt();
-			} else {
-				queuePacket(new PacketStruct(SharedValues.nhtClose, new byte[0], () -> {
-					interrupt();
-					writerThread.interrupt();
-				}));
-			}
-			
-			//Updating the state
-			updateStateDisconnected(resultCode, forwardRequest);
-		}
-		
-		private void closeConnection(int reason, boolean forwardRequest) {
-			//Finishing the threads
-			if(writerThread != null) writerThread.interrupt();
-			interrupt();
-			
-			//Updating the state
-			updateStateDisconnected(reason, forwardRequest);
-		}
-		
-		synchronized boolean sendDataSync(int messageType, byte[] data, boolean flush) {
-			try {
-				outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(messageType).putInt(data.length).array());
-				outputStream.write(data);
-				if(flush) outputStream.flush();
-				Thread.sleep(2000);
-				
-				return true;
-			} catch(IOException | InterruptedException exception) {
-				exception.printStackTrace();
-				
-				if(socket.isConnected()) {
-					closeConnection(intentResultCodeConnection, false);
-				} else {
-					Crashlytics.logException(exception);
-				}
-				
-				return false;
-			} finally {
-				System.out.println("Finished sending data.");
-			}
-		}
-		
-		private class WriterThread extends Thread {
-			//Creating the queue
-			final BlockingQueue<PacketStruct> uploadQueue = new LinkedBlockingQueue<>();
 			
 			@Override
-			public void run() {
-				PacketStruct packet;
+			public void onMessage(String message) {}
+			
+			@Override
+			public void onMessage(ByteBuffer bytes) {
+				//Updating the scheduled ping
+				schedulePing();
 				
-				try {
-					while(!isInterrupted()) {
-						try {
-							packet = uploadQueue.take();
+				//Processing the message
+				byte[] array = new byte[bytes.remaining()];
+				bytes.get(array);
+				
+				try(ByteArrayInputStream bis = new ByteArrayInputStream(array); ObjectInputStream in = new ObjectInputStream(bis)) {
+					switch(in.readByte()) { //Reading the message type and making a switch statement
+						case SharedValues.wsFrameUpdate: { //New messages received
+							final ArrayList<SharedValues.ConversationItem> receivedItems = (ArrayList<SharedValues.ConversationItem>) in.readObject();
 							
-							try {
-								//outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(packet.type).putInt(packet.content.length).array());
-								//outputStream.write(packet.content);
-								sendDataSync(packet.type, packet.content, false);
-							} finally {
-								if(packet.sentRunnable != null) packet.sentRunnable.run();
-							}
+							//Processing the messages
+							processMessageUpdate(receivedItems, true);
 							
-							while((packet = uploadQueue.poll()) != null) {
-								try {
-									//outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(packet.type).putInt(packet.content.length).array());
-									//outputStream.write(packet.content);
-									sendDataSync(packet.type, packet.content, false);
-								} finally {
-									if(packet.sentRunnable != null) packet.sentRunnable.run();
+							break;
+						}
+						case SharedValues.wsFrameTimeRetrieval: { //Time retrieval
+							final ArrayList<SharedValues.ConversationItem> receivedItems = (ArrayList<SharedValues.ConversationItem>) in.readObject();
+							
+							//Processing the messages
+							processMessageUpdate(receivedItems, true);
+							
+							break;
+						}
+						case SharedValues.wsFrameMassRetrieval: { //Mass retrieval
+							//Breaking if the client isn't looking for a mass retrieval
+							if(!massRetrievalInProgress) break;
+							
+							//Reading the data
+							final ArrayList<SharedValues.ConversationItem> receivedItems = (ArrayList<SharedValues.ConversationItem>) in.readObject();
+							final ArrayList<SharedValues.ConversationInfo> receivedConversations = (ArrayList<SharedValues.ConversationInfo>) in.readObject();
+							
+							//Processing the messages
+							processMassRetrievalResult(receivedItems, receivedConversations);
+							
+							break;
+						}
+						case SharedValues.wsFrameChatInfo: { //Chat information
+							final ArrayList<SharedValues.ConversationInfo> receivedItems = (ArrayList<SharedValues.ConversationInfo>) in.readObject();
+							
+							//Processing the conversations
+							processChatInfoResponse(receivedItems);
+							
+							break;
+						}
+						case SharedValues.wsFrameModifierUpdate: { //Message modifier update
+							final ArrayList<SharedValues.ModifierInfo> receivedItems = (ArrayList<SharedValues.ModifierInfo>) in.readObject();
+							
+							//Processing the conversations
+							processModifierUpdate(receivedItems);
+							
+							break;
+						}
+						case SharedValues.wsFrameAttachmentReq: { //Attachment data received
+							final String guid = in.readUTF();
+							final short requestID = in.readShort();
+							final int requestIndex = in.readInt();
+							final byte[] compressedBytes = (byte[]) in.readObject();
+							final long fileSize;
+							if(requestIndex == 0) fileSize = in.readLong();
+							else fileSize = -1;
+							final boolean isLast = in.readBoolean();
+							
+							//Running on the UI thread
+							mainHandler.post(() -> {
+								//Searching for a matching request
+								for(FileDownloadRequest request : fileDownloadRequests) {
+									if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
+									if(requestIndex == 0) request.setFileSize(fileSize);
+									request.processFileFragment(ConnectionService.this, compressedBytes, requestIndex, isLast, activeCommunicationsVersion);
+									if(isLast) fileDownloadRequests.remove(request);
+									break;
 								}
-							}
+							});
 							
-							outputStream.flush();
-						} catch(IOException exception) {
-							exception.printStackTrace();
+							break;
+						}
+						case SharedValues.wsFrameAttachmentReqConfirmed: { //Attachment data request received
+							final short requestID = in.readShort();
+							final String guid = in.readUTF();
 							
-							if(socket.isConnected()) {
-								closeConnection(intentResultCodeConnection, false);
-							} else {
-								Crashlytics.logException(exception);
+							//Running on the UI thread
+							mainHandler.post(() -> {
+								//Searching for a matching request
+								for(FileDownloadRequest request : fileDownloadRequests) {
+									if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
+									request.stopTimer(true);
+									request.onResponseReceived();
+									break;
+								}
+							});
+							break;
+						}
+						case SharedValues.wsFrameAttachmentReqFailed: { //Attachment data request failed
+							final short requestID = in.readShort();
+							final String guid = in.readUTF();
+							
+							//Running on the UI thread
+							mainHandler.post(() -> {
+								//Searching for a matching request
+								for(FileDownloadRequest request : fileDownloadRequests) {
+									if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
+									request.failDownload();
+									break;
+								}
+							});
+							break;
+						}
+						case SharedValues.wsFrameSendResult: {
+							//Reading the info
+							short requestID = in.readShort();
+							final boolean success = in.readBoolean();
+							
+							//Getting the message response manager
+							final MessageResponseManager messageResponseManager = messageSendRequests.get(requestID);
+							if(messageResponseManager != null) {
+								//Removing the request
+								messageSendRequests.remove(requestID);
+								messageResponseManager.stopTimer(false);
+								
+								//Running on the UI thread
+								new Handler(Looper.getMainLooper()).post(() -> {
+									//Telling the listener
+									if(success) messageResponseManager.onSuccess();
+									else messageResponseManager.onFail(messageSendExternalException);
+								});
 							}
 						}
 					}
-					
-					closeConnection(intentResultCodeConnection, false);
-				} catch(InterruptedException exception) {
+				} catch(IOException | ClassNotFoundException | ClassCastException exception) {
+					//Printing the stack trace
 					exception.printStackTrace();
-					//closeConnection(intentResultCodeConnection, false); //Can only be interrupted from closeConnection, so this is pointless
-					
-					return;
 				}
 			}
 			
-			private void sendPacket(PacketStruct packet) throws IOException {
-				outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(packet.type).putInt(packet.content.length).array());
-				outputStream.write(packet.content);
-				outputStream.flush();
+			@Override
+			public void onClose(int uselessCode, String reasonString, boolean remote) {
+				//Cancelling the mass retrieval if there is one in progress
+				if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
+				
+				//Checking if this is the most recent launch
+				if(currentLaunchID == launchID) {
+					//Getting the code from the message
+					int code = -1;
+					String errorCodeString = reasonString.substring(reasonString.lastIndexOf(' ') + 1);
+					if(errorCodeString.matches("^\\d+$")) code = Integer.parseInt(errorCodeString);
+					
+					//Determining the broadcast value
+					int clientReason;
+					switch(code) {
+						default:
+							clientReason = intentResultCodeConnection;
+							break;
+						case SharedValues.resultBadRequest:
+							clientReason = intentResultCodeBadRequest;
+							break;
+						case SharedValues.resultClientOutdated:
+							clientReason = intentResultCodeClientOutdated;
+							break;
+						case SharedValues.resultServerOutdated:
+							clientReason = intentResultCodeServerOutdated;
+							break;
+						case SharedValues.resultUnauthorized:
+							clientReason = intentResultCodeUnauthorized;
+					}
+					
+					//Setting the last connection result
+					lastConnectionResult = clientReason;
+					
+					//Notifying the connection listeners
+					LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
+							.putExtra(Constants.intentParamState, stateDisconnected)
+							.putExtra(Constants.intentParamCode, clientReason)
+							.putExtra(Constants.intentParamLaunchID, launchID));
+					
+					//Checking if the end time should be marked
+					if(flagMarkEndTime) {
+						//Writing the time to shared preferences
+						SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+						SharedPreferences.Editor editor = sharedPrefs.edit();
+						editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+						editor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
+						editor.commit();
+					}
+					
+					//Checking if a connection existed for reconnection and the preference is enabled
+					if(flagDropReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
+						//Reconnecting
+						new Handler().postDelayed(() -> {
+							if(getCurrentState() == stateDisconnected) ClientProtocol2.this.connect(getNextLaunchID());
+						}, dropReconnectDelayMillis);
+					}
+					
+					//Clearing the flags
+					flagMarkEndTime = flagDropReconnect = false;
+					
+					//Posting the disconnected notification
+					if(!shutdownRequested) postDisconnectedNotification(false);
+					
+					//Removing the scheduled ping
+					//unschedulePing();
+				}
 			}
+			
+			@Override
+			public void onError(Exception exception) {
+				exception.printStackTrace();
+			}
+		}
+		
+		private String prepareHostname(String hostname) {
+			//Checking if the hostname doesn't have a port
+			if(!regExValidPort.matcher(hostname).find()) {
+				//Adding the default port
+				hostname += ':' + Integer.toString(Constants.defaultPort);
+			}
+			
+			//Checking if the hostname doesn't have a protocol
+			if(!regExValidProtocol.matcher(hostname).find()) {
+				//Adding the default protocol
+				hostname = Constants.defaultProtocol + hostname;
+			}
+			
+			//Returning the hostname
+			return hostname;
 		}
 	}
 	
@@ -1756,45 +2433,12 @@ public class ConnectionService extends Service {
 		return true;
 	} */
 	
-	void retrievePendingConversationInfo() {
-		//Locking the pending conversations
-		synchronized(pendingConversations) {
-			//Returning if there are no pending conversations
-			if(pendingConversations.isEmpty()) return;
-			
-			//Converting the conversation info list to a string list
-			ArrayList<String> list = new ArrayList<>();
-			for(ConversationInfoRequest conversationInfoRequest : pendingConversations)
-				list.add(conversationInfoRequest.conversationInfo.getGuid());
-			
-			//Requesting information on new conversations
-			if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
-				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-					//Adding the data
-					out.writeByte(SharedValues.wsFrameChatInfo); //Message type - chat info
-					out.writeObject(list); //Conversation list
-					out.flush();
-					
-					//Sending the message
-					wsClient.send(bos.toByteArray());
-				} catch(Exception exception) {
-					exception.printStackTrace();
-					Crashlytics.logException(exception);
-				}
-			} else {
-				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-					out.writeInt(list.size());
-					for(String item : list) out.writeUTF(item);
-					out.flush();
-					
-					//Sending the message
-					connectionThread.queuePacket(new PacketStruct(SharedValues.nhtChatInfo, bos.toByteArray()));
-				} catch(Exception exception) {
-					exception.printStackTrace();
-					Crashlytics.logException(exception);
-				}
-			}
-		}
+	boolean retrievePendingConversationInfo() {
+		//Returning if the connection is not ready
+		if(getCurrentState() != stateConnected) return false;
+		
+		//Sending a request and returning the result
+		return currentConnectionManager.sendConversationInfoRequest(pendingConversations);
 	}
 	
 	boolean isMassRetrievalInProgress() {
@@ -1818,6 +2462,7 @@ public class ConnectionService extends Service {
 	static final byte messageSendExternalException = 5;
 	static final byte messageSendRequestExpired = 6;
 	static final byte messageSendReferencesLost = 7;
+	static final byte messageSendInternalException = 8;
 	
 	private static final int largestFileSize = 1024 * 1024 * 100; //100 MB
 	
@@ -1843,45 +2488,12 @@ public class ConnectionService extends Service {
 		//Getting the request ID
 		short requestID = getNextRequestID();
 		
-		//Preparing to serialize the request
-		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
-			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-				//Adding the data
-				out.writeByte(SharedValues.wsFrameAttachmentReq); //Message type - attachment request
-				out.writeShort(requestID); //Request ID
-				out.writeUTF(attachmentGUID); //File GUID
-				out.writeInt(attachmentChunkSize); //Chunk size
-				out.flush();
-				
-				//Sending the message
-				wsClient.send(bos.toByteArray());
-			} catch(IOException | NotYetConnectedException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				Crashlytics.logException(exception);
-				
-				//Returning false
-				return false;
-			}
-		} else {
-			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-				//Adding the data
-				out.writeShort(requestID); //Request ID
-				out.writeUTF(attachmentGUID); //File GUID
-				out.writeInt(attachmentChunkSize); //Chunk size
-				out.flush();
-				
-				//Sending the message
-				connectionThread.queuePacket(new PacketStruct(SharedValues.nhtAttachmentReq, bos.toByteArray()));
-			} catch(IOException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				Crashlytics.logException(exception);
-				
-				//Returning false
-				return false;
-			}
-		}
+		//Returning if there is no connection
+		if(currentConnectionManager == null || currentConnectionManager.getState() != stateConnected) return false;
+		
+		//Sending the request
+		boolean result = currentConnectionManager.addDownloadRequest(requestID, attachmentGUID);
+		if(!result) return false;
 		
 		//Recording the request
 		FileDownloadRequest request = new FileDownloadRequest(callbacks, requestID, attachmentID, attachmentGUID, attachmentName);
@@ -2287,6 +2899,7 @@ public class ConnectionService extends Service {
 			//Looping while there are requests in the queue
 			ConnectionService service = null;
 			FileUploadRequest request;
+			requestLoop:
 			while(!isInterrupted() &&
 					(service = serviceReference.get()) != null &&
 					(request = pushQueue(service)) != null) {
@@ -2450,6 +3063,9 @@ public class ConnectionService extends Service {
 				//Getting the request ID
 				short requestID = connectionService.getNextRequestID();
 				
+				//Invalidating the connection service
+				connectionService = null;
+				
 				//Getting the message digest
 				MessageDigest messageDigest;
 				try {
@@ -2496,76 +3112,30 @@ public class ConnectionService extends Service {
 						compressor.end();
 						compressedData = Arrays.copyOf(compressedData, compressedLen); */
 						
-						//Preparing to serialize the request
-						if(communicationsVersion == Constants.historicCommunicationsWS) {
-							byte[] compressedData = SharedValues.compressLegacyV2(buffer, bytesRead);
-							try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-								if(request.conversationExists) {
-									//Adding the data
-									out.writeByte(SharedValues.wsFrameSendFileExisting); //Message type - send existing file
-									out.writeShort(requestID); //Request identifier
-									out.writeInt(requestIndex); //Request index
-									out.writeUTF(request.conversationGUID); //Chat GUID
-									out.writeObject(compressedData); //File bytes
-									out.reset();
-									if(requestIndex == 0) out.writeUTF(request.sendFile.getName());
-									out.writeBoolean(totalBytesRead >= totalLength); //Is last message
-									out.flush();
-								} else {
-									//Adding the data
-									out.writeByte(SharedValues.wsFrameSendFileNew); //Message type - send new file
-									out.writeShort(requestID); //Request identifier
-									out.writeInt(requestIndex); //Request index
-									out.writeObject(request.conversationMembers); //Chat recipients
-									out.writeObject(compressedData); //File bytes
-									out.reset();
-									if(requestIndex == 0) {
-										out.writeUTF(request.sendFile.getName()); //File name
-										out.writeUTF(request.conversationService); //Service
-									}
-									out.writeBoolean(totalBytesRead >= totalLength); //Is last message
-									out.flush();
-								}
-								
-								//Sending the message
-								connectionService.wsClient.send(bos.toByteArray());
-							}
+						//Getting the connection manager
+						ConnectionManager connectionManager = getStaticConnectionManager();
+						if(connectionManager == null) {
+							//Failing the request
+							handler.post(() -> finalCallbacks.onFail(messageSendNetworkException));
+							return;
+						}
+						
+						//Uploading the chunk
+						byte[] preparedData = connectionManager.prepareTransferableData(buffer, bytesRead);
+						boolean uploadResult;
+						if(request.conversationExists) {
+							uploadResult = connectionManager.uploadFilePacket(requestID, requestIndex, request.conversationGUID, preparedData, request.sendFile.getName(), totalBytesRead >= totalLength);
 						} else {
-							byte[] compressedData = Constants.compressGZIP(buffer, bytesRead);
-							try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-								int nht;
-								if(request.conversationExists) {
-									//Adding the data
-									nht = SharedValues.nhtSendFileExisting;
-									out.writeShort(requestID); //Request identifier
-									out.writeInt(requestIndex); //Request index
-									out.writeUTF(request.conversationGUID); //Chat GUID
-									out.writeInt(compressedData.length); //File bytes
-									out.write(compressedData);
-									if(requestIndex == 0) out.writeUTF(request.sendFile.getName());
-									out.writeBoolean(totalBytesRead >= totalLength); //Is last message
-									out.flush();
-								} else {
-									//Adding the data
-									nht = SharedValues.nhtSendFileNew;
-									out.writeShort(requestID); //Request identifier
-									out.writeInt(requestIndex); //Request index
-									out.writeInt(request.conversationMembers.length); //Chat members
-									for(String item : request.conversationMembers) out.writeUTF(item);
-									out.writeInt(compressedData.length); //File bytes
-									out.write(compressedData);
-									if(requestIndex == 0) {
-										out.writeUTF(request.sendFile.getName()); //File name
-										out.writeUTF(request.conversationService); //Service
-									}
-									out.writeBoolean(totalBytesRead >= totalLength); //Is last message
-									out.flush();
-								}
-								
-								//Sending the message (synchronously, to avoid memory buildup)
-								connectionService.connectionThread.sendDataSync(nht, bos.toByteArray(), true);
-								//connectionService.connectionThread.queuePacket(new PacketStruct(nht, bos.toByteArray()));
-							}
+							uploadResult = connectionManager.uploadFilePacket(requestID, requestIndex, request.conversationMembers, preparedData, request.sendFile.getName(), request.conversationService, totalBytesRead >= totalLength);
+						}
+						
+						//Validating the result
+						if(!uploadResult) {
+							//Calling the fail method
+							handler.post(() -> finalCallbacks.onFail(messageSendInternalException));
+							
+							//Failing the request
+							continue requestLoop;
 						}
 						
 						//Updating the progress
@@ -2583,6 +3153,13 @@ public class ConnectionService extends Service {
 					
 					//Running on the main thread
 					handler.post(() -> {
+						//Getting the connection service
+						ConnectionService newConnectionService = ConnectionService.getInstance();
+						if(newConnectionService == null) {
+							finalCallbacks.onFail(messageSendNetworkException);
+							return;
+						}
+						
 						//Notifying the callback listener
 						finalCallbacks.onUploadFinished(checksum);
 						
@@ -2601,7 +3178,7 @@ public class ConnectionService extends Service {
 						};
 						
 						//Adding the request and starting the timer
-						connectionService.messageSendRequests.put(requestID, responseManager);
+						newConnectionService.messageSendRequests.put(requestID, responseManager);
 						responseManager.startTimer();
 					});
 					
@@ -2615,13 +3192,13 @@ public class ConnectionService extends Service {
 					handler.post(() -> finalCallbacks.onFail(messageSendIOException));
 					
 					//Skipping the remainder of the iteration
-					continue;
+					//continue;
 				} catch(WebsocketNotConnectedException exception) {
 					//Calling the fail method
 					handler.post(() -> finalCallbacks.onFail(messageSendNetworkException));
 					
 					//Skipping the remainder of the iteration
-					continue;
+					//continue;
 				}
 			}
 			
@@ -2654,7 +3231,7 @@ public class ConnectionService extends Service {
 	
 	boolean sendMessage(String chatGUID, String message, MessageResponseManager responseListener) {
 		//Checking if the client isn't ready
-		if(currentState != stateConnected) {
+		if(getCurrentState() != stateConnected) {
 			//Telling the response listener
 			responseListener.onFail(messageSendNetworkException);
 			
@@ -2665,48 +3242,22 @@ public class ConnectionService extends Service {
 		//Getting the request ID
 		short requestID = getNextRequestID();
 		
-		//Preparing to serialize the request
-		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
-			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-				//Adding the data
-				out.writeByte(SharedValues.wsFrameSendTextExisting); //Message type - send existing text
-				out.writeShort(requestID); //Request ID
-				out.writeUTF(chatGUID); //Chat GUID
-				out.writeUTF(message); //Message
-				out.flush();
-				
-				//Sending the message
-				wsClient.send(bos.toByteArray());
-			} catch(IOException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				
-				//Telling the response listener
-				responseListener.onFail(messageSendIOException);
-				
-				//Returning false
-				return false;
-			}
-		} else {
-			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-				//Adding the data
-				out.writeShort(requestID); //Request ID
-				out.writeUTF(chatGUID); //Chat GUID
-				out.writeUTF(message); //Message
-				out.flush();
-				
-				//Sending the message
-				connectionThread.queuePacket(new PacketStruct(SharedValues.nhtSendTextExisting, bos.toByteArray()));
-			} catch(IOException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				
-				//Telling the response listener
-				responseListener.onFail(messageSendIOException);
-				
-				//Returning false
-				return false;
-			}
+		//Validating the connection
+		if(currentConnectionManager == null || currentConnectionManager.getState() != stateConnected) {
+			responseListener.onFail(messageSendNetworkException);
+			return false;
+		}
+		
+		//Sending the message
+		boolean result = currentConnectionManager.sendMessage(requestID, chatGUID, message);
+		
+		//Validating the result
+		if(!result) {
+			//Telling the response listener
+			responseListener.onFail(messageSendIOException);
+			
+			//Returning false
+			return false;
 		}
 		
 		//Adding the request
@@ -2721,7 +3272,7 @@ public class ConnectionService extends Service {
 	
 	boolean sendMessage(String[] chatRecipients, String message, String service, MessageResponseManager responseListener) {
 		//Checking if the client isn't ready
-		if(currentState != stateConnected) {
+		if(getCurrentState() != stateConnected) {
 			//Telling the response listener
 			responseListener.onFail(messageSendNetworkException);
 			
@@ -2732,51 +3283,22 @@ public class ConnectionService extends Service {
 		//Getting the request ID
 		short requestID = getNextRequestID();
 		
-		//Preparing to serialize the request
-		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
-			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-				//Adding the data
-				out.writeByte(SharedValues.wsFrameSendTextNew); //Message type - send new text
-				out.writeShort(requestID); //Request ID
-				out.writeObject(chatRecipients); //Chat recipients
-				out.writeUTF(message); //Message
-				out.writeUTF(service); //Service
-				out.flush();
-				
-				//Sending the message
-				wsClient.send(bos.toByteArray());
-			} catch(IOException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				
-				//Telling the response listener
-				responseListener.onFail(messageSendIOException);
-				
-				//Returning false
-				return false;
-			}
-		} else {
-			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-				//Adding the data
-				out.writeShort(requestID); //Request ID
-				out.writeInt(chatRecipients.length); //Members
-				for(String item : chatRecipients) out.writeUTF(item);
-				out.writeUTF(message); //Message
-				out.writeUTF(service); //Service
-				out.flush();
-				
-				//Sending the message
-				connectionThread.queuePacket(new PacketStruct(SharedValues.nhtSendTextNew, bos.toByteArray()));
-			} catch(IOException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				
-				//Telling the response listener
-				responseListener.onFail(messageSendIOException);
-				
-				//Returning false
-				return false;
-			}
+		//Validating the connection
+		if(currentConnectionManager == null || currentConnectionManager.getState() != stateConnected) {
+			responseListener.onFail(messageSendNetworkException);
+			return false;
+		}
+		
+		//Sending the message
+		boolean result = currentConnectionManager.sendMessage(requestID, chatRecipients, message, service);
+		
+		//Validating the result
+		if(!result) {
+			//Telling the response listener
+			responseListener.onFail(messageSendIOException);
+			
+			//Returning false
+			return false;
 		}
 		
 		//Adding the request
@@ -2791,24 +3313,10 @@ public class ConnectionService extends Service {
 	
 	boolean requestMassRetrieval(Context context) {
 		//Returning false if the client isn't ready or a mass retrieval is already in progress
-		if(currentState != stateConnected || massRetrievalInProgress) return false;
+		if(massRetrievalInProgress || getCurrentState() != stateConnected) return false;
 		
-		//Senidng the request
-		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
-			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-				//Adding the data
-				out.writeByte(SharedValues.wsFrameMassRetrieval); //Message type - Mass retrieval request
-				out.flush();
-				
-				wsClient.send(bos.toByteArray());
-			} catch(Exception exception) {
-				exception.printStackTrace();
-				
-				return false;
-			}
-		} else {
-			connectionThread.queuePacket(new PacketStruct(SharedValues.nhtMassRetrieval, new byte[0]));
-		}
+		//Sending the request
+		currentConnectionManager.requestRetrievalAll();
 		
 		//Setting the mass retrieval values
 		massRetrievalInProgress = true;
@@ -2986,45 +3494,11 @@ public class ConnectionService extends Service {
 	} */
 	
 	private boolean retrieveMessagesSince(long timeLower, long timeUpper) {
-		if(activeCommunicationsVersion == Constants.historicCommunicationsWS) {
-			//Returning if the client isn't ready
-			if(wsClient == null || !wsClient.isOpen()) return false;
-			
-			//Preparing to serialize the request
-			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-				//Adding the data
-				out.writeByte(SharedValues.wsFrameTimeRetrieval); //Message type - time-based retrieval
-				out.writeLong(timeLower); //Lower time
-				out.writeLong(timeUpper); //Upper time
-				out.flush();
-				
-				//Sending the message
-				wsClient.send(bos.toByteArray());
-			} catch(Exception exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				
-				//Returning false
-				return false;
-			}
-		} else {
-			try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-				out.writeLong(timeLower);
-				out.writeLong(timeUpper);
-				out.flush();
-				
-				//Sending the message
-				connectionThread.queuePacket(new PacketStruct(SharedValues.nhtTimeRetrieval, bos.toByteArray()));
-			} catch(Exception exception) {
-				exception.printStackTrace();
-				Crashlytics.logException(exception);
-				
-				return false;
-			}
-		}
+		//Returning false if the connection isn't ready
+		if(getCurrentState() != stateConnected) return false;
 		
-		//Returning true
-		return true;
+		//Sending the request
+		return currentConnectionManager.requestRetrievalTime(timeLower, timeUpper);
 	}
 	
 	short getNextRequestID() {
@@ -3094,55 +3568,6 @@ public class ConnectionService extends Service {
 		for(String user : structConversationItemsToUsers(structConversationItems))
 			UserCacheHelper.loadUser(ConnectionService.this, user);
 	} */
-	
-	private static class DraftMMS extends Draft_6455 {
-		@Override
-		public ClientHandshakeBuilder postProcessHandshakeRequestAsClient(ClientHandshakeBuilder request) {
-			//Calling the super method
-			super.postProcessHandshakeRequestAsClient(request);
-			
-			//Building the delimited applicable communications version string
-			StringBuilder applicableVersionsSB = new StringBuilder(Integer.toString(applicableCommunicationsVersions[0]));
-			for(int i = 1; i < applicableCommunicationsVersions.length; i++) applicableVersionsSB.append('|').append(applicableCommunicationsVersions[i]);
-			
-			//Adding the communications version and password to the handshake request
-			request.put(SharedValues.headerCommVer, applicableVersionsSB.toString());
-			request.put(SharedValues.headerPassword, password);
-			
-			//Returning the request
-			return request;
-		}
-		
-		/* @Override
-		public HandshakeState acceptHandshakeAsClient(ClientHandshake request, ServerHandshake response) throws InvalidHandshakeException {
-			//Returning not matched if the super method rejects the request
-			if(super.acceptHandshakeAsClient(request, response) == HandshakeState.NOT_MATCHED)
-				return HandshakeState.NOT_MATCHED;
-			
-			//Returning not matched if the client didn't provide a protocol or provided an incompatible one
-			if(!request.hasFieldValue(headerWebSocketProtocol) ||
-					!request.getFieldValue(headerWebSocketProtocol).equalsIgnoreCase(protocolVersion))
-				return HandshakeState.NOT_MATCHED;
-			
-			//Returning matched
-			return HandshakeState.MATCHED;
-		} */
-		
-		@Override
-		public boolean equals(Object o) {
-			if( this == o ) return true;
-			if( o == null || getClass() != o.getClass() ) return false;
-			
-			DraftMMS that = ( DraftMMS ) o;
-			
-			return getExtension() != null ? getExtension().equals( that.getExtension() ) : that.getExtension() == null;
-		}
-		
-		@Override
-		public Draft copyInstance() {
-			return new DraftMMS();
-		}
-	}
 	
 	public static class ServiceStartBoot extends BroadcastReceiver {
 		@Override
@@ -3225,9 +3650,9 @@ public class ConnectionService extends Service {
 					service.pendingConversations.add(new ConversationInfoRequest(conversation, true));
 			}
 			
-			//Requesting a conversation info fetch if they haven't been automatically requested (the client connected before the conversations were fetched)
-			if(service.wsClient != null && service.wsClient.isOpen())
-				service.retrievePendingConversationInfo();
+			//Requesting a conversation info fetch
+			service.retrievePendingConversationInfo();
+			
 		}
 	}
 	

@@ -94,6 +94,7 @@
 	<string name="message_messageerror_desc_air_external">An external error occurred</string>
 	<string name="message_messageerror_desc_air_expired">Request timed out</string>
 	<string name="message_messageerror_desc_air_references">An internal error occurred (references lost)</string>
+	<string name="message_messageerror_desc_air_internal">An internal error occurred</string>
 	<string name="message_messageerror_desc_apple_network">Couldn\'t connect to iMessage server</string>
 	<string name="message_messageerror_desc_apple_unregistered">%s is not registered with iMessage</string>
 	<string name="message_messageerror_desc_apple_unregistered_generic">The recipient is not registered with iMessage</string>

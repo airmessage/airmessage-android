@@ -114,6 +114,7 @@ public class Constants {
 	static final int messageErrorCodeAirExternal = -5; //External exception
 	static final int messageErrorCodeAirExpired = -6; //Request expired
 	static final int messageErrorCodeAirReferences = -7; //References lost
+	static final int messageErrorCodeAirInternal = -8; //Internal exception
 	//static final int messageErrorCodeLocalReferences = -4; //Unknown error
 	
 	static final int groupActionInvite = 0;

@@ -2259,6 +2259,8 @@ class ConversationManager {
 					return Constants.messageErrorCodeAirExpired;
 				case ConnectionService.messageSendReferencesLost:
 					return Constants.messageErrorCodeAirReferences;
+				case ConnectionService.messageSendInternalException:
+					return Constants.messageErrorCodeAirInternal;
 				default:
 					throw new UnsupportedOperationException("Received upload request error code (" + code + ") which is out of range");
 			}
@@ -2676,6 +2678,14 @@ class ConversationManager {
 					case Constants.messageErrorCodeAirReferences:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_references);
+						
+						//Enabling the retry button
+						showRetryButton = true;
+						
+						break;
+					case Constants.messageErrorCodeAirInternal:
+						//Setting the message
+						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_internal);
 						
 						//Enabling the retry button
 						showRetryButton = true;
