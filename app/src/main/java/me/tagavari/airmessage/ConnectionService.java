@@ -256,7 +256,6 @@ public class ConnectionService extends Service {
 	
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		System.out.println("onStartCommand!");
 		//Getting the intent action
 		String intentAction = intent == null ? null : intent.getAction();
 		
@@ -287,7 +286,6 @@ public class ConnectionService extends Service {
 		}
 		//Reconnecting the client if requested
 		else if(getCurrentState() == stateDisconnected || selfIntentActionConnect.equals(intentAction)) connect(intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : getNextLaunchID());
-		System.out.println("Current state: " + getCurrentState());
 		
 		//Setting the service as not shutting down
 		shutdownRequested = false;
@@ -374,6 +372,7 @@ public class ConnectionService extends Service {
 		
 		//Checking if the hostname is invalid (nothing was found in memory or on disk)
 		if(hostname.isEmpty()) {
+			//Updating the notification
 			postDisconnectedNotification(true);
 			
 			//Notifying the connection listeners
@@ -522,6 +521,23 @@ public class ConnectionService extends Service {
 				.putExtra(Constants.intentParamLaunchID, launchID));
 	}
 	
+	private static abstract class Packager {
+		/**
+		 * Prepares data before being sent, usually by compressing it
+		 * @param data the unpackaged data to be sent
+		 * @param length the length of the data in the array
+		 * @return the packaged data, or null if the process was unsuccessful
+		 */
+		abstract byte[] packageData(byte[] data, int length);
+		
+		/**
+		 * Reverts received data transmissions, usually be decompressing it
+		 * @param data the packaged data
+		 * @return the unpackaged data, or null if the process was unsuccessful
+		 */
+		abstract byte[] unpackageData(byte[] data);
+	}
+	
 	private abstract class ConnectionManager {
 		byte launchID;
 		
@@ -554,6 +570,12 @@ public class ConnectionService extends Service {
 		 * @return whether or not the message was successfuly sent
 		 */
 		abstract boolean sendPing();
+		
+		/**
+		 * Gets a packager for processing transferable data via this protocol version
+		 * @return the packager
+		 */
+		abstract Packager getPackager();
 		
 		/**
 		 * Requests a message to be sent to the specified conversation
@@ -607,13 +629,6 @@ public class ConnectionService extends Service {
 		abstract boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast);
 		
 		/**
-		 * Prepares data before being sent, usually by compressing it
-		 * @param data the data to be sent
-		 * @param length the length of the data in the array
-		 */
-		abstract byte[] prepareTransferableData(byte[] data, int length) throws IOException;
-		
-		/**
 		 * Sends a request to fetch conversation information
 		 * @param list the list of conversation requests
 		 * @return whether or not the request was successfully sent
@@ -634,6 +649,8 @@ public class ConnectionService extends Service {
 		 */
 		abstract boolean requestRetrievalAll();
 		
+		abstract boolean checkProtocolVersionApplicability(int version);
+		
 		/**
 		 * Forwards a request to the next connection manager
 		 * @param launchID an ID used to identify connection attempts
@@ -653,6 +670,10 @@ public class ConnectionService extends Service {
 	}
 	
 	private class ClientProtocol3 extends ConnectionManager {
+		//Creating the reference values
+		private final Packager protocolPackager = new PackagerProtocol3();
+		
+		//Creating the connection values
 		private int currentState = stateDisconnected;
 		private ConnectionThread connectionThread = null;
 		
@@ -706,8 +727,8 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		byte[] prepareTransferableData(byte[] data, int length) throws IOException {
-			return Constants.compressGZIP(data, length);
+		Packager getPackager() {
+			return protocolPackager;
 		}
 		
 		@Override
@@ -950,6 +971,11 @@ public class ConnectionService extends Service {
 			return true;
 		}
 		
+		@Override
+		boolean checkProtocolVersionApplicability(int version) {
+			return version == 3;
+		}
+		
 		private class ConnectionThread extends Thread {
 			private static final long authenticationTime = 1000 * 10; //10 seconds
 			
@@ -1127,6 +1153,9 @@ public class ConnectionService extends Service {
 			}
 			
 			private void updateStateDisconnected(int reason, boolean forwardRequest) {
+				//Stopping the timers
+				if(authenticationExpiryTimer != null) authenticationExpiryTimer.cancel();
+				
 				//Attempting to connect via the legacy method
 				if(!forwardRequest || !forwardRequest(launchID, true)) {
 					new Handler(Looper.getMainLooper()).post(() -> {
@@ -1360,7 +1389,7 @@ public class ConnectionService extends Service {
 						}
 						
 						//Processing the conversations
-						processModifierUpdate(list);
+						processModifierUpdate(list, getPackager());
 						
 						break;
 					}
@@ -1393,7 +1422,7 @@ public class ConnectionService extends Service {
 							for(FileDownloadRequest request : fileDownloadRequests) {
 								if(request.requestID != requestID || !request.attachmentGUID.equals(fileGUID)) continue;
 								if(requestIndex == 0) request.setFileSize(fileSize);
-								request.processFileFragment(ConnectionService.this, compressedBytes, requestIndex, isLast, activeCommunicationsVersion);
+								request.processFileFragment(ConnectionService.this, compressedBytes, requestIndex, isLast, getPackager());
 								if(isLast) fileDownloadRequests.remove(request);
 								break;
 							}
@@ -1590,10 +1619,9 @@ public class ConnectionService extends Service {
 								}
 							}
 						}
-						
-						closeConnection(intentResultCodeConnection, false);
+						//closeConnection(intentResultCodeConnection, false);
 					} catch(InterruptedException exception) {
-						exception.printStackTrace();
+						//exception.printStackTrace();
 						//closeConnection(intentResultCodeConnection, false); //Can only be interrupted from closeConnection, so this is pointless
 						
 						return;
@@ -1609,7 +1637,35 @@ public class ConnectionService extends Service {
 		}
 	}
 	
+	private static class PackagerProtocol3 extends Packager {
+		@Override
+		byte[] packageData(byte[] data, int length) {
+			try {
+				return Constants.compressGZIP(data, length);
+			} catch(IOException exception) {
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				return null;
+			}
+		}
+		
+		@Override
+		byte[] unpackageData(byte[] data) {
+			try {
+				return Constants.decompressGZIP(data);
+			} catch(IOException exception) {
+				exception.printStackTrace();
+				
+				return null;
+			}
+		}
+	}
+	
 	private class ClientProtocol2 extends ConnectionManager {
+		//Creating the reference values
+		private final Packager protocolPackager = new PackagerProtocol2();
+		
 		//Creating the connection values
 		private MMWebSocketClient wsClient = null;
 		
@@ -1667,6 +1723,9 @@ public class ConnectionService extends Service {
 				return false;
 			}
 			
+			//Connecting
+			wsClient.connect();
+			
 			//Returning true
 			return true;
 		}
@@ -1674,14 +1733,14 @@ public class ConnectionService extends Service {
 		@Override
 		void disconnect() {
 			super.disconnect();
-			if(wsClient != null && wsClient.isOpen()) wsClient.close();
+			if(wsClient != null && !wsClient.isClosed()) wsClient.close();
 		}
 		
 		@Override
 		int getState() {
-			if(wsClient.isClosed()) return stateDisconnected;
+			if(wsClient.isOpen()) return stateConnected;
 			else if(wsClient.isConnecting()) return stateConnecting;
-			else return stateConnected;
+			else return stateDisconnected;
 		}
 		
 		@Override
@@ -1697,8 +1756,8 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		byte[] prepareTransferableData(byte[] data, int length) throws IOException {
-			return SharedValues.compressLegacyV2(data, length);
+		Packager getPackager() {
+			return protocolPackager;
 		}
 		
 		@Override
@@ -1966,6 +2025,11 @@ public class ConnectionService extends Service {
 			return true;
 		}
 		
+		@Override
+		boolean checkProtocolVersionApplicability(int version) {
+			return version == 2;
+		}
+		
 		private class DraftMMS extends Draft_6455 {
 			@Override
 			public ClientHandshakeBuilder postProcessHandshakeRequestAsClient(ClientHandshakeBuilder request) {
@@ -2130,7 +2194,7 @@ public class ConnectionService extends Service {
 							final ArrayList<SharedValues.ModifierInfo> receivedItems = (ArrayList<SharedValues.ModifierInfo>) in.readObject();
 							
 							//Processing the conversations
-							processModifierUpdate(receivedItems);
+							processModifierUpdate(receivedItems, getPackager());
 							
 							break;
 						}
@@ -2150,7 +2214,7 @@ public class ConnectionService extends Service {
 								for(FileDownloadRequest request : fileDownloadRequests) {
 									if(request.requestID != requestID || !request.attachmentGUID.equals(guid)) continue;
 									if(requestIndex == 0) request.setFileSize(fileSize);
-									request.processFileFragment(ConnectionService.this, compressedBytes, requestIndex, isLast, activeCommunicationsVersion);
+									request.processFileFragment(ConnectionService.this, compressedBytes, requestIndex, isLast, getPackager());
 									if(isLast) fileDownloadRequests.remove(request);
 									break;
 								}
@@ -2251,10 +2315,11 @@ public class ConnectionService extends Service {
 					lastConnectionResult = clientReason;
 					
 					//Notifying the connection listeners
-					LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
+					broadcastState(stateDisconnected, clientReason, launchID);
+					/* LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
 							.putExtra(Constants.intentParamState, stateDisconnected)
 							.putExtra(Constants.intentParamCode, clientReason)
-							.putExtra(Constants.intentParamLaunchID, launchID));
+							.putExtra(Constants.intentParamLaunchID, launchID)); */
 					
 					//Checking if the end time should be marked
 					if(flagMarkEndTime) {
@@ -2306,6 +2371,31 @@ public class ConnectionService extends Service {
 			
 			//Returning the hostname
 			return hostname;
+		}
+	}
+	
+	private static class PackagerProtocol2 extends Packager {
+		@Override
+		byte[] packageData(byte[] data, int length) {
+			try {
+				return SharedValues.compressLegacyV2(data, length);
+			} catch(IOException exception) {
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+				
+				return null;
+			}
+		}
+		
+		@Override
+		byte[] unpackageData(byte[] data) {
+			try {
+				return SharedValues.decompressLegacyV2(data);
+			} catch(IOException | DataFormatException exception) {
+				exception.printStackTrace();
+				
+				return null;
+			}
 		}
 	}
 	
@@ -2402,10 +2492,10 @@ public class ConnectionService extends Service {
 		addMessagingProcessingTask(new SaveConversationInfoAsyncTask(getApplicationContext(), unavailableConversations, availableConversations));
 	}
 	
-	private void processModifierUpdate(List<SharedValues.ModifierInfo> structModifiers) {
+	private void processModifierUpdate(List<SharedValues.ModifierInfo> structModifiers, Packager packager) {
 		//Creating and running the task
 		//new ModifierUpdateAsyncTask(getApplicationContext(), structModifiers).execute();
-		addMessagingProcessingTask(new ModifierUpdateAsyncTask(getApplicationContext(), structModifiers, activeCommunicationsVersion));
+		addMessagingProcessingTask(new ModifierUpdateAsyncTask(getApplicationContext(), structModifiers, packager));
 	}
 	
 	/* boolean requestAttachmentInfo(String fileGuid, short requestID) {
@@ -2671,7 +2761,7 @@ public class ConnectionService extends Service {
 		boolean isWaiting = true;
 		int lastIndex = -1;
 		float lastProgress = 0;
-		private void processFileFragment(Context context, final byte[] compressedBytes, int index, boolean isLast, int communicationsVersion) {
+		private void processFileFragment(Context context, final byte[] compressedBytes, int index, boolean isLast, Packager packager) {
 			//Setting the state to receiving if it isn't already
 			if(isWaiting) {
 				isWaiting = false;
@@ -2696,7 +2786,7 @@ public class ConnectionService extends Service {
 			//Checking if there is no save thread
 			if(attachmentWriterThread == null) {
 				//Creating and starting the attachment writer thread
-				attachmentWriterThread = new AttachmentWriter(context.getApplicationContext(), attachmentID, fileName, fileSize, communicationsVersion);
+				attachmentWriterThread = new AttachmentWriter(context.getApplicationContext(), attachmentID, fileName, fileSize, packager);
 				attachmentWriterThread.start();
 				callbacks.onStart();
 			}
@@ -2727,13 +2817,13 @@ public class ConnectionService extends Service {
 			private final String fileName;
 			private final long fileSize;
 			
-			private final int communicationsVersion;
+			private final Packager packager;
 			
 			//Creating the process values
 			private long bytesWritten;
 			private boolean isRunning = true;
 			
-			AttachmentWriter(Context context, long attachmentID, String fileName, long fileSize, int communicationsVersion) {
+			AttachmentWriter(Context context, long attachmentID, String fileName, long fileSize, Packager packager) {
 				//Setting the references
 				contextReference = new WeakReference<>(context);
 				
@@ -2742,7 +2832,7 @@ public class ConnectionService extends Service {
 				this.fileName = fileName;
 				this.fileSize = fileSize;
 				
-				this.communicationsVersion = communicationsVersion;
+				this.packager = packager;
 			}
 			
 			@Override
@@ -2776,9 +2866,7 @@ public class ConnectionService extends Service {
 						if(dataStruct == null) continue;
 						
 						//Decompressing the bytes
-						byte[] decompressedBytes;
-						if(communicationsVersion == Constants.historicCommunicationsWS) decompressedBytes = SharedValues.decompressLegacyV2(dataStruct.compressedBytes);
-						else decompressedBytes = Constants.decompressGZIP(dataStruct.compressedBytes);
+						byte[] decompressedBytes = packager.unpackageData(dataStruct.compressedBytes);
 						
 						//Writing the bytes
 						outputStream.write(decompressedBytes);
@@ -2830,7 +2918,7 @@ public class ConnectionService extends Service {
 							}
 						} */
 					}
-				} catch(IOException | DataFormatException | OutOfMemoryError exception) {
+				} catch(IOException | OutOfMemoryError exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
 					Crashlytics.logException(exception);
@@ -3120,8 +3208,19 @@ public class ConnectionService extends Service {
 							return;
 						}
 						
+						//Preparing the data for upload
+						byte[] preparedData = connectionManager.getPackager().packageData(buffer, bytesRead);
+						
+						//Checking if the data couldn't be processed
+						if(preparedData == null) {
+							//Failing the request
+							handler.post(() -> finalCallbacks.onFail(messageSendInternalException));
+							
+							//Breaking from the loop
+							continue requestLoop;
+						}
+						
 						//Uploading the chunk
-						byte[] preparedData = connectionManager.prepareTransferableData(buffer, bytesRead);
 						boolean uploadResult;
 						if(request.conversationExists) {
 							uploadResult = connectionManager.uploadFilePacket(requestID, requestIndex, request.conversationGUID, preparedData, request.sendFile.getName(), totalBytesRead >= totalLength);
@@ -3131,10 +3230,10 @@ public class ConnectionService extends Service {
 						
 						//Validating the result
 						if(!uploadResult) {
-							//Calling the fail method
+							//Failing the request
 							handler.post(() -> finalCallbacks.onFail(messageSendInternalException));
 							
-							//Failing the request
+							//Breaking from the loop
 							continue requestLoop;
 						}
 						
@@ -3316,7 +3415,10 @@ public class ConnectionService extends Service {
 		if(massRetrievalInProgress || getCurrentState() != stateConnected) return false;
 		
 		//Sending the request
-		currentConnectionManager.requestRetrievalAll();
+		boolean result = currentConnectionManager.requestRetrievalAll();
+		
+		//Validating the result
+		if(!result) return false;
 		
 		//Setting the mass retrieval values
 		massRetrievalInProgress = true;
@@ -4189,14 +4291,14 @@ public class ConnectionService extends Service {
 		private final List<ConversationManager.TapbackInfo> tapbackModifiers = new ArrayList<>();
 		private final List<TapbackRemovalStruct> tapbackRemovals = new ArrayList<>();
 		
-		private final int communicationsVersion;
+		private final Packager packager;
 		
-		ModifierUpdateAsyncTask(Context context, List<SharedValues.ModifierInfo> structModifiers, int communicationsVersion) {
+		ModifierUpdateAsyncTask(Context context, List<SharedValues.ModifierInfo> structModifiers, Packager packager) {
 			contextReference = new WeakReference<>(context);
 			
 			this.structModifiers = structModifiers;
 			
-			this.communicationsVersion = communicationsVersion;
+			this.packager = packager;
 		}
 		
 		@Override
@@ -4220,11 +4322,10 @@ public class ConnectionService extends Service {
 					//Updating the modifier in the database
 					SharedValues.StickerModifierInfo stickerInfo = (SharedValues.StickerModifierInfo) modifierInfo;
 					try {
-						if(communicationsVersion == Constants.historicCommunicationsWS) stickerInfo.image = SharedValues.decompressLegacyV2(stickerInfo.image);
-						else stickerInfo.image = Constants.decompressGZIP(stickerInfo.image);
+						stickerInfo.image = packager.unpackageData(stickerInfo.image);
 						ConversationManager.StickerInfo sticker = DatabaseManager.getInstance().addMessageSticker(stickerInfo);
 						if(sticker != null) stickerModifiers.add(sticker);
-					} catch(IOException | DataFormatException | OutOfMemoryError exception) {
+					} catch(OutOfMemoryError exception) {
 						exception.printStackTrace();
 						Crashlytics.logException(exception);
 					}
