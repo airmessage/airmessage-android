@@ -17,7 +17,7 @@ import java.util.zip.Inflater;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -26,62 +26,15 @@ public class SharedValues {
 	*  1 - Original release
 	*  2 - Serialization changes
 	*  3 - Reworked without WS layer
+	*  4 - Better stability and security, with sub-version support
 	*/
 	public static final int mmCommunicationsVersion = 4;
+	public static final int mmCommunicationsSubVersion = 1;
 	
 	public static final String headerCommVer = "MMS-Comm-Version";
 	public static final String headerSoftVersion = "MMS-Soft-Version";
 	public static final String headerSoftVersionCode = "MMS-Soft-Version-Code";
 	public static final String headerPassword = "Password";
-	
-	public static final int resultBadRequest = 4000;
-	public static final int resultClientOutdated = 4001;
-	public static final int resultServerOutdated = 4002;
-	public static final int resultUnauthorized = 4003;
-	
-	public static final byte wsFrameUpdate = 0;
-	public static final byte wsFrameTimeRetrieval = 1;
-	public static final byte wsFrameMassRetrieval = 2;
-	public static final byte wsFrameChatInfo = 3;
-	public static final byte wsFrameModifierUpdate = 4;
-	public static final byte wsFrameAttachmentReq = 5;
-	public static final byte wsFrameAttachmentReqConfirmed = 6;
-	public static final byte wsFrameAttachmentReqFailed = 7;
-	
-	public static final byte wsFrameSendResult = 100;
-	public static final byte wsFrameSendTextExisting = 101;
-	public static final byte wsFrameSendTextNew = 102;
-	public static final byte wsFrameSendFileExisting = 103;
-	public static final byte wsFrameSendFileNew = 104;
-	
-	//NHT = Net Header Type
-	public static final int nhtClose = -1;
-	public static final int nhtPing = -2;
-	public static final int nhtPong = -3;
-	public static final int nhtInformation = -4;
-	public static final int nhtAuthentication = 0;
-	public static final int nhtMessageUpdate = 1;
-	public static final int nhtTimeRetrieval = 2;
-	public static final int nhtMassRetrieval = 3;
-	public static final int nhtChatInfo = 4;
-	public static final int nhtModifierUpdate = 5;
-	public static final int nhtAttachmentReq = 6;
-	public static final int nhtAttachmentReqConfirm = 7;
-	public static final int nhtAttachmentReqFail = 8;
-	
-	public static final int nhtSendResult = 100;
-	public static final int nhtSendTextExisting = 101;
-	public static final int nhtSendTextNew = 102;
-	public static final int nhtSendFileExisting = 103;
-	public static final int nhtSendFileNew = 104;
-	
-	public static final int nhtAuthenticationOK = 0;
-	public static final int nhtAuthenticationUnauthorized = 1;
-	public static final int nhtAuthenticationBadRequest = 2;
-	public static final int nhtAuthenticationVersionMismatch = 3;
-	
-	public static final String hashAlgorithm = "MD5";
-	public static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
 	
 	public static class ConversationInfo implements Serializable {
 		private static final long serialVersionUID = 100;
@@ -422,68 +375,100 @@ public class SharedValues {
 		return outputStream.toByteArray();
 	}
 	
-	public static class EncryptedData implements Serializable {
+	public static class EncryptableData implements Serializable {
+		//Creating the reference values
+		private static final int saltLen = 8; //8 bytes
+		private static final int ivLen = 12; //12 bytes (instead of 16 because of GCM)
+		private static final String keyFactoryAlgorithm = "PBKDF2WithHmacSHA256";
+		private static final String keyAlgorithm = "AES";
+		private static final String cipherTransformation = "AES/GCM/NoPadding";
+		private static final int keyIterationCount = 10000;
+		private static final int keyLength = 128; //128 bits
+		
 		//private static final long serialVersionUID = 0;
+		private byte[] salt;
+		private byte[] iv;
 		public byte[] data;
-		private transient String password = null;
+		private transient boolean dataEncrypted = false;
 		
-		public EncryptedData(byte[] data, String password) {
+		
+		public EncryptableData(byte[] data) {
 			this.data = data;
-			this.password = password;
 		}
 		
-		private void readObject(ObjectInputStream stream) throws ClassNotFoundException, ClassCastException, IOException, GeneralSecurityException {
-			//Reading the data
-			byte[] salt = new byte[8];
-			byte[] iv = new byte[12];
-			
-			stream.readFully(salt);
-			stream.readFully(iv);
-			
-			int dataLength = stream.readInt();
-			byte[] encryptedData = new byte[dataLength];
-			stream.readFully(encryptedData);
-			
-			//Deciphering the data
-			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-			KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, 10000, 128);
-			SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
-			SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), "AES");
-			
-			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-			cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, new IvParameterSpec(iv));
-			
-			data = cipher.doFinal(data);
-		}
-		
-		private void writeObject(ObjectOutputStream stream) throws IOException, GeneralSecurityException {
+		public EncryptableData encrypt(String password) throws ClassCastException, GeneralSecurityException {
 			//Creating a secure random
 			SecureRandom random = new SecureRandom();
 			
 			//Generating a salt
-			byte[] salt = new byte[8];
+			salt = new byte[saltLen];
 			random.nextBytes(salt);
 			
 			//Creating the key
-			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-			KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, 10000, 128);
+			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(keyFactoryAlgorithm);
+			KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, 10000, keyLength);
 			SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
-			SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), "AES");
+			SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), keyAlgorithm);
 			
 			//Generating the IV
-			byte[] iv = new byte[12];
+			iv = new byte[ivLen];
 			random.nextBytes(iv);
-			IvParameterSpec ivSpec = new IvParameterSpec(iv);
+			GCMParameterSpec gcmSpec = new GCMParameterSpec(keyLength, iv);
 			
-			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-			cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec);
+			Cipher cipher = Cipher.getInstance(cipherTransformation);
+			cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, gcmSpec);
+			
+			//Encrypting the data
+			data = cipher.doFinal(data);
+			dataEncrypted = true;
+			
+			//Returning the object
+			return this;
+		}
+		
+		public EncryptableData decrypt(String password) throws ClassCastException, GeneralSecurityException {
+			//Creating the key
+			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(keyFactoryAlgorithm);
+			KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, keyIterationCount, keyLength);
+			SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
+			SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), keyAlgorithm);
+			
+			//Creating the IV
+			GCMParameterSpec gcmSpec = new GCMParameterSpec(keyLength, iv);
+			
+			//Creating the cipher
+			Cipher cipher = Cipher.getInstance(cipherTransformation);
+			cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, gcmSpec);
+			
+			//Deciphering the data
+			data = cipher.doFinal(data);
+			dataEncrypted = false;
+			
+			//Returning the object
+			return this;
+		}
+		
+		private void writeObject(ObjectOutputStream stream) throws IOException {
+			//Throwing an exception if the data isn't encrypted
+			if(!dataEncrypted) throw new RuntimeException("Data serialization attempt before encryption!");
 			
 			//Writing the data
 			stream.write(salt);
 			stream.write(iv);
-			byte[] encryptedData = cipher.doFinal(data);
-			stream.writeInt(encryptedData.length);
-			stream.write(encryptedData);
+			stream.writeInt(data.length);
+			stream.write(data);
+		}
+		
+		private void readObject(ObjectInputStream stream) throws IOException {
+			//Reading the data
+			salt = new byte[saltLen];
+			stream.readFully(salt);
+			
+			iv = new byte[ivLen];
+			stream.readFully(iv);
+			
+			data = new byte[stream.readInt()];
+			stream.readFully(data);
 		}
 	}
 }

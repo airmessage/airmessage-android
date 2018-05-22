@@ -78,8 +78,10 @@
 	<!-- Send progress -->
 	<com.pnikosis.materialishprogress.ProgressWheel
 		android:id="@+id/send_progress"
-		android:layout_width="20dp"
-		android:layout_height="20dp"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
+		android:padding="2dp"
+		android:layout_marginTop="10dp"
 		android:layout_marginEnd="8dp"
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintTop_toTopOf="@id/messagepart_container"
@@ -89,8 +91,9 @@
 	<!-- Send warning -->
 	<ImageButton
 		android:id="@+id/send_error"
-		android:layout_width="20dp"
-		android:layout_height="20dp"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
+		android:layout_marginTop="10dp"
 		android:layout_marginEnd="8dp"
 		android:background="?android:attr/selectableItemBackgroundBorderless"
 		android:src="@drawable/error"

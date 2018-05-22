@@ -822,7 +822,7 @@ public class Conversations extends AppCompatCompositeActivity {
 									"Device model: " + Build.MODEL + "\r\n" +
 									"Android version: " + Build.VERSION.RELEASE + "\r\n" +
 									"Client version: " + BuildConfig.VERSION_NAME + "\r\n" +
-									"AM communications version: " + SharedValues.mmCommunicationsVersion);
+									"AM communications version: " + SharedValues.mmCommunicationsVersion + '.' + SharedValues.mmCommunicationsSubVersion);
 							//intent.setType("message/rfc822");
 							
 							//Launching the intent
