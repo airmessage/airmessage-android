@@ -16,7 +16,7 @@
 	<string name="message_permissionrejected">Demande d\'autorisation rejetée</string>
 	<string name="progress_loadingmessages">Chargement des messages&#8230;</string>
 	<string name="progress_loading">Chargment&#8230;</string>
-	<string name="progress_sync">Obtention de vos messages&#8230;</string>
+	<string name="progress_sync">Obtention des messages&#8230;</string>
 	<string name="message_loaderror_messages">Échec de chargement des messages</string>
 	<string name="message_loaderror_contacts">Échec de chargement des contacts</string>
 	<string name="message_blankstate_conversations">Lorsque vous commencez une conversation, elle s\'affiche ici</string>
@@ -103,15 +103,15 @@
 	<string name="message_setup_connect_noserver">N\'avez-vous pas de serveur?</string>
 	<string name="message_setup_connect_serverguidelink">Lisez le guide du serveur</string>
 	<string name="message_setup_connect_connectionerror">La connexion a échoué</string>
-	<string name="message_setup_connect_authentication">Mot de passe (si nécessaire)</string>
+	<string name="message_setup_connect_authentication">Mot de passe</string>
 	
-	<string name="message_setup_sync_download_title">Télécharger l\'historique des messages?</string>
+	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages?</string>
 	<string name="message_setup_sync_download_description">Cette option remplacera tous les messages actuellement stockés sur l\'appareil. Si vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil.</string>
 	<string name="action_downloadmessages">Télécharger les messages</string>
 	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages</string>
 	<string name="action_deletemessages">Supprimer les messages</string>
 	<string name="message_setup_sync_warning_title">Passer la suppression des messages?</string>
-	<string name="message_setup_sync_description">Si vous changez le compte d\'Apple du serveur et n\'effacez pas vos messages, vos anciennes conversations peuvent être modifiées de manière incorrecte.</string>
+	<string name="message_setup_sync_description">Si vous vous connectez à un nouveau serveur ou compte Apple et vous n\'effacez pas vos messages, vos anciennes conversations peuvent être modifiées de manière incorrecte.</string>
 	<string name="message_syncerror">Échec de téléchargement des messages</string>
 	
 	<string name="imperative_recording_cancel">Glissez pour annuler</string>
@@ -135,8 +135,8 @@
 	<string name="action_reconnect">Reconnecter</string>
 	<string name="action_quit">Quitter</string>
 	<string name="action_sharemessage">Partager le message</string>
-	<string name="message_shareable_text">Le %1$s, %2$s a dit: %3$s</string>
-	<string name="message_shareable_text_you">Le %1$s, j\'ai dit: %2$s</string>
+	<string name="message_shareable_text">Le %1$s, %2$s a écrit: %3$s</string>
+	<string name="message_shareable_text_you">Le %1$s, j\'ai écrit: %2$s</string>
 	<string name="imperative_userinput">Saisissez un nom, un adresse de courriel ou un numéro de téléphone</string>
 	<string name="action_addcontent">Ajouter une pièce jointe</string>
 	<string name="action_takephoto">Prendre une photo</string>
@@ -264,4 +264,7 @@
 	<string name="preference_server_foregroundservice_description">Affiche une notification et permet de connecter au démarrage</string>
 	<string name="preference_server_disconnectionnotification_title">Notification de déconnexion</string>
 	<string name="preference_server_disconnectionnotification_description">Afficher une notification lorsque la connexion est perdue</string>
+	<string name="message_messageerror_desc_air_internal">Une erreur interne s\'est produite</string>
+	<string name="message_confirm_deletemessages_started">Tous les messages ont été supprimés</string>
+	<string name="message_confirm_deleteattachments_started">Toutes les pièces jointes ont été supprimées</string>
 </resources>

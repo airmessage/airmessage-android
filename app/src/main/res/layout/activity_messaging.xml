@@ -41,7 +41,8 @@
 				android:id="@+id/toolbar"
 				android:layout_width="match_parent"
 				android:layout_height="?android:attr/actionBarSize"
-				android:theme="@style/SolidActionBar" />
+				android:theme="@style/SolidActionBar"
+				app:titleTextAppearance="@style/LightToolbarText"/>
 			<!-- Info bar container -->
 			<LinearLayout
 				android:id="@+id/infobar_container"

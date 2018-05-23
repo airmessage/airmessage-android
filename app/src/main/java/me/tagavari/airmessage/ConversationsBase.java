@@ -553,6 +553,9 @@ class ConversationsBase extends AppCompatActivityPlugin {
 			//Clearing the attachments directory
 			MainApplication.clearAttachmentsDirectory(context);
 			
+			//Clearing the path links in the database
+			DatabaseManager.getInstance().clearAttachmentFiles();
+			
 			//Returning
 			return null;
 		}
@@ -654,7 +657,7 @@ class ConversationsBase extends AppCompatActivityPlugin {
 			}
 			
 			//Showing a snackbar
-			if(parentView != null) Snackbar.make(parentView, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_LONG).show();
+			if(parentView != null) Snackbar.make(parentView, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_SHORT).show();
 		}
 	}
 	

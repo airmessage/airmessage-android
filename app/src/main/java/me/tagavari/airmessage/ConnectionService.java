@@ -129,6 +129,7 @@ public class ConnectionService extends Service {
 	
 	private PendingIntent pingPendingIntent;
 	
+	private final List<Class> connectionManagerClassPriorityList = Arrays.asList(ClientCommCaladium.class, ClientComm3.class, ClientComm2.class);
 	private final List<ConnectionManagerSource> connectionManagerPriorityList = Arrays.asList(ClientCommCaladium::new, ClientComm3::new, ClientComm2::new);
 	
 	//Creating the access values
@@ -683,7 +684,7 @@ public class ConnectionService extends Service {
 		 * @return if the request was forwarded
 		 */
 		boolean forwardRequest(byte launchID, boolean thread) {
-			int targetIndex = connectionManagerPriorityList.indexOf(this) + 1;
+			int targetIndex = connectionManagerClassPriorityList.indexOf(getClass()) + 1;
 			if(targetIndex == connectionManagerPriorityList.size()) return false;
 			if(thread) {
 				new Handler(Looper.getMainLooper()).post(() -> {
@@ -841,9 +842,11 @@ public class ConnectionService extends Service {
 		private static final int nhtAuthenticationOK = 0;
 		private static final int nhtAuthenticationUnauthorized = 1;
 		private static final int nhtAuthenticationBadRequest = 2;
-		private static final int nhtAuthenticationVersionMismatch = 3;
 		
 		private static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
+		
+		//Creating the other values
+		private boolean connectionEstablished = false;
 		
 		@Override
 		boolean connect(byte launchID) {
@@ -873,7 +876,6 @@ public class ConnectionService extends Service {
 		@Override
 		void disconnect() {
 			super.disconnect();
-			currentState = stateDisconnected;
 			connectionThread.initiateClose(intentResultCodeConnection, false);
 		}
 		
@@ -972,6 +974,12 @@ public class ConnectionService extends Service {
 		}
 		
 		private void updateStateDisconnected(int reason, boolean forwardRequest) {
+			//Setting the state
+			currentState = stateDisconnected;
+			
+			//Setting the connection established flag
+			connectionEstablished = false;
+			
 			//Stopping the timers
 			if(handshakeExpiryTimer != null) handshakeExpiryTimer.cancel();
 			
@@ -985,12 +993,10 @@ public class ConnectionService extends Service {
 			
 			//Attempting to connect via the legacy method
 			if(!forwardRequest || !forwardRequest(launchID, true)) {
+				Thread.dumpStack();
 				new Handler(Looper.getMainLooper()).post(() -> {
 					//Checking if this is the most recent launch
 					if(currentLaunchID == launchID) {
-						//Setting the state
-						currentState = stateDisconnected;
-						
 						//Setting the last connection result
 						lastConnectionResult = reason;
 						
@@ -1029,6 +1035,9 @@ public class ConnectionService extends Service {
 		}
 		
 		private void updateStateConnected() {
+			//Setting the connection established flag
+			connectionEstablished = true;
+			
 			//Running on the main thread
 			new Handler(Looper.getMainLooper()).post(() -> {
 				//Checking if this is the most recent launch
@@ -1202,7 +1211,7 @@ public class ConnectionService extends Service {
 							Logger.getGlobal().log(Level.WARNING, "Rejecting large packet (type: " + messageType + " - size: " + contentLen + ")");
 							
 							//Closing the connection
-							closeConnection(intentResultCodeConnection, false);
+							closeConnection(intentResultCodeConnection, !connectionEstablished);
 							break;
 						}
 						
@@ -1215,7 +1224,7 @@ public class ConnectionService extends Service {
 							while(bytesRemaining > 0) {
 								readCount = inputStream.read(content, offset, bytesRemaining);
 								if(readCount == -1) { //No data read, stream is closed
-									closeConnection(intentResultCodeConnection, false);
+									closeConnection(intentResultCodeConnection, !connectionEstablished);
 									return;
 								}
 								
@@ -1237,7 +1246,7 @@ public class ConnectionService extends Service {
 					} catch(IOException exception) {
 						//Closing the connection
 						exception.printStackTrace();
-						closeConnection(intentResultCodeConnection, false);
+						closeConnection(intentResultCodeConnection, !connectionEstablished);
 						
 						//Breaking
 						break;
@@ -1927,6 +1936,7 @@ public class ConnectionService extends Service {
 		private static final int nhtAuthenticationVersionMismatch = 3;
 		
 		//Creating the connection values
+		private boolean connectionEstablished = false;
 		private int currentState = stateDisconnected;
 		private ConnectionThread connectionThread = null;
 		
@@ -1958,7 +1968,6 @@ public class ConnectionService extends Service {
 		@Override
 		void disconnect() {
 			super.disconnect();
-			currentState = stateDisconnected;
 			connectionThread.initiateClose(intentResultCodeConnection, false);
 		}
 		
@@ -2370,7 +2379,7 @@ public class ConnectionService extends Service {
 							Logger.getGlobal().log(Level.WARNING, "Rejecting large packet (type: " + messageType + " - size: " + contentLen + ")");
 							
 							//Closing the connection
-							closeConnection(intentResultCodeConnection, false);
+							closeConnection(intentResultCodeConnection, !connectionEstablished);
 							break;
 						}
 						
@@ -2383,7 +2392,7 @@ public class ConnectionService extends Service {
 							while(bytesRemaining > 0) {
 								readCount = inputStream.read(content, offset, bytesRemaining);
 								if(readCount == -1) { //No data read, stream is closed
-									closeConnection(intentResultCodeConnection, false);
+									closeConnection(intentResultCodeConnection, !connectionEstablished);
 									return;
 								}
 								
@@ -2420,6 +2429,12 @@ public class ConnectionService extends Service {
 			}
 			
 			private void updateStateDisconnected(int reason, boolean forwardRequest) {
+				//Setting the state
+				currentState = stateDisconnected;
+				
+				//Setting the connection established flag
+				connectionEstablished = false;
+				
 				//Stopping the timers
 				if(authenticationExpiryTimer != null) authenticationExpiryTimer.cancel();
 				
@@ -2431,9 +2446,6 @@ public class ConnectionService extends Service {
 						
 						//Checking if this is the most recent launch
 						if(currentLaunchID == launchID) {
-							//Setting the state
-							currentState = stateDisconnected;
-							
 							//Setting the last connection result
 							lastConnectionResult = reason;
 							
@@ -2469,6 +2481,9 @@ public class ConnectionService extends Service {
 			}
 			
 			private void updateStateConnected() {
+				//Setting the connection established flag
+				connectionEstablished = true;
+				
 				//Running on the main thread
 				new Handler(Looper.getMainLooper()).post(() -> {
 					//Checking if this is the most recent launch

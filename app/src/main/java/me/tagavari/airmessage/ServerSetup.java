@@ -42,29 +42,31 @@ public class ServerSetup extends Activity {
 	private EditText passwordInputField;
 	private View nextButton;
 	//Creating the listener values
-	private final TextWatcher addressInputWatcher = new TextWatcher() {
+	private final TextWatcher hostnameInputWatcher = new TextWatcher() {
 		@Override
-		public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-		
-		}
+		public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 		
 		@Override
 		public void onTextChanged(CharSequence s, int start, int before, int count) {
-			//Comparing the string to the regular expression
-			if(regExValidAddress.matcher(s).find()) {
-				//Enabling the button
-				nextButton.setAlpha(1);
-				nextButton.setClickable(true);
-			} else {
-				//Disabling the button
-				nextButton.setAlpha(0.38F);
-				nextButton.setClickable(false);
-			}
+			//Updating the next button
+			updateNextButtonState(s.toString(), passwordInputField.getText().toString());
 		}
 		
 		@Override
-		public void afterTextChanged(Editable s) {
+		public void afterTextChanged(Editable s) {}
+	};
+	private final TextWatcher passwordInputWatcher = new TextWatcher() {
+		@Override
+		public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+		
+		@Override
+		public void onTextChanged(CharSequence s, int start, int before, int count) {
+			//Updating the next button
+			updateNextButtonState(hostnameInputField.getText().toString(), s.toString());
 		}
+		
+		@Override
+		public void afterTextChanged(Editable s) {}
 	};
 	private View layoutAddress;
 	private View layoutSync;
@@ -140,7 +142,8 @@ public class ServerSetup extends Activity {
 		Constants.enforceContentWidth(getResources(), findViewById(R.id.content));
 		
 		//Setting the address box watcher
-		hostnameInputField.addTextChangedListener(addressInputWatcher);
+		hostnameInputField.addTextChangedListener(hostnameInputWatcher);
+		passwordInputField.addTextChangedListener(passwordInputWatcher);
 		
 		//Getting if the change is required
 		isRequired = getIntent().getBooleanExtra(intentExtraRequired, false);
@@ -169,8 +172,8 @@ public class ServerSetup extends Activity {
 	public void onNextButtonClick(View view) {
 		//Checking if the page is 0
 		if(page == 0) {
-			//Checking if the server address is valid
-			if(regExValidAddress.matcher(hostnameInputField.getText()).find()) {
+			//Checking if the server parameters are valid
+			if(regExValidAddress.matcher(hostnameInputField.getText()).find() && passwordInputField.getText().length() > 0) {
 				//Starting the connection
 				startConnection();
 				
@@ -403,6 +406,19 @@ public class ServerSetup extends Activity {
 		
 		//Finishing the activity
 		finishSetup();
+	}
+	
+	private void updateNextButtonState(String hostnameInput, String passwordInput) {
+		//Comparing the string to the regular expression
+		if(regExValidAddress.matcher(hostnameInput).find() && !passwordInput.isEmpty()) {
+			//Enabling the button
+			nextButton.setAlpha(1);
+			nextButton.setClickable(true);
+		} else {
+			//Disabling the button
+			nextButton.setAlpha(0.38F);
+			nextButton.setClickable(false);
+		}
 	}
 	
 	public void onClickLaunchServerGuide(View view) {
