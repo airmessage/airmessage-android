@@ -94,6 +94,7 @@
 	<string name="message_messageerror_desc_air_external">An external error occurred</string>
 	<string name="message_messageerror_desc_air_expired">Request timed out</string>
 	<string name="message_messageerror_desc_air_references">An internal error occurred (references lost)</string>
+	<string name="message_messageerror_desc_air_internal">An internal error occurred</string>
 	<string name="message_messageerror_desc_apple_network">Couldn\'t connect to iMessage server</string>
 	<string name="message_messageerror_desc_apple_unregistered">%s is not registered with iMessage</string>
 	<string name="message_messageerror_desc_apple_unregistered_generic">The recipient is not registered with iMessage</string>
@@ -139,17 +140,19 @@
 	<string name="message_setup_connect_noserver">Don\'t have a server?</string>
 	<string name="message_setup_connect_serverguidelink">Take a look at the server guide</string>
 	<string name="message_setup_connect_connectionerror">Connection failed</string>
-	<string name="message_setup_connect_authentication">Password (if required)</string>
+	<string name="message_setup_connect_authentication">Password</string>
 	<string name="message_setup_sync_download_title">Download message history?</string>
 	<string name="message_setup_sync_download_description">This will replace any messages currently stored on the device. If you choose not to, only new messages will appear on this device.</string>
 	<string name="message_setup_sync_delete_description">Alternatively, you can start fresh and simply clear away your old messages</string>
 	<string name="message_setup_sync_warning_title">Skip clearing messages?</string>
-	<string name="message_setup_sync_description">If you are switching the server\'s Apple account and you don\'t clear your messages, your old conversations may be incorrectly modified.</string>
+	<string name="message_setup_sync_description">If you are connecting to a new server or Apple account and you don\'t clear your messages, your old conversations may be incorrectly modified.</string>
 	
 	<string name="message_messageeffect_invisibleink">Message sent with Invisible Ink</string>
 	
 	<string name="message_confirm_deletemessages">Delete all messages?</string>
-	<string name="message_confirm_deleteattachments">Delete all attachments?</string>
+	<string name="message_confirm_deletemessages_started">All messages have been deleted</string>
+	<string name="message_confirm_deleteattachments">Delete all downloaded attachments?</string>
+	<string name="message_confirm_deleteattachments_started">All downloaded attachments have been deleted</string>
 	<string name="message_confirm_resyncmessages">Resync messages?</string>
 	<string name="message_confirm_resyncmessages_description">This will replace any currently stored messages</string>
 	<string name="message_confirm_resyncmessages_started">New messages are being downloaded</string>
@@ -176,8 +179,8 @@
 	</plurals>
 	<string name="message_confirm_unblock">Unblock %s?</string>
 	
-	<string name="message_shareable_text">On %1$s, %2$s said: %3$s</string>
-	<string name="message_shareable_text_you">On %1$s, I said: %2$s</string>
+	<string name="message_shareable_text">On %1$s, %2$s wrote: %3$s</string>
+	<string name="message_shareable_text_you">On %1$s, I wrote: %2$s</string>
 	
 	<string name="message_connection_connected">Connected to server</string>
 	<string name="message_connection_disconnected">Connection lost</string>

@@ -1942,18 +1942,17 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Activating the effect view
 				appleEffectView.playEcho(target);
 				break;
+			case Constants.appleSendStyleScrnSpotlight:
+				currentScreenEffectPlaying = false;
+				break;
+			case Constants.appleSendStyleScrnBalloons:
+				appleEffectView.playBalloons();
+				break;
 			case Constants.appleSendStyleScrnConfetti: {
 				//Activating the Konfetti view
 				KonfettiView konfettiView = findViewById(R.id.konfetti);
 				konfettiView.build()
-						.addColors(
-								0xFCE18A, //Yellow
-								0xFF726D, //Orange
-								0xB48DEF, //Purple
-								0xF4306D, //Pink
-								0x42A5F5, //Blue
-								0x7986CB //Indigo
-						)
+						.addColors(Constants.effectColors)
 						.setDirection(0D, 359D)
 						.setSpeed(4F, 8F)
 						.setFadeOutEnabled(true)
@@ -1968,6 +1967,21 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				break;
 			}
+			case Constants.appleSendStyleScrnLove:
+				currentScreenEffectPlaying = false;
+				break;
+			case Constants.appleSendStyleScrnLasers:
+				currentScreenEffectPlaying = false;
+				break;
+			case Constants.appleSendStyleScrnFireworks:
+				currentScreenEffectPlaying = false;
+				break;
+			case Constants.appleSendStyleScrnShootingStar:
+				currentScreenEffectPlaying = false;
+				break;
+			case Constants.appleSendStyleScrnCelebration:
+				currentScreenEffectPlaying = false;
+				break;
 			default:
 				currentScreenEffectPlaying = false;
 				break;

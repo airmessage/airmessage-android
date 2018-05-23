@@ -4,7 +4,11 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
+import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
@@ -12,10 +16,22 @@ import android.view.View;
 
 import java.util.Random;
 
+import me.tagavari.airmessage.ColorHelper;
+
 /**
  * Handles Apple's iMessage screen effects
  */
 public class AppleEffectView extends View {
+	//Creating the reference values
+	private static final int[] effectColors = {
+			0xFFFCE18A, //Yellow
+			0xFFFF726D, //Orange
+			0xFFB48DEF, //Purple
+			0xFFF4306D, //Pink
+			0xFF42A5F5, //Blue
+			0xFF7986CB //Indigo
+	};
+	
 	//Creating the view values
 	private int viewWidth, viewHeight;
 	
@@ -62,6 +78,14 @@ public class AppleEffectView extends View {
 		
 		//Setting the renderer
 		renderer = new EchoRenderer(bitmap);
+		
+		//Invalidating the view
+		invalidate();
+	}
+	
+	public void playBalloons() {
+		//Setting the renderer
+		renderer = new BalloonRenderer();
 		
 		//Invalidating the view
 		invalidate();
@@ -217,110 +241,148 @@ public class AppleEffectView extends View {
 		}
 	}
 	
-	/* private class BalloonRenderer extends EffectRenderer {
+	private class BalloonRenderer extends EffectRenderer {
 		//Creating the reference values
 		private static final int balloonCountMin = 4;
-		private static final int balloonCountMax = 6;
-		private static final int lifetime = 3 * 1000; //3 seconds
-		private static final float dpSquaredToBubbleCountRatio = 100F / 300441F; //100 bubbles on Nexus 5X
+		private static final int balloonCountMax = 8;
 		
 		//Creating the other values
 		private final Random random = new Random();
-		private final long startTime;
-		private int lastTimeLived = 0;
+		private int balloonCount ;
 		private final Balloon[] balloonList;
+		private final long startTime;
+		private long lastCheckTime;
 		
 		BalloonRenderer() {
 			//Recording the start time
-			startTime = getTime();
+			startTime = lastCheckTime = getTime();
 			
 			//Adding the balloons
-			balloonList = new Balloon[balloonCountMin + random.nextInt(balloonCountMax - balloonCountMin + 1)];
-			for(int i = 0; i < balloonList.length; i++) balloonList[i] = new Balloon();
+			balloonCount = balloonCountMin + random.nextInt(balloonCountMax - balloonCountMin + 1);
+			balloonList = new Balloon[balloonCount];
+			for(int i = 0; i < balloonCount; i++) balloonList[i] = new Balloon();
 		}
 		
-		private final RectF renderRectOut = new RectF();
 		@Override
 		void draw(Canvas canvas) {
-			//Calculating the time
+			//Calculating the times
 			int timeLived = (int) (getTime() - startTime);
-			int timeDiff = timeLived - lastTimeLived;
-			lastTimeLived = timeLived;
+			long currentTime = getTime();
+			int deltaTime = (int) (currentTime - lastCheckTime);
+			lastCheckTime = currentTime;
 			
-			//Checking if the time to live is up
-			if(timeLived >= lifetime) {
-				//Removing the renderer
-				resetRenderer();
-				return;
+			//Drawing the balloons (releasing them over a 1000-millisecond period)
+			for(int i = 0; i < Math.min(lerpInt(0, balloonList.length, (float) timeLived / 2000), balloonList.length); i++) {
+				balloonList[i].draw(canvas, deltaTime);
 			}
 			
-			//Iterating over the bubbles
-			for(int i = 0; i < Math.min(lerpInt(0, bubbleList.length, (float) timeLived / (float) (lifetime - Bubble.lifetimeTotal)), bubbleList.length); i++) {
-				//Getting the bubble
-				Bubble bubble = bubbleList[i];
-				
-				//Calculating the frame
-				float progress = bubble.calculateFrame(timeDiff, renderRectOut);
-				
-				//Skipping the remainder of the iteration if the particle isn't running
-				if(progress == 0) continue;
-				
-				//Creating the rectangle
-				canvas.drawBitmap(image, null, renderRectOut, null);
+			//Checking if there are no more balloons
+			if(balloonCount == 0) {
+				//Removing the renderer
+				resetRenderer();
 			}
 		}
 		
 		private class Balloon {
 			//Creating the reference values
-			private final float rotationOffset = 15;
-			private final float horizontalDistance = dpToPx(50);
-			private final float verticalDistance = dpToPx(60);
-			private final float yStartOffset = dpToPx(20);
-			private static final float scaleTarget = 1.2F;
+			private final float verticalSpeed = dpToPx(0.00006F);
+			private final float balloonHeadWidth = dpToPx(150 / 2);
+			private final float balloonHeadHeight = dpToPx(180 / 2);
+			private final float balloonTieSize = dpToPx(10);
+			private final float balloonStringLength = dpToPx(50);
 			
-			//Creating the other values
-			float posX;
-			float scale;
-			float rotation; //0 = upright
-			float velX, velY;
+			//Creating the size values
+			private float sVerticalSpeed;
+			private float sBalloonHeadWidth;
+			private float sBalloonHeadHeight;
+			private float sBalloonTieSize;
+			private float sBalloonStringLength;
+			
+			//Creating the paint values
+			private final Paint colorPaint;
+			private final Paint stemPaint;
+			
+			//Creating the state values
+			boolean isActive = true;
+			private final float posX;
+			int timeLived = 0;
 			
 			Balloon() {
-				generateState();
-			}
-			
-			void generateState() {
 				//Picking a location
-				posX = random.nextFloat();
-				scale = 0.5F + random.nextFloat(); //0.5 to 1.5
+				posX = random.nextFloat() * viewWidth;
 				
-				//Picking a rotation
-				rotation = 180F + (random.nextFloat() * rotationOffset * 2 - rotationOffset);
-				//float direction = random.nextFloat() * 2;
-				float rotationRad = (float) Math.toRadians(rotation);
-				velX = (float) Math.cos(rotationRad) - (float) Math.sin(rotationRad);
-				velY = (float) Math.sin(rotationRad) + (float) Math.cos(rotationRad);
+				//Scaling the values
+				float scale = 0.5F + random.nextFloat(); //0.5 to 1.5
+				sVerticalSpeed = verticalSpeed * scale;
+				sBalloonHeadWidth = balloonHeadWidth * scale;
+				sBalloonHeadHeight = balloonHeadHeight * scale;
+				sBalloonTieSize = balloonTieSize * scale;
+				sBalloonStringLength = balloonStringLength * scale;
+				
+				//Picking a color
+				int color = effectColors[random.nextInt(effectColors.length)];
+				
+				//Creating the paints
+				colorPaint = new Paint();
+				colorPaint.setAntiAlias(true);
+				colorPaint.setStyle(Paint.Style.FILL);
+				colorPaint.setShader(new LinearGradient(0, 0, sBalloonHeadWidth, sBalloonHeadHeight + sBalloonTieSize, ColorHelper.modifyColorMultiply(color, 1.2F), color, Shader.TileMode.CLAMP));
+				
+				stemPaint = new Paint();
+				stemPaint.setAntiAlias(true);
+				stemPaint.setShader(new LinearGradient(0, sBalloonHeadHeight + sBalloonTieSize, 0, sBalloonStringLength + sBalloonTieSize, 0xFFB0B0B0, 0xFF979797, Shader.TileMode.CLAMP));
 			}
 			
-			Path calculateFrame(int timePassed) {
+			void draw(Canvas canvas, int deltaTime) {
+				//Returning if the balloon is not isActive
+				if(!isActive) return;
+				
+				//Adding to the time
+				timeLived += deltaTime;
+				
 				//Calculating the position
-				float posXPx = posX * viewWidth + velX * timePassed;
-				float posYPx = viewHeight + yStartOffset + velY * timePassed;
+				float posY = (viewHeight + sBalloonHeadHeight / 2F) - (timeLived * timeLived * sVerticalSpeed);
 				
-				//Calculating the view scale
-				float scaleProgress = calcViewScaleProgress(absoluteProgress);
-				float scale = lerpFloat(0, scaleTarget, 1F - (1F - scaleProgress) * (1F - scaleProgress));
-				//float scale = lerpFloat(0, scaleTarget, scaleProgress);
+				if(posY + sBalloonHeadHeight / 2F + sBalloonTieSize + sBalloonStringLength < 0) {
+					//Deactivating the balloon
+					isActive = false;
+					BalloonRenderer.this.balloonCount--;
+					return;
+				}
 				
-				rectOut.left = posXPx - imageWidth * scale / 2F;
-				rectOut.right = posXPx + imageWidth * scale / 2F;
-				rectOut.top = posYPx - imageHeight * scale / 2F;
-				rectOut.bottom = posYPx + imageHeight * scale / 2F;
+				//Positioning the canvas
+				canvas.save();
+				canvas.translate(posX, posY);
 				
-				//Returning the view's alpha target
-				return absoluteProgress;
+				//Drawing the balloon head
+				canvas.drawOval(-sBalloonHeadWidth / 2F, -sBalloonHeadHeight / 2F, sBalloonHeadWidth / 2F, sBalloonHeadHeight / 2F, colorPaint);
+				{
+					Path path = new Path();
+					path.moveTo(0, sBalloonHeadHeight / 2F);
+					path.lineTo(sBalloonTieSize / 2F, sBalloonHeadHeight / 2F + sBalloonTieSize);
+					path.lineTo(-sBalloonTieSize / 2F, sBalloonHeadHeight / 2F + sBalloonTieSize);
+					path.close();
+					canvas.drawPath(path, colorPaint);
+				}
+				
+				//Drawing the balloon stem
+				canvas.drawLine(0, sBalloonHeadHeight / 2F + sBalloonTieSize, 0, sBalloonHeadHeight / 2F + sBalloonTieSize + sBalloonStringLength, stemPaint);
+				
+				//Restoring the canvas
+				canvas.restore();
 			}
+			
+			//Calls moveTo() on the path with the provided X and Y positions, taking into account the balloon's rotation
+			/* private void applyPath(Path path, float pointX, float pointY, boolean moveTo) {
+				//float pointXRotated = pointX;
+				//float pointYRotated = pointY;
+				float pointXRotated = (pointX) * (float) Math.cos(rotation) - (pointY) * (float) Math.sin(rotation);
+				float pointYRotated = (pointX) * (float) Math.sin(rotation) + (pointY) * (float) Math.cos(rotation);
+				if(moveTo) path.moveTo(pointXRotated, pointYRotated);
+				else path.lineTo(pointXRotated, pointYRotated);
+			} */
 		}
-	} */
+	}
 	
 	void resetRenderer() {
 		//Invalidating the renderer

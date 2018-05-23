@@ -2205,6 +2205,18 @@ class DatabaseManager extends SQLiteOpenHelper {
 		getWritableDatabase().delete(Contract.MemberEntry.TABLE_NAME, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MemberEntry.COLUMN_NAME_MEMBER + " = ?", new String[]{Long.toString(chatID), member});
 	}
 	
+	void clearAttachmentFiles() {
+		//Creating the content values
+		ContentValues contentValues = new ContentValues();
+		contentValues.putNull(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
+		
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
+		//Updating the database
+		database.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + " IS NOT NULL", null);
+	}
+	
 	/* void removeText(long messageID) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();

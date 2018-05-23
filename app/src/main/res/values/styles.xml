@@ -15,6 +15,10 @@
 		<item name="popupTheme">@style/ThemeOverlay.AppCompat.Light</item>
 	</style>
 	
+	<style name="LightToolbarText" parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Title">
+		<item name="android:fontFamily">sans-serif"</item>
+	</style>
+	
 	<style name="AppTheme.AppCompat" parent="@style/Theme.AppCompat.DayNight.DarkActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="android:colorPrimary">@color/colorPrimary</item>

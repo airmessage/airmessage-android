@@ -21,8 +21,8 @@ android {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
 		targetSdkVersion 27
-		versionCode 28
-		versionName "0.2.1.3"
+		versionCode 29
+		versionName "0.2.2"
 
 		resConfigs "en", "fr"
 	}
@@ -94,7 +94,7 @@ dependencies {
 
 	implementation "com.pnikosis:materialish-progress:1.7"
 	implementation "de.hdodenhof:circleimageview:2.2.0"
-	implementation "nl.dionsegijn:konfetti:1.1.1"
+	implementation "nl.dionsegijn:konfetti:1.1.2"
 	implementation "in.srain.cube:grid-view-with-header-footer:1.0.12"
 
 	//Services

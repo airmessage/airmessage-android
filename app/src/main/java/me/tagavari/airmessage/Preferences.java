@@ -29,6 +29,8 @@ import android.view.View;
 import com.takisoft.fix.support.v7.preference.RingtonePreference;
 import com.takisoft.fix.support.v7.preference.RingtonePreferenceDialogFragmentCompat;
 
+import java.util.List;
+
 public class Preferences extends AppCompatActivity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -117,10 +119,27 @@ public class Preferences extends AppCompatActivity {
 					})
 					//Setting the positive button
 					.setPositiveButton(R.string.action_delete, (DialogInterface dialogInterface, int which) -> {
-								//Deleting the attachments
-								new ConversationsBase.DeleteAttachmentsTask(getActivity().getApplicationContext()).execute();
+						//Clearing the attachments in memory
+						List<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+						if(conversations != null) {
+							for(ConversationManager.ConversationInfo conversationInfo : conversations) {
+								List<ConversationManager.ConversationItem> conversationItems = conversationInfo.getConversationItems();
+								if(conversationItems == null) continue;
+								for(ConversationManager.ConversationItem item : conversationItems) {
+									if(!(item instanceof ConversationManager.MessageInfo)) continue;
+									for(ConversationManager.AttachmentInfo attachmentInfo : ((ConversationManager.MessageInfo) item).getAttachments()) {
+										attachmentInfo.discardFile(getActivity());
+									}
+								}
 							}
-					)
+						}
+						
+						//Displaying a snackbar
+						Snackbar.make(getView(), R.string.message_confirm_deleteattachments_started, Snackbar.LENGTH_SHORT).show();
+						
+						//Deleting the attachment files on disk and in the database
+						new ConversationsBase.DeleteAttachmentsTask(getActivity().getApplicationContext()).execute();
+					})
 					//Creating the dialog
 					.create();
 			
@@ -144,6 +163,9 @@ public class Preferences extends AppCompatActivity {
 					.setPositiveButton(R.string.action_delete, (DialogInterface dialogInterface, int which) -> {
 						//Deleting the messages
 						new ConversationsBase.DeleteMessagesTask(getActivity().getApplicationContext()).execute();
+						
+						//Displaying a snackbar
+						Snackbar.make(getView(), R.string.message_confirm_deletemessages_started, Snackbar.LENGTH_SHORT).show();
 					})
 					//Creating the dialog
 					.create();
@@ -168,7 +190,7 @@ public class Preferences extends AppCompatActivity {
 			//Checking if there is already a mass retrieval in progress
 			if(service.isMassRetrievalInProgress()) {
 				//Displaying a snackbar
-				Snackbar.make(getView(), R.string.message_confirm_resyncmessages_inprogress, Snackbar.LENGTH_LONG).show();
+				Snackbar.make(getView(), R.string.message_confirm_resyncmessages_inprogress, Snackbar.LENGTH_SHORT).show();
 				
 				//Returning
 				return true;

@@ -2259,6 +2259,8 @@ class ConversationManager {
 					return Constants.messageErrorCodeAirExpired;
 				case ConnectionService.messageSendReferencesLost:
 					return Constants.messageErrorCodeAirReferences;
+				case ConnectionService.messageSendInternalException:
+					return Constants.messageErrorCodeAirInternal;
 				default:
 					throw new UnsupportedOperationException("Received upload request error code (" + code + ") which is out of range");
 			}
@@ -2676,6 +2678,14 @@ class ConversationManager {
 					case Constants.messageErrorCodeAirReferences:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_references);
+						
+						//Enabling the retry button
+						showRetryButton = true;
+						
+						break;
+					case Constants.messageErrorCodeAirInternal:
+						//Setting the message
+						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_internal);
 						
 						//Enabling the retry button
 						showRetryButton = true;
@@ -4589,8 +4599,8 @@ class ConversationManager {
 	static class AudioAttachmentInfo extends AttachmentInfo<AudioAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
-		static final String MIME_PREFIX = "image";
-		static final int RESOURCE_NAME = R.string.part_content_image;
+		static final String MIME_PREFIX = "audio";
+		static final int RESOURCE_NAME = R.string.part_content_audio;
 		
 		private static final int resDrawablePlay = R.drawable.play;
 		private static final int resDrawablePause = R.drawable.pause;
@@ -4854,8 +4864,8 @@ class ConversationManager {
 	static class VideoAttachmentInfo extends AttachmentInfo<VideoAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
-		static final String MIME_PREFIX = "image";
-		static final int RESOURCE_NAME = R.string.part_content_image;
+		static final String MIME_PREFIX = "video";
+		static final int RESOURCE_NAME = R.string.part_content_video;
 		
 		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
 			super(localID, guid, message, fileName, fileType);
