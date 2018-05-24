@@ -76,6 +76,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -142,21 +143,6 @@ public class ConnectionService extends Service {
 	static int lastConnectionResult = -1;
 	private boolean flagMarkEndTime = false; //Marks the time that the connection is closed, so that missed messages can be fetched since that time when reconnecting
 	private boolean flagDropReconnect = false; //Automatically starts a new connection when the connection is closed
-	private boolean massRetrievalInProgress = false;
-	private int massRetrievalProgress = -1; //Current mass retrieval progress (amount of conversations + messages)
-	private int massRetrievalProgressCount = -1; //Total mass retrieval potential (amount of conversations + messages)
-	private final Handler massRetrievalTimeoutHandler = new Handler();
-	private final Runnable massRetrievalTimeoutRunnable = () -> {
-		//Returning if the state matches
-		if(!massRetrievalInProgress) return;
-		
-		//Setting the variable
-		massRetrievalInProgress = false;
-		
-		//Sending a broadcast
-		LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalFailed));
-	};
-	private static final long massRetrievalTimeout = 60 * 1000; //1 minute
 	private int activeCommunicationsVersion = -1;
 	
 	//private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
@@ -167,6 +153,8 @@ public class ConnectionService extends Service {
 	
 	private final BlockingQueue<QueueTask<?, ?>> messageProcessingQueue = new LinkedBlockingQueue<>();
 	private AtomicBoolean messageProcessingQueueThreadRunning = new AtomicBoolean(false);
+	
+	private MassRetrievalThread massRetrievalThread = null;
 	
 	private final List<FileDownloadRequest> fileDownloadRequests = new ArrayList<>();
 	
@@ -517,6 +505,7 @@ public class ConnectionService extends Service {
 	
 	/**
 	 * Sends a broadcast to the listeners
+	 *
 	 * @param state the state of the connection
 	 * @param code the error code, if the state is disconnected
 	 * @param launchID the launch ID of the connection
@@ -532,6 +521,7 @@ public class ConnectionService extends Service {
 	private static abstract class Packager {
 		/**
 		 * Prepares data before being sent, usually by compressing it
+		 *
 		 * @param data the unpackaged data to be sent
 		 * @param length the length of the data in the array
 		 * @return the packaged data, or null if the process was unsuccessful
@@ -540,6 +530,7 @@ public class ConnectionService extends Service {
 		
 		/**
 		 * Reverts received data transmissions, usually be decompressing it
+		 *
 		 * @param data the packaged data
 		 * @return the unpackaged data, or null if the process was unsuccessful
 		 */
@@ -555,6 +546,7 @@ public class ConnectionService extends Service {
 		
 		/**
 		 * Connects to the server
+		 *
 		 * @param launchID an ID to represent and track this connection
 		 * @return whether or not the request was successful
 		 */
@@ -576,30 +568,35 @@ public class ConnectionService extends Service {
 		
 		/**
 		 * Get the current state of the connection manager
+		 *
 		 * @return an integer representing the state
 		 */
 		abstract int getState();
 		
 		/**
 		 * Sends a ping packet to the server
+		 *
 		 * @return whether or not the message was successfuly sent
 		 */
 		abstract boolean sendPing();
 		
 		/**
 		 * Gets a packager for processing transferable data via this protocol version
+		 *
 		 * @return the packager
 		 */
 		abstract Packager getPackager();
 		
 		/**
 		 * Returns the hash algorithm to use with this protocol
+		 *
 		 * @return the hash algorithm
 		 */
 		abstract String getHashAlgorithm();
 		
 		/**
 		 * Requests a message to be sent to the specified conversation
+		 *
 		 * @param requestID the ID of the request
 		 * @param chatGUID the GUID of the target conversation
 		 * @param message the message to send
@@ -609,6 +606,7 @@ public class ConnectionService extends Service {
 		
 		/**
 		 * Requests a message to be send to the specified conversation members via the service
+		 *
 		 * @param requestID the ID of the request
 		 * @param chatMembers the members to send the message to
 		 * @param message the message to send
@@ -619,6 +617,7 @@ public class ConnectionService extends Service {
 		
 		/**
 		 * Requests the download of a remote attachment
+		 *
 		 * @param requestID the ID of the request
 		 * @return whether or not the request was successful
 		 */
@@ -626,6 +625,7 @@ public class ConnectionService extends Service {
 		
 		/**
 		 * Uploads a file chunk to be sent to the specified conversation
+		 *
 		 * @param requestID the ID of the request
 		 * @param requestIndex the index of the request
 		 * @param conversationGUID the conversation to send the file to
@@ -638,6 +638,7 @@ public class ConnectionService extends Service {
 		
 		/**
 		 * Uploads a file chunk to be sent to the specified conversation members
+		 *
 		 * @param requestID the ID of the request
 		 * @param requestIndex the index of the request
 		 * @param conversationMembers the members of the conversation to send the file to
@@ -651,6 +652,7 @@ public class ConnectionService extends Service {
 		
 		/**
 		 * Sends a request to fetch conversation information
+		 *
 		 * @param list the list of conversation requests
 		 * @return whether or not the request was successfully sent
 		 */
@@ -658,6 +660,7 @@ public class ConnectionService extends Service {
 		
 		/**
 		 * Requests a time range-based message retrieval
+		 *
 		 * @param timeLower the lower time range limit
 		 * @param timeUpper the upper time range limit
 		 * @return whether or not the request was successfully sent
@@ -666,12 +669,14 @@ public class ConnectionService extends Service {
 		
 		/**
 		 * Requests a mass message retrieval
+		 *
 		 * @return whether or not the request was successfully sent
 		 */
 		abstract boolean requestRetrievalAll();
 		
 		/**
 		 * Checks if the specified communications version is applicable
+		 *
 		 * @param version the major communications version to check
 		 * @return 0 if the version is applicable, -1 if the version is too old, 1 if the version is too new
 		 */
@@ -679,6 +684,7 @@ public class ConnectionService extends Service {
 		
 		/**
 		 * Forwards a request to the next connection manager
+		 *
 		 * @param launchID an ID used to identify connection attempts
 		 * @param thread whether or not to use a new thread
 		 * @return if the request was forwarded
@@ -697,12 +703,14 @@ public class ConnectionService extends Service {
 		abstract class ProtocolManager {
 			/**
 			 * Sends a ping packet to the server
+			 *
 			 * @return whether or not the message was successfuly sent
 			 */
 			abstract boolean sendPing();
 			
 			/**
 			 * Handles incoming data received from the server
+			 *
 			 * @param messageType header data representing the message type
 			 * @param data the raw data received from the network
 			 */
@@ -710,6 +718,7 @@ public class ConnectionService extends Service {
 			
 			/**
 			 * Requests a message to be sent to the specified conversation
+			 *
 			 * @param requestID the ID of the request
 			 * @param chatGUID the GUID of the target conversation
 			 * @param message the message to send
@@ -719,6 +728,7 @@ public class ConnectionService extends Service {
 			
 			/**
 			 * Requests a message to be send to the specified conversation members via the service
+			 *
 			 * @param requestID the ID of the request
 			 * @param chatMembers the members to send the message to
 			 * @param message the message to send
@@ -729,6 +739,7 @@ public class ConnectionService extends Service {
 			
 			/**
 			 * Requests the download of a remote attachment
+			 *
 			 * @param requestID the ID of the request
 			 * @return whether or not the request was successful
 			 */
@@ -736,6 +747,7 @@ public class ConnectionService extends Service {
 			
 			/**
 			 * Uploads a file chunk to be sent to the specified conversation
+			 *
 			 * @param requestID the ID of the request
 			 * @param requestIndex the index of the request
 			 * @param conversationGUID the conversation to send the file to
@@ -748,6 +760,7 @@ public class ConnectionService extends Service {
 			
 			/**
 			 * Uploads a file chunk to be sent to the specified conversation members
+			 *
 			 * @param requestID the ID of the request
 			 * @param requestIndex the index of the request
 			 * @param conversationMembers the members of the conversation to send the file to
@@ -761,6 +774,7 @@ public class ConnectionService extends Service {
 			
 			/**
 			 * Sends a request to fetch conversation information
+			 *
 			 * @param list the list of conversation requests
 			 * @return whether or not the request was successfully sent
 			 */
@@ -768,6 +782,7 @@ public class ConnectionService extends Service {
 			
 			/**
 			 * Requests a time range-based message retrieval
+			 *
 			 * @param timeLower the lower time range limit
 			 * @param timeUpper the upper time range limit
 			 * @return whether or not the request was successfully sent
@@ -776,30 +791,35 @@ public class ConnectionService extends Service {
 			
 			/**
 			 * Requests a mass message retrieval
+			 *
 			 * @return whether or not the request was successfully sent
 			 */
 			abstract boolean requestRetrievalAll();
 			
 			/**
 			 * Gets a packager for processing transferable data via this protocol version
+			 *
 			 * @return the packager
 			 */
 			abstract Packager getPackager();
 			
 			/**
 			 * Returns the hash algorithm to use with this protocol
+			 *
 			 * @return the hash algorithm
 			 */
 			abstract String getHashAlgorithm();
 			
 			/**
 			 * Returns the charset used when serializing strings
+			 *
 			 * @return the charset
 			 */
 			abstract String getCharset();
 			
 			/**
 			 * Checks if the specified sub-communications version is applicable
+			 *
 			 * @param version the minor communications version to check
 			 * @return whether or not this protocol manager can handle the specified version
 			 */
@@ -827,6 +847,7 @@ public class ConnectionService extends Service {
 		private static final int nhtMessageUpdate = 2;
 		private static final int nhtTimeRetrieval = 3;
 		private static final int nhtMassRetrieval = 4;
+		private static final int nhtMassRetrievalFinish = 10;
 		private static final int nhtConversationUpdate = 5;
 		private static final int nhtModifierUpdate = 6;
 		private static final int nhtAttachmentReq = 7;
@@ -986,14 +1007,10 @@ public class ConnectionService extends Service {
 			//Invalidating the protocol manager
 			protocolManager = null;
 			
-			new Handler(Looper.getMainLooper()).post(() -> {
-				//Cancelling the mass retrieval if there is one in progress
-				if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
-			});
+			new Handler(Looper.getMainLooper()).post(ConnectionService.this::cancelMassRetrieval);
 			
 			//Attempting to connect via the legacy method
 			if(!forwardRequest || !forwardRequest(launchID, true)) {
-				Thread.dumpStack();
 				new Handler(Looper.getMainLooper()).post(() -> {
 					//Checking if this is the most recent launch
 					if(currentLaunchID == launchID) {
@@ -1137,6 +1154,8 @@ public class ConnectionService extends Service {
 					return null;
 				case 1:
 					return new ClientProtocol1();
+				case 2:
+					return new ClientProtocol2();
 			}
 		}
 		
@@ -1425,7 +1444,7 @@ public class ConnectionService extends Service {
 						
 						//Finishing the connection establishment if the handshake was successful
 						if(resultCode == intentResultCodeSuccess) updateStateConnected();
-						//Otherwise terminating the connection
+							//Otherwise terminating the connection
 						else connectionThread.closeConnection(resultCode, resultCode == intentResultCodeBadRequest); //Only forward the request if the request couldn't be processed (an unauthorized response means that the server could understand the request)
 						
 						break;
@@ -1901,6 +1920,68 @@ public class ConnectionService extends Service {
 			@Override
 			boolean checkSubVerApplicability(int version) {
 				return version == 1;
+			}
+		}
+		
+		private class ClientProtocol2 extends ClientProtocol1 {
+			@Override
+			void processData(int messageType, byte[] data) {
+				//Checking if the message type is a mass retrieval
+				switch(messageType) {
+					case nhtMassRetrieval: {
+						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
+							//Reading the packet index
+							int packetIndex = in.readInt();
+							
+							//Reading the secure data
+							SharedValues.EncryptableData dataSec = (SharedValues.EncryptableData) in.readObject();
+							dataSec.decrypt(password);
+							
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+								//Checking if this is the first packet
+								if(packetIndex == 0) {
+									//Reading the conversation list
+									int count = inSec.readInt();
+									List<SharedValues.ConversationInfo> conversationList = new ArrayList<>(count);
+									for(int i = 0; i < count; i++) conversationList.add((SharedValues.ConversationInfo) inSec.readObject());
+									
+									//Reading the message count
+									int messageCount = inSec.readInt();
+									
+									//Registering the mass retrieval manager
+									if(massRetrievalThread != null) massRetrievalThread.registerInfo(ConnectionService.this, conversationList, messageCount);
+								} else {
+									//Reading the item list
+									int count = inSec.readInt();
+									List<SharedValues.ConversationItem> listItems = new ArrayList<>(count);
+									for(int i = 0; i < count; i++) listItems.add((SharedValues.ConversationItem) inSec.readObject());
+									
+									//Processing the packet
+									if(massRetrievalThread != null) massRetrievalThread.addPacket(ConnectionService.this, packetIndex, listItems);
+								}
+							}
+						} catch(IOException | RuntimeException | ClassNotFoundException | GeneralSecurityException exception) {
+							//Logging the exception
+							exception.printStackTrace();
+							
+							//Cancelling the mass retrieval process
+							massRetrievalThread.cancel(ConnectionService.this);
+						}
+						
+						break;
+					}
+					case nhtMassRetrievalFinish: {
+						//Finishing the mass retrieval
+						if(massRetrievalThread != null) massRetrievalThread.finish();
+						
+						break;
+					}
+					default:
+						//Forwarding the request to the super protocol
+						super.processData(messageType, data);
+						
+						break;
+				}
 			}
 		}
 	}
@@ -2438,12 +2519,12 @@ public class ConnectionService extends Service {
 				//Stopping the timers
 				if(authenticationExpiryTimer != null) authenticationExpiryTimer.cancel();
 				
+				//Cancelling the mass retrieval
+				new Handler(Looper.getMainLooper()).post(ConnectionService.this::cancelMassRetrieval);
+				
 				//Attempting to connect via the legacy method
 				if(!forwardRequest || !forwardRequest(launchID, true)) {
 					new Handler(Looper.getMainLooper()).post(() -> {
-						//Cancelling the mass retrieval if there is one in progress
-						if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
-						
 						//Checking if this is the most recent launch
 						if(currentLaunchID == launchID) {
 							//Setting the last connection result
@@ -3357,12 +3438,12 @@ public class ConnectionService extends Service {
 			
 			@Override
 			public boolean equals(Object o) {
-				if( this == o ) return true;
-				if( o == null || getClass() != o.getClass() ) return false;
+				if(this == o) return true;
+				if(o == null || getClass() != o.getClass()) return false;
 				
-				DraftMMS that = ( DraftMMS ) o;
+				DraftMMS that = (DraftMMS) o;
 				
-				return getExtension() != null ? getExtension().equals( that.getExtension() ) : that.getExtension() == null;
+				return getExtension() != null ? getExtension().equals(that.getExtension()) : that.getExtension() == null;
 			}
 			
 			@Override
@@ -3463,7 +3544,7 @@ public class ConnectionService extends Service {
 						}
 						case wsFrameMassRetrieval: { //Mass retrieval
 							//Breaking if the client isn't looking for a mass retrieval
-							if(!massRetrievalInProgress) break;
+							//if(!massRetrievalInProgress) break;
 							
 							//Reading the data
 							final ArrayList<SharedValues.ConversationItem> receivedItems = (ArrayList<SharedValues.ConversationItem>) in.readObject();
@@ -3575,7 +3656,7 @@ public class ConnectionService extends Service {
 			@Override
 			public void onClose(int uselessCode, String reasonString, boolean remote) {
 				//Cancelling the mass retrieval if there is one in progress
-				if(massRetrievalInProgress && massRetrievalProgress == -1) cancelMassRetrieval();
+				cancelMassRetrieval();
 				
 				//Checking if this is the most recent launch
 				if(currentLaunchID == launchID) {
@@ -3714,21 +3795,27 @@ public class ConnectionService extends Service {
 	}
 	
 	private void processMassRetrievalResult(List<SharedValues.ConversationItem> structConversationItems, List<SharedValues.ConversationInfo> structConversations) {
-		//Stopping the timeout timer
+		/* //Stopping the timeout timer
 		massRetrievalTimeoutHandler.removeCallbacks(massRetrievalTimeoutRunnable);
 		
 		//Calculating the progress
 		massRetrievalProgress = 0;
-		massRetrievalProgressCount = structConversationItems.size() + structConversations.size();
+		massRetrievalProgressCount = structConversationItems.size() + structConversations.size(); */
+		
+		//Adding the data
+		if(massRetrievalThread == null) return;
+		massRetrievalThread.registerInfo(this, structConversations, structConversationItems.size());
+		massRetrievalThread.addPacket(this, 1, structConversationItems);
+		massRetrievalThread.finish();
 		
 		//Sending a progress message
-		LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval)
+		/* LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval)
 				.putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress)
-				.putExtra(Constants.intentParamSize, massRetrievalProgressCount));
+				.putExtra(Constants.intentParamSize, massRetrievalProgressCount)); */
 		
 		//Creating and running the task
 		//new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations).execute();
-		addMessagingProcessingTask(new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations));
+		//addMessagingProcessingTask(new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations));
 	}
 	
 	private void processChatInfoResponse(List<SharedValues.ConversationInfo> structConversations) {
@@ -3741,7 +3828,7 @@ public class ConnectionService extends Service {
 			//Finding the conversation in the pending list
 			ConversationInfoRequest request = null;
 			synchronized(pendingConversations) {
-				for(Iterator<ConversationInfoRequest> iterator = pendingConversations.iterator(); iterator.hasNext();) {
+				for(Iterator<ConversationInfoRequest> iterator = pendingConversations.iterator(); iterator.hasNext(); ) {
 					//Getting the current request
 					ConversationInfoRequest allRequests = iterator.next();
 					
@@ -3824,15 +3911,21 @@ public class ConnectionService extends Service {
 	}
 	
 	boolean isMassRetrievalInProgress() {
-		return massRetrievalInProgress;
+		return massRetrievalThread != null && massRetrievalThread.isInProgress();
+	}
+	
+	boolean isMassRetrievalWaiting() {
+		return massRetrievalThread != null && massRetrievalThread.isWaiting();
 	}
 	
 	int getMassRetrievalProgress() {
-		return massRetrievalProgress;
+		if(massRetrievalThread == null) return -1;
+		return massRetrievalThread.getProgress();
 	}
 	
 	int getMassRetrievalProgressCount() {
-		return massRetrievalProgressCount;
+		if(massRetrievalThread == null) return -1;
+		return massRetrievalThread.getProgressCount();
 	}
 	
 	//Creating the constants
@@ -3887,10 +3980,11 @@ public class ConnectionService extends Service {
 	}
 	
 	FileDownloadRequest.ProgressStruct updateDownloadRequestAttachment(long attachmentID, FileDownloadRequestCallbacks callbacks) {
-		for(FileDownloadRequest request : fileDownloadRequests) if(request.attachmentID == attachmentID) {
-			request.callbacks = callbacks;
-			return request.getProgress();
-		}
+		for(FileDownloadRequest request : fileDownloadRequests)
+			if(request.attachmentID == attachmentID) {
+				request.callbacks = callbacks;
+				return request.getProgress();
+			}
 		return null;
 	}
 	
@@ -4000,8 +4094,7 @@ public class ConnectionService extends Service {
 		
 		private static final long timeoutDelay = 20 * 1000; //20-second delay
 		private final Handler handler = new Handler(Looper.getMainLooper());
-		private final Runnable timeoutRunnable = this::failDownload;
-		
+
 		void startTimer() {
 			handler.postDelayed(timeoutRunnable, timeoutDelay);
 		}
@@ -4048,11 +4141,12 @@ public class ConnectionService extends Service {
 			lastProgress = 0;
 			callbacks.onProgress(progress);
 		}
-		
 		AttachmentWriter attachmentWriterThread = null;
+		private final Runnable timeoutRunnable = this::failDownload;
 		boolean isWaiting = true;
 		int lastIndex = -1;
 		float lastProgress = 0;
+		
 		private void processFileFragment(Context context, final byte[] compressedBytes, int index, boolean isLast, Packager packager) {
 			//Setting the state to receiving if it isn't already
 			if(isWaiting) {
@@ -4254,7 +4348,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	static class FileUploadRequestThread extends Thread {
+	private static class FileUploadRequestThread extends Thread {
 		//Creating the constants
 		private final float copyProgressValue = 0.2F;
 		
@@ -4335,7 +4429,7 @@ public class ConnectionService extends Service {
 					
 					try {
 						//Creating the targets
-						if(!targetFile.getParentFile().mkdir()) throw new IOException();
+						if(!targetFile.getParentFile().mkdir()) throw new IOException("Couldn't make directory");
 						//if(!targetFile.createNewFile()) throw new IOException();
 					} catch(IOException exception) {
 						//Printing the stack trace
@@ -4617,6 +4711,235 @@ public class ConnectionService extends Service {
 		} */
 	}
 	
+	private static class MassRetrievalThread extends Thread {
+		//Creating the reference values
+		static final long startTimeout = 40 * 1000; //The timeout duration directly after requesting a mass retrieval - 40 seconds
+		static final long intervalTimeout = 10 * 1000; //The timeout duration between message packets - 10 seconds
+		
+		private static final int stateWaiting = 0;
+		private static final int stateRegistered = 1;
+		private static final int stateDownloading = 2;
+		private static final int stateFailed = 3;
+		private static final int stateFinished = 4;
+		
+		//Creating the start information
+		private int currentState = stateWaiting;
+		private final WeakReference<Context> contextReference;
+		private final WeakReference<ConnectionService> parentReference;
+		private List<SharedValues.ConversationInfo> conversationList;
+		private int messageCount;
+		private final AtomicInteger atomicMessageProgress = new AtomicInteger();
+		
+		//Creating the timer values
+		private final Handler handler = new Handler();
+		private final Runnable callbackFail;
+		
+		//Creating the packet values
+		private int lastMessagePacketIndex = 0;
+		private final BlockingQueue<MessagePacket> messagePacketQueue = new LinkedBlockingQueue<>();
+		
+		MassRetrievalThread(Context context, ConnectionService parent) {
+			//Establishing the references
+			contextReference = new WeakReference<>(context);
+			parentReference = new WeakReference<>(parent);
+			
+			//Sending a start broadcast
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalStarted));
+			
+			//Starting the timeout timer
+			callbackFail = () -> {
+				Context newContext = contextReference.get();
+				if(newContext != null) cancel(newContext);
+			};
+			handler.postDelayed(callbackFail, startTimeout);
+			
+			//Setting the state
+			currentState = stateWaiting;
+		}
+		
+		void registerInfo(Context context, List<SharedValues.ConversationInfo> conversationList, int messageCount) {
+			//Handling the state
+			if(currentState != stateWaiting) return;
+			currentState = stateRegistered;
+			
+			//Setting the information
+			this.conversationList = conversationList;
+			this.messageCount = messageCount;
+			
+			//Restarting the timeout timer with the packet delay
+			handler.removeCallbacks(callbackFail);
+			handler.postDelayed(callbackFail, intervalTimeout);
+			
+			//Sending a broadcast
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress).putExtra(Constants.intentParamSize, messageCount));
+			
+			//Starting the thread
+			start();
+		}
+		
+		void addPacket(Context context, int index, List<SharedValues.ConversationItem> itemList) {
+			//Handling the state
+			if(currentState != stateDownloading && currentState != stateRegistered) return;
+			currentState = stateDownloading;
+			
+			//Checking if the indices don't line up or the list is invalid
+			if(lastMessagePacketIndex + 1 != index || itemList == null) {
+				//Cancelling the task
+				cancel(context);
+				
+				//Returning
+				return;
+			}
+			
+			//Updating the counters
+			lastMessagePacketIndex = index;
+			
+			//Restarting the timeout timer
+			handler.removeCallbacks(callbackFail);
+			handler.postDelayed(callbackFail, intervalTimeout);
+			
+			//Queueing the packet
+			messagePacketQueue.add(new MessagePacket(itemList));
+		}
+		
+		void finish() {
+			//Handling the state
+			if(currentState != stateDownloading && currentState != stateRegistered) return;
+			currentState = stateFinished;
+			
+			//Stopping the timeout timer
+			handler.removeCallbacks(callbackFail);
+			
+			//Queueing a finish flag packet (to use as a message that the process is finished)
+			messagePacketQueue.add(new MessagePacket());
+		}
+		
+		void cancel(Context context) {
+			//Returning if there is no mass retrieval in progress
+			if(!isInProgress()) return;
+			
+			//Setting the state
+			currentState = stateFailed;
+			
+			//Stopping the timeout timer
+			handler.removeCallbacks(callbackFail);
+			
+			//Sending a state broadcast
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalFailed));
+			
+			//Updating the state
+			currentState = stateFailed;
+			
+			//Interrupting the thread if it is running
+			interrupt();
+		}
+		
+		@Override
+		public void run() {
+			//Writing the conversations to disk
+			List<ConversationManager.ConversationInfo> conversationInfoList = new ArrayList<>();
+			{
+				Context context = contextReference.get();
+				if(context == null) return;
+				
+				for(SharedValues.ConversationInfo structConversation : conversationList) {
+					conversationInfoList.add(DatabaseManager.getInstance().addReadyConversationInfo(context, structConversation));
+				}
+			}
+			
+			//Reading from the queue
+			int messageCountReceived = 0;
+			try {
+				while(!isInterrupted()) {
+					//Getting the list
+					MessagePacket messagePacket = messagePacketQueue.take();
+					
+					//Checking if the packet is a finish flag
+					if(messagePacket.isFinishFlag()) {
+						//Sorting the conversations
+						Collections.sort(conversationInfoList, ConversationManager.conversationComparator);
+						
+						//Running on the main thread
+						handler.post(() -> {
+							//Getting the context
+							Context context = contextReference.get();
+							if(context == null) return;
+							
+							//Setting the conversations in memory
+							ArrayList<ConversationManager.ConversationInfo> sharedConversations = ConversationManager.getConversations();
+							if(sharedConversations != null) {
+								sharedConversations.clear();
+								sharedConversations.addAll(conversationInfoList);
+							}
+							
+							//Sending the mass retrieval broadcast
+							LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalFinished));
+							
+							//Updating the conversation activity list
+							LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+							
+							//Setting the current state
+							currentState = stateFinished;
+						});
+						
+						//Returning
+						return;
+					}
+					
+					//Getting the context
+					Context context = contextReference.get();
+					if(context == null) return;
+					
+					//Adding the messages
+					for(SharedValues.ConversationItem structItem : messagePacket.getList()) {
+						//Cleaning the conversation item
+						cleanConversationItem(structItem);
+						
+						//Finding the parent conversation
+						ConversationManager.ConversationInfo parentConversation = null;
+						for(ConversationManager.ConversationInfo conversationInfo : conversationInfoList) {
+							if(!structItem.chatGuid.equals(conversationInfo.getGuid())) continue;
+							parentConversation = conversationInfo;
+						}
+						if(parentConversation == null) continue;
+						
+						//Writing the item
+						ConversationManager.ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItem(structItem, parentConversation);
+						if(conversationItem == null) continue;
+						
+						//Updating the parent conversation's last item
+						if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
+							parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context));
+					}
+					
+					//Updating the progress
+					messageCountReceived += messagePacket.getList().size();
+					atomicMessageProgress.set(messageCountReceived);
+					LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress).putExtra(Constants.intentParamProgress, messageCountReceived));
+					
+				}
+			} catch(InterruptedException exception) {
+				exception.printStackTrace();
+			}
+		}
+		
+		int getProgress() {
+			return atomicMessageProgress.get();
+		}
+		
+		int getProgressCount() {
+			return messageCount;
+		}
+		
+		boolean isInProgress() {
+			return currentState == stateWaiting || currentState == stateRegistered || currentState == stateDownloading;
+		}
+		
+		boolean isWaiting() {
+			return currentState == stateWaiting;
+		}
+	}
+	
 	boolean sendMessage(String chatGUID, String message, MessageResponseManager responseListener) {
 		//Checking if the client isn't ready
 		if(getCurrentState() != stateConnected) {
@@ -4699,9 +5022,9 @@ public class ConnectionService extends Service {
 		return true;
 	}
 	
-	boolean requestMassRetrieval(Context context) {
+	boolean requestMassRetrieval() {
 		//Returning false if the client isn't ready or a mass retrieval is already in progress
-		if(massRetrievalInProgress || getCurrentState() != stateConnected) return false;
+		if((massRetrievalThread != null && massRetrievalThread.isInProgress()) || getCurrentState() != stateConnected) return false;
 		
 		//Sending the request
 		boolean result = currentConnectionManager.requestRetrievalAll();
@@ -4709,32 +5032,42 @@ public class ConnectionService extends Service {
 		//Validating the result
 		if(!result) return false;
 		
-		//Setting the mass retrieval values
-		massRetrievalInProgress = true;
-		
-		//Starting the timeout
-		massRetrievalTimeoutHandler.postDelayed(massRetrievalTimeoutRunnable, massRetrievalTimeout);
-		
-		//Resetting the progress
-		massRetrievalProgress = -1;
-		massRetrievalProgressCount = -1;
+		//Starting the mass retrieval manager thread thing
+		massRetrievalThread = new MassRetrievalThread(getApplicationContext(), this);
 		
 		//Sending the broadcast
-		LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalStarted));
+		//LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalStarted));
 		
 		//Returning true
 		return true;
 	}
 	
 	private void cancelMassRetrieval() {
-		//Setting the variable
-		massRetrievalInProgress = false;
+		//Forwarding the request
+		if(massRetrievalThread != null) massRetrievalThread.cancel(this);
+	}
+	
+	private static class MessagePacket {
+		private final boolean isFinishFlag;
+		private final List<SharedValues.ConversationItem> messageList;
 		
-		//Sending a broadcast
-		LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalFailed));
+		MessagePacket() {
+			isFinishFlag = true;
+			messageList = null;
+		}
 		
-		//Stopping the timeout timer
-		massRetrievalTimeoutHandler.removeCallbacks(massRetrievalTimeoutRunnable);
+		MessagePacket(List<SharedValues.ConversationItem> messageList) {
+			isFinishFlag = false;
+			this.messageList = messageList;
+		}
+		
+		boolean isFinishFlag() {
+			return isFinishFlag;
+		}
+		
+		List<SharedValues.ConversationItem> getList() {
+			return messageList;
+		}
 	}
 	
 	/* boolean sendFile(short requestID, int requestIndex, String chatGUID, byte[] fileBytes, String fileName, boolean isLast, MessageResponseManager responseListener) {
@@ -5156,8 +5489,7 @@ public class ConnectionService extends Service {
 					//Adding or removing the member on disk
 					if(groupActionInfo.actionType == Constants.groupActionInvite) {
 						DatabaseManager.getInstance().addConversationMember(parentConversation.getLocalID(), groupActionInfo.other, groupActionInfo.color = parentConversation.getNextUserColor());
-					}
-					else if(groupActionInfo.actionType == Constants.groupActionLeave) DatabaseManager.getInstance().removeConversationMember(parentConversation.getLocalID(), groupActionInfo.other);
+					} else if(groupActionInfo.actionType == Constants.groupActionLeave) DatabaseManager.getInstance().removeConversationMember(parentConversation.getLocalID(), groupActionInfo.other);
 				} else if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) {
 					//Writing the new title to the database
 					DatabaseManager.getInstance().updateConversationTitle(((ConversationManager.ChatRenameActionInfo) conversationItem).title, parentConversation.getLocalID());
@@ -5307,7 +5639,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	private static class MassRetrievalAsyncTask extends QueueTask<Integer, List<ConversationManager.ConversationInfo>> {
+	/* private static class MassRetrievalAsyncTask extends QueueTask<Integer, List<ConversationManager.ConversationInfo>> {
 		//Creating the task values
 		private final WeakReference<ConnectionService> serviceReference;
 		private final WeakReference<Context> contextReference;
@@ -5413,10 +5745,9 @@ public class ConnectionService extends Service {
 			
 			//Updating the conversation activity list
 			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-			/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
-				callbacks.updateList(false); */
+			//for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks()) callbacks.updateList(false);
 		}
-	}
+	} */
 	
 	private static class SaveConversationInfoAsyncTask extends QueueTask<Void, Void> {
 		private final WeakReference<Context> contextReference;
@@ -5448,7 +5779,7 @@ public class ConnectionService extends Service {
 			//Checking if there are any available conversations
 			if(!availableConversations.isEmpty()) {
 				//Iterating over the conversations
-				for(Iterator<ConversationInfoRequest> iterator = availableConversations.iterator(); iterator.hasNext();) {
+				for(Iterator<ConversationInfoRequest> iterator = availableConversations.iterator(); iterator.hasNext(); ) {
 					//Getting the conversation
 					ConversationManager.ConversationInfo availableConversation = iterator.next().conversationInfo;
 					
@@ -5521,7 +5852,7 @@ public class ConnectionService extends Service {
 			if(conversations != null) {
 				//Removing the unavailable conversations from memory
 				for(ConversationManager.ConversationInfo unavailableConversation : unavailableConversations) {
-					for(Iterator<ConversationManager.ConversationInfo> iterator = conversations.iterator(); iterator.hasNext();) {
+					for(Iterator<ConversationManager.ConversationInfo> iterator = conversations.iterator(); iterator.hasNext(); ) {
 						if(unavailableConversation.getGuid().equals(iterator.next().getGuid())) {
 							iterator.remove();
 							break;
@@ -5766,11 +6097,13 @@ public class ConnectionService extends Service {
 	private static abstract class QueueTask<Progress, Result> {
 		//abstract void onPreExecute();
 		abstract Result doInBackground();
+		
 		void onPostExecute(Result value) {}
 		
 		void publishProgress(Progress progress) {
 			new Handler(Looper.getMainLooper()).post(() -> onProgressUpdate(progress));
 		}
+		
 		void onProgressUpdate(Progress progress) {}
 	}
 	
