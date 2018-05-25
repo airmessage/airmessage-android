@@ -118,7 +118,7 @@
 	<string name="message_serverstatus_authfail">Couldn\'t log in to server</string>
 	<string name="message_serverstatus_unknown">An unknown error occurred</string>
 	
-	<string name="message_serverupdate">A significant server update is available</string>
+	<string name="message_serverupdate">A server update is available</string>
 	
 	<string name="message_eventtype_chatrename_change">%s named the conversation \"%s\"</string>
 	<string name="message_eventtype_chatrename_change_you">You named the conversation \"%s\"</string>

@@ -274,7 +274,7 @@ public class MessagingInfo extends AppCompatActivity {
 		notificationsSwitch.setChecked(!notificationsSwitch.isChecked());
 	}
 	
-	private void addConversationMembers(ArrayList<ConversationManager.MemberInfo> members) {
+	private void addConversationMembers(List<ConversationManager.MemberInfo> members) {
 		//Getting the members layout
 		ViewGroup membersLayout = headerView.findViewById(R.id.conversation_members);
 		

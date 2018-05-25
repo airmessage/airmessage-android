@@ -68,7 +68,6 @@ import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
@@ -345,7 +344,7 @@ class ConversationManager {
 		private String service;
 		private transient WeakReference<ArrayList<ConversationItem>> conversationItemsReference = null;
 		private transient WeakReference<ArrayList<MessageInfo>> ghostMessagesReference = null;
-		private ArrayList<MemberInfo> conversationMembers;
+		private List<MemberInfo> conversationMembers;
 		//private transient WeakReference<Messaging.RecyclerAdapter> arrayAdapterReference = null;
 		private transient ActivityCallbacks activityCallbacks = null;
 		//private transient View view;
@@ -386,7 +385,7 @@ class ConversationManager {
 			conversationMembers = new ArrayList<>();
 		}
 		
-		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String title, int unreadMessageCount, int conversationColor) {
+		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, List<MemberInfo> conversationMembers, String title, int unreadMessageCount, int conversationColor) {
 			//Setting the values
 			this.guid = guid;
 			this.localID = localID;
@@ -828,14 +827,14 @@ class ConversationManager {
 			}
 		}
 		
-		void replaceConversationItems(Context context, ArrayList<ConversationItem> sortedList) {
+		void replaceConversationItems(Context context, List<ConversationItem> sortedList) {
 			//Returning if there are no items
 			if(sortedList.isEmpty()) return;
 			
 			//Getting the lists
-			ArrayList<ConversationItem> conversationItems = getConversationItems();
+			List<ConversationItem> conversationItems = getConversationItems();
 			if(conversationItems == null) return;
-			ArrayList<MessageInfo> ghostMessages = getGhostMessages();
+			List<MessageInfo> ghostMessages = getGhostMessages();
 			if(ghostMessages == null) return;
 			
 			//Adding the items
@@ -1377,7 +1376,7 @@ class ConversationManager {
 			return array;
 		}
 		
-		ArrayList<MemberInfo> getConversationMembers() {
+		List<MemberInfo> getConversationMembers() {
 			return conversationMembers;
 		}
 		
@@ -1385,20 +1384,20 @@ class ConversationManager {
 			conversationMembers = value;
 		}
 		
-		void setConversationMembersCreateColors(List<String> value) {
+		void setConversationMembersCreateColors(String[] members) {
 			//Inheriting the conversation color if there is only one member
-			if(value.size() == 1) {
-				conversationMembers.add(new MemberInfo(value.get(0), conversationColor));
+			if(members.length == 1) {
+				conversationMembers.add(new MemberInfo(members[0], conversationColor));
 			} else {
 				//Sorting the values
-				Collections.sort(value);
+				Arrays.sort(members);
 				
 				//Getting color values
-				int[] colorValues = getMassUserColors(value.size());
+				int[] colorValues = getMassUserColors(members.length);
 				
 				//Copying the values to the map
-				for(int i = 0; i < value.size(); i++)
-					conversationMembers.add(new MemberInfo(value.get(i), colorValues[i]));
+				for(int i = 0; i < members.length; i++)
+					conversationMembers.add(new MemberInfo(members[i], colorValues[i]));
 			}
 		}
 		
@@ -2884,7 +2883,7 @@ class ConversationManager {
 			return getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes);
 		}
 		
-		static String getSummary(Context context, boolean isFromMe, String messageText, String sendStyle, ArrayList<Integer> attachmentStringRes) {
+		static String getSummary(Context context, boolean isFromMe, String messageText, String sendStyle, List<Integer> attachmentStringRes) {
 			//Creating the prefix
 			String prefix = isFromMe ? context.getString(R.string.prefix_you) + " " : "";
 			
@@ -2926,7 +2925,7 @@ class ConversationManager {
 		@Override
 		LightConversationItem toLightConversationItemSync(Context context) {
 			//Converting the attachment list to a string resource list
-			ArrayList<Integer> attachmentStringRes = new ArrayList<>();
+			List<Integer> attachmentStringRes = new ArrayList<>();
 			for(AttachmentInfo attachment : attachments)
 				attachmentStringRes.add(getNameFromContentType(attachment.getContentType()));
 			

@@ -15,18 +15,21 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.graphics.ColorUtils;
 import android.support.v7.app.ActionBar;
 import android.support.v7.view.ActionMode;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.InputMethodManager;
@@ -38,7 +41,6 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
-import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 
 public class Conversations extends AppCompatCompositeActivity {
@@ -54,12 +56,13 @@ public class Conversations extends AppCompatCompositeActivity {
 	private MenuItem searchMenuItem = null;
 	
 	//Creating the state values
-	private boolean listingArchived = false;
-	
-	//Creating the state values
 	private static final byte appBarStateDefault = 0;
 	private static final byte appBarStateSearch = 1;
 	private byte currentAppBarState = appBarStateDefault;
+	
+	//Creating the view values
+	private AppBarLayout appBarLayout;
+	private Toolbar toolbar;
 	
 	//Creating the listener values
 	private ActionMode actionMode = null;
@@ -389,7 +392,7 @@ public class Conversations extends AppCompatCompositeActivity {
 				hideServerWarning();
 				if(state == ConnectionService.stateConnected) {
 					ConnectionService connectionService = ConnectionService.getInstance();
-					if(connectionService != null && connectionService.getActiveCommunicationsVersion() < SharedValues.mmCommunicationsVersion) infoBarSystemUpdate.show();
+					if(connectionService != null && connectionService.getActiveCommunicationsVersion() < ConnectionService.mmCommunicationsVersion) infoBarSystemUpdate.show();
 					else infoBarSystemUpdate.hide();
 				}
 			}
@@ -397,7 +400,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	};
 	
 	public Conversations() {
-		//Setting the plugins;
+		//Setting the plugins
 		addPlugin(conversationsBasePlugin = new ConversationsBase(() -> new RecyclerAdapter(conversationsBasePlugin.conversations)));
 		addPlugin(pluginMessageBar = new PluginMessageBar());
 		addPlugin(new PluginThemeUpdater());
@@ -442,6 +445,10 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Getting the view model
 		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
 		
+		//Getting the views
+		appBarLayout = findViewById(R.id.appbar);
+		toolbar = findViewById(R.id.toolbar);
+		
 		//Setting the plugin views
 		conversationsBasePlugin.setViews(findViewById(R.id.list), findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
@@ -463,7 +470,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		});
 		conversationsBasePlugin.addUpdateListListener(() -> {
 			TextView noConversations = findViewById(R.id.no_conversations);
-			if(listingArchived) noConversations.setText(R.string.message_blankstate_conversations_archived);
+			if(viewModel.listingArchived) noConversations.setText(R.string.message_blankstate_conversations_archived);
 			else noConversations.setText(R.string.message_blankstate_conversations);
 		});
 		
@@ -472,6 +479,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
 		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts));
 		infoBarSystemUpdate = pluginMessageBar.create(R.drawable.update, getResources().getString(R.string.message_serverupdate));
+		
+		//Restoring the archived state
+		restoreListingArchivedState();
 	}
 	
 	@Override
@@ -485,7 +495,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		else if(connectionService.getCurrentState() == ConnectionService.stateDisconnected && ConnectionService.getLastConnectionResult() != -1) showServerWarning(ConnectionService.getLastConnectionResult());
 		else {
 			hideServerWarning();
-			if(connectionService.getCurrentState() == ConnectionService.stateConnected && connectionService.getActiveCommunicationsVersion() < SharedValues.mmCommunicationsVersion) infoBarSystemUpdate.show();
+			if(connectionService.getCurrentState() == ConnectionService.stateConnected && connectionService.getActiveCommunicationsVersion() < ConnectionService.mmCommunicationsVersion) infoBarSystemUpdate.show();
 			else infoBarSystemUpdate.hide();
 		}
 		
@@ -574,7 +584,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Iterating over the original data
 			for(ConversationManager.ConversationInfo conversationInfo : originalItems) {
 				//Skipping non-listed conversations
-				if(conversationInfo.isArchived() ^ listingArchived) continue;
+				if(conversationInfo.isArchived() ^ viewModel.listingArchived) continue;
 				
 				//Adding the item to the filtered data
 				filteredItems.add(conversationInfo);
@@ -718,7 +728,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Iterating over the original data
 			for(ConversationManager.ConversationInfo conversationInfo : originalItems) {
 				//Skipping non-listed conversations
-				if(conversationInfo.isArchived() != listingArchived) continue;
+				if(conversationInfo.isArchived() != viewModel.listingArchived) continue;
 				
 				//Adding the item to the filtered data
 				filteredItems.add(conversationInfo);
@@ -778,7 +788,7 @@ public class Conversations extends AppCompatCompositeActivity {
 					setAppBarState(appBarStateDefault);
 				}
 				//Checking if the "archived" view is active
-				else if(listingArchived) {
+				else if(viewModel.listingArchived) {
 					//Exiting the archived state
 					setArchivedListingState(false);
 				} else {
@@ -794,7 +804,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			case R.id.action_archived: //Archived conversations
 				//Starting the archived conversations activity
 				//startActivity(new Intent(this, ConversationsArchived.class));
-				setArchivedListingState(!listingArchived);
+				setArchivedListingState(!viewModel.listingArchived);
 				
 				return true;
 			/* case R.id.action_blocked: //Blocked contacts
@@ -822,7 +832,7 @@ public class Conversations extends AppCompatCompositeActivity {
 									"Device model: " + Build.MODEL + "\r\n" +
 									"Android version: " + Build.VERSION.RELEASE + "\r\n" +
 									"Client version: " + BuildConfig.VERSION_NAME + "\r\n" +
-									"AM communications version: " + SharedValues.mmCommunicationsVersion + '.' + SharedValues.mmCommunicationsSubVersion);
+									"AM communications version: " + ConnectionService.mmCommunicationsVersion + '.' + ConnectionService.mmCommunicationsSubVersion);
 							//intent.setType("message/rfc822");
 							
 							//Launching the intent
@@ -856,7 +866,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			setAppBarState(appBarStateDefault);
 		}
 		//Checking if the "archived" view is active
-		else if(listingArchived) {
+		else if(viewModel.listingArchived) {
 			//Exiting the archived state
 			setArchivedListingState(false);
 		} else {
@@ -991,7 +1001,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		if(state == appBarStateDefault) {
 			actionBar.setDisplayShowCustomEnabled(false);
 			actionBar.setDisplayShowTitleEnabled(true);
-			actionBar.setDisplayHomeAsUpEnabled(listingArchived);
+			actionBar.setDisplayHomeAsUpEnabled(viewModel.listingArchived);
 			searchMenuItem.setVisible(true);
 		} else {
 			actionBar.setDisplayShowCustomEnabled(true);
@@ -1076,10 +1086,10 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	void setArchivedListingState(boolean state) {
 		//Returning if the current state matches the requested state
-		if(listingArchived == state) return;
+		if(viewModel.listingArchived == state) return;
 		
 		//Setting the new state
-		listingArchived = state;
+		viewModel.listingArchived = state;
 		
 		//Animating the action bar color
 		int colorPrimary = getResources().getColor(R.color.colorPrimary, null);
@@ -1108,6 +1118,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Tinting the app bar
 			blended = ColorUtils.blendARGB(colorList[0], colorList[1], position);
 			getSupportActionBar().setBackgroundDrawable(new ColorDrawable(blended));
+			appBarLayout.setBackground(new ColorDrawable(blended));
 		});
 		anim.setDuration(250);
 		anim.setInterpolator(new DecelerateInterpolator());
@@ -1126,6 +1137,25 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Updating the list adapter
 		conversationsBasePlugin.updateList(false);
 		//((ListAdapter) listView.getAdapter()).filterAndUpdate();
+	}
+	
+	void restoreListingArchivedState() {
+		//Returning if the state is not archived
+		if(!viewModel.listingArchived) return;
+		
+		//Getting the colors
+		int colorArchived = getResources().getColor(R.color.colorArchived, null);
+		int colorArchivedDark = getResources().getColor(R.color.colorArchivedDark, null);
+		
+		//Tinting the window
+		getSupportActionBar().setBackgroundDrawable(new ColorDrawable(colorArchived));
+		appBarLayout.setBackground(new ColorDrawable(colorArchived));
+		getWindow().setStatusBarColor(colorArchivedDark);
+		
+		//Configuring the toolbar
+		ActionBar actionBar = getSupportActionBar();
+		actionBar.setDisplayHomeAsUpEnabled(true);
+		actionBar.setTitle(R.string.screen_archived);
 	}
 	
 	/**
@@ -1148,6 +1178,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	public static class ActivityViewModel extends ViewModel {
 		final List<Long> actionModeSelections = new ArrayList<>();
+		boolean listingArchived = false;
 		
 		public ActivityViewModel() {
 			final WeakReference<List<Long>> actionModeSelectionsReference = new WeakReference<>(actionModeSelections);
@@ -1168,9 +1199,14 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		@Override
 		public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
+			//Inflating the menu
 			MenuInflater inflater = actionMode.getMenuInflater();
 			inflater.inflate(R.menu.menu_conversation_actionmode, menu);
 			
+			//Hiding the toolbar
+			toolbar.animate().alpha(0).withEndAction(() -> toolbar.setVisibility(View.INVISIBLE));
+			
+			//Returning true
 			return true;
 		}
 		
@@ -1433,6 +1469,10 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Resetting the selection counts
 			selectedConversations = mutedConversations = nonMutedConversations = archivedConversations = nonArchivedConversations = 0;
+			
+			//Showing the toolbar
+			toolbar.setVisibility(View.VISIBLE);
+			toolbar.animate().alpha(1);
 		}
 		
 		public void onItemCheckedStateToggled(ConversationManager.ConversationInfo item) {

@@ -8,6 +8,7 @@
 	tools:context=".Conversations">
 	<!-- App bar -->
 	<android.support.design.widget.AppBarLayout
+		android:id="@+id/appbar"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content">
 		<!-- Toolbar -->
@@ -16,6 +17,7 @@
 			android:layout_width="match_parent"
 			android:layout_height="?android:attr/actionBarSize"
 			android:theme="@style/SolidActionBar" />
+		
 		<!-- Info bar container -->
 		<LinearLayout
 			android:id="@+id/infobar_container"
