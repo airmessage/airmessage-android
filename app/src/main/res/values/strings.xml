@@ -238,6 +238,8 @@
 	<string name="part_unknown">Unknown</string>
 	<string name="part_none">None</string>
 	<string name="part_nodata">No data</string>
+	<string name="part_conversations">Conversations</string>
+	<string name="part_messages">Messages</string>
 	
 	<string name="state_sent">Sent</string>
 	<string name="state_delivered">Delivered</string>

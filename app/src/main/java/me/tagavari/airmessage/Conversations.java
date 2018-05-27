@@ -42,6 +42,7 @@ import android.widget.Toast;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 
@@ -60,10 +61,13 @@ public class Conversations extends AppCompatCompositeActivity {
 	//Creating the view values
 	private AppBarLayout appBarLayout;
 	private Toolbar toolbar;
-	private ViewGroup groupSearch;
-	private EditText editTextSearch;
-	private ImageButton buttonSearchClear;
+	private ViewGroup groupBarSearch;
+	private EditText editTextBarSearch;
+	private ImageButton buttonBarSearchClear;
 	private FloatingActionButton floatingActionButton;
+	
+	private ViewGroup groupSearch;
+	private SearchRecyclerAdapter searchRecyclerAdapter = null;
 	
 	private int currentToolbarColor;
 	private int currentStatusBarColor;
@@ -79,7 +83,10 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		@Override
 		public void onTextChanged(CharSequence s, int start, int before, int count) {
-			buttonSearchClear.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
+			//Setting the clear button state
+			buttonBarSearchClear.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
+			
+			//Updating the search filter
 			updateSearchFilter(s.toString());
 		}
 		
@@ -156,10 +163,13 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Getting the views
 		appBarLayout = findViewById(R.id.appbar);
 		toolbar = findViewById(R.id.toolbar);
-		groupSearch = findViewById(R.id.layout_search);
-		editTextSearch = findViewById(R.id.search_edittext);
-		buttonSearchClear = findViewById(R.id.search_buttonclear);
+		groupBarSearch = findViewById(R.id.layout_search);
+		editTextBarSearch = findViewById(R.id.search_edittext);
+		buttonBarSearchClear = findViewById(R.id.search_buttonclear);
+		
 		floatingActionButton = findViewById(R.id.fab);
+		
+		groupSearch = findViewById(R.id.viewgroup_search);
 		
 		//Setting the plugin views
 		conversationsBasePlugin.setViews(findViewById(R.id.list), findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
@@ -184,6 +194,10 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Restoring the action mode
 			restoreActionMode();
 			
+			//Setting the search recycler adapter
+			searchRecyclerAdapter = new SearchRecyclerAdapter(conversationsBasePlugin.conversations);
+			((RecyclerView) findViewById(R.id.list_search)).setAdapter(searchRecyclerAdapter);
+			
 			//Updating the search applicability
 			//updateSearchApplicability();
 		});
@@ -192,9 +206,12 @@ public class Conversations extends AppCompatCompositeActivity {
 			TextView noConversations = findViewById(R.id.no_conversations);
 			if(viewModel.listingArchived) noConversations.setText(R.string.message_blankstate_conversations_archived);
 			else noConversations.setText(R.string.message_blankstate_conversations);
+			
+			//Updating the search list adapter
+			if(viewModel.isSearching && searchRecyclerAdapter != null) searchRecyclerAdapter.updateAndFilter();
 		});
-		editTextSearch.addTextChangedListener(searchTextWatcher);
-		buttonSearchClear.setOnClickListener(view -> editTextSearch.setText(""));
+		editTextBarSearch.addTextChangedListener(searchTextWatcher);
+		buttonBarSearchClear.setOnClickListener(view -> editTextBarSearch.setText(""));
 		
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
@@ -227,7 +244,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		else infoBarContacts.show();
 		
 		//Hiding the search view if the state is syncing
-		if(conversationsBasePlugin.currentState == ConversationsBase.stateSyncing) setSearchState(false);
+		if(conversationsBasePlugin.currentState != ConversationsBase.stateReady) setSearchState(false);
 	}
 	
 	@Override
@@ -250,84 +267,11 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Configuring the search widget
 		menuItemSearch = menu.findItem(R.id.action_search);
-		menuItemSearch.setVisible(conversationsBasePlugin.currentState != ConversationsBase.stateIdle && conversationsBasePlugin.currentState != ConversationsBase.stateSyncing && !viewModel.listingArchived);
+		menuItemSearch.setVisible(conversationsBasePlugin.currentState != ConversationsBase.stateReady && !viewModel.listingArchived);
 		
 		//Returning true
 		return true;
 	}
-	
-	/* private class ListAdapter extends ConversationsBase.ListAdapter {
-		//Creating the list values
-		private final List<ConversationManager.ConversationInfo> originalItems;
-		private final List<ConversationManager.ConversationInfo> filteredItems = new ArrayList<>();
-		
-		ListAdapter(ArrayList<ConversationManager.ConversationInfo> items) {
-			//Setting the original items
-			originalItems = items;
-			
-			//Filtering the data
-			filterAndUpdate();
-		}
-		
-		@Override
-		public int getCount() {
-			return filteredItems.size();
-		}
-		
-		@Override
-		public ConversationManager.ConversationInfo getItem(int position) {
-			return filteredItems.get(position);
-		}
-		
-		@Override
-		public long getItemId(int position) {
-			return position;
-		}
-		
-		@Override
-		public View getView(int position, View convertView, ViewGroup parent) {
-			//Getting the view
-			View view = convertView;
-			
-			//Getting the conversation info
-			ConversationManager.ConversationInfo conversationInfo = getItem(position);
-			
-			//Returning if the conversation info is invalid
-			if(conversationInfo == null) return view;
-			
-			//Getting the view
-			view = conversationInfo.createView(Conversations.this, convertView, parent);
-			
-			//Setting the view source
-			conversationInfo.setViewSource(() -> filteredItems.contains(conversationInfo) ? conversationsBasePlugin.listView.getChildAt(filteredItems.indexOf(conversationInfo) - conversationsBasePlugin.listView.getFirstVisiblePosition()) : null);
-			
-			//Returning the view
-			return view;
-		}
-		
-		@Override
-		void filterAndUpdate() {
-			//Clearing the filtered data
-			filteredItems.clear();
-			
-			//Iterating over the original data
-			for(ConversationManager.ConversationInfo conversationInfo : originalItems) {
-				//Skipping non-listed conversations
-				if(conversationInfo.isArchived() ^ viewModel.listingArchived) continue;
-				
-				//Adding the item to the filtered data
-				filteredItems.add(conversationInfo);
-			}
-			
-			//Notifying the adapter
-			notifyDataSetChanged();
-		}
-		
-		@Override
-		boolean isListEmpty() {
-			return filteredItems.isEmpty();
-		}
-	} */
 	
 	private boolean isSelectedActionMode(ConversationManager.ConversationInfo conversationInfo) {
 		return viewModel.actionModeSelections.contains(conversationInfo.getLocalID());
@@ -388,7 +332,8 @@ public class Conversations extends AppCompatCompositeActivity {
 			this.recyclerView = null;
 		}
 		
-		@Override @NonNull
+		@Override
+		@NonNull
 		public ConversationManager.ConversationInfo.ItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			//Returning the view holder
 			return new ConversationManager.ConversationInfo.ItemViewHolder(LayoutInflater.from(Conversations.this).inflate(R.layout.listitem_conversation, parent, false));
@@ -517,7 +462,8 @@ public class Conversations extends AppCompatCompositeActivity {
 					setAppBarState(appBarStateDefault);
 				}
 				//Checking if the "archived" view is active
-				else */if(viewModel.listingArchived) {
+				else */
+				if(viewModel.listingArchived) {
 					//Exiting the archived state
 					setArchivedListingState(false);
 				} else {
@@ -735,16 +681,16 @@ public class Conversations extends AppCompatCompositeActivity {
 			toolbar.animate().alpha(0).setDuration(duration).withEndAction(() -> toolbar.setVisibility(View.GONE));
 			
 			//Showing the search group
-			groupSearch.animate().alpha(1).setDuration(duration).withStartAction(() -> {
-				groupSearch.setVisibility(View.VISIBLE);
+			groupBarSearch.animate().alpha(1).setDuration(duration).withStartAction(() -> {
+				groupBarSearch.setVisibility(View.VISIBLE);
 				
 				//Clearing the text field
-				if(editTextSearch.getText().length() > 0) editTextSearch.setText("");
+				if(editTextBarSearch.getText().length() > 0) editTextBarSearch.setText("");
 				
 				//Opening the keyboard
-				editTextSearch.requestFocus();
-				((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(editTextSearch, InputMethodManager.SHOW_IMPLICIT);
-			}).withEndAction(() -> groupSearch.setClickable(true));
+				editTextBarSearch.requestFocus();
+				((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(editTextBarSearch, InputMethodManager.SHOW_IMPLICIT);
+			}).withEndAction(() -> groupBarSearch.setClickable(true));
 			
 			//Hiding the FAB
 			floatingActionButton.hide();
@@ -753,20 +699,22 @@ public class Conversations extends AppCompatCompositeActivity {
 			toolbar.animate().alpha(1).setDuration(duration).withStartAction(() -> toolbar.setVisibility(View.VISIBLE));
 			
 			//Hiding the search group
-			groupSearch.animate().alpha(0).setDuration(duration).withStartAction(() -> {
-				groupSearch.setClickable(false);
+			groupBarSearch.animate().alpha(0).setDuration(duration).withStartAction(() -> {
+				groupBarSearch.setClickable(false);
 				
 				//Closing the keyboard
-				((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(editTextSearch.getWindowToken(), 0);
-			}).withEndAction(() -> groupSearch.setVisibility(View.GONE));
+				((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(editTextBarSearch.getWindowToken(), 0);
+			}).withEndAction(() -> groupBarSearch.setVisibility(View.GONE));
 			
 			//Showing the FAB
 			floatingActionButton.show();
+			
+			//Clearing the search query
+			updateSearchFilter("");
 		}
 	}
 	
 	void restoreSearchState() {
-		System.out.println("RSS state: " + viewModel.isSearching);
 		//Returning if the search is not active
 		if(!viewModel.isSearching) return;
 		
@@ -775,12 +723,12 @@ public class Conversations extends AppCompatCompositeActivity {
 		toolbar.setAlpha(0);
 		
 		//Showing the search group
-		groupSearch.setVisibility(View.VISIBLE);
-		groupSearch.setAlpha(1);
-		editTextSearch.requestFocus();
+		groupBarSearch.setVisibility(View.VISIBLE);
+		groupBarSearch.setAlpha(1);
+		editTextBarSearch.requestFocus();
 		
 		//Updating the close button
-		buttonSearchClear.setVisibility(editTextSearch.getText().length() > 0 ? View.VISIBLE : View.GONE);
+		buttonBarSearchClear.setVisibility(editTextBarSearch.getText().length() > 0 ? View.VISIBLE : View.GONE);
 		
 		//Hiding the FAB
 		floatingActionButton.hide();
@@ -791,7 +739,191 @@ public class Conversations extends AppCompatCompositeActivity {
 	}
 	
 	private void updateSearchFilter(String query) {
+		//Updating the recycler adapter
+		if(searchRecyclerAdapter != null) searchRecyclerAdapter.updateFilterText(query);
+		
+		//Setting the search group state
+		groupSearch.setVisibility(query.isEmpty() ? View.GONE : View.VISIBLE);
+	}
 	
+	private class SearchRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+		//Creating the reference values
+		private static final int itemTypeSubheader = -1;
+		private static final int itemTypeConversation = 0;
+		private static final int itemTypeMessage = 1;
+		
+		//Creating the list values
+		private final List<ConversationManager.ConversationInfo> conversationSourceList;
+		
+		private final List<ConversationManager.ConversationInfo> conversationFilterList = new ArrayList<>();
+		private int conversationFilterListMemberSeparator = 0;
+		private final List<ConversationManager.MessageInfo> messageFilterList = new ArrayList<>();
+		
+		SearchRecyclerAdapter(List<ConversationManager.ConversationInfo> conversationList) {
+			//Setting the list
+			conversationSourceList = conversationList;
+		}
+		
+		private class ConversationViewHolder extends RecyclerView.ViewHolder {
+			public ConversationViewHolder(View itemView) {
+				super(itemView);
+			}
+		}
+		
+		private class SubheaderViewHolder extends RecyclerView.ViewHolder {
+			final TextView label;
+			
+			private SubheaderViewHolder(View itemView) {
+				super(itemView);
+				label = (TextView) itemView;
+			}
+		}
+		
+		void updateAndFilter() {
+			updateFilterText(lastFilterText);
+		}
+		
+		private int searchRequestID = 0;
+		private String lastFilterText = "";
+		void updateFilterText(String text) {
+			//Returning if the texts match
+			if(text.equals(lastFilterText)) {
+				notifyDataSetChanged();
+				return;
+			}
+			
+			//Setting the search request ID
+			int currentRequestID = ++searchRequestID;
+			
+			//Setting the last filter text
+			lastFilterText = text;
+			
+			//Clearing the filter lists
+			conversationFilterList.clear();
+			conversationFilterListMemberSeparator = 0;
+			messageFilterList.clear();
+			
+			//Returning if there is no filter text
+			if(text.isEmpty()) {
+				notifyDataSetChanged();
+				return;
+			}
+			
+			//Iterating over the conversations
+			conversationLoop:
+			for(ConversationManager.ConversationInfo conversationInfo : conversationSourceList) {
+				//Filtering the conversation based on its static name
+				if(conversationInfo.getStaticTitle() != null && searchString(conversationInfo.getStaticTitle(), text)) {
+					conversationFilterList.add(conversationFilterListMemberSeparator++, conversationInfo);
+					continue conversationLoop;
+				}
+				
+				//Filtering the conversation based on its members
+				for(ConversationManager.MemberInfo member : conversationInfo.getConversationMembers()) {
+					if(searchString(Constants.normalizeAddress(member.getName()), text)) {
+						conversationFilterList.add(conversationInfo);
+						continue conversationLoop;
+					}
+					MainApplication.getInstance().getUserCacheHelper().getUserInfo(Conversations.this, member.getName(), new SearchRecyclerAdapterUserFetchResult(currentRequestID, this, conversationInfo));
+				}
+			}
+			
+			//Updating the list
+			notifyDataSetChanged();
+		}
+		
+		void processUserResult(int requestID, String userName, ConversationManager.ConversationInfo conversationInfo, boolean wasTasked) {
+			//Returning if the request IDs don't match or the user doesn't match
+			if(requestID != searchRequestID || !searchString(userName, lastFilterText)) return;
+			
+			//Adding the conversation
+			conversationFilterList.add(conversationInfo);
+			
+			//Updating the list if the operation was tasked
+			if(wasTasked) notifyItemInserted(conversationFilterList.size() - 1);
+		}
+		
+		private boolean searchString(String target, String query) {
+			return Pattern.compile(Pattern.quote(query), Pattern.CASE_INSENSITIVE).matcher(target).find();
+		}
+		
+		@NonNull
+		@Override
+		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+			switch(viewType) {
+				case itemTypeSubheader:
+					return new SubheaderViewHolder(getLayoutInflater().inflate(R.layout.listitem_subheader, parent, false));
+				case itemTypeConversation:
+					return new ConversationManager.ConversationInfo.ItemViewHolder(getLayoutInflater().inflate(R.layout.listitem_conversation, parent, false));
+				case itemTypeMessage:
+					return null;
+				default:
+					throw new IllegalArgumentException("Invalid view type requested: " + viewType);
+			}
+		}
+		
+		@Override
+		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+			switch(getItemViewType(position)) {
+				case itemTypeSubheader:
+					if(position == 0 && !conversationFilterList.isEmpty()) ((SubheaderViewHolder) holder).label.setText(R.string.part_conversations);
+					else ((SubheaderViewHolder) holder).label.setText(R.string.part_messages);
+					break;
+				case itemTypeConversation:
+					conversationFilterList.get(position - 1).bindViewOnce((ConversationManager.ConversationInfo.ItemViewHolder) holder, Conversations.this);
+					break;
+				case itemTypeMessage:
+					break;
+			}
+		}
+		
+		@Override
+		public int getItemCount() {
+			int count = 0;
+			if(!conversationFilterList.isEmpty()) count += conversationFilterList.size() + 1;
+			if(!messageFilterList.isEmpty()) count += messageFilterList.size() + 1;
+			return count;
+		}
+		
+		@Override
+		public int getItemViewType(int position) {
+			if(position == 0) return itemTypeSubheader; //The first position will always be a header
+			if(conversationFilterList.isEmpty()) return itemTypeMessage; //If there are no conversations listed and the position is not 0, the item must be a message
+			if(position - 1 < conversationFilterList.size()) return itemTypeConversation; //If the position is not 0 and is less than the size of the conversation list, it must be a conversation
+			if(position - 1 == conversationFilterList.size()) return itemTypeSubheader; //If the position is the same size as the conversation list, it reaches the first entry of of the "messages" section, and is therefore the messages section subheader
+			return itemTypeMessage; //Otherwise, the item is a message
+		}
+	}
+	
+	private static class SearchRecyclerAdapterUserFetchResult extends UserCacheHelper.UserFetchResult {
+		//Creating the request values
+		private final int requestID;
+		
+		//Creating the reference values
+		private final WeakReference<SearchRecyclerAdapter> adapterReference;
+		private final WeakReference<ConversationManager.ConversationInfo> conversationReference;
+		
+		SearchRecyclerAdapterUserFetchResult(int requestID, SearchRecyclerAdapter adapter, ConversationManager.ConversationInfo conversationInfo) {
+			this.requestID = requestID;
+			adapterReference = new WeakReference<>(adapter);
+			conversationReference = new WeakReference<>(conversationInfo);
+		}
+		
+		@Override
+		void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
+			//Returning if the user info is invalid
+			if(userInfo == null || userInfo.getContactName() == null) return;
+			
+			//Getting the references
+			SearchRecyclerAdapter adapter = adapterReference.get();
+			if(adapter == null) return;
+			
+			ConversationManager.ConversationInfo conversationInfo = conversationReference.get();
+			if(conversationInfo == null) return;
+			
+			//Giving the adapter the information
+			adapter.processUserResult(requestID, userInfo.getContactName(), conversationInfo, wasTasked);
+		}
 	}
 	
 	void setArchivedListingState(boolean state) {

@@ -115,7 +115,7 @@ class ConversationsBase extends AppCompatActivityPlugin {
 	private final List<Runnable> conversationsLoadedListener = new ArrayList<>();
 	
 	//Creating the timer values
-	static final long timeUpdateHandlerDelay = 60 * 1000; //1 minute
+	private static final long timeUpdateHandlerDelay = 60 * 1000; //1 minute
 	private Handler timeUpdateHandler = new Handler(Looper.getMainLooper());
 	private Runnable timeUpdateHandlerRunnable = new Runnable() {
 		@Override
