@@ -16,6 +16,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.AppBarLayout;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.graphics.ColorUtils;
@@ -34,6 +35,7 @@ import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -53,333 +55,39 @@ public class Conversations extends AppCompatCompositeActivity {
 	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarSystemUpdate;
 	
 	//Creating the menu values
-	private MenuItem searchMenuItem = null;
-	
-	//Creating the state values
-	private static final byte appBarStateDefault = 0;
-	private static final byte appBarStateSearch = 1;
-	private byte currentAppBarState = appBarStateDefault;
+	private MenuItem menuItemSearch = null;
 	
 	//Creating the view values
 	private AppBarLayout appBarLayout;
 	private Toolbar toolbar;
+	private ViewGroup groupSearch;
+	private EditText editTextSearch;
+	private ImageButton buttonSearchClear;
+	private FloatingActionButton floatingActionButton;
+	
+	private int currentToolbarColor;
+	private int currentStatusBarColor;
 	
 	//Creating the listener values
 	private ActionMode actionMode = null;
 	private final CountingActionModeCallback actionModeCallbacks = new CountingActionModeCallback();
-	
-	/* private final AbsListView.MultiChoiceModeListener listMultiChoiceModeListener = new AbsListView.MultiChoiceModeListener() {
-		//Creating the selected conversations variable
-		private int selectedConversations = 0;
-		private int mutedConversations = 0;
-		private int nonMutedConversations = 0;
-		private int archivedConversations = 0;
-		private int nonArchivedConversations = 0;
-		
+	private final TextWatcher searchTextWatcher = new TextWatcher() {
 		@Override
-		public void onItemCheckedStateChanged(ActionMode actionMode, int position, long id, boolean checked) {
-			//Getting the conversation info
-			ConversationManager.ConversationInfo conversationInfo = ((ConversationManager.ConversationInfo) conversationsBasePlugin.listView.getItemAtPosition(position));
-			
-			//Setting the item's checked state
-			conversationInfo.setSelected(checked);
-			conversationInfo.updateSelected();
-			
-			//Updating the selected conversations
-			selectedConversations += checked ? 1 : -1;
-			if(conversationInfo.isMuted()) mutedConversations += checked ? 1 : -1;
-			else nonMutedConversations += checked ? 1 : -1;
-			if(conversationInfo.isArchived()) archivedConversations += checked ? 1 : -1;
-			else nonArchivedConversations += checked ? 1 : -1;
-			
-			//Setting the name
-			actionMode.setTitle(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, Integer.toString(selectedConversations)));
-			
-			//Showing or hiding the mute / unmute buttons
-			if(mutedConversations > 0) actionMode.getMenu().findItem(R.id.action_unmute).setVisible(true);
-			else actionMode.getMenu().findItem(R.id.action_unmute).setVisible(false);
-			if(nonMutedConversations > 0) actionMode.getMenu().findItem(R.id.action_mute).setVisible(true);
-			else actionMode.getMenu().findItem(R.id.action_mute).setVisible(false);
-			
-			//Showing or hiding the archive / unarchive buttons
-			if(archivedConversations > 0) actionMode.getMenu().findItem(R.id.action_unarchive).setVisible(true);
-			else actionMode.getMenu().findItem(R.id.action_unarchive).setVisible(false);
-			if(nonArchivedConversations > 0) actionMode.getMenu().findItem(R.id.action_archive).setVisible(true);
-			else actionMode.getMenu().findItem(R.id.action_archive).setVisible(false);
+		public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+		
 		}
 		
 		@Override
-		public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
-			//Inflating the menu
-			MenuInflater inflater = actionMode.getMenuInflater();
-			inflater.inflate(R.menu.menu_conversation_contextual, menu);
-			
-			//Returning true
-			return true;
+		public void onTextChanged(CharSequence s, int start, int before, int count) {
+			buttonSearchClear.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
+			updateSearchFilter(s.toString());
 		}
 		
 		@Override
-		public boolean onPrepareActionMode(ActionMode actionMode, Menu menu) {
-			return false;
-		}
+		public void afterTextChanged(Editable s) {
 		
-		@Override
-		public boolean onActionItemClicked(final ActionMode actionMode, MenuItem menuItem) {
-			//Checking if the item is the mute button
-			if(menuItem.getItemId() == R.id.action_mute) {
-				//Creating the updated conversation list
-				final ArrayList<Long> updatedConversations = new ArrayList<>();
-				
-				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
-					//Skipping the remainder of the iteration if the conversation is not selected
-					if(!conversationInfo.isSelected()) continue;
-					
-					//Checking if the conversation is not muted
-					if(!conversationInfo.isMuted()) {
-						//Muting the conversation
-						conversationInfo.setMuted(true);
-						
-						//Adding the conversation to the updated conversations list
-						updatedConversations.add(conversationInfo.getLocalID());
-					}
-				}
-				
-				//Checking if there are conversations to update in the database
-				if(!updatedConversations.isEmpty()) {
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, true);
-					
-					//Updating the conversations
-					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
-				}
-				
-				//Finishing the action mode
-				actionMode.finish();
-				
-				//Returning true
-				return true;
-			}
-			//Checking if the item is the unmute button
-			else if(menuItem.getItemId() == R.id.action_unmute) {
-				//Creating the updated conversation list
-				ArrayList<Long> updatedConversations = new ArrayList<>();
-				
-				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
-					//Skipping the remainder of the iteration if the conversation is not selected
-					if(!conversationInfo.isSelected()) continue;
-					
-					//Checking if the conversation is muted
-					if(conversationInfo.isMuted()) {
-						//Unmuting the conversation
-						conversationInfo.setMuted(false);
-						
-						//Adding the conversation to the updated conversations list
-						updatedConversations.add(conversationInfo.getLocalID());
-					}
-				}
-				
-				//Checking if there are conversations to update in the database
-				if(!updatedConversations.isEmpty()) {
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the muted value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, false);
-					
-					//Updating the conversations
-					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
-				}
-				
-				//Finishing the action mode
-				actionMode.finish();
-				
-				//Returning true
-				return true;
-			}
-			//Checking if the item is the archive button
-			else if(menuItem.getItemId() == R.id.action_archive) {
-				//Creating the updated conversation list
-				ArrayList<ConversationManager.ConversationInfo> updatedConversations = new ArrayList<>();
-				
-				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
-					//Skipping the remainder of the iteration if the conversation is not selected
-					if(!conversationInfo.isSelected()) continue;
-					
-					//Archiving the conversation
-					conversationInfo.setArchived(true);
-					
-					//Adding the conversation to the updated conversations list
-					updatedConversations.add(conversationInfo);
-				}
-				
-				//Checking if there are conversations to update in the database
-				if(!updatedConversations.isEmpty()) {
-					//Updating the list
-					conversationsBasePlugin.updateList(false);
-					
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the archived value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-					
-					//Updating the conversations
-					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
-					
-					//Creating a snackbar
-					int affectedCount = updatedConversations.size();
-					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
-						//Creating the content values
-						ContentValues undoContentValues = new ContentValues();
-						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-						
-						//Iterating over the conversations
-						for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) {
-							//Unarchiving the conversation
-							conversationInfo.setArchived(false);
-							
-							//Setting the archived value
-							contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-							
-							//Updating the conversations
-							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
-						}
-						
-						//Updating the list
-						conversationsBasePlugin.updateList(false);
-					}).show();
-				}
-				
-				//Finishing the action mode
-				actionMode.finish();
-				
-				//Returning true
-				return true;
-			}
-			//Checking if the item is the unarchive button
-			else if(menuItem.getItemId() == R.id.action_unarchive) {
-				//Creating the updated conversation list
-				ArrayList<ConversationManager.ConversationInfo> updatedConversations = new ArrayList<>();
-				
-				//Looping through all conversations
-				for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
-					//Skipping the remainder of the iteration if the conversation is not selected
-					if(!conversationInfo.isSelected()) continue;
-					
-					//Unarchiving the conversation
-					conversationInfo.setArchived(false);
-					
-					//Adding the conversation to the updated conversations list
-					updatedConversations.add(conversationInfo);
-				}
-				
-				//Checking if there are conversations to update in the database
-				if(!updatedConversations.isEmpty()) {
-					//Updating the list
-					conversationsBasePlugin.updateList(false);
-					
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the archived value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-					
-					//Updating the conversations
-					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
-					
-					//Creating a snackbar
-					int affectedCount = updatedConversations.size();
-					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationunarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
-						//Creating the content values
-						ContentValues undoContentValues = new ContentValues();
-						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-						
-						//Iterating over the conversations
-						for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) {
-							//Archiving the conversation
-							conversationInfo.setArchived(true);
-							
-							//Updating the conversations
-							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
-						}
-						
-						//Updating the list
-						conversationsBasePlugin.updateList(false);
-					}).show();
-				}
-				
-				//Finishing the action mode
-				actionMode.finish();
-				
-				//Returning true
-				return true;
-			}
-			//Checking if the item is the delete button
-			else if(menuItem.getItemId() == R.id.action_delete) {
-				//Displaying a dialog
-				//Displaying a dialog warning about the message types
-				new AlertDialog.Builder(Conversations.this)
-						//Setting the message
-						.setMessage(getResources().getQuantityString(R.plurals.message_confirm_deleteconversation, selectedConversations))
-						//Setting the button
-						.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
-						.setPositiveButton(R.string.action_delete, (dialog, which) -> {
-							//Creating the to remove list
-							ArrayList<ConversationManager.ConversationInfo> toRemove = new ArrayList<>();
-							
-							//Marking all selected conversations for removal
-							for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations)
-								if(conversationInfo.isSelected())
-									toRemove.add(conversationInfo);
-							
-							//Deleting the conversations
-							for(ConversationManager.ConversationInfo conversationInfo : toRemove) conversationInfo.delete(Conversations.this);
-							
-							//Updating the conversation activity list
-							LocalBroadcastManager.getInstance(Conversations.this).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-							
-							//Updating the list
-							conversationsBasePlugin.updateList(false);
-							
-							//Dismissing the dialog
-							dialog.dismiss();
-							
-							//Finishing the action mode
-							actionMode.finish();
-						})
-						//Creating the dialog
-						.create()
-						//Showing the dialog
-						.show();
-				
-				//Returning true
-				return true;
-			}
-			
-			//Returning false
-			return false;
 		}
-		
-		@Override
-		public void onDestroyActionMode(ActionMode actionMode) {
-			//Setting all items as unchecked
-			for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
-				conversationInfo.setSelected(false);
-				conversationInfo.updateSelected();
-			}
-			
-			//Clearing the selected conversations
-			selectedConversations = 0;
-			mutedConversations = 0;
-			nonMutedConversations = 0;
-			archivedConversations = 0;
-			nonArchivedConversations = 0;
-		}
-	}; */
+	};
 	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
@@ -448,10 +156,18 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Getting the views
 		appBarLayout = findViewById(R.id.appbar);
 		toolbar = findViewById(R.id.toolbar);
+		groupSearch = findViewById(R.id.layout_search);
+		editTextSearch = findViewById(R.id.search_edittext);
+		buttonSearchClear = findViewById(R.id.search_buttonclear);
+		floatingActionButton = findViewById(R.id.fab);
 		
 		//Setting the plugin views
 		conversationsBasePlugin.setViews(findViewById(R.id.list), findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
+		
+		//Getting the colors
+		currentToolbarColor = getResources().getColor(R.color.colorPrimary, null);
+		currentStatusBarColor = getResources().getColor(R.color.colorPrimaryDark, null);
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), conversationsBasePlugin.recyclerView);
@@ -467,12 +183,18 @@ public class Conversations extends AppCompatCompositeActivity {
 		conversationsBasePlugin.addConversationsLoadedListener(() -> {
 			//Restoring the action mode
 			restoreActionMode();
+			
+			//Updating the search applicability
+			//updateSearchApplicability();
 		});
 		conversationsBasePlugin.addUpdateListListener(() -> {
+			//Updating the no conversations text
 			TextView noConversations = findViewById(R.id.no_conversations);
 			if(viewModel.listingArchived) noConversations.setText(R.string.message_blankstate_conversations_archived);
 			else noConversations.setText(R.string.message_blankstate_conversations);
 		});
+		editTextSearch.addTextChangedListener(searchTextWatcher);
+		buttonSearchClear.setOnClickListener(view -> editTextSearch.setText(""));
 		
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
@@ -480,8 +202,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts));
 		infoBarSystemUpdate = pluginMessageBar.create(R.drawable.update, getResources().getString(R.string.message_serverupdate));
 		
-		//Restoring the archived state
+		//Restoring the state
 		restoreListingArchivedState();
+		restoreSearchState();
 	}
 	
 	@Override
@@ -502,6 +225,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Updating the contacts info bar
 		if(MainApplication.canUseContacts(this)) infoBarContacts.hide();
 		else infoBarContacts.show();
+		
+		//Hiding the search view if the state is syncing
+		if(conversationsBasePlugin.currentState == ConversationsBase.stateSyncing) setSearchState(false);
 	}
 	
 	@Override
@@ -521,7 +247,10 @@ public class Conversations extends AppCompatCompositeActivity {
 	public boolean onCreateOptionsMenu(Menu menu) {
 		//Inflating the menu resource
 		getMenuInflater().inflate(R.menu.menu_conversations, menu);
-		searchMenuItem = menu.findItem(R.id.action_search);
+		
+		//Configuring the search widget
+		menuItemSearch = menu.findItem(R.id.action_search);
+		menuItemSearch.setVisible(conversationsBasePlugin.currentState != ConversationsBase.stateIdle && conversationsBasePlugin.currentState != ConversationsBase.stateSyncing && !viewModel.listingArchived);
 		
 		//Returning true
 		return true;
@@ -783,12 +512,12 @@ public class Conversations extends AppCompatCompositeActivity {
 		switch(item.getItemId()) {
 			case android.R.id.home: //Up button
 				//Checking if the state is in a search
-				if(currentAppBarState == appBarStateSearch) {
+				/* if(currentAppBarState == appBarStateSearch) {
 					//Setting the state to normal
 					setAppBarState(appBarStateDefault);
 				}
 				//Checking if the "archived" view is active
-				else if(viewModel.listingArchived) {
+				else */if(viewModel.listingArchived) {
 					//Exiting the archived state
 					setArchivedListingState(false);
 				} else {
@@ -798,7 +527,10 @@ public class Conversations extends AppCompatCompositeActivity {
 				return true;
 			case R.id.action_search:
 				//Setting the state to search
-				if(conversationsBasePlugin.currentState == ConversationsBase.stateReady) setAppBarState(appBarStateSearch);
+				if(conversationsBasePlugin.currentState != ConversationsBase.stateIdle && conversationsBasePlugin.currentState != ConversationsBase.stateSyncing) {
+					//setAppBarState(appBarStateSearch);
+					setSearchState(true);
+				}
 				
 				return true;
 			case R.id.action_archived: //Archived conversations
@@ -861,9 +593,9 @@ public class Conversations extends AppCompatCompositeActivity {
 	@Override
 	public void onBackPressed() {
 		//Checking if the state is in a search
-		if(currentAppBarState == appBarStateSearch) {
-			//Setting the state to normal
-			setAppBarState(appBarStateDefault);
+		if(viewModel.isSearching) {
+			//Closing the search
+			setSearchState(false);
 		}
 		//Checking if the "archived" view is active
 		else if(viewModel.listingArchived) {
@@ -990,98 +722,76 @@ public class Conversations extends AppCompatCompositeActivity {
 		actionModeCallbacks.updateActionModeContext();
 	}
 	
-	void setAppBarState(byte state) {
+	void setSearchState(boolean enabled) {
 		//Returning if the requested state matches the current state
-		if(currentAppBarState == state) return;
+		if(viewModel.isSearching == enabled) return;
 		
-		//Getting the action bar
-		ActionBar actionBar = getSupportActionBar();
+		//Setting the search state
+		viewModel.isSearching = enabled;
 		
-		//Checking if the state is to the app bar
-		if(state == appBarStateDefault) {
-			actionBar.setDisplayShowCustomEnabled(false);
-			actionBar.setDisplayShowTitleEnabled(true);
-			actionBar.setDisplayHomeAsUpEnabled(viewModel.listingArchived);
-			searchMenuItem.setVisible(true);
+		long duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
+		if(enabled) {
+			//Hiding the toolbar
+			toolbar.animate().alpha(0).setDuration(duration).withEndAction(() -> toolbar.setVisibility(View.GONE));
+			
+			//Showing the search group
+			groupSearch.animate().alpha(1).setDuration(duration).withStartAction(() -> {
+				groupSearch.setVisibility(View.VISIBLE);
+				
+				//Clearing the text field
+				if(editTextSearch.getText().length() > 0) editTextSearch.setText("");
+				
+				//Opening the keyboard
+				editTextSearch.requestFocus();
+				((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(editTextSearch, InputMethodManager.SHOW_IMPLICIT);
+			}).withEndAction(() -> groupSearch.setClickable(true));
+			
+			//Hiding the FAB
+			floatingActionButton.hide();
 		} else {
-			actionBar.setDisplayShowCustomEnabled(true);
-			actionBar.setDisplayHomeAsUpEnabled(true);
-			searchMenuItem.setVisible(false);
+			//Showing the toolbar
+			toolbar.animate().alpha(1).setDuration(duration).withStartAction(() -> toolbar.setVisibility(View.VISIBLE));
+			
+			//Hiding the search group
+			groupSearch.animate().alpha(0).setDuration(duration).withStartAction(() -> {
+				groupSearch.setClickable(false);
+				
+				//Closing the keyboard
+				((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(editTextSearch.getWindowToken(), 0);
+			}).withEndAction(() -> groupSearch.setVisibility(View.GONE));
+			
+			//Showing the FAB
+			floatingActionButton.show();
 		}
+	}
+	
+	void restoreSearchState() {
+		System.out.println("RSS state: " + viewModel.isSearching);
+		//Returning if the search is not active
+		if(!viewModel.isSearching) return;
 		
-		//Preparing the new state
-		switch(state) {
-			case appBarStateSearch:
-				//Setting the view
-				actionBar.setCustomView(R.layout.appbar_search);
-				
-				//Configuring the listeners
-				((EditText) actionBar.getCustomView().findViewById(R.id.search_edittext)).addTextChangedListener(new TextWatcher() {
-					@Override
-					public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-					
-					@Override
-					public void onTextChanged(CharSequence s, int start, int before, int count) {
-						/* //Returning if the conversation info is invalid
-						if(conversationInfo == null) return;
-						
-						//Checking if there is no search text
-						if(s.length() == 0) {
-							//Hiding the result bar
-							findViewById(R.id.searchresults).setVisibility(View.GONE);
-							
-							//Hiding the clear text button
-							actionBar.getCustomView().findViewById(R.id.search_buttonclear).setVisibility(View.INVISIBLE);
-							
-							//Returning
-							return;
-						}
-						
-						//Showing the result bar
-						View searchResultBar = findViewById(R.id.searchresults);
-						searchResultBar.setVisibility(View.VISIBLE);
-						
-						//Showing the clear text button
-						actionBar.getCustomView().findViewById(R.id.search_buttonclear).setVisibility(View.VISIBLE);
-						
-						//Conducting the search
-						searchFilteredMessages.clear();
-						searchListIndexes.clear();
-						
-						for(int i = 0; i < conversationInfo.getConversationItems().size(); i++) {
-							ConversationManager.ConversationItem conversationItem = conversationInfo.getConversationItems().get(i);
-							if(!(conversationItem instanceof ConversationManager.MessageInfo)) continue;
-							ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
-							if(!Constants.containsIgnoreCase(messageInfo.getMessageText(), s.toString())) continue;
-							
-							searchFilteredMessages.add(messageInfo);
-							searchListIndexes.add(i);
-						}
-						
-						//Updating the search result bar
-						searchCount = searchFilteredMessages.size();
-						searchIndex = searchCount - 1;
-						((TextView) searchResultBar.findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.search_results, searchIndex + 1, searchCount));
-						
-						//Scrolling to the item
-						if(!searchListIndexes.isEmpty()) messageList.setSelection(searchListIndexes.get(searchIndex)); */
-					}
-					
-					@Override
-					public void afterTextChanged(Editable s) {}
-				});
-				
-				//Clear the text box
-				actionBar.getCustomView().findViewById(R.id.search_buttonclear).setOnClickListener(view ->
-						((EditText) getSupportActionBar().getCustomView().findViewById(R.id.search_edittext)).setText(""));
-				
-				//Focusing the text box
-				actionBar.getCustomView().findViewById(R.id.search_edittext).requestFocus();
-				((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY);
-		}
+		//Hiding the toolbar
+		toolbar.setVisibility(View.GONE);
+		toolbar.setAlpha(0);
 		
-		//Updating the current state
-		currentAppBarState = state;
+		//Showing the search group
+		groupSearch.setVisibility(View.VISIBLE);
+		groupSearch.setAlpha(1);
+		editTextSearch.requestFocus();
+		
+		//Updating the close button
+		buttonSearchClear.setVisibility(editTextSearch.getText().length() > 0 ? View.VISIBLE : View.GONE);
+		
+		//Hiding the FAB
+		floatingActionButton.hide();
+	}
+	
+	public void onCloseSearchClicked(View view) {
+		setSearchState(false);
+	}
+	
+	private void updateSearchFilter(String query) {
+	
 	}
 	
 	void setArchivedListingState(boolean state) {
@@ -1091,40 +801,21 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Setting the new state
 		viewModel.listingArchived = state;
 		
-		//Animating the action bar color
-		int colorPrimary = getResources().getColor(R.color.colorPrimary, null);
-		int colorPrimaryDark = getResources().getColor(R.color.colorPrimaryDark, null);
-		int colorArchived = getResources().getColor(R.color.colorArchived, null);
-		int colorArchivedDark = getResources().getColor(R.color.colorArchivedDark, null);
-		int colorList[];
-		int colorListDark[];
-		if(state) {
-			colorList = new int[]{colorPrimary, colorArchived};
-			colorListDark = new int[]{colorPrimaryDark, colorArchivedDark};
-		} else {
-			colorList = new int[]{colorArchived, colorPrimary};
-			colorListDark = new int[]{colorArchivedDark, colorPrimaryDark};
+		//Updating the menu item
+		menuItemSearch.setVisible(!state);
+		
+		//Animating the app bar color
+		{
+			int colorPrimary = getResources().getColor(R.color.colorPrimary, null);
+			int colorPrimaryDark = getResources().getColor(R.color.colorPrimaryDark, null);
+			int colorArchived = getResources().getColor(R.color.colorArchived, null);
+			int colorArchivedDark = getResources().getColor(R.color.colorArchivedDark, null);
+			
+			if(state) animateAppBarColor(colorPrimary, colorArchived, colorPrimaryDark, colorArchivedDark, getResources().getInteger(android.R.integer.config_mediumAnimTime));
+			else animateAppBarColor(colorArchived, colorPrimary, colorArchivedDark, colorPrimaryDark, getResources().getInteger(android.R.integer.config_mediumAnimTime));
 		}
 		
-		ValueAnimator anim = ValueAnimator.ofFloat(0, 1);
-		anim.addUpdateListener(animation -> {
-			//Getting the position
-			float position = animation.getAnimatedFraction();
-			
-			//Tinting the status bar
-			int blended = ColorUtils.blendARGB(colorListDark[0], colorListDark[1], position);
-			getWindow().setStatusBarColor(blended);
-			
-			//Tinting the app bar
-			blended = ColorUtils.blendARGB(colorList[0], colorList[1], position);
-			getSupportActionBar().setBackgroundDrawable(new ColorDrawable(blended));
-			appBarLayout.setBackground(new ColorDrawable(blended));
-		});
-		anim.setDuration(250);
-		anim.setInterpolator(new DecelerateInterpolator());
-		anim.start();
-		
-		//Configuring the action bar
+		//Configuring the toolbar
 		ActionBar actionBar = getSupportActionBar();
 		if(state) {
 			actionBar.setDisplayHomeAsUpEnabled(true);
@@ -1134,28 +825,75 @@ public class Conversations extends AppCompatCompositeActivity {
 			actionBar.setTitle(R.string.app_name);
 		}
 		
+		//Setting the fab
+		if(state) floatingActionButton.hide();
+		else floatingActionButton.show();
+		
 		//Updating the list adapter
 		conversationsBasePlugin.updateList(false);
 		//((ListAdapter) listView.getAdapter()).filterAndUpdate();
+	}
+	
+	void animateAppBarColor(int targetToolbarColor, int targetStatusBarColor, int duration) {
+		animateAppBarColor(currentToolbarColor, targetToolbarColor, currentStatusBarColor, targetStatusBarColor, duration);
+	}
+	
+	void animateAppBarColor(int startToolbarColor, int targetToolbarColor, int startStatusBarColor, int targetStatusBarColor, int duration) {
+		//Animating the app bar
+		ValueAnimator anim = ValueAnimator.ofFloat(0, 1);
+		anim.addUpdateListener(animation -> {
+			//Getting the position
+			float position = animation.getAnimatedFraction();
+			
+			//Tinting the app bar
+			{
+				int blended = ColorUtils.blendARGB(startToolbarColor, targetToolbarColor, position);
+				toolbar.setBackgroundColor(blended);
+				appBarLayout.setBackgroundColor(blended);
+			}
+			
+			//Tinting the status bar
+			{
+				int blended = ColorUtils.blendARGB(startStatusBarColor, targetStatusBarColor, position);
+				getWindow().setStatusBarColor(blended);
+			}
+		});
+		anim.setDuration(duration);
+		anim.setInterpolator(new DecelerateInterpolator());
+		anim.start();
+		
+		//Setting the colors
+		currentToolbarColor = targetToolbarColor;
+		currentStatusBarColor = targetStatusBarColor;
+	}
+	
+	void setAppBarColor(int targetToolbarColor, int targetStatusBarColor) {
+		//Tinting the app bar
+		getSupportActionBar().setBackgroundDrawable(new ColorDrawable(targetToolbarColor));
+		appBarLayout.setBackground(new ColorDrawable(targetToolbarColor));
+		getWindow().setStatusBarColor(targetStatusBarColor);
+		
+		//Setting the colors
+		currentToolbarColor = targetToolbarColor;
+		currentStatusBarColor = targetStatusBarColor;
 	}
 	
 	void restoreListingArchivedState() {
 		//Returning if the state is not archived
 		if(!viewModel.listingArchived) return;
 		
-		//Getting the colors
+		//Tinting the window
 		int colorArchived = getResources().getColor(R.color.colorArchived, null);
 		int colorArchivedDark = getResources().getColor(R.color.colorArchivedDark, null);
-		
-		//Tinting the window
-		getSupportActionBar().setBackgroundDrawable(new ColorDrawable(colorArchived));
-		appBarLayout.setBackground(new ColorDrawable(colorArchived));
-		getWindow().setStatusBarColor(colorArchivedDark);
+		setAppBarColor(colorArchived, colorArchivedDark);
 		
 		//Configuring the toolbar
 		ActionBar actionBar = getSupportActionBar();
 		actionBar.setDisplayHomeAsUpEnabled(true);
 		actionBar.setTitle(R.string.screen_archived);
+		
+		//Hiding the FAB
+		floatingActionButton.hide();
 	}
 	
 	/**
@@ -1179,6 +917,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	public static class ActivityViewModel extends ViewModel {
 		final List<Long> actionModeSelections = new ArrayList<>();
 		boolean listingArchived = false;
+		boolean isSearching = false;
 		
 		public ActivityViewModel() {
 			final WeakReference<List<Long>> actionModeSelectionsReference = new WeakReference<>(actionModeSelections);
@@ -1197,6 +936,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		int archivedConversations = 0;
 		int nonArchivedConversations = 0;
 		
+		int oldToolbarColor;
+		int oldStatusBarColor;
+		
 		@Override
 		public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
 			//Inflating the menu
@@ -1206,8 +948,47 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Hiding the toolbar
 			toolbar.animate().alpha(0).withEndAction(() -> toolbar.setVisibility(View.INVISIBLE));
 			
+			//Recording the old colors
+			oldToolbarColor = currentToolbarColor;
+			oldStatusBarColor = currentStatusBarColor;
+			
+			//Animating the app bar
+			int toolbarColor = getResources().getColor(R.color.colorContextualAppBar, null);
+			int statusBarColor = getResources().getColor(R.color.colorContextualAppBarDark, null);
+			animateAppBarColor(toolbarColor, statusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime));
+			
+			//Hiding the FAB
+			floatingActionButton.hide();
+			
 			//Returning true
 			return true;
+		}
+		
+		@Override
+		public void onDestroyActionMode(ActionMode actionMode) {
+			//Invalidating the action mode
+			Conversations.this.actionMode = null;
+			
+			//Deselecting all items
+			List<Long> selectionsCopy = new ArrayList<>(viewModel.actionModeSelections);
+			viewModel.actionModeSelections.clear();
+			for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
+				if(!selectionsCopy.contains(conversationInfo.getLocalID())) continue;
+				conversationInfo.updateSelected();
+			}
+			
+			//Resetting the selection counts
+			selectedConversations = mutedConversations = nonMutedConversations = archivedConversations = nonArchivedConversations = 0;
+			
+			//Showing the toolbar
+			toolbar.setVisibility(View.VISIBLE);
+			toolbar.animate().setStartDelay(50).alpha(1);
+			
+			//Animating the app bar
+			animateAppBarColor(oldToolbarColor, oldStatusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime));
+			
+			//Showing the FAB
+			floatingActionButton.show();
 		}
 		
 		@Override
@@ -1452,27 +1233,6 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Returning false
 			return false;
-		}
-		
-		@Override
-		public void onDestroyActionMode(ActionMode actionMode) {
-			//Invalidating the action mode
-			Conversations.this.actionMode = null;
-			
-			//Deselecting all items
-			List<Long> selectionsCopy = new ArrayList<>(viewModel.actionModeSelections);
-			viewModel.actionModeSelections.clear();
-			for(ConversationManager.ConversationInfo conversationInfo : conversationsBasePlugin.conversations) {
-				if(!selectionsCopy.contains(conversationInfo.getLocalID())) continue;
-				conversationInfo.updateSelected();
-			}
-			
-			//Resetting the selection counts
-			selectedConversations = mutedConversations = nonMutedConversations = archivedConversations = nonArchivedConversations = 0;
-			
-			//Showing the toolbar
-			toolbar.setVisibility(View.VISIBLE);
-			toolbar.animate().alpha(1);
 		}
 		
 		public void onItemCheckedStateToggled(ConversationManager.ConversationInfo item) {

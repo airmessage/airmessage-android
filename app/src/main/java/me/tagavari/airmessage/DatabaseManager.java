@@ -10,6 +10,8 @@ import android.provider.BaseColumns;
 import android.util.Base64;
 import android.util.LongSparseArray;
 
+import com.crashlytics.android.Crashlytics;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -226,7 +228,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					database.update("messages", contentValues, "send_style_viewed != ?", new String[]{""});
 				}
 				
-				//Rebuilding the messages table (to remove the "not null" modifier of the send style
+				//Rebuilding the messages table (to remove the "not null" modifier from the send style)
 				rebuildTable(database, "messages", "CREATE TABLE messages (" +
 						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
 						"guid TEXT UNIQUE, " +
@@ -455,7 +457,13 @@ class DatabaseManager extends SQLiteOpenHelper {
 			columnTarget = columnTargetSB.toString();
 		}
 		
-		//Dropping the column
+		//Logging the operation
+		Crashlytics.log("Column drop requested.\n" +
+				"Requested column: " + columnName + '\n' +
+				"Column target: " + columnTarget + '\n' +
+				"Creation command: " + creationCommand);
+		
+		//Starting the operation
 		if(useTransaction) writableDatabase.beginTransaction();
 		try {
 			writableDatabase.execSQL("CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnTarget + ");");
@@ -511,7 +519,12 @@ class DatabaseManager extends SQLiteOpenHelper {
 			creationCommand = creationCommandSB.toString();
 		}
 		
-		//Dropping the column
+		//Logging the operation
+		Crashlytics.log("Table rebuild requested.\n" +
+		"Column target: " + columnTarget + '\n' +
+		"Creation command: " + creationCommand);
+		
+		//Starting the operation
 		if(useTransaction) writableDatabase.beginTransaction();
 		try {
 			writableDatabase.execSQL("CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnTarget + ");");
@@ -545,8 +558,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 		try(Cursor cursor = readableDatabase.rawQuery("PRAGMA table_info(" + tableName + ")", null)) {
 			int nameIndex = cursor.getColumnIndexOrThrow("name");
 			String[] columns = new String[cursor.getCount()];
-			int i = 0;
-			while(cursor.moveToNext()) columns[i++] = cursor.getString(nameIndex);
+			for(int i = 0; i < columns.length; i++) {
+				cursor.moveToNext();
+				columns[i] = cursor.getString(nameIndex);
+			}
 			return columns;
 		}
 	}
@@ -2085,7 +2100,12 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_NAME, conversationInfo.getStaticTitle());
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationInfo.getConversationColor());
 		
-		database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + "=?", new String[]{Long.toString(conversationInfo.getLocalID())});
+		try {
+			database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + "=?", new String[]{Long.toString(conversationInfo.getLocalID())});
+		} catch(SQLiteConstraintException exception) {
+			exception.printStackTrace();
+			return;
+		}
 		
 		//Checking if members should be updated
 		if(updateMembers) {
