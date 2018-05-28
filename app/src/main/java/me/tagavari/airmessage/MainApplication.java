@@ -17,6 +17,8 @@ import android.support.v7.app.AppCompatDelegate;
 import com.crashlytics.android.Crashlytics;
 import com.crashlytics.android.core.CrashlyticsCore;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 import java.io.File;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
@@ -50,6 +52,9 @@ public class MainApplication extends Application {
 	
 	//Creating the singletons
 	private static WeakReference<MainApplication> instanceReference = null;
+	
+	//Creating the other reference values
+	private static final BouncyCastleProvider securityProvider = new BouncyCastleProvider();
 	
 	@Override
 	public void onCreate() {
@@ -255,6 +260,10 @@ public class MainApplication extends Application {
 	
 	boolean isServerConfigured() {
 		return !getConnectivitySharedPrefs().getString(sharedPreferencesConnectivityKeyHostname, "").isEmpty();
+	}
+	
+	static BouncyCastleProvider getSecurityProvider() {
+		return securityProvider;
 	}
 	
 	@Override
