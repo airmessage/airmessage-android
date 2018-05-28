@@ -456,12 +456,22 @@ class ConversationManager {
 			viewHolder.flagMuted.setVisibility(isMuted ? View.VISIBLE : View.GONE);
 			
 			//Setting the profile
-			currentUserViewIndex = -1;
-			updateViewUser(context, viewHolder);
+			currentUserViewIndex = updateViewUser(context, viewHolder);
 			updateSelected(viewHolder);
 			
 			//Returning if the last message is invalid
 			//if(lastItem == null) return convertView;
+			
+			//Updating the view
+			updateView(viewHolder, context);
+		}
+		
+		void bindViewOnce(ItemViewHolder viewHolder, Context context) {
+			//Setting the flags
+			viewHolder.flagMuted.setVisibility(isMuted ? View.VISIBLE : View.GONE);
+			
+			//Building the profile view
+			updateViewUser(context, viewHolder);
 			
 			//Updating the view
 			updateView(viewHolder, context);
@@ -565,15 +575,15 @@ class ConversationManager {
 		
 		void updateViewUser(Context context) {
 			ItemViewHolder itemView = getViewHolder();
-			if(itemView != null) updateViewUser(context, itemView);
+			if(itemView != null) currentUserViewIndex = updateViewUser(context, itemView);
 		}
 		
-		private void updateViewUser(Context context, BaseViewHolder itemView) {
+		private int updateViewUser(Context context, BaseViewHolder itemView) {
 			//Returning if the conversation has no members
-			if(conversationMembers.isEmpty()) return;
+			if(conversationMembers.isEmpty()) return -1;
 			
 			//Getting the view data
-			currentUserViewIndex = Math.min(conversationMembers.size() - 1, maxUsersToDisplay - 1);
+			int currentUserViewIndex = Math.min(conversationMembers.size() - 1, maxUsersToDisplay - 1);
 			View viewAtIndex = itemView.iconGroup.getChildAt(currentUserViewIndex);
 			ViewGroup iconView;
 			if(viewAtIndex instanceof ViewStub)
@@ -638,6 +648,9 @@ class ConversationManager {
 					}
 				});
 			}
+			
+			//Returning the current user view index
+			return currentUserViewIndex;
 		}
 		
 		void clearMessages() {

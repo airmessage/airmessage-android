@@ -119,6 +119,7 @@
 	<string name="message_serverstatus_unknown">An unknown error occurred</string>
 	
 	<string name="message_serverupdate">A server update is available</string>
+	<string name="message_searchnoresults">No results</string>
 	
 	<string name="message_eventtype_chatrename_change">%s named the conversation \"%s\"</string>
 	<string name="message_eventtype_chatrename_change_you">You named the conversation \"%s\"</string>
@@ -224,6 +225,7 @@
 	<string name="imperative_tapopenapp">Tap to open the app</string>
 	<string name="imperative_selectdestination">Select destination</string>
 	<string name="imperative_selectconversation">Select conversation</string>
+	<string name="imperative_mainsearch">Search messages</string>
 	
 	<string name="proper_imessage" translatable="false">iMessage</string>
 	<string name="proper_sms" translatable="false">SMS</string>
@@ -236,6 +238,8 @@
 	<string name="part_unknown">Unknown</string>
 	<string name="part_none">None</string>
 	<string name="part_nodata">No data</string>
+	<string name="part_conversations">Conversations</string>
+	<string name="part_messages">Messages</string>
 	
 	<string name="state_sent">Sent</string>
 	<string name="state_delivered">Delivered</string>

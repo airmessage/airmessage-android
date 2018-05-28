@@ -63,6 +63,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
+import java.security.spec.KeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -82,6 +83,12 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.TrustManager;
@@ -358,10 +365,7 @@ public class ConnectionService extends Service {
 				postDisconnectedNotification(true);
 				
 				//Notifying the connection listeners
-				LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-						.putExtra(Constants.intentParamState, stateDisconnected)
-						.putExtra(Constants.intentParamCode, intentResultCodeConnection)
-						.putExtra(Constants.intentParamLaunchID, launchID));
+				broadcastState(stateDisconnected, intentResultCodeConnection, launchID);
 				
 				return false;
 			}
@@ -381,10 +385,7 @@ public class ConnectionService extends Service {
 			postDisconnectedNotification(true);
 			
 			//Notifying the connection listeners
-			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-					.putExtra(Constants.intentParamState, stateDisconnected)
-					.putExtra(Constants.intentParamCode, intentResultCodeConnection)
-					.putExtra(Constants.intentParamLaunchID, launchID));
+			broadcastState(stateDisconnected, intentResultCodeConnection, launchID);
 			
 			return false;
 		}
@@ -551,7 +552,14 @@ public class ConnectionService extends Service {
 	}
 	
 	private abstract class ConnectionManager {
+		//Creating the reference values
+		private static final long pingExpiryTime = 20 * 1000; //20 seconds
+		//Creating the request values
 		byte launchID;
+		
+		//Creating the connection values
+		private final Handler handler = new Handler();
+		private final Runnable pingExpiryRunnable = this::disconnect;
 		
 		/**
 		 * Connects to the server
@@ -585,9 +593,32 @@ public class ConnectionService extends Service {
 		/**
 		 * Sends a ping packet to the server
 		 *
-		 * @return whether or not the message was successfuly sent
+		 * @return whether or not the message was successful;y sent
 		 */
-		abstract boolean sendPing();
+		boolean sendPing() {
+			//Starting the ping timer
+			handler.postDelayed(pingExpiryRunnable, pingExpiryTime);
+			
+			return false;
+		}
+		
+		/**
+		 * Notifies the connection manager of a message, cancelling the ping expiry timer
+		 */
+		void onMessage() {
+			//Cancelling the ping timer
+			handler.removeCallbacks(pingExpiryRunnable);
+			
+			//Updating the scheduled ping
+			schedulePing();
+			
+			//Updating the last connection time
+			if(flagMarkEndTime) {
+				SharedPreferences.Editor editor = ((MainApplication) getApplication()).getConnectivitySharedPrefs().edit();
+				editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+				editor.apply();
+			}
+		}
 		
 		/**
 		 * Gets a packager for processing transferable data via this protocol version
@@ -712,8 +743,7 @@ public class ConnectionService extends Service {
 		abstract class ProtocolManager {
 			/**
 			 * Sends a ping packet to the server
-			 *
-			 * @return whether or not the message was successfuly sent
+			 * @return whether or not the message was successfully sent
 			 */
 			abstract boolean sendPing();
 			
@@ -724,6 +754,12 @@ public class ConnectionService extends Service {
 			 * @param data the raw data received from the network
 			 */
 			abstract void processData(int messageType, byte[] data);
+			
+			/**
+			 * Sends an authentication request to the server
+			 * @return whether or not the message was successfully sent
+			 */
+			abstract boolean sendAuthenticationRequest();
 			
 			/**
 			 * Requests a message to be sent to the specified conversation
@@ -843,7 +879,10 @@ public class ConnectionService extends Service {
 		private int currentState = stateDisconnected;
 		
 		private static final long handshakeExpiryTime = 1000 * 10; //10 seconds
-		private Timer handshakeExpiryTimer = null;
+		private final Handler handler = new Handler();
+		private final Runnable handshakeExpiryRunnable = () -> {
+			if(connectionThread != null) connectionThread.closeConnection(intentResultCodeConnection, true);
+		};
 		
 		//Creating the transmission values
 		private static final String stringCharset = "UTF-8";
@@ -920,6 +959,8 @@ public class ConnectionService extends Service {
 		
 		@Override
 		boolean sendPing() {
+			super.sendPing();
+			
 			if(protocolManager == null) return false;
 			else return protocolManager.sendPing();
 		}
@@ -989,20 +1030,6 @@ public class ConnectionService extends Service {
 			return Integer.compare(version, 4);
 		}
 		
-		private class HandshakeExpiryTimerTask extends TimerTask {
-			@Override
-			public void run() {
-				if(handshakeExpiryTimer != null) {
-					//Stopping the expiry timer
-					handshakeExpiryTimer.cancel();
-					handshakeExpiryTimer = null;
-					
-					//Closing the connection
-					connectionThread.closeConnection(intentResultCodeConnection, true);
-				}
-			}
-		}
-		
 		private void updateStateDisconnected(int reason, boolean forwardRequest) {
 			//Setting the state
 			currentState = stateDisconnected;
@@ -1011,7 +1038,7 @@ public class ConnectionService extends Service {
 			connectionEstablished = false;
 			
 			//Stopping the timers
-			if(handshakeExpiryTimer != null) handshakeExpiryTimer.cancel();
+			handler.removeCallbacks(handshakeExpiryRunnable);
 			
 			//Invalidating the protocol manager
 			protocolManager = null;
@@ -1027,23 +1054,10 @@ public class ConnectionService extends Service {
 						lastConnectionResult = reason;
 						
 						//Notifying the connection listeners
-						LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-								.putExtra(Constants.intentParamState, stateDisconnected)
-								.putExtra(Constants.intentParamCode, reason)
-								.putExtra(Constants.intentParamLaunchID, launchID));
+						broadcastState(stateDisconnected, reason, launchID);
 						
 						//Updating the notification state
 						if(!shutdownRequested) postDisconnectedNotification(false);
-						
-						//Checking if the end time should be marked
-						if(flagMarkEndTime) {
-							//Writing the time to shared preferences
-							SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-							SharedPreferences.Editor editor = sharedPrefs.edit();
-							editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
-							editor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
-							editor.commit();
-						}
 						
 						//Checking if a connection existed for reconnection and the preference is enabled
 						if(flagDropReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
@@ -1064,6 +1078,17 @@ public class ConnectionService extends Service {
 			//Setting the connection established flag
 			connectionEstablished = true;
 			
+			//Reading the shared preferences connectivity information
+			SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+			String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
+			long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, -1);
+			
+			//Updating the shared preferences connectivity information
+			SharedPreferences.Editor sharedPrefsEditor = sharedPrefs.edit();
+			if(!hostname.equals(lastConnectionHostname)) sharedPrefsEditor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
+			sharedPrefsEditor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+			sharedPrefsEditor.apply();
+			
 			//Running on the main thread
 			new Handler(Looper.getMainLooper()).post(() -> {
 				//Checking if this is the most recent launch
@@ -1080,15 +1105,8 @@ public class ConnectionService extends Service {
 					//Setting the flags
 					flagMarkEndTime = flagDropReconnect = true;
 					
-					//Getting the last connection time
-					SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-					String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
-					
 					//Checking if the last connection is the same as the current one
 					if(hostname.equals(lastConnectionHostname)) {
-						//Getting the last connection time
-						long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, -1);
-						
 						//Fetching the messages since the last connection time
 						retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
 					}
@@ -1096,9 +1114,7 @@ public class ConnectionService extends Service {
 			});
 			
 			//Notifying the connection listeners
-			LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-					.putExtra(Constants.intentParamState, stateConnected)
-					.putExtra(Constants.intentParamLaunchID, launchID));
+			broadcastState(stateConnected, -1, launchID);
 			
 			//Updating the notification
 			if(foregroundServiceRequested()) postConnectedNotification(true);
@@ -1114,10 +1130,8 @@ public class ConnectionService extends Service {
 		private void processFloatingData(int messageType, byte[] data) {
 			if(messageType == nhtInformation) {
 				//Restarting the authentication timer
-				if(handshakeExpiryTimer == null) return;
-				handshakeExpiryTimer.cancel();
-				handshakeExpiryTimer = new Timer();
-				handshakeExpiryTimer.schedule(new HandshakeExpiryTimerTask(), handshakeExpiryTime);
+				handler.removeCallbacks(handshakeExpiryRunnable);
+				handler.postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
 				
 				//Reading the communications version information
 				ByteBuffer dataBuffer = ByteBuffer.wrap(data);
@@ -1141,19 +1155,7 @@ public class ConnectionService extends Service {
 				new Handler(Looper.getMainLooper()).post(() -> activeCommunicationsVersion = communicationsVersion);
 				
 				//Sending the handshake data
-				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-					out.writeObject(new SharedValues.EncryptableData(transmissionCheck.getBytes(stringCharset)).encrypt(password));
-					out.flush();
-					
-					queuePacket(new PacketStruct(nhtAuthentication, bos.toByteArray()));
-				} catch(IOException | GeneralSecurityException exception) {
-					//Logging the error
-					exception.printStackTrace();
-					Crashlytics.logException(exception);
-					
-					//Closing the connection
-					connectionThread.closeConnection(intentResultCodeInternalException, false);
-				}
+				protocolManager.sendAuthenticationRequest();
 			}
 		}
 		
@@ -1223,8 +1225,7 @@ public class ConnectionService extends Service {
 				}
 				
 				//Starting the handshake timer
-				handshakeExpiryTimer = new Timer();
-				handshakeExpiryTimer.schedule(new HandshakeExpiryTimerTask(), handshakeExpiryTime);
+				handler.postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
 				
 				//Reading from the input stream
 				while(!isInterrupted()) {
@@ -1416,6 +1417,9 @@ public class ConnectionService extends Service {
 			
 			@Override
 			void processData(int messageType, byte[] data) {
+				//Notifying the super connection manager of a message
+				onMessage();
+				
 				switch(messageType) {
 					case nhtClose:
 						connectionThread.closeConnection(intentResultCodeConnection, false);
@@ -1425,10 +1429,7 @@ public class ConnectionService extends Service {
 						break;
 					case nhtAuthentication: {
 						//Stopping the authentication timer
-						if(handshakeExpiryTimer != null) {
-							handshakeExpiryTimer.cancel();
-							handshakeExpiryTimer = null;
-						}
+						handler.removeCallbacks(handshakeExpiryRunnable);
 						
 						//Reading the result code
 						ByteBuffer dataBuffer = ByteBuffer.wrap(data);
@@ -1677,6 +1678,36 @@ public class ConnectionService extends Service {
 						break;
 					}
 				}
+			}
+			
+			@Override
+			boolean sendAuthenticationRequest() {
+				//Returning false if there is no connection thread
+				if(connectionThread == null) return false;
+				
+				byte[] packetData;
+				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt)) {
+					out.writeObject(new SharedValues.EncryptableData(transmissionCheck.getBytes(stringCharset)).encrypt(password));
+					out.flush();
+					
+					packetData = trgt.toByteArray();
+				} catch(IOException | GeneralSecurityException exception) {
+					//Logging the error
+					exception.printStackTrace();
+					Crashlytics.logException(exception);
+					
+					//Closing the connection
+					connectionThread.closeConnection(intentResultCodeInternalException, false);
+					
+					//Returning false
+					return false;
+				}
+				
+				//Sending the message
+				connectionThread.queuePacket(new PacketStruct(nhtAuthentication, packetData));
+				
+				//Returning true
+				return true;
 			}
 			
 			@Override
@@ -1956,6 +1987,9 @@ public class ConnectionService extends Service {
 			
 			@Override
 			void processData(int messageType, byte[] data) {
+				//Notifying the super connection manager of a message
+				onMessage();
+				
 				switch(messageType) {
 					case nhtClose:
 						connectionThread.closeConnection(intentResultCodeConnection, false);
@@ -1965,10 +1999,7 @@ public class ConnectionService extends Service {
 						break;
 					case nhtAuthentication: {
 						//Stopping the authentication timer
-						if(handshakeExpiryTimer != null) {
-							handshakeExpiryTimer.cancel();
-							handshakeExpiryTimer = null;
-						}
+						handler.removeCallbacks(handshakeExpiryRunnable);
 						
 						//Reading the result code
 						ByteBuffer dataBuffer = ByteBuffer.wrap(data);
@@ -2000,22 +2031,18 @@ public class ConnectionService extends Service {
 					}
 					case nhtMessageUpdate:
 					case nhtTimeRetrieval: {
-						System.out.println("Message update received!");
 						//Reading the list
 						List<Blocks.ConversationItem> list;
 						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
-							SharedValues.EncryptableData dataSec = (SharedValues.EncryptableData) in.readObject();
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							//Reading the secure data
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								list = deserializeConversationItems(inSec, inSec.readInt());
 							}
-						} catch(IOException | RuntimeException | ClassNotFoundException | GeneralSecurityException exception) {
+						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
 							exception.printStackTrace();
 							break;
 						}
 						
-						System.out.println("Processing " + list.size() + " items");
 						//Processing the messages
 						processMessageUpdate(list, true);
 						
@@ -2027,10 +2054,7 @@ public class ConnectionService extends Service {
 							int packetIndex = in.readInt();
 							
 							//Reading the secure data
-							SharedValues.EncryptableData dataSec = (SharedValues.EncryptableData) in.readObject();
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								//Checking if this is the first packet
 								if(packetIndex == 0) {
 									//Reading the conversation list
@@ -2049,7 +2073,7 @@ public class ConnectionService extends Service {
 									if(massRetrievalThread != null) massRetrievalThread.addPacket(ConnectionService.this, packetIndex, listItems);
 								}
 							}
-						} catch(IOException | RuntimeException | ClassNotFoundException | GeneralSecurityException exception) {
+						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
 							//Logging the exception
 							exception.printStackTrace();
 							
@@ -2069,13 +2093,11 @@ public class ConnectionService extends Service {
 						//Reading the list
 						List<Blocks.ConversationInfo> list;
 						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
-							SharedValues.EncryptableData dataSec = (SharedValues.EncryptableData) in.readObject();
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							//Reading the secure data
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								list = deserializeConversations(inSec, inSec.readInt());
 							}
-						} catch(IOException | RuntimeException | ClassNotFoundException | GeneralSecurityException exception) {
+						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
 							exception.printStackTrace();
 							break;
 						}
@@ -2089,13 +2111,11 @@ public class ConnectionService extends Service {
 						//Reading the list
 						List<Blocks.ModifierInfo> list;
 						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-							SharedValues.EncryptableData dataSec = (SharedValues.EncryptableData) in.readObject();
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							//Reading the secure data
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								list = deserializeModifiers(inSec, inSec.readInt());
 							}
-						} catch(IOException | RuntimeException | ClassNotFoundException | GeneralSecurityException exception) {
+						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
 							exception.printStackTrace();
 							break;
 						}
@@ -2122,15 +2142,13 @@ public class ConnectionService extends Service {
 							else fileSize = -1;
 							isLast = in.readBoolean();
 							
-							SharedValues.EncryptableData dataSec = (SharedValues.EncryptableData) in.readObject();
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							//Reading the secure data
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								fileGUID = inSec.readUTF();
 								compressedBytes = new byte[inSec.readInt()];
 								inSec.readFully(compressedBytes);
 							}
-						} catch(IOException | RuntimeException | ClassNotFoundException | GeneralSecurityException exception) {
+						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
 							exception.printStackTrace();
 							break;
 						}
@@ -2362,6 +2380,36 @@ public class ConnectionService extends Service {
 			}
 			
 			@Override
+			boolean sendAuthenticationRequest() {
+				//Returning false if there is no connection thread
+				if(connectionThread == null) return false;
+				
+				byte[] packetData;
+				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt)) {
+					writeEncrypted(transmissionCheck.getBytes(stringCharset), out, password);
+					out.flush();
+					
+					packetData = trgt.toByteArray();
+				} catch(IOException | GeneralSecurityException exception) {
+					//Logging the error
+					exception.printStackTrace();
+					Crashlytics.logException(exception);
+					
+					//Closing the connection
+					connectionThread.closeConnection(intentResultCodeInternalException, false);
+					
+					//Returning false
+					return false;
+				}
+				
+				//Sending the message
+				connectionThread.queuePacket(new PacketStruct(nhtAuthentication, packetData));
+				
+				//Returning true
+				return true;
+			}
+			
+			@Override
 			boolean sendMessage(short requestID, String chatGUID, String message) {
 				//Returning false if there is no connection thread
 				if(connectionThread == null) return false;
@@ -2376,7 +2424,7 @@ public class ConnectionService extends Service {
 					outSec.writeUTF(message); //Message
 					outSec.flush();
 					
-					out.writeObject(new SharedValues.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
 					
 					out.flush();
 					
@@ -2402,8 +2450,8 @@ public class ConnectionService extends Service {
 				if(connectionThread == null) return false;
 				
 				byte[] packetData;
-				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos);
-					ByteArrayOutputStream bosSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(bosSec)) {
+				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
+					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
 					//Adding the data
 					out.writeShort(requestID); //Request ID
 					
@@ -2413,11 +2461,11 @@ public class ConnectionService extends Service {
 					outSec.writeUTF(service); //Service
 					outSec.flush();
 					
-					out.writeObject(new SharedValues.EncryptableData(bosSec.toByteArray()).encrypt(password)); //Encrypted data
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
 					
 					out.flush();
 					
-					packetData = bos.toByteArray();
+					packetData = trgt.toByteArray();
 				} catch(IOException | GeneralSecurityException exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
@@ -2445,7 +2493,8 @@ public class ConnectionService extends Service {
 					outSec.writeUTF(attachmentGUID); //File GUID
 					outSec.flush();
 					
-					out.writeObject(new SharedValues.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
+					
 					out.flush();
 					
 					//Sending the message
@@ -2486,7 +2535,9 @@ public class ConnectionService extends Service {
 					for(String item : guidList) outSec.writeUTF(item);
 					outSec.flush();
 					
-					out.writeObject(new SharedValues.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
+					
+					out.flush();
 					
 					//Sending the message
 					connectionThread.queuePacket(new PacketStruct(nhtConversationUpdate, trgt.toByteArray()));
@@ -2522,7 +2573,8 @@ public class ConnectionService extends Service {
 					if(requestIndex == 0) outSec.writeUTF(fileName); //File name
 					outSec.flush();
 					
-					out.writeObject(new SharedValues.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
+					
 					out.flush();
 					
 					packetData = trgt.toByteArray();
@@ -2603,6 +2655,75 @@ public class ConnectionService extends Service {
 				
 				//Returning true
 				return true;
+			}
+			
+			private static final int encryptionSaltLen = 8;
+			private static final int encryptionIvLen = 12; //12 bytes (instead of 16 because of GCM)
+			private static final String encryptionKeyFactoryAlgorithm = "PBKDF2WithHmacSHA256";
+			private static final String encryptionKeyAlgorithm = "AES";
+			private static final String encryptionCipherTransformation = "AES/GCM/NoPadding";
+			private static final int encryptionKeyIterationCount = 10000;
+			private static final int encryptionKeyLength = 128; //128 bits
+			
+			private byte[] readEncrypted(ObjectInputStream stream, String password) throws IOException, GeneralSecurityException {
+				//Reading the data
+				byte[] salt = new byte[encryptionSaltLen];
+				stream.readFully(salt);
+				
+				byte[] iv = new byte[encryptionIvLen];
+				stream.readFully(iv);
+				
+				byte[] data = new byte[stream.readInt()];
+				stream.readFully(data);
+				
+				//Creating the key
+				SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(encryptionKeyFactoryAlgorithm);
+				KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, encryptionKeyIterationCount, encryptionKeyLength);
+				SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
+				SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), encryptionKeyAlgorithm);
+				
+				//Creating the IV
+				GCMParameterSpec gcmSpec = new GCMParameterSpec(encryptionKeyLength, iv);
+				
+				//Creating the cipher
+				Cipher cipher = Cipher.getInstance(encryptionCipherTransformation);
+				cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, gcmSpec);
+				
+				//Deciphering the data
+				byte[] block = cipher.doFinal(data);
+				return block;
+			}
+			
+			private void writeEncrypted(byte[] block, ObjectOutputStream stream, String password) throws IOException, GeneralSecurityException {
+				//Creating a secure random
+				SecureRandom random = new SecureRandom();
+				
+				//Generating a salt
+				byte[] salt = new byte[encryptionSaltLen];
+				random.nextBytes(salt);
+				
+				//Creating the key
+				SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(encryptionKeyFactoryAlgorithm);
+				KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, encryptionKeyIterationCount, encryptionKeyLength);
+				SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
+				SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), encryptionKeyAlgorithm);
+				
+				//Generating the IV
+				byte[] iv = new byte[encryptionIvLen];
+				random.nextBytes(iv);
+				GCMParameterSpec gcmSpec = new GCMParameterSpec(encryptionKeyLength, iv);
+				
+				Cipher cipher = Cipher.getInstance(encryptionCipherTransformation);
+				cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, gcmSpec);
+				
+				//Encrypting the data
+				byte[] data = cipher.doFinal(block);
+				
+				//Writing the data
+				stream.write(salt);
+				stream.write(iv);
+				stream.writeInt(data.length);
+				stream.write(data);
 			}
 			
 			@Override
@@ -3177,16 +3298,6 @@ public class ConnectionService extends Service {
 							//Updating the notification state
 							if(!shutdownRequested) postDisconnectedNotification(false);
 							
-							//Checking if the end time should be marked
-							if(flagMarkEndTime) {
-								//Writing the time to shared preferences
-								SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-								SharedPreferences.Editor editor = sharedPrefs.edit();
-								editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
-								editor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
-								editor.commit();
-							}
-							
 							//Checking if a connection existed for reconnection and the preference is enabled
 							if(flagDropReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
 								//Reconnecting
@@ -3206,6 +3317,17 @@ public class ConnectionService extends Service {
 				//Setting the connection established flag
 				connectionEstablished = true;
 				
+				//Reading the shared preferences connectivity information
+				SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
+				String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
+				long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, -1);
+				
+				//Updating the shared preferences connectivity information
+				SharedPreferences.Editor sharedPrefsEditor = sharedPrefs.edit();
+				if(!hostname.equals(lastConnectionHostname)) sharedPrefsEditor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
+				sharedPrefsEditor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+				sharedPrefsEditor.apply();
+				
 				//Running on the main thread
 				new Handler(Looper.getMainLooper()).post(() -> {
 					//Checking if this is the most recent launch
@@ -3222,15 +3344,8 @@ public class ConnectionService extends Service {
 						//Setting the flags
 						flagMarkEndTime = flagDropReconnect = true;
 						
-						//Getting the last connection time
-						SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-						String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
-						
 						//Checking if the last connection is the same as the current one
 						if(hostname.equals(lastConnectionHostname)) {
-							//Getting the last connection time
-							long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, -1);
-							
 							//Fetching the messages since the last connection time
 							retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
 						}
@@ -3238,9 +3353,7 @@ public class ConnectionService extends Service {
 				});
 				
 				//Notifying the connection listeners
-				LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-						.putExtra(Constants.intentParamState, stateConnected)
-						.putExtra(Constants.intentParamLaunchID, launchID));
+				broadcastState(stateConnected, -1, launchID);
 				
 				//Updating the notification
 				if(foregroundServiceRequested()) postConnectedNotification(true);
@@ -3251,6 +3364,9 @@ public class ConnectionService extends Service {
 			}
 			
 			private void processData(int messageType, byte[] data) {
+				//Notifying the super connection manager of a message
+				onMessage();
+				
 				switch(messageType) {
 					case nhtClose:
 						closeConnection(intentResultCodeConnection, false);
@@ -4121,9 +4237,7 @@ public class ConnectionService extends Service {
 					lastConnectionResult = intentResultCodeSuccess;
 					
 					//Notifying the connection listeners
-					LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-							.putExtra(Constants.intentParamState, stateConnected)
-							.putExtra(Constants.intentParamLaunchID, launchID));
+					broadcastState(stateConnected, -1, launchID);
 					
 					//Recording the server version
 					{
@@ -4164,8 +4278,8 @@ public class ConnectionService extends Service {
 			
 			@Override
 			public void onMessage(ByteBuffer bytes) {
-				//Updating the scheduled ping
-				schedulePing();
+				//Notifying the super connection manager of a message
+				ClientComm2.this.onMessage();
 				
 				//Processing the message
 				byte[] array = new byte[bytes.remaining()];
@@ -4352,20 +4466,6 @@ public class ConnectionService extends Service {
 					
 					//Notifying the connection listeners
 					broadcastState(stateDisconnected, clientReason, launchID);
-					/* LocalBroadcastManager.getInstance(ConnectionService.this).sendBroadcast(new Intent(localBCStateUpdate)
-							.putExtra(Constants.intentParamState, stateDisconnected)
-							.putExtra(Constants.intentParamCode, clientReason)
-							.putExtra(Constants.intentParamLaunchID, launchID)); */
-					
-					//Checking if the end time should be marked
-					if(flagMarkEndTime) {
-						//Writing the time to shared preferences
-						SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-						SharedPreferences.Editor editor = sharedPrefs.edit();
-						editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
-						editor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, hostname);
-						editor.commit();
-					}
 					
 					//Checking if a connection existed for reconnection and the preference is enabled
 					if(flagDropReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
