@@ -534,19 +534,19 @@ class ConversationManager {
 		
 		private void updateUnreadStatus(ItemViewHolder itemView, Context context) {
 			if(unreadMessageCount > 0) {
-				itemView.conversationTitle.setTypeface(itemView.conversationTitle.getTypeface(), Typeface.BOLD);
+				itemView.conversationTitle.setTypeface(null, Typeface.BOLD);
 				itemView.conversationTitle.setTextColor(itemView.conversationTitle.getResources().getColor(R.color.colorPrimary, null));
 				
-				itemView.conversationMessage.setTypeface(itemView.conversationMessage.getTypeface(), Typeface.BOLD);
+				itemView.conversationMessage.setTypeface(null, Typeface.BOLD);
 				itemView.conversationMessage.setTextColor(Constants.resolveColorAttr(itemView.conversationMessage.getContext(), android.R.attr.textColorPrimary));
 				
 				itemView.conversationUnread.setVisibility(View.VISIBLE);
 				itemView.conversationUnread.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? context.getResources().getConfiguration().getLocales().get(0) : context.getResources().getConfiguration().locale, "%d", unreadMessageCount));
 			} else {
-				itemView.conversationTitle.setTypeface(itemView.conversationTitle.getTypeface(), Typeface.NORMAL);
+				itemView.conversationTitle.setTypeface(null, Typeface.NORMAL);
 				itemView.conversationTitle.setTextColor(Constants.resolveColorAttr(itemView.conversationTitle.getContext(), android.R.attr.textColorPrimary));
 				
-				itemView.conversationMessage.setTypeface(itemView.conversationMessage.getTypeface(), Typeface.NORMAL);
+				itemView.conversationMessage.setTypeface(null, Typeface.NORMAL);
 				itemView.conversationMessage.setTextColor(Constants.resolveColorAttr(itemView.conversationMessage.getContext(), android.R.attr.textColorSecondary));
 				
 				itemView.conversationUnread.setVisibility(View.GONE);

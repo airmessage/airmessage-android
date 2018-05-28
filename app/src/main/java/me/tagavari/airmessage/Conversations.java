@@ -244,7 +244,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		else infoBarContacts.show();
 		
 		//Hiding the search view if the state is syncing
-		if(conversationsBasePlugin.currentState != ConversationsBase.stateReady) setSearchState(false);
+		if(conversationsBasePlugin.currentState != ConversationsBase.stateReady) setSearchState(false, true);
 	}
 	
 	@Override
@@ -267,7 +267,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Configuring the search widget
 		menuItemSearch = menu.findItem(R.id.action_search);
-		menuItemSearch.setVisible(conversationsBasePlugin.currentState != ConversationsBase.stateReady && !viewModel.listingArchived);
+		menuItemSearch.setVisible(!viewModel.listingArchived);
 		
 		//Returning true
 		return true;
@@ -475,7 +475,7 @@ public class Conversations extends AppCompatCompositeActivity {
 				//Setting the state to search
 				if(conversationsBasePlugin.currentState != ConversationsBase.stateIdle && conversationsBasePlugin.currentState != ConversationsBase.stateSyncing) {
 					//setAppBarState(appBarStateSearch);
-					setSearchState(true);
+					setSearchState(true, true);
 				}
 				
 				return true;
@@ -541,7 +541,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Checking if the state is in a search
 		if(viewModel.isSearching) {
 			//Closing the search
-			setSearchState(false);
+			setSearchState(false, true);
 		}
 		//Checking if the "archived" view is active
 		else if(viewModel.listingArchived) {
@@ -668,7 +668,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		actionModeCallbacks.updateActionModeContext();
 	}
 	
-	void setSearchState(boolean enabled) {
+	void setSearchState(boolean enabled, boolean updateContext) {
 		//Returning if the requested state matches the current state
 		if(viewModel.isSearching == enabled) return;
 		
@@ -678,7 +678,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		long duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
 		if(enabled) {
 			//Hiding the toolbar
-			toolbar.animate().alpha(0).setDuration(duration).withEndAction(() -> toolbar.setVisibility(View.GONE));
+			if(updateContext) toolbar.animate().alpha(0).setDuration(duration).withEndAction(() -> toolbar.setVisibility(View.GONE));
 			
 			//Showing the search group
 			groupBarSearch.animate().alpha(1).setDuration(duration).withStartAction(() -> {
@@ -693,10 +693,10 @@ public class Conversations extends AppCompatCompositeActivity {
 			}).withEndAction(() -> groupBarSearch.setClickable(true));
 			
 			//Hiding the FAB
-			floatingActionButton.hide();
+			if(updateContext) floatingActionButton.hide();
 		} else {
 			//Showing the toolbar
-			toolbar.animate().alpha(1).setDuration(duration).withStartAction(() -> toolbar.setVisibility(View.VISIBLE));
+			if(updateContext) toolbar.animate().alpha(1).setDuration(duration).withStartAction(() -> toolbar.setVisibility(View.VISIBLE));
 			
 			//Hiding the search group
 			groupBarSearch.animate().alpha(0).setDuration(duration).withStartAction(() -> {
@@ -707,7 +707,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			}).withEndAction(() -> groupBarSearch.setVisibility(View.GONE));
 			
 			//Showing the FAB
-			floatingActionButton.show();
+			if(updateContext) floatingActionButton.show();
 			
 			//Clearing the search query
 			updateSearchFilter("");
@@ -715,6 +715,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	}
 	
 	void restoreSearchState() {
+		System.out.println("Restoring search state to " + viewModel.isSearching);
 		//Returning if the search is not active
 		if(!viewModel.isSearching) return;
 		
@@ -722,10 +723,11 @@ public class Conversations extends AppCompatCompositeActivity {
 		toolbar.setVisibility(View.GONE);
 		toolbar.setAlpha(0);
 		
-		//Showing the search group
+		//Showing the views
 		groupBarSearch.setVisibility(View.VISIBLE);
 		groupBarSearch.setAlpha(1);
 		editTextBarSearch.requestFocus();
+		groupSearch.setVisibility(View.VISIBLE);
 		
 		//Updating the close button
 		buttonBarSearchClear.setVisibility(editTextBarSearch.getText().length() > 0 ? View.VISIBLE : View.GONE);
@@ -735,10 +737,13 @@ public class Conversations extends AppCompatCompositeActivity {
 	}
 	
 	public void onCloseSearchClicked(View view) {
-		setSearchState(false);
+		setSearchState(false, true);
 	}
 	
 	private void updateSearchFilter(String query) {
+		//Returning if the search is not active
+		if(!query.isEmpty() && !viewModel.isSearching) return;
+		
 		//Updating the recycler adapter
 		if(searchRecyclerAdapter != null) searchRecyclerAdapter.updateFilterText(query);
 		
@@ -764,12 +769,6 @@ public class Conversations extends AppCompatCompositeActivity {
 			conversationSourceList = conversationList;
 		}
 		
-		private class ConversationViewHolder extends RecyclerView.ViewHolder {
-			public ConversationViewHolder(View itemView) {
-				super(itemView);
-			}
-		}
-		
 		private class SubheaderViewHolder extends RecyclerView.ViewHolder {
 			final TextView label;
 			
@@ -786,12 +785,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		private int searchRequestID = 0;
 		private String lastFilterText = "";
 		void updateFilterText(String text) {
-			//Returning if the texts match
-			if(text.equals(lastFilterText)) {
-				notifyDataSetChanged();
-				return;
-			}
-			
 			//Setting the search request ID
 			int currentRequestID = ++searchRequestID;
 			
@@ -866,12 +859,22 @@ public class Conversations extends AppCompatCompositeActivity {
 		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
 			switch(getItemViewType(position)) {
 				case itemTypeSubheader:
+					//Setting the header label text
 					if(position == 0 && !conversationFilterList.isEmpty()) ((SubheaderViewHolder) holder).label.setText(R.string.part_conversations);
 					else ((SubheaderViewHolder) holder).label.setText(R.string.part_messages);
 					break;
-				case itemTypeConversation:
-					conversationFilterList.get(position - 1).bindViewOnce((ConversationManager.ConversationInfo.ItemViewHolder) holder, Conversations.this);
+				case itemTypeConversation: {
+					//Getting the conversation
+					ConversationManager.ConversationInfo conversation = conversationFilterList.get(position - 1);
+					
+					//Passing the view to the conversation to bind
+					conversation.bindViewOnce((ConversationManager.ConversationInfo.ItemViewHolder) holder, Conversations.this);
+					
+					//Setting the view's click listener
+					holder.itemView.setOnClickListener(view -> startActivity(new Intent(Conversations.this, Messaging.class).putExtra(Constants.intentParamTargetID, conversation.getLocalID())));
+					
 					break;
+				}
 				case itemTypeMessage:
 					break;
 			}
@@ -1024,6 +1027,8 @@ public class Conversations extends AppCompatCompositeActivity {
 		actionBar.setDisplayHomeAsUpEnabled(true);
 		actionBar.setTitle(R.string.screen_archived);
 		
+		if(menuItemSearch != null) menuItemSearch.setVisible(false);
+		
 		//Hiding the FAB
 		floatingActionButton.hide();
 	}
@@ -1076,6 +1081,9 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Inflating the menu
 			MenuInflater inflater = actionMode.getMenuInflater();
 			inflater.inflate(R.menu.menu_conversation_actionmode, menu);
+			
+			//Closing the search
+			setSearchState(false, false);
 			
 			//Hiding the toolbar
 			toolbar.animate().alpha(0).withEndAction(() -> toolbar.setVisibility(View.INVISIBLE));

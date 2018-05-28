@@ -140,12 +140,6 @@ class ConversationsBase extends AppCompatActivityPlugin {
 	public void onCreate(Bundle savedInstanceState) {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
-	}
-	
-	@Override
-	public void onStart() {
-		//Calling the super method
-		super.onStart();
 		
 		//Adding the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
@@ -160,12 +154,22 @@ class ConversationsBase extends AppCompatActivityPlugin {
 			conversations = new MainApplication.LoadFlagArrayList<>(false);
 			((MainApplication) getActivity().getApplication()).setConversations(conversations);
 		}
-		
-		//Advancing the conversation state
-		advanceConversationState();
+	}
+	
+	private boolean isFirstOnStart = true;
+	@Override
+	public void onStart() {
+		//Calling the super method
+		super.onStart();
 		
 		//Starting the time updater
 		timeUpdateHandler.postDelayed(timeUpdateHandlerRunnable, timeUpdateHandlerDelay);
+		
+		//Advancing the conversation state (doing it in onStart so that the composite activity has time to handle its views)
+		if(isFirstOnStart) {
+			advanceConversationState();
+			isFirstOnStart = false;
+		}
 	}
 	
 	@Override
@@ -174,7 +178,7 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		super.onResume();
 		
 		//Refreshing the list
-		updateList(false);
+		//updateList(false);
 	}
 	
 	@Override
@@ -182,13 +186,16 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		//Calling the super method
 		super.onStop();
 		
-		//Removing the broadcast listeners
+		//Stopping the time updater
+		timeUpdateHandler.removeCallbacks(timeUpdateHandlerRunnable);
+	}
+	
+	@Override
+	protected void onDestroy() {
+		//Unregistering the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
 		localBroadcastManager.unregisterReceiver(massRetrievalStateBroadcastReceiver);
 		localBroadcastManager.unregisterReceiver(updateConversationsBroadcastReceiver);
-		
-		//Stopping the time updater
-		timeUpdateHandler.removeCallbacks(timeUpdateHandlerRunnable);
 	}
 	
 	void setViews(RecyclerView recyclerView, ProgressBar massRetrievalProgressBar, TextView noConversationsLabel) {
@@ -291,8 +298,7 @@ class ConversationsBase extends AppCompatActivityPlugin {
 			case stateReady:
 				recyclerView.setAlpha(0);
 				recyclerView.setVisibility(View.VISIBLE);
-				recyclerView.animate()
-						.alpha(1);
+				recyclerView.animate().alpha(1);
 				
 				updateList(true);
 				/* if(conversations.isEmpty()) {
@@ -329,9 +335,6 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		
 		//Calling the listeners
 		for(Runnable listener : conversationsLoadedListener) listener.run();
-		
-		//Updating the views
-		//for(ConversationManager.ConversationInfo conversationInfo : ConversationManager.getConversations()) conversationInfo.updateView(Conversations.this);
 	}
 	
 	void conversationLoadFailed() {
