@@ -10,6 +10,7 @@ import java.security.SecureRandom;
 import java.security.spec.KeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -22,21 +23,11 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class SharedValues {
-	/* COMMUNICATIONS VERSION CHANGES
-	*  1 - Original release
-	*  2 - Serialization changes
-	*  3 - Reworked without WS layer
-	*  4 - Better stability and security, with sub-version support
-	*/
-	public static final int mmCommunicationsVersion = 4;
-	public static final int mmCommunicationsSubVersion = 1;
+	public interface BlockAccess {
+		Blocks.Block toBlock();
+	}
 	
-	public static final String headerCommVer = "MMS-Comm-Version";
-	public static final String headerSoftVersion = "MMS-Soft-Version";
-	public static final String headerSoftVersionCode = "MMS-Soft-Version-Code";
-	public static final String headerPassword = "Password";
-	
-	public static class ConversationInfo implements Serializable {
+	public static class ConversationInfo implements Serializable, BlockAccess {
 		private static final long serialVersionUID = 100;
 		
 		public String guid;
@@ -72,9 +63,15 @@ public class SharedValues {
 			name = (String) stream.readObject();
 			members = (ArrayList<String>) stream.readObject();
 		}
+		
+		@Override
+		public Blocks.ConversationInfo toBlock() {
+			if(available) return new Blocks.ConversationInfo(guid, service, name, members.toArray(new String[0]));
+			else return new Blocks.ConversationInfo(guid);
+		}
 	}
 	
-	public static abstract class ConversationItem implements Serializable, Cloneable {
+	public static abstract class ConversationItem implements Serializable, Cloneable, BlockAccess {
 		private static final long serialVersionUID = 101;
 		
 		public String guid;
@@ -86,6 +83,9 @@ public class SharedValues {
 			this.chatGuid = chatGuid;
 			this.date = date;
 		}
+		
+		@Override
+		public abstract Blocks.ConversationItem toBlock();
 	}
 	
 	public static class MessageInfo extends ConversationItem {
@@ -144,9 +144,21 @@ public class SharedValues {
 			if(stickers == null) throw new NullPointerException("Sticker list is null");
 			if(tapbacks == null) throw new NullPointerException("Tapback list is null");
 		}
+		
+		@Override
+		public Blocks.MessageInfo toBlock() {
+			List<Blocks.AttachmentInfo> blockAttachments = new ArrayList<>(attachments.size());
+			for(AttachmentInfo item : attachments) blockAttachments.add(item.toBlock());
+			List<Blocks.StickerModifierInfo> blockStickers = new ArrayList<>(stickers.size());
+			for(StickerModifierInfo item : stickers) blockStickers.add(item.toBlock());
+			List<Blocks.TapbackModifierInfo> blockTapbacks = new ArrayList<>(tapbacks.size());
+			for(TapbackModifierInfo item : tapbacks) blockTapbacks.add(item.toBlock());
+			
+			return new Blocks.MessageInfo(guid, chatGuid, date, text, sender, blockAttachments, blockStickers, blockTapbacks, sendEffect, stateCode, errorCode, dateRead);
+		}
 	}
 	
-	public static class AttachmentInfo implements Serializable {
+	public static class AttachmentInfo implements Serializable, BlockAccess {
 		private static final long serialVersionUID = 103;
 		public String guid;
 		public String name;
@@ -167,6 +179,11 @@ public class SharedValues {
 			name = (String) stream.readObject();
 			type = (String) stream.readObject();
 			checksum = (byte[]) stream.readObject();
+		}
+		
+		@Override
+		public Blocks.AttachmentInfo toBlock() {
+			return new Blocks.AttachmentInfo(guid, name, type, checksum);
 		}
 	}
 	
@@ -197,6 +214,11 @@ public class SharedValues {
 			other = (String) stream.readObject();
 			groupActionType = stream.readInt();
 		}
+		
+		@Override
+		public Blocks.GroupActionInfo toBlock() {
+			return new Blocks.GroupActionInfo(guid, chatGuid, date, agent, other, groupActionType);
+		}
 	}
 	
 	public static class ChatRenameActionInfo extends ConversationItem {
@@ -223,9 +245,14 @@ public class SharedValues {
 			agent = (String) stream.readObject();
 			newChatName = (String) stream.readObject();
 		}
+		
+		@Override
+		public Blocks.ChatRenameActionInfo toBlock() {
+			return new Blocks.ChatRenameActionInfo(guid, chatGuid, date, agent, newChatName);
+		}
 	}
 	
-	public static abstract class ModifierInfo implements Serializable {
+	public static abstract class ModifierInfo implements Serializable, BlockAccess {
 		private static final long serialVersionUID = 106;
 		
 		public String message;
@@ -233,6 +260,9 @@ public class SharedValues {
 		public ModifierInfo(String message) {
 			this.message = message;
 		}
+		
+		@Override
+		public abstract Blocks.ModifierInfo toBlock();
 	}
 	
 	public static class ActivityStatusModifierInfo extends ModifierInfo {
@@ -255,6 +285,11 @@ public class SharedValues {
 			message = stream.readUTF();
 			state = stream.readInt();
 			dateRead = stream.readLong();
+		}
+		
+		@Override
+		public Blocks.ActivityStatusModifierInfo toBlock() {
+			return new Blocks.ActivityStatusModifierInfo(message, state, dateRead);
 		}
 	}
 	
@@ -288,6 +323,11 @@ public class SharedValues {
 			sender = (String) stream.readObject();
 			date = stream.readLong();
 			image = (byte[]) stream.readObject();
+		}
+		
+		@Override
+		public Blocks.StickerModifierInfo toBlock() {
+			return new Blocks.StickerModifierInfo(message, messageIndex, fileGuid, sender, date, image);
 		}
 	}
 	
@@ -325,6 +365,11 @@ public class SharedValues {
 			messageIndex = stream.readInt();
 			sender = (String) stream.readObject();
 			code = stream.readInt();
+		}
+		
+		@Override
+		public Blocks.TapbackModifierInfo toBlock() {
+			return new Blocks.TapbackModifierInfo(message, messageIndex, sender, code);
 		}
 	}
 	

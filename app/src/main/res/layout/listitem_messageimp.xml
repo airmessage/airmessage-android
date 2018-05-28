@@ -42,7 +42,7 @@
 		android:paddingLeft="8dp"
 		android:paddingRight="8dp"
 		app:layout_constraintStart_toStartOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/timedivider">
+		app:layout_constraintTop_toTopOf="@id/messagepart_container">
 		<ViewStub
 			android:id="@+id/stub_profile"
 			android:inflatedId="@+id/profile"

@@ -54,9 +54,9 @@
 	<string name="message_serverstatus_unknown">Une erreur inconnue a eu lieu</string>
 	<string name="message_permissiondetails_contacts_listing">Autoriser l\'accès aux contacts pour afficher les noms et les images</string>
 	<string name="message_permissiondetails_contacts_suggestions">Autoriser l\'accès aux contacts pour avoir des suggestions</string>
-	<string name="state_sent">Distribué</string>
+	<string name="state_sent">Envoyé</string>
 	<string name="state_read">Lu</string>
-	<string name="state_delivered">Livré</string>
+	<string name="state_delivered">Distribué</string>
 	<string name="action_send">Envoyer</string>
 	<string name="action_next">Suivant</string>
 	<string name="action_back">Retour</string>
@@ -251,7 +251,7 @@
 	</string-array>
 	
 	<string name="message_serverstatus_authfail">Le mot de passe a été rejeté</string>
-	<string name="message_serverupdate">Une mise à jour significatife du serveur est disponible</string>
+	<string name="message_serverupdate">Une mise à jour de serveur est disponible</string>
 	<string name="action_reconfigure">Reconfigurer</string>
 	<string name="preference_server_dropreconnect_description">Essayer de vous reconnecter immédiatement après la perte de la connexion</string>
 	<string name="preference_server_dropreconnect_title">Reconnexion de connexion perdue</string>
@@ -267,4 +267,6 @@
 	<string name="message_messageerror_desc_air_internal">Une erreur interne s\'est produite</string>
 	<string name="message_confirm_deletemessages_started">Tous les messages ont été supprimés</string>
 	<string name="message_confirm_deleteattachments_started">Toutes les pièces jointes ont été supprimées</string>
+	<string name="part_conversations">Conversations</string>
+	<string name="part_messages">Messages</string>
 </resources>

@@ -370,15 +370,15 @@ public class NewMessage extends AppCompatActivity {
 		getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 		
 		//Getting the recipients
-		ArrayList<String> recipients = getRecipientList();
+		List<String> recipients = getRecipientList();
 		
 		//Checking if the conversations are available
-		ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+		List<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
 		if(conversations != null) {
 			//Scanning the loaded conversations for a matching one
 			for(ConversationManager.ConversationInfo conversationInfo : conversations) {
 				//Getting the conversation members
-				ArrayList<String> members = Constants.normalizeAddresses(conversationInfo.getConversationMembersAsCollection());
+				List<String> members = Constants.normalizeAddresses(conversationInfo.getConversationMembersAsCollection());
 				
 				//Returning if the conversation members are not the same
 				if(recipients.size() != members.size() || !recipients.containsAll(members)) continue;
@@ -444,10 +444,10 @@ public class NewMessage extends AppCompatActivity {
 		private final WeakReference<NewMessage> activityReference;
 		
 		//Creating the values
-		private final ArrayList<String> members;
+		private final List<String> members;
 		private final String service;
 		
-		ConfirmParticipantsTask(Context context, NewMessage activity, ArrayList<String> members, String service) {
+		ConfirmParticipantsTask(Context context, NewMessage activity, List<String> members, String service) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
 			activityReference = new WeakReference<>(activity);
@@ -469,7 +469,7 @@ public class NewMessage extends AppCompatActivity {
 			if(context == null) return null;
 			
 			//Cloning and normalizing the members' addresses
-			List<String> normalizedMembers = (ArrayList<String>) members.clone();
+			List<String> normalizedMembers = new ArrayList<>(members);
 			for(ListIterator<String> iterator = normalizedMembers.listIterator(); iterator.hasNext();) iterator.set(Constants.normalizeAddress(iterator.next()));
 			
 			//Adding the conversation

@@ -83,7 +83,7 @@ class ConversationsBase extends AppCompatActivityPlugin {
 								if(service == null || service.getCurrentState() != ConnectionService.stateConnected) return;
 								
 								//Requesting another mass retrieval
-								service.requestMassRetrieval(getActivity().getApplicationContext());
+								service.requestMassRetrieval();
 							})
 							.show();
 					
@@ -115,7 +115,7 @@ class ConversationsBase extends AppCompatActivityPlugin {
 	private final List<Runnable> conversationsLoadedListener = new ArrayList<>();
 	
 	//Creating the timer values
-	static final long timeUpdateHandlerDelay = 60 * 1000; //1 minute
+	private static final long timeUpdateHandlerDelay = 60 * 1000; //1 minute
 	private Handler timeUpdateHandler = new Handler(Looper.getMainLooper());
 	private Runnable timeUpdateHandlerRunnable = new Runnable() {
 		@Override
@@ -272,19 +272,18 @@ class ConversationsBase extends AppCompatActivityPlugin {
 				syncView.setVisibility(View.VISIBLE);
 				syncView.animate().alpha(1);
 				
-				int progress = ConnectionService.getInstance().getMassRetrievalProgress();
-				
-				if(progress == -1) {
-					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(0, false);
-					else massRetrievalProgressBar.setProgress(0);
-					
-					massRetrievalProgressBar.setIndeterminate(true);
-				} else {
-					massRetrievalProgressBar.setMax(ConnectionService.getInstance().getMassRetrievalProgressCount());
-					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(progress, true);
-					else massRetrievalProgressBar.setProgress(progress);
-					
-					massRetrievalProgressBar.setIndeterminate(false);
+				ConnectionService connectionService = ConnectionService.getInstance();
+				if(connectionService != null) {
+					if(connectionService.isMassRetrievalWaiting()) {
+						massRetrievalProgressBar.setProgress(0);
+						massRetrievalProgressBar.setIndeterminate(true);
+					} else {
+						massRetrievalProgressBar.setMax(ConnectionService.getInstance().getMassRetrievalProgressCount());
+						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) massRetrievalProgressBar.setProgress(connectionService.getMassRetrievalProgress(), true);
+						else massRetrievalProgressBar.setProgress(connectionService.getMassRetrievalProgress());
+						
+						massRetrievalProgressBar.setIndeterminate(false);
+					}
 				}
 				
 				break;
@@ -640,16 +639,12 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		
 		@Override
 		protected void onPostExecute(Void result) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return;
-			
 			//Getting the snackbar parent view
 			View parentView = snackbarParentReference.get();
 			
 			//Syncing the messages
 			ConnectionService connectionService = ConnectionService.getInstance();
-			boolean messageResult = connectionService != null && connectionService.requestMassRetrieval(context);
+			boolean messageResult = connectionService != null && connectionService.requestMassRetrieval();
 			if(!messageResult) {
 				//Displaying a snackbar
 				if(parentView != null) Snackbar.make(parentView, R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();

@@ -487,7 +487,7 @@ public class Constants {
 		return address;
 	}
 	
-	static ArrayList<String> normalizeAddresses(ArrayList<String> addresses) {
+	static List<String> normalizeAddresses(List<String> addresses) {
 		//Normalizing the addresses
 		ListIterator<String> iterator = addresses.listIterator();
 		while(iterator.hasNext()) iterator.set(normalizeAddress(iterator.next()));

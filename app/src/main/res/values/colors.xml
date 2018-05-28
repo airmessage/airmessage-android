@@ -24,6 +24,9 @@
 	
 	<color name="colorError">#F44336</color>
 	
+	<color name="colorContextualAppBar">#212121</color>
+	<color name="colorContextualAppBarDark">#000000</color>
+	
     <!-- <color name="colorSendingFailed">#F44336</color>
     <color name="colorSendingFailedLight">#E57373</color>
     <color name="colorSendingFailedDark">#D32F2F</color>

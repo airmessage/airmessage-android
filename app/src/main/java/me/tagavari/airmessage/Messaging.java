@@ -2365,11 +2365,11 @@ public class Messaging extends AppCompatCompositeActivity {
 				messagesState.setValue(messagesStateReady);
 			} else {
 				//Loading the messages
-				new AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationItem>>() {
+				new AsyncTask<Void, Void, List<ConversationManager.ConversationItem>>() {
 					@Override
-					protected ArrayList<ConversationManager.ConversationItem> doInBackground(Void... params) {
+					protected List<ConversationManager.ConversationItem> doInBackground(Void... params) {
 						//Loading the conversation items
-						ArrayList<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0);
+						List<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0);
 						
 						//Setting up the conversation item relations
 						ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
@@ -2379,7 +2379,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					}
 					
 					@Override
-					protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> messages) {
+					protected void onPostExecute(List<ConversationManager.ConversationItem> messages) {
 						//Checking if the messages are invalid
 						if(messages == null) {
 							//Setting the state
@@ -2419,15 +2419,15 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Loading a chunk
 			long lastMessageDate = conversationInfo.getConversationItems().get(0).getDate();
-			new AsyncTask<Void, Void, ArrayList<ConversationManager.ConversationItem>>() {
+			new AsyncTask<Void, Void, List<ConversationManager.ConversationItem>>() {
 				@Override
-				protected ArrayList<ConversationManager.ConversationItem> doInBackground(Void... params) {
+				protected List<ConversationManager.ConversationItem> doInBackground(Void... params) {
 					//Loading the conversation items
 					return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, lastMessageDate);
 				}
 				
 				@Override
-				protected void onPostExecute(ArrayList<ConversationManager.ConversationItem> conversationItems) {
+				protected void onPostExecute(List<ConversationManager.ConversationItem> conversationItems) {
 					//Setting the progressive load count
 					lastProgressiveLoadCount = conversationItems.size();
 					

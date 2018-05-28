@@ -1,14 +1,12 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
-    <!-- <item android:id="@+id/action_search"
-        android:icon="@drawable/search"
-        android:title="@string/search"
-		android:showAsAction="ifRoom"
-        app:showAsAction="ifRoom"/> -->
-
+	<item android:id="@+id/action_search"
+		android:title="@string/action_search"
+		android:icon="@drawable/search"
+		app:showAsAction="ifRoom|collapseActionView" />
+	
     <item android:id="@+id/action_archived"
         android:title="@string/screen_archived"
-		android:showAsAction="never"
         app:showAsAction="never" />
 
     <!-- <item android:id="@+id/action_blocked"
@@ -19,10 +17,8 @@
 	
 	<item android:id="@+id/action_settings"
 		android:title="@string/screen_settings"
-		android:showAsAction="never"
 		app:showAsAction="never" />
 	<item android:id="@+id/action_feedback"
 		android:title="@string/action_sendfeedback"
-		android:showAsAction="never"
 		app:showAsAction="never" />
 </menu>
