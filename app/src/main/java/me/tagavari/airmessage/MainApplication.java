@@ -262,7 +262,7 @@ public class MainApplication extends Application {
 		return !getConnectivitySharedPrefs().getString(sharedPreferencesConnectivityKeyHostname, "").isEmpty();
 	}
 	
-	static BouncyCastleProvider getSecurityProvider() {
+	public static BouncyCastleProvider getSecurityProvider() {
 		return securityProvider;
 	}
 	
