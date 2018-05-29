@@ -22,6 +22,8 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import me.tagavari.airmessage.MainApplication;
+
 public class SharedValues {
 	public interface BlockAccess {
 		Blocks.Block toBlock();
@@ -450,7 +452,7 @@ public class SharedValues {
 			random.nextBytes(salt);
 			
 			//Creating the key
-			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(keyFactoryAlgorithm);
+			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(keyFactoryAlgorithm, MainApplication.getSecurityProvider());
 			KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, 10000, keyLength);
 			SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
 			SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), keyAlgorithm);
@@ -460,7 +462,7 @@ public class SharedValues {
 			random.nextBytes(iv);
 			GCMParameterSpec gcmSpec = new GCMParameterSpec(keyLength, iv);
 			
-			Cipher cipher = Cipher.getInstance(cipherTransformation);
+			Cipher cipher = Cipher.getInstance(cipherTransformation, MainApplication.getSecurityProvider());
 			cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, gcmSpec);
 			
 			//Encrypting the data
@@ -473,7 +475,7 @@ public class SharedValues {
 		
 		public EncryptableData decrypt(String password) throws ClassCastException, GeneralSecurityException {
 			//Creating the key
-			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(keyFactoryAlgorithm);
+			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(keyFactoryAlgorithm, MainApplication.getSecurityProvider());
 			KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, keyIterationCount, keyLength);
 			SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
 			SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), keyAlgorithm);
@@ -482,7 +484,7 @@ public class SharedValues {
 			GCMParameterSpec gcmSpec = new GCMParameterSpec(keyLength, iv);
 			
 			//Creating the cipher
-			Cipher cipher = Cipher.getInstance(cipherTransformation);
+			Cipher cipher = Cipher.getInstance(cipherTransformation, MainApplication.getSecurityProvider());
 			cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, gcmSpec);
 			
 			//Deciphering the data
