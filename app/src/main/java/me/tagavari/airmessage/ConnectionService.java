@@ -5348,7 +5348,7 @@ public class ConnectionService extends Service {
 						
 						//Getting the connection manager
 						ConnectionManager connectionManager = getStaticConnectionManager();
-						if(connectionManager == null) {
+						if(connectionManager == null || connectionManager.getPackager() == null) {
 							//Failing the request
 							handler.post(() -> finalCallbacks.onFail(messageSendNetworkException));
 							return;

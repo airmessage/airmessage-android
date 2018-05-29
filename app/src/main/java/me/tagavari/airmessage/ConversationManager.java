@@ -1360,6 +1360,9 @@ class ConversationManager {
 		}
 		
 		ArrayList<String> getConversationMembersAsCollection() {
+			//Returning null if the conversation is server incomplete (awaiting information from the server, which includes the members)
+			if(conversationState == ConversationState.INCOMPLETE_SERVER) return null;
+			
 			//Creating the array
 			ArrayList<String> list = new ArrayList<>(conversationMembers.size());
 			for(int i = 0; i < conversationMembers.size(); i++)
@@ -1370,6 +1373,9 @@ class ConversationManager {
 		}
 		
 		String[] getConversationMembersAsArray() {
+			//Returning null if the conversation is server incomplete (awaiting information from the server, which includes the members)
+			if(conversationState == ConversationState.INCOMPLETE_SERVER) return null;
+			
 			//Creating the array
 			String[] array = new String[conversationMembers.size()];
 			for(int i = 0; i < conversationMembers.size(); i++)
@@ -1419,6 +1425,8 @@ class ConversationManager {
 		}
 		
 		void buildTitle(Context context, Constants.TaskedResultCallback<String> resultCallback) {
+			//Returning null if the conversation is server incomplete (awaiting information from the server, which includes the members)
+			
 			//Returning the result of the static method
 			buildTitle(context, title, getConversationMembersAsArray(), resultCallback);
 		}
@@ -1431,7 +1439,7 @@ class ConversationManager {
 			}
 			
 			//Returning "unknown" if the conversation has no members
-			if(members.length == 0) {
+			if(members == null || members.length == 0) {
 				resultCallback.onResult(context.getResources().getString(R.string.part_unknown), false);
 				return;
 			}
