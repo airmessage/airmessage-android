@@ -2307,8 +2307,21 @@ class DatabaseManager extends SQLiteOpenHelper {
 		database.delete(Contract.TapbackEntry.TABLE_NAME, null, null); */
 	}
 	
-	void updateConversation(long conversationID, ContentValues contentValues) {
-		//Updating the database
+	void updateConversationMuted(long conversationID, boolean value) {
+		//Creating the content values
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, value);
+		
+		//Updating the conversation
+		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
+	}
+	
+	void updateConversationArchived(long conversationID, boolean value) {
+		//Creating the content values
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, value);
+		
+		//Updating the conversation
 		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	}
 	

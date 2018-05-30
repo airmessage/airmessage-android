@@ -17,7 +17,6 @@ import android.arch.lifecycle.ViewModel;
 import android.arch.lifecycle.ViewModelProvider;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.BroadcastReceiver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -36,16 +35,15 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.util.Pools;
-import android.support.v7.app.ActionBar;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.transition.ChangeBounds;
@@ -60,17 +58,20 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
+import android.view.ViewStub;
 import android.view.ViewTreeObserver;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -107,16 +108,6 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private boolean currentScreenEffectPlaying = false;
 	
-	//Creating the state values
-	private static final byte appBarStateDefault = 0;
-	private static final byte appBarStateSearch = 1;
-	private byte currentAppBarState = appBarStateDefault;
-	
-	private int searchCount = 0;
-	private int searchIndex = 0;
-	private final ArrayList<ConversationManager.MessageInfo> searchFilteredMessages = new ArrayList<>();
-	private final List<Integer> searchListIndexes = new ArrayList<>();
-	
 	//Creating the listener values
 	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
 		@Override
@@ -128,10 +119,28 @@ public class Messaging extends AppCompatCompositeActivity {
 			} else hideServerWarning();
 		}
 	};
+	private final RecyclerView.OnScrollListener messageListScrollListener = new RecyclerView.OnScrollListener() {
+		@Override
+		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+			//Getting the layout manager
+			LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+			int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - 1 - linearLayoutManager.findLastVisibleItemPosition();
+			
+			//Showing the FAB if the user has scrolled more than the threshold items
+			if(itemsScrolledFromBottom > quickScrollFABThreshold) setFABVisibility(true);
+			else setFABVisibility(false);
+			
+			//Marking viewed items as read
+			if(itemsScrolledFromBottom < viewModel.conversationInfo.getUnreadMessageCount()) viewModel.conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
+			
+			//Loading chunks if the user is scrolled to the top
+			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !viewModel.isProgressiveLoadInProgress() && !viewModel.progressiveLoadReachedLimit) recyclerView.post(viewModel::loadNextChunk);
+		}
+	};
+	
 	//Creating the view values
 	private View rootView;
 	private AppBarLayout appBar;
-	private Toolbar toolbar;
 	private TextView labelLoading;
 	private ViewGroup groupLoadFail;
 	private TextView labelLoadFail;
@@ -151,28 +160,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	private FloatingActionButton bottomFAB;
 	private TextView bottomFABBadge;
 	private AppleEffectView appleEffectView;
-	private final RecyclerView.OnScrollListener messageListScrollListener = new RecyclerView.OnScrollListener() {
-		@Override
-		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-			//Getting the layout manager
-			LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-			int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - 1 - linearLayoutManager.findLastVisibleItemPosition();
-			
-			//Showing the FAB if the user has scrolled more than the threshold items
-			if(itemsScrolledFromBottom > quickScrollFABThreshold) setFABVisibility(true);
-			else setFABVisibility(false);
-			
-			//Marking viewed items as read
-			if(itemsScrolledFromBottom < viewModel.conversationInfo.getUnreadMessageCount()) viewModel.conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
-			
-			//Loading chunks if the user is scrolled to the top
-			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !viewModel.isProgressiveLoadInProgress() && !viewModel.progressiveLoadReachedLimit) recyclerView.post(viewModel::loadNextChunk);
-		}
-	};
-	//Creating the menu values
-	private boolean menuLoaded = false;
-	private MenuItem archiveMenuItem;
-	private MenuItem unarchiveMenuItem;
+	
+	private View detailScrim;
+	
 	
 	//Creating the other values
 	private final RecyclerAdapter messageListAdapter = new RecyclerAdapter();
@@ -186,8 +176,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Getting the height
 		int height = rootView.getHeight();
 		
-		//Checking if the window is smaller than the minimum height, the window isn't in multi-window mode and the app bar is in its default state
-		if(height < getResources().getDimensionPixelSize(R.dimen.conversationwindow_minheight) && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode()) && currentAppBarState == appBarStateDefault) {
+		//Checking if the window is smaller than the minimum height, the window isn't in multi-window mode
+		if(height < getResources().getDimensionPixelSize(R.dimen.conversationwindow_minheight) && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode())) {
 			//Hiding the app bar
 			hideToolbar();
 		} else {
@@ -295,12 +285,6 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Coloring the UI
 				colorUI(findViewById(android.R.id.content));
 				
-				//Setting up the menu buttons
-				if(menuLoaded) {
-					if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
-					else archiveMenuItem.setVisible(true);
-				}
-				
 				//Setting the activity callbacks
 				viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
 				
@@ -322,12 +306,6 @@ public class Messaging extends AppCompatCompositeActivity {
 					getSupportActionBar().setTitle(result);
 					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), viewModel.conversationInfo.getConversationColor()));
 				});
-				
-				//Setting up the menu buttons
-				if(menuLoaded) {
-					if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
-					else archiveMenuItem.setVisible(true);
-				}
 				
 				//Setting the activity callbacks
 				viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
@@ -417,8 +395,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Getting the views
 		rootView = findViewById(android.R.id.content);
-		toolbar = findViewById(R.id.toolbar);
-		appBar = findViewById(R.id.app_bar);
+		appBar = findViewById(R.id.appbar);
 		
 		labelLoading = findViewById(R.id.loading_text);
 		groupLoadFail = findViewById(R.id.group_error);
@@ -440,6 +417,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		bottomFAB = findViewById(R.id.fab_bottom);
 		bottomFABBadge = findViewById(R.id.fab_bottom_badge);
 		appleEffectView = findViewById(R.id.effect_foreground);
+		
+		detailScrim = findViewById(R.id.scrim);
 		
 		//Setting the plugin views
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
@@ -488,6 +467,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		contentRecordButton.setOnTouchListener(recordingTouchListener);
 		bottomFAB.setOnClickListener(view -> messageListAdapter.scrollToBottom());
 		appleEffectView.setFinishListener(() -> currentScreenEffectPlaying = false);
+		detailScrim.setOnClickListener(view -> closeDetailsPanel());
 		
 		/* //Checking if there is already a conversation info available
 		if(viewModel.conversationInfo != null) {
@@ -782,19 +762,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Inflating the menu resource
 		getMenuInflater().inflate(R.menu.menu_messaging, menu);
 		
-		//Getting the menu items
-		archiveMenuItem = menu.findItem(R.id.action_archive);
-		unarchiveMenuItem = menu.findItem(R.id.action_unarchive);
-		
-		//Showing the correct "archive" menu item
-		if(viewModel.conversationInfo != null) {
-			if(viewModel.conversationInfo.isArchived()) unarchiveMenuItem.setVisible(true);
-			else archiveMenuItem.setVisible(true);
-		}
-		
-		//Setting the menu as loaded
-		menuLoaded = true;
-		
 		//Returning true
 		return true;
 	}
@@ -803,104 +770,22 @@ public class Messaging extends AppCompatCompositeActivity {
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch(item.getItemId()) {
 			case android.R.id.home:
-				//Checking if the state is in a search
-				if(currentAppBarState == appBarStateSearch) {
-					//Setting the state to normal
-					setAppBarState(appBarStateDefault);
-				} else {
-					//Finishing the activity
-					finish();
-				}
+				//Closing the details panel if it is open
+				if(viewModel.isDetailsPanelOpen) closeDetailsPanel();
+				//Otherwise finishing the activity
+				else finish();
 				
 				return true;
 			case R.id.action_details:
 				//Checking if the conversation is valid
 				if(viewModel.conversationInfo != null) {
 					//Launching the details activity
-					startActivity(new Intent(this, MessagingInfo.class).putExtra(Constants.intentParamTargetID, viewModel.conversationInfo.getLocalID()));
+					//startActivity(new Intent(this, MessagingInfo.class).putExtra(Constants.intentParamTargetID, viewModel.conversationInfo.getLocalID()));
+					
+					//Opening the details panel
+					openDetailsPanel();
 				}
 				
-				return true;
-			case R.id.action_search:
-				//Checking if the conversation is valid
-				if(viewModel.conversationInfo != null) {
-					//Setting the state to search
-					setAppBarState(appBarStateSearch);
-				}
-				
-				return true;
-			case R.id.action_archive:
-				//Checking if the conversation is valid
-				if(viewModel.conversationInfo != null) {
-					//Archiving the conversation
-					viewModel.conversationInfo.setArchived(true);
-					
-					//Updating the conversation's database entry
-					ContentValues contentValues = new ContentValues();
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-					DatabaseManager.getInstance().updateConversation(viewModel.conversationInfo.getLocalID(), contentValues);
-					
-					//Showing a toast
-					Toast.makeText(Messaging.this, R.string.message_conversation_archived, Toast.LENGTH_SHORT).show();
-					
-					//Swapping out the menu buttons
-					archiveMenuItem.setVisible(false);
-					unarchiveMenuItem.setVisible(true);
-				}
-				return true;
-			case R.id.action_unarchive:
-				//Checking if the conversation is valid
-				if(viewModel.conversationInfo != null) {
-					//Unarchiving the conversation
-					viewModel.conversationInfo.setArchived(false);
-					
-					//Updating the conversation's database entry
-					ContentValues contentValues = new ContentValues();
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-					DatabaseManager.getInstance().updateConversation(viewModel.conversationInfo.getLocalID(), contentValues);
-					
-					//Showing a toast
-					Toast.makeText(Messaging.this, R.string.message_conversation_unarchived, Toast.LENGTH_SHORT).show();
-					
-					//Swapping out the menu buttons
-					archiveMenuItem.setVisible(true);
-					unarchiveMenuItem.setVisible(false);
-				}
-				return true;
-			case R.id.action_delete:
-				//Checking if the conversation is valid
-				if(viewModel.conversationInfo != null) {
-					//Creating a dialog
-					AlertDialog dialog = new AlertDialog.Builder(this)
-							.setMessage(R.string.message_confirm_deleteconversation_current)
-							.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
-							.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
-								//Removing the conversation from memory
-								ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-								if(conversations != null) conversations.remove(viewModel.conversationInfo);
-								
-								//Deleting the conversation from the database
-								DatabaseManager.getInstance().deleteConversation(viewModel.conversationInfo);
-								
-								//Showing a toast
-								Toast.makeText(Messaging.this, R.string.message_conversation_deleted, Toast.LENGTH_SHORT).show();
-								
-								//Finishing the activity
-								finish();
-							})
-							.create();
-					
-					//Configuring the dialog's listener
-					dialog.setOnShowListener(dialogInterface -> {
-						//Setting the button's colors
-						int color = viewModel.conversationInfo.getConversationColor();
-						dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
-						dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
-					});
-					
-					//Showing the dialog
-					dialog.show();
-				}
 				return true;
 		}
 		
@@ -910,14 +795,166 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	@Override
 	public void onBackPressed() {
-		//Checking if the state is in a search
-		if(currentAppBarState == appBarStateSearch) {
-			//Setting the state to normal
-			setAppBarState(appBarStateDefault);
-		} else {
-			//Calling the super method
-			super.onBackPressed();
+		//Closing the details panel if it is open
+		if(viewModel.isDetailsPanelOpen) closeDetailsPanel();
+		//Otherwise passing the event to the superclass
+		else super.onBackPressed();
+	}
+	
+	private void openDetailsPanel() {
+		//Returning if the conversation is not ready or the panel is already open
+		if(viewModel.conversationInfo == null || viewModel.isDetailsPanelOpen) return;
+		
+		//Setting the panel as open
+		viewModel.isDetailsPanelOpen = true;
+		
+		//Inflating the view
+		ViewStub viewStub = findViewById(R.id.viewstub_messaginginfo);
+		if(viewStub != null) {
+			//Inflating the view stub
+			ViewGroup inflated = (ViewGroup) viewStub.inflate();
+			
+			//Coloring the UI
+			colorUI(inflated);
+			
+			//Getting the views
+			Switch notificationsSwitch = inflated.findViewById(R.id.switch_getnotifications);
+			Switch pinnedSwitch = inflated.findViewById(R.id.switch_pinconversation);
+			
+			//Restoring the elements' states
+			notificationsSwitch.setChecked(!viewModel.conversationInfo.isMuted());
+			//pinnedSwitch.setChecked(viewModel.conversationInfo.isPinned());
+			
+			//Setting the listeners
+			inflated.findViewById(R.id.group_getnotifications).setOnClickListener(view -> notificationsSwitch.setChecked(!notificationsSwitch.isChecked()));
+			notificationsSwitch.setOnCheckedChangeListener((view, isChecked) -> {
+				//Updating the conversation
+				boolean isMuted = !isChecked;
+				viewModel.conversationInfo.setMuted(isMuted);
+				DatabaseManager.getInstance().updateConversationMuted(viewModel.conversationInfo.getLocalID(), isMuted);
+				
+			});
+			inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
+			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
+			
+			findViewById(R.id.button_archive).setOnClickListener(view -> {
+				//Toggling the archive state
+				boolean newState = !viewModel.conversationInfo.isArchived();
+				viewModel.conversationInfo.setArchived(newState);
+				
+				//Sending an update
+				LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+				
+				//Updating the conversation's database entry
+				DatabaseManager.getInstance().updateConversationArchived(viewModel.conversationInfo.getLocalID(), newState);
+				
+				//Updating the button
+				((TextView) view.findViewById(R.id.button_archive_label)).setText(newState ? R.string.action_unarchive : R.string.action_archive);
+				((ImageView) view.findViewById(R.id.button_archive_icon)).setImageResource(newState ? R.drawable.unarchive : R.drawable.archive);
+			});
+			
+			findViewById(R.id.button_delete).setOnClickListener(view -> {
+				//Creating a dialog
+				AlertDialog dialog = new AlertDialog.Builder(this)
+						.setMessage(R.string.message_confirm_deleteconversation_current)
+						.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
+						.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
+							//Removing the conversation from memory
+							ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+							if(conversations != null) conversations.remove(viewModel.conversationInfo);
+							
+							//Deleting the conversation from the database
+							DatabaseManager.getInstance().deleteConversation(viewModel.conversationInfo);
+							
+							//Sending an update
+							LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+							
+							//Finishing the activity
+							finish();
+						})
+						.create();
+				
+				//Configuring the dialog's listener
+				dialog.setOnShowListener(dialogInterface -> {
+					//Setting the button's colors
+					int color = getResources().getColor(R.color.colorActionDelete, null);
+					dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
+					dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
+				});
+				
+				//Showing the dialog
+				dialog.show();
+			});
 		}
+		
+		//Finding the views
+		FrameLayout panel = findViewById(R.id.panel_messaginginfo);
+		ViewGroup content = findViewById(R.id.group_messaginginfo_content);
+		
+		//Measuring the content
+		content.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+		
+		//Comparing the content's height to the window's height
+		int primaryViewHeight = findViewById(android.R.id.content).getHeight() - appBar.getHeight();
+		
+		//Checking if the view occupies more than 80% of the window
+		if(content.getMeasuredHeight() > primaryViewHeight * 0.8F) {
+			//Instructing the panel to fill the entire view
+			ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) panel.getLayoutParams();
+			params.topToBottom = R.id.appbar;
+			params.height = 0;
+		} else {
+			//Instructing the panel to align to the bottom and wrap its content
+			ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) panel.getLayoutParams();
+			params.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+			params.height = ConstraintLayout.LayoutParams.WRAP_CONTENT;
+		}
+		
+		//Animating in the panel
+		int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
+		Animation animation = AnimationUtils.loadAnimation(this, R.anim.messagestatus_slide_in_bottom);
+		animation.setAnimationListener(new Animation.AnimationListener() {
+			@Override
+			public void onAnimationStart(Animation animation) {
+				panel.setVisibility(View.VISIBLE);
+			}
+			
+			@Override
+			public void onAnimationEnd(Animation animation) {}
+			
+			@Override
+			public void onAnimationRepeat(Animation animation) {}
+		});
+		panel.startAnimation(animation);
+		detailScrim.animate().alpha(1).withStartAction(() -> detailScrim.setVisibility(View.VISIBLE)).setDuration(duration).start();
+	}
+	
+	private void closeDetailsPanel() {
+		//Returning if the conversation is not ready or the panel is already closed
+		if(viewModel.conversationInfo == null || !viewModel.isDetailsPanelOpen) return;
+		
+		//Setting the panel as open
+		viewModel.isDetailsPanelOpen = false;
+		
+		//Animating out the panel
+		FrameLayout panel = findViewById(R.id.panel_messaginginfo);
+		Animation animation = AnimationUtils.loadAnimation(this, R.anim.messagedetails_slide_out_bottom);
+		animation.setAnimationListener(new Animation.AnimationListener() {
+			@Override
+			public void onAnimationStart(Animation animation) {}
+			
+			@Override
+			public void onAnimationEnd(Animation animation) {
+				panel.setVisibility(View.GONE);
+			}
+			
+			@Override
+			public void onAnimationRepeat(Animation animation) {}
+		});
+		panel.startAnimation(animation);
+		
+		int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
+		detailScrim.animate().alpha(0).withEndAction(() -> detailScrim.setVisibility(View.GONE)).setDuration(duration).start();
 	}
 	
 	@Override
@@ -991,13 +1028,13 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Coloring tagged parts of the UI
 		for(View view : Constants.getViewsByTag(root, getResources().getString(R.string.tag_primarytint))) {
 			if(view instanceof ImageView) ((ImageView) view).setColorFilter(color, android.graphics.PorterDuff.Mode.MULTIPLY);
-			else if(view instanceof Button) ((Button) view).setTextColor(color);
-			else if(view instanceof RelativeLayout) view.setBackground(new ColorDrawable(color));
-			/* else if(view instanceof Switch) {
+			else if(view instanceof Switch) {
 				Switch switchView = (Switch) view;
 				switchView.setThumbTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0xFFFAFAFA, color}));
 				switchView.setTrackTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0x61000000, color}));
-			} */
+			}
+			else if(view instanceof TextView) ((TextView) view).setTextColor(color);
+			else if(view instanceof RelativeLayout) view.setBackground(new ColorDrawable(color));
 		}
 		
 		//Coloring the unique UI components
@@ -1010,132 +1047,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		infoBarConnection.setColor(color);
 	}
 	
-	void setAppBarState(byte state) {
-		//Returning if the requested state matches the current state
-		if(currentAppBarState == state) return;
-		
-		//Getting the action bar
-		ActionBar actionBar = getSupportActionBar();
-		
-		//Checking if the state is to the app bar
-		if(state == appBarStateDefault) {
-			actionBar.setDisplayShowCustomEnabled(false);
-			actionBar.setDisplayShowTitleEnabled(true);
-		} else {
-			actionBar.setDisplayShowCustomEnabled(true);
-			actionBar.setDisplayShowTitleEnabled(false);
-		}
-		
-		//Cleaning up the old state
-		switch(currentAppBarState) {
-			case appBarStateSearch:
-				//Hiding the search results bar
-				findViewById(R.id.searchresults).setVisibility(View.GONE);
-				
-				break;
-		}
-		
-		//Preparing the new state
-		switch(state) {
-			case appBarStateSearch:
-				//Setting the view
-				actionBar.setCustomView(getLayoutInflater().inflate(R.layout.appbar_search, null), new ActionBar.LayoutParams(ActionBar.LayoutParams.MATCH_PARENT, ActionBar.LayoutParams.MATCH_PARENT));
-				
-				//Configuring the listeners
-				((EditText) actionBar.getCustomView().findViewById(R.id.search_edittext)).addTextChangedListener(new TextWatcher() {
-					@Override
-					public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-					
-					@Override
-					public void onTextChanged(CharSequence s, int start, int before, int count) {
-						//Returning if the conversation details are invalid
-						if(viewModel.conversationInfo == null || viewModel.conversationItemList == null) return;
-						
-						//Checking if there is no search text
-						if(s.length() == 0) {
-							//Hiding the result bar
-							findViewById(R.id.searchresults).setVisibility(View.GONE);
-							//getSupportActionBar().setElevation(Constants.dpToPx(4));
-							
-							//Hiding the clear text button
-							actionBar.getCustomView().findViewById(R.id.search_buttonclear).setVisibility(View.INVISIBLE);
-							
-							//Returning
-							return;
-						}
-						
-						//Showing the result bar
-						View searchResultBar = findViewById(R.id.searchresults);
-						searchResultBar.setVisibility(View.VISIBLE);
-						//getSupportActionBar().setElevation(Constants.dpToPx(0));
-						
-						//Showing the clear text button
-						actionBar.getCustomView().findViewById(R.id.search_buttonclear).setVisibility(View.VISIBLE);
-						
-						//Conducting the search
-						searchFilteredMessages.clear();
-						searchListIndexes.clear();
-						
-						for(int i = 0; i < viewModel.conversationItemList.size(); i++) {
-							ConversationManager.ConversationItem conversationItem = viewModel.conversationItemList.get(i);
-							if(!(conversationItem instanceof ConversationManager.MessageInfo)) continue;
-							ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
-							if(!Constants.containsIgnoreCase(messageInfo.getMessageText(), s.toString())) continue;
-							
-							searchFilteredMessages.add(messageInfo);
-							searchListIndexes.add(i);
-						}
-						
-						//Updating the search result bar
-						searchCount = searchFilteredMessages.size();
-						searchIndex = searchCount - 1;
-						((TextView) searchResultBar.findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.message_searchresults, searchIndex + 1, searchCount));
-						
-						//Scrolling to the item
-						if(!searchListIndexes.isEmpty()) messageList.getLayoutManager().scrollToPosition(searchListIndexes.get(searchIndex));
-					}
-					
-					@Override
-					public void afterTextChanged(Editable s) {}
-				});
-				
-				//Clear the text box
-				actionBar.getCustomView().findViewById(R.id.search_buttonclear).setOnClickListener(view ->
-						((EditText) getSupportActionBar().getCustomView().findViewById(R.id.search_edittext)).setText(""));
-				
-				//Focusing the text box
-				actionBar.getCustomView().findViewById(R.id.search_edittext).requestFocus();
-				((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY);
-		}
-		
-		//Updating the current state
-		currentAppBarState = state;
-	}
-	
 	public void onClickRetryLoad(View view) {
 		byte state = viewModel.messagesState.getValue();
 		if(state == ActivityViewModel.messagesStateFailedConversation) viewModel.loadConversation();
 		else if(state == ActivityViewModel.messagesStateFailedMessages) viewModel.loadMessages();
-	}
-	
-	public void onClickSearchPrevious(View view) {
-		//Returning if the index cannot be decreased
-		if(searchIndex == 0) return;
-		
-		//Updating the search
-		searchIndex--;
-		((TextView) findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.message_searchresults, searchIndex + 1, searchCount));
-		if(!searchListIndexes.isEmpty()) messageList.getLayoutManager().scrollToPosition(searchListIndexes.get(searchIndex));
-	}
-	
-	public void onClickSearchNext(View view) {
-		//Returning if the index cannot be increased
-		if(searchIndex >= searchCount - 1) return;
-		
-		//Updating the search
-		searchIndex++;
-		((TextView) findViewById(R.id.searchresults_message)).setText(getResources().getString(R.string.message_searchresults, searchIndex + 1, searchCount));
-		if(!searchListIndexes.isEmpty()) messageList.getLayoutManager().scrollToPosition(searchListIndexes.get(searchIndex));
 	}
 	
 	void setMessageBarState(boolean enabled) {
@@ -2253,6 +2168,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the state values
 		byte inputState = inputStateText;
 		MutableLiveData<Byte> messagesState = new MutableLiveData<>();
+		
+		boolean isDetailsPanelOpen = false;
 		
 		MutableLiveData<Boolean> progressiveLoadInProgress = new MutableLiveData<>();
 		boolean progressiveLoadReachedLimit = false;

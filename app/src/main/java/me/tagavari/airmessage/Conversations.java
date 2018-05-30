@@ -5,7 +5,6 @@ import android.app.AlertDialog;
 import android.arch.lifecycle.ViewModel;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.BroadcastReceiver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -1160,12 +1159,8 @@ public class Conversations extends AppCompatCompositeActivity {
 				
 				//Checking if there are conversations to update in the database
 				if(!updatedConversations.isEmpty()) {
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, true);
-					
 					//Updating the conversations
-					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
+					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversationMuted(conversationID, true);
 				}
 				
 				//Finishing the action mode
@@ -1196,14 +1191,8 @@ public class Conversations extends AppCompatCompositeActivity {
 				
 				//Checking if there are conversations to update in the database
 				if(!updatedConversations.isEmpty()) {
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the muted value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, false);
-					
 					//Updating the conversations
-					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
+					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversationMuted(conversationID, false);
 				}
 				
 				//Finishing the action mode
@@ -1234,32 +1223,16 @@ public class Conversations extends AppCompatCompositeActivity {
 					//Updating the list
 					conversationsBasePlugin.updateList(false);
 					
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the archived value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-					
 					//Updating the conversations
-					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
+					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), true);
 					
 					//Creating a snackbar
 					int affectedCount = updatedConversations.size();
 					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
-						//Creating the content values
-						ContentValues undoContentValues = new ContentValues();
-						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-						
-						//Iterating over the conversations
+						//Updating the conversations
 						for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) {
-							//Unarchiving the conversation
 							conversationInfo.setArchived(false);
-							
-							//Setting the archived value
-							contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-							
-							//Updating the conversations
-							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
+							DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), false);
 						}
 						
 						//Updating the list
@@ -1295,29 +1268,16 @@ public class Conversations extends AppCompatCompositeActivity {
 					//Updating the list
 					conversationsBasePlugin.updateList(false);
 					
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the archived value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-					
 					//Updating the conversations
-					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
+					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), false);
 					
 					//Creating a snackbar
 					int affectedCount = updatedConversations.size();
 					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationunarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
-						//Creating the content values
-						ContentValues undoContentValues = new ContentValues();
-						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-						
-						//Iterating over the conversations
+						//Updating the conversations
 						for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) {
-							//Archiving the conversation
 							conversationInfo.setArchived(true);
-							
-							//Updating the conversations
-							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
+							DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), true);
 						}
 						
 						//Updating the list

@@ -4,7 +4,6 @@ import android.app.ActivityManager;
 import android.app.DialogFragment;
 import android.app.Fragment;
 import android.app.FragmentTransaction;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
@@ -454,14 +453,9 @@ public class MessagingInfo extends AppCompatActivity {
 			if(context == null) return null;
 			
 			//Updating the database
-			ContentValues contentValues = new ContentValues();
-			if(conversationMutedChanged)
-				contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, conversationInfo.isMuted());
+			if(conversationMutedChanged) DatabaseManager.getInstance().updateConversationMuted(conversationInfo.getLocalID(), conversationInfo.isMuted());
 			if(conversationColorChanged)
-				contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationInfo.getConversationColor());
-			
-			if(contentValues.size() != 0)
-				DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
+				DatabaseManager.getInstance().updateConversationColor(conversationInfo.getLocalID(), conversationInfo.getConversationColor());
 			
 			//Updating the member colors
 			if(!modifiedMembers.isEmpty())
