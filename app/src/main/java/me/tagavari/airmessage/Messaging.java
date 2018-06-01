@@ -279,7 +279,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Setting the conversation title
 				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
 					getSupportActionBar().setTitle(result);
-					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), viewModel.conversationInfo.getConversationColor()));
+					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), viewModel.conversationInfo.getConversationColor()));
 				});
 				
 				//Coloring the UI
@@ -304,7 +304,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Setting the conversation title
 				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
 					getSupportActionBar().setTitle(result);
-					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), viewModel.conversationInfo.getConversationColor()));
+					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), viewModel.conversationInfo.getConversationColor()));
 				});
 				
 				//Setting the activity callbacks

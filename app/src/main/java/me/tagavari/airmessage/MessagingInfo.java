@@ -152,7 +152,7 @@ public class MessagingInfo extends AppCompatActivity {
 		addConversationMembers(conversationInfo.getConversationMembers());
 		
 		//Setting the conversation title
-		conversationInfo.buildTitle(this, (result, wasTasked) -> setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.drawable.app_icon), conversationInfo.getConversationColor())));
+		conversationInfo.buildTitle(this, (result, wasTasked) -> setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), conversationInfo.getConversationColor())));
 		
 		//Coloring the UI
 		colorUI(headerView);
