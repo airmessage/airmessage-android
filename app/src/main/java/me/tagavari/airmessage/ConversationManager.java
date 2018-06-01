@@ -996,7 +996,7 @@ class ConversationManager {
 									//Skipping the remainder of the iteration if the item doesn't match
 									if(ghostMessage.getAttachments().isEmpty()) continue;
 									AttachmentInfo firstAttachment = ghostMessage.getAttachments().get(0);
-									if(attachmentInfo.getFileChecksum() == null || !Arrays.equals(attachmentInfo.getFileChecksum(), firstAttachment.getFileChecksum())) continue;
+									if(!Arrays.equals(attachmentInfo.getFileChecksum(), firstAttachment.getFileChecksum())) continue;
 									
 									//Updating the ghost item
 									ghostMessage.setDate(messageInfo.getDate());
@@ -3023,6 +3023,20 @@ class ConversationManager {
 			for(int i = 0; i < attachments.size(); i++) attachments.get(i).buildTapbackView(messagePartContainer.getChildAt((messageText == null ? 0 : 1) + i));
 		} */
 		
+		List<StickerInfo> getStickers() {
+			List<StickerInfo> list = new ArrayList<>();
+			if(messageText != null) list.addAll(messageText.getStickers());
+			for(AttachmentInfo item : attachments) list.addAll(item.getStickers());
+			return list;
+		}
+		
+		List<TapbackInfo> getTapbacks() {
+			List<TapbackInfo> list = new ArrayList<>();
+			if(messageText != null) list.addAll(messageText.getTapbacks());
+			for(AttachmentInfo item : attachments) list.addAll(item.getTapbacks());
+			return list;
+		}
+		
 		void notifyPause() {
 			ViewHolder viewHolder = getViewHolder();
 			if(viewHolder != null) viewHolder.pause();
@@ -3120,8 +3134,8 @@ class ConversationManager {
 		private Constants.ViewHolderSource<VH> viewHolderSource;
 		
 		//Creating the modifier values
-		final ArrayList<StickerInfo> stickers;
-		final ArrayList<TapbackInfo> tapbacks;
+		final List<StickerInfo> stickers;
+		final List<TapbackInfo> tapbacks;
 		
 		//Creating the state values
 		boolean contextMenuOpen = false;
@@ -3199,6 +3213,14 @@ class ConversationManager {
 		abstract void updateViewColor(VH viewHolder, Context context);
 		
 		abstract void updateViewEdges(VH viewHolder, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored);
+		
+		List<StickerInfo> getStickers() {
+			return stickers;
+		}
+		
+		List<TapbackInfo> getTapbacks() {
+			return tapbacks;
+		}
 		
 		void buildStickerView(VH viewHolder, Context context) {
 			//Clearing all previous stickers
@@ -3769,6 +3791,14 @@ class ConversationManager {
 			
 			//Starting the intent
 			context.startActivity(Intent.createChooser(intent, context.getResources().getString(R.string.action_sharemessage)));
+		}
+		
+		List<StickerInfo> getStickers() {
+			return stickers;
+		}
+		
+		List<TapbackInfo> getTapbacks() {
+			return tapbacks;
 		}
 		
 		@Override
@@ -5154,8 +5184,16 @@ class ConversationManager {
 			this.date = date;
 		}
 		
+		long getLocalID() {
+			return localID;
+		}
+		
 		long getMessageID() {
 			return messageID;
+		}
+		
+		void setMessageID(long value) {
+			messageID = value;
 		}
 		
 		int getMessageIndex() {
@@ -5187,8 +5225,16 @@ class ConversationManager {
 			this.code = code;
 		}
 		
+		long getLocalID() {
+			return localID;
+		}
+		
 		long getMessageID() {
 			return messageID;
+		}
+		
+		void setMessageID(long value) {
+			messageID = value;
 		}
 		
 		int getMessageIndex() {

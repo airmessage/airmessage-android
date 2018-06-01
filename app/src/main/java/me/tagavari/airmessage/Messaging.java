@@ -418,7 +418,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Getting the views
 		rootView = findViewById(android.R.id.content);
 		toolbar = findViewById(R.id.toolbar);
-		appBar = findViewById(R.id.app_bar);
+		appBar = findViewById(R.id.appbar);
 		
 		labelLoading = findViewById(R.id.loading_text);
 		groupLoadFail = findViewById(R.id.group_error);
