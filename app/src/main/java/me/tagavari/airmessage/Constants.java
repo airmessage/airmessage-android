@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Random;
+import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -323,16 +324,6 @@ public class Constants {
 	private static Random random = new Random(System.currentTimeMillis());
 	static Random getRandom() {
 		return random;
-	}
-	
-	static void printViewHierarchy(ViewGroup vg, String prefix) {
-		for(int i = 0; i < vg.getChildCount(); i++) {
-			View v = vg.getChildAt(i);
-			String desc = prefix + " | " + "[" + i + "/" + (vg.getChildCount()-1) + "] "+ v.getClass().getSimpleName() + " " + v.getId();
-			System.out.println(desc);
-			
-			if(v instanceof ViewGroup) printViewHierarchy((ViewGroup) v, desc);
-		}
 	}
 	
 	static Drawable createRoundedDrawable(boolean softenTop, boolean softenBottom, boolean alignToRight, int pxRadiusNormal, int pxRadiusSoftened) {

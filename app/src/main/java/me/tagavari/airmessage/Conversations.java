@@ -714,7 +714,6 @@ public class Conversations extends AppCompatCompositeActivity {
 	}
 	
 	void restoreSearchState() {
-		System.out.println("Restoring search state to " + viewModel.isSearching);
 		//Returning if the search is not active
 		if(!viewModel.isSearching) return;
 		

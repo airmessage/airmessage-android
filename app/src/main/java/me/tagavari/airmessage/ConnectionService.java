@@ -1898,23 +1898,28 @@ public class ConnectionService extends Service {
 				
 				//Adding the data
 				byte[] packetData;
-				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos);
+					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
 					out.writeShort(requestID); //Request identifier
 					out.writeInt(requestIndex); //Request index
 					out.writeBoolean(isLast); //Is last message
 					
-					out.writeInt(conversationMembers.length); //Chat members
-					for(String item : conversationMembers) out.writeUTF(item);
-					out.writeInt(data.length); //File bytes
-					out.write(data);
+					outSec.writeInt(conversationMembers.length); //Chat members
+					for(String item : conversationMembers) outSec.writeUTF(item);
+					outSec.writeInt(data.length); //File bytes
+					outSec.write(data);
 					if(requestIndex == 0) {
-						out.writeUTF(fileName); //File name
-						out.writeUTF(service); //Service
+						outSec.writeUTF(fileName); //File name
+						outSec.writeUTF(service); //Service
 					}
+					outSec.flush();
+					
+					out.writeObject(new SharedValues.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
+					
 					out.flush();
 					
 					packetData = bos.toByteArray();
-				} catch(IOException exception) {
+				} catch(IOException | GeneralSecurityException exception) {
 					//Logging the exception
 					exception.printStackTrace();
 					Crashlytics.logException(exception);
@@ -2269,7 +2274,7 @@ public class ConnectionService extends Service {
 					
 					switch(type) {
 						default:
-							throw new IOException("Invalid conversation type: " + type);
+							throw new IOException("Invalid conversation item type: " + type);
 						case conversationItemTypeMessage: {
 							String text = in.readBoolean() ? in.readUTF() : null;
 							String sender = in.readBoolean() ? in.readUTF() : null;
@@ -2601,23 +2606,28 @@ public class ConnectionService extends Service {
 				
 				//Adding the data
 				byte[] packetData;
-				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
+				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos);
+				ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
 					out.writeShort(requestID); //Request identifier
 					out.writeInt(requestIndex); //Request index
 					out.writeBoolean(isLast); //Is last message
 					
-					out.writeInt(conversationMembers.length); //Chat members
-					for(String item : conversationMembers) out.writeUTF(item);
-					out.writeInt(data.length); //File bytes
-					out.write(data);
+					outSec.writeInt(conversationMembers.length); //Chat members
+					for(String item : conversationMembers) outSec.writeUTF(item);
+					outSec.writeInt(data.length); //File bytes
+					outSec.write(data);
 					if(requestIndex == 0) {
-						out.writeUTF(fileName); //File name
-						out.writeUTF(service); //Service
+						outSec.writeUTF(fileName); //File name
+						outSec.writeUTF(service); //Service
 					}
+					outSec.flush();
+					
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
+					
 					out.flush();
 					
 					packetData = bos.toByteArray();
-				} catch(IOException exception) {
+				} catch(IOException | GeneralSecurityException exception) {
 					//Logging the exception
 					exception.printStackTrace();
 					Crashlytics.logException(exception);
@@ -6298,7 +6308,7 @@ public class ConnectionService extends Service {
 			
 			//Getting the loaded conversations
 			//List<Long> foregroundConversations = Messaging.getForegroundConversations();
-			List<Long> loadedConversations = Messaging.getLoadedConversations();
+			//List<Long> loadedConversations = Messaging.getLoadedConversations();
 			
 			//Checking if the conversations are loaded in memory
 			ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
@@ -6554,7 +6564,7 @@ public class ConnectionService extends Service {
 					//Checking if a client conversation has been found
 					if(clientConversation != null) {
 						//Switching the conversation item ownership to the new client conversation
-						DatabaseManager.getInstance().switchMessageOwnership(availableConversation.getLocalID(), clientConversation.getLocalID());
+						DatabaseManager.getInstance().switchMessageOwnership(availableConversation, clientConversation);
 						for(ConversationManager.ConversationItem item : conversationItems) item.setConversationInfo(clientConversation);
 						
 						//Recording the conversation details
@@ -6920,14 +6930,11 @@ public class ConnectionService extends Service {
 		//Invalidating text if it is empty
 		if(conversationItem instanceof Blocks.MessageInfo) {
 			Blocks.MessageInfo messageInfo = (Blocks.MessageInfo) conversationItem;
-			if(messageInfo.text != null && messageInfo.text.isEmpty())
-				messageInfo.text = null;
-			if(messageInfo.sendEffect != null && messageInfo.sendEffect.isEmpty())
-				messageInfo.sendEffect = null;
+			if(messageInfo.text != null && messageInfo.text.isEmpty()) messageInfo.text = null;
+			if(messageInfo.sendEffect != null && messageInfo.sendEffect.isEmpty()) messageInfo.sendEffect = null;
 		} else if(conversationItem instanceof Blocks.ChatRenameActionInfo) {
 			Blocks.ChatRenameActionInfo chatRenameActionInfo = (Blocks.ChatRenameActionInfo) conversationItem;
-			if(chatRenameActionInfo.newChatName != null && chatRenameActionInfo.newChatName.isEmpty())
-				chatRenameActionInfo.newChatName = null;
+			if(chatRenameActionInfo.newChatName != null && chatRenameActionInfo.newChatName.isEmpty()) chatRenameActionInfo.newChatName = null;
 		}
 	}
 }
