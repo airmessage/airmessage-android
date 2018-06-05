@@ -375,6 +375,14 @@ public class MessagingInfo extends AppCompatActivity {
 		}
 	}
 	
+	void switchConversationColor(int newColor) {
+		//Updating the conversation color
+		conversationInfo.setConversationColor(newColor);
+		
+		//Coloring the UI
+		colorUI(headerView);
+	}
+	
 	void switchMemberColor(ConversationManager.MemberInfo member, int newColor) {
 		//Updating the user's color
 		member.setColor(newColor);
@@ -392,14 +400,6 @@ public class MessagingInfo extends AppCompatActivity {
 			//Coloring the UI
 			colorUI(headerView);
 		}
-	}
-	
-	void switchConversationColor(int newColor) {
-		//Updating the conversation color
-		conversationInfo.setConversationColor(newColor);
-		
-		//Coloring the UI
-		colorUI(headerView);
 	}
 	
 	private void colorUI(ViewGroup root) {

@@ -3667,6 +3667,9 @@ public class ConnectionService extends Service {
 			}
 			
 			synchronized boolean sendDataSync(int messageType, byte[] data, boolean flush) {
+				//Returning if the output stream is invalid
+				if(outputStream == null) return false;
+				
 				try {
 					//Writing the message
 					outputStream.write(ByteBuffer.allocate(Integer.SIZE / 8 * 2).putInt(messageType).putInt(data.length).array());
@@ -6369,12 +6372,12 @@ public class ConnectionService extends Service {
 								//Adding the member in memory
 								if(member == null) {
 									member = new ConversationManager.MemberInfo(groupActionInfo.other, groupActionInfo.color);
-									parentConversation.getConversationMembers().add(member);
+									parentConversation.addConversationMember(member);
 								}
 							} else if(groupActionInfo.actionType == Constants.groupActionLeave) {
 								//Removing the member in memory
 								if(member != null && parentConversation.getConversationMembers().contains(member))
-									parentConversation.getConversationMembers().remove(member);
+									parentConversation.removeConversationMember(member);
 							}
 						}
 					}
@@ -6927,14 +6930,25 @@ public class ConnectionService extends Service {
 	}
 	
 	static void cleanConversationItem(Blocks.ConversationItem conversationItem) {
-		//Invalidating text if it is empty
+		///Checking if the item is a message
 		if(conversationItem instanceof Blocks.MessageInfo) {
 			Blocks.MessageInfo messageInfo = (Blocks.MessageInfo) conversationItem;
+			
+			//Creating empty lists
+			if(messageInfo.attachments == null) messageInfo.attachments = new ArrayList<>();
+			if(messageInfo.stickers == null) messageInfo.stickers = new ArrayList<>();
+			if(messageInfo.tapbacks == null) messageInfo.tapbacks = new ArrayList<>();
+			
+			//Invalidating empty strings
 			if(messageInfo.text != null && messageInfo.text.isEmpty()) messageInfo.text = null;
 			if(messageInfo.sendEffect != null && messageInfo.sendEffect.isEmpty()) messageInfo.sendEffect = null;
 		} else if(conversationItem instanceof Blocks.ChatRenameActionInfo) {
-			Blocks.ChatRenameActionInfo chatRenameActionInfo = (Blocks.ChatRenameActionInfo) conversationItem;
-			if(chatRenameActionInfo.newChatName != null && chatRenameActionInfo.newChatName.isEmpty()) chatRenameActionInfo.newChatName = null;
-		}
+			Blocks.ChatRenameActionInfo action = (Blocks.ChatRenameActionInfo) conversationItem;
+			
+			//Invalidating empty strings
+			if(action.newChatName != null && action.newChatName.isEmpty()) action.newChatName = null;
+		}/* else if(conversationItem instanceof Blocks.GroupActionInfo) {
+			Blocks.GroupActionInfo action = (Blocks.GroupActionInfo) conversationItem;
+		}*/
 	}
 }

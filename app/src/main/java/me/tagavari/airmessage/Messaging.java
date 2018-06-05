@@ -38,6 +38,9 @@ import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.util.Pools;
@@ -71,6 +74,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -79,6 +83,8 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
@@ -160,9 +166,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	private FloatingActionButton bottomFAB;
 	private TextView bottomFABBadge;
 	private AppleEffectView appleEffectView;
+	private final HashMap<ConversationManager.MemberInfo, View> memberListViews = new HashMap<>();
 	
 	private View detailScrim;
-	
 	
 	//Creating the other values
 	private final RecyclerAdapter messageListAdapter = new RecyclerAdapter();
@@ -170,6 +176,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	private ActivityManager.TaskDescription lastTaskDescription;
 	
 	private boolean toolbarVisible = true;
+	
+	private DialogFragment currentColorPickerDialog = null;
+	private ConversationManager.MemberInfo currentColorPickerDialogMember = null;
 	
 	//Creating the listeners
 	private final ViewTreeObserver.OnGlobalLayoutListener rootLayoutListener = () -> {
@@ -526,6 +535,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
+		
+		//Restoring the detail panel
+		openDetailsPanel(true);
 	}
 	
 	/* void onMessagesFailed() {
@@ -560,20 +572,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Clearing the notifications
 		((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel((int) viewModel.conversationID);
-		
-		//Checking if the conversation is valid
-		if(viewModel.conversationInfo != null) {
-			//Coloring the UI
-			colorUI(findViewById(android.R.id.content));
-			
-			//Coloring the messages
-			if(viewModel.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) conversationItem.updateViewColor(this);
-			
-			//Checking if the title is static
-			
-			//Updating the recycler adapter's views
-			//messageListAdapter.notifyDataSetChanged();
-		}
 		
 		//Updating the server warning bar state
 		ConnectionService connectionService = ConnectionService.getInstance();
@@ -783,7 +781,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					//startActivity(new Intent(this, MessagingInfo.class).putExtra(Constants.intentParamTargetID, viewModel.conversationInfo.getLocalID()));
 					
 					//Opening the details panel
-					openDetailsPanel();
+					openDetailsPanel(false);
 				}
 				
 				return true;
@@ -801,9 +799,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		else super.onBackPressed();
 	}
 	
-	private void openDetailsPanel() {
+	private void openDetailsPanel(boolean restore) {
 		//Returning if the conversation is not ready or the panel is already open
-		if(viewModel.conversationInfo == null || viewModel.isDetailsPanelOpen) return;
+		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || (!restore && viewModel.isDetailsPanelOpen) || (restore && !viewModel.isDetailsPanelOpen)) return;
 		
 		//Setting the panel as open
 		viewModel.isDetailsPanelOpen = true;
@@ -819,7 +817,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Getting the views
 			Switch notificationsSwitch = inflated.findViewById(R.id.switch_getnotifications);
-			Switch pinnedSwitch = inflated.findViewById(R.id.switch_pinconversation);
+			//Switch pinnedSwitch = inflated.findViewById(R.id.switch_pinconversation);
 			
 			//Restoring the elements' states
 			notificationsSwitch.setChecked(!viewModel.conversationInfo.isMuted());
@@ -834,7 +832,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				DatabaseManager.getInstance().updateConversationMuted(viewModel.conversationInfo.getLocalID(), isMuted);
 				
 			});
-			inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
+			//inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
+			inflated.findViewById(R.id.button_changecolor).setOnClickListener(view -> showColorDialog(null, viewModel.conversationInfo.getConversationColor()));
 			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
 			
 			findViewById(R.id.button_archive).setOnClickListener(view -> {
@@ -885,6 +884,11 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Showing the dialog
 				dialog.show();
 			});
+			
+			//Adding the conversation members
+			detailsBuildConversationMembers(new ArrayList<>(viewModel.conversationInfo.getConversationMembers()));
+		} else {
+			((ScrollView) findViewById(R.id.group_messaginginfo_scroll)).fullScroll(ScrollView.FOCUS_UP);
 		}
 		
 		//Finding the views
@@ -910,23 +914,29 @@ public class Messaging extends AppCompatCompositeActivity {
 			params.height = ConstraintLayout.LayoutParams.WRAP_CONTENT;
 		}
 		
-		//Animating in the panel
-		int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
-		Animation animation = AnimationUtils.loadAnimation(this, R.anim.messagestatus_slide_in_bottom);
-		animation.setAnimationListener(new Animation.AnimationListener() {
-			@Override
-			public void onAnimationStart(Animation animation) {
-				panel.setVisibility(View.VISIBLE);
-			}
-			
-			@Override
-			public void onAnimationEnd(Animation animation) {}
-			
-			@Override
-			public void onAnimationRepeat(Animation animation) {}
-		});
-		panel.startAnimation(animation);
-		detailScrim.animate().alpha(1).withStartAction(() -> detailScrim.setVisibility(View.VISIBLE)).setDuration(duration).start();
+		if(restore) {
+			//Configuring the views
+			detailScrim.setVisibility(View.VISIBLE);
+			detailScrim.setAlpha(1);
+		} else {
+			//Animating in the panel
+			int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
+			Animation animation = AnimationUtils.loadAnimation(this, R.anim.messagestatus_slide_in_bottom);
+			animation.setAnimationListener(new Animation.AnimationListener() {
+				@Override
+				public void onAnimationStart(Animation animation) {
+					panel.setVisibility(View.VISIBLE);
+				}
+				
+				@Override
+				public void onAnimationEnd(Animation animation) {}
+				
+				@Override
+				public void onAnimationRepeat(Animation animation) {}
+			});
+			panel.startAnimation(animation);
+			detailScrim.animate().alpha(1).withStartAction(() -> detailScrim.setVisibility(View.VISIBLE)).setDuration(duration).start();
+		}
 	}
 	
 	private void closeDetailsPanel() {
@@ -955,6 +965,153 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
 		detailScrim.animate().alpha(0).withEndAction(() -> detailScrim.setVisibility(View.GONE)).setDuration(duration).start();
+	}
+	
+	private void detailsBuildConversationMembers(List<ConversationManager.MemberInfo> members) {
+		//Getting the members layout
+		//ViewGroup membersLayout = findViewById(R.id.list_conversationmembers);
+		
+		//Sorting the members
+		Collections.sort(members, ConversationManager.memberInfoComparator);
+		
+		//Adding the member views
+		boolean showMemberColors = members.size() > 1;
+		for(int i = 0; i < members.size(); i++) addMemberView(members.get(i), i, showMemberColors);
+		/* for(final ConversationManager.MemberInfo member : members) {
+			//Creating the view
+			LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+			View memberEntry = inflater.inflate(R.layout.listitem_member, membersLayout, false);
+			
+			//Setting the default information
+			((TextView) memberEntry.findViewById(R.id.label_member)).setText(member.getName());
+			((ImageView) memberEntry.findViewById(R.id.profile_default)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
+			
+			//Filling in the information
+			MainApplication.getInstance().getUserCacheHelper().getUserInfo(this, member.getName(), new UserCacheHelper.UserFetchResult(memberEntry) {
+				@Override
+				void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
+					//Returning if the user info is invalid
+					if(userInfo == null) return;
+					
+					//Getting the view
+					View memberEntry = viewReference.get();
+					if(memberEntry == null) return;
+					
+					//Setting the tag
+					memberEntry.setTag(userInfo.getContactLookupUri());
+					
+					//Setting the member's name
+					((TextView) memberEntry.findViewById(R.id.label_member)).setText(userInfo.getContactName());
+					TextView addressView = memberEntry.findViewById(R.id.label_address);
+					addressView.setText(member.getName());
+					addressView.setVisibility(View.VISIBLE);
+				}
+			});
+			MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(getApplicationContext(), member.getName(), (View) memberEntry.findViewById(R.id.profile_image));
+			
+			//Configuring the color editor
+			ImageView changeColorButton = memberEntry.findViewById(R.id.button_change_color);
+			if(members.size() == 1) {
+				changeColorButton.setVisibility(View.GONE);
+			} else {
+				changeColorButton.setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
+				changeColorButton.setOnClickListener(view -> showColorDialog(member, member.getColor()));
+				changeColorButton.setVisibility(View.VISIBLE);
+			}
+			
+			//Setting the click listener
+			memberEntry.setOnClickListener(view -> {
+				//Returning if the view has no tag
+				if(view.getTag() == null) return;
+				
+				//Opening the user's contact profile
+				Intent intent = new Intent(Intent.ACTION_VIEW);
+				intent.setData((Uri) view.getTag());
+				//intent.setData(Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(view.getTag())));
+				view.getContext().startActivity(intent);
+			});
+			
+			//Adding the view
+			membersLayout.addView(memberEntry);
+			memberListViews.put(member.getName(), memberEntry);
+		} */
+	}
+	
+	private void addMemberView(ConversationManager.MemberInfo member, int index, boolean showColor) {
+		//Getting the members layout
+		ViewGroup membersLayout = findViewById(R.id.list_conversationmembers);
+		if(membersLayout == null) return;
+		
+		//Creating the view
+		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+		View memberEntry = inflater.inflate(R.layout.listitem_member, membersLayout, false);
+		
+		//Setting the default information
+		((TextView) memberEntry.findViewById(R.id.label_member)).setText(member.getName());
+		((ImageView) memberEntry.findViewById(R.id.profile_default)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
+		
+		//Filling in the information
+		MainApplication.getInstance().getUserCacheHelper().getUserInfo(this, member.getName(), new UserCacheHelper.UserFetchResult(memberEntry) {
+			@Override
+			void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
+				//Returning if the user info is invalid
+				if(userInfo == null) return;
+				
+				//Getting the view
+				View memberEntry = viewReference.get();
+				if(memberEntry == null) return;
+				
+				//Setting the tag
+				memberEntry.setTag(userInfo.getContactLookupUri());
+				
+				//Setting the member's name
+				((TextView) memberEntry.findViewById(R.id.label_member)).setText(userInfo.getContactName());
+				TextView addressView = memberEntry.findViewById(R.id.label_address);
+				addressView.setText(member.getName());
+				addressView.setVisibility(View.VISIBLE);
+			}
+		});
+		MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(getApplicationContext(), member.getName(), (View) memberEntry.findViewById(R.id.profile_image));
+		
+		//Configuring the color editor
+		ImageView changeColorButton = memberEntry.findViewById(R.id.button_change_color);
+		if(showColor) {
+			changeColorButton.setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
+			changeColorButton.setOnClickListener(view -> showColorDialog(member, member.getColor()));
+			changeColorButton.setVisibility(View.VISIBLE);
+		} else {
+			changeColorButton.setVisibility(View.GONE);
+		}
+		
+		//Setting the click listener
+		memberEntry.setOnClickListener(view -> {
+			//Returning if the view has no tag
+			if(view.getTag() == null) return;
+			
+			//Opening the user's contact profile
+			Intent intent = new Intent(Intent.ACTION_VIEW);
+			intent.setData((Uri) view.getTag());
+			//intent.setData(Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(view.getTag())));
+			view.getContext().startActivity(intent);
+		});
+		
+		//Adding the view
+		membersLayout.addView(memberEntry, index);
+		memberListViews.put(member, memberEntry);
+	}
+	
+	private void removeMemberView(ConversationManager.MemberInfo member) {
+		//Getting the members layout
+		ViewGroup membersLayout = findViewById(R.id.list_conversationmembers);
+		if(membersLayout == null) return;
+		
+		//Removing the view
+		membersLayout.removeView(memberListViews.get(member));
+		memberListViews.remove(member);
+		
+		//Closing the dialog
+		System.out.println("CCPD: " + (currentColorPickerDialog != null) + " / " + (currentColorPickerDialogMember == member));
+		if(currentColorPickerDialog != null && currentColorPickerDialogMember == member) currentColorPickerDialog.dismiss();
 	}
 	
 	@Override
@@ -2796,6 +2953,26 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		@Override
+		void chatUpdateMemberAdded(ConversationManager.MemberInfo member, int index) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Adding the member
+			activity.addMemberView(member, index, true);
+		}
+		
+		@Override
+		void chatUpdateMemberRemoved(ConversationManager.MemberInfo member, int index) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Removing the member
+			activity.removeMemberView(member);
+		}
+		
+		@Override
 		AudioMessageManager getAudioMessageManager() {
 			//Getting the activity
 			Messaging activity = activityReference.get();
@@ -2809,6 +2986,129 @@ public class Messaging extends AppCompatCompositeActivity {
 		void playScreenEffect(String screenEffect, View target) {
 			Messaging activity = activityReference.get();
 			if(activity != null) activity.playScreenEffect(screenEffect, target);
+		}
+	}
+	
+	void detailSwitchConversationColor(int newColor) {
+		//Updating the conversation color
+		viewModel.conversationInfo.setConversationColor(newColor);
+		
+		//Coloring the UI
+		colorUI(findViewById(android.R.id.content));
+		
+		//Updating the conversation color on disk
+		DatabaseManager.getInstance().updateConversationColor(viewModel.conversationInfo.getLocalID(), newColor);
+		
+		//Updating the member if there is only one member as well
+		if(viewModel.conversationInfo.getConversationMembers().size() == 1) detailSwitchMemberColor(viewModel.conversationInfo.getConversationMembers().get(0), newColor);
+	}
+	
+	void detailSwitchMemberColor(ConversationManager.MemberInfo member, int newColor) {
+		//Updating the user's color
+		member.setColor(newColor);
+		
+		//Updating the view
+		View memberView = memberListViews.get(member);
+		((ImageView) memberView.findViewById(R.id.button_change_color)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
+		((ImageView) memberView.findViewById(R.id.profile_default)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
+		
+		//Updating the message colors
+		if(viewModel.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) conversationItem.updateViewColor(this);
+		
+		//Updating the member color on disk
+		DatabaseManager.getInstance().updateMemberColor(viewModel.conversationInfo.getLocalID(), member.getName(), newColor);
+	}
+	
+	private static final String colorDialogTag = "colorPickerDialog";
+	void showColorDialog(ConversationManager.MemberInfo member, int currentColor) {
+		//Starting a fragment transaction
+		FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+		
+		//Removing the previous fragment if it already exists
+		Fragment previousFragment = getSupportFragmentManager().findFragmentByTag(colorDialogTag);
+		if(previousFragment != null) fragmentTransaction.remove(previousFragment);
+		fragmentTransaction.addToBackStack(null);
+		
+		//Creating and showing the dialog fragment
+		ColorPickerDialog newFragment = ColorPickerDialog.newInstance(member, currentColor);
+		newFragment.show(fragmentTransaction, colorDialogTag);
+		currentColorPickerDialog = newFragment;
+		currentColorPickerDialogMember = member;
+	}
+	
+	public static class ColorPickerDialog extends DialogFragment {
+		//Creating the instantiation values
+		private ConversationManager.MemberInfo member = null;
+		private int selectedColor;
+		
+		@Override
+		public void onCreate(Bundle savedInstanceState) {
+			super.onCreate(savedInstanceState);
+			
+			//Getting the arguments
+			if(getArguments().containsKey(Constants.intentParamData))
+				member = (ConversationManager.MemberInfo) getArguments().getSerializable(Constants.intentParamData);
+			selectedColor = getArguments().getInt(Constants.intentParamCurrent);
+		}
+		
+		@Override
+		public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+			//Configuring the dialog
+			getDialog().setTitle(member == null ? R.string.action_editconversationcolor : R.string.action_editcontactcolor);
+			
+			//Inflating the view
+			View dialogView = inflater.inflate(R.layout.dialog_colorpicker, container, false);
+			ViewGroup contentViewGroup = dialogView.findViewById(R.id.colorpicker_itemview);
+			
+			int padding = Constants.dpToPx(24);
+			contentViewGroup.setPadding(padding, padding, padding, padding);
+			
+			//Adding the elements
+			for(int i = 0; i < ConversationManager.ConversationInfo.standardUserColors.length; i++) {
+				//Getting the color
+				final int standardColor = ConversationManager.ConversationInfo.standardUserColors[i];
+				
+				//Inflating the layout
+				View item = inflater.inflate(R.layout.dialog_colorpicker_item, contentViewGroup, false);
+				
+				//Configuring the layout
+				ImageView colorView = item.findViewById(R.id.colorpickeritem_color);
+				colorView.setColorFilter(standardColor);
+				
+				final boolean isSelectedColor = selectedColor == standardColor;
+				if(isSelectedColor) item.findViewById(R.id.colorpickeritem_selection).setVisibility(View.VISIBLE);
+				
+				//Setting the click listener
+				colorView.setOnClickListener(view -> {
+					//Telling the activity
+					if(!isSelectedColor) {
+						if(member == null) ((Messaging) getActivity()).detailSwitchConversationColor(standardColor);
+						else ((Messaging) getActivity()).detailSwitchMemberColor(member, standardColor);
+					}
+					
+					getDialog().dismiss();
+				});
+				
+				//Adding the view to the layout
+				contentViewGroup.addView(item);
+			}
+			
+			//Returning the view
+			return dialogView;
+		}
+		
+		static ColorPickerDialog newInstance(ConversationManager.MemberInfo memberInfo, int selectedColor) {
+			//Creating the instance
+			ColorPickerDialog instance = new ColorPickerDialog();
+			
+			//Adding the member info
+			Bundle bundle = new Bundle();
+			bundle.putSerializable(Constants.intentParamData, memberInfo);
+			bundle.putSerializable(Constants.intentParamCurrent, selectedColor);
+			instance.setArguments(bundle);
+			
+			//Returning the instance
+			return instance;
 		}
 	}
 }

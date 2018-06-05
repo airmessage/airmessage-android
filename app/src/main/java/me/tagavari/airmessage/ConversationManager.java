@@ -68,6 +68,7 @@ import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
@@ -1270,6 +1271,8 @@ class ConversationManager {
 			
 			abstract void chatUpdateTitle();
 			abstract void chatUpdateUnreadCount();
+			abstract void chatUpdateMemberAdded(MemberInfo member, int index);
+			abstract void chatUpdateMemberRemoved(MemberInfo member, int index);
 			
 			abstract Messaging.AudioMessageManager getAudioMessageManager();
 			
@@ -1349,15 +1352,37 @@ class ConversationManager {
 			return findConversationMember(user) != null;
 		}
 		
+		List<MemberInfo> getConversationMembers() {
+			return conversationMembers;
+		}
+		
 		MemberInfo findConversationMember(String user) {
 			for(MemberInfo member : conversationMembers) if(member.name.equals(user)) return member;
 			return null;
 		}
 		
-		void removeConversationMember(String user) {
+		/* void setConversationMembers(ArrayList<MemberInfo> value) {
+			conversationMembers = value;
+		} */
+		
+		void addConversationMember(MemberInfo member) {
+			int index = Collections.binarySearch(conversationMembers, member, memberInfoComparator);
+			if(index >= 0) return;
+			index = (index * -1) - 1;
+			conversationMembers.add(index, member);
+			if(activityCallbacks != null) activityCallbacks.chatUpdateMemberAdded(member, index);
+		}
+		
+		void removeConversationMember(MemberInfo member) {
+			int index = conversationMembers.indexOf(member);
+			conversationMembers.remove(member);
+			if(activityCallbacks != null) activityCallbacks.chatUpdateMemberRemoved(member, index);
+		}
+		
+		/* void removeConversationMember(String user) {
 			MemberInfo member = findConversationMember(user);
 			if(member != null) conversationMembers.remove(member);
-		}
+		} */
 		
 		ArrayList<String> getConversationMembersAsCollection() {
 			//Returning null if the conversation is server incomplete (awaiting information from the server, which includes the members)
@@ -1393,14 +1418,6 @@ class ConversationManager {
 			
 			//Returning the array
 			return array;
-		}
-		
-		List<MemberInfo> getConversationMembers() {
-			return conversationMembers;
-		}
-		
-		void setConversationMembers(ArrayList<MemberInfo> value) {
-			conversationMembers = value;
 		}
 		
 		void setConversationMembersCreateColors(String[] members) {
@@ -4089,6 +4106,7 @@ class ConversationManager {
 			
 			//Coloring the views
 			viewHolder.groupDownload.setBackgroundTintList(cslBackground);
+			viewHolder.groupDownload.invalidate();
 			viewHolder.labelDownload.setTextColor(cslText);
 			viewHolder.imageDownload.setImageTintList(cslText);
 			viewHolder.progressDownload.setProgressTintList(cslAccent);

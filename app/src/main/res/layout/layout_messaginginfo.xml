@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/group_messaginginfo_scroll"
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
@@ -41,7 +42,7 @@
 		</LinearLayout>
 		
 		<!-- Pinning toggle -->
-		<LinearLayout
+		<!-- <LinearLayout
 			android:id="@+id/group_pinconversation"
 			android:layout_width="match_parent"
 			android:layout_height="64dp"
@@ -68,7 +69,7 @@
 				android:tag="@string/tag_primarytint"
 				android:focusable="false"
 				android:clickable="false" />
-		</LinearLayout>
+		</LinearLayout> -->
 		
 		<View
 			android:layout_width="match_parent"
@@ -89,13 +90,14 @@
 			android:textSize="16sp" />
 		
 		<LinearLayout
-			android:id="@+id/conversation_members"
+			android:id="@+id/list_conversationmembers"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:orientation="vertical" />
 		
 		<!-- Conversation color button -->
 		<FrameLayout
+			android:id="@+id/button_changecolor"
 			android:layout_width="match_parent"
 			android:layout_height="36dp"
 			android:focusable="true"
@@ -111,7 +113,6 @@
 				android:layout_gravity="center"
 				android:orientation="horizontal">
 				<ImageView
-					android:id="@+id/button_changecolor_icon"
 					android:layout_width="18dp"
 					android:layout_height="18dp"
 					android:src="@drawable/palette"

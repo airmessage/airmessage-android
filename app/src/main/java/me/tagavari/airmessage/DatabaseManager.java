@@ -1598,7 +1598,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			
 			//Getting the members
 			List<ConversationManager.MemberInfo> conversationMembers = new ArrayList<>();
-			Cursor memberCursor = database.query(Contract.MemberEntry.TABLE_NAME, new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER, Contract.MemberEntry.COLUMN_NAME_CHAT, Contract.MemberEntry.COLUMN_NAME_COLOR}, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(localID)}, null, null, null);
+			Cursor memberCursor = database.query(Contract.MemberEntry.TABLE_NAME, new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER, Contract.MemberEntry.COLUMN_NAME_CHAT, Contract.MemberEntry.COLUMN_NAME_COLOR}, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(localID)}, null, null, Contract.MemberEntry.COLUMN_NAME_MEMBER + " COLLATE NOCASE");
 			while(memberCursor.moveToNext()) conversationMembers.add(new ConversationManager.MemberInfo(memberCursor.getString(memberCursor.getColumnIndexOrThrow(Contract.MemberEntry.COLUMN_NAME_MEMBER)), memberCursor.getInt(memberCursor.getColumnIndexOrThrow(Contract.MemberEntry.COLUMN_NAME_COLOR))));
 			memberCursor.close();
 			
@@ -2344,6 +2344,19 @@ class DatabaseManager extends SQLiteOpenHelper {
 		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	}
 	
+	void updateMemberColor(long conversationID, String member, int color) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
+		//Creating the content values
+		ContentValues contentValues;
+		
+		//Updating the user's color in the database
+		contentValues = new ContentValues();
+		contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, color);
+		database.update(Contract.MemberEntry.TABLE_NAME, contentValues, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MemberEntry.COLUMN_NAME_MEMBER + " = ?", new String[]{Long.toString(conversationID), member});
+	}
+	
 	void updateMemberColors(long conversationID, ConversationManager.MemberInfo[] members) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
@@ -2353,13 +2366,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Iterating over the members
 		for(ConversationManager.MemberInfo member : members) {
-			//Instantiating the content values
-			contentValues = new ContentValues();
-			
-			//Putting the color
-			contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
-			
 			//Updating the user's color in the database
+			contentValues = new ContentValues();
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
 			database.update(Contract.MemberEntry.TABLE_NAME, contentValues, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MemberEntry.COLUMN_NAME_MEMBER + " = ?", new String[]{Long.toString(conversationID), member.getName()});
 		}
 	}
