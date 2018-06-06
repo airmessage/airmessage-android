@@ -96,6 +96,7 @@ dependencies {
 	implementation "de.hdodenhof:circleimageview:2.2.0"
 	implementation "nl.dionsegijn:konfetti:1.1.2"
 	implementation "in.srain.cube:grid-view-with-header-footer:1.0.12"
+	implementation "pl.droidsonroids.gif:android-gif-drawable:1.2.12"
 
 	//Services
 	implementation "com.google.firebase:firebase-core:16.0.0"

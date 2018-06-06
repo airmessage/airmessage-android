@@ -1,4 +1,4 @@
-package me.tagavari.airmessage;
+package me.tagavari.airmessage.view;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -7,7 +7,7 @@ import android.graphics.RectF;
 import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
 
-class RoundedImageView extends AppCompatImageView {
+public class RoundedImageView extends AppCompatImageView {
 	private float[] radii = new float[8];
 	
 	public RoundedImageView(Context context) {

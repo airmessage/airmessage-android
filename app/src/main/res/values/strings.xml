@@ -234,6 +234,7 @@
 	
 	<string name="part_content_text">Text</string>
 	<string name="part_content_image">Image</string>
+	<string name="part_content_animatedimage">Animated image</string>
 	<string name="part_content_video">Video</string>
 	<string name="part_content_audio">Audio</string>
 	<string name="part_content_other">File</string>

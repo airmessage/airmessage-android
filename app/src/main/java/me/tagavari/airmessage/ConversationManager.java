@@ -57,11 +57,13 @@ import android.widget.TextSwitcher;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.crashlytics.android.Crashlytics;
 import com.pnikosis.materialishprogress.ProgressWheel;
 
 import org.lukhnos.nnio.file.Paths;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
 import java.text.DateFormat;
@@ -82,6 +84,9 @@ import java.util.Random;
 import java9.util.function.Consumer;
 import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.view.InvisibleInkView;
+import me.tagavari.airmessage.view.RoundedGifImageView;
+import me.tagavari.airmessage.view.RoundedImageView;
+import pl.droidsonroids.gif.GifDrawable;
 
 class ConversationManager {
 	//Message burst - Sending single messages one after the other
@@ -4499,75 +4504,117 @@ class ConversationManager {
 			//Creating a weak reference to the context
 			WeakReference<Context> contextReference = new WeakReference<>(context);
 			
-			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromImageFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult() {
-				@Override
-				public void onImageMeasured(int width, int height) {
-					//Getting the context
-					Context context = contextReference.get();
-					if(context == null) return;
-					
-					//Getting the view holder
-					ViewHolder newViewHolder = getViewHolder();
-					if(newViewHolder == null) return;
-					
-					//Getting the multiplier
-					float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), width, height);
-					
-					//Configuring the layout
-					newViewHolder.groupContent.getLayoutParams().width = (int) (width * multiplier);
-					newViewHolder.groupContent.getLayoutParams().height = (int) (height * multiplier);
-					
-					//Showing the layout
-					newViewHolder.groupContent.setVisibility(View.VISIBLE);
-				}
-				
-				@Override
-				public void onImageDecoded(Bitmap bitmap, boolean wasTasked) {
-					//Getting the context
-					Context context = contextReference.get();
-					if(context == null) return;
-					
-					//Getting the view holder
-					ViewHolder newViewHolder = wasTasked ? getViewHolder() : viewHolder;
-					if(newViewHolder == null) return;
-					
-					//Checking if the bitmap is invalid
-					if(bitmap == null) {
-						//Showing the failed view
-						newViewHolder.groupContent.setVisibility(View.GONE);
-						newViewHolder.groupFailed.setVisibility(View.VISIBLE);
-					} else {
-						//Configuring the layout
-						//ViewGroup.LayoutParams params = content.getLayoutParams();
+			//Checking if the image is a GIF
+			if("image/gif".equals(fileType)) {
+				MainApplication.getInstance().getBitmapCacheHelper().measureBitmapFromImageFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult() {
+					@Override
+					public void onImageMeasured(int width, int height) {
+						//Getting the context
+						Context context = contextReference.get();
+						if(context == null) return;
 						
-						float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), bitmap.getWidth(), bitmap.getHeight());
-						newViewHolder.groupContent.getLayoutParams().width = (int) (bitmap.getWidth() * multiplier);
-						newViewHolder.groupContent.getLayoutParams().height = (int) (bitmap.getHeight() * multiplier);
-						//content.setLayoutParams(params);
+						//Getting the view holder
+						ViewHolder newViewHolder = getViewHolder();
+						if(newViewHolder == null) return;
+						
+						//Getting the multiplier
+						float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), width, height);
+						
+						//Configuring the layout
+						newViewHolder.groupContent.getLayoutParams().width = (int) (width * multiplier);
+						newViewHolder.groupContent.getLayoutParams().height = (int) (height * multiplier);
 						
 						//Showing the layout
 						newViewHolder.groupContent.setVisibility(View.VISIBLE);
 						
-						//Setting the bitmap
-						newViewHolder.imageContent.setImageBitmap(bitmap);
+						try {
+							//Configuring the animated image
+							newViewHolder.imageContent.setImageDrawable(new GifDrawable(file));
+						} catch(IOException exception) {
+							//Logging the exception
+							exception.printStackTrace();
+							Crashlytics.logException(exception);
+						}
 						
-						//Updating the view
+						//Updating the ink view
 						if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) {
 							viewHolder.inkView.setVisibility(View.VISIBLE);
 							viewHolder.inkView.setState(true);
 						}
 						else viewHolder.inkView.setVisibility(View.GONE);
-						//TODO update InvisibleInkView with bitmap
-						
-						//Fading in the view
-						if(wasTasked) {
-							newViewHolder.imageContent.setAlpha(0F);
-							newViewHolder.imageContent.animate().alpha(1).setDuration(300).start();
-						}
-						
 					}
-				}
-			}, true, pxBitmapSizeMax, pxBitmapSizeMax);
+				}, true, pxBitmapSizeMax, pxBitmapSizeMax);
+			} else {
+				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromImageFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult() {
+					@Override
+					public void onImageMeasured(int width, int height) {
+						//Getting the context
+						Context context = contextReference.get();
+						if(context == null) return;
+						
+						//Getting the view holder
+						ViewHolder newViewHolder = getViewHolder();
+						if(newViewHolder == null) return;
+						
+						//Getting the multiplier
+						float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), width, height);
+						
+						//Configuring the layout
+						newViewHolder.groupContent.getLayoutParams().width = (int) (width * multiplier);
+						newViewHolder.groupContent.getLayoutParams().height = (int) (height * multiplier);
+						
+						//Showing the layout
+						newViewHolder.groupContent.setVisibility(View.VISIBLE);
+					}
+					
+					@Override
+					public void onImageDecoded(Bitmap bitmap, boolean wasTasked) {
+						//Getting the context
+						Context context = contextReference.get();
+						if(context == null) return;
+						
+						//Getting the view holder
+						ViewHolder newViewHolder = wasTasked ? getViewHolder() : viewHolder;
+						if(newViewHolder == null) return;
+						
+						//Checking if the bitmap is invalid
+						if(bitmap == null) {
+							//Showing the failed view
+							newViewHolder.groupContent.setVisibility(View.GONE);
+							newViewHolder.groupFailed.setVisibility(View.VISIBLE);
+						} else {
+							//Configuring the layout
+							//ViewGroup.LayoutParams params = content.getLayoutParams();
+							
+							float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), bitmap.getWidth(), bitmap.getHeight());
+							newViewHolder.groupContent.getLayoutParams().width = (int) (bitmap.getWidth() * multiplier);
+							newViewHolder.groupContent.getLayoutParams().height = (int) (bitmap.getHeight() * multiplier);
+							//content.setLayoutParams(params);
+							
+							//Showing the layout
+							newViewHolder.groupContent.setVisibility(View.VISIBLE);
+							
+							//Setting the bitmap
+							newViewHolder.imageContent.setImageBitmap(bitmap);
+							
+							//Updating the view
+							if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) {
+								viewHolder.inkView.setVisibility(View.VISIBLE);
+								viewHolder.inkView.setState(true);
+							}
+							else viewHolder.inkView.setVisibility(View.GONE);
+							//TODO update InvisibleInkView with bitmap
+							
+							//Fading in the view
+							if(wasTasked) {
+								newViewHolder.imageContent.setAlpha(0F);
+								newViewHolder.imageContent.animate().alpha(1).setDuration(300).start();
+							}
+							
+						}
+					}
+				}, true, pxBitmapSizeMax, pxBitmapSizeMax);
+			}
 		}
 		
 		@Override
@@ -4631,7 +4678,7 @@ class ConversationManager {
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
 			final View backgroundContent;
-			final RoundedImageView imageContent;
+			final RoundedGifImageView imageContent;
 			final InvisibleInkView inkView;
 			
 			ViewHolder(View view) {
