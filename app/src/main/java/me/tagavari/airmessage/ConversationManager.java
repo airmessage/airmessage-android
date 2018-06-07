@@ -1130,6 +1130,32 @@ class ConversationManager {
 			return true;
 		}
 		
+		boolean removeConversationItem(Context context, ConversationItem item) {
+			//Getting the lists
+			ArrayList<ConversationItem> conversationItems = getConversationItems();
+			if(conversationItems == null) return false;
+			ArrayList<MessageInfo> ghostMessages = getGhostMessages();
+			if(ghostMessages == null) return false;
+			
+			//Finding the item index
+			int itemIndex = conversationItems.indexOf(item);
+			if(itemIndex == -1) return false;
+			
+			//Removing the item
+			conversationItems.remove(itemIndex);
+			if(item instanceof MessageInfo) ghostMessages.remove(item);
+			
+			//Updating the adjacent messages
+			removeConversationItemRelation(this, conversationItems, itemIndex, context, true);
+			
+			//Notifying the listeners
+			ActivityCallbacks callbacks = getActivityCallbacks();
+			if(callbacks != null) callbacks.listUpdateRemoved(itemIndex);
+			
+			//Returning true
+			return true;
+		}
+		
 		private static class ConversationItemMoveRecord {
 			int index;
 			ConversationItem item;
@@ -1269,6 +1295,7 @@ class ConversationManager {
 		static abstract class ActivityCallbacks {
 			abstract void listUpdateFully();
 			abstract void listUpdateInserted(int index);
+			abstract void listUpdateRemoved(int index);
 			abstract void listUpdateMove(int from, int to);
 			abstract void listUpdateUnread();
 			abstract void listScrollToBottom();
@@ -2285,6 +2312,22 @@ class ConversationManager {
 			}
 		}
 		
+		void deleteMessage(Context context) {
+			//Removing the item from the conversation in memory
+			getConversationInfo().removeConversationItem(context, this);
+			
+			//Deleting the message on disk
+			new DeleteMessagesTask().execute(getLocalID());
+		}
+		
+		private static class DeleteMessagesTask extends AsyncTask<Long, Void, Void> {
+			@Override
+			protected Void doInBackground(Long... identifiers) {
+				for(long id : identifiers) DatabaseManager.getInstance().deleteMessage(id);
+				return null;
+			}
+		}
+		
 		private static byte uploadToMessageErrorCode(byte code) {
 			switch(code) {
 				case ConnectionService.messageSendInvalidContent:
@@ -2653,9 +2696,16 @@ class ConversationManager {
 				Context newContext = view.getContext();
 				if(newContext == null) return;
 				
+				//Creating a weak reference to the context
+				final WeakReference<Context> contextReference = new WeakReference<>(newContext);
+				
 				//Configuring the dialog
 				AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(newContext)
 						.setTitle(R.string.message_messageerror_title)
+						.setNeutralButton(R.string.action_deletemessage, (dialog, which) -> {
+							Context anotherNewContext = contextReference.get();
+							if(anotherNewContext != null) deleteMessage(anotherNewContext);
+						})
 						.setNegativeButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss());
 				boolean showRetryButton;
 				
@@ -2755,8 +2805,6 @@ class ConversationManager {
 				
 				//Showing the retry button (if requested)
 				if(showRetryButton) {
-					final WeakReference<Context> contextReference = new WeakReference<>(newContext);
-					
 					dialogBuilder.setPositiveButton(R.string.action_retry, (dialog, which) -> {
 						Context anotherNewContext = contextReference.get();
 						if(anotherNewContext != null) sendMessage(anotherNewContext);
@@ -6056,6 +6104,49 @@ class ConversationManager {
 				}
 			}
 		} */
+	}
+	
+	static void removeConversationItemRelation(ConversationInfo conversation, List<ConversationItem> conversationItems, int index, Context context, boolean update) {
+		//Getting the items adjacent to the message
+		ConversationItem itemOlder = index > 0 ? conversationItems.get(index - 1) : null;
+		MessageInfo messageOlder = itemOlder != null && itemOlder instanceof MessageInfo ? (MessageInfo) itemOlder : null;
+		ConversationItem itemNewer = index < conversationItems.size() ? conversationItems.get(index) : null;
+		MessageInfo messageNewer = itemNewer != null && itemNewer instanceof MessageInfo ? (MessageInfo) itemNewer : null;
+		
+		//Updating the items individually if there is only one of the two
+		if(messageOlder == null && messageNewer == null) return;
+		if(messageOlder != null && messageNewer == null) {
+			//The item is at the end of the conversation (the removed message was at the bottom of the chat)
+			messageOlder.setAnchoredBottom(false);
+			if(update) messageOlder.updateViewEdges(Constants.isLTR(context.getResources()));
+			
+			//Replacing the activity state target
+			conversation.tryActivityStateTarget(messageOlder, update, context);
+		} else if(messageOlder == null) { //messageNewer will always be not null
+			//The item is at the beginning of the conversation (the removed message was at the top of the chat)
+			messageNewer.setHasTimeDivider(true);
+			if(update) messageNewer.updateTimeDivider(context);
+			
+			messageNewer.setAnchoredTop(false);
+			if(update) messageNewer.updateViewEdges(Constants.isLTR(context.getResources()));
+		} else { //Both the older message and newer message are valid
+			//Checking if the item is a valid anchor point (is a message and is within the burst time)
+			boolean isAnchored = Math.abs(messageOlder.getDate() - messageNewer.getDate()) < ConversationManager.conversationBurstTimeMillis && Objects.equals(messageOlder.getSender(), messageNewer.getSender());
+			messageOlder.setAnchoredBottom(isAnchored);
+			messageNewer.setAnchoredTop(isAnchored);
+			
+			//Recalculating the time divider visibility
+			messageNewer.setHasTimeDivider(Math.abs(messageNewer.getDate() - messageOlder.getDate()) >= ConversationManager.conversationSessionTimeMillis);
+			
+			//Updating the views
+			if(update) {
+				boolean isLTR = Constants.isLTR(context.getResources());
+				messageOlder.updateViewEdges(isLTR);
+				messageNewer.updateViewEdges(isLTR);
+				
+				messageNewer.updateTimeDivider(context);
+			}
+		}
 	}
 	
 	static void addConversationItemRelations(ConversationInfo conversation, List<ConversationItem> conversationItems, List<ConversationItem> newConversationItems, Context context, boolean update) {

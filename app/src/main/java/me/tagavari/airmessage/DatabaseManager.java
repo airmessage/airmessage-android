@@ -2456,26 +2456,26 @@ class DatabaseManager extends SQLiteOpenHelper {
 		//Deleting the conversation
 		database.delete(Contract.ConversationEntry.TABLE_NAME, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())});
 		
-		//Getting all related messages
-		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID}, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, null);
-		
-		//Looping through the results
-		while(cursor.moveToNext()) {
-			//Getting the message ID
-			long messageID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID));
-			
-			//Deleting all related attachments
-			database.delete(Contract.AttachmentEntry.TABLE_NAME, Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(messageID)});
+		//Deleting all related messages
+		try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID}, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, null)) {
+			while(cursor.moveToNext()) deleteMessage(cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID)));
 		}
-		
-		//Closing the cursor
-		cursor.close();
 		
 		//Deleting all related members
 		database.delete(Contract.MemberEntry.TABLE_NAME, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())});
+	}
+	
+	void deleteMessage(long messageID) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
 		
-		//Deleting all related messages
-		database.delete(Contract.MessageEntry.TABLE_NAME, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())});
+		//Deleting the message
+		database.delete(Contract.MessageEntry.TABLE_NAME, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+		
+		//Deleting all related entries
+		database.delete(Contract.AttachmentEntry.TABLE_NAME, Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(messageID)});
+		database.delete(Contract.StickerEntry.TABLE_NAME, Contract.StickerEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(messageID)});
+		database.delete(Contract.TapbackEntry.TABLE_NAME, Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(messageID)});
 	}
 	
 	void deleteEverything() {

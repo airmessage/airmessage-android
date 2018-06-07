@@ -587,6 +587,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 			}
 		}
+		
+		//Coloring the UI
+		colorUI(findViewById(android.R.id.content));
 	}
 	
 	@Override
@@ -1170,6 +1173,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private void colorUI(ViewGroup root) {
+		//Returning if the conversation is invalid
+		if(viewModel.conversationInfo == null) return;
+		
 		//Getting the color
 		int color = viewModel.conversationInfo.getConversationColor();
 		int darkerColor = ColorHelper.darkenColor(color);
@@ -2873,6 +2879,16 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Updating the adapter
 			activity.messageListAdapter.notifyItemInserted(index);
+		}
+		
+		@Override
+		void listUpdateRemoved(int index) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Updating the adapter
+			activity.messageListAdapter.notifyItemRemoved(index);
 		}
 		
 		@Override

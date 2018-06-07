@@ -49,7 +49,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Random;
-import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -206,6 +205,10 @@ public class Constants {
 	
 	static float pxToDp(int px) {
 		return px / Resources.getSystem().getDisplayMetrics().density;
+	}
+	
+	static boolean isLTR(Resources resources) {
+		return resources.getBoolean(R.bool.is_left_to_right);
 	}
 	
 	static void recursiveDelete(File file) {

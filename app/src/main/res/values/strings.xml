@@ -11,6 +11,7 @@
 	<string name="action_back">Back</string>
 	<string name="action_skip">Skip</string>
 	<string name="action_delete">Delete</string>
+	<string name="action_deletemessage">Remove message</string>
 	<string name="action_reply">Reply</string>
 	<string name="action_retry">Retry</string>
 	<string name="action_search">Search</string>
