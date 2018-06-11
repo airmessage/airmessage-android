@@ -2,7 +2,7 @@ package me.tagavari.airmessage;
 
 import android.Manifest;
 import android.animation.Animator;
-import android.animation.ArgbEvaluator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -22,6 +22,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteException;
 import android.graphics.BitmapFactory;
 import android.graphics.PointF;
 import android.graphics.drawable.ColorDrawable;
@@ -41,6 +43,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.util.Pools;
@@ -49,17 +52,13 @@ import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.transition.ChangeBounds;
-import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.view.ViewTreeObserver;
@@ -78,6 +77,11 @@ import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.bumptech.glide.request.RequestOptions;
+import com.crashlytics.android.Crashlytics;
 
 import java.io.File;
 import java.io.IOException;
@@ -100,6 +104,11 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final int quickScrollFABThreshold = 3;
 	static final int messageChunkSize = 50;
 	static final int progressiveLoadThreshold = 10;
+	
+	private static final int intentPickGalleryFile = 1;
+	private static final int intentPickAudioFile = 2;
+	private static final int intentPickDocumentFile = 3;
+	private static final int intentTakePicture = 4;
 	
 	//Creating the static values
 	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
@@ -152,15 +161,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	private TextView labelLoadFail;
 	private RecyclerView messageList;
 	private View inputBar;
-	private View referenceBar;
-	private ViewGroup messageBar;
-	private View contentBar;
-	private View recordingBar;
+	private ImageButton buttonSendMessage;
+	private ImageButton buttonAddContent;
 	private EditText messageInputField;
-	private ImageButton messageSendButton;
-	private ImageButton messageContentButton;
-	private ImageButton contentCloseButton;
-	private ImageButton contentRecordButton;
 	private View recordingIndicator;
 	private TextView recordingTimeLabel;
 	private FloatingActionButton bottomFAB;
@@ -249,7 +252,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(messageListAdapter != null) messageListAdapter.scrollToBottom();
 		}
 	};
-	private final View.OnTouchListener recordingTouchListener = new View.OnTouchListener() {
+	/* private final View.OnTouchListener recordingTouchListener = new View.OnTouchListener() {
 		@Override
 		public boolean onTouch(View view, MotionEvent motionEvent) {
 			//Performing the click
@@ -269,7 +272,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Returning false
 			return false;
 		}
-	};
+	}; */
 	private final Observer<Byte> messagesStateObserver = state -> {
 		switch(state) {
 			case ActivityViewModel.messagesStateLoadingConversation:
@@ -409,20 +412,13 @@ public class Messaging extends AppCompatCompositeActivity {
 		labelLoading = findViewById(R.id.loading_text);
 		groupLoadFail = findViewById(R.id.group_error);
 		labelLoadFail = findViewById(R.id.group_error_label);
-		
 		messageList = findViewById(R.id.list_messages);
 		inputBar = findViewById(R.id.inputbar);
-		messageSendButton = inputBar.findViewById(R.id.button_send);
-		referenceBar = inputBar.findViewById(R.id.referencebar);
-		messageBar = inputBar.findViewById(R.id.messagebar);
-		contentBar = inputBar.findViewById(R.id.contentbar);
-		recordingBar = inputBar.findViewById(R.id.recordingbar);
+		buttonSendMessage = inputBar.findViewById(R.id.button_send);
+		buttonAddContent = inputBar.findViewById(R.id.button_addcontent);
 		messageInputField = inputBar.findViewById(R.id.messagebox);
-		messageContentButton = inputBar.findViewById(R.id.button_addcontent);
-		contentCloseButton = inputBar.findViewById(R.id.button_closecontent);
-		contentRecordButton = inputBar.findViewById(R.id.button_record);
 		recordingIndicator = findViewById(R.id.recordingindicator);
-		recordingTimeLabel = inputBar.findViewById(R.id.recordingtime);
+		//recordingTimeLabel = inputBar.findViewById(R.id.recordingtime);
 		bottomFAB = findViewById(R.id.fab_bottom);
 		bottomFABBadge = findViewById(R.id.fab_bottom_badge);
 		appleEffectView = findViewById(R.id.effect_foreground);
@@ -467,13 +463,15 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the listeners
 		rootView.getViewTreeObserver().addOnGlobalLayoutListener(rootLayoutListener);
 		messageInputField.addTextChangedListener(inputFieldTextWatcher);
-		messageSendButton.setOnClickListener(sendButtonClickListener);
-		messageContentButton.setOnClickListener(view -> showContentBar());
-		contentCloseButton.setOnClickListener(view -> hideContentBar());
-		inputBar.findViewById(R.id.button_camera).setOnClickListener(view -> requestTakePicture());
-		inputBar.findViewById(R.id.button_gallery).setOnClickListener(view -> requestMediaFile());
+		buttonSendMessage.setOnClickListener(sendButtonClickListener);
+		buttonAddContent.setOnClickListener(view -> {
+			if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel();
+			else openAttachmentsPanel(false);
+		});
+		/* inputBar.findViewById(R.id.button_camera).setOnClickListener(view -> requestTakePicture());
+		inputBar.findViewById(R.id.button_gallery).setOnClickListener(view -> requestGalleryFile());
 		inputBar.findViewById(R.id.button_attach).setOnClickListener(view -> requestAnyFile());
-		contentRecordButton.setOnTouchListener(recordingTouchListener);
+		contentRecordButton.setOnTouchListener(recordingTouchListener); */
 		bottomFAB.setOnClickListener(view -> messageListAdapter.scrollToBottom());
 		appleEffectView.setFinishListener(() -> currentScreenEffectPlaying = false);
 		detailScrim.setOnClickListener(view -> closeDetailsPanel());
@@ -538,6 +536,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Restoring the detail panel
 		openDetailsPanel(true);
+		
+		//Updating the send button
+		updateSendButton();
 	}
 	
 	/* void onMessagesFailed() {
@@ -686,7 +687,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private void restoreInputBarState() {
-		switch(viewModel.inputState) {
+		/* switch(viewModel.inputState) {
 			case ActivityViewModel.inputStateContent:
 				//Disabling the message bar
 				messageContentButton.setEnabled(false);
@@ -725,15 +726,15 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Reconnecting the media player to its attachment
-		//getAudioMessageManager().reconnectAttachment(conversationInfo);
+		//getAudioMessageManager().reconnectAttachment(conversationInfo); */
 	}
 	
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		//Checking if the request code is taking a picture
-		if(requestCode == Constants.intentTakePicture) {
+		if(requestCode == intentTakePicture) {
 			//Returning if the current input state is not the content bar
-			if(viewModel.inputState != ActivityViewModel.inputStateContent) return;
+			//if(viewModel.inputState != inputStateContent) return;
 			
 			//Checking if the result was a success
 			if(resultCode == RESULT_OK) {
@@ -742,9 +743,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		}
 		//Otherwise if the request code is the media picker
-		else if(requestCode == Constants.intentPickMediaFile || requestCode == Constants.intentPickAnyFile) {
+		else if(requestCode == intentPickGalleryFile || requestCode == intentPickAudioFile || requestCode == intentPickAudioFile) {
 			//Returning if the current input state is not the content bar
-			if(viewModel.inputState != ActivityViewModel.inputStateContent) return;
+			//if(viewModel.inputState != ActivityViewModel.inputStateContent) return;
 			
 			//Checking if the result was a success
 			if(resultCode == RESULT_OK) {
@@ -800,6 +801,150 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(viewModel.isDetailsPanelOpen) closeDetailsPanel();
 		//Otherwise passing the event to the superclass
 		else super.onBackPressed();
+	}
+	
+	private void openAttachmentsPanel(boolean restore) {
+		//Returning if the conversation is not ready or the panel is already open
+		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || (!restore && viewModel.isAttachmentsPanelOpen) || (restore && !viewModel.isAttachmentsPanelOpen)) return;
+		
+		//Setting the panel as open
+		viewModel.isAttachmentsPanelOpen = true;
+		
+		//Inflating the view
+		ViewStub viewStub = findViewById(R.id.viewstub_attachments);
+		if(viewStub != null) {
+			//Inflating the view stub
+			ViewGroup inflated = (ViewGroup) viewStub.inflate();
+			
+			//Coloring the UI
+			colorUI(inflated);
+			
+			//Setting up the sections
+			setupAttachmentsGallerySection();
+		}
+		
+		if(restore) {
+		
+		} else {
+			//Animating in the panel
+			int windowHeight = findViewById(android.R.id.content).getHeight();
+			
+			View panel = findViewById(R.id.panel_attachments);
+			panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+			ValueAnimator animator = ValueAnimator.ofInt(0, panel.getMeasuredHeight());
+			animator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
+			animator.setInterpolator(new AccelerateDecelerateInterpolator());
+			animator.addUpdateListener(animation -> {
+				int value = (int) animation.getAnimatedValue();
+				panel.getLayoutParams().height = value;
+				panel.setY(windowHeight - value);
+				panel.requestLayout();
+			});
+			animator.addListener(new AnimatorListenerAdapter() {
+				@Override
+				public void onAnimationStart(Animator animation) {
+					panel.setVisibility(View.VISIBLE);
+				}
+				
+				@Override
+				public void onAnimationEnd(Animator animation) {
+					panel.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+					panel.requestLayout();
+				}
+			});
+			animator.start();
+		}
+	}
+	
+	private void closeAttachmentsPanel() {
+		//Returning if the conversation is not ready or the panel is already closed
+		if(viewModel.conversationInfo == null || !viewModel.isAttachmentsPanelOpen) return;
+		
+		//Setting the panel as closed
+		viewModel.isAttachmentsPanelOpen = false;
+		
+		//Animating out the panel
+		int windowHeight = findViewById(android.R.id.content).getHeight();
+		
+		View panel = findViewById(R.id.panel_attachments);
+		ValueAnimator animator = ValueAnimator.ofInt(panel.getHeight(), 0);
+		animator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
+		animator.setInterpolator(new AccelerateDecelerateInterpolator());
+		animator.addUpdateListener(animation -> {
+			int value = (int) animation.getAnimatedValue();
+			panel.getLayoutParams().height = value;
+			panel.setY(windowHeight - value);
+			panel.requestLayout();
+		});
+		animator.addListener(new AnimatorListenerAdapter() {
+			@Override
+			public void onAnimationEnd(Animator animation) {
+				panel.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+				panel.setVisibility(View.GONE);
+			}
+		});
+		animator.start();
+	}
+	
+	private void setupAttachmentsGallerySection() {
+		//Getting the view
+		ViewGroup viewGroup = findViewById(R.id.viewgroup_attachment_gallery);
+		if(viewGroup == null) return;
+		
+		//Setting the click listeners
+		viewGroup.findViewById(R.id.button_attachment_gallery_systempicker).setOnClickListener(view -> requestGalleryFile());
+		
+		//Checking if the state is failed
+		if(viewModel.attachmentsMediaState == ActivityViewModel.attachmentsStateFailed) {
+			//Showing the failed text
+			viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.VISIBLE);
+			
+			//Hiding the permission request button and the list
+			viewGroup.findViewById(R.id.button_attachment_gallery_permission).setVisibility(View.GONE);
+			viewGroup.findViewById(R.id.list_attachment_gallery).setVisibility(View.GONE);
+		}
+		//Checking if the permission has not been granted
+		else if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+			//Hiding the list and failed text
+			viewGroup.findViewById(R.id.list_attachment_gallery).setVisibility(View.GONE);
+			viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.GONE);
+			
+			//Setting up the permission request button
+			View permissionButton = viewGroup.findViewById(R.id.button_attachment_gallery_permission);
+			permissionButton.setVisibility(View.VISIBLE);
+			permissionButton.setOnClickListener(view -> Constants.requestPermission(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, intentPickGalleryFile));
+		} else {
+			//Hiding the permission request button and the failed text
+			viewGroup.findViewById(R.id.button_attachment_gallery_permission).setVisibility(View.GONE);
+			viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.GONE);
+			
+			//Setting up the list
+			RecyclerView list = viewGroup.findViewById(R.id.list_attachment_gallery);
+			list.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+			
+			//Checking if the files are loaded
+			if(viewModel.attachmentsMediaState == ActivityViewModel.attachmentsStateLoaded) {
+				//Setting the list adapter
+				list.setAdapter(new AttachmentsGalleryRecyclerAdapter(viewModel.attachmentsMediaList));
+			} else {
+				//Setting the list adapter
+				List<File> fileList = new ArrayList<>();
+				for(int i = 0; i < ActivityViewModel.attachmentsTileCount; i++) fileList.add(null);
+				list.setAdapter(new AttachmentsGalleryRecyclerAdapter(fileList));
+				
+				//Loading the media
+				viewModel.indexAttachmentsMedia(result -> {
+					if(result) {
+						//Setting the list adapter's list
+						((AttachmentsGalleryRecyclerAdapter) list.getAdapter()).setList(viewModel.attachmentsMediaList);
+					} else {
+						//Replacing the list view with the failed text
+						viewGroup.findViewById(R.id.list_attachment_gallery).setVisibility(View.GONE);
+						viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.VISIBLE);
+					}
+				});
+			}
+		}
 	}
 	
 	private void openDetailsPanel(boolean restore) {
@@ -923,8 +1068,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			detailScrim.setAlpha(1);
 		} else {
 			//Animating in the panel
-			int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
-			Animation animation = AnimationUtils.loadAnimation(this, R.anim.messagestatus_slide_in_bottom);
+			int duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
+			Animation animation = AnimationUtils.loadAnimation(this, R.anim.messagedetails_slide_in_bottom);
 			animation.setAnimationListener(new Animation.AnimationListener() {
 				@Override
 				public void onAnimationStart(Animation animation) {
@@ -946,7 +1091,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Returning if the conversation is not ready or the panel is already closed
 		if(viewModel.conversationInfo == null || !viewModel.isDetailsPanelOpen) return;
 		
-		//Setting the panel as open
+		//Setting the panel as closed
 		viewModel.isDetailsPanelOpen = false;
 		
 		//Animating out the panel
@@ -966,7 +1111,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		});
 		panel.startAnimation(animation);
 		
-		int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
+		int duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
 		detailScrim.animate().alpha(0).withEndAction(() -> detailScrim.setVisibility(View.GONE)).setDuration(duration).start();
 	}
 	
@@ -1117,7 +1262,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(currentColorPickerDialog != null && currentColorPickerDialogMember == member) currentColorPickerDialog.dismiss();
 	}
 	
-	@Override
+	/* @Override
 	public boolean dispatchTouchEvent(MotionEvent event) {
 		//Returning if the current state isn't recording
 		if(viewModel.inputState != ActivityViewModel.inputStateRecording) {
@@ -1160,7 +1305,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Returning false
 		super.dispatchTouchEvent(event);
 		return false;
-	}
+	} */
 	
 	private boolean isPosOverDiscardZone(float posX) {
 		//Getting the display width
@@ -1198,6 +1343,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 			else if(view instanceof TextView) ((TextView) view).setTextColor(color);
 			else if(view instanceof RelativeLayout) view.setBackground(new ColorDrawable(color));
+			else if(view instanceof FrameLayout) view.setBackgroundTintList(ColorStateList.valueOf(color));
 		}
 		
 		//Coloring the unique UI components
@@ -1221,13 +1367,13 @@ public class Messaging extends AppCompatCompositeActivity {
 		messageInputField.setEnabled(enabled);
 		
 		//Setting the send button
-		messageSendButton.setEnabled(enabled);
+		buttonSendMessage.setEnabled(enabled);
 		//messageSendButton.setClickable(messageBoxHasText);
-		messageSendButton.setAlpha(enabled && messageBoxHasText ? 1 : 0.38f);
+		//buttonSendMessage.setAlpha(enabled && messageBoxHasText ? 1 : 0.38f);
 		
 		//Setting the add content button
-		messageContentButton.setEnabled(enabled);
-		messageContentButton.setAlpha(enabled ? 1 : 0.38f);
+		buttonAddContent.setEnabled(enabled);
+		//buttonAddContent.setAlpha(enabled ? 1 : 0.38f);
 		
 		//Opening the soft keyboard if the text input is enabled and the soft keyboard should be used
 		//if(enabled) ((InputMethodManager) activitySource.getActivity().getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(messageInputField, InputMethodManager.SHOW_FORCED);
@@ -1235,204 +1381,16 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void updateSendButton() {
 		//Setting the send button state
-		messageSendButton.setClickable(messageBoxHasText);
-		messageSendButton.setAlpha(messageBoxHasText ? 1 : 0.38f);
+		buttonSendMessage.setClickable(messageBoxHasText);
+		buttonSendMessage.setAlpha(messageBoxHasText ? 1 : 0.38f);
 	}
 	
-	private void showContentBar() {
-		//Setting the input state to the content bar
-		viewModel.inputState = ActivityViewModel.inputStateContent;
-		
-		//Disabling the message bar
-		TransitionManager.beginDelayedTransition(messageBar, new ChangeBounds());
-		messageBar.getLayoutParams().height = referenceBar.getHeight();
-		
-		messageContentButton.setEnabled(false);
-		messageInputField.setEnabled(false);
-		messageSendButton.setEnabled(false);
-		
-		//Rotating the add content button
-		messageContentButton.animate().rotation(45).start();
-		
-		//Rotating the close content button
-		contentCloseButton.animate().rotation(45).start();
-		
-		//Revealing the content bar
-		contentBar.setVisibility(View.VISIBLE);
-		Animator animator = ViewAnimationUtils.createCircularReveal(contentBar, referenceBar.getLeft() + (int) messageContentButton.getX() + messageContentButton.getWidth() / 2, referenceBar.getTop() + referenceBar.getHeight() / 2, 0, referenceBar.getWidth());
-		animator.setInterpolator(new AccelerateDecelerateInterpolator());
-		animator.start();
-		
-		//Enabling the content bar
-		contentCloseButton.setEnabled(true);
-		contentBar.findViewById(R.id.button_camera).setEnabled(true);
-		contentBar.findViewById(R.id.button_gallery).setEnabled(true);
-		contentBar.findViewById(R.id.button_attach).setEnabled(true);
-		contentRecordButton.setEnabled(true);
-	}
-	
-	private void hideContentBar() {
-		//Setting the input state to the message bar
-		viewModel.inputState = ActivityViewModel.inputStateText;
-		
-		//Disabling the content bar
-		contentCloseButton.setEnabled(false);
-		contentBar.findViewById(R.id.button_camera).setEnabled(false);
-		contentBar.findViewById(R.id.button_gallery).setEnabled(false);
-		contentBar.findViewById(R.id.button_attach).setEnabled(false);
-		contentRecordButton.setEnabled(false);
-		
-		//Rotating the add content button
-		messageContentButton.animate().rotation(0).start();
-		
-		//Rotating the close content button
-		contentCloseButton.animate().rotation(0).start();
-		
-		//Concealing the content bar
-		Animator animator = ViewAnimationUtils.createCircularReveal(contentBar, referenceBar.getLeft() + (int) messageContentButton.getX() + messageContentButton.getWidth() / 2, referenceBar.getTop() + referenceBar.getHeight() / 2, referenceBar.getWidth(), 0);
-		animator.setInterpolator(new AccelerateDecelerateInterpolator());
-		animator.addListener(new Animator.AnimatorListener() {
-			@Override
-			public void onAnimationStart(Animator animation) {
-			
-			}
-			
-			@Override
-			public void onAnimationEnd(Animator animation) {
-				//Returning if the state doesn't match
-				if(viewModel.inputState == ActivityViewModel.inputStateContent) return;
-				
-				//Hiding the content bar
-				contentBar.setVisibility(View.GONE);
-			}
-			
-			@Override
-			public void onAnimationCancel(Animator animation) {
-			
-			}
-			
-			@Override
-			public void onAnimationRepeat(Animator animation) {
-			
-			}
-		});
-		animator.start();
-		
-		//Enabling the message bar
-		TransitionManager.beginDelayedTransition((ViewGroup) messageBar, new ChangeBounds());
-		messageBar.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
-		messageContentButton.setEnabled(true);
-		messageInputField.setEnabled(true);
-		messageSendButton.setEnabled(true);
-	}
-	
-	private void showRecordingBar() {
-		//Setting the input state to recording
-		viewModel.inputState = ActivityViewModel.inputStateRecording;
-		
-		//Disabling the content bar
-		contentCloseButton.setEnabled(false);
-		contentBar.findViewById(R.id.button_camera).setEnabled(false);
-		contentBar.findViewById(R.id.button_gallery).setEnabled(false);
-		contentBar.findViewById(R.id.button_attach).setEnabled(false);
-		contentBar.findViewById(R.id.button_record).setEnabled(false);
-		
-		//Revealing the recording bar
-		int[] recordingButtonLocation = {0, 0};
-		contentRecordButton.getLocationOnScreen(recordingButtonLocation);
-		
-		recordingBar.setVisibility(View.VISIBLE);
-		Animator animator = ViewAnimationUtils.createCircularReveal(recordingBar, referenceBar.getLeft() + recordingButtonLocation[0] + contentRecordButton.getWidth() / 2, referenceBar.getTop() + referenceBar.getHeight() / 2, 0, referenceBar.getWidth());
-		animator.setInterpolator(new AccelerateDecelerateInterpolator());
-		animator.addListener(new Animator.AnimatorListener() {
-			@Override
-			public void onAnimationStart(Animator animation) {
-			
-			}
-			
-			@Override
-			public void onAnimationEnd(Animator animation) {
-				//Returning if the state doesn't match
-				if(viewModel.inputState == ActivityViewModel.inputStateContent) return;
-				
-				//Hiding the content bar
-				contentBar.setVisibility(View.GONE);
-			}
-			
-			@Override
-			public void onAnimationCancel(Animator animation) {
-			
-			}
-			
-			@Override
-			public void onAnimationRepeat(Animator animation) {
-			
-			}
-		});
-		animator.start();
-	}
-	
-	private void hideRecordingBar(boolean toMessageInput, int positionX) {
-		//Setting the input state to the message input or content bar
-		viewModel.inputState = toMessageInput ? ActivityViewModel.inputStateText : ActivityViewModel.inputStateContent;
-		
-		//Concealing the recording bar
-		Animator animator = ViewAnimationUtils.createCircularReveal(recordingBar, referenceBar.getLeft() + positionX, referenceBar.getTop() + referenceBar.getHeight() / 2, referenceBar.getWidth(), 0);
-		animator.setInterpolator(new AccelerateDecelerateInterpolator());
-		animator.addListener(new Animator.AnimatorListener() {
-			@Override
-			public void onAnimationStart(Animator animation) {
-			
-			}
-			
-			@Override
-			public void onAnimationEnd(Animator animation) {
-				//Returning if the state doesn't match
-				if(viewModel.inputState == ActivityViewModel.inputStateRecording) return;
-				
-				//Hiding the recording bar
-				recordingBar.setVisibility(View.GONE);
-			}
-			
-			@Override
-			public void onAnimationCancel(Animator animation) {
-			
-			}
-			
-			@Override
-			public void onAnimationRepeat(Animator animation) {
-			
-			}
-		});
-		animator.start();
-		
-		//Checking if the target is the message input
-		if(toMessageInput) {
-			//Enabling the message bar
-			messageContentButton.setRotation(0);
-			messageContentButton.setEnabled(true);
-			messageInputField.setEnabled(true);
-			messageSendButton.setEnabled(true);
-		}
-		//Otherwise the target is the content bar
-		else {
-			//Enabling the content bar
-			contentBar.setVisibility(View.VISIBLE);
-			contentCloseButton.setRotation(45);
-			contentCloseButton.setEnabled(true);
-			contentBar.findViewById(R.id.button_camera).setEnabled(true);
-			contentBar.findViewById(R.id.button_gallery).setEnabled(true);
-			contentBar.findViewById(R.id.button_attach).setEnabled(true);
-			contentRecordButton.setEnabled(true);
-		}
-	}
-	
-	private boolean startRecording() {
+	/* private boolean startRecording() {
 		//Starting the recording
 		if(!viewModel.startRecording(this)) return false;
 		
 		//Resetting the recording bar's color
-		recordingBar.setBackgroundColor(Constants.resolveColorAttr(this, android.R.attr.colorBackgroundFloating));
+		//recordingBar.setBackgroundColor(Constants.resolveColorAttr(this, android.R.attr.colorBackgroundFloating));
 		
 		//Setting the recording indicator's Y
 		recordingIndicator.setY(inputBar.getTop() + inputBar.getHeight() / 2 - recordingIndicator.getHeight() / 2);
@@ -1444,7 +1402,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		animator.start();
 		
 		//Showing the recording input
-		showRecordingBar();
+		//showRecordingBar();
 		
 		//Returning true
 		return true;
@@ -1489,14 +1447,14 @@ public class Messaging extends AppCompatCompositeActivity {
 		animator.start();
 		
 		//Hiding the recording bar
-		/* int[] recordingButtonLocation = {0, 0};
-		contentRecordButton.getLocationOnScreen(recordingButtonLocation);
-		hideRecordingBar(fileAvailable, recordingButtonLocation[0]); */
+		//int[] recordingButtonLocation = {0, 0};
+		//contentRecordButton.getLocationOnScreen(recordingButtonLocation);
+		//hideRecordingBar(fileAvailable, recordingButtonLocation[0]);
 		hideRecordingBar(fileAvailable, positionX);
 		
 		//Sending the file
 		if(fileAvailable) sendFile(viewModel.targetFile);
-	}
+	} */
 	
 	private String getInputBarMessage() {
 		//Returning a generic message if the service is invalid
@@ -1819,10 +1777,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		//takePictureIntent.putExtra(Constants.intentParamDataFile, viewModel.targetFile);
 		
 		//Starting the activity
-		startActivityForResult(takePictureIntent, Constants.intentTakePicture);
+		startActivityForResult(takePictureIntent, intentTakePicture);
 	}
 	
-	private void requestMediaFile() {
+	private void requestGalleryFile() {
 		//Launching the system's file picker
 		Intent intent = new Intent();
 		intent.setType("*/*");
@@ -1830,7 +1788,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
 		//intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), Constants.intentPickMediaFile);
+		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickGalleryFile);
 	}
 	
 	private void requestAnyFile() {
@@ -1841,7 +1799,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
 		//intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), Constants.intentPickAnyFile);
+		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickDocumentFile);
 	}
 	
 	private static boolean stringHasChar(String string) {
@@ -2262,6 +2220,102 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
+	private class AttachmentsGalleryRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+		//Creating the reference values
+		private static final int itemTypeActionButton = 0;
+		private static final int itemTypeContent = 1;
+		private static final int itemTypeOverflowButton = 2;
+		
+		//Creating the list values
+		private List<File> fileList;
+		
+		AttachmentsGalleryRecyclerAdapter(List<File> list) {
+			fileList = list;
+		}
+		
+		@NonNull
+		@Override
+		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+			switch(viewType) {
+				case itemTypeActionButton: {
+					View actionButton = getLayoutInflater().inflate(R.layout.layout_attachment_actiontile, parent, false);
+					TextView label = actionButton.findViewById(R.id.label);
+					label.setText(R.string.part_camera);
+					label.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.camera, 0, 0);
+					actionButton.setOnClickListener(view -> requestTakePicture());
+					return new ViewHolderImpl(actionButton);
+				}
+				case itemTypeOverflowButton: {
+					View overflowButton = getLayoutInflater().inflate(R.layout.layout_attachment_overflow, parent, false);
+					overflowButton.setOnClickListener(view -> requestGalleryFile());
+					return new ViewHolderImpl(overflowButton);
+				}
+				case itemTypeContent: {
+					return new MediaTileViewHolder(getLayoutInflater().inflate(R.layout.layout_attachment_mediatile, parent, false));
+				}
+				default:
+					throw new IllegalArgumentException("Invalid view type received: " + viewType);
+			}
+		}
+		
+		private class MediaTileViewHolder extends RecyclerView.ViewHolder {
+			//Creating the view values
+			private ImageView imageThumbnail;
+			private ImageView imageFlagGIF;
+			
+			MediaTileViewHolder(View itemView) {
+				super(itemView);
+				imageThumbnail = itemView.findViewById(R.id.image);
+				imageFlagGIF = itemView.findViewById(R.id.image_flag_gif);
+			}
+		}
+		
+		private class ViewHolderImpl extends RecyclerView.ViewHolder {
+			ViewHolderImpl(View itemView) {
+				super(itemView);
+			}
+		}
+		
+		@Override
+		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+			//Filtering out non-content items
+			if(getItemViewType(position) != itemTypeContent) return;
+			
+			//Getting the file and returning if it is null
+			File file = getItemAt(position);
+			if(file == null) return;
+			
+			//Setting the image thumbnail
+			Glide.with(Messaging.this)
+					.load(file)
+					.apply(RequestOptions.centerCropTransform())
+					.transition(DrawableTransitionOptions.withCrossFade())
+					.into(((MediaTileViewHolder) holder).imageThumbnail);
+		}
+		
+		@Override
+		public int getItemCount() {
+			return fileList == null ? 2 : fileList.size() + 2;
+		}
+		
+		@Override
+		public int getItemViewType(int position) {
+			if(position == 0) return itemTypeActionButton;
+			else if(position + 1 == getItemCount()) return itemTypeOverflowButton;
+			else return itemTypeContent;
+		}
+		
+		private File getItemAt(int index) {
+			if(index == 0 || index - 1 == fileList.size()) return null;
+			return fileList.get(index - 1);
+		}
+		
+		void setList(List<File> list) {
+			fileList = list;
+			notifyDataSetChanged();
+		}
+	}
+	
 	private static class TaskMarkMessageSendStyleViewed extends AsyncTask<ConversationManager.MessageInfo, Void, Void> {
 		@Override
 		protected Void doInBackground(ConversationManager.MessageInfo... items) {
@@ -2318,8 +2372,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static class ActivityViewModel extends AndroidViewModel {
 		//Creating the reference values
 		static final byte inputStateText = 0;
-		static final byte inputStateContent = 1;
-		static final byte inputStateRecording = 2;
+		static final byte inputStateRecording = 1;
 		
 		static final byte messagesStateIdle = 0;
 		static final byte messagesStateLoadingConversation = 1;
@@ -2328,10 +2381,22 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final byte messagesStateFailedMessages = 4;
 		static final byte messagesStateReady = 5;
 		
+		static final byte attachmentsStateIdle = 0;
+		static final byte attachmentsStateLoading = 1;
+		static final byte attachmentsStateLoaded = 2;
+		static final byte attachmentsStateFailed = 3;
+		
+		private static final int attachmentsTileCount = 12;
+		
 		//Creating the state values
 		byte inputState = inputStateText;
 		MutableLiveData<Byte> messagesState = new MutableLiveData<>();
 		
+		byte attachmentsMediaState = attachmentsStateIdle;
+		List<File> attachmentsMediaList = null;
+		private WeakReference<AttachmentsLoadCallbacks> attachmentsMediaCallbacksReference = null;
+		
+		boolean isAttachmentsPanelOpen = false;
 		boolean isDetailsPanelOpen = false;
 		
 		MutableLiveData<Boolean> progressiveLoadInProgress = new MutableLiveData<>();
@@ -2366,7 +2431,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		};
 		
-		public ActivityViewModel(Application application, long conversationID) {
+		ActivityViewModel(Application application, long conversationID) {
 			super(application);
 			
 			//Setting the values
@@ -2670,6 +2735,77 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Returning true
 			return true;
+		}
+		
+		@SuppressLint("StaticFieldLeak")
+		void indexAttachmentsMedia(AttachmentsLoadCallbacks listener) {
+			//Updating the listener
+			attachmentsMediaCallbacksReference = new WeakReference<>(listener);
+			
+			//Returning if the state is incapable of handling the request
+			if(attachmentsMediaState == attachmentsStateLoading || attachmentsMediaState == attachmentsStateLoaded) return;
+			
+			//Setting the state
+			attachmentsMediaState = attachmentsStateLoading;
+			
+			//Starting the asynchronous task
+			new AsyncTask<Void, Void, List<File>>() {
+				@Override
+				protected List<File> doInBackground(Void... params) {
+					try {
+						//Creating the list
+						List<File> list = new ArrayList<>();
+						
+						//Querying the media files
+						try(Cursor cursor = getApplication().getContentResolver().query(
+								MediaStore.Files.getContentUri("external"),
+								new String[]{MediaStore.MediaColumns.DATA},
+								MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO,
+								null,
+								MediaStore.Files.FileColumns.DATE_ADDED + " DESC" + ' ' + "LIMIT " + attachmentsTileCount)) {
+							int indexData = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA);
+							while(cursor.moveToNext()) list.add(new File(cursor.getString(indexData)));
+						}
+						
+						//Returning the list
+						return list;
+					} catch(SQLiteException exception) {
+						//Logging the exception
+						exception.printStackTrace();
+						Crashlytics.logException(exception);
+						
+						//Returning null
+						return null;
+					}
+				}
+				
+				@Override
+				protected void onPostExecute(List<File> files) {
+					//Checking if the data is invalid
+					if(files == null) {
+						//Setting the state
+						attachmentsMediaState = attachmentsStateFailed;
+						
+						//Telling the listener
+						AttachmentsLoadCallbacks listener = attachmentsMediaCallbacksReference.get();
+						if(listener != null) listener.onLoadFinished(false);
+					} else {
+						//Setting the state
+						attachmentsMediaState = attachmentsStateLoaded;
+						
+						//Setting the items
+						attachmentsMediaList = files;
+						
+						//Telling the listener
+						AttachmentsLoadCallbacks listener = attachmentsMediaCallbacksReference.get();
+						if(listener != null) listener.onLoadFinished(true);
+					}
+				}
+			}.execute();
+		}
+		
+		interface AttachmentsLoadCallbacks {
+			void onLoadFinished(boolean successful);
 		}
 	}
 	

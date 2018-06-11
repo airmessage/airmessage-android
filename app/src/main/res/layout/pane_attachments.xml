@@ -1,0 +1,171 @@
+<!-- Content pane -->
+<ScrollView
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/pane_attachments"
+	android:layout_width="match_parent"
+	android:layout_height="250dp"
+	android:background="@drawable/rounded_contentpane"
+	android:backgroundTint="?android:attr/colorBackgroundFloating"
+	android:elevation="2dp"
+	android:maxWidth="@dimen/contentwidth_max">
+	
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		android:layout_marginTop="24dp"
+		android:layout_marginBottom="@dimen/contenttile_margin">
+		<!-- Gallery images -->
+		<LinearLayout
+			android:id="@+id/viewgroup_attachment_gallery"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/contenttile_size"
+			android:orientation="horizontal"
+			android:layout_marginBottom="@dimen/contenttile_margin"
+			android:layout_marginStart="@dimen/contenttile_margin">
+			
+			<FrameLayout
+				android:id="@+id/button_attachment_gallery_systempicker"
+				android:layout_width="32dp"
+				android:layout_height="match_parent"
+				android:background="@drawable/rounded_selectable_contenttile"
+				android:backgroundTint="@color/colorPrimary"
+				android:tag="@string/tag_primarytint">
+				
+				<ImageView
+					android:layout_width="20dp"
+					android:layout_height="20dp"
+					android:layout_gravity="center"
+					android:src="@drawable/gallery"
+					android:tint="@android:color/white" />
+			</FrameLayout>
+			
+			<FrameLayout
+				android:id="@+id/button_attachment_gallery_permission"
+				android:layout_width="0px"
+				android:layout_height="match_parent"
+				android:layout_weight="1"
+				android:background="@drawable/rounded_selectable_contenttile"
+				android:backgroundTint="?android:attr/colorButtonNormal"
+				android:padding="10dp"
+				android:textColor="?android:attr/textColorSecondary"
+				android:layout_marginLeft="@dimen/contenttile_margin"
+				android:layout_marginRight="@dimen/contenttile_margin">
+				
+				<TextView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_gravity="center"
+					android:gravity="center"
+					android:text="@string/imperative_permission_media" />
+			</FrameLayout>
+			
+			<TextView
+				android:id="@+id/label_attachment_gallery_failed"
+				android:layout_width="0px"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center"
+				android:layout_weight="1"
+				android:padding="10dp"
+				android:gravity="center"
+				android:text="@string/message_loaderror_gallery"
+				android:layout_marginLeft="@dimen/contenttile_margin"
+				android:layout_marginRight="@dimen/contenttile_margin" />
+			
+			<android.support.v7.widget.RecyclerView
+				android:id="@+id/list_attachment_gallery"
+				android:layout_width="0px"
+				android:layout_height="match_parent"
+				android:layout_weight="1"
+				android:layout_marginLeft="@dimen/contenttile_margin"
+				android:layout_marginRight="@dimen/contenttile_margin"
+				android:requiresFadingEdge="horizontal" />
+		</LinearLayout>
+		
+		<!-- Audio files -->
+		<LinearLayout
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/contenttile_size"
+			android:orientation="horizontal"
+			android:layout_marginBottom="@dimen/contenttile_margin"
+			android:layout_marginStart="@dimen/contenttile_margin">
+			
+			<FrameLayout
+				android:id="@+id/button_attachment_headersound"
+				android:layout_width="32dp"
+				android:layout_height="match_parent"
+				android:background="@drawable/rounded_selectable_contenttile"
+				android:backgroundTint="@color/colorPrimary"
+				android:tag="@string/tag_primarytint">
+				
+				<ImageView
+					android:layout_width="20dp"
+					android:layout_height="20dp"
+					android:layout_gravity="center"
+					android:src="@drawable/volume"
+					android:tint="@android:color/white" />
+			</FrameLayout>
+			
+			<FrameLayout
+				android:layout_width="0px"
+				android:layout_height="match_parent"
+				android:layout_weight="1"
+				android:background="@drawable/rounded_selectable_contenttile"
+				android:backgroundTint="?android:attr/colorButtonNormal"
+				android:padding="10dp"
+				android:textColor="?android:attr/textColorSecondary"
+				android:layout_marginLeft="@dimen/contenttile_margin"
+				android:layout_marginRight="@dimen/contenttile_margin">
+				
+				<TextView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_gravity="center"
+					android:gravity="center"
+					android:text="@string/imperative_permission_microphone" />
+			</FrameLayout>
+		</LinearLayout>
+		
+		<!-- Generic documents -->
+		<LinearLayout
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/contenttile_size"
+			android:orientation="horizontal"
+			android:layout_marginStart="@dimen/contenttile_margin">
+			<FrameLayout
+				android:id="@+id/button_attachment_headerdocument"
+				android:layout_width="32dp"
+				android:layout_height="match_parent"
+				android:background="@drawable/rounded_selectable_contenttile"
+				android:backgroundTint="@color/colorPrimary"
+				android:tag="@string/tag_primarytint">
+				
+				<ImageView
+					android:layout_width="20dp"
+					android:layout_height="20dp"
+					android:layout_gravity="center"
+					android:src="@drawable/file"
+					android:tint="@android:color/white" />
+			</FrameLayout>
+			
+			<FrameLayout
+				android:layout_width="0px"
+				android:layout_height="match_parent"
+				android:layout_weight="1"
+				android:background="@drawable/rounded_selectable_contenttile"
+				android:backgroundTint="?android:attr/colorButtonNormal"
+				android:padding="10dp"
+				android:textColor="?android:attr/textColorSecondary"
+				android:layout_marginLeft="@dimen/contenttile_margin"
+				android:layout_marginRight="@dimen/contenttile_margin">
+				
+				<TextView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_gravity="center"
+					android:gravity="center"
+					android:text="@string/imperative_permission_files" />
+			</FrameLayout>
+		</LinearLayout>
+	</LinearLayout>
+</ScrollView>

@@ -1,0 +1,14 @@
+<FrameLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="40dp"
+	android:layout_height="@dimen/contenttile_size"
+	android:background="@drawable/rounded_selectable_contenttile"
+	android:backgroundTint="?android:attr/colorButtonNormal"
+	android:padding="10dp">
+	
+	<ImageView
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:src="@drawable/overflow"
+		android:layout_gravity="center" />
+</FrameLayout>

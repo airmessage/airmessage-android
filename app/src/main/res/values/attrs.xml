@@ -3,6 +3,11 @@
 	<!-- <declare-styleable name="AutoGridLayout">
 		<attr name="columnWidth" format="dimension" />
 	</declare-styleable> -->
+	
+	<declare-styleable name="RoundedImageView">
+		<attr name="radii" format="dimension" />
+	</declare-styleable>
+	
 	<declare-styleable name="InvisibleInkView">
 		<attr name="target" format="reference" />
 	</declare-styleable>

@@ -54,9 +54,6 @@ import java.util.zip.GZIPOutputStream;
 
 public class Constants {
 	//Creating the constants
-	static final int intentPickMediaFile = 1;
-	static final int intentPickAnyFile = 2;
-	static final int intentTakePicture = 3;
 	static final int permissionRecordAudio = 4;
 	static final int permissionReadContacts = 5;
 	static final int permissionAccessCoarseLocation = 6;

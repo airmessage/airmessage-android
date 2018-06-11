@@ -1,11 +1,14 @@
 package me.tagavari.airmessage.view;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
+
+import me.tagavari.airmessage.R;
 
 public class RoundedImageView extends AppCompatImageView {
 	private float[] radii = new float[8];
@@ -16,10 +19,14 @@ public class RoundedImageView extends AppCompatImageView {
 	
 	public RoundedImageView(Context context, AttributeSet attrs) {
 		super(context, attrs);
-	}
-	
-	public RoundedImageView(Context context, AttributeSet attrs, int defStyle) {
-		super(context, attrs, defStyle);
+		TypedArray typedArray = context.getTheme().obtainStyledAttributes(attrs, R.styleable.RoundedImageView, 0, 0);
+		
+		try {
+			float radius = typedArray.getDimensionPixelSize(R.styleable.RoundedImageView_radii, 0);
+			for(int i = 0; i < radii.length; i++) radii[i] = radius;
+		} finally {
+			typedArray.recycle();
+		}
 	}
 	
 	public void setRadii(float topLeft, float topRight, float bottomRight, float bottomLeft) {
