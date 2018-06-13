@@ -4715,7 +4715,7 @@ public class ConnectionService extends Service {
 	static final byte messageSendReferencesLost = 7;
 	static final byte messageSendInternalException = 8;
 	
-	private static final int largestFileSize = 1024 * 1024 * 100; //100 MB
+	static final int largestFileSize = 1024 * 1024 * 100; //100 MB
 	
 	void queueUploadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 		//Adding the request

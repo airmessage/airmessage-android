@@ -234,8 +234,8 @@
 	<string name="imperative_mainsearch">Search messages</string>
 	
 	<string name="imperative_permission_media">Tap to give access to media</string>
-	<string name="imperative_permission_files">Tap to give access to files</string>
 	<string name="imperative_permission_microphone">Tap to give access to microphone</string>
+	<string name="imperative_permission_documents">Tap to give access to documents</string>
 	<string name="imperative_permission_location">Tap to give access to location</string>
 	
 	<string name="proper_imessage" translatable="false">iMessage</string>

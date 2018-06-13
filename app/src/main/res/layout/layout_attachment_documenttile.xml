@@ -1,0 +1,57 @@
+<android.support.constraint.ConstraintLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="@dimen/contenttile_size"
+	android:layout_height="@dimen/contenttile_size"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:layout_marginEnd="@dimen/contenttile_margin"
+	android:background="@drawable/rounded_selectable_contenttile"
+	android:backgroundTint="?android:attr/colorButtonNormal"
+	android:orientation="vertical"
+	android:padding="5dp">
+	<TextView
+		android:id="@+id/label"
+		android:layout_width="0px"
+		android:layout_height="0px"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent"
+		app:layout_constraintBottom_toTopOf="@id/barrier_detail"
+		android:padding="1dp"
+		android:layout_marginBottom="2dp"
+		android:requiresFadingEdge="vertical"
+		android:text="File name"
+		android:textColor="?android:attr/textColorSecondary"
+		android:textStyle="bold" />
+	
+	<android.support.constraint.Barrier
+		android:id="@+id/barrier_detail"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		app:barrierDirection="top"
+		app:constraint_referenced_ids="icon,label_size"/>
+	
+	<ImageView
+		android:id="@+id/icon"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:src="@drawable/file"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		android:tint="?android:attr/textColorSecondary" />
+	
+	<TextView
+		android:id="@+id/label_size"
+		android:layout_width="0px"
+		android:layout_height="wrap_content"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintStart_toEndOf="@id/icon"
+		app:layout_constraintEnd_toEndOf="parent"
+		android:layout_marginStart="2dp"
+		android:text="File size"
+		android:ellipsize="end"
+		android:textSize="14sp"
+		android:padding="1dp"
+		android:maxLines="2"
+		android:textAlignment="textEnd"
+		android:textColor="?android:attr/textColorSecondary" />
+</android.support.constraint.ConstraintLayout>

@@ -5,19 +5,16 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.RectF;
-import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
+import android.widget.ScrollView;
 
 import me.tagavari.airmessage.R;
 
-public class RoundedImageView extends AppCompatImageView {
+public class RoundedScrollView extends ScrollView {
+	//Creating the preference values
 	private float[] radii = new float[8];
 	
-	public RoundedImageView(Context context) {
-		super(context);
-	}
-	
-	public RoundedImageView(Context context, AttributeSet attrs) {
+	public RoundedScrollView(Context context, AttributeSet attrs) {
 		super(context, attrs);
 		TypedArray typedArray = context.getTheme().obtainStyledAttributes(attrs, R.styleable.RoundedView, 0, 0);
 		
@@ -48,9 +45,8 @@ public class RoundedImageView extends AppCompatImageView {
 	private RectF rect = new RectF();
 	@Override
 	protected void onDraw(Canvas canvas) {
-		//float radius = 36.0f;
 		clipPath.reset();
-		rect.set(0, 0, this.getWidth(), this.getHeight());
+		rect.set(getScrollX(), getScrollY(), getScrollX() + getWidth(), getScrollY() + getHeight());
 		
 		clipPath.addRoundRect(rect, radii, Path.Direction.CW);
 		canvas.clipPath(clipPath);

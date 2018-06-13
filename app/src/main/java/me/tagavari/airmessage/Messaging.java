@@ -104,6 +104,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final int quickScrollFABThreshold = 3;
 	static final int messageChunkSize = 50;
 	static final int progressiveLoadThreshold = 10;
+	private static final String[] documentMimeTypes = {"text/*", "application/*", "font/*"};
 	
 	private static final int intentPickGalleryFile = 1;
 	private static final int intentPickAudioFile = 2;
@@ -534,8 +535,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
 		
-		//Restoring the detail panel
+		//Restoring the panels
 		openDetailsPanel(true);
+		openAttachmentsPanel(true);
 		
 		//Updating the send button
 		updateSendButton();
@@ -799,6 +801,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	public void onBackPressed() {
 		//Closing the details panel if it is open
 		if(viewModel.isDetailsPanelOpen) closeDetailsPanel();
+		//Closing the attachments panel if it is open
+		else if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel();
 		//Otherwise passing the event to the superclass
 		else super.onBackPressed();
 	}
@@ -821,6 +825,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Setting up the sections
 			setupAttachmentsGallerySection();
+			setupAttachmentsDocumentsSection();
 		}
 		
 		if(restore) {
@@ -829,9 +834,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Animating in the panel
 			int windowHeight = findViewById(android.R.id.content).getHeight();
 			
+			int targetHeight = getResources().getDimensionPixelSize(R.dimen.contentpanel_height);
 			View panel = findViewById(R.id.panel_attachments);
-			panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-			ValueAnimator animator = ValueAnimator.ofInt(0, panel.getMeasuredHeight());
+			ValueAnimator animator = ValueAnimator.ofInt(0, targetHeight);
 			animator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
 			animator.setInterpolator(new AccelerateDecelerateInterpolator());
 			animator.addUpdateListener(animation -> {
@@ -848,7 +853,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				@Override
 				public void onAnimationEnd(Animator animation) {
-					panel.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+					panel.getLayoutParams().height = targetHeight;
+					panel.setY(windowHeight - targetHeight);
+					
 					panel.requestLayout();
 				}
 			});
@@ -879,7 +886,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		animator.addListener(new AnimatorListenerAdapter() {
 			@Override
 			public void onAnimationEnd(Animator animation) {
-				panel.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+				panel.getLayoutParams().height = 0;
+				panel.setY(windowHeight);
 				panel.setVisibility(View.GONE);
 			}
 		});
@@ -895,7 +903,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewGroup.findViewById(R.id.button_attachment_gallery_systempicker).setOnClickListener(view -> requestGalleryFile());
 		
 		//Checking if the state is failed
-		if(viewModel.attachmentsMediaState == ActivityViewModel.attachmentsStateFailed) {
+		if(viewModel.attachmentsGalleryState == ActivityViewModel.attachmentsStateFailed) {
 			//Showing the failed text
 			viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.VISIBLE);
 			
@@ -923,24 +931,85 @@ public class Messaging extends AppCompatCompositeActivity {
 			list.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 			
 			//Checking if the files are loaded
-			if(viewModel.attachmentsMediaState == ActivityViewModel.attachmentsStateLoaded) {
+			if(viewModel.attachmentsGalleryState == ActivityViewModel.attachmentsStateLoaded) {
 				//Setting the list adapter
-				list.setAdapter(new AttachmentsGalleryRecyclerAdapter(viewModel.attachmentsMediaList));
+				list.setAdapter(new AttachmentsGalleryRecyclerAdapter(viewModel.attachmentsGalleryList));
 			} else {
 				//Setting the list adapter
-				List<File> fileList = new ArrayList<>();
-				for(int i = 0; i < ActivityViewModel.attachmentsTileCount; i++) fileList.add(null);
-				list.setAdapter(new AttachmentsGalleryRecyclerAdapter(fileList));
+				List<File> itemList = new ArrayList<>();
+				for(int i = 0; i < ActivityViewModel.attachmentsTileCount; i++) itemList.add(null);
+				list.setAdapter(new AttachmentsGalleryRecyclerAdapter(itemList));
 				
 				//Loading the media
-				viewModel.indexAttachmentsMedia(result -> {
+				viewModel.indexAttachmentsGallery(result -> {
 					if(result) {
 						//Setting the list adapter's list
-						((AttachmentsGalleryRecyclerAdapter) list.getAdapter()).setList(viewModel.attachmentsMediaList);
+						((AttachmentsGalleryRecyclerAdapter) list.getAdapter()).setList(viewModel.attachmentsGalleryList);
 					} else {
 						//Replacing the list view with the failed text
 						viewGroup.findViewById(R.id.list_attachment_gallery).setVisibility(View.GONE);
 						viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.VISIBLE);
+					}
+				});
+			}
+		}
+	}
+	
+	private void setupAttachmentsDocumentsSection() {
+		//Getting the view
+		ViewGroup viewGroup = findViewById(R.id.viewgroup_attachment_documents);
+		if(viewGroup == null) return;
+		
+		//Setting the click listeners
+		viewGroup.findViewById(R.id.button_attachment_documents_systempicker).setOnClickListener(view -> requestDocumentFile());
+		
+		//Checking if the state is failed
+		if(viewModel.attachmentsDocumentState == ActivityViewModel.attachmentsStateFailed) {
+			//Showing the failed text
+			viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.VISIBLE);
+			
+			//Hiding the permission request button and the list
+			viewGroup.findViewById(R.id.button_attachment_documents_permission).setVisibility(View.GONE);
+			viewGroup.findViewById(R.id.list_attachment_documents).setVisibility(View.GONE);
+		}
+		//Checking if the permission has not been granted
+		else if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+			//Hiding the list and failed text
+			viewGroup.findViewById(R.id.list_attachment_documents).setVisibility(View.GONE);
+			viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.GONE);
+			
+			//Setting up the permission request button
+			View permissionButton = viewGroup.findViewById(R.id.button_attachment_documents_permission);
+			permissionButton.setVisibility(View.VISIBLE);
+			permissionButton.setOnClickListener(view -> Constants.requestPermission(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, intentPickDocumentFile));
+		} else {
+			//Hiding the permission request button and the failed text
+			viewGroup.findViewById(R.id.button_attachment_documents_permission).setVisibility(View.GONE);
+			viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.GONE);
+			
+			//Setting up the list
+			RecyclerView list = viewGroup.findViewById(R.id.list_attachment_documents);
+			list.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+			
+			//Checking if the files are loaded
+			if(viewModel.attachmentsDocumentState == ActivityViewModel.attachmentsStateLoaded) {
+				//Setting the list adapter
+				list.setAdapter(new AttachmentsDocumentRecyclerAdapter(viewModel.attachmentsDocumentList));
+			} else {
+				//Setting the list adapter
+				List<DocumentInfo> itemList = new ArrayList<>();
+				for(int i = 0; i < ActivityViewModel.attachmentsTileCount; i++) itemList.add(null);
+				list.setAdapter(new AttachmentsDocumentRecyclerAdapter(itemList));
+				
+				//Loading the media
+				viewModel.indexAttachmentsDocument(result -> {
+					if(result) {
+						//Setting the list adapter's list
+						((AttachmentsDocumentRecyclerAdapter) list.getAdapter()).setList(viewModel.attachmentsDocumentList);
+					} else {
+						//Replacing the list view with the failed text
+						viewGroup.findViewById(R.id.list_attachment_documents).setVisibility(View.GONE);
+						viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.VISIBLE);
 					}
 				});
 			}
@@ -1786,20 +1855,19 @@ public class Messaging extends AppCompatCompositeActivity {
 		intent.setType("*/*");
 		String[] mimeTypes = {"image/*", "video/*"};
 		intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
-		//intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+		intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
 		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickGalleryFile);
 	}
 	
-	private void requestAnyFile() {
+	private void requestDocumentFile() {
 		//Launching the system's file picker
 		Intent intent = new Intent();
 		intent.setType("*/*");
-		//String[] mimeTypes = {"image/*", "video/*"};
-		//intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
-		//intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+		intent.putExtra(Intent.EXTRA_MIME_TYPES, documentMimeTypes);
+		intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickDocumentFile);
+		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickGalleryFile);
 	}
 	
 	private static boolean stringHasChar(String string) {
@@ -2220,17 +2288,55 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private class AttachmentsGalleryRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+	private abstract class AttachmentsRecyclerAdapter<VH extends RecyclerView.ViewHolder, CI> extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 		//Creating the reference values
 		private static final int itemTypeActionButton = 0;
 		private static final int itemTypeContent = 1;
 		private static final int itemTypeOverflowButton = 2;
 		
 		//Creating the list values
-		private List<File> fileList;
+		private List<CI> fileList;
 		
-		AttachmentsGalleryRecyclerAdapter(List<File> list) {
+		AttachmentsRecyclerAdapter(List<CI> list) {
 			fileList = list;
+		}
+		
+		abstract boolean usesActionButton();
+		int getActionButtonText() {
+			return -1;
+		}
+		int getActionButtonDrawable() {
+			return -1;
+		}
+		
+		void onActionButtonClick() {}
+		
+		void onOverflowButtonClick() {}
+		
+		@Override
+		public int getItemCount() {
+			int customButtonCount = usesActionButton() ? 2 : 1;
+			return fileList == null ? customButtonCount : fileList.size() + customButtonCount;
+		}
+		
+		@Override
+		public int getItemViewType(int position) {
+			if(usesActionButton() && position == 0) return itemTypeActionButton;
+			else {
+				if(position + 1 == getItemCount()) return itemTypeOverflowButton;
+				else return itemTypeContent;
+			}
+		}
+		
+		CI getItemAt(int index) {
+			if(usesActionButton()) index--;
+			if(index < 0 || index >= fileList.size()) return null;
+			return fileList.get(index);
+		}
+		
+		void setList(List<CI> list) {
+			fileList = list;
+			notifyDataSetChanged();
 		}
 		
 		@NonNull
@@ -2240,25 +2346,96 @@ public class Messaging extends AppCompatCompositeActivity {
 				case itemTypeActionButton: {
 					View actionButton = getLayoutInflater().inflate(R.layout.layout_attachment_actiontile, parent, false);
 					TextView label = actionButton.findViewById(R.id.label);
-					label.setText(R.string.part_camera);
-					label.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.camera, 0, 0);
-					actionButton.setOnClickListener(view -> requestTakePicture());
+					label.setText(getActionButtonText());
+					label.setCompoundDrawablesWithIntrinsicBounds(0, getActionButtonDrawable(), 0, 0);
+					actionButton.setOnClickListener(view -> onActionButtonClick());
 					return new ViewHolderImpl(actionButton);
 				}
 				case itemTypeOverflowButton: {
 					View overflowButton = getLayoutInflater().inflate(R.layout.layout_attachment_overflow, parent, false);
-					overflowButton.setOnClickListener(view -> requestGalleryFile());
+					overflowButton.setOnClickListener(view -> onOverflowButtonClick());
 					return new ViewHolderImpl(overflowButton);
 				}
 				case itemTypeContent: {
-					return new MediaTileViewHolder(getLayoutInflater().inflate(R.layout.layout_attachment_mediatile, parent, false));
+					return createContentViewHolder(parent);
 				}
 				default:
 					throw new IllegalArgumentException("Invalid view type received: " + viewType);
 			}
 		}
 		
-		private class MediaTileViewHolder extends RecyclerView.ViewHolder {
+		abstract VH createContentViewHolder(@NonNull ViewGroup parent);
+		
+		@Override
+		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+			//Filtering out non-content items
+			if(getItemViewType(position) != itemTypeContent) return;
+			
+			//Getting the item
+			CI item = getItemAt(position);
+			
+			//Binding the content view
+			bindContentViewHolder((VH) holder, item);
+		}
+		
+		abstract void bindContentViewHolder(VH viewHolder, CI item);
+		
+		private class ViewHolderImpl extends RecyclerView.ViewHolder {
+			ViewHolderImpl(View itemView) {
+				super(itemView);
+			}
+		}
+	}
+	
+	private class AttachmentsGalleryRecyclerAdapter extends AttachmentsRecyclerAdapter<AttachmentsGalleryRecyclerAdapter.MediaTileViewHolder, File> {
+		AttachmentsGalleryRecyclerAdapter(List<File> list) {
+			super(list);
+		}
+		
+		@Override
+		boolean usesActionButton() {
+			return true;
+		}
+		
+		@Override
+		int getActionButtonText() {
+			return R.string.part_camera;
+		}
+		
+		@Override
+		int getActionButtonDrawable() {
+			return R.drawable.camera;
+		}
+		
+		@Override
+		void onActionButtonClick() {
+			requestTakePicture();
+		}
+		
+		@Override
+		void onOverflowButtonClick() {
+			requestGalleryFile();
+		}
+		
+		@Override
+		MediaTileViewHolder createContentViewHolder(@NonNull ViewGroup parent) {
+			return new MediaTileViewHolder(getLayoutInflater().inflate(R.layout.layout_attachment_mediatile, parent, false));
+		}
+		
+		@Override
+		void bindContentViewHolder(MediaTileViewHolder viewHolder, File file) {
+			//Returning if the file is invalid
+			if(file == null) return;
+			
+			//Setting the image thumbnail
+			Glide.with(Messaging.this)
+					.load(file)
+					.apply(RequestOptions.centerCropTransform())
+					.transition(DrawableTransitionOptions.withCrossFade())
+					.into(viewHolder.imageThumbnail);
+		}
+		
+		class MediaTileViewHolder extends RecyclerView.ViewHolder {
 			//Creating the view values
 			private ImageView imageThumbnail;
 			private ImageView imageFlagGIF;
@@ -2269,50 +2446,158 @@ public class Messaging extends AppCompatCompositeActivity {
 				imageFlagGIF = itemView.findViewById(R.id.image_flag_gif);
 			}
 		}
+	}
+	
+	private class AttachmentsDocumentRecyclerAdapter extends AttachmentsRecyclerAdapter<AttachmentsDocumentRecyclerAdapter.DocumentTileViewHolder, DocumentInfo> {
+		AttachmentsDocumentRecyclerAdapter(List<DocumentInfo> list) {
+			super(list);
+		}
 		
-		private class ViewHolderImpl extends RecyclerView.ViewHolder {
-			ViewHolderImpl(View itemView) {
+		@Override
+		boolean usesActionButton() {
+			return false;
+		}
+		
+		@Override
+		void onOverflowButtonClick() {
+			requestDocumentFile();
+		}
+		
+		@Override
+		DocumentTileViewHolder createContentViewHolder(@NonNull ViewGroup parent) {
+			return new DocumentTileViewHolder(getLayoutInflater().inflate(R.layout.layout_attachment_documenttile, parent, false));
+		}
+		
+		@Override
+		void bindContentViewHolder(DocumentTileViewHolder viewHolder, DocumentInfo document) {
+			//Returning if the file is invalid
+			if(document == null) return;
+			
+			//Getting the type-based details
+			int iconResource = R.drawable.file;
+			int viewColorBG = R.color.tile_grey_bg;
+			int viewColorFG = R.color.tile_grey_fg;
+			if(document.getFileType() != null) {
+				switch(document.getFileType()) {
+					default:
+						if(document.getFileType().split("/")[0].startsWith("text")) {
+							iconResource = R.drawable.file_document;
+							viewColorBG = R.color.tile_indigo_bg;
+							viewColorFG = R.color.tile_indigo_fg;
+						}
+						break;
+					case "application/zip":
+					case "application/x-tar":
+					case "application/x-rar-compressed":
+					case "application/x-7z-compressed":
+					case "application/x-bzip":
+					case "application/x-bzip2":
+						iconResource = R.drawable.file_zip;
+						viewColorBG = R.color.tile_brown_bg;
+						viewColorFG = R.color.tile_brown_fg;
+						break;
+					case "application/pdf":
+						iconResource = R.drawable.file_pdf;
+						viewColorBG = R.color.tile_red_bg;
+						viewColorFG = R.color.tile_red_fg;
+						break;
+					case "text/xml":
+					case "application/xml":
+					case "text/html":
+						iconResource = R.drawable.file_xml;
+						viewColorBG = R.color.tile_orange_bg;
+						viewColorFG = R.color.tile_orange_fg;
+						break;
+					case "text/vcard":
+						iconResource = R.drawable.file_user;
+						viewColorBG = R.color.tile_cyan_bg;
+						viewColorFG = R.color.tile_cyan_fg;
+						break;
+					case "application/msword":
+					case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+						iconResource = R.drawable.file_msword;
+						viewColorBG = R.color.tile_blue_bg;
+						viewColorFG = R.color.tile_blue_fg;
+						break;
+					case "application/vnd.ms-excel":
+					case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+						iconResource = R.drawable.file_msexcel;
+						viewColorBG = R.color.tile_green_bg;
+						viewColorFG = R.color.tile_green_fg;
+						break;
+					case "application/vnd.ms-powerpoint":
+					case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+						iconResource = R.drawable.file_mspowerpoint;
+						viewColorBG = R.color.tile_yellow_bg;
+						viewColorFG = R.color.tile_yellow_fg;
+						break;
+				}
+			}
+			
+			//Resolving the color resources
+			viewColorBG = getResources().getColor(viewColorBG, null);
+			viewColorFG = getResources().getColor(viewColorFG, null);
+			if(Constants.isNightMode(getResources())) {
+				int temp = viewColorBG;
+				viewColorBG = viewColorFG;
+				viewColorFG = temp;
+			}
+			
+			//Filling in the view data
+			viewHolder.documentName.setText(document.getFileName());
+			viewHolder.documentName.setTextColor(viewColorFG);
+			
+			viewHolder.documentIcon.setImageResource(iconResource);
+			viewHolder.documentIcon.setImageTintList(ColorStateList.valueOf(viewColorFG));
+			
+			viewHolder.documentSize.setText(Constants.humanReadableByteCount(document.getFileSize(), true));
+			viewHolder.documentSize.setTextColor(viewColorFG);
+			
+			viewHolder.itemView.setBackgroundTintList(ColorStateList.valueOf(viewColorBG));
+		}
+		
+		class DocumentTileViewHolder extends RecyclerView.ViewHolder {
+			//Creating the view values
+			private TextView documentName;
+			private ImageView documentIcon;
+			private TextView documentSize;
+			
+			DocumentTileViewHolder(View itemView) {
 				super(itemView);
+				documentName = itemView.findViewById(R.id.label);
+				documentIcon = itemView.findViewById(R.id.icon);
+				documentSize = itemView.findViewById(R.id.label_size);
 			}
 		}
+	}
+	
+	private static class DocumentInfo {
+		private final File file;
+		private final String fileType;
+		private final String fileName;
+		private final long fileSize;
 		
-		@Override
-		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-			//Filtering out non-content items
-			if(getItemViewType(position) != itemTypeContent) return;
-			
-			//Getting the file and returning if it is null
-			File file = getItemAt(position);
-			if(file == null) return;
-			
-			//Setting the image thumbnail
-			Glide.with(Messaging.this)
-					.load(file)
-					.apply(RequestOptions.centerCropTransform())
-					.transition(DrawableTransitionOptions.withCrossFade())
-					.into(((MediaTileViewHolder) holder).imageThumbnail);
+		DocumentInfo(File file, String fileType, String fileName, long fileSize) {
+			this.file = file;
+			this.fileType = fileType;
+			this.fileName = fileName;
+			this.fileSize = fileSize;
 		}
 		
-		@Override
-		public int getItemCount() {
-			return fileList == null ? 2 : fileList.size() + 2;
+		File getFile() {
+			return file;
 		}
 		
-		@Override
-		public int getItemViewType(int position) {
-			if(position == 0) return itemTypeActionButton;
-			else if(position + 1 == getItemCount()) return itemTypeOverflowButton;
-			else return itemTypeContent;
+		String getFileType() {
+			return fileType;
 		}
 		
-		private File getItemAt(int index) {
-			if(index == 0 || index - 1 == fileList.size()) return null;
-			return fileList.get(index - 1);
+		String getFileName() {
+			return fileName;
 		}
 		
-		void setList(List<File> list) {
-			fileList = list;
-			notifyDataSetChanged();
+		long getFileSize() {
+			return fileSize;
 		}
 	}
 	
@@ -2392,9 +2677,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		byte inputState = inputStateText;
 		MutableLiveData<Byte> messagesState = new MutableLiveData<>();
 		
-		byte attachmentsMediaState = attachmentsStateIdle;
-		List<File> attachmentsMediaList = null;
-		private WeakReference<AttachmentsLoadCallbacks> attachmentsMediaCallbacksReference = null;
+		byte attachmentsGalleryState = attachmentsStateIdle;
+		List<File> attachmentsGalleryList = null;
+		byte attachmentsDocumentState = attachmentsStateIdle;
+		List<DocumentInfo> attachmentsDocumentList = null;
+		private WeakReference<AttachmentsLoadCallbacks> attachmentsGalleryCallbacksReference = null;
+		private WeakReference<AttachmentsLoadCallbacks> attachmentsDocumentCallbacksReference = null;
 		
 		boolean isAttachmentsPanelOpen = false;
 		boolean isDetailsPanelOpen = false;
@@ -2738,15 +3026,15 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		@SuppressLint("StaticFieldLeak")
-		void indexAttachmentsMedia(AttachmentsLoadCallbacks listener) {
+		void indexAttachmentsGallery(AttachmentsLoadCallbacks listener) {
 			//Updating the listener
-			attachmentsMediaCallbacksReference = new WeakReference<>(listener);
+			attachmentsGalleryCallbacksReference = new WeakReference<>(listener);
 			
 			//Returning if the state is incapable of handling the request
-			if(attachmentsMediaState == attachmentsStateLoading || attachmentsMediaState == attachmentsStateLoaded) return;
+			if(attachmentsGalleryState == attachmentsStateLoading || attachmentsGalleryState == attachmentsStateLoaded) return;
 			
 			//Setting the state
-			attachmentsMediaState = attachmentsStateLoading;
+			attachmentsGalleryState = attachmentsStateLoading;
 			
 			//Starting the asynchronous task
 			new AsyncTask<Void, Void, List<File>>() {
@@ -2759,11 +3047,12 @@ public class Messaging extends AppCompatCompositeActivity {
 						//Querying the media files
 						try(Cursor cursor = getApplication().getContentResolver().query(
 								MediaStore.Files.getContentUri("external"),
-								new String[]{MediaStore.MediaColumns.DATA},
+								new String[]{MediaStore.Files.FileColumns.DATA},
 								MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO,
 								null,
 								MediaStore.Files.FileColumns.DATE_ADDED + " DESC" + ' ' + "LIMIT " + attachmentsTileCount)) {
-							int indexData = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA);
+							if(cursor == null) return null;
+							int indexData = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA);
 							while(cursor.moveToNext()) list.add(new File(cursor.getString(indexData)));
 						}
 						
@@ -2784,20 +3073,110 @@ public class Messaging extends AppCompatCompositeActivity {
 					//Checking if the data is invalid
 					if(files == null) {
 						//Setting the state
-						attachmentsMediaState = attachmentsStateFailed;
+						attachmentsGalleryState = attachmentsStateFailed;
 						
 						//Telling the listener
-						AttachmentsLoadCallbacks listener = attachmentsMediaCallbacksReference.get();
+						AttachmentsLoadCallbacks listener = attachmentsGalleryCallbacksReference.get();
 						if(listener != null) listener.onLoadFinished(false);
 					} else {
 						//Setting the state
-						attachmentsMediaState = attachmentsStateLoaded;
+						attachmentsGalleryState = attachmentsStateLoaded;
 						
 						//Setting the items
-						attachmentsMediaList = files;
+						attachmentsGalleryList = files;
 						
 						//Telling the listener
-						AttachmentsLoadCallbacks listener = attachmentsMediaCallbacksReference.get();
+						AttachmentsLoadCallbacks listener = attachmentsGalleryCallbacksReference.get();
+						if(listener != null) listener.onLoadFinished(true);
+					}
+				}
+			}.execute();
+		}
+		
+		@SuppressLint("StaticFieldLeak")
+		void indexAttachmentsDocument(AttachmentsLoadCallbacks listener) {
+			//Updating the listener
+			attachmentsDocumentCallbacksReference = new WeakReference<>(listener);
+			
+			//Returning if the state is incapable of handling the request
+			if(attachmentsDocumentState == attachmentsStateLoading || attachmentsDocumentState == attachmentsStateLoaded) return;
+			
+			//Setting the state
+			attachmentsDocumentState = attachmentsStateLoading;
+			
+			//Starting the asynchronous task
+			new AsyncTask<Void, Void, List<DocumentInfo>>() {
+				//Creating the reference values
+				//private static final String[] acceptableMIMETypes;
+				@Override
+				protected List<DocumentInfo> doInBackground(Void... params) {
+					try {
+						//Creating the list
+						List<DocumentInfo> list = new ArrayList<>();
+						
+						//Querying the media files
+						StringBuilder selectionQuery = new StringBuilder(MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_NONE + " AND " + MediaStore.Files.FileColumns.SIZE + " <= " + ConnectionService.largestFileSize);
+						for(int i = 0; i < documentMimeTypes.length; i++) {
+							String mimeType = documentMimeTypes[i];
+							if(mimeType.endsWith("*")) mimeType = mimeType.substring(0, mimeType.length() - 1);
+							if(i == 0) selectionQuery.append(" AND (");
+							else selectionQuery.append(" OR ");
+							selectionQuery.append(MediaStore.Files.FileColumns.MIME_TYPE).append(" LIKE ").append('"').append(mimeType).append('%').append('"');
+							if(i + 1 == documentMimeTypes.length) selectionQuery.append(")");
+						}
+						
+						try(Cursor cursor = getApplication().getContentResolver().query(
+								MediaStore.Files.getContentUri("external"),
+								new String[]{MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.SIZE},
+								selectionQuery.toString(),
+								null,
+								MediaStore.Files.FileColumns.DATE_ADDED + " DESC" + ' ' + "LIMIT " + attachmentsTileCount)) {
+							if(cursor == null) return null;
+							
+							int indexData = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA);
+							int indexType = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE);
+							int indexSize = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE);
+							while(cursor.moveToNext()) {
+								//Getting the file information
+								File file = new File(cursor.getString(indexData));
+								String fileType = cursor.getString(indexType);
+								String fileName = file.getName();
+								long fileSize = cursor.getLong(indexSize);
+								list.add(new DocumentInfo(file, fileType, fileName, fileSize));
+							}
+						}
+						
+						//Returning the list
+						return list;
+					} catch(SQLiteException exception) {
+						//Logging the exception
+						exception.printStackTrace();
+						Crashlytics.logException(exception);
+						
+						//Returning null
+						return null;
+					}
+				}
+				
+				@Override
+				protected void onPostExecute(List<DocumentInfo> files) {
+					//Checking if the data is invalid
+					if(files == null) {
+						//Setting the state
+						attachmentsDocumentState = attachmentsStateFailed;
+						
+						//Telling the listener
+						AttachmentsLoadCallbacks listener = attachmentsDocumentCallbacksReference.get();
+						if(listener != null) listener.onLoadFinished(false);
+					} else {
+						//Setting the state
+						attachmentsDocumentState = attachmentsStateLoaded;
+						
+						//Setting the items
+						attachmentsDocumentList = files;
+						
+						//Telling the listener
+						AttachmentsLoadCallbacks listener = attachmentsDocumentCallbacksReference.get();
 						if(listener != null) listener.onLoadFinished(true);
 					}
 				}

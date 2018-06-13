@@ -4,8 +4,10 @@
 		<attr name="columnWidth" format="dimension" />
 	</declare-styleable> -->
 	
-	<declare-styleable name="RoundedImageView">
+	<declare-styleable name="RoundedView">
 		<attr name="radii" format="dimension" />
+		<attr name="radiusTop" format="dimension" />
+		<attr name="radiusBottom" format="dimension" />
 	</declare-styleable>
 	
 	<declare-styleable name="InvisibleInkView">
