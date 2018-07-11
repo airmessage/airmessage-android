@@ -52,6 +52,7 @@ import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
@@ -87,11 +88,14 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 
+import java9.util.function.Consumer;
 import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.view.AppleEffectView;
@@ -174,9 +178,10 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private View detailScrim;
 	
+	private RecyclerView listAttachmentQueue;
+	
 	//Creating the other values
-	private final RecyclerAdapter messageListAdapter = new RecyclerAdapter();
-	private boolean messageBoxHasText = false;
+	private final MessageListRecyclerAdapter messageListAdapter = new MessageListRecyclerAdapter();
 	private ActivityManager.TaskDescription lastTaskDescription;
 	
 	private boolean toolbarVisible = true;
@@ -207,7 +212,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		@Override
 		public void onTextChanged(CharSequence s, int start, int before, int count) {
 			//Getting if the message box has text
-			messageBoxHasText = stringHasChar(s.toString());
+			//messageBoxHasText = stringHasChar(s.toString());
 			
 			//Updating the send button
 			updateSendButton();
@@ -221,9 +226,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Returning if the input state is not text
 		if(viewModel.inputState != ActivityViewModel.inputStateText) return;
 		
+		//Creating the message list
+		ArrayList<ConversationManager.MessageInfo> messageList = new ArrayList<>();
+		
 		//Checking if the message box has text
-		if(messageBoxHasText) {
-			//Getting the message
+		if(messageInputField.getText().length() > 0) {
+			//Getting the message text
 			String message = messageInputField.getText().toString();
 			
 			//Trimming the message
@@ -233,26 +241,54 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(message.isEmpty()) return;
 			
 			//Creating a message
-			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
-			
-			//Writing the message to the database
-			new AddGhostMessageTask(getApplicationContext(), messageInfo, () -> {
-				//Adding the message to the conversation in memory
-				viewModel.conversationInfo.addGhostMessage(this, messageInfo);
-				
-				//Sending the message
-				messageInfo.sendMessage(this);
-			}).execute();
+			messageList.add(new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1));
 			
 			//Clearing the message box
 			messageInputField.setText("");
 			messageInputField.requestLayout(); //Height of input field doesn't update otherwise
-			messageBoxHasText = false;
-			
-			//Scrolling to the bottom of the chat
-			if(messageListAdapter != null) messageListAdapter.scrollToBottom();
+			//messageBoxHasText = false;
 		}
+		
+		//Iterating over the drafts
+		for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
+			//Creating the message
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+			
+			//Creating the attachment
+			SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
+			ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType());
+			attachment.setDraftingPushRequest(queuedFile.getFilePushRequest());
+			
+			//Adding the attachment to the message
+			messageInfo.addAttachment(attachment);
+			
+			//Adding the message to the queue list
+			messageList.add(messageInfo);
+			
+			//Dequeuing the item
+			dequeueAttachment(queuedFile.getItem(), true, false);
+			viewModel.conversationInfo.removeDraftFile(queuedFile.getDraftFile());
+		}
+		
+		//Returning if there are no items to send
+		if(messageList.isEmpty()) return;
+		
+		//Writing the messages to the database
+		new AddGhostMessageTask(getApplicationContext(), new GhostMessageFinishHandler()).execute(messageList.toArray(new ConversationManager.MessageInfo[0]));
+		
+		//Scrolling to the bottom of the chat
+		messageListAdapter.scrollToBottom();
 	};
+	private static class GhostMessageFinishHandler implements Consumer<ConversationManager.MessageInfo> {
+		@Override
+		public void accept(ConversationManager.MessageInfo messageInfo) {
+			//Adding the message to the conversation in memory
+			messageInfo.getConversationInfo().addGhostMessage(MainApplication.getInstance(), messageInfo);
+			
+			//Sending the message
+			messageInfo.sendMessage(MainApplication.getInstance());
+		}
+	}
 	/* private final View.OnTouchListener recordingTouchListener = new View.OnTouchListener() {
 		@Override
 		public boolean onTouch(View view, MotionEvent motionEvent) {
@@ -330,6 +366,38 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Setting the message input field hint
 				messageInputField.setHint(getInputBarMessage());
+				
+				//Checking if there are drafts files saved in the conversation
+				if(!viewModel.conversationInfo.getDrafts().isEmpty()) {
+					//Copying the drafts to the activity
+					if(viewModel.draftQueueList.isEmpty()) for(ConversationManager.DraftFile draft : viewModel.conversationInfo.getDrafts()) {
+						//Creating the queued item
+						QueuedFileInfo queuedItem = new QueuedFileInfo(draft);
+						
+						//Searching for the item's push request
+						ConnectionService.FilePushRequest currentRequest = null;
+						ConnectionService service = ConnectionService.getInstance();
+						if(service != null) {
+							ConnectionService.FileProcessingRequest processingRequest = service.searchFileProcessingQueue(draft.getLocalID());
+							if(processingRequest instanceof ConnectionService.FilePushRequest) currentRequest = (ConnectionService.FilePushRequest) processingRequest;
+						}
+						
+						//Creating a new request if there was no current request in the queue
+						if(currentRequest == null) currentRequest = new ConnectionService.FilePushRequest(draft.getFile(), draft.getFileType(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), ConnectionService.FilePushRequest.stateQueued, false);
+						
+						//Assigning the request to the queued item
+						queuedItem.setFilePushRequest(currentRequest);
+						
+						//Adding the queued item
+						viewModel.draftQueueList.add(queuedItem);
+					}
+					
+					//Showing the draft bar
+					listAttachmentQueue.setVisibility(View.VISIBLE);
+				}
+				
+				//Updating the send button
+				updateSendButton();
 				
 				/* //Finding the latest send effect
 				for(int i = viewModel.conversationItemList.size() - 1; i >= 0 && i >= viewModel.conversationItemList.size() - viewModel.conversationInfo.getUnreadMessageCount(); i--) {
@@ -426,6 +494,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		detailScrim = findViewById(R.id.scrim);
 		
+		listAttachmentQueue = findViewById(R.id.inputbar_attachments);
+		
 		//Setting the plugin views
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
 		
@@ -477,31 +547,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		appleEffectView.setFinishListener(() -> currentScreenEffectPlaying = false);
 		detailScrim.setOnClickListener(view -> closeDetailsPanel());
 		
-		/* //Checking if there is already a conversation info available
-		if(viewModel.conversationInfo != null) {
-			//Applying the conversation
-			applyConversation();
-		} else {
-			//Getting the conversation info
-			viewModel.conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
-			ConversationManager.ConversationInfo conversationInfo = ConversationManager.findConversationInfo(viewModel.conversationID);
-			
-			//Checking if the conversation info is invalid
-			if(conversationInfo == null) {
-				//Disabling the message bar
-				setMessageBarState(false);
-				
-				//Showing the loading text
-				findViewById(R.id.loading_text).setVisibility(View.VISIBLE);
-				
-				//Loading the conversation
-				viewModel.loadConversation(getApplicationContext());
-			} else {
-				//Applying the conversation
-				viewModel.conversationInfo = conversationInfo;
-				applyConversation();
-			}
-		} */
+		//Setting up the attachment
+		{
+			listAttachmentQueue.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+			listAttachmentQueue.setAdapter(new AttachmentsQueueRecyclerAdapter(viewModel.draftQueueList));
+		}
 		
 		//Setting the filler data
 		if(getIntent().hasExtra(Constants.intentParamDataText))
@@ -903,7 +953,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewGroup.findViewById(R.id.button_attachment_gallery_systempicker).setOnClickListener(view -> requestGalleryFile());
 		
 		//Checking if the state is failed
-		if(viewModel.attachmentsGalleryState == ActivityViewModel.attachmentsStateFailed) {
+		if(viewModel.getAttachmentState(ActivityViewModel.attachmentTypeGallery) == ActivityViewModel.attachmentsStateFailed) {
 			//Showing the failed text
 			viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.VISIBLE);
 			
@@ -931,12 +981,12 @@ public class Messaging extends AppCompatCompositeActivity {
 			list.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 			
 			//Checking if the files are loaded
-			if(viewModel.attachmentsGalleryState == ActivityViewModel.attachmentsStateLoaded) {
+			if(viewModel.getAttachmentState(ActivityViewModel.attachmentTypeGallery) == ActivityViewModel.attachmentsStateLoaded) {
 				//Setting the list adapter
-				list.setAdapter(new AttachmentsGalleryRecyclerAdapter(viewModel.attachmentsGalleryList));
+				list.setAdapter(new AttachmentsGalleryRecyclerAdapter(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery)));
 			} else {
 				//Setting the list adapter
-				List<File> itemList = new ArrayList<>();
+				ArrayList<SimpleAttachmentInfo> itemList = new ArrayList<>();
 				for(int i = 0; i < ActivityViewModel.attachmentsTileCount; i++) itemList.add(null);
 				list.setAdapter(new AttachmentsGalleryRecyclerAdapter(itemList));
 				
@@ -944,7 +994,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				viewModel.indexAttachmentsGallery(result -> {
 					if(result) {
 						//Setting the list adapter's list
-						((AttachmentsGalleryRecyclerAdapter) list.getAdapter()).setList(viewModel.attachmentsGalleryList);
+						((AttachmentsGalleryRecyclerAdapter) list.getAdapter()).setList(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery));
 					} else {
 						//Replacing the list view with the failed text
 						viewGroup.findViewById(R.id.list_attachment_gallery).setVisibility(View.GONE);
@@ -964,7 +1014,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewGroup.findViewById(R.id.button_attachment_documents_systempicker).setOnClickListener(view -> requestDocumentFile());
 		
 		//Checking if the state is failed
-		if(viewModel.attachmentsDocumentState == ActivityViewModel.attachmentsStateFailed) {
+		if(viewModel.getAttachmentState(ActivityViewModel.attachmentTypeDocument) == ActivityViewModel.attachmentsStateFailed) {
 			//Showing the failed text
 			viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.VISIBLE);
 			
@@ -992,12 +1042,12 @@ public class Messaging extends AppCompatCompositeActivity {
 			list.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 			
 			//Checking if the files are loaded
-			if(viewModel.attachmentsDocumentState == ActivityViewModel.attachmentsStateLoaded) {
+			if(viewModel.getAttachmentState(ActivityViewModel.attachmentTypeDocument) == ActivityViewModel.attachmentsStateLoaded) {
 				//Setting the list adapter
-				list.setAdapter(new AttachmentsDocumentRecyclerAdapter(viewModel.attachmentsDocumentList));
+				list.setAdapter(new AttachmentsDocumentRecyclerAdapter(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeDocument)));
 			} else {
 				//Setting the list adapter
-				List<DocumentInfo> itemList = new ArrayList<>();
+				List<SimpleAttachmentInfo> itemList = new ArrayList<>();
 				for(int i = 0; i < ActivityViewModel.attachmentsTileCount; i++) itemList.add(null);
 				list.setAdapter(new AttachmentsDocumentRecyclerAdapter(itemList));
 				
@@ -1005,7 +1055,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				viewModel.indexAttachmentsDocument(result -> {
 					if(result) {
 						//Setting the list adapter's list
-						((AttachmentsDocumentRecyclerAdapter) list.getAdapter()).setList(viewModel.attachmentsDocumentList);
+						((AttachmentsDocumentRecyclerAdapter) list.getAdapter()).setList(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeDocument));
 					} else {
 						//Replacing the list view with the failed text
 						viewGroup.findViewById(R.id.list_attachment_documents).setVisibility(View.GONE);
@@ -1327,7 +1377,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		memberListViews.remove(member);
 		
 		//Closing the dialog
-		System.out.println("CCPD: " + (currentColorPickerDialog != null) + " / " + (currentColorPickerDialogMember == member));
 		if(currentColorPickerDialog != null && currentColorPickerDialogMember == member) currentColorPickerDialog.dismiss();
 	}
 	
@@ -1450,8 +1499,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void updateSendButton() {
 		//Setting the send button state
-		buttonSendMessage.setClickable(messageBoxHasText);
-		buttonSendMessage.setAlpha(messageBoxHasText ? 1 : 0.38f);
+		boolean state = messageInputField.getText().length() > 0 || !viewModel.draftQueueList.isEmpty();
+		buttonSendMessage.setClickable(state);
+		buttonSendMessage.setAlpha(state ? 1 : 0.38F);
 	}
 	
 	/* private boolean startRecording() {
@@ -1713,7 +1763,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
 			
 			//Updating the badge text
-			bottomFABBadge.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? getResources().getConfiguration().getLocales().get(0) : getResources().getConfiguration().locale, "%d", viewModel.conversationInfo.getUnreadMessageCount()));
+			bottomFABBadge.setText(Constants.intToFormattedString(getResources(), viewModel.conversationInfo.getUnreadMessageCount()));
 			
 			//Animating the badge
 			if(bottomFAB.isShown()) {
@@ -1989,7 +2039,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Creating the attachment
 			ConversationManager.AttachmentInfo attachment;
-			if(targetFile != null) attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, targetFile.getName(), Constants.getMimeType(targetFile), targetFile);
+			if(targetFile != null) attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, targetFile.getName(), Constants.getMimeType(context, targetFile), targetFile);
 			else attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, Constants.getFileName(context, targetUri), Constants.getMimeType(context, targetUri), targetUri);
 			
 			//Adding the item to the database
@@ -2102,7 +2152,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		messageListAdapter.notifyItemRangeInserted(0, itemCount); //Inserting the new items
 	}
 	
-	class RecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+	class MessageListRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 		//Creating the reference values
 		private static final int itemTypeLoadingBar = -1;
 		
@@ -2114,7 +2164,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private final SparseArray<Pools.SimplePool<? extends RecyclerView.ViewHolder>> componentPoolList = new SparseArray<>();
 		private final PoolSource poolSource = new PoolSource();
 		
-		RecyclerAdapter() {
+		MessageListRecyclerAdapter() {
 			//Enabling stable IDs
 			setHasStableIds(true);
 		}
@@ -2150,7 +2200,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					return new LoadingViewHolder(loadingView);
 				}
 				default:
-					throw new IllegalArgumentException();
+					throw new IllegalArgumentException("Invalid view type received: " + viewType);
 			}
 		}
 		
@@ -2288,16 +2338,19 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private abstract class AttachmentsRecyclerAdapter<VH extends RecyclerView.ViewHolder, CI> extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+	private abstract class AttachmentsRecyclerAdapter<VH extends AttachmentTileViewHolder> extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 		//Creating the reference values
 		private static final int itemTypeActionButton = 0;
 		private static final int itemTypeContent = 1;
 		private static final int itemTypeOverflowButton = 2;
 		
-		//Creating the list values
-		private List<CI> fileList;
+		static final int payloadUpdateIndex = 0;
+		static final int payloadUpdateSelection = 1;
 		
-		AttachmentsRecyclerAdapter(List<CI> list) {
+		//Creating the list values
+		private List<SimpleAttachmentInfo> fileList;
+		
+		AttachmentsRecyclerAdapter(List<SimpleAttachmentInfo> list) {
 			fileList = list;
 		}
 		
@@ -2328,13 +2381,13 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		}
 		
-		CI getItemAt(int index) {
+		SimpleAttachmentInfo getItemAt(int index) {
 			if(usesActionButton()) index--;
 			if(index < 0 || index >= fileList.size()) return null;
 			return fileList.get(index);
 		}
 		
-		void setList(List<CI> list) {
+		void setList(List<SimpleAttachmentInfo> list) {
 			fileList = list;
 			notifyDataSetChanged();
 		}
@@ -2367,18 +2420,129 @@ public class Messaging extends AppCompatCompositeActivity {
 		abstract VH createContentViewHolder(@NonNull ViewGroup parent);
 		
 		@Override
-		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder viewHolder, int position) {
 			//Filtering out non-content items
 			if(getItemViewType(position) != itemTypeContent) return;
 			
 			//Getting the item
-			CI item = getItemAt(position);
+			SimpleAttachmentInfo item = getItemAt(position);
+			
+			//Checking if the item is invalid
+			if(item == null) {
+				//Removing the click listener
+				viewHolder.itemView.setOnClickListener(null);
+				
+				//Returning
+				return;
+			}
+			
+			//Setting the adapter information
+			item.setAdapterInformation(this, position);
 			
 			//Binding the content view
-			bindContentViewHolder((VH) holder, item);
+			int draftIndex = getDraftItemIndex(item);
+			bindContentViewHolder((VH) viewHolder, item, draftIndex);
+			
+			//Assigning the click listener
+			assignItemClickListener((AttachmentTileViewHolder) viewHolder, item, draftIndex);
 		}
 		
-		abstract void bindContentViewHolder(VH viewHolder, CI item);
+		abstract void bindContentViewHolder(VH viewHolder, SimpleAttachmentInfo item, int draftIndex);
+		
+		@Override
+		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position, @NonNull List<Object> payloads) {
+			//Filtering out non-content items
+			if(getItemViewType(position) != itemTypeContent) return;
+			
+			//Ignoring the request if the payloads are empty
+			if(payloads.isEmpty()) {
+				super.onBindViewHolder(holder, position, payloads);
+				return;
+			}
+			
+			for(Object objectPayload : payloads) {
+				int payload = (int) objectPayload;
+				
+				switch(payload) {
+					case payloadUpdateIndex: {
+						if(!(holder instanceof AttachmentTileViewHolder)) break;
+						
+						AttachmentTileViewHolder tileHolder = (AttachmentTileViewHolder) holder;
+						if(tileHolder.labelSelection == null) break;
+						
+						//Getting the item information
+						SimpleAttachmentInfo item = getItemAt(position);
+						int itemIndex;
+						if(item != null && (itemIndex = getDraftItemIndex(item)) != -1) {
+							//Setting the index
+							tileHolder.labelSelection.setText(Constants.intToFormattedString(getResources(), itemIndex + 1));
+						}
+						
+						break;
+					}
+					case payloadUpdateSelection: {
+						if(!(holder instanceof AttachmentTileViewHolder)) break;
+						
+						AttachmentTileViewHolder tileHolder = (AttachmentTileViewHolder) holder;
+						if(tileHolder.labelSelection == null) break;
+						
+						//Getting the item information
+						SimpleAttachmentInfo item = getItemAt(position);
+						if(item == null) break;
+						
+						//Setting the selection
+						int draftIndex = getDraftItemIndex(item);
+						if(draftIndex != -1) tileHolder.setSelected(true, draftIndex + 1);
+						else tileHolder.setDeselected(true);
+						
+						//Updating the click listener
+						assignItemClickListener((AttachmentTileViewHolder) holder, item, draftIndex);
+						
+						break;
+					}
+				}
+			}
+		}
+		
+		private void assignItemClickListener(AttachmentTileViewHolder viewHolder, SimpleAttachmentInfo item, int draftIndex) {
+			viewHolder.itemView.setOnClickListener(new View.OnClickListener() {
+				private int newDraftIndex;
+				{
+					newDraftIndex = draftIndex;
+				}
+				
+				@Override
+				public void onClick(View view) {
+					//Checking if the item is not selected
+					if(newDraftIndex == -1) {
+						//Adding the item
+						newDraftIndex = queueAttachment(item, getTileHelper(), false);
+						
+						//Returning if the item was not added successfully
+						if(newDraftIndex == -1) return;
+						
+						//Showing the item's selection indicator
+						viewHolder.setSelected(true, newDraftIndex + 1);
+					} else {
+						//Removing the item
+						dequeueAttachment(item, false, true);
+						newDraftIndex = -1;
+						
+						//Setting the selection
+						viewHolder.setDeselected(true);
+						
+						//Updating the items
+						recalculateIndices();
+					}
+				}
+			});
+		}
+		
+		void recalculateIndices() {
+			notifyItemRangeChanged(0, fileList.size(), payloadUpdateIndex);
+		}
+		
+		abstract AttachmentTileHelper<?> getTileHelper();
 		
 		private class ViewHolderImpl extends RecyclerView.ViewHolder {
 			ViewHolderImpl(View itemView) {
@@ -2387,8 +2551,462 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private class AttachmentsGalleryRecyclerAdapter extends AttachmentsRecyclerAdapter<AttachmentsGalleryRecyclerAdapter.MediaTileViewHolder, File> {
-		AttachmentsGalleryRecyclerAdapter(List<File> list) {
+	private ValueAnimator currentListAttachmentQueueValueAnimator = null;
+	int queueAttachment(SimpleAttachmentInfo item, AttachmentTileHelper<?> tileHelper, boolean updateListing) {
+		//Getting the connection service
+		ConnectionService service = ConnectionService.getInstance();
+		if(service == null) {
+			//Starting the service
+			((MainApplication) getApplication()).startConnectionService();
+			
+			return -1;
+		}
+		
+		//Adding the item
+		boolean listStartedEmpty = viewModel.draftQueueList.isEmpty();
+		
+		QueuedFileInfo draft = new QueuedFileInfo(tileHelper, item);
+		viewModel.draftQueueList.add(draft);
+		int draftIndex = viewModel.draftQueueList.size() - 1;
+		listAttachmentQueue.getAdapter().notifyItemInserted(draftIndex);
+		
+		//Updating the listing
+		if(updateListing && item.file != null && item.getListAdapter() != null)
+			item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
+		
+		//Creating the processing request
+		ConnectionService.FilePushRequest request = item.getFile() != null ?
+				new ConnectionService.FilePushRequest(item.getFile(), item.getFileType(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, false) :
+				new ConnectionService.FilePushRequest(item.getUri(), item.getFileType(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, false);
+		request.getCallbacks().onFail = result -> {
+			//Dequeuing the attachment
+			dequeueAttachment(item, true, false);
+			
+			//TODO notifying the user
+		};
+		request.getCallbacks().onDraftPreparationFinished = (file, draftFile) -> {
+			//Setting the draft file
+			draft.setDraftFile(draftFile);
+			
+			//Adding the draft file to the conversation in memory
+			if(viewModel.conversationInfo != null) viewModel.conversationInfo.addDraftFile(draftFile);
+			
+			//Updating the attachment
+			listAttachmentQueue.getAdapter().notifyItemChanged(viewModel.draftQueueList.indexOf(draft), AttachmentsQueueRecyclerAdapter.payloadUpdateState);
+		};
+		draft.setFilePushRequest(request);
+		
+		//Adding the processing request
+		service.addFileProcessingRequest(request);
+		
+		//Animating the list
+		if(listStartedEmpty) {
+			if(currentListAttachmentQueueValueAnimator != null) currentListAttachmentQueueValueAnimator.cancel();
+			
+			listAttachmentQueue.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+			ValueAnimator anim = ValueAnimator.ofInt(0, listAttachmentQueue.getMeasuredHeight());
+			anim.addListener(new AnimatorListenerAdapter() {
+				@Override
+				public void onAnimationStart(Animator animation) {
+					listAttachmentQueue.setVisibility(View.VISIBLE);
+					listAttachmentQueue.getLayoutParams().height = 0;
+				}
+				
+				@Override
+				public void onAnimationEnd(Animator animation) {
+					listAttachmentQueue.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+					listAttachmentQueue.requestLayout();
+					//for(int iChild = 0; iChild < listAttachmentQueue.getChildCount(); iChild++) listAttachmentQueue.getChildAt(iChild).invalidate();
+					//Constants.recursiveInvalidate(listAttachmentQueue);
+				}
+			});
+			anim.addUpdateListener(valueAnimator -> {
+				listAttachmentQueue.getLayoutParams().height = (int) valueAnimator.getAnimatedValue();
+				listAttachmentQueue.requestLayout();
+				//listAttachmentQueue.invalidate();
+				//for(int iChild = 0; iChild < listAttachmentQueue.getChildCount(); iChild++) listAttachmentQueue.getChildAt(iChild).invalidate();
+				//Constants.recursiveInvalidate(listAttachmentQueue);
+			});
+			anim.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
+			anim.start();
+			currentListAttachmentQueueValueAnimator = anim;
+		}
+		
+		//Updating the send button
+		updateSendButton();
+		
+		//Returning the index
+		return draftIndex;
+	}
+	
+	int dequeueAttachment(SimpleAttachmentInfo item, boolean updateListing, boolean updateElsewhere) {
+		int draftIndex = -1;
+		
+		//Removing the item
+		QueuedFileInfo queuedItem = null;
+		for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext();) {
+			draftIndex = iterator.nextIndex();
+			queuedItem = iterator.next();
+			if(queuedItem.item == item) {
+				iterator.remove();
+				listAttachmentQueue.getAdapter().notifyItemRemoved(draftIndex);
+				break;
+			}
+		}
+		
+		//Returning if no item was found
+		if(draftIndex == -1) return -1;
+		
+		//Removing the draft from the conversation and from disk
+		if(updateElsewhere && queuedItem.getDraftFile() != null) {
+			//Getting the connection service
+			ConnectionService service = ConnectionService.getInstance();
+			if(service == null) {
+				//Starting the service
+				((MainApplication) getApplication()).startConnectionService();
+				
+				return -1;
+			}
+			
+			//Adding the request
+			ConnectionService.FileProcessingRequest request = new ConnectionService.FileRemovalRequest(queuedItem.getDraftFile());
+			final QueuedFileInfo finalQueuedItem = queuedItem;
+			request.getCallbacks().onRemovalFinish = () -> {
+				//Removing the draft from the conversation in memory
+				if(viewModel.conversationInfo != null) viewModel.conversationInfo.removeDraftFile(finalQueuedItem.getDraftFile());
+			};
+			service.addFileProcessingRequest(request);
+		}
+		
+		//Updating the listing
+		if(updateListing && item.getFile() != null && item.getListAdapter() != null) {
+			item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
+			((AttachmentsRecyclerAdapter<?>) item.getListAdapter()).recalculateIndices();
+		}
+		
+		//Animating the list
+		if(viewModel.draftQueueList.isEmpty()) {
+			if(currentListAttachmentQueueValueAnimator != null) currentListAttachmentQueueValueAnimator.cancel();
+			//listAttachmentQueue.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+			
+			ValueAnimator anim = ValueAnimator.ofInt(listAttachmentQueue.getHeight(), 0);
+			anim.addListener(new AnimatorListenerAdapter() {
+				@Override
+				public void onAnimationEnd(Animator animation) {
+					listAttachmentQueue.setVisibility(View.GONE);
+					//listAttachmentQueue.requestLayout();
+				}
+			});
+			anim.addUpdateListener(valueAnimator -> {
+				listAttachmentQueue.getLayoutParams().height = (int) valueAnimator.getAnimatedValue();
+				listAttachmentQueue.requestLayout();
+				//listAttachmentQueue.invalidate();
+			});
+			anim.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
+			anim.start();
+			currentListAttachmentQueueValueAnimator = anim;
+		}
+		
+		//Updating the send button
+		updateSendButton();
+		
+		//Returning the removed item index
+		return draftIndex;
+	}
+	
+	private class AttachmentsQueueRecyclerAdapter extends RecyclerView.Adapter<AttachmentsQueueRecyclerAdapter.QueueTileViewHolder> {
+		//Creating the reference values
+		static final int payloadUpdateState = 0;
+		
+		//Creating the list value
+		private List<QueuedFileInfo> itemList;
+		
+		AttachmentsQueueRecyclerAdapter(List<QueuedFileInfo> list) {
+			itemList = list;
+		}
+		
+		@NonNull
+		@Override
+		public QueueTileViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+			//Inflating the layout
+			View layout = getLayoutInflater().inflate(R.layout.layout_attachment_queuetile, parent, false);
+			FrameLayout container = layout.findViewById(R.id.container);
+			
+			//Creating the tile view
+			RecyclerView.ViewHolder tileViewHolder;
+			switch(viewType) {
+				case AttachmentTileHelper.viewTypeMedia:
+					tileViewHolder = attachmentsMediaTileHelper.createViewHolder(container);
+					break;
+				case AttachmentTileHelper.viewTypeDocument:
+					tileViewHolder = attachmentsDocumentTileHelper.createViewHolder(container);
+					break;
+				default:
+					throw new IllegalArgumentException("Invalid view type received: " + viewType);
+			}
+			
+			//Creating the queue tile
+			return new QueueTileViewHolder(layout, tileViewHolder);
+		}
+		
+		@Override
+		public void onBindViewHolder(@NonNull QueueTileViewHolder holder, int position) {
+			//Binding the tile view
+			QueuedFileInfo fileInfo = itemList.get(position);
+			fileInfo.getTileHelper().bindView(holder.contentViewHolder, fileInfo.item);
+			
+			//Hooking up the remove button
+			holder.buttonRemove.setOnClickListener(view -> dequeueAttachment(fileInfo.item, true, true));
+			
+			//Setting the view state
+			holder.setAppearenceState(fileInfo.getFilePushRequest() == null || !fileInfo.getFilePushRequest().isInProcessing(), false);
+		}
+		
+		@Override
+		public void onBindViewHolder(@NonNull QueueTileViewHolder holder, int position, @NonNull List<Object> payloads) {
+			super.onBindViewHolder(holder, position, payloads);
+			
+			//Ignoring the request if the payloads are empty
+			if(payloads.isEmpty()) {
+				super.onBindViewHolder(holder, position, payloads);
+				return;
+			}
+			
+			for(Object objectPayload : payloads) {
+				int payload = (int) objectPayload;
+				
+				switch(payload) {
+					case payloadUpdateState: {
+						//Getting the item information
+						QueuedFileInfo fileInfo = itemList.get(position);
+						
+						//Updating the view
+						holder.setAppearenceState(fileInfo.getFilePushRequest() == null || !fileInfo.getFilePushRequest().isInProcessing(), true);
+						
+						break;
+					}
+				}
+			}
+		}
+		
+		@Override
+		public int getItemCount() {
+			return itemList.size();
+		}
+		
+		@Override
+		public int getItemViewType(int position) {
+			return itemList.get(position).getTileHelper().getViewType();
+		}
+		
+		class QueueTileViewHolder extends RecyclerView.ViewHolder {
+			private final ImageButton buttonRemove;
+			private final FrameLayout container;
+			private final RecyclerView.ViewHolder contentViewHolder;
+			
+			QueueTileViewHolder(View itemView, RecyclerView.ViewHolder contentViewHolder) {
+				super(itemView);
+				
+				//Setting the content view holder
+				this.contentViewHolder = contentViewHolder;
+				
+				//Getting the views
+				buttonRemove = itemView.findViewById(R.id.button_remove);
+				container = itemView.findViewById(R.id.container);
+				
+				//Adding the child view
+				container.addView(contentViewHolder.itemView);
+				
+				//Scaling the child view
+				float scale = getResources().getDimension(R.dimen.queuetile_size) / getResources().getDimension(R.dimen.contenttile_size);
+				contentViewHolder.itemView.setPivotX(0.5F);
+				contentViewHolder.itemView.setPivotY(0.5F);
+				contentViewHolder.itemView.setScaleX(scale);
+				contentViewHolder.itemView.setScaleY(scale);
+			}
+			
+			void setAppearenceState(boolean state, boolean animate) {
+				if(animate) TransitionManager.beginDelayedTransition((ViewGroup) itemView);
+				buttonRemove.setVisibility(state ? View.VISIBLE : View.INVISIBLE);
+				container.setAlpha(state ? 1 : 0.5F);
+			}
+		}
+	}
+	
+	private class QueuedFileInfo {
+		private final AttachmentTileHelper tileHelper;
+		private final SimpleAttachmentInfo item;
+		private ConnectionService.FilePushRequest filePushRequest;
+		private ConversationManager.DraftFile draftFile;
+		
+		QueuedFileInfo(AttachmentTileHelper tileHelper, SimpleAttachmentInfo item) {
+			this.tileHelper = tileHelper;
+			this.item = item;
+		}
+		
+		QueuedFileInfo(ConversationManager.DraftFile draft) {
+			tileHelper = findAppropriateTileHelper(draft.getFileType());
+			item = new SimpleAttachmentInfo(draft);
+			draftFile = draft;
+		}
+		
+		AttachmentTileHelper getTileHelper() {
+			return tileHelper;
+		}
+		
+		SimpleAttachmentInfo getItem() {
+			return item;
+		}
+		
+		ConnectionService.FilePushRequest getFilePushRequest() {
+			return filePushRequest;
+		}
+		
+		void setFilePushRequest(ConnectionService.FilePushRequest request) {
+			filePushRequest = request;
+		}
+		
+		ConversationManager.DraftFile getDraftFile() {
+			return draftFile;
+		}
+		
+		void setDraftFile(ConversationManager.DraftFile draftFile) {
+			this.draftFile = draftFile;
+		}
+	}
+	
+	private abstract class AttachmentTileHelper<VH extends RecyclerView.ViewHolder> {
+		//Creating the reference values
+		static final int viewTypeMedia = 0;
+		static final int viewTypeDocument = 1;
+		
+		abstract VH createViewHolder(ViewGroup parent);
+		abstract void bindView(VH viewHolder, SimpleAttachmentInfo item);
+		
+		abstract int getViewType();
+	}
+	
+	AttachmentTileHelper<?> findAppropriateTileHelper(String mimeType) {
+		if(mimeType == null) return attachmentsDocumentTileHelper;
+		
+		if(mimeType.split("/")[0].equals("image")) return attachmentsMediaTileHelper;
+		
+		return attachmentsDocumentTileHelper;
+	}
+	
+	private abstract class AttachmentTileViewHolder extends RecyclerView.ViewHolder {
+		//Creating the reference values
+		private static final float selectedScale = 0.85F;
+		
+		//Creating the view values
+		private ViewGroup groupSelection;
+		private TextView labelSelection;
+		
+		AttachmentTileViewHolder(View itemView) {
+			super(itemView);
+		}
+		
+		void setSelected(boolean animate, int index) {
+			//Returning if the view state is already selected
+			if(groupSelection != null && groupSelection.getVisibility() == View.VISIBLE) return;
+			
+			//Inflating the view if it hasn't yet been
+			if(groupSelection == null) {
+				groupSelection = (ViewGroup) ((ViewStub) itemView.findViewById(R.id.viewstub_selection)).inflate();
+				labelSelection = groupSelection.findViewById(R.id.label_selectionindex);
+			}
+			
+			//Showing the view
+			if(animate) {
+				int duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
+				groupSelection.animate().withStartAction(() -> groupSelection.setVisibility(View.VISIBLE)).alpha(1).setDuration(duration).start();
+				{
+					ValueAnimator animator = ValueAnimator.ofFloat(itemView.getScaleX(), selectedScale);
+					animator.setDuration(duration);
+					animator.addUpdateListener(animation -> {
+						float value = (float) animation.getAnimatedValue();
+						itemView.setScaleX(value);
+						itemView.setScaleY(value);
+					});
+					animator.start();
+				}
+				/* {
+					ScaleAnimation animation = new ScaleAnimation(itemView.getScaleX(), selectedScale, itemView.getScaleY(), selectedScale, 0.5F, 0.5F);
+					animation.setDuration(duration);
+					animation.setFillAfter(true);
+					animation.setFillEnabled(true);
+					animation.setAnimationListener(new Animation.AnimationListener() {
+						@Override
+						public void onAnimationStart(Animation animation) {}
+						
+						@Override
+						public void onAnimationEnd(Animation animation) {
+							itemView.setScaleX(0.5F);
+							itemView.setScaleY(0.5F);
+						}
+						
+						@Override
+						public void onAnimationRepeat(Animation animation) {}
+					});
+					itemView.startAnimation(animation);
+				} */
+				/* itemView.animate().scaleX(selectedScale).scaleY(selectedScale).withEndAction(() -> {
+					itemView.setScaleX(selectedScale);
+					itemView.setScaleY(selectedScale);
+				}).setDuration(duration).start(); */
+			} else {
+				groupSelection.setVisibility(View.VISIBLE);
+				groupSelection.setAlpha(1);
+				itemView.setScaleX(selectedScale);
+				itemView.setScaleY(selectedScale);
+			}
+			
+			labelSelection.setText(Constants.intToFormattedString(getResources(), index));
+		}
+		
+		void setDeselected(boolean animate) {
+			//Returning if the view state is already deselected
+			if(groupSelection == null || groupSelection.getVisibility() == View.GONE) return;
+			
+			//Hiding the view
+			if(animate) {
+				int duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
+				groupSelection.animate().withEndAction(() -> groupSelection.setVisibility(View.GONE)).alpha(0).setDuration(duration).start();
+				{
+					ValueAnimator animator = ValueAnimator.ofFloat(itemView.getScaleX(), 1);
+					animator.setDuration(duration);
+					animator.addUpdateListener(animation -> {
+						float value = (float) animation.getAnimatedValue();
+						itemView.setScaleX(value);
+						itemView.setScaleY(value);
+					});
+					animator.start();
+				}
+				/* {
+					ScaleAnimation animation = new ScaleAnimation(itemView.getScaleX(), 1, itemView.getScaleY(), 1, 0.5F, 0.5F);
+					animation.setDuration(duration);
+					animation.setFillAfter(true);
+					animation.setFillEnabled(true);
+					itemView.startAnimation(animation);
+				} */
+				/* itemView.animate().scaleX(selectedScale * 2F).scaleY(selectedScale * 2F).withEndAction(() -> {
+					itemView.setScaleX(selectedScale * 2F);
+					itemView.setScaleY(selectedScale * 2F);
+				}).setDuration(duration).start(); */
+			} else {
+				groupSelection.setVisibility(View.GONE);
+				groupSelection.setAlpha(1);
+				itemView.setScaleX(1);
+				itemView.setScaleY(1);
+			}
+		}
+	}
+	
+	private class AttachmentsGalleryRecyclerAdapter extends AttachmentsRecyclerAdapter<AttachmentsMediaTileViewHolder> {
+		//Creating the reference values
+		private final AttachmentTileHelper<AttachmentsMediaTileViewHolder> tileHelper = attachmentsMediaTileHelper;
+		
+		AttachmentsGalleryRecyclerAdapter(List<SimpleAttachmentInfo> list) {
 			super(list);
 		}
 		
@@ -2418,38 +3036,85 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		@Override
-		MediaTileViewHolder createContentViewHolder(@NonNull ViewGroup parent) {
-			return new MediaTileViewHolder(getLayoutInflater().inflate(R.layout.layout_attachment_mediatile, parent, false));
+		AttachmentsMediaTileViewHolder createContentViewHolder(@NonNull ViewGroup parent) {
+			return tileHelper.createViewHolder(parent);
 		}
 		
 		@Override
-		void bindContentViewHolder(MediaTileViewHolder viewHolder, File file) {
-			//Returning if the file is invalid
-			if(file == null) return;
+		void bindContentViewHolder(AttachmentsMediaTileViewHolder viewHolder, SimpleAttachmentInfo file, int draftIndex) {
+			//Binding the view through the tile helper
+			tileHelper.bindView(viewHolder, file);
+			
+			//Setting the selection state
+			if(draftIndex == -1) viewHolder.setDeselected(false);
+			else viewHolder.setSelected(false, draftIndex + 1);
+		}
+		
+		@Override
+		AttachmentTileHelper<?> getTileHelper() {
+			return tileHelper;
+		}
+	}
+	
+	/* private boolean checkAttachmentItemSelected(Object item) {
+		for(QueuedFileInfo queuedFileInfo : viewModel.draftQueueList) if(queuedFileInfo.item == item) return true;
+		return false;
+	} */
+	
+	/**
+	 * Retrieves the index of the selected attachment item
+	 * @param item the selected item
+	 * @return the index of the selected
+	 */
+	private int getDraftItemIndex(SimpleAttachmentInfo item) {
+		for(int i = 0; i < viewModel.draftQueueList.size(); i++) if(viewModel.draftQueueList.get(i).item == item) return i;
+		return -1;
+	}
+	
+	private class AttachmentsMediaTileViewHolder extends AttachmentTileViewHolder {
+		//Creating the view values
+		private final ImageView imageThumbnail;
+		private final ImageView imageFlagGIF;
+		
+		AttachmentsMediaTileViewHolder(View itemView) {
+			super(itemView);
+			imageThumbnail = itemView.findViewById(R.id.image);
+			imageFlagGIF = itemView.findViewById(R.id.image_flag_gif);
+		}
+	}
+	
+	private final AttachmentTileHelper<AttachmentsMediaTileViewHolder> attachmentsMediaTileHelper = new AttachmentTileHelper<AttachmentsMediaTileViewHolder>() {
+		@Override
+		AttachmentsMediaTileViewHolder createViewHolder(ViewGroup parent) {
+			return new AttachmentsMediaTileViewHolder(getLayoutInflater().inflate(R.layout.layout_attachment_mediatile, parent, false));
+		}
+		
+		@Override
+		void bindView(AttachmentsMediaTileViewHolder viewHolder, SimpleAttachmentInfo item) {
+			//Returning if the item is invalid
+			if(item == null) return;
+			
+			//Returning if the activity is finishing
+			//if(isFinishing() || isDestroyed()) return;
 			
 			//Setting the image thumbnail
-			Glide.with(Messaging.this)
-					.load(file)
+			Glide.with(getApplicationContext())
+					.load(item.file)
 					.apply(RequestOptions.centerCropTransform())
 					.transition(DrawableTransitionOptions.withCrossFade())
 					.into(viewHolder.imageThumbnail);
 		}
 		
-		class MediaTileViewHolder extends RecyclerView.ViewHolder {
-			//Creating the view values
-			private ImageView imageThumbnail;
-			private ImageView imageFlagGIF;
-			
-			MediaTileViewHolder(View itemView) {
-				super(itemView);
-				imageThumbnail = itemView.findViewById(R.id.image);
-				imageFlagGIF = itemView.findViewById(R.id.image_flag_gif);
-			}
+		@Override
+		int getViewType() {
+			return viewTypeMedia;
 		}
-	}
+	};
 	
-	private class AttachmentsDocumentRecyclerAdapter extends AttachmentsRecyclerAdapter<AttachmentsDocumentRecyclerAdapter.DocumentTileViewHolder, DocumentInfo> {
-		AttachmentsDocumentRecyclerAdapter(List<DocumentInfo> list) {
+	private class AttachmentsDocumentRecyclerAdapter extends AttachmentsRecyclerAdapter<AttachmentsDocumentTileViewHolder> {
+		//Creating the reference values
+		private final AttachmentTileHelper<AttachmentsDocumentTileViewHolder> tileHelper = attachmentsDocumentTileHelper;
+		AttachmentsDocumentRecyclerAdapter(List<SimpleAttachmentInfo> list) {
 			super(list);
 		}
 		
@@ -2464,23 +3129,54 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		@Override
-		DocumentTileViewHolder createContentViewHolder(@NonNull ViewGroup parent) {
-			return new DocumentTileViewHolder(getLayoutInflater().inflate(R.layout.layout_attachment_documenttile, parent, false));
+		AttachmentsDocumentTileViewHolder createContentViewHolder(@NonNull ViewGroup parent) {
+			return attachmentsDocumentTileHelper.createViewHolder(parent);
 		}
 		
 		@Override
-		void bindContentViewHolder(DocumentTileViewHolder viewHolder, DocumentInfo document) {
+		void bindContentViewHolder(AttachmentsDocumentTileViewHolder viewHolder, SimpleAttachmentInfo document, int draftIndex) {
+			tileHelper.bindView(viewHolder, document);
+		}
+		
+		@Override
+		AttachmentTileHelper<?> getTileHelper() {
+			return tileHelper;
+		}
+	}
+	
+	private class AttachmentsDocumentTileViewHolder extends AttachmentTileViewHolder {
+		//Creating the view values
+		private TextView documentName;
+		private ImageView documentIcon;
+		private TextView documentSize;
+		
+		AttachmentsDocumentTileViewHolder(View itemView) {
+			super(itemView);
+			documentName = itemView.findViewById(R.id.label);
+			documentIcon = itemView.findViewById(R.id.icon);
+			documentSize = itemView.findViewById(R.id.label_size);
+		}
+	}
+	
+	private final AttachmentTileHelper<AttachmentsDocumentTileViewHolder> attachmentsDocumentTileHelper = new AttachmentTileHelper<AttachmentsDocumentTileViewHolder>() {
+		@Override
+		AttachmentsDocumentTileViewHolder createViewHolder(ViewGroup parent) {
+			return new AttachmentsDocumentTileViewHolder(getLayoutInflater().inflate(R.layout.layout_attachment_documenttile, parent, false));
+		}
+		
+		@Override
+		void bindView(AttachmentsDocumentTileViewHolder viewHolder, SimpleAttachmentInfo item) {
 			//Returning if the file is invalid
-			if(document == null) return;
+			if(item == null) return;
 			
 			//Getting the type-based details
 			int iconResource = R.drawable.file;
 			int viewColorBG = R.color.tile_grey_bg;
 			int viewColorFG = R.color.tile_grey_fg;
-			if(document.getFileType() != null) {
-				switch(document.getFileType()) {
+			if(item.getFileType() != null) {
+				switch(item.getFileType()) {
 					default:
-						if(document.getFileType().split("/")[0].startsWith("text")) {
+						if(item.getFileType().split("/")[0].startsWith("text")) {
 							iconResource = R.drawable.file_document;
 							viewColorBG = R.color.tile_indigo_bg;
 							viewColorFG = R.color.tile_indigo_fg;
@@ -2544,44 +3240,64 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 			
 			//Filling in the view data
-			viewHolder.documentName.setText(document.getFileName());
+			viewHolder.documentName.setText(item.getFileName());
 			viewHolder.documentName.setTextColor(viewColorFG);
 			
 			viewHolder.documentIcon.setImageResource(iconResource);
 			viewHolder.documentIcon.setImageTintList(ColorStateList.valueOf(viewColorFG));
 			
-			viewHolder.documentSize.setText(Constants.humanReadableByteCount(document.getFileSize(), true));
+			viewHolder.documentSize.setText(Constants.humanReadableByteCount(item.getFileSize(), true));
 			viewHolder.documentSize.setTextColor(viewColorFG);
 			
 			viewHolder.itemView.setBackgroundTintList(ColorStateList.valueOf(viewColorBG));
 		}
 		
-		class DocumentTileViewHolder extends RecyclerView.ViewHolder {
-			//Creating the view values
-			private TextView documentName;
-			private ImageView documentIcon;
-			private TextView documentSize;
-			
-			DocumentTileViewHolder(View itemView) {
-				super(itemView);
-				documentName = itemView.findViewById(R.id.label);
-				documentIcon = itemView.findViewById(R.id.icon);
-				documentSize = itemView.findViewById(R.id.label_size);
-			}
+		@Override
+		int getViewType() {
+			return viewTypeDocument;
 		}
-	}
+	};
 	
-	private static class DocumentInfo {
+	private static class SimpleAttachmentInfo {
 		private final File file;
 		private final String fileType;
 		private final String fileName;
 		private final long fileSize;
+		private final long modificationDate;
 		
-		DocumentInfo(File file, String fileType, String fileName, long fileSize) {
+		private final Uri uri;
+		
+		private AttachmentsRecyclerAdapter<?> listAdapter;
+		private int listIndex;
+		
+		/* SimpleDraftInfo(File file, String fileType, String fileName, long fileSize) {
 			this.file = file;
 			this.fileType = fileType;
 			this.fileName = fileName;
 			this.fileSize = fileSize;
+			this.modificationDate = 0;
+		} */
+		
+		SimpleAttachmentInfo(File file, String fileType, String fileName, long fileSize, long modificationDate) {
+			this.file = file;
+			this.fileType = fileType;
+			this.fileName = fileName;
+			this.fileSize = fileSize;
+			this.modificationDate = modificationDate;
+			
+			this.uri = null;
+		}
+		
+		SimpleAttachmentInfo(Uri uri) {
+			file = null;
+			fileType = fileName = null;
+			fileSize = modificationDate = -1;
+			
+			this.uri = uri;
+		}
+		
+		SimpleAttachmentInfo(ConversationManager.DraftFile draft) {
+			this(draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getFileSize(), draft.getModificationDate());
 		}
 		
 		File getFile() {
@@ -2598,6 +3314,27 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		long getFileSize() {
 			return fileSize;
+		}
+		
+		long getModificationDate() {
+			return modificationDate;
+		}
+		
+		Uri getUri() {
+			return uri;
+		}
+		
+		void setAdapterInformation(AttachmentsRecyclerAdapter<?> adapter, int index) {
+			listAdapter = adapter;
+			listIndex = index;
+		}
+		
+		RecyclerView.Adapter<?> getListAdapter() {
+			return listAdapter;
+		}
+		
+		int getListIndex() {
+			return listIndex;
 		}
 	}
 	
@@ -2671,18 +3408,19 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final byte attachmentsStateLoaded = 2;
 		static final byte attachmentsStateFailed = 3;
 		
+		static final int attachmentTypeGallery = 0;
+		static final int attachmentTypeDocument = 1;
 		private static final int attachmentsTileCount = 12;
 		
 		//Creating the state values
 		byte inputState = inputStateText;
 		MutableLiveData<Byte> messagesState = new MutableLiveData<>();
 		
-		byte attachmentsGalleryState = attachmentsStateIdle;
-		List<File> attachmentsGalleryList = null;
-		byte attachmentsDocumentState = attachmentsStateIdle;
-		List<DocumentInfo> attachmentsDocumentList = null;
-		private WeakReference<AttachmentsLoadCallbacks> attachmentsGalleryCallbacksReference = null;
-		private WeakReference<AttachmentsLoadCallbacks> attachmentsDocumentCallbacksReference = null;
+		final List<QueuedFileInfo> draftQueueList = new ArrayList<>(3);
+		private static final int attachmentTypesCount = 2;
+		private final byte[] attachmentStates = new byte[attachmentTypesCount];
+		private final ArrayList<SimpleAttachmentInfo>[] attachmentLists = new ArrayList[attachmentTypesCount];
+		private final WeakReference<AttachmentsLoadCallbacks>[] attachmentCallbacks = new WeakReference[attachmentTypesCount];
 		
 		boolean isAttachmentsPanelOpen = false;
 		boolean isDetailsPanelOpen = false;
@@ -2727,6 +3465,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Loading the data
 			loadConversation();
+			
+			//Filling the attachment lists
+			Arrays.fill(attachmentStates, attachmentsStateIdle);
 		}
 		
 		@Override
@@ -3025,110 +3766,57 @@ public class Messaging extends AppCompatCompositeActivity {
 			return true;
 		}
 		
-		@SuppressLint("StaticFieldLeak")
 		void indexAttachmentsGallery(AttachmentsLoadCallbacks listener) {
-			//Updating the listener
-			attachmentsGalleryCallbacksReference = new WeakReference<>(listener);
+			indexAttachmentsFromMediaStore(listener, attachmentTypeGallery, MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO);
+		}
+		
+		void indexAttachmentsDocument(AttachmentsLoadCallbacks listener) {
+			StringBuilder selectionQuery = new StringBuilder(MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_NONE + " AND " + MediaStore.Files.FileColumns.SIZE + " <= " + ConnectionService.largestFileSize);
+			for(int i = 0; i < documentMimeTypes.length; i++) {
+				String mimeType = documentMimeTypes[i];
+				if(mimeType.endsWith("*")) mimeType = mimeType.substring(0, mimeType.length() - 1);
+				if(i == 0) selectionQuery.append(" AND (");
+				else selectionQuery.append(" OR ");
+				selectionQuery.append(MediaStore.Files.FileColumns.MIME_TYPE).append(" LIKE ").append('"').append(mimeType).append('%').append('"');
+				if(i + 1 == documentMimeTypes.length) selectionQuery.append(")");
+			}
 			
-			//Returning if the state is incapable of handling the request
-			if(attachmentsGalleryState == attachmentsStateLoading || attachmentsGalleryState == attachmentsStateLoaded) return;
-			
-			//Setting the state
-			attachmentsGalleryState = attachmentsStateLoading;
-			
-			//Starting the asynchronous task
-			new AsyncTask<Void, Void, List<File>>() {
-				@Override
-				protected List<File> doInBackground(Void... params) {
-					try {
-						//Creating the list
-						List<File> list = new ArrayList<>();
-						
-						//Querying the media files
-						try(Cursor cursor = getApplication().getContentResolver().query(
-								MediaStore.Files.getContentUri("external"),
-								new String[]{MediaStore.Files.FileColumns.DATA},
-								MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO,
-								null,
-								MediaStore.Files.FileColumns.DATE_ADDED + " DESC" + ' ' + "LIMIT " + attachmentsTileCount)) {
-							if(cursor == null) return null;
-							int indexData = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA);
-							while(cursor.moveToNext()) list.add(new File(cursor.getString(indexData)));
-						}
-						
-						//Returning the list
-						return list;
-					} catch(SQLiteException exception) {
-						//Logging the exception
-						exception.printStackTrace();
-						Crashlytics.logException(exception);
-						
-						//Returning null
-						return null;
-					}
-				}
-				
-				@Override
-				protected void onPostExecute(List<File> files) {
-					//Checking if the data is invalid
-					if(files == null) {
-						//Setting the state
-						attachmentsGalleryState = attachmentsStateFailed;
-						
-						//Telling the listener
-						AttachmentsLoadCallbacks listener = attachmentsGalleryCallbacksReference.get();
-						if(listener != null) listener.onLoadFinished(false);
-					} else {
-						//Setting the state
-						attachmentsGalleryState = attachmentsStateLoaded;
-						
-						//Setting the items
-						attachmentsGalleryList = files;
-						
-						//Telling the listener
-						AttachmentsLoadCallbacks listener = attachmentsGalleryCallbacksReference.get();
-						if(listener != null) listener.onLoadFinished(true);
-					}
-				}
-			}.execute();
+			indexAttachmentsFromMediaStore(listener, attachmentTypeDocument, selectionQuery.toString());
+		}
+		
+		byte getAttachmentState(int itemType) {
+			return attachmentStates[itemType];
+		}
+		
+		ArrayList<SimpleAttachmentInfo> getAttachmentFileList(int itemType) {
+			return attachmentLists[itemType];
 		}
 		
 		@SuppressLint("StaticFieldLeak")
-		void indexAttachmentsDocument(AttachmentsLoadCallbacks listener) {
+		private void indexAttachmentsFromMediaStore(AttachmentsLoadCallbacks listener, int itemType, String msQuerySelection) {
 			//Updating the listener
-			attachmentsDocumentCallbacksReference = new WeakReference<>(listener);
+			attachmentCallbacks[itemType] = new WeakReference<>(listener);
 			
 			//Returning if the state is incapable of handling the request
-			if(attachmentsDocumentState == attachmentsStateLoading || attachmentsDocumentState == attachmentsStateLoaded) return;
+			int currentState = attachmentStates[itemType];
+			if(currentState == attachmentsStateLoading || currentState == attachmentsStateLoaded) return;
 			
 			//Setting the state
-			attachmentsDocumentState = attachmentsStateLoading;
+			attachmentStates[itemType] = attachmentsStateLoading;
 			
 			//Starting the asynchronous task
-			new AsyncTask<Void, Void, List<DocumentInfo>>() {
-				//Creating the reference values
-				//private static final String[] acceptableMIMETypes;
+			new AsyncTask<Void, Void, ArrayList<SimpleAttachmentInfo>>() {
 				@Override
-				protected List<DocumentInfo> doInBackground(Void... params) {
+				protected ArrayList<SimpleAttachmentInfo> doInBackground(Void... params) {
 					try {
 						//Creating the list
-						List<DocumentInfo> list = new ArrayList<>();
+						ArrayList<SimpleAttachmentInfo> list = new ArrayList<>();
 						
 						//Querying the media files
-						StringBuilder selectionQuery = new StringBuilder(MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_NONE + " AND " + MediaStore.Files.FileColumns.SIZE + " <= " + ConnectionService.largestFileSize);
-						for(int i = 0; i < documentMimeTypes.length; i++) {
-							String mimeType = documentMimeTypes[i];
-							if(mimeType.endsWith("*")) mimeType = mimeType.substring(0, mimeType.length() - 1);
-							if(i == 0) selectionQuery.append(" AND (");
-							else selectionQuery.append(" OR ");
-							selectionQuery.append(MediaStore.Files.FileColumns.MIME_TYPE).append(" LIKE ").append('"').append(mimeType).append('%').append('"');
-							if(i + 1 == documentMimeTypes.length) selectionQuery.append(")");
-						}
-						
 						try(Cursor cursor = getApplication().getContentResolver().query(
 								MediaStore.Files.getContentUri("external"),
-								new String[]{MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.SIZE},
-								selectionQuery.toString(),
+								new String[]{MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.DATE_MODIFIED},
+								msQuerySelection,
 								null,
 								MediaStore.Files.FileColumns.DATE_ADDED + " DESC" + ' ' + "LIMIT " + attachmentsTileCount)) {
 							if(cursor == null) return null;
@@ -3136,13 +3824,16 @@ public class Messaging extends AppCompatCompositeActivity {
 							int indexData = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA);
 							int indexType = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE);
 							int indexSize = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE);
+							int indexModificationDate = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED);
+							
 							while(cursor.moveToNext()) {
 								//Getting the file information
 								File file = new File(cursor.getString(indexData));
 								String fileType = cursor.getString(indexType);
 								String fileName = file.getName();
 								long fileSize = cursor.getLong(indexSize);
-								list.add(new DocumentInfo(file, fileType, fileName, fileSize));
+								long modificationDate = cursor.getLong(indexModificationDate);
+								list.add(new SimpleAttachmentInfo(file, fileType, fileName, fileSize, modificationDate));
 							}
 						}
 						
@@ -3159,24 +3850,25 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 				
 				@Override
-				protected void onPostExecute(List<DocumentInfo> files) {
+				protected void onPostExecute(ArrayList<SimpleAttachmentInfo> files) {
+					//Getting the callback listener
+					AttachmentsLoadCallbacks listener = attachmentCallbacks[itemType].get();
+					
 					//Checking if the data is invalid
 					if(files == null) {
 						//Setting the state
-						attachmentsDocumentState = attachmentsStateFailed;
+						attachmentStates[itemType] = attachmentsStateFailed;
 						
 						//Telling the listener
-						AttachmentsLoadCallbacks listener = attachmentsDocumentCallbacksReference.get();
 						if(listener != null) listener.onLoadFinished(false);
 					} else {
 						//Setting the state
-						attachmentsDocumentState = attachmentsStateLoaded;
+						attachmentStates[itemType] = attachmentsStateLoaded;
 						
 						//Setting the items
-						attachmentsDocumentList = files;
+						attachmentLists[itemType] = files;
 						
 						//Telling the listener
-						AttachmentsLoadCallbacks listener = attachmentsDocumentCallbacksReference.get();
 						if(listener != null) listener.onLoadFinished(true);
 					}
 				}
@@ -3331,37 +4023,37 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private static class AddGhostMessageTask extends AsyncTask<Void, Void, Void> {
+	private static class AddGhostMessageTask extends AsyncTask<ConversationManager.MessageInfo, ConversationManager.MessageInfo, Void> {
 		private final WeakReference<Context> contextReference;
-		private final ConversationManager.MessageInfo messageInfo;
-		private final Runnable onFinishListener;
+		private final Consumer<ConversationManager.MessageInfo> onFinishListener;
 		
-		AddGhostMessageTask(Context context, ConversationManager.MessageInfo messageInfo, Runnable onFinishListener) {
+		AddGhostMessageTask(Context context, Consumer<ConversationManager.MessageInfo> onFinishListener) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
 			
 			//Setting the other values
-			this.messageInfo = messageInfo;
 			this.onFinishListener = onFinishListener;
 		}
 		
 		@Override
-		protected Void doInBackground(Void... parameters) {
+		protected Void doInBackground(ConversationManager.MessageInfo... messages) {
 			//Getting the context
 			Context context = contextReference.get();
 			if(context == null) return null;
 			
-			//Adding the item to the database
-			DatabaseManager.getInstance().addConversationItem(messageInfo);
+			//Adding the items to the database
+			for(ConversationManager.MessageInfo message : messages) {
+				DatabaseManager.getInstance().addConversationItem(message);
+				publishProgress(message);
+			}
 			
 			//Returning
 			return null;
 		}
 		
 		@Override
-		protected void onPostExecute(Void aVoid) {
-			//Calling the finish listener
-			onFinishListener.run();
+		protected void onProgressUpdate(ConversationManager.MessageInfo... messages) {
+			for(ConversationManager.MessageInfo message : messages) onFinishListener.accept(message);
 		}
 	}
 	

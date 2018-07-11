@@ -36,12 +36,14 @@ import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.handshake.ClientHandshakeBuilder;
 import org.java_websocket.handshake.ServerHandshake;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -70,6 +72,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -78,6 +81,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -94,6 +98,8 @@ import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import java9.util.function.BiConsumer;
+import java9.util.function.Consumer;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.common.SharedValues;
 
@@ -101,7 +107,7 @@ public class ConnectionService extends Service {
 	/* COMMUNICATIONS VERSION CHANGES
 	 *  1 - Original release
 	 *  2 - Serialization changes
-	 *  3 - Reworked without WS layer
+	 *  3 - Original rework without WS layer
 	 *  4 - Better stability and security, with sub-version support
 	 */
 	public static final int mmCommunicationsVersion = 4;
@@ -164,7 +170,8 @@ public class ConnectionService extends Service {
 	//private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
 	//private Thread fileUploadRequestThread = null;
 	
-	private final BlockingQueue<FileUploadRequest> fileUploadRequestQueue = new LinkedBlockingQueue<>();
+	private final BlockingQueue<FileProcessingRequest> fileProcessingRequestQueue = new LinkedBlockingQueue<>();
+	private final AtomicReference<FileProcessingRequest> fileProcessingRequestCurrent = new AtomicReference<>(null);
 	private AtomicBoolean fileUploadRequestThreadRunning = new AtomicBoolean(false);
 	
 	private final BlockingQueue<QueueTask<?, ?>> messageProcessingQueue = new LinkedBlockingQueue<>();
@@ -485,7 +492,7 @@ public class ConnectionService extends Service {
 				.setSmallIcon(R.drawable.warning)
 				.setContentTitle(getResources().getString(R.string.message_connection_disconnected))
 				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
-				.setColor(getResources().getColor(R.color.colorServerDisconnected))
+				.setColor(getResources().getColor(R.color.colorServerDisconnected, null))
 				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT))
 				.addAction(-1, getResources().getString(R.string.action_reconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.addAction(-1, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
@@ -743,6 +750,7 @@ public class ConnectionService extends Service {
 		abstract class ProtocolManager {
 			/**
 			 * Sends a ping packet to the server
+			 *
 			 * @return whether or not the message was successfully sent
 			 */
 			abstract boolean sendPing();
@@ -757,6 +765,7 @@ public class ConnectionService extends Service {
 			
 			/**
 			 * Sends an authentication request to the server
+			 *
 			 * @return whether or not the message was successfully sent
 			 */
 			abstract boolean sendAuthenticationRequest();
@@ -880,13 +889,8 @@ public class ConnectionService extends Service {
 		
 		private static final long handshakeExpiryTime = 1000 * 10; //10 seconds
 		private final Handler handler = new Handler();
-		private final Runnable handshakeExpiryRunnable = () -> {
-			if(connectionThread != null) connectionThread.closeConnection(intentResultCodeConnection, true);
-		};
-		
 		//Creating the transmission values
 		private static final String stringCharset = "UTF-8";
-		
 		private static final int nhtClose = -1;
 		private static final int nhtPing = -2;
 		private static final int nhtPong = -3;
@@ -901,21 +905,20 @@ public class ConnectionService extends Service {
 		private static final int nhtAttachmentReq = 7;
 		private static final int nhtAttachmentReqConfirm = 8;
 		private static final int nhtAttachmentReqFail = 9;
-		
 		private static final int nhtSendResult = 100;
 		private static final int nhtSendTextExisting = 101;
 		private static final int nhtSendTextNew = 102;
 		private static final int nhtSendFileExisting = 103;
 		private static final int nhtSendFileNew = 104;
-		
 		private static final int nhtAuthenticationOK = 0;
 		private static final int nhtAuthenticationUnauthorized = 1;
 		private static final int nhtAuthenticationBadRequest = 2;
-		
 		private static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
-		
 		//Creating the other values
 		private boolean connectionEstablished = false;
+		private final Runnable handshakeExpiryRunnable = () -> {
+			if(connectionThread != null) connectionThread.closeConnection(intentResultCodeConnection, true);
+		};
 		
 		@Override
 		boolean connect(byte launchID) {
@@ -2260,6 +2263,7 @@ public class ConnectionService extends Service {
 			private static final int conversationItemTypeMessage = 0;
 			private static final int conversationItemTypeGroupAction = 1;
 			private static final int conversationItemTypeChatRename = 2;
+			
 			private List<Blocks.ConversationItem> deserializeConversationItems(ObjectInputStream in, int count) throws IOException {
 				//Creating the list
 				List<Blocks.ConversationItem> list = new ArrayList<>(count);
@@ -2338,6 +2342,7 @@ public class ConnectionService extends Service {
 			private static final int modifierTypeActivity = 0;
 			private static final int modifierTypeSticker = 1;
 			private static final int modifierTypeTapback = 2;
+			
 			private List<Blocks.ModifierInfo> deserializeModifiers(ObjectInputStream in, int count) throws IOException {
 				//Creating the list
 				List<Blocks.ModifierInfo> list = new ArrayList<>(count);
@@ -2607,7 +2612,7 @@ public class ConnectionService extends Service {
 				//Adding the data
 				byte[] packetData;
 				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos);
-				ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
+					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
 					out.writeShort(requestID); //Request identifier
 					out.writeInt(requestIndex); //Request index
 					out.writeBoolean(isLast); //Is last message
@@ -4717,7 +4722,7 @@ public class ConnectionService extends Service {
 	
 	static final int largestFileSize = 1024 * 1024 * 100; //100 MB
 	
-	void queueUploadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+	/* void queueUploadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 		//Adding the request
 		addUploadRequest(new FileUploadRequest(callbacks, uri, conversationInfo, attachmentID));
 	}
@@ -4725,14 +4730,37 @@ public class ConnectionService extends Service {
 	void queueUploadRequest(FileUploadRequestCallbacks callbacks, File file, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
 		//Adding the request
 		addUploadRequest(new FileUploadRequest(callbacks, file, conversationInfo, attachmentID));
-	}
+	} */
 	
-	private void addUploadRequest(FileUploadRequest request) {
+	void addFileProcessingRequest(FileProcessingRequest request) {
 		//Adding the task
-		fileUploadRequestQueue.add(request);
+		fileProcessingRequestQueue.add(request);
 		
 		//Starting the thread if it isn't running
 		if(fileUploadRequestThreadRunning.compareAndSet(false, true)) new FileUploadRequestThread(getApplicationContext(), this).start();
+	}
+	
+	FileProcessingRequest searchFileProcessingQueue(long draftID) {
+		List<FileProcessingRequest> queueList = new ArrayList<>(fileProcessingRequestQueue);
+		for(ListIterator<FileProcessingRequest> iterator = queueList.listIterator(queueList.size()); iterator.hasPrevious();) {
+			FileProcessingRequest request = iterator.previous();
+			if(request instanceof FilePushRequest) {
+				if(((FilePushRequest) request).draftID == draftID) return request;
+			} else if(request instanceof FileRemovalRequest) {
+				if(((FileRemovalRequest) request).draftFile.getLocalID() == draftID) return request;
+			}
+		}
+		
+		FileProcessingRequest request = fileProcessingRequestCurrent.get();
+		if(request != null) {
+			if(request instanceof FilePushRequest) {
+				if(((FilePushRequest) request).draftID == draftID) return request;
+			} else if(request instanceof FileRemovalRequest) {
+				if(((FileRemovalRequest) request).draftFile.getLocalID() == draftID) return request;
+			}
+		}
+		
+		return null;
 	}
 	
 	boolean addDownloadRequest(FileDownloadRequestCallbacks callbacks, long attachmentID, String attachmentGUID, String attachmentName) {
@@ -4764,18 +4792,39 @@ public class ConnectionService extends Service {
 		return null;
 	}
 	
-	interface FileUploadRequestCallbacks {
-		void onResponseReceived();
+	static class FileProcessingRequestCallbacks {
+		/* final Constants.WeakRunnable onStart = new Constants.WeakRunnable();
+		final Constants.WeakBiConsumer<File, ConversationManager.DraftFile> onDraftPreparationFinished = new Constants.WeakBiConsumer<>();
+		final Constants.WeakConsumer<File> onAttachmentPreparationFinished = new Constants.WeakConsumer<>();
+		final Constants.WeakConsumer<Float> onUploadProgress = new Constants.WeakConsumer<>();
+		final Constants.WeakConsumer<byte[]> onUploadFinished = new Constants.WeakConsumer<>();
+		final Constants.WeakRunnable onUploadResponseReceived = new Constants.WeakRunnable();
+		final Constants.WeakConsumer<Byte> onFail = new Constants.WeakConsumer<>();
+		final Constants.WeakRunnable onRemovalFinish = new Constants.WeakRunnable(); */
 		
-		void onStart();
+		Runnable onStart = new RunnableImpl();
+		BiConsumer<File, ConversationManager.DraftFile> onDraftPreparationFinished = new BiConsumerImpl<>();
+		Consumer<File> onAttachmentPreparationFinished = new ConsumerImpl<>();
+		Consumer<Float> onUploadProgress = new ConsumerImpl<>();
+		Consumer<byte[]> onUploadFinished = new ConsumerImpl<>();
+		Runnable onUploadResponseReceived = new RunnableImpl();
+		Consumer<Byte> onFail = new ConsumerImpl<>();
+		Runnable onRemovalFinish = new RunnableImpl();
 		
-		void onProgress(float progress);
+		private static class RunnableImpl implements Runnable {
+			@Override
+			public void run() {}
+		}
 		
-		void onCopyFinished(File location);
+		private static class ConsumerImpl<T> implements Consumer<T> {
+			@Override
+			public void accept(T t) {}
+		}
 		
-		void onUploadFinished(byte[] checksum);
-		
-		void onFail(byte reason);
+		private static class BiConsumerImpl<T, U> implements BiConsumer<T, U> {
+			@Override
+			public void accept(T t, U u) {}
+		}
 	}
 	
 	interface FileDownloadRequestCallbacks {
@@ -4790,28 +4839,54 @@ public class ConnectionService extends Service {
 		void onFail();
 	}
 	
-	private static class FileUploadRequest {
+	static abstract class FileProcessingRequest {
 		//Creating the callbacks
-		final FileUploadRequestCallbacks callbacks;
+		final FileProcessingRequestCallbacks callbacks = new FileProcessingRequestCallbacks();
+		boolean isInProcessing = false;
+		
+		FileProcessingRequestCallbacks getCallbacks() {
+			return callbacks;
+		}
+		
+		boolean isInProcessing() {
+			return isInProcessing;
+		}
+	}
+	
+	static class FilePushRequest extends FileProcessingRequest {
+		//Creating the reference values
+		static final int stateLinked = 0; //Has a link to the file, but no copy of it
+		static final int stateQueued = 1; //A copy of the file is stored and referenced in the chat's drafts
+		static final int stateAttached = 2; //The file is linked to an attachment
+		static final int stateFinished = 3; //The file processing request is completed, the file has been uploaded to the server
 		
 		//Creating the request values
 		//final ConversationManager.ConversationInfo conversationInfo;
-		final long attachmentID;
-		File sendFile;
-		Uri sendUri;
+		private long attachmentID;
+		private long draftID;
+		private File sendFile;
+		private Uri sendUri;
+		private String fileType;
+		private long fileModificationDate = 0;
+		private boolean uploadRequested;
+		private int state;
 		
 		//Creating the conversation values
 		final boolean conversationExists;
+		final long conversationID;
 		final String conversationGUID;
 		final String[] conversationMembers;
 		final String conversationService;
 		
-		private FileUploadRequest(FileUploadRequestCallbacks callbacks, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+		private FilePushRequest(ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, boolean uploadRequested) {
 			//Setting the callbacks
-			this.callbacks = callbacks;
+			//this.callbacks = callbacks;
 			
 			//Setting the request values
 			this.attachmentID = attachmentID;
+			this.draftID = draftID;
+			this.uploadRequested = uploadRequested;
+			this.state = state;
 			
 			if(conversationInfo.getState() == ConversationManager.ConversationInfo.ConversationState.READY) {
 				conversationExists = true;
@@ -4824,26 +4899,54 @@ public class ConnectionService extends Service {
 				conversationMembers = conversationInfo.getNormalizedConversationMembersAsArray();
 				conversationService = conversationInfo.getService();
 			}
+			conversationID = conversationInfo.getLocalID();
 		}
 		
-		FileUploadRequest(FileUploadRequestCallbacks callbacks, File file, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+		FilePushRequest(File file, String fileType, long fileModificationDate, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, boolean uploadRequested) {
 			//Calling the main constructor
-			this(callbacks, conversationInfo, attachmentID);
+			this(conversationInfo, attachmentID, draftID, state, uploadRequested);
 			
 			//Setting the source values
 			sendFile = file;
 			sendUri = null;
+			this.fileType = fileType;
+			this.fileModificationDate = fileModificationDate;
+			
+			//Setting the state to queued if the file is in a queue folder
+			//if(Paths.get(sendFile.toURI()).startsWith(MainApplication.getDraftDirectory(MainApplication.getInstance()).getPath())) state = stateQueued;
 		}
 		
-		FileUploadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
+		FilePushRequest(Uri uri, String fileType, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, boolean uploadRequested) {
 			//Calling the main constructor
-			this(callbacks, conversationInfo, attachmentID);
+			this(conversationInfo, attachmentID, draftID, state, uploadRequested);
 			
 			//Setting the source values
 			sendFile = null;
 			sendUri = uri;
+			this.fileType = fileType;
+		}
+		
+		void setAttachmentID(long value) {
+			attachmentID = value;
+		}
+		
+		void setUploadRequested(boolean value) {
+			uploadRequested = value;
 		}
 	}
+	
+	static class FileRemovalRequest extends FileProcessingRequest {
+		private final ConversationManager.DraftFile draftFile;
+		
+		FileRemovalRequest(ConversationManager.DraftFile draftFile) {
+			this.draftFile = draftFile;
+		}
+	}
+	
+	/* interface FileProcessingRequestCallbacks {
+		void onFail();
+		void onSucceed(int state);
+	} */
 	
 	static class FileDownloadRequest {
 		//Creating the callbacks
@@ -4870,7 +4973,7 @@ public class ConnectionService extends Service {
 		
 		private static final long timeoutDelay = 20 * 1000; //20-second delay
 		private final Handler handler = new Handler(Looper.getMainLooper());
-
+		
 		void startTimer() {
 			handler.postDelayed(timeoutRunnable, timeoutDelay);
 		}
@@ -4917,6 +5020,7 @@ public class ConnectionService extends Service {
 			lastProgress = 0;
 			callbacks.onProgress(progress);
 		}
+		
 		AttachmentWriter attachmentWriterThread = null;
 		private final Runnable timeoutRunnable = this::failDownload;
 		boolean isWaiting = true;
@@ -5144,7 +5248,7 @@ public class ConnectionService extends Service {
 		public void run() {
 			//Looping while there are requests in the queue
 			ConnectionService service = null;
-			FileUploadRequest request;
+			FileProcessingRequest request;
 			requestLoop:
 			while(!isInterrupted() &&
 					(service = serviceReference.get()) != null &&
@@ -5153,57 +5257,137 @@ public class ConnectionService extends Service {
 				service = null;
 				
 				//Getting the callbacks
-				FileUploadRequestCallbacks finalCallbacks = request.callbacks;
+				FileProcessingRequestCallbacks finalCallbacks = request.callbacks;
 				
 				//Telling the callbacks that the process has started
-				handler.post(request.callbacks::onStart);
+				handler.post(finalCallbacks.onStart);
+				request.isInProcessing = true;
+				
+				//Checking if a removal has been requested
+				if(request instanceof FileRemovalRequest) {
+					//Removing the file
+					ConnectionService.removeDraftFileSync(((FileRemovalRequest) request).draftFile);
+					
+					//Returning
+					request.isInProcessing = false;
+					handler.post(finalCallbacks.onRemovalFinish);
+					return;
+				}
+				
+				//Getting the request as a push request
+				FilePushRequest pushRequest = (FilePushRequest) request;
+				
+				//Copying the request info
+				boolean requestUpload = pushRequest.uploadRequested;
 				
 				//Checking if the request has no send file
-				boolean copyFile = request.sendFile == null;
-				if(copyFile) {
+				//boolean copyFile = request.sendFile == null;
+				boolean fileCopied = pushRequest.state == FilePushRequest.stateLinked;
+				if(fileCopied) {
 					//Checking if the URI is invalid
-					if(request.sendUri == null) {
+					/* if(request.sendUri == null) {
 						//Calling the fail method
 						handler.post(() -> finalCallbacks.onFail(messageSendInvalidContent));
 						
 						//Skipping the remainder of the iteration
 						continue;
-					}
+					} */
 					
 					//Getting the context
 					Context context = contextReference.get();
 					if(context == null) {
 						//Calling the fail method
-						handler.post(() -> finalCallbacks.onFail(messageSendReferencesLost));
+						pushRequest.isInProcessing = false;
+						handler.post(() -> finalCallbacks.onFail.accept(messageSendReferencesLost));
 						
 						//Skipping the remainder of the iteration
 						continue;
 					}
 					
-					//Verifying the file size
-					try(Cursor cursor = context.getContentResolver().query(request.sendUri, null, null, null, null)) {
-						if(cursor != null) {
-							cursor.moveToFirst();
-							long fileSize = cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
+					//Creating the values
+					String fileName;
+					InputStream inputStream = null;
+					File originalFile = pushRequest.sendFile;
+					
+					try {
+						//Checking if the request is using a URI
+						if(pushRequest.sendUri != null) {
+							//Verifying the file size
+							try(Cursor cursor = context.getContentResolver().query(pushRequest.sendUri, null, null, null, null)) {
+								if(cursor != null) {
+									cursor.moveToFirst();
+									long fileSize = cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
+									
+									//Checking if the file size is too large to send
+									if(fileSize > largestFileSize) {
+										//Calling the fail method
+										pushRequest.isInProcessing = false;
+										handler.post(() -> finalCallbacks.onFail.accept(messageSendFileTooLarge));
+										
+										//Skipping the remainder of the iteration
+										continue;
+									}
+								}
+							}
 							
-							//Checking if the file size is too large to send
-							if(fileSize > largestFileSize) {
+							//Finding a valid file
+							fileName = Constants.getFileName(context, pushRequest.sendUri);
+							if(fileName == null) fileName = Constants.defaultFileName;
+							
+							//Opening the input stream
+							inputStream = context.getContentResolver().openInputStream(pushRequest.sendUri);
+						}
+						//Otherwise checking if the request is using a file
+						else if(pushRequest.sendFile != null) {
+							//Getting the file name
+							fileName = pushRequest.sendFile.getName();
+							//if(fileName == null) fileName = Constants.defaultFileName;
+							
+							//Verifying the file size
+							if(pushRequest.sendFile.length() > largestFileSize) {
 								//Calling the fail method
-								handler.post(() -> finalCallbacks.onFail(messageSendFileTooLarge));
+								pushRequest.isInProcessing = false;
+								handler.post(() -> finalCallbacks.onFail.accept(messageSendFileTooLarge));
 								
 								//Skipping the remainder of the iteration
 								continue;
 							}
+							
+							//Opening the input stream
+							inputStream = new BufferedInputStream(new FileInputStream(pushRequest.sendFile));
+						} else {
+							//Calling the fail method
+							pushRequest.isInProcessing = false;
+							handler.post(() -> finalCallbacks.onFail.accept(messageSendInternalException));
+							
+							//Skipping the remainder of the iteration
+							continue;
 						}
+					} catch(FileNotFoundException exception) {
+						//Printing the stack trace
+						exception.printStackTrace();
+						
+						//Calling the fail method
+						pushRequest.isInProcessing = false;
+						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+						
+						//Closing the input stream
+						if(inputStream != null) try {
+							inputStream.close();
+						} catch(IOException closeException) {
+							closeException.printStackTrace();
+						}
+						
+						//Skipping the remainder of the iteration
+						continue;
 					}
 					
-					//Finding a valid file
-					String fileName = Constants.getFileName(context, request.sendUri);
-					if(fileName == null) fileName = Constants.defaultFileName;
-					File targetFile = new File(Constants.findFreeFile(MainApplication.getUploadDirectory(context), Long.toString(System.currentTimeMillis())), fileName);
-					//File targetFile = MainApplication.findUploadFileTarget(context, fileName);
+					//Getting the target file
+					File targetFile = requestUpload ?
+							MainApplication.getUploadTarget(context, fileName) :
+							MainApplication.getDraftTarget(context, pushRequest.conversationID, fileName);
 					
-					try {
+					/* try {
 						//Creating the targets
 						if(!targetFile.getParentFile().mkdir()) throw new IOException("Couldn't make directory");
 						//if(!targetFile.createNewFile()) throw new IOException();
@@ -5219,22 +5403,21 @@ public class ConnectionService extends Service {
 						
 						//Skipping the remainder of the iteration
 						continue;
-					}
+					} */
 					
 					//Preparing to copy the file
-					try(InputStream inputStream = context.getContentResolver().openInputStream(request.sendUri);
-						OutputStream outputStream = new FileOutputStream(targetFile)) {
+					try(OutputStream outputStream = new FileOutputStream(targetFile)) {
 						//Clearing the reference to the context
 						context = null;
 						
-						//Checking if the input stream is invalid
+						/* //Checking if the input stream is invalid
 						if(inputStream == null) {
 							//Calling the fail method
 							handler.post(() -> finalCallbacks.onFail(messageSendInvalidContent));
 							
 							//Skipping the remainder of the iteration
 							continue;
-						}
+						} */
 						
 						//Preparing to read the file
 						long totalLength = inputStream.available();
@@ -5252,20 +5435,24 @@ public class ConnectionService extends Service {
 							
 							//Updating the progress
 							final long finalTotalBytesRead = totalBytesRead;
-							handler.post(() -> finalCallbacks.onProgress((float) ((double) finalTotalBytesRead / (double) totalLength * copyProgressValue)));
+							handler.post(() -> finalCallbacks.onUploadProgress.accept((float) ((double) finalTotalBytesRead / (double) totalLength * copyProgressValue)));
 						}
 						
 						//Flushing the output stream
 						outputStream.flush();
 						
-						//Updating the database entry
-						context = contextReference.get();
-						if(context != null) DatabaseManager.getInstance().updateAttachmentFile(request.attachmentID, MainApplication.getInstance(), targetFile);
-						context = null;
-						
 						//Setting the send file
-						request.sendFile = targetFile;
-						handler.post(() -> finalCallbacks.onCopyFinished(targetFile));
+						pushRequest.sendFile = targetFile;
+						if(requestUpload) {
+							handler.post(() -> finalCallbacks.onAttachmentPreparationFinished.accept(targetFile));
+						} else {
+							ConversationManager.DraftFile draft = DatabaseManager.getInstance().addDraftReference(pushRequest.conversationID, targetFile, targetFile.getName(), targetFile.length(), pushRequest.fileType, originalFile, pushRequest.fileModificationDate);
+							if(draft == null) throw new IOException("Failed to add draft reference to database");
+							pushRequest.draftID = draft.getLocalID();
+							
+							pushRequest.isInProcessing = false;
+							handler.post(() -> finalCallbacks.onDraftPreparationFinished.accept(targetFile, draft));
+						}
 					} catch(IOException exception) {
 						//Printing the stack trace
 						exception.printStackTrace();
@@ -5275,198 +5462,285 @@ public class ConnectionService extends Service {
 						targetFile.getParentFile().delete();
 						
 						//Calling the fail method
-						handler.post(() -> finalCallbacks.onFail(messageSendIOException));
-						
-						//Clearing the reference to the context
-						context = null;
+						pushRequest.isInProcessing = false;
+						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
 						
 						//Skipping the remainder of the iteration
 						continue;
+					} finally {
+						if(inputStream != null) try {
+							inputStream.close();
+						} catch(IOException exception) {
+							exception.printStackTrace();
+						}
 					}
+					
+					//Setting the state
+					if(requestUpload) pushRequest.state = FilePushRequest.stateAttached;
+					else pushRequest.state = FilePushRequest.stateQueued;
+					
+					//Setting the file
+					pushRequest.sendFile = targetFile;
 				}
 				
-				//Checking if the file is invalid
-				/* if(request.sendFile == null || !request.sendFile.exists()) {
-					//Calling the fail method
-					handler.post(() -> finalCallbacks.onFail(messageSendInvalidContent));
+				//Checking if an upload has been requested
+				if(requestUpload) {
+					//Checking if the state is queued
+					if(pushRequest.state == FilePushRequest.stateQueued) {
+						//Getting the context
+						Context context = contextReference.get();
+						if(context == null) {
+							//Calling the fail method
+							pushRequest.isInProcessing = false;
+							handler.post(() -> finalCallbacks.onFail.accept(messageSendReferencesLost));
+							
+							//Skipping the remainder of the iteration
+							continue;
+						}
+						
+						//Moving the file
+						File targetFile = MainApplication.getUploadTarget(context, pushRequest.sendFile.getName());
+						boolean result = pushRequest.sendFile.renameTo(targetFile);
+						if(!result) {
+							//Calling the fail method
+							pushRequest.isInProcessing = false;
+							handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+							
+							//Skipping the remainder of the iteration
+							continue;
+						}
+						
+						//Deleting the parent directory (since each draft file is stored in its own folder to prevent name collisions)
+						pushRequest.sendFile.getParentFile().delete();
+						
+						//Updating the file reference
+						pushRequest.sendFile = targetFile;
+						
+						//Removing the draft reference from the database
+						if(pushRequest.draftID != -1) {
+							DatabaseManager.getInstance().removeDraftReference(pushRequest.draftID);
+							pushRequest.draftID = -1;
+						}
+						
+						//Updating the database entry
+						if(pushRequest.attachmentID != -1) DatabaseManager.getInstance().updateAttachmentFile(pushRequest.attachmentID, MainApplication.getInstance(), targetFile);
+						
+						//Setting the state
+						pushRequest.state = FilePushRequest.stateAttached;
+						
+						//Calling the listener
+						handler.post(() -> finalCallbacks.onAttachmentPreparationFinished.accept(targetFile));
+					}
 					
-					//Skipping the remainder of the iteration
-					continue;
-				} */
-				
-				//Getting the connection service
-				ConnectionService connectionService = ConnectionService.getInstance();
-				
-				//Checking if the service isn't ready
-				if(connectionService == null || connectionService.getCurrentState() != stateConnected) {
-					//Calling the fail method
-					handler.post(() -> finalCallbacks.onFail(messageSendNetworkException));
-					
-					//Skipping the remainder of the iteration
-					continue;
-				}
-				
-				//Getting the request ID and the hash algorithm
-				short requestID = connectionService.getNextRequestID();
-				String hashAlgorithm = connectionService.currentConnectionManager.getHashAlgorithm();
-				
-				//Invalidating the connection service
-				connectionService = null;
-				
-				//Getting the message digest
-				MessageDigest messageDigest;
-				try {
-					messageDigest = MessageDigest.getInstance(hashAlgorithm);
-				} catch(NoSuchAlgorithmException exception) {
-					//Printing the stack trace
-					exception.printStackTrace();
-					
-					//Calling the fail method
-					handler.post(() -> finalCallbacks.onFail(messageSendIOException));
-					
-					//Skipping the remainder of the iteration
-					continue;
-				}
-				
-				//Setting up the streams
-				try(FileInputStream srcIS = new FileInputStream(request.sendFile); DigestInputStream inputStream = new DigestInputStream(srcIS, messageDigest)) {
-					//Preparing to read the file
-					long totalLength = inputStream.available();
-					byte[] buffer = new byte[ConnectionService.attachmentChunkSize];
-					int bytesRead;
-					long totalBytesRead = 0;
-					int requestIndex = 0;
-					
-					//Checking if the file size is too large to send
-					if(totalLength > largestFileSize) {
+					//Checking if the file is invalid
+					/* if(request.sendFile == null || !request.sendFile.exists()) {
 						//Calling the fail method
-						handler.post(() -> finalCallbacks.onFail(messageSendFileTooLarge));
+						handler.post(() -> finalCallbacks.onFail(messageSendInvalidContent));
+						
+						//Skipping the remainder of the iteration
+						continue;
+					} */
+					
+					//Getting the connection service
+					ConnectionService connectionService = ConnectionService.getInstance();
+					
+					//Checking if the service isn't ready
+					if(connectionService == null || connectionService.getCurrentState() != stateConnected) {
+						//Calling the fail method
+						pushRequest.isInProcessing = false;
+						handler.post(() -> finalCallbacks.onFail.accept(messageSendNetworkException));
 						
 						//Skipping the remainder of the iteration
 						continue;
 					}
 					
-					//Looping while there is data to read
-					while((bytesRead = inputStream.read(buffer)) != -1) {
-						//Adding to the total bytes read
-						totalBytesRead += bytesRead;
+					//Getting the request ID and the hash algorithm
+					short requestID = connectionService.getNextRequestID();
+					String hashAlgorithm = connectionService.currentConnectionManager.getHashAlgorithm();
+					
+					//Invalidating the connection service
+					connectionService = null;
+					
+					//Getting the message digest
+					MessageDigest messageDigest;
+					try {
+						messageDigest = MessageDigest.getInstance(hashAlgorithm);
+					} catch(NoSuchAlgorithmException exception) {
+						//Printing the stack trace
+						exception.printStackTrace();
 						
-						//Compressing the data
+						//Calling the fail method
+						pushRequest.isInProcessing = false;
+						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+						
+						//Skipping the remainder of the iteration
+						continue;
+					}
+					
+					//Setting up the streams
+					try(FileInputStream srcIS = new FileInputStream(pushRequest.sendFile); DigestInputStream inputStream = new DigestInputStream(srcIS, messageDigest)) {
+						//Preparing to read the file
+						long totalLength = inputStream.available();
+						byte[] buffer = new byte[ConnectionService.attachmentChunkSize];
+						int bytesRead;
+						long totalBytesRead = 0;
+						int requestIndex = 0;
+						
+						//Checking if the file size is too large to send
+						if(totalLength > largestFileSize) {
+							//Calling the fail method
+							pushRequest.isInProcessing = false;
+							handler.post(() -> finalCallbacks.onFail.accept(messageSendFileTooLarge));
+							
+							//Skipping the remainder of the iteration
+							continue;
+						}
+						
+						//Looping while there is data to read
+						while((bytesRead = inputStream.read(buffer)) != -1) {
+							//Adding to the total bytes read
+							totalBytesRead += bytesRead;
+							
+							//Compressing the data
 						/* compressor = new Deflater();
 						compressor.setInput(buffer, 0, bytesRead);
 						compressor.finish();
 						int compressedLen = compressor.deflate(compressedData);
 						compressor.end();
 						compressedData = Arrays.copyOf(compressedData, compressedLen); */
-						
-						//Getting the connection manager
-						ConnectionManager connectionManager = getStaticConnectionManager();
-						if(connectionManager == null || connectionManager.getPackager() == null) {
-							//Failing the request
-							handler.post(() -> finalCallbacks.onFail(messageSendNetworkException));
-							return;
-						}
-						
-						//Preparing the data for upload
-						byte[] preparedData = connectionManager.getPackager().packageData(buffer, bytesRead);
-						
-						//Checking if the data couldn't be processed
-						if(preparedData == null) {
-							//Failing the request
-							handler.post(() -> finalCallbacks.onFail(messageSendInternalException));
 							
-							//Breaking from the loop
-							continue requestLoop;
-						}
-						
-						//Uploading the chunk
-						boolean uploadResult;
-						if(request.conversationExists) {
-							uploadResult = connectionManager.uploadFilePacket(requestID, requestIndex, request.conversationGUID, preparedData, request.sendFile.getName(), totalBytesRead >= totalLength);
-						} else {
-							uploadResult = connectionManager.uploadFilePacket(requestID, requestIndex, request.conversationMembers, preparedData, request.sendFile.getName(), request.conversationService, totalBytesRead >= totalLength);
-						}
-						
-						//Validating the result
-						if(!uploadResult) {
-							//Failing the request
-							handler.post(() -> finalCallbacks.onFail(messageSendInternalException));
+							//Getting the connection manager
+							ConnectionManager connectionManager = getStaticConnectionManager();
+							if(connectionManager == null || connectionManager.getPackager() == null) {
+								//Failing the request
+								pushRequest.isInProcessing = false;
+								handler.post(() -> finalCallbacks.onFail.accept(messageSendNetworkException));
+								return;
+							}
 							
-							//Breaking from the loop
-							continue requestLoop;
+							//Preparing the data for upload
+							byte[] preparedData = connectionManager.getPackager().packageData(buffer, bytesRead);
+							
+							//Checking if the data couldn't be processed
+							if(preparedData == null) {
+								//Failing the request
+								pushRequest.isInProcessing = false;
+								handler.post(() -> finalCallbacks.onFail.accept(messageSendInternalException));
+								
+								//Breaking from the loop
+								continue requestLoop;
+							}
+							
+							//Uploading the chunk
+							boolean uploadResult;
+							if(pushRequest.conversationExists) {
+								uploadResult = connectionManager.uploadFilePacket(requestID, requestIndex, pushRequest.conversationGUID, preparedData, pushRequest.sendFile.getName(), totalBytesRead >= totalLength);
+							} else {
+								uploadResult = connectionManager.uploadFilePacket(requestID, requestIndex, pushRequest.conversationMembers, preparedData, pushRequest.sendFile.getName(), pushRequest.conversationService, totalBytesRead >= totalLength);
+							}
+							
+							//Validating the result
+							if(!uploadResult) {
+								//Failing the request
+								pushRequest.isInProcessing = false;
+								handler.post(() -> finalCallbacks.onFail.accept(messageSendInternalException));
+								
+								//Breaking from the loop
+								continue requestLoop;
+							}
+							
+							//Updating the progress
+							final long finalTotalBytesRead = totalBytesRead;
+							handler.post(() -> finalCallbacks.onUploadProgress.accept(fileCopied ?
+									(float) (copyProgressValue + (double) finalTotalBytesRead / (double) totalLength * (1F - copyProgressValue)) :
+									(float) finalTotalBytesRead / (float) totalLength));
+							
+							//Adding to the request index
+							requestIndex++;
 						}
 						
-						//Updating the progress
-						final long finalTotalBytesRead = totalBytesRead;
-						handler.post(() -> finalCallbacks.onProgress(copyFile ?
-								(float) (copyProgressValue + (double) finalTotalBytesRead / (double) totalLength * (1F - copyProgressValue)) :
-								(float) finalTotalBytesRead / (float) totalLength));
+						//Setting the request state to finished
+						pushRequest.state = FilePushRequest.stateFinished;
 						
-						//Adding to the request index
-						requestIndex++;
+						//Getting the checksum
+						byte[] checksum = messageDigest.digest();
+						
+						//Saving the checksum
+						if(pushRequest.attachmentID != -1) {
+							DatabaseManager.getInstance().updateAttachmentChecksum(pushRequest.attachmentID, checksum);
+							System.out.println("Attachment checksum updated!");
+						}
+						
+						//Running on the main thread
+						pushRequest.isInProcessing = false;
+						handler.post(() -> {
+							//Getting the connection service
+							ConnectionService newConnectionService = ConnectionService.getInstance();
+							if(newConnectionService == null) {
+								finalCallbacks.onFail.accept(messageSendNetworkException);
+								return;
+							}
+							
+							//Notifying the callback listener
+							finalCallbacks.onUploadFinished.accept(checksum);
+							
+							//Creating the response manager
+							ConnectionService.MessageResponseManager responseManager = new ConnectionService.MessageResponseManager() {
+								//Forwarding the event to the callbacks
+								@Override
+								void onSuccess() {
+									finalCallbacks.onUploadResponseReceived.run();
+								}
+								
+								@Override
+								void onFail(byte resultCode) {
+									finalCallbacks.onFail.accept(resultCode);
+								}
+							};
+							
+							//Adding the request and starting the timer
+							newConnectionService.messageSendRequests.put(requestID, responseManager);
+							responseManager.startTimer();
+						});
+					} catch(IOException | OutOfMemoryError exception) {
+						//Printing the stack trace
+						exception.printStackTrace();
+						
+						//Calling the fail method
+						pushRequest.isInProcessing = false;
+						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+						
+						//Skipping the remainder of the iteration
+						//continue;
+					} catch(WebsocketNotConnectedException exception) {
+						//Calling the fail method
+						pushRequest.isInProcessing = false;
+						handler.post(() -> finalCallbacks.onFail.accept(messageSendNetworkException));
+						
+						//Skipping the remainder of the iteration
+						//continue;
 					}
-					
-					//Getting the checksum
-					byte[] checksum = messageDigest.digest();
-					
-					//Running on the main thread
-					handler.post(() -> {
-						//Getting the connection service
-						ConnectionService newConnectionService = ConnectionService.getInstance();
-						if(newConnectionService == null) {
-							finalCallbacks.onFail(messageSendNetworkException);
-							return;
-						}
-						
-						//Notifying the callback listener
-						finalCallbacks.onUploadFinished(checksum);
-						
-						//Creating the response manager
-						ConnectionService.MessageResponseManager responseManager = new ConnectionService.MessageResponseManager() {
-							//Forwarding the event to the callbacks
-							@Override
-							void onSuccess() {
-								finalCallbacks.onResponseReceived();
-							}
-							
-							@Override
-							void onFail(byte resultCode) {
-								finalCallbacks.onFail(resultCode);
-							}
-						};
-						
-						//Adding the request and starting the timer
-						newConnectionService.messageSendRequests.put(requestID, responseManager);
-						responseManager.startTimer();
-					});
-					
-					//Saving the checksum
-					DatabaseManager.getInstance().updateAttachmentChecksum(request.attachmentID, checksum);
-				} catch(IOException | OutOfMemoryError exception) {
-					//Printing the stack trace
-					exception.printStackTrace();
-					
-					//Calling the fail method
-					handler.post(() -> finalCallbacks.onFail(messageSendIOException));
-					
-					//Skipping the remainder of the iteration
-					//continue;
-				} catch(WebsocketNotConnectedException exception) {
-					//Calling the fail method
-					handler.post(() -> finalCallbacks.onFail(messageSendNetworkException));
-					
-					//Skipping the remainder of the iteration
-					//continue;
 				}
+				
+				//Setting the processing flag to false
+				pushRequest.isInProcessing = false;
 			}
 			
-			//Telling the service that the thread is finished
-			if(service != null) service.fileUploadRequestThreadRunning.set(false);
+			//Checking if the service is valid
+			if(service != null) {
+				//Telling the service that the processing thread is finished
+				service.fileUploadRequestThreadRunning.set(false);
+				
+				//Clearing the current processing item
+				service.fileProcessingRequestCurrent.set(null);
+			}
 		}
 		
-		private FileUploadRequest pushQueue(ConnectionService service) {
+		private FileProcessingRequest pushQueue(ConnectionService service) {
 			if(service == null) return null;
-			return service.fileUploadRequestQueue.poll();
+			FileProcessingRequest request = service.fileProcessingRequestQueue.poll();
+			service.fileProcessingRequestCurrent.set(request);
+			return request;
 		}
 		
 		/* private FileUploadRequest pushQueue() {
@@ -5485,6 +5759,15 @@ public class ConnectionService extends Service {
 				return request;
 			}
 		} */
+	}
+	
+	static void removeDraftFileSync(ConversationManager.DraftFile draftFile) {
+		//Deleting the file and the file's parent directory (since each draft file is stored in its own folder to prevent name collisions)
+		draftFile.getFile().delete();
+		draftFile.getFile().getParentFile().delete();
+		
+		//Removing the draft reference from the database
+		DatabaseManager.getInstance().removeDraftReference(draftFile.getLocalID());
 	}
 	
 	private static class MassRetrievalThread extends Thread {
@@ -6261,9 +6544,11 @@ public class ConnectionService extends Service {
 					ConversationManager.GroupActionInfo groupActionInfo = (ConversationManager.GroupActionInfo) conversationItem;
 					
 					//Adding or removing the member on disk
-					if(groupActionInfo.actionType == Constants.groupActionInvite) {
-						DatabaseManager.getInstance().addConversationMember(parentConversation.getLocalID(), groupActionInfo.other, groupActionInfo.color = parentConversation.getNextUserColor());
-					} else if(groupActionInfo.actionType == Constants.groupActionLeave) DatabaseManager.getInstance().removeConversationMember(parentConversation.getLocalID(), groupActionInfo.other);
+					if(groupActionInfo.other != null) {
+						if(groupActionInfo.actionType == Constants.groupActionInvite) {
+							DatabaseManager.getInstance().addConversationMember(parentConversation.getLocalID(), groupActionInfo.other, groupActionInfo.color = parentConversation.getNextUserColor());
+						} else if(groupActionInfo.actionType == Constants.groupActionLeave) DatabaseManager.getInstance().removeConversationMember(parentConversation.getLocalID(), groupActionInfo.other);
+					}
 				} else if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) {
 					//Writing the new title to the database
 					DatabaseManager.getInstance().updateConversationTitle(((ConversationManager.ChatRenameActionInfo) conversationItem).title, parentConversation.getLocalID());

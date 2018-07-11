@@ -6,8 +6,9 @@
 	android:layout_marginEnd="@dimen/contenttile_margin"
 	android:background="@drawable/rounded_selectable_contenttile"
 	android:backgroundTint="?android:attr/colorButtonNormal"
-	android:orientation="vertical"
-	android:padding="5dp">
+	android:focusable="true"
+	android:clickable="true"
+	android:orientation="vertical">
 	<TextView
 		android:id="@+id/label"
 		android:layout_width="0px"
@@ -17,6 +18,9 @@
 		app:layout_constraintTop_toTopOf="parent"
 		app:layout_constraintBottom_toTopOf="@id/barrier_detail"
 		android:padding="1dp"
+		android:layout_marginLeft="5dp"
+		android:layout_marginRight="5dp"
+		android:layout_marginTop="5dp"
 		android:layout_marginBottom="2dp"
 		android:requiresFadingEdge="vertical"
 		android:text="File name"
@@ -35,6 +39,8 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:src="@drawable/file"
+		android:layout_marginStart="5dp"
+		android:layout_marginBottom="5dp"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintStart_toStartOf="parent"
 		android:tint="?android:attr/textColorSecondary" />
@@ -46,6 +52,8 @@
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintStart_toEndOf="@id/icon"
 		app:layout_constraintEnd_toEndOf="parent"
+		android:layout_marginEnd="5dp"
+		android:layout_marginBottom="5dp"
 		android:layout_marginStart="2dp"
 		android:text="File size"
 		android:ellipsize="end"
@@ -54,4 +62,10 @@
 		android:maxLines="2"
 		android:textAlignment="textEnd"
 		android:textColor="?android:attr/textColorSecondary" />
+	
+	<ViewStub
+		android:id="@+id/viewstub_selection"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:layout="@layout/layout_attachment_tileselection" />
 </android.support.constraint.ConstraintLayout>

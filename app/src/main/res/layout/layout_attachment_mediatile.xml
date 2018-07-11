@@ -5,7 +5,9 @@
 	android:layout_height="@dimen/contenttile_size"
 	android:layout_marginEnd="@dimen/contenttile_margin"
 	android:background="@drawable/rounded_selectable_contenttile"
-	android:backgroundTint="?android:attr/colorButtonNormal">
+	android:backgroundTint="?android:attr/colorButtonNormal"
+	android:focusable="true"
+	android:clickable="true">
 	
 	<me.tagavari.airmessage.view.RoundedImageView
 		android:id="@+id/image"
@@ -21,4 +23,10 @@
 		android:layout_margin="3dp"
 		android:src="@drawable/gif"
 		android:visibility="gone" />
+	
+	<ViewStub
+		android:id="@+id/viewstub_selection"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:layout="@layout/layout_attachment_tileselection" />
 </FrameLayout>

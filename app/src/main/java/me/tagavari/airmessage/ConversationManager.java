@@ -350,7 +350,7 @@ class ConversationManager {
 		private String service;
 		private transient WeakReference<ArrayList<ConversationItem>> conversationItemsReference = null;
 		private transient WeakReference<ArrayList<MessageInfo>> ghostMessagesReference = null;
-		private List<MemberInfo> conversationMembers;
+		private ArrayList<MemberInfo> conversationMembers;
 		//private transient WeakReference<Messaging.RecyclerAdapter> arrayAdapterReference = null;
 		private transient ActivityCallbacks activityCallbacks = null;
 		//private transient View view;
@@ -364,6 +364,9 @@ class ConversationManager {
 		private transient WeakReference<MessageInfo> activityStateTargetLatestReference = null;
 		private transient int currentUserViewIndex;
 		private transient LightConversationItem lastItem;
+		private transient String draftMessage;
+		private transient ArrayList<String> lightDraftFiles = new ArrayList<>();
+		private transient ArrayList<DraftFile> draftFiles;
 		
 		//private int currentUserViewIndex = -1;
 		private transient Constants.ViewHolderSource<ItemViewHolder> viewHolderSource = null;
@@ -377,8 +380,9 @@ class ConversationManager {
 			this.localID = localID;
 			this.conversationState = conversationState;
 			
-			//Instantiating the conversation items list
+			//Instantiating the lists
 			conversationMembers = new ArrayList<>();
+			draftFiles = new ArrayList<>();
 		}
 		
 		ConversationInfo(long localID, String guid, ConversationState conversationState) {
@@ -387,11 +391,12 @@ class ConversationManager {
 			this.guid = guid;
 			this.conversationState = conversationState;
 			
-			//Instantiating the members list
+			//Instantiating the lists
 			conversationMembers = new ArrayList<>();
+			draftFiles = new ArrayList<>();
 		}
 		
-		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, List<MemberInfo> conversationMembers, String title, int unreadMessageCount, int conversationColor) {
+		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String title, int unreadMessageCount, int conversationColor, String draftMessage, ArrayList<DraftFile> draftFiles) {
 			//Setting the values
 			this.guid = guid;
 			this.localID = localID;
@@ -401,6 +406,8 @@ class ConversationManager {
 			this.title = title;
 			this.unreadMessageCount = unreadMessageCount;
 			this.conversationColor = conversationColor;
+			this.draftMessage = draftMessage;
+			this.draftFiles = draftFiles;
 		}
 		
 		void setConversationLists(ArrayList<ConversationItem> items, ArrayList<MessageInfo> ghostItems) {
@@ -547,7 +554,7 @@ class ConversationManager {
 				itemView.conversationMessage.setTextColor(Constants.resolveColorAttr(itemView.conversationMessage.getContext(), android.R.attr.textColorPrimary));
 				
 				itemView.conversationUnread.setVisibility(View.VISIBLE);
-				itemView.conversationUnread.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? context.getResources().getConfiguration().getLocales().get(0) : context.getResources().getConfiguration().locale, "%d", unreadMessageCount));
+				itemView.conversationUnread.setText(Constants.intToFormattedString(context.getResources(), unreadMessageCount));
 			} else {
 				itemView.conversationTitle.setTypeface(null, Typeface.NORMAL);
 				itemView.conversationTitle.setTextColor(Constants.resolveColorAttr(itemView.conversationTitle.getContext(), android.R.attr.textColorPrimary));
@@ -674,6 +681,22 @@ class ConversationManager {
 			//Updating the adapter
 			ActivityCallbacks updater = getActivityCallbacks();
 			if(updater != null) updater.listUpdateFully();
+		}
+		
+		void addDraftFile(DraftFile draft) {
+			draftFiles.add(draft);
+		}
+		
+		void removeDraftFile(DraftFile draft) {
+			draftFiles.remove(draft);
+		}
+		
+		void clearDraftFiles() {
+			draftFiles.clear();
+		}
+		
+		List<DraftFile> getDrafts() {
+			return draftFiles;
 		}
 		
 		ArrayList<ConversationItem> getConversationItems() {
@@ -1765,6 +1788,73 @@ class ConversationManager {
 		}
 	}
 	
+	static class DraftFile {
+		private final long localID;
+		private final File file;
+		private final String fileName;
+		private final long fileSize;
+		private final String fileType;
+		
+		private final File originalFile;
+		private final long modificationDate;
+		
+		DraftFile(long localID, File file, String fileName, long fileSize, String fileType) {
+			this.localID = localID;
+			this.file = file;
+			this.fileName = fileName;
+			this.fileSize = fileSize;
+			this.fileType = fileType;
+			this.originalFile = null;
+			this.modificationDate = 0;
+		}
+		
+		DraftFile(long localID, File file, String fileName, long fileSize, String fileType, File originalFile, long modificationDate) {
+			this.localID = localID;
+			this.file = file;
+			this.fileName = fileName;
+			this.fileSize = fileSize;
+			this.fileType = fileType;
+			this.originalFile = originalFile;
+			this.modificationDate = modificationDate;
+		}
+		
+		long getLocalID() {
+			return localID;
+		}
+		
+		File getFile() {
+			return file;
+		}
+		
+		String getFileName() {
+			return fileName;
+		}
+		
+		long getFileSize() {
+			return fileSize;
+		}
+		
+		String getFileType() {
+			return fileType;
+		}
+		
+		File getOriginalFile() {
+			return originalFile;
+		}
+		
+		long getModificationDate() {
+			return modificationDate;
+		}
+		
+		static String getRelativePath(Context context, File file) {
+			return MainApplication.getDraftDirectory(context).toURI().relativize(file.toURI()).getPath();
+		}
+		
+		static File getAbsolutePath(Context context, String path) {
+			return Paths.get(MainApplication.getDraftDirectory(context).getPath()).resolve(path).toFile();
+		}
+	}
+	
 	static class MemberInfo implements Serializable {
 		private static final long serialVersionUID = 0;
 		
@@ -2162,8 +2252,8 @@ class ConversationManager {
 			ConnectionService connectionService = ConnectionService.getInstance();
 			if(connectionService == null) {
 				//Starting the service
-				/* if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(new Intent(context, ConnectionService.class));
-				else context.startService(new Intent(context, ConnectionService.class)); */
+				//if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(new Intent(context, ConnectionService.class));
+				//else context.startService(new Intent(context, ConnectionService.class));
 				context.startService(new Intent(context, ConnectionService.class));
 				
 				//Telling the response manager
@@ -2205,107 +2295,90 @@ class ConversationManager {
 				//Getting the attachment
 				AttachmentInfo attachmentInfo = attachments.get(0);
 				
+				//Returning false if the attachment is not suitable
+				if(attachmentInfo.getDraftingPushRequest() == null) return false;
+				
+				//Constructing the push request
+				ConnectionService.FilePushRequest request = attachmentInfo.getDraftingPushRequest();
+				request.setAttachmentID(attachmentInfo.getLocalID());
+				request.setUploadRequested(true);
+				request.getCallbacks().onStart = () -> {
+					//Updating the progress bar
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
+					newViewHolder.progressSend.setProgress(0);
+				};
+				request.getCallbacks().onAttachmentPreparationFinished = file -> {
+					//Setting the attachment data
+					attachmentInfo.file = file;
+					attachmentInfo.fileUri = null;
+					
+					//Getting the context
+					Context newContext = contextReference.get();
+					if(newContext == null) return;
+					
+					//Updating the view
+					AttachmentInfo.ViewHolder attachmentViewHolder = (AttachmentInfo.ViewHolder) attachmentInfo.getViewHolder();
+					if(attachmentViewHolder != null) {
+						attachmentViewHolder.groupDownload.setVisibility(View.GONE);
+						attachmentViewHolder.groupContent.setVisibility(View.GONE);
+						attachmentViewHolder.groupProcessing.setVisibility(View.GONE);
+						if(attachmentViewHolder.groupFailed != null) attachmentViewHolder.groupFailed.setVisibility(View.GONE);
+						attachmentInfo.updateContentView(attachmentViewHolder, newContext);
+					}
+				};
+				request.getCallbacks().onUploadProgress = value -> {
+					//Setting the send progress
+					sendProgress = value;
+					
+					//Updating the progress bar
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
+					newViewHolder.progressSend.setProgress(value);
+				};
+				request.getCallbacks().onUploadFinished = checksum -> {
+					//Setting the checksum
+					attachmentInfo.setFileChecksum(checksum);
+					
+					//Updating the progress bar
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
+					newViewHolder.progressSend.setProgress(1);
+				};
+				request.getCallbacks().onUploadResponseReceived = () -> {
+					//Forwarding the event to the response manager
+					messageResponseManager.onSuccess();
+					
+					//Setting the message as not sending
+					isSending = false;
+					
+					//Getting the view
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
+					
+					//Hiding the progress bar
+					TransitionManager.beginDelayedTransition((ViewGroup) newViewHolder.itemView);
+					newViewHolder.progressSend.setVisibility(View.GONE);
+				};
+				request.getCallbacks().onFail = resultCode -> {
+					//Forwarding the event to the response manager
+					messageResponseManager.onFail(resultCode);
+					
+					//Setting the message as not sending
+					isSending = false;
+					
+					//Hiding the progress bar
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
+					newViewHolder.progressSend.setVisibility(View.GONE);
+				};
+				
+				//Queuing the request
+				connectionService.addFileProcessingRequest(request);
+				
 				//Setting the upload values
 				isSending = true;
 				sendProgress = -1;
-				
-				//Creating the callbacks
-				ConnectionService.FileUploadRequestCallbacks callbacks = new ConnectionService.FileUploadRequestCallbacks() {
-					@Override
-					public void onStart() {
-						//Getting the view
-						ViewHolder viewHolder = getViewHolder();
-						if(viewHolder == null) return;
-						
-						//Updating the progress bar
-						viewHolder.progressSend.setProgress(0);
-					}
-					
-					@Override
-					public void onCopyFinished(File location) {
-						//Setting the data
-						AttachmentInfo attachmentInfo = attachments.get(0);
-						attachmentInfo.file = location;
-						attachmentInfo.fileUri = null;
-						
-						//Getting the context
-						Context context = contextReference.get();
-						if(context == null) return;
-						
-						//Updating the view
-						AttachmentInfo.ViewHolder attachmentViewHolder = (AttachmentInfo.ViewHolder) attachmentInfo.getViewHolder();
-						if(attachmentViewHolder != null) {
-							attachmentViewHolder.groupDownload.setVisibility(View.GONE);
-							attachmentViewHolder.groupContent.setVisibility(View.GONE);
-							attachmentViewHolder.groupProcessing.setVisibility(View.GONE);
-							if(attachmentViewHolder.groupFailed != null) attachmentViewHolder.groupFailed.setVisibility(View.GONE);
-							attachmentInfo.updateContentView(attachmentViewHolder, context);
-						}
-					}
-					
-					@Override
-					public void onUploadFinished(byte[] checksum) {
-						//Setting the checksum
-						attachments.get(0).setFileChecksum(checksum);
-						
-						//Getting the view
-						ViewHolder viewHolder = getViewHolder();
-						if(viewHolder == null) return;
-						
-						//Updating the progress bar
-						viewHolder.progressSend.setProgress(1);
-					}
-					
-					@Override
-					public void onResponseReceived() {
-						//Forwarding the event to the response manager
-						messageResponseManager.onSuccess();
-						
-						//Setting the message as not sending
-						isSending = false;
-						
-						//Getting the view
-						ViewHolder viewHolder = getViewHolder();
-						if(viewHolder == null) return;
-						
-						//Hiding the progress bar
-						TransitionManager.beginDelayedTransition((ViewGroup) viewHolder.itemView);
-						viewHolder.progressSend.setVisibility(View.GONE);
-					}
-					
-					@Override
-					public void onFail(byte resultCode) {
-						//Forwarding the event to the response manager
-						messageResponseManager.onFail(resultCode);
-						
-						//Setting the message as not sending
-						isSending = false;
-						
-						//Getting the view
-						ViewHolder viewHolder = getViewHolder();
-						if(viewHolder == null) return;
-						
-						//Hiding the progress bar
-						viewHolder.progressSend.setVisibility(View.GONE);
-					}
-					
-					@Override
-					public void onProgress(float value) {
-						//Setting the send progress
-						sendProgress = value;
-						
-						//Getting the view
-						ViewHolder viewHolder = getViewHolder();
-						if(viewHolder == null) return;
-						
-						//Updating the progress bar
-						viewHolder.progressSend.setProgress(value);
-					}
-				};
-				
-				//Sending the attachment
-				if(attachmentInfo.file != null) connectionService.queueUploadRequest(callbacks, attachmentInfo.file, getConversationInfo(), attachmentInfo.localID);
-				else connectionService.queueUploadRequest(callbacks, attachmentInfo.fileUri, getConversationInfo(), attachmentInfo.localID);
 				
 				//Returning true
 				return true;
@@ -2432,7 +2505,7 @@ class ConversationManager {
 			//LinearLayout view = (LinearLayout) viewHolder.itemView;
 			
 			//Getting the pool source
-			Messaging.RecyclerAdapter.PoolSource poolSource = viewHolder.getRemovePoolSource();
+			Messaging.MessageListRecyclerAdapter.PoolSource poolSource = viewHolder.getRemovePoolSource();
 			
 			SparseArray<List<MessageComponent.ViewHolder>> componentViewHolderList = new SparseArray<>();
 			if(!viewHolder.messageComponents.isEmpty()) {
@@ -3139,7 +3212,7 @@ class ConversationManager {
 			
 			final List<MessageComponent.ViewHolder> messageComponents = new ArrayList<>();
 			
-			private Messaging.RecyclerAdapter.PoolSource poolSource = null;
+			private Messaging.MessageListRecyclerAdapter.PoolSource poolSource = null;
 			
 			ViewHolder(View view) {
 				super(view);
@@ -3175,13 +3248,13 @@ class ConversationManager {
 				profileImage = profileGroup.findViewById(R.id.profile_image);
 			}
 			
-			Messaging.RecyclerAdapter.PoolSource getRemovePoolSource() {
-				Messaging.RecyclerAdapter.PoolSource currentPoolSource = poolSource;
+			Messaging.MessageListRecyclerAdapter.PoolSource getRemovePoolSource() {
+				Messaging.MessageListRecyclerAdapter.PoolSource currentPoolSource = poolSource;
 				poolSource = null;
 				return currentPoolSource;
 			}
 			
-			void setPoolSource(Messaging.RecyclerAdapter.PoolSource poolSource) {
+			void setPoolSource(Messaging.MessageListRecyclerAdapter.PoolSource poolSource) {
 				this.poolSource = poolSource;
 			}
 			
@@ -3903,6 +3976,7 @@ class ConversationManager {
 		File file = null;
 		byte[] fileChecksum = null;
 		Uri fileUri = null;
+		ConnectionService.FilePushRequest draftingPushRequest;
 		
 		//Creating the attachment request values
 		boolean isFetching = false;
@@ -4432,6 +4506,14 @@ class ConversationManager {
 			return fileType;
 		}
 		
+		ConnectionService.FilePushRequest getDraftingPushRequest() {
+			return draftingPushRequest;
+		}
+		
+		void setDraftingPushRequest(ConnectionService.FilePushRequest draftingPushRequest) {
+			this.draftingPushRequest = draftingPushRequest;
+		}
+		
 		//abstract ViewHolder createViewHolder(Context context, ViewGroup parent);
 		
 		static abstract class ViewHolder extends MessageComponent.ViewHolder {
@@ -4699,7 +4781,7 @@ class ConversationManager {
 				if(fileName.length() <= substringStart) return;
 				
 				//Getting the file mime type
-				String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substring(substringStart));
+				//String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substring(substringStart));
 				
 				//Creating a content URI
 				Uri content = FileProvider.getUriForFile(activity, MainApplication.fileAuthority, file);
@@ -4707,7 +4789,7 @@ class ConversationManager {
 				//Launching the content viewer
 				Intent intent = new Intent();
 				intent.setAction(Intent.ACTION_VIEW);
-				intent.setDataAndType(content, mimeType);
+				intent.setDataAndType(content, fileType);
 				intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 				if(intent.resolveActivity(activity.getPackageManager()) != null) activity.startActivity(intent);
 				else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();

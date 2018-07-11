@@ -12,6 +12,7 @@ import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Parcel;
 import android.provider.OpenableColumns;
 import android.support.annotation.AttrRes;
@@ -32,7 +33,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.Transformation;
-import android.webkit.MimeTypeMap;
 import android.widget.TextView;
 import android.widget.Toolbar;
 
@@ -47,10 +47,14 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
+
+import java9.util.function.BiConsumer;
+import java9.util.function.Consumer;
 
 public class Constants {
 	//Creating the constants
@@ -162,7 +166,7 @@ public class Constants {
 		if(missingPermissions.isEmpty()) return false;
 		
 		//Requesting the permission
-		ActivityCompat.requestPermissions(activity, missingPermissions.toArray(new String[]{}), requestID);
+		ActivityCompat.requestPermissions(activity, missingPermissions.toArray(new String[0]), requestID);
 		
 		//Returning true
 		return true;
@@ -214,6 +218,15 @@ public class Constants {
 			File[] childFiles = file.listFiles();
 			if(childFiles != null) for(File child : childFiles) recursiveDelete(child);
 			file.delete();
+		}
+	}
+	
+	static void recursiveInvalidate(ViewGroup layout) {
+		View child;
+		for (int i = 0; i < layout.getChildCount(); i++) {
+			child = layout.getChildAt(i);
+			child.invalidate();
+			if(child instanceof ViewGroup) recursiveInvalidate((ViewGroup) child);
 		}
 	}
 	
@@ -269,13 +282,26 @@ public class Constants {
 		}
 	}
 	
-	static File findFreeFile(File directory, String fileName) {
-		return findFreeFile(directory, fileName, "_", 0);
+	static File findFreeFile(File directory, boolean splitFileExtension) {
+		return findFreeFile(directory, "", splitFileExtension, "", 0);
 	}
 	
-	static File findFreeFile(File directory, String fileName, String separator, int startIndex) {
-		//Creating the file
-		File file = new File(directory, fileName);
+	static File findFreeFile(File directory, String fileName, boolean splitFileExtension) {
+		return findFreeFile(directory, fileName, splitFileExtension, "_", 0);
+	}
+	
+	/**
+	 * Finds a free file in the specified directory based on the file name by appending a counter to the end, increasing it until a suitable option is found
+	 * @param directory the directory to find a file in
+	 * @param fileName the name of the file
+	 * @param splitFileExtension if the counter should be placed between the file's name and the file's extension
+	 * @param separator a string of characters to place between the file's name and the file's counter
+	 * @param startIndex the number to start the counter at
+	 * @return the first available file found
+	 */
+	static File findFreeFile(File directory, String fileName, boolean splitFileExtension, String separator, int startIndex) {
+		//Creating the default file
+		File file = new File(directory, fileName.isEmpty() ? separator + startIndex : fileName);
 		
 		//Checking if the file directory doesn't exist
 		if(!directory.exists()) {
@@ -286,14 +312,25 @@ public class Constants {
 			return file;
 		}
 		
-		//Getting the file name and extension
-		String[] fileData = file.getName().split("\\.(?=[^.]+$)");
-		String baseFileName = fileData[0];
-		String fileExtension = fileData.length > 1 ? fileData[1] : "";
-		int currentIndex = startIndex;
+		//Returning the file if it doesn't exist
+		if(!file.exists()) return file;
 		
-		//Finding a free file
-		while(file.exists()) file = new File(directory, baseFileName + separator + currentIndex++ + '.' + fileExtension);
+		if(splitFileExtension) {
+			//Getting the file name and extension
+			String[] fileData = fileName.split("\\.(?=[^.]+$)");
+			String baseFileName = fileData[0];
+			String fileExtension = fileData.length > 1 ? fileData[1] : "";
+			
+			//Finding the first free file
+			do {
+				file = new File(directory, baseFileName + separator + startIndex++ + '.' + fileExtension);
+			} while(file.exists());
+		} else {
+			//Finding the first free file
+			do {
+				file = new File(directory, fileName + separator + startIndex++);
+			} while(file.exists());
+		}
 		
 		//Returning the file
 		return file;
@@ -357,13 +394,17 @@ public class Constants {
 		return context.getContentResolver().getType(uri);
 	}
 	
-	static String getMimeType(File file) {
+	/* static String getMimeType(File file) {
 		String type = null;
 		String extension = MimeTypeMap.getFileExtensionFromUrl(file.getPath());
-		if (extension != null) {
+		if(extension != null) {
 			type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
 		}
 		return type;
+	} */
+	
+	static String getMimeType(Context context, File file) {
+		return context.getContentResolver().getType(Uri.fromFile(file));
 	}
 	
 	interface ResultCallback<T> {
@@ -685,9 +726,9 @@ public class Constants {
 		}
 	}
 	
-	interface BiConsumer<A1, A2> {
+	/* interface BiConsumer<A1, A2> {
 		void accept(A1 a1, A2 a2);
-	}
+	} */
 	
 	static boolean checkBrokenPipe(IOException exception) {
 		return exception.getMessage().toLowerCase().contains("broken pipe");
@@ -748,5 +789,81 @@ public class Constants {
 		int exp = (int) (Math.log(bytes) / Math.log(unit));
 		String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp - 1) + (si ? "" : "i");
 		return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
+	}
+	
+	public static String intToFormattedString(int value) {
+		return String.format(Locale.getDefault(), "%d", value);
+	}
+	
+	public static String intToFormattedString(Resources resources, int value) {
+		return String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? resources.getConfiguration().getLocales().get(0) : resources.getConfiguration().locale, "%d", value);
+	}
+	
+	/* public static abstract class BindingViewHolder extends RecyclerView.ViewHolder {
+		public BindingViewHolder(View itemView) {
+			super(itemView);
+		}
+		
+		abstract BindingViewHolder bindView(View view);
+	} */
+	
+	public static class WeakRunnable implements Runnable {
+		private WeakReference<Runnable> reference = null;
+		
+		void set(Runnable runnable) {
+			reference = new WeakReference<>(runnable);
+		}
+		
+		Runnable get() {
+			return reference == null ? null : reference.get();
+		}
+		
+		@Override
+		public void run() {
+			if(reference == null) return;
+			Runnable runnable = reference.get();
+			if(runnable == null) return;
+			runnable.run();
+		}
+	}
+	
+	public static class WeakConsumer<T> implements Consumer<T> {
+		private WeakReference<Consumer<T>> reference = null;
+		
+		void set(Consumer<T> consumer) {
+			reference = new WeakReference<>(consumer);
+		}
+		
+		Consumer<T> get() {
+			return reference == null ? null : reference.get();
+		}
+		
+		@Override
+		public void accept(T t) {
+			if(reference == null) return;
+			Consumer<T> consumer = reference.get();
+			if(consumer == null) return;
+			consumer.accept(t);
+		}
+	}
+	
+	public static class WeakBiConsumer<T, U> implements BiConsumer<T, U> {
+		private WeakReference<BiConsumer<T, U>> reference = null;
+		
+		void set(BiConsumer<T, U> consumer) {
+			reference = new WeakReference<>(consumer);
+		}
+		
+		BiConsumer<T, U> get() {
+			return reference == null ? null : reference.get();
+		}
+		
+		@Override
+		public void accept(T t, U u) {
+			if(reference == null) return;
+			BiConsumer<T, U> consumer = reference.get();
+			if(consumer == null) return;
+			consumer.accept(t, u);
+		}
 	}
 }

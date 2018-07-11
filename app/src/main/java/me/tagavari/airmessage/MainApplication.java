@@ -6,6 +6,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -14,8 +15,6 @@ import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatDelegate;
 
-import com.bumptech.glide.annotation.GlideModule;
-import com.bumptech.glide.module.AppGlideModule;
 import com.crashlytics.android.Crashlytics;
 import com.crashlytics.android.core.CrashlyticsCore;
 
@@ -38,6 +37,7 @@ public class MainApplication extends Application {
 	
 	static final String dirNameDownload = "downloads";
 	static final String dirNameUpload = "uploads";
+	static final String dirNameDraft = "draft";
 	
 	private static final String sharedPreferencesConnectivityFile = "connectivity";
 	static final String sharedPreferencesConnectivityKeyHostname = "hostname";
@@ -169,6 +169,7 @@ public class MainApplication extends Application {
 		//Preparing the subdirectories
 		prepareDirectory(new File(file, dirNameDownload));
 		prepareDirectory(new File(file, dirNameUpload));
+		prepareDirectory(new File(file, dirNameDraft));
 		
 		//Returning the media directory
 		return file;
@@ -182,9 +183,27 @@ public class MainApplication extends Application {
 		return new File(getAttachmentDirectory(context), dirNameUpload);
 	}
 	
+	static File getUploadTarget(Context context, String fileName) {
+		File directory = Constants.findFreeFile(getUploadDirectory(context), Long.toString(System.currentTimeMillis()), false);
+		prepareDirectory(directory);
+		return new File(directory, fileName);
+	}
+	
+	static File getDraftDirectory(Context context) {
+		return new File(getAttachmentDirectory(context), dirNameDraft);
+	}
+	
+	static File getDraftTarget(Context context, long conversationID, String fileName) {
+		File conversationDir = new File(getDraftDirectory(context), Long.toString(conversationID));
+		prepareDirectory(conversationDir);
+		File collisionDir = Constants.findFreeFile(conversationDir, false); //Collision-avoidance directory: creates a directory, starting at index 0 in the conversation directory, each to host 1 file
+		prepareDirectory(collisionDir);
+		return new File(collisionDir, fileName);
+	}
+	
 	static File findUploadFileTarget(Context context, String fileName) {
 		//Finding a free directory and assigning the file to it
-		return new File(Constants.findFreeFile(getUploadDirectory(context), Long.toString(System.currentTimeMillis())), fileName);
+		return new File(Constants.findFreeFile(getUploadDirectory(context), Long.toString(System.currentTimeMillis()), false), fileName);
 	}
 	
 	private static boolean prepareDirectory(File file) {
@@ -262,6 +281,10 @@ public class MainApplication extends Application {
 	
 	boolean isServerConfigured() {
 		return !getConnectivitySharedPrefs().getString(sharedPreferencesConnectivityKeyHostname, "").isEmpty();
+	}
+	
+	void startConnectionService() {
+		startService(new Intent(this, ConnectionService.class));
 	}
 	
 	public static BouncyCastleProvider getSecurityProvider() {

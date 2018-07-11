@@ -152,6 +152,7 @@
 		
 		<!-- Standard text input -->
 		<LinearLayout
+			android:id="@+id/inputbar_text"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:clipToPadding="false"
@@ -161,11 +162,12 @@
 			android:backgroundTint="?android:attr/colorBackgroundFloating"
 			android:elevation="2dp">
 			<!-- Attachment bar -->
-			<com.google.android.flexbox.FlexboxLayout
+			<android.support.v7.widget.RecyclerView
 				android:id="@+id/inputbar_attachments"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
-				android:orientation="horizontal"
+				android:overScrollMode="never"
+				android:requiresFadingEdge="vertical"
 				android:visibility="gone" />
 			
 			<LinearLayout
