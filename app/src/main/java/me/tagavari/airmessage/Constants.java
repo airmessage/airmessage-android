@@ -58,13 +58,13 @@ import java9.util.function.Consumer;
 
 public class Constants {
 	//Creating the constants
-	static final int permissionRecordAudio = 4;
+	/* static final int permissionRecordAudio = 4;
 	static final int permissionReadContacts = 5;
-	static final int permissionAccessCoarseLocation = 6;
+	static final int permissionAccessCoarseLocation = 6; */
 	
-	static final int historicCommunicationsWS = 2;
+	//static final int historicCommunicationsWS = 2;
 	
-	static final int intentDisconnectService = 6;
+	//static final int intentDisconnectService = 6;
 	
 	static final String intentParamTargetID = "targetID";
 	static final String intentParamGuid = "guid";

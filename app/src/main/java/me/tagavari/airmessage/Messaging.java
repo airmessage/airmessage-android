@@ -94,6 +94,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Objects;
 
 import java9.util.function.Consumer;
 import me.tagavari.airmessage.common.SharedValues;
@@ -109,6 +110,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	static final int messageChunkSize = 50;
 	static final int progressiveLoadThreshold = 10;
 	private static final String[] documentMimeTypes = {"text/*", "application/*", "font/*"};
+	
+	private static final int permissionRequestStorage = 0;
+	private static final int permissionRequestAudio = 1;
 	
 	private static final int intentPickGalleryFile = 1;
 	private static final int intentPickAudioFile = 2;
@@ -970,7 +974,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Setting up the permission request button
 			View permissionButton = viewGroup.findViewById(R.id.button_attachment_gallery_permission);
 			permissionButton.setVisibility(View.VISIBLE);
-			permissionButton.setOnClickListener(view -> Constants.requestPermission(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, intentPickGalleryFile));
+			permissionButton.setOnClickListener(view -> Constants.requestPermission(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, permissionRequestStorage));
 		} else {
 			//Hiding the permission request button and the failed text
 			viewGroup.findViewById(R.id.button_attachment_gallery_permission).setVisibility(View.GONE);
@@ -978,6 +982,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Setting up the list
 			RecyclerView list = viewGroup.findViewById(R.id.list_attachment_gallery);
+			list.setVisibility(View.VISIBLE);
 			list.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 			
 			//Checking if the files are loaded
@@ -988,7 +993,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Setting the list adapter
 				ArrayList<SimpleAttachmentInfo> itemList = new ArrayList<>();
 				for(int i = 0; i < ActivityViewModel.attachmentsTileCount; i++) itemList.add(null);
-				list.setAdapter(new AttachmentsGalleryRecyclerAdapter(itemList));
+				AttachmentsRecyclerAdapter<?> adapter = new AttachmentsGalleryRecyclerAdapter(itemList);
+				list.setAdapter(adapter);
 				
 				//Loading the media
 				viewModel.indexAttachmentsGallery(result -> {
@@ -1000,7 +1006,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						viewGroup.findViewById(R.id.list_attachment_gallery).setVisibility(View.GONE);
 						viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.VISIBLE);
 					}
-				});
+				}, adapter);
 			}
 		}
 	}
@@ -1031,7 +1037,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Setting up the permission request button
 			View permissionButton = viewGroup.findViewById(R.id.button_attachment_documents_permission);
 			permissionButton.setVisibility(View.VISIBLE);
-			permissionButton.setOnClickListener(view -> Constants.requestPermission(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, intentPickDocumentFile));
+			permissionButton.setOnClickListener(view -> Constants.requestPermission(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, permissionRequestStorage));
 		} else {
 			//Hiding the permission request button and the failed text
 			viewGroup.findViewById(R.id.button_attachment_documents_permission).setVisibility(View.GONE);
@@ -1039,6 +1045,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Setting up the list
 			RecyclerView list = viewGroup.findViewById(R.id.list_attachment_documents);
+			list.setVisibility(View.VISIBLE);
 			list.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 			
 			//Checking if the files are loaded
@@ -1049,7 +1056,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Setting the list adapter
 				List<SimpleAttachmentInfo> itemList = new ArrayList<>();
 				for(int i = 0; i < ActivityViewModel.attachmentsTileCount; i++) itemList.add(null);
-				list.setAdapter(new AttachmentsDocumentRecyclerAdapter(itemList));
+				AttachmentsRecyclerAdapter<?> adapter = new AttachmentsDocumentRecyclerAdapter(itemList);
+				list.setAdapter(adapter);
 				
 				//Loading the media
 				viewModel.indexAttachmentsDocument(result -> {
@@ -1061,7 +1069,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						viewGroup.findViewById(R.id.list_attachment_documents).setVisibility(View.GONE);
 						viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.VISIBLE);
 					}
-				});
+				}, adapter);
 			}
 		}
 	}
@@ -1816,44 +1824,53 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Returning if there are no grant results
 		if(grantResults.length == 0) return;
 		
-		//Checking if the request code is recording audio
-		if(requestCode == Constants.permissionRecordAudio) {
-			//Checking if the result is a denial
-			if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
-				//Creating a dialog
-				AlertDialog dialog = new AlertDialog.Builder(Messaging.this)
-						.setTitle(R.string.message_permissionrejected)
-						.setMessage(R.string.message_permissiondetails_microphone_failedrequest)
-						.setPositiveButton(R.string.action_retry, (dialogInterface, which) -> {
-							//Requesting microphone access
-							Constants.requestPermission(Messaging.this, new String[]{Manifest.permission.RECORD_AUDIO}, Constants.permissionRecordAudio);
-							
-							//Dismissing the dialog
-							dialogInterface.dismiss();
-						})
-						.setNeutralButton(R.string.screen_settings, (dialogInterface, which) -> {
-							//Showing the application settings
-							Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-							intent.setData(Uri.parse("package:" + getPackageName()));
-							startActivity(intent);
-							
-							//Dismissing the dialog
-							dialogInterface.dismiss();
-						})
-						.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
-						.create();
-				
-				//Configuring the dialog's listener
-				dialog.setOnShowListener(dialogInterface -> {
-					//Setting the button's colors
-					int color = viewModel.conversationInfo.getConversationColor();
-					dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
-					dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(color);
-					dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
-				});
-				
-				//Displaying the dialog
-				dialog.show();
+		switch(requestCode) {
+			case permissionRequestStorage:
+				//Checking if the request was granted
+				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+					//Updating the attachment sections
+					setupAttachmentsGallerySection();
+					setupAttachmentsDocumentsSection();
+				}
+				break;
+			case permissionRequestAudio: {
+				//Checking if the request was denied
+				if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
+					//Creating a dialog
+					AlertDialog dialog = new AlertDialog.Builder(Messaging.this)
+							.setTitle(R.string.message_permissionrejected)
+							.setMessage(R.string.message_permissiondetails_microphone_failedrequest)
+							.setPositiveButton(R.string.action_retry, (dialogInterface, which) -> {
+								//Requesting microphone access again
+								Constants.requestPermission(Messaging.this, new String[]{Manifest.permission.RECORD_AUDIO}, permissionRequestAudio);
+								
+								//Dismissing the dialog
+								dialogInterface.dismiss();
+							})
+							.setNeutralButton(R.string.screen_settings, (dialogInterface, which) -> {
+								//Showing the application settings
+								Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+								intent.setData(Uri.parse("package:" + getPackageName()));
+								startActivity(intent);
+								
+								//Dismissing the dialog
+								dialogInterface.dismiss();
+							})
+							.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
+							.create();
+					
+					//Configuring the dialog's listener
+					dialog.setOnShowListener(dialogInterface -> {
+						//Setting the button's colors
+						int color = viewModel.conversationInfo.getConversationColor();
+						dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
+						dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(color);
+						dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
+					});
+					
+					//Displaying the dialog
+					dialog.show();
+				}
 			}
 		}
 	}
@@ -2542,6 +2559,29 @@ public class Messaging extends AppCompatCompositeActivity {
 			notifyItemRangeChanged(0, fileList.size(), payloadUpdateIndex);
 		}
 		
+		void linkToQueue(List<QueuedFileInfo> queueList) {
+			//Iterating over the queue and item lists
+			for(QueuedFileInfo queuedItem : queueList) for(ListIterator<SimpleAttachmentInfo> loadedIterator = fileList.listIterator(); loadedIterator.hasNext();) {
+				//Getting the item information
+				int loadedIndex = loadedIterator.nextIndex();
+				if(usesActionButton()) loadedIndex += 1; //The action button takes up the first slot at the start
+				SimpleAttachmentInfo loadedItem = loadedIterator.next();
+				
+				//Skipping the remainder of the iteration if the items don't match
+				if(!Objects.equals(loadedItem.getFile(), queuedItem.getItem().getFile())) continue;
+				
+				//Updating the items' adapter information
+				queuedItem.getItem().setAdapterInformation(this, loadedIndex);
+				loadedItem.setAdapterInformation(this, loadedIndex);
+			}
+		}
+		
+		/* private int getItemIndex(SimpleAttachmentInfo item) {
+			int index = fileList.indexOf(item);
+			if(usesActionButton()) index -= 1;
+			return index;
+		} */
+		
 		abstract AttachmentTileHelper<?> getTileHelper();
 		
 		private class ViewHolderImpl extends RecyclerView.ViewHolder {
@@ -2647,7 +2687,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext();) {
 			draftIndex = iterator.nextIndex();
 			queuedItem = iterator.next();
-			if(queuedItem.item == item) {
+			if(Objects.equals(queuedItem.item.getFile(), item.getFile())) {
 				iterator.remove();
 				listAttachmentQueue.getAdapter().notifyItemRemoved(draftIndex);
 				break;
@@ -3056,18 +3096,15 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	/* private boolean checkAttachmentItemSelected(Object item) {
-		for(QueuedFileInfo queuedFileInfo : viewModel.draftQueueList) if(queuedFileInfo.item == item) return true;
-		return false;
-	} */
-	
 	/**
 	 * Retrieves the index of the selected attachment item
 	 * @param item the selected item
 	 * @return the index of the selected
 	 */
 	private int getDraftItemIndex(SimpleAttachmentInfo item) {
-		for(int i = 0; i < viewModel.draftQueueList.size(); i++) if(viewModel.draftQueueList.get(i).item == item) return i;
+		for(int i = 0; i < viewModel.draftQueueList.size(); i++) {
+			if(Objects.equals(viewModel.draftQueueList.get(i).item.getFile(), item.getFile())) return i;
+		}
 		return -1;
 	}
 	
@@ -3297,7 +3334,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		SimpleAttachmentInfo(ConversationManager.DraftFile draft) {
-			this(draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getFileSize(), draft.getModificationDate());
+			this(draft.getOriginalFile(), draft.getFileType(), draft.getFileName(), draft.getFileSize(), draft.getModificationDate());
 		}
 		
 		File getFile() {
@@ -3744,7 +3781,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		private boolean setupMediaRecorder(Activity activity) {
 			//Returning false if the required permissions have not been granted
-			if(Constants.requestPermission(activity, new String[]{Manifest.permission.RECORD_AUDIO}, Constants.permissionRecordAudio)) {
+			if(Constants.requestPermission(activity, new String[]{Manifest.permission.RECORD_AUDIO}, permissionRequestAudio)) {
 				//Notifying the user via a toast
 				Toast.makeText(activity, R.string.message_permissiondetails_microphone_missing, Toast.LENGTH_SHORT).show();
 				
@@ -3766,11 +3803,11 @@ public class Messaging extends AppCompatCompositeActivity {
 			return true;
 		}
 		
-		void indexAttachmentsGallery(AttachmentsLoadCallbacks listener) {
-			indexAttachmentsFromMediaStore(listener, attachmentTypeGallery, MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO);
+		void indexAttachmentsGallery(AttachmentsLoadCallbacks listener, AttachmentsRecyclerAdapter<?> adapter) {
+			indexAttachmentsFromMediaStore(listener, attachmentTypeGallery, MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO, adapter);
 		}
 		
-		void indexAttachmentsDocument(AttachmentsLoadCallbacks listener) {
+		void indexAttachmentsDocument(AttachmentsLoadCallbacks listener, AttachmentsRecyclerAdapter<?> adapter) {
 			StringBuilder selectionQuery = new StringBuilder(MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_NONE + " AND " + MediaStore.Files.FileColumns.SIZE + " <= " + ConnectionService.largestFileSize);
 			for(int i = 0; i < documentMimeTypes.length; i++) {
 				String mimeType = documentMimeTypes[i];
@@ -3781,7 +3818,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				if(i + 1 == documentMimeTypes.length) selectionQuery.append(")");
 			}
 			
-			indexAttachmentsFromMediaStore(listener, attachmentTypeDocument, selectionQuery.toString());
+			indexAttachmentsFromMediaStore(listener, attachmentTypeDocument, selectionQuery.toString(), adapter);
 		}
 		
 		byte getAttachmentState(int itemType) {
@@ -3793,7 +3830,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		@SuppressLint("StaticFieldLeak")
-		private void indexAttachmentsFromMediaStore(AttachmentsLoadCallbacks listener, int itemType, String msQuerySelection) {
+		private void indexAttachmentsFromMediaStore(AttachmentsLoadCallbacks listener, int itemType, String msQuerySelection, AttachmentsRecyclerAdapter<?> adapter) {
 			//Updating the listener
 			attachmentCallbacks[itemType] = new WeakReference<>(listener);
 			
@@ -3870,6 +3907,9 @@ public class Messaging extends AppCompatCompositeActivity {
 						
 						//Telling the listener
 						if(listener != null) listener.onLoadFinished(true);
+						
+						//Linking the queued items with the newly loaded items
+						adapter.linkToQueue(draftQueueList);
 					}
 				}
 			}.execute();

@@ -46,6 +46,9 @@ import java.util.regex.Pattern;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 
 public class Conversations extends AppCompatCompositeActivity {
+	//Creating the constants
+	private static final int permissionRequestContacts = 0;
+	
 	//Creating the plugin values
 	private ConversationsBase conversationsBasePlugin;
 	private PluginMessageBar pluginMessageBar;
@@ -215,7 +218,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
 		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
-		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts));
+		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, permissionRequestContacts));
 		infoBarSystemUpdate = pluginMessageBar.create(R.drawable.update, getResources().getString(R.string.message_serverupdate));
 		
 		//Restoring the state
@@ -420,7 +423,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
 		//Checking if the request code is contacts access
-		if(requestCode == Constants.permissionReadContacts) {
+		if(requestCode == permissionRequestContacts) {
 			//Checking if the result is a success
 			if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 				//Hiding the contact request info bar

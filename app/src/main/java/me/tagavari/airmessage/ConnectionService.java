@@ -1275,7 +1275,7 @@ public class ConnectionService extends Service {
 						
 						//Breaking
 						break;
-					} catch(IOException exception) {
+					} catch(IOException | RuntimeException exception) {
 						//Closing the connection
 						exception.printStackTrace();
 						closeConnection(intentResultCodeConnection, !connectionEstablished);
@@ -2264,7 +2264,7 @@ public class ConnectionService extends Service {
 			private static final int conversationItemTypeGroupAction = 1;
 			private static final int conversationItemTypeChatRename = 2;
 			
-			private List<Blocks.ConversationItem> deserializeConversationItems(ObjectInputStream in, int count) throws IOException {
+			private List<Blocks.ConversationItem> deserializeConversationItems(ObjectInputStream in, int count) throws IOException, RuntimeException {
 				//Creating the list
 				List<Blocks.ConversationItem> list = new ArrayList<>(count);
 				
@@ -2315,7 +2315,7 @@ public class ConnectionService extends Service {
 				return list;
 			}
 			
-			private List<Blocks.AttachmentInfo> deserializeAttachments(ObjectInputStream in, int count) throws IOException {
+			private List<Blocks.AttachmentInfo> deserializeAttachments(ObjectInputStream in, int count) throws IOException, RuntimeException {
 				//Creating the list
 				List<Blocks.AttachmentInfo> list = new ArrayList<>(count);
 				
@@ -2343,7 +2343,7 @@ public class ConnectionService extends Service {
 			private static final int modifierTypeSticker = 1;
 			private static final int modifierTypeTapback = 2;
 			
-			private List<Blocks.ModifierInfo> deserializeModifiers(ObjectInputStream in, int count) throws IOException {
+			private List<Blocks.ModifierInfo> deserializeModifiers(ObjectInputStream in, int count) throws IOException, RuntimeException {
 				//Creating the list
 				List<Blocks.ModifierInfo> list = new ArrayList<>(count);
 				
@@ -3268,7 +3268,7 @@ public class ConnectionService extends Service {
 						
 						//Breaking
 						break;
-					} catch(IOException exception) {
+					} catch(IOException | RuntimeException exception) {
 						//Closing the connection
 						exception.printStackTrace();
 						closeConnection(intentResultCodeConnection, false);
@@ -5268,10 +5268,10 @@ public class ConnectionService extends Service {
 					//Removing the file
 					ConnectionService.removeDraftFileSync(((FileRemovalRequest) request).draftFile);
 					
-					//Returning
+					//Finishing the request
 					request.isInProcessing = false;
 					handler.post(finalCallbacks.onRemovalFinish);
-					return;
+					continue;
 				}
 				
 				//Getting the request as a push request
@@ -5668,7 +5668,6 @@ public class ConnectionService extends Service {
 						//Saving the checksum
 						if(pushRequest.attachmentID != -1) {
 							DatabaseManager.getInstance().updateAttachmentChecksum(pushRequest.attachmentID, checksum);
-							System.out.println("Attachment checksum updated!");
 						}
 						
 						//Running on the main thread
