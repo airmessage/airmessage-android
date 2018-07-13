@@ -62,7 +62,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT,
 			Contract.ConversationEntry.COLUMN_NAME_ARCHIVED,
 			Contract.ConversationEntry.COLUMN_NAME_MUTED,
-			Contract.ConversationEntry.COLUMN_NAME_COLOR
+			Contract.ConversationEntry.COLUMN_NAME_COLOR,
+			Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE,
+			Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME
 	};
 	//private static final String SQL_FETCH_CONVERSATION_MESSAGES = "SELECT * FROM " + Contract.MessageEntry.TABLE_NAME + " WHERE " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? ORDER BY " + Contract.MessageEntry.COLUMN_NAME_DATE + " ASC;";
 	
@@ -93,17 +95,18 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.ConversationEntry.COLUMN_NAME_ARCHIVED + " INTEGER NOT NULL DEFAULT 0, " +
 			Contract.ConversationEntry.COLUMN_NAME_MUTED + " INTEGER NOT NULL DEFAULT 0," +
 			Contract.ConversationEntry.COLUMN_NAME_COLOR + " INTEGER NOT NULL DEFAULT " + 0xFF000000 + ',' + //Black
-			Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE + " TEXT" +
+			Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE + " TEXT," +
+			Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME + " INTEGER NOT NULL DEFAULT 0" +
 			");";
-	private static final String SQL_CREATE_TABLE_DRAFTS = "CREATE TABLE " + Contract.DraftEntry.TABLE_NAME + " (" +
-			Contract.DraftEntry._ID + " INTEGER PRIMARY KEY UNIQUE," +
-			Contract.DraftEntry.COLUMN_NAME_CHAT + " INTEGER NOT NULL," +
-			Contract.DraftEntry.COLUMN_NAME_FILE + " TEXT NOT NULL," +
-			Contract.DraftEntry.COLUMN_NAME_FILENAME + " TEXT NOT NULL," +
-			Contract.DraftEntry.COLUMN_NAME_FILESIZE + " INTEGER NOT NULL," +
-			Contract.DraftEntry.COLUMN_NAME_FILETYPE + " TEXT NOT NULL," +
-			Contract.DraftEntry.COLUMN_NAME_ORIGINALPATH + " TEXT," +
-			Contract.DraftEntry.COLUMN_NAME_MODIFICATIONDATE + " INTEGER" +
+	private static final String SQL_CREATE_TABLE_DRAFTS = "CREATE TABLE " + Contract.DraftFileEntry.TABLE_NAME + " (" +
+			Contract.DraftFileEntry._ID + " INTEGER PRIMARY KEY UNIQUE," +
+			Contract.DraftFileEntry.COLUMN_NAME_CHAT + " INTEGER NOT NULL," +
+			Contract.DraftFileEntry.COLUMN_NAME_FILE + " TEXT NOT NULL," +
+			Contract.DraftFileEntry.COLUMN_NAME_FILENAME + " TEXT NOT NULL," +
+			Contract.DraftFileEntry.COLUMN_NAME_FILESIZE + " INTEGER NOT NULL," +
+			Contract.DraftFileEntry.COLUMN_NAME_FILETYPE + " TEXT NOT NULL," +
+			Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH + " TEXT," +
+			Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE + " INTEGER" +
 			");";
 	private static final String SQL_CREATE_TABLE_MEMBERS = "CREATE TABLE " + Contract.MemberEntry.TABLE_NAME + " (" +
 			Contract.MemberEntry.COLUMN_NAME_MEMBER + " TEXT NOT NULL," +
@@ -310,22 +313,37 @@ class DatabaseManager extends SQLiteOpenHelper {
 					//Rebuilding the table (to disallow null values in the type column)
 					rebuildTable(database, "attachments", "CREATE TABLE attachments (" +
 							BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
-							Contract.AttachmentEntry.COLUMN_NAME_GUID + " TEXT UNIQUE," +
-							Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " INTEGER NOT NULL," +
-							Contract.AttachmentEntry.COLUMN_NAME_FILENAME + " TEXT," +
-							Contract.AttachmentEntry.COLUMN_NAME_FILETYPE + " TEXT NOT NULL," +
-							Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + " TEXT," +
-							Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " TEXT" +
+							"guid TEXT UNIQUE," +
+							"message INTEGER NOT NULL," +
+							"name TEXT," +
+							"type TEXT NOT NULL," +
+							"path TEXT," +
+							"checksum TEXT" +
 							");", false);
 				}
 			}
 			case 5:
 				//Adding the drafts table
-				database.execSQL(SQL_CREATE_TABLE_DRAFTS);
+				database.execSQL("CREATE TABLE draft_files (" +
+						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE," +
+						"chat INTEGER NOT NULL," +
+						"file TEXT NOT NULL," +
+						"file_name TEXT NOT NULL," +
+						"file_size INTEGER NOT NULL," +
+						"file_type TEXT NOT NULL," +
+						"original_path TEXT," +
+						"modification_date INTEGER" +
+						");");
+				
+				//Adding the "draft message" column
+				database.execSQL("ALTER TABLE conversations ADD draft_message TEXT;");
+				
+				//Adding the "draft update time" column
+				database.execSQL("ALTER TABLE conversations ADD draft_update_time INTEGER NOT NULL DEFAULT 0;");
 		}
 	}
 	
-	@Override
+	/* @Override
 	public void onDowngrade(SQLiteDatabase database, int oldVersion, int newVersion) {
 		//Dropping all tables
 		String[] tableNames = getTableNames(database);
@@ -336,7 +354,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Shrinking the database
 		//database.execSQL("VACUUM;");
-	}
+	} */
 	
 	static final class Contract {
 		//Private constructor to avoid instantiation
@@ -365,16 +383,16 @@ class DatabaseManager extends SQLiteOpenHelper {
 			static final String COLUMN_NAME_STATE = "state";
 			static final String COLUMN_NAME_SERVICE = "service";
 			static final String COLUMN_NAME_NAME = "name";
-			//static final String COLUMN_NAME_LASTVIEWED = "last_viewed";
 			static final String COLUMN_NAME_UNREADMESSAGECOUNT = "unread_message_count";
 			static final String COLUMN_NAME_ARCHIVED = "archived";
 			static final String COLUMN_NAME_MUTED = "muted";
 			static final String COLUMN_NAME_COLOR = "color";
 			static final String COLUMN_NAME_DRAFTMESSAGE = "draft_message";
+			static final String COLUMN_NAME_DRAFTUPDATETIME = "draft_update_time";
 		}
 		
-		static class DraftEntry implements BaseColumns {
-			static final String TABLE_NAME = "drafts";
+		static class DraftFileEntry implements BaseColumns {
+			static final String TABLE_NAME = "draft_files";
 			static final String COLUMN_NAME_CHAT = "chat";
 			static final String COLUMN_NAME_FILE = "file";
 			static final String COLUMN_NAME_FILENAME = "file_name";
@@ -613,6 +631,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 		int indexChatArchived = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED);
 		int indexChatMuted = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED);
 		int indexChatColor = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR);
+		int indexDraftMessage = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE);
+		int indexDraftUpdateTime = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME);
 		
 		//Iterating over the results
 		while(cursor.moveToNext()) {
@@ -626,16 +646,18 @@ class DatabaseManager extends SQLiteOpenHelper {
 			boolean chatMuted = cursor.getInt(indexChatMuted) != 0;
 			int chatColor = cursor.getInt(indexChatColor);
 			ConversationManager.LightConversationItem lightItem = getLightItem(context, chatID);
+			String draftMessage = cursor.getString(indexDraftMessage);
+			long draftUpdateTime = cursor.getLong(indexDraftUpdateTime);
 			
 			//Getting the members and drafts
 			ArrayList<ConversationManager.MemberInfo> conversationMembers = loadConversationMembers(database, chatID);
 			ArrayList<ConversationManager.DraftFile> draftFiles = loadDraftFiles(database, context, chatID);
 			
 			//Creating and adding the conversation info
-			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor, null, draftFiles);
+			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor, draftMessage, draftFiles, draftUpdateTime);
 			conversationInfo.setArchived(chatArchived);
 			conversationInfo.setMuted(chatMuted);
-			conversationInfo.setLastItem(lightItem);
+			conversationInfo.setLastItem(lightItem, false);
 			
 			//Adding the conversation to the list
 			conversationList.add(conversationInfo);
@@ -668,6 +690,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 		int indexChatArchived = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED);
 		int indexChatMuted = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED);
 		int indexChatColor = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR);
+		int indexDraftMessage = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE);
+		int indexDraftUpdateTime = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME);
 		
 		//Iterating over the results
 		while(cursor.moveToNext()) {
@@ -682,16 +706,18 @@ class DatabaseManager extends SQLiteOpenHelper {
 			boolean chatMuted = cursor.getInt(indexChatMuted) != 0;
 			int chatColor = cursor.getInt(indexChatColor);
 			ConversationManager.LightConversationItem lightItem = getLightItem(context, chatID);
+			String draftMessage = cursor.getString(indexDraftMessage);
+			long draftUpdateTime = cursor.getLong(indexDraftUpdateTime);
 			
 			//Getting the members and drafts
 			ArrayList<ConversationManager.MemberInfo> conversationMembers = loadConversationMembers(database, chatID);
 			ArrayList<ConversationManager.DraftFile> draftFiles = loadDraftFiles(database, context, chatID);
 			
 			//Creating and adding the conversation info
-			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatName, chatUnreadMessages, chatColor, null, draftFiles); //TODO load and use actual draft message
+			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatName, chatUnreadMessages, chatColor, draftMessage, draftFiles, draftUpdateTime);
 			conversationInfo.setArchived(chatArchived);
 			conversationInfo.setMuted(chatMuted);
-			conversationInfo.setLastItem(lightItem);
+			conversationInfo.setLastItem(lightItem, false);
 			
 			//Adding the conversation to the list
 			conversationList.add(conversationInfo);
@@ -1128,7 +1154,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		writableDatabase.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + "=?", new String[]{Long.toString(localID)});
 	} */
 	
-	ConversationManager.DraftFile addDraftReference(long conversationID, File file, String fileName, long fileSize, String fileType, File originalFile, long modificationDate) {
+	ConversationManager.DraftFile addDraftReference(long conversationID, File file, String fileName, long fileSize, String fileType, File originalFile, long modificationDate, long updateTime) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
@@ -1137,34 +1163,57 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Adding the file
 		ContentValues contentValues = new ContentValues();
-		contentValues.put(Contract.DraftEntry.COLUMN_NAME_CHAT, conversationID);
-		contentValues.put(Contract.DraftEntry.COLUMN_NAME_FILE, ConversationManager.DraftFile.getRelativePath(MainApplication.getInstance(), file));
-		contentValues.put(Contract.DraftEntry.COLUMN_NAME_FILENAME, fileName);
-		contentValues.put(Contract.DraftEntry.COLUMN_NAME_FILESIZE, fileSize);
-		contentValues.put(Contract.DraftEntry.COLUMN_NAME_FILETYPE, fileType);
+		contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_CHAT, conversationID);
+		contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_FILE, ConversationManager.DraftFile.getRelativePath(MainApplication.getInstance(), file));
+		contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_FILENAME, fileName);
+		contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_FILESIZE, fileSize);
+		contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_FILETYPE, fileType);
 		if(originalFile != null) {
-			contentValues.put(Contract.DraftEntry.COLUMN_NAME_ORIGINALPATH, originalFile.getAbsolutePath());
-			contentValues.put(Contract.DraftEntry.COLUMN_NAME_MODIFICATIONDATE, modificationDate);
+			contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH, originalFile.getAbsolutePath());
+			contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE, modificationDate);
 		}
 		
 		long localID;
 		try {
-			localID = database.insertOrThrow(Contract.DraftEntry.TABLE_NAME, null, contentValues);
+			localID = database.insertOrThrow(Contract.DraftFileEntry.TABLE_NAME, null, contentValues);
 		} catch(SQLiteException exception) {
 			exception.printStackTrace();
 			return null;
 		}
 		
+		//Updating the draft update time
+		updateConversationDraftUpdateTime(database, conversationID, updateTime);
+		
 		//Returning the new draft file information
 		return new ConversationManager.DraftFile(localID, file, fileName, fileSize, fileType, originalFile, modificationDate);
 	}
 	
-	void removeDraftReference(long draftID) {
+	void removeDraftReference(long draftID, long updateTime) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
+		//Checking if the update time should be updated
+		if(updateTime != -1) {
+			//Getting the conversation ID
+			try(Cursor cursor = database.query(Contract.DraftFileEntry.TABLE_NAME, new String[]{Contract.DraftFileEntry.COLUMN_NAME_CHAT}, Contract.DraftFileEntry._ID + " = ?", new String[]{Long.toString(draftID)}, null, null, null, "1")) {
+				if(cursor.moveToNext()) {
+					long conversationID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_CHAT));
+					
+					//Updating the draft update time
+					updateConversationDraftUpdateTime(database, conversationID, updateTime);
+				}
+			}
+		}
+		
 		//Removing the item
-		database.delete(Contract.DraftEntry.TABLE_NAME, Contract.DraftEntry._ID + " = ?", new String[]{Long.toString(draftID)});
+		database.delete(Contract.DraftFileEntry.TABLE_NAME, Contract.DraftFileEntry._ID + " = ?", new String[]{Long.toString(draftID)});
+	}
+	
+	private void updateConversationDraftUpdateTime(SQLiteDatabase database, long conversationID, long updateTime) {
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME, updateTime);
+		
+		database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " + ?", new String[]{Long.toString(conversationID)});
 	}
 	
 	ArrayList<ConversationManager.DraftFile> getDraftReferences(long conversationID) {
@@ -1172,21 +1221,21 @@ class DatabaseManager extends SQLiteOpenHelper {
 		SQLiteDatabase database = getReadableDatabase();
 		
 		//Querying the database
-		try(Cursor cursor = database.query(Contract.DraftEntry.TABLE_NAME,
-				new String[]{Contract.DraftEntry._ID, Contract.DraftEntry.COLUMN_NAME_FILE, Contract.DraftEntry.COLUMN_NAME_FILENAME, Contract.DraftEntry.COLUMN_NAME_FILESIZE, Contract.DraftEntry.COLUMN_NAME_FILETYPE, Contract.DraftEntry.COLUMN_NAME_ORIGINALPATH, Contract.DraftEntry.COLUMN_NAME_MODIFICATIONDATE},
-				Contract.DraftEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationID)},
+		try(Cursor cursor = database.query(Contract.DraftFileEntry.TABLE_NAME,
+				new String[]{Contract.DraftFileEntry._ID, Contract.DraftFileEntry.COLUMN_NAME_FILE, Contract.DraftFileEntry.COLUMN_NAME_FILENAME, Contract.DraftFileEntry.COLUMN_NAME_FILESIZE, Contract.DraftFileEntry.COLUMN_NAME_FILETYPE, Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH, Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE},
+				Contract.DraftFileEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationID)},
 				null, null, null)) {
 			//Reading the results
 			ArrayList<ConversationManager.DraftFile> draftList = new ArrayList<>();
 			
 			if(cursor.moveToNext()) {
-				int indexIdentifier = cursor.getColumnIndexOrThrow(Contract.DraftEntry._ID);
-				int indexFile = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_FILE);
-				int indexFileName = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_FILENAME);
-				int indexFileSize = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_FILESIZE);
-				int indexFileType = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_FILETYPE);
-				int indexOriginalPath = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_ORIGINALPATH);
-				int indexModificationDate = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_MODIFICATIONDATE);
+				int indexIdentifier = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry._ID);
+				int indexFile = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILE);
+				int indexFileName = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILENAME);
+				int indexFileSize = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILESIZE);
+				int indexFileType = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILETYPE);
+				int indexOriginalPath = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH);
+				int indexModificationDate = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE);
 				do {
 					String originalPath;
 					draftList.add(new ConversationManager.DraftFile(
@@ -1554,7 +1603,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Adding the conversation created message
 		ConversationManager.ConversationItem createdMessage = new ConversationManager.ChatCreationMessage(localID, System.currentTimeMillis(), conversationInfo);
-		conversationInfo.setLastItem(createdMessage.toLightConversationItemSync(context));
+		conversationInfo.setLastItem(createdMessage.toLightConversationItemSync(context), false);
 		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
 		
 		contentValues = new ContentValues();
@@ -1628,6 +1677,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 		boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) != 0;
 		int chatColor = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR));
 		ConversationManager.LightConversationItem lightItem = getLightItem(context, localID);
+		String draftMessage = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE));
+		long draftUpdateTime = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME));
 		
 		//Closing the cursor
 		cursor.close();
@@ -1640,10 +1691,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 		ArrayList<ConversationManager.DraftFile> draftFiles = loadDraftFiles(database, context, localID);
 		
 		//Creating the conversation info
-		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, conversationGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor, null, draftFiles);
+		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, conversationGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor, draftMessage, draftFiles, draftUpdateTime);
 		conversationInfo.setArchived(chatArchived);
 		conversationInfo.setMuted(chatMuted);
-		conversationInfo.setLastItem(lightItem);
+		conversationInfo.setLastItem(lightItem, false);
 		
 		//Returning the conversation info
 		return conversationInfo;
@@ -1676,6 +1727,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 			boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) != 0;
 			int chatColor = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR));
 			ConversationManager.LightConversationItem lightItem = getLightItem(context, localID);
+			String draftMessage = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE));
+			long draftUpdateTime = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME));
 			
 			//Closing the cursor
 			cursor.close();
@@ -1688,10 +1741,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 			ArrayList<ConversationManager.DraftFile> draftFiles = loadDraftFiles(database, context, localID);
 			
 			//Creating the conversation info
-			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, conversationGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor, null, draftFiles);
+			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, conversationGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor, draftMessage, draftFiles, draftUpdateTime);
 			conversationInfo.setArchived(chatArchived);
 			conversationInfo.setMuted(chatMuted);
-			conversationInfo.setLastItem(lightItem);
+			conversationInfo.setLastItem(lightItem, false);
 			
 			//Returning the conversation info
 			return conversationInfo;
@@ -1710,14 +1763,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 	
 	private ArrayList<ConversationManager.DraftFile> loadDraftFiles(SQLiteDatabase database, Context context, long chatID) {
 		ArrayList<ConversationManager.DraftFile> draftFiles = new ArrayList<>();
-		try(Cursor cursor = database.query(Contract.DraftEntry.TABLE_NAME, new String[]{Contract.DraftEntry._ID, Contract.DraftEntry.COLUMN_NAME_FILE, Contract.DraftEntry.COLUMN_NAME_FILENAME, Contract.DraftEntry.COLUMN_NAME_FILESIZE, Contract.DraftEntry.COLUMN_NAME_FILETYPE, Contract.DraftEntry.COLUMN_NAME_ORIGINALPATH, Contract.DraftEntry.COLUMN_NAME_MODIFICATIONDATE}, Contract.DraftEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(chatID)}, null, null, null)) {
-			int indexIdentifier = cursor.getColumnIndexOrThrow(Contract.DraftEntry._ID);
-			int indexFile = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_FILE);
-			int indexFileName = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_FILENAME);
-			int indexFileSize = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_FILESIZE);
-			int indexFileType = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_FILETYPE);
-			int indexOriginalPath = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_ORIGINALPATH);
-			int indexModificationDate = cursor.getColumnIndexOrThrow(Contract.DraftEntry.COLUMN_NAME_MODIFICATIONDATE);
+		try(Cursor cursor = database.query(Contract.DraftFileEntry.TABLE_NAME, new String[]{Contract.DraftFileEntry._ID, Contract.DraftFileEntry.COLUMN_NAME_FILE, Contract.DraftFileEntry.COLUMN_NAME_FILENAME, Contract.DraftFileEntry.COLUMN_NAME_FILESIZE, Contract.DraftFileEntry.COLUMN_NAME_FILETYPE, Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH, Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE}, Contract.DraftFileEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(chatID)}, null, null, null)) {
+			int indexIdentifier = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry._ID);
+			int indexFile = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILE);
+			int indexFileName = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILENAME);
+			int indexFileSize = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILESIZE);
+			int indexFileType = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILETYPE);
+			int indexOriginalPath = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH);
+			int indexModificationDate = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE);
 			while(cursor.moveToNext()) draftFiles.add(new ConversationManager.DraftFile(cursor.getLong(indexIdentifier), ConversationManager.DraftFile.getAbsolutePath(context, cursor.getString(indexFile)), cursor.getString(indexFileName), cursor.getLong(indexFileSize), cursor.getString(indexFileType), new File(cursor.getString(indexOriginalPath)), cursor.getLong(indexModificationDate)));
 		}
 		return draftFiles;
@@ -2620,6 +2673,16 @@ class DatabaseManager extends SQLiteOpenHelper {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, value);
+		
+		//Updating the conversation
+		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
+	}
+	
+	void updateConversationDraftMessage(long conversationID, String value, long time) {
+		//Creating the content values
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE, value);
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME, time);
 		
 		//Updating the conversation
 		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});

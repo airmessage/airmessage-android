@@ -4737,7 +4737,7 @@ public class ConnectionService extends Service {
 		fileProcessingRequestQueue.add(request);
 		
 		//Starting the thread if it isn't running
-		if(fileUploadRequestThreadRunning.compareAndSet(false, true)) new FileUploadRequestThread(getApplicationContext(), this).start();
+		if(fileUploadRequestThreadRunning.compareAndSet(false, true)) new FileProcessingRequestThread(getApplicationContext(), this).start();
 	}
 	
 	FileProcessingRequest searchFileProcessingQueue(long draftID) {
@@ -4867,6 +4867,7 @@ public class ConnectionService extends Service {
 		private File sendFile;
 		private Uri sendUri;
 		private String fileType;
+		private long updateTime;
 		private long fileModificationDate = 0;
 		private boolean uploadRequested;
 		private int state;
@@ -4878,7 +4879,7 @@ public class ConnectionService extends Service {
 		final String[] conversationMembers;
 		final String conversationService;
 		
-		private FilePushRequest(ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, boolean uploadRequested) {
+		private FilePushRequest(ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
 			//Setting the callbacks
 			//this.callbacks = callbacks;
 			
@@ -4887,6 +4888,7 @@ public class ConnectionService extends Service {
 			this.draftID = draftID;
 			this.uploadRequested = uploadRequested;
 			this.state = state;
+			this.updateTime = updateTime;
 			
 			if(conversationInfo.getState() == ConversationManager.ConversationInfo.ConversationState.READY) {
 				conversationExists = true;
@@ -4902,9 +4904,9 @@ public class ConnectionService extends Service {
 			conversationID = conversationInfo.getLocalID();
 		}
 		
-		FilePushRequest(File file, String fileType, long fileModificationDate, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, boolean uploadRequested) {
+		FilePushRequest(File file, String fileType, long fileModificationDate, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
 			//Calling the main constructor
-			this(conversationInfo, attachmentID, draftID, state, uploadRequested);
+			this(conversationInfo, attachmentID, draftID, state, updateTime, uploadRequested);
 			
 			//Setting the source values
 			sendFile = file;
@@ -4916,9 +4918,9 @@ public class ConnectionService extends Service {
 			//if(Paths.get(sendFile.toURI()).startsWith(MainApplication.getDraftDirectory(MainApplication.getInstance()).getPath())) state = stateQueued;
 		}
 		
-		FilePushRequest(Uri uri, String fileType, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, boolean uploadRequested) {
+		FilePushRequest(Uri uri, String fileType, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
 			//Calling the main constructor
-			this(conversationInfo, attachmentID, draftID, state, uploadRequested);
+			this(conversationInfo, attachmentID, draftID, state, updateTime, uploadRequested);
 			
 			//Setting the source values
 			sendFile = null;
@@ -4937,9 +4939,11 @@ public class ConnectionService extends Service {
 	
 	static class FileRemovalRequest extends FileProcessingRequest {
 		private final ConversationManager.DraftFile draftFile;
+		private final long updateTime;
 		
-		FileRemovalRequest(ConversationManager.DraftFile draftFile) {
+		FileRemovalRequest(ConversationManager.DraftFile draftFile, long updateTime) {
 			this.draftFile = draftFile;
+			this.updateTime = updateTime;
 		}
 	}
 	
@@ -5228,7 +5232,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	private static class FileUploadRequestThread extends Thread {
+	private static class FileProcessingRequestThread extends Thread {
 		//Creating the constants
 		private final float copyProgressValue = 0.2F;
 		
@@ -5239,7 +5243,7 @@ public class ConnectionService extends Service {
 		//Creating the other values
 		private final Handler handler = new Handler(Looper.getMainLooper());
 		
-		FileUploadRequestThread(Context context, ConnectionService service) {
+		FileProcessingRequestThread(Context context, ConnectionService service) {
 			contextReference = new WeakReference<>(context);
 			serviceReference = new WeakReference<>(service);
 		}
@@ -5265,8 +5269,11 @@ public class ConnectionService extends Service {
 				
 				//Checking if a removal has been requested
 				if(request instanceof FileRemovalRequest) {
+					//Getting the request
+					FileRemovalRequest removalRequest = (FileRemovalRequest) request;
+					
 					//Removing the file
-					ConnectionService.removeDraftFileSync(((FileRemovalRequest) request).draftFile);
+					ConnectionService.removeDraftFileSync(removalRequest.draftFile, removalRequest.updateTime);
 					
 					//Finishing the request
 					request.isInProcessing = false;
@@ -5446,7 +5453,7 @@ public class ConnectionService extends Service {
 						if(requestUpload) {
 							handler.post(() -> finalCallbacks.onAttachmentPreparationFinished.accept(targetFile));
 						} else {
-							ConversationManager.DraftFile draft = DatabaseManager.getInstance().addDraftReference(pushRequest.conversationID, targetFile, targetFile.getName(), targetFile.length(), pushRequest.fileType, originalFile, pushRequest.fileModificationDate);
+							ConversationManager.DraftFile draft = DatabaseManager.getInstance().addDraftReference(pushRequest.conversationID, targetFile, targetFile.getName(), targetFile.length(), pushRequest.fileType, originalFile, pushRequest.updateTime, pushRequest.fileModificationDate);
 							if(draft == null) throw new IOException("Failed to add draft reference to database");
 							pushRequest.draftID = draft.getLocalID();
 							
@@ -5518,7 +5525,7 @@ public class ConnectionService extends Service {
 						
 						//Removing the draft reference from the database
 						if(pushRequest.draftID != -1) {
-							DatabaseManager.getInstance().removeDraftReference(pushRequest.draftID);
+							DatabaseManager.getInstance().removeDraftReference(pushRequest.draftID, -1);
 							pushRequest.draftID = -1;
 						}
 						
@@ -5760,13 +5767,13 @@ public class ConnectionService extends Service {
 		} */
 	}
 	
-	static void removeDraftFileSync(ConversationManager.DraftFile draftFile) {
+	static void removeDraftFileSync(ConversationManager.DraftFile draftFile, long updateTime) {
 		//Deleting the file and the file's parent directory (since each draft file is stored in its own folder to prevent name collisions)
 		draftFile.getFile().delete();
 		draftFile.getFile().getParentFile().delete();
 		
 		//Removing the draft reference from the database
-		DatabaseManager.getInstance().removeDraftReference(draftFile.getLocalID());
+		DatabaseManager.getInstance().removeDraftReference(draftFile.getLocalID(), updateTime);
 	}
 	
 	private static class MassRetrievalThread extends Thread {
@@ -5965,7 +5972,7 @@ public class ConnectionService extends Service {
 						
 						//Updating the parent conversation's last item
 						if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
-							parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context));
+							parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context), false);
 					}
 					
 					//Updating the progress
@@ -6563,7 +6570,7 @@ public class ConnectionService extends Service {
 				}
 				//Otherwise updating the last conversation item
 				else if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
-					parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context));
+					parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context), false);
 			}
 			
 			{
@@ -6629,7 +6636,7 @@ public class ConnectionService extends Service {
 					{
 						boolean addItemResult = parentConversation.addConversationItems(context, conversationItems);
 						//Setting the last item if the conversation items couldn't be added
-						if(!addItemResult) parentConversation.setLastItemUpdate(context, conversationItems.get(conversationItems.size() - 1));
+						if(!addItemResult) parentConversation.setLastItemUpdate(context, conversationItems.get(conversationItems.size() - 1), false);
 					}
 					
 					//Iterating over the conversation items

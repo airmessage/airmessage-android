@@ -4,7 +4,8 @@
 	<string name="you">You</string>
 	<string name="to">To</string>
 	
-	<string name="prefix_you">You:</string>
+	<string name="prefix_you">You: %s</string>
+	<string name="prefix_draft">Draft: %s</string>
 	
 	<string name="action_send">Send</string>
 	<string name="action_next">Next</string>

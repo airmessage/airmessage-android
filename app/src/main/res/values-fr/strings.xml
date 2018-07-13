@@ -75,7 +75,8 @@
 	<string name="action_enable">Activer</string>
 	<string name="to">À</string>
 	<string name="you">"Vous"</string>
-	<string name="prefix_you">"Vous:"</string>
+	<string name="prefix_you">"Vous: %s"</string>
+	<string name="prefix_draft">"Broullion: %s"</string>
 	<string name="part_content_text">Texte</string>
 	<string name="part_content_image">Image</string>
 	<string name="part_content_video">Vidéo</string>

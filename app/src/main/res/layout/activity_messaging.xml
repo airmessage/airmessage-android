@@ -185,7 +185,7 @@
 					android:contentDescription="@string/action_addcontent"
 					android:focusable="true"
 					android:padding="12dp"
-					android:src="@drawable/add"
+					android:src="@drawable/add_circle"
 					android:tag="@string/tag_primarytint"
 					android:tint="@color/colorPrimary"
 					android:tooltipText="@string/action_addcontent" />
@@ -199,6 +199,7 @@
 					android:hint="@string/imperative_messageinput"
 					android:imeOptions="flagNoExtractUi"
 					android:inputType="text|textMultiLine|textAutoCorrect|textCapSentences"
+					android:textColor="?android:attr/textColorTertiary"
 					android:maxHeight="100dp"
 					android:maxLength="1000"
 					android:minHeight="48dp"

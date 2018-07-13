@@ -22,6 +22,7 @@ import android.os.Looper;
 import android.support.annotation.DrawableRes;
 import android.support.constraint.ConstraintLayout;
 import android.support.v4.content.FileProvider;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.text.format.DateUtils;
@@ -365,8 +366,8 @@ class ConversationManager {
 		private transient int currentUserViewIndex;
 		private transient LightConversationItem lastItem;
 		private transient String draftMessage;
-		private transient ArrayList<String> lightDraftFiles = new ArrayList<>();
 		private transient ArrayList<DraftFile> draftFiles;
+		private transient long draftUpdateTime;
 		
 		//private int currentUserViewIndex = -1;
 		private transient Constants.ViewHolderSource<ItemViewHolder> viewHolderSource = null;
@@ -396,7 +397,7 @@ class ConversationManager {
 			draftFiles = new ArrayList<>();
 		}
 		
-		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String title, int unreadMessageCount, int conversationColor, String draftMessage, ArrayList<DraftFile> draftFiles) {
+		ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String title, int unreadMessageCount, int conversationColor, String draftMessage, ArrayList<DraftFile> draftFiles, long draftUpdateTime) {
 			//Setting the values
 			this.guid = guid;
 			this.localID = localID;
@@ -408,6 +409,7 @@ class ConversationManager {
 			this.conversationColor = conversationColor;
 			this.draftMessage = draftMessage;
 			this.draftFiles = draftFiles;
+			this.draftUpdateTime = draftUpdateTime;
 		}
 		
 		void setConversationLists(ArrayList<ConversationItem> items, ArrayList<MessageInfo> ghostItems) {
@@ -530,12 +532,25 @@ class ConversationManager {
 				viewHolder.conversationTitle.setText(title);
 			});
 			
-			if(lastItem == null) {
-				itemView.conversationMessage.setText(R.string.part_unknown);
-				itemView.conversationTime.setText(R.string.part_unknown);
-			} else {
+			/*if(draftMessage != null) {
+				itemView.conversationMessage.setText(context.getResources().getString(R.string.prefix_draft, draftMessage));
+				itemView.conversationTime.setText("");
+			} else if(!draftFiles.isEmpty()) {
+				//Converting the draft list to a string resource list
+				ArrayList<Integer> draftStringRes = new ArrayList<>();
+				for(DraftFile draft : draftFiles) draftStringRes.add(getNameFromContentType(draft.getFileType()));
+				
+				String summary;
+				if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
+				else summary = context.getResources().getQuantityString(R.plurals.message_multipleattachments, draftStringRes.size(), draftStringRes.size());
+				itemView.conversationMessage.setText(context.getResources().getString(R.string.prefix_draft, summary));
+				itemView.conversationTime.setText("");
+			} else */if(lastItem != null) {
 				itemView.conversationMessage.setText(lastItem.getMessage());
 				updateTime(context, itemView);
+			} else {
+				itemView.conversationMessage.setText(R.string.part_unknown);
+				itemView.conversationTime.setText(R.string.part_unknown);
 			}
 		}
 		
@@ -683,20 +698,50 @@ class ConversationManager {
 			if(updater != null) updater.listUpdateFully();
 		}
 		
-		void addDraftFile(DraftFile draft) {
+		void addDraftFileUpdate(Context context, DraftFile draft, long updateTime) {
 			draftFiles.add(draft);
+			if(updateTime != -1) registerDraftChange(context, updateTime);
 		}
 		
-		void removeDraftFile(DraftFile draft) {
+		void removeDraftFileUpdate(Context context, DraftFile draft, long updateTime) {
 			draftFiles.remove(draft);
+			if(updateTime != -1) registerDraftChange(context, updateTime);
 		}
 		
-		void clearDraftFiles() {
+		void clearDraftsUpdate(Context context) {
+			draftMessage = null;
 			draftFiles.clear();
+			registerDraftChange(context, -1);
 		}
 		
 		List<DraftFile> getDrafts() {
 			return draftFiles;
+		}
+		
+		void setDraftMessageUpdate(Context context, String message, long updateTime) {
+			draftMessage = message;
+			if(updateTime != -1) registerDraftChange(context, updateTime);
+		}
+		
+		String getDraftMessage() {
+			return draftMessage;
+		}
+		
+		private void registerDraftChange(Context context, long updateTime) {
+			//Setting the update time
+			draftUpdateTime = updateTime;
+			
+			//Updating the last item
+			updateLastItem(context);
+			
+			//Updating the view
+			updateView(context);
+			
+			//Re-sorting the conversation
+			ConversationManager.sortConversation(this);
+			
+			//Updating the list
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 		}
 		
 		ArrayList<ConversationItem> getConversationItems() {
@@ -910,32 +955,49 @@ class ConversationManager {
 			return lastItem;
 		}
 		
-		void setLastItem(LightConversationItem lastItem) {
-			this.lastItem = lastItem;
+		boolean setLastItem(LightConversationItem item, boolean force) {
+			if(force || lastItem == null || (lastItem.getDate() < item.getDate() && !lastItem.isPinned())) {
+				lastItem = item;
+				return true;
+			} else return false;
 		}
 		
-		void setLastItemUpdate(Context context, ConversationItem lastConversationItem) {
+		void setLastItemUpdate(Context context, ConversationItem lastConversationItem, boolean force) {
 			//Setting the last item
-			lastItem = new LightConversationItem("", lastConversationItem.getDate());
-			lastConversationItem.getSummary(context, (wasTasked, result) -> lastItem.setMessage((String) result));
+			LightConversationItem item = new LightConversationItem("", lastConversationItem.getDate());
+			if(setLastItem(item, force)) lastConversationItem.getSummary(context, (wasTasked, result) -> item.setMessage((String) result));
 		}
 		
 		void updateLastItem(Context context) {
-			//Getting the list
-			ArrayList<ConversationItem> conversationItems = getConversationItems();
-			if(conversationItems == null) return;
-			
-			//Getting the last conversation item
-			ConversationItem lastConversationItem = conversationItems.get(conversationItems.size() - 1);
-			
-			//Setting the last item
-			lastItem = new LightConversationItem("", lastConversationItem.getDate());
-			lastConversationItem.getSummary(context, new Constants.ResultCallback<String>() {
-				@Override
-				public void onResult(boolean wasTasked, String result) {
-					lastItem.setMessage(result);
-				}
-			});
+			//Checking if there is a draft message
+			if(draftMessage != null) {
+				lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime);
+			} else if(!draftFiles.isEmpty()) {
+				//Converting the draft list to a string resource list
+				ArrayList<Integer> draftStringRes = new ArrayList<>();
+				for(DraftFile draft : draftFiles) draftStringRes.add(getNameFromContentType(draft.getFileType()));
+				
+				String summary;
+				if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
+				else summary = context.getResources().getQuantityString(R.plurals.message_multipleattachments, draftStringRes.size(), draftStringRes.size());
+				lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime);
+			} else {
+				//Getting the list
+				ArrayList<ConversationItem> conversationItems = getConversationItems();
+				if(conversationItems == null) return;
+				
+				//Getting the last conversation item
+				ConversationItem lastConversationItem = conversationItems.get(conversationItems.size() - 1);
+				
+				//Setting the last item
+				lastItem = new LightConversationItem("", lastConversationItem.getDate());
+				lastConversationItem.getSummary(context, new Constants.ResultCallback<String>() {
+					@Override
+					public void onResult(boolean wasTasked, String result) {
+						lastItem.setMessage(result);
+					}
+				});
+			}
 		}
 		
 		boolean addConversationItems(Context context, List<ConversationItem> list) {
@@ -1257,7 +1319,7 @@ class ConversationManager {
 			addConversationItemRelation(this, conversationItems, message, context, true);
 			
 			//Updating the last item
-			setLastItemUpdate(context, message);
+			setLastItemUpdate(context, message, false);
 			
 			//Updating the adapter
 			ActivityCallbacks updater = getActivityCallbacks();
@@ -3030,8 +3092,7 @@ class ConversationManager {
 		void getSummary(Context context, Constants.ResultCallback<String> callback) {
 			//Converting the attachment list to a string resource list
 			ArrayList<Integer> attachmentStringRes = new ArrayList<>();
-			for(AttachmentInfo attachment : attachments)
-				attachmentStringRes.add(getNameFromContentType(attachment.getContentType()));
+			for(AttachmentInfo attachment : attachments) attachmentStringRes.add(getNameFromContentType(attachment.getContentType()));
 			
 			//Returning the summary
 			callback.onResult(false, getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes));
@@ -3048,27 +3109,22 @@ class ConversationManager {
 		}
 		
 		static String getSummary(Context context, boolean isFromMe, String messageText, String sendStyle, List<Integer> attachmentStringRes) {
-			//Creating the prefix
-			String prefix = isFromMe ? context.getString(R.string.prefix_you) + " " : "";
-			
-			//Removing line breaks
-			String modifiedMessage = messageText != null ? messageText.replace('\n', ' ') : null;
+			//Creating the message variable
+			String message;
 			
 			//Applying invisible ink
-			if(Constants.appleSendStyleBubbleInvisibleInk.equals(sendStyle))
-				modifiedMessage = context.getString(R.string.message_messageeffect_invisibleink);
-			
-			//Setting the text if there is text
-			if(messageText != null) return prefix + modifiedMessage;
-			
+			if(Constants.appleSendStyleBubbleInvisibleInk.equals(sendStyle)) message = context.getString(R.string.message_messageeffect_invisibleink);
+			//Otherwise assigning the message to the message text (without line breaks)
+			else if(messageText != null) message = messageText.replace('\n', ' ');
 			//Setting the attachments if there are attachments
-			if(attachmentStringRes.size() == 1)
-				return prefix + context.getResources().getString(attachmentStringRes.get(0));
-			else if(attachmentStringRes.size() > 1)
-				return prefix + context.getResources().getQuantityString(R.plurals.message_multipleattachments, attachmentStringRes.size(), attachmentStringRes.size());
+			else if(attachmentStringRes.size() == 1) message = context.getResources().getString(attachmentStringRes.get(0));
+			else if(attachmentStringRes.size() > 1) message = context.getResources().getQuantityString(R.plurals.message_multipleattachments, attachmentStringRes.size(), attachmentStringRes.size());
+			//Otherwise setting the message to "unknown"
+			else message = context.getResources().getString(R.string.part_unknown);
 			
-			//Returning "unknown"
-			return context.getResources().getString(R.string.part_unknown);
+			//Returning the string with the message
+			if(isFromMe) return context.getString(R.string.prefix_you, message);
+			else return message;
 		}
 		
 		@Override
@@ -5998,11 +6054,19 @@ class ConversationManager {
 		//Creating the message values
 		private String message;
 		private final long date;
+		private final boolean isPinned;
 		
 		LightConversationItem(String message, long date) {
 			//Setting the values
 			this.message = message;
 			this.date = date;
+			this.isPinned = false;
+		}
+		
+		LightConversationItem(String message, long date, boolean isPinned) {
+			this.message = message;
+			this.date = date;
+			this.isPinned = isPinned;
 		}
 		
 		public String getMessage() {
@@ -6015,6 +6079,10 @@ class ConversationManager {
 		
 		long getDate() {
 			return date;
+		}
+		
+		boolean isPinned() {
+			return isPinned;
 		}
 	}
 	

@@ -271,11 +271,14 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Dequeuing the item
 			dequeueAttachment(queuedFile.getItem(), true, false);
-			viewModel.conversationInfo.removeDraftFile(queuedFile.getDraftFile());
+			viewModel.conversationInfo.removeDraftFileUpdate(this, queuedFile.getDraftFile(), -1);
 		}
 		
 		//Returning if there are no items to send
 		if(messageList.isEmpty()) return;
+		
+		//Clearing the conversation's drafts
+		viewModel.conversationInfo.clearDraftsUpdate(this);
 		
 		//Writing the messages to the database
 		new AddGhostMessageTask(getApplicationContext(), new GhostMessageFinishHandler()).execute(messageList.toArray(new ConversationManager.MessageInfo[0]));
@@ -387,7 +390,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						}
 						
 						//Creating a new request if there was no current request in the queue
-						if(currentRequest == null) currentRequest = new ConnectionService.FilePushRequest(draft.getFile(), draft.getFileType(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), ConnectionService.FilePushRequest.stateQueued, false);
+						if(currentRequest == null) currentRequest = new ConnectionService.FilePushRequest(draft.getFile(), draft.getFileType(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), ConnectionService.FilePushRequest.stateQueued, 0, false);
 						
 						//Assigning the request to the queued item
 						queuedItem.setFilePushRequest(currentRequest);
@@ -398,10 +401,13 @@ public class Messaging extends AppCompatCompositeActivity {
 					
 					//Showing the draft bar
 					listAttachmentQueue.setVisibility(View.VISIBLE);
+					
+					//Updating the send button
+					updateSendButton();
 				}
 				
-				//Updating the send button
-				updateSendButton();
+				//Restoring the draft message
+				if(messageInputField.getText().length() == 0) messageInputField.setText(viewModel.conversationInfo.getDraftMessage());
 				
 				/* //Finding the latest send effect
 				for(int i = viewModel.conversationItemList.size() - 1; i >= 0 && i >= viewModel.conversationItemList.size() - viewModel.conversationInfo.getUnreadMessageCount(); i--) {
@@ -700,6 +706,13 @@ public class Messaging extends AppCompatCompositeActivity {
 					((ConversationManager.MessageInfo) conversationItem).notifyPause();
 				}
 			}
+		}
+		
+		
+		//Checking if the activity is finishing
+		if(isFinishing()) {
+			//Saving the draft message
+			viewModel.applyDraftMessage(messageInputField.getText().toString());
 		}
 	}
 	
@@ -2568,7 +2581,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				SimpleAttachmentInfo loadedItem = loadedIterator.next();
 				
 				//Skipping the remainder of the iteration if the items don't match
-				if(!Objects.equals(loadedItem.getFile(), queuedItem.getItem().getFile())) continue;
+				if(!loadedItem.compare(queuedItem.getItem())) continue;
 				
 				//Updating the items' adapter information
 				queuedItem.getItem().setAdapterInformation(this, loadedIndex);
@@ -2614,10 +2627,13 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(updateListing && item.file != null && item.getListAdapter() != null)
 			item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
 		
+		//Recording the current update time
+		long updateTime = System.currentTimeMillis();
+		
 		//Creating the processing request
 		ConnectionService.FilePushRequest request = item.getFile() != null ?
-				new ConnectionService.FilePushRequest(item.getFile(), item.getFileType(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, false) :
-				new ConnectionService.FilePushRequest(item.getUri(), item.getFileType(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, false);
+				new ConnectionService.FilePushRequest(item.getFile(), item.getFileType(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false) :
+				new ConnectionService.FilePushRequest(item.getUri(), item.getFileType(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false);
 		request.getCallbacks().onFail = result -> {
 			//Dequeuing the attachment
 			dequeueAttachment(item, true, false);
@@ -2629,7 +2645,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			draft.setDraftFile(draftFile);
 			
 			//Adding the draft file to the conversation in memory
-			if(viewModel.conversationInfo != null) viewModel.conversationInfo.addDraftFile(draftFile);
+			if(viewModel.conversationInfo != null) viewModel.conversationInfo.addDraftFileUpdate(Messaging.this, draftFile, updateTime);
 			
 			//Updating the attachment
 			listAttachmentQueue.getAdapter().notifyItemChanged(viewModel.draftQueueList.indexOf(draft), AttachmentsQueueRecyclerAdapter.payloadUpdateState);
@@ -2687,7 +2703,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext();) {
 			draftIndex = iterator.nextIndex();
 			queuedItem = iterator.next();
-			if(Objects.equals(queuedItem.item.getFile(), item.getFile())) {
+			if(queuedItem.getItem().compare(item)) {
 				iterator.remove();
 				listAttachmentQueue.getAdapter().notifyItemRemoved(draftIndex);
 				break;
@@ -2709,11 +2725,12 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 			
 			//Adding the request
-			ConnectionService.FileProcessingRequest request = new ConnectionService.FileRemovalRequest(queuedItem.getDraftFile());
+			long updateTime = System.currentTimeMillis();
+			ConnectionService.FileProcessingRequest request = new ConnectionService.FileRemovalRequest(queuedItem.getDraftFile(), updateTime);
 			final QueuedFileInfo finalQueuedItem = queuedItem;
 			request.getCallbacks().onRemovalFinish = () -> {
 				//Removing the draft from the conversation in memory
-				if(viewModel.conversationInfo != null) viewModel.conversationInfo.removeDraftFile(finalQueuedItem.getDraftFile());
+				if(viewModel.conversationInfo != null) viewModel.conversationInfo.removeDraftFileUpdate(Messaging.this, finalQueuedItem.getDraftFile(), updateTime);
 			};
 			service.addFileProcessingRequest(request);
 		}
@@ -2929,7 +2946,10 @@ public class Messaging extends AppCompatCompositeActivity {
 	AttachmentTileHelper<?> findAppropriateTileHelper(String mimeType) {
 		if(mimeType == null) return attachmentsDocumentTileHelper;
 		
-		if(mimeType.split("/")[0].equals("image")) return attachmentsMediaTileHelper;
+		{
+			String mimeTypeGeneral = mimeType.split("/")[0];
+			if(mimeTypeGeneral.equals("image") || mimeTypeGeneral.equals("video")) return attachmentsMediaTileHelper;
+		}
 		
 		return attachmentsDocumentTileHelper;
 	}
@@ -3103,7 +3123,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	 */
 	private int getDraftItemIndex(SimpleAttachmentInfo item) {
 		for(int i = 0; i < viewModel.draftQueueList.size(); i++) {
-			if(Objects.equals(viewModel.draftQueueList.get(i).item.getFile(), item.getFile())) return i;
+			if(viewModel.draftQueueList.get(i).getItem().compare(item)) return i;
 		}
 		return -1;
 	}
@@ -3372,6 +3392,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		int getListIndex() {
 			return listIndex;
+		}
+		
+		public boolean compare(SimpleAttachmentInfo item) {
+			return this.getModificationDate() == item.getModificationDate() && Objects.equals(this.getFile(), item.getFile());
 		}
 	}
 	
@@ -3660,6 +3684,36 @@ public class Messaging extends AppCompatCompositeActivity {
 					
 					//Finishing the progressive load
 					progressiveLoadInProgress.setValue(false);
+				}
+			}.execute();
+		}
+		
+		@SuppressLint("StaticFieldLeak")
+		void applyDraftMessage(String message) {
+			//Invalidating the message if it is empty
+			if(message != null && message.isEmpty()) message = null;
+			final String finalMessage = message;
+			
+			//Recording the update time
+			long updateTime = System.currentTimeMillis();
+			
+			//Checking if the conversation is valid
+			if(conversationInfo != null) {
+				//Returning if the draft message hasn't changed
+				if(Objects.equals(conversationInfo.getDraftMessage(), finalMessage)) return;
+				
+				//Assigning the message to the conversation in memory
+				conversationInfo.setDraftMessageUpdate(getApplication(), finalMessage, updateTime);
+				
+				//Updating the conversation listing
+			}
+			
+			//Writing the message to disk
+			new AsyncTask<Void, Void, Void>() {
+				@Override
+				protected Void doInBackground(Void... params) {
+					DatabaseManager.getInstance().updateConversationDraftMessage(conversationID, finalMessage, updateTime);
+					return null;
 				}
 			}.execute();
 		}
