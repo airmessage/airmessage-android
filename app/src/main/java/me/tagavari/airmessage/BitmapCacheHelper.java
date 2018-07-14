@@ -427,7 +427,7 @@ class BitmapCacheHelper {
 			int exifOrientation = -1;
 			
 			//Checking if the image is a JPEG file (contains EXIF data)
-			if("image/jpeg".equals(Constants.getMimeType(MainApplication.getInstance(), file))) {
+			if("image/jpeg".equals(Constants.getMimeType(/*MainApplication.getInstance(), */file))) {
 				//Reading the image's EXIF data
 				ExifInterface exif = null;
 				try {

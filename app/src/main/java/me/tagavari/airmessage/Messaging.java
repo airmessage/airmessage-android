@@ -114,10 +114,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final int permissionRequestStorage = 0;
 	private static final int permissionRequestAudio = 1;
 	
-	private static final int intentPickGalleryFile = 1;
-	private static final int intentPickAudioFile = 2;
-	private static final int intentPickDocumentFile = 3;
-	private static final int intentTakePicture = 4;
+	private static final int intentPickFile = 1;
+	private static final int intentTakePicture = 2;
 	
 	//Creating the static values
 	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
@@ -799,7 +797,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	@Override
-	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		//Checking if the request code is taking a picture
 		if(requestCode == intentTakePicture) {
 			//Returning if the current input state is not the content bar
@@ -807,24 +805,103 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Checking if the result was a success
 			if(resultCode == RESULT_OK) {
-				//Sending the file
-				sendFile(viewModel.targetFile);
+				//Queuing the file
+				new QueueFileAsyncTask(this).execute(viewModel.targetFile);
 			}
 		}
 		//Otherwise if the request code is the media picker
-		else if(requestCode == intentPickGalleryFile || requestCode == intentPickAudioFile || requestCode == intentPickAudioFile) {
+		else if(requestCode == intentPickFile) {
 			//Returning if the current input state is not the content bar
 			//if(viewModel.inputState != ActivityViewModel.inputStateContent) return;
 			
 			//Checking if the result was a success
 			if(resultCode == RESULT_OK) {
 				//Getting the content
-				Uri content = data.getData();
-				if(content == null) return;
-				
-				//Sending the file
-				sendFile(content);
+				if(intent.getData() != null) {
+					//Queuing the content
+					new QueueUriAsyncTask(this).execute(intent.getData());
+				} else if(intent.getClipData() != null) {
+					Uri[] list = new Uri[intent.getClipData().getItemCount()];
+					for(int i = 0; i < intent.getClipData().getItemCount(); i++) list[i] = intent.getClipData().getItemAt(i).getUri();
+					new QueueUriAsyncTask(this).execute(list);
+				}
 			}
+		}
+	}
+	
+	private static class QueueFileAsyncTask extends AsyncTask<File, Void, ArrayList<SimpleAttachmentInfo>> {
+		private final WeakReference<Messaging> activityReference;
+		
+		QueueFileAsyncTask(Messaging activity) {
+			activityReference = new WeakReference<>(activity);
+		}
+		
+		@Override
+		protected ArrayList<SimpleAttachmentInfo> doInBackground(File... files) {
+			//Creating the list
+			ArrayList<SimpleAttachmentInfo> list = new ArrayList<>();
+			
+			//Getting the context
+			Context context = activityReference.get();
+			if(context == null) return null;
+			
+			//Adding the files
+			for(File file : files) list.add(new SimpleAttachmentInfo(file, Constants.getMimeType(file), file.getName(), file.length(), -1));
+			
+			//Returning
+			return list;
+		}
+		
+		@Override
+		protected void onPostExecute(ArrayList<SimpleAttachmentInfo> results) {
+			//Returning if there are no results
+			if(results == null || results.isEmpty()) return;
+			
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Queuing the files
+			for(SimpleAttachmentInfo attachmentInfo : results) activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
+		}
+	}
+	
+	private static class QueueUriAsyncTask extends AsyncTask<Uri, Void, ArrayList<SimpleAttachmentInfo>> {
+		private final WeakReference<Messaging> activityReference;
+		
+		QueueUriAsyncTask(Messaging activity) {
+			activityReference = new WeakReference<>(activity);
+		}
+		
+		@Override
+		protected ArrayList<SimpleAttachmentInfo> doInBackground(Uri... uris) {
+			//Creating the list
+			ArrayList<SimpleAttachmentInfo> list = new ArrayList<>();
+			
+			//Getting the context
+			Context context = activityReference.get();
+			if(context == null) return null;
+			
+			//Adding the files
+			for(Uri uri : uris) {
+				list.add(new SimpleAttachmentInfo(uri, Constants.getMimeType(context, uri), Constants.getUriName(context, uri), Constants.getUriSize(context, uri), -1));
+			}
+			
+			//Returning
+			return list;
+		}
+		
+		@Override
+		protected void onPostExecute(ArrayList<SimpleAttachmentInfo> results) {
+			//Returning if there are no results
+			if(results == null || results.isEmpty()) return;
+			
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Queuing the files
+			for(SimpleAttachmentInfo attachmentInfo : results) activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
 		}
 	}
 	
@@ -1902,9 +1979,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Finding a free file
-		viewModel.targetFile = MainApplication.findUploadFileTarget(this, Constants.pictureName);
+		viewModel.targetFile = MainApplication.getDraftTarget(this, viewModel.conversationID, Constants.pictureName);
 		
-		try {
+		/* try {
 			//Creating the targets
 			if(!viewModel.targetFile.getParentFile().mkdir()) throw new IOException();
 			//if(!viewModel.targetFile.createNewFile()) throw new IOException();
@@ -1914,7 +1991,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Returning
 			return;
-		}
+		} */
 		
 		//Getting the content uri
 		Uri imageUri = FileProvider.getUriForFile(this, MainApplication.fileAuthority, viewModel.targetFile);
@@ -1937,7 +2014,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
 		intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickGalleryFile);
+		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickFile);
 	}
 	
 	private void requestDocumentFile() {
@@ -1947,7 +2024,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		intent.putExtra(Intent.EXTRA_MIME_TYPES, documentMimeTypes);
 		intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickGalleryFile);
+		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickFile);
 	}
 	
 	private static boolean stringHasChar(String string) {
@@ -2069,8 +2146,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Creating the attachment
 			ConversationManager.AttachmentInfo attachment;
-			if(targetFile != null) attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, targetFile.getName(), Constants.getMimeType(context, targetFile), targetFile);
-			else attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, Constants.getFileName(context, targetUri), Constants.getMimeType(context, targetUri), targetUri);
+			if(targetFile != null) attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, targetFile.getName(), Constants.getMimeType(/*context, */targetFile), targetFile);
+			else attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, Constants.getUriName(context, targetUri), Constants.getMimeType(context, targetUri), targetUri);
 			
 			//Adding the item to the database
 			messageInfo.addAttachment(attachment);
@@ -3156,7 +3233,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Setting the image thumbnail
 			Glide.with(getApplicationContext())
-					.load(item.file)
+					.load(item.getFile() != null ? item.getFile() : item.getUri())
 					.apply(RequestOptions.centerCropTransform())
 					.transition(DrawableTransitionOptions.withCrossFade())
 					.into(viewHolder.imageThumbnail);
@@ -3317,12 +3394,11 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private static class SimpleAttachmentInfo {
 		private final File file;
+		private final Uri uri;
 		private final String fileType;
 		private final String fileName;
 		private final long fileSize;
 		private final long modificationDate;
-		
-		private final Uri uri;
 		
 		private AttachmentsRecyclerAdapter<?> listAdapter;
 		private int listIndex;
@@ -3345,12 +3421,14 @@ public class Messaging extends AppCompatCompositeActivity {
 			this.uri = null;
 		}
 		
-		SimpleAttachmentInfo(Uri uri) {
-			file = null;
-			fileType = fileName = null;
-			fileSize = modificationDate = -1;
-			
+		SimpleAttachmentInfo(Uri uri, String fileType, String fileName, long fileSize, long modificationDate) {
 			this.uri = uri;
+			this.fileType = fileType;
+			this.fileName = fileName;
+			this.fileSize = fileSize;
+			this.modificationDate = modificationDate;
+			
+			this.file = null;
 		}
 		
 		SimpleAttachmentInfo(ConversationManager.DraftFile draft) {
@@ -3704,8 +3782,6 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Assigning the message to the conversation in memory
 				conversationInfo.setDraftMessageUpdate(getApplication(), finalMessage, updateTime);
-				
-				//Updating the conversation listing
 			}
 			
 			//Writing the message to disk

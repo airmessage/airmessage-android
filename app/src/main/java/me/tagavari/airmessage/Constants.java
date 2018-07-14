@@ -33,6 +33,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.Transformation;
+import android.webkit.MimeTypeMap;
 import android.widget.TextView;
 import android.widget.Toolbar;
 
@@ -336,13 +337,13 @@ public class Constants {
 		return file;
 	}
 	
-	static String getFileName(Context context, Uri uri) {
+	static String getUriName(Context context, Uri uri) {
 		//Creating the file name variable
 		String fileName = null;
 		
 		//Attempting to pull the file name from the content resolver
 		if("content".equals(uri.getScheme())) {
-			try(Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
+			try(Cursor cursor = context.getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
 				if(cursor != null && cursor.moveToFirst()) fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
 			}
 		}
@@ -356,6 +357,42 @@ public class Constants {
 		
 		//Returning the file name
 		return fileName;
+	}
+	
+	static long getUriSize(Context context, Uri uri) {
+		//Creating the file name variable
+		String fileName = null;
+		
+		//Attempting to pull the file name from the content resolver
+		if("content".equals(uri.getScheme())) {
+			try(Cursor cursor = context.getContentResolver().query(uri, new String[]{OpenableColumns.SIZE}, null, null, null)) {
+				if(cursor != null && cursor.moveToFirst()) return cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
+			}
+		}
+		
+		//Returning -1
+		return -1;
+	}
+	
+	static boolean checkFileParent(File parentDir, File targetFile) {
+		//Path-indexing both files
+		List<File> parentDirPath = new ArrayList<>();
+		List<File> targetFilePath = new ArrayList<>();
+		{
+			File file = parentDir;
+			while((file = file.getParentFile()) != null) parentDirPath.add(0, file);
+			file = targetFile;
+			while((file = file.getParentFile()) != null) targetFilePath.add(0, file);
+		}
+		
+		//Returning false if the parent path is longer than the target path
+		if(parentDirPath.size() > targetFilePath.size()) return false;
+		
+		//Returning false if there is a folder mismatch anywhere along the way (the paths don't line up)
+		for(int i = 0; i < parentDirPath.size(); i++) if(!parentDirPath.get(i).equals(parentDirPath.get(i))) return false;
+		
+		//Returning true (all the folders matched)
+		return true;
 	}
 	
 	private static Random random = new Random(System.currentTimeMillis());
@@ -403,8 +440,10 @@ public class Constants {
 		return type;
 	} */
 	
-	static String getMimeType(Context context, File file) {
-		return context.getContentResolver().getType(Uri.fromFile(file));
+	static String getMimeType(File file) {
+		String extension = MimeTypeMap.getFileExtensionFromUrl(file.getPath());
+		if(extension != null) return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+		return null;
 	}
 	
 	interface ResultCallback<T> {

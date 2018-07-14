@@ -5289,8 +5289,8 @@ public class ConnectionService extends Service {
 				
 				//Checking if the request has no send file
 				//boolean copyFile = request.sendFile == null;
-				boolean fileCopied = pushRequest.state == FilePushRequest.stateLinked;
-				if(fileCopied) {
+				boolean fileNeedsCopy = pushRequest.state == FilePushRequest.stateLinked;
+				if(fileNeedsCopy) {
 					//Checking if the URI is invalid
 					/* if(request.sendUri == null) {
 						//Calling the fail method
@@ -5312,7 +5312,7 @@ public class ConnectionService extends Service {
 					}
 					
 					//Creating the values
-					String fileName;
+					String fileName = null;
 					InputStream inputStream = null;
 					File originalFile = pushRequest.sendFile;
 					
@@ -5338,7 +5338,7 @@ public class ConnectionService extends Service {
 							}
 							
 							//Finding a valid file
-							fileName = Constants.getFileName(context, pushRequest.sendUri);
+							fileName = Constants.getUriName(context, pushRequest.sendUri);
 							if(fileName == null) fileName = Constants.defaultFileName;
 							
 							//Opening the input stream
@@ -5346,22 +5346,26 @@ public class ConnectionService extends Service {
 						}
 						//Otherwise checking if the request is using a file
 						else if(pushRequest.sendFile != null) {
-							//Getting the file name
-							fileName = pushRequest.sendFile.getName();
-							//if(fileName == null) fileName = Constants.defaultFileName;
-							
-							//Verifying the file size
-							if(pushRequest.sendFile.length() > largestFileSize) {
-								//Calling the fail method
-								pushRequest.isInProcessing = false;
-								handler.post(() -> finalCallbacks.onFail.accept(messageSendFileTooLarge));
+							//Checking if the file is outside the target directory
+							File targetFolder = requestUpload ? MainApplication.getUploadDirectory(context) : MainApplication.getDraftDirectory(context);
+							if(!Constants.checkFileParent(targetFolder, pushRequest.sendFile)) {
+								//Getting the file name
+								fileName = pushRequest.sendFile.getName();
+								//if(fileName == null) fileName = Constants.defaultFileName;
 								
-								//Skipping the remainder of the iteration
-								continue;
+								//Verifying the file size
+								if(pushRequest.sendFile.length() > largestFileSize) {
+									//Calling the fail method
+									pushRequest.isInProcessing = false;
+									handler.post(() -> finalCallbacks.onFail.accept(messageSendFileTooLarge));
+									
+									//Skipping the remainder of the iteration
+									continue;
+								}
+								
+								//Opening the input stream
+								inputStream = new BufferedInputStream(new FileInputStream(pushRequest.sendFile));
 							}
-							
-							//Opening the input stream
-							inputStream = new BufferedInputStream(new FileInputStream(pushRequest.sendFile));
 						} else {
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
@@ -5389,11 +5393,6 @@ public class ConnectionService extends Service {
 						continue;
 					}
 					
-					//Getting the target file
-					File targetFile = requestUpload ?
-							MainApplication.getUploadTarget(context, fileName) :
-							MainApplication.getDraftTarget(context, pushRequest.conversationID, fileName);
-					
 					/* try {
 						//Creating the targets
 						if(!targetFile.getParentFile().mkdir()) throw new IOException("Couldn't make directory");
@@ -5413,9 +5412,15 @@ public class ConnectionService extends Service {
 					} */
 					
 					//Preparing to copy the file
-					try(OutputStream outputStream = new FileOutputStream(targetFile)) {
-						//Clearing the reference to the context
-						context = null;
+					if(inputStream != null) {
+						//Getting the target file
+						File targetFile = requestUpload ?
+								MainApplication.getUploadTarget(context, fileName) :
+								MainApplication.getDraftTarget(context, pushRequest.conversationID, fileName);
+						
+						try(OutputStream outputStream = new FileOutputStream(targetFile)) {
+							//Clearing the reference to the context
+							context = null;
 						
 						/* //Checking if the input stream is invalid
 						if(inputStream == null) {
@@ -5425,69 +5430,90 @@ public class ConnectionService extends Service {
 							//Skipping the remainder of the iteration
 							continue;
 						} */
-						
-						//Preparing to read the file
-						long totalLength = inputStream.available();
-						byte[] buffer = new byte[ConnectionService.attachmentChunkSize];
-						int bytesRead;
-						long totalBytesRead = 0;
-						
-						//Looping while there is data to read
-						while((bytesRead = inputStream.read(buffer)) != -1) {
-							//Writing the data to the output stream
-							outputStream.write(buffer, 0, bytesRead);
 							
-							//Adding to the total bytes read
-							totalBytesRead += bytesRead;
+							//Preparing to read the file
+							long totalLength = inputStream.available();
+							byte[] buffer = new byte[ConnectionService.attachmentChunkSize];
+							int bytesRead;
+							long totalBytesRead = 0;
 							
-							//Updating the progress
-							final long finalTotalBytesRead = totalBytesRead;
-							handler.post(() -> finalCallbacks.onUploadProgress.accept((float) ((double) finalTotalBytesRead / (double) totalLength * copyProgressValue)));
-						}
-						
-						//Flushing the output stream
-						outputStream.flush();
-						
-						//Setting the send file
-						pushRequest.sendFile = targetFile;
-						if(requestUpload) {
-							handler.post(() -> finalCallbacks.onAttachmentPreparationFinished.accept(targetFile));
-						} else {
-							ConversationManager.DraftFile draft = DatabaseManager.getInstance().addDraftReference(pushRequest.conversationID, targetFile, targetFile.getName(), targetFile.length(), pushRequest.fileType, originalFile, pushRequest.updateTime, pushRequest.fileModificationDate);
-							if(draft == null) throw new IOException("Failed to add draft reference to database");
-							pushRequest.draftID = draft.getLocalID();
+							//Looping while there is data to read
+							while((bytesRead = inputStream.read(buffer)) != -1) {
+								//Writing the data to the output stream
+								outputStream.write(buffer, 0, bytesRead);
+								
+								//Adding to the total bytes read
+								totalBytesRead += bytesRead;
+								
+								//Updating the progress
+								final long finalTotalBytesRead = totalBytesRead;
+								handler.post(() -> finalCallbacks.onUploadProgress.accept((float) ((double) finalTotalBytesRead / (double) totalLength * copyProgressValue)));
+							}
 							
-							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onDraftPreparationFinished.accept(targetFile, draft));
-						}
-					} catch(IOException exception) {
-						//Printing the stack trace
-						exception.printStackTrace();
-						
-						//Deleting the target file
-						targetFile.delete();
-						targetFile.getParentFile().delete();
-						
-						//Calling the fail method
-						pushRequest.isInProcessing = false;
-						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
-						
-						//Skipping the remainder of the iteration
-						continue;
-					} finally {
-						if(inputStream != null) try {
-							inputStream.close();
+							//Flushing the output stream
+							outputStream.flush();
+							
+							//Setting the send file
+							pushRequest.sendFile = targetFile;
 						} catch(IOException exception) {
+							//Printing the stack trace
 							exception.printStackTrace();
+							
+							//Deleting the target file
+							targetFile.delete();
+							targetFile.getParentFile().delete();
+							
+							//Calling the fail method
+							pushRequest.isInProcessing = false;
+							handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+							
+							//Skipping the remainder of the iteration
+							continue;
+						} finally {
+							if(inputStream != null) try {
+								inputStream.close();
+							} catch(IOException exception) {
+								exception.printStackTrace();
+							}
 						}
+						
+						//Setting the request's file
+						if(targetFile != null) pushRequest.sendFile = targetFile;
+					}
+					
+					if(requestUpload) {
+						//Calling the listener
+						handler.post(() -> finalCallbacks.onAttachmentPreparationFinished.accept(pushRequest.sendFile));
+						
+						//Setting the state
+						pushRequest.state = FilePushRequest.stateAttached;
+					} else {
+						ConversationManager.DraftFile draft = DatabaseManager.getInstance().addDraftReference(pushRequest.conversationID, pushRequest.sendFile, pushRequest.sendFile.getName(), pushRequest.sendFile.length(), pushRequest.fileType, originalFile, pushRequest.updateTime, pushRequest.fileModificationDate);
+						if(draft == null) {
+							//Deleting the target file
+							pushRequest.sendFile.delete();
+							pushRequest.sendFile.getParentFile().delete();
+							pushRequest.sendFile = null;
+							
+							//Calling the fail method
+							pushRequest.isInProcessing = false;
+							handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+							
+							//Skipping the remainder of the iteration
+							continue;
+						}
+						pushRequest.draftID = draft.getLocalID();
+						
+						pushRequest.isInProcessing = false;
+						handler.post(() -> finalCallbacks.onDraftPreparationFinished.accept(pushRequest.sendFile, draft));
+						
+						//Setting the state
+						pushRequest.state = FilePushRequest.stateQueued;
 					}
 					
 					//Setting the state
 					if(requestUpload) pushRequest.state = FilePushRequest.stateAttached;
 					else pushRequest.state = FilePushRequest.stateQueued;
-					
-					//Setting the file
-					pushRequest.sendFile = targetFile;
 				}
 				
 				//Checking if an upload has been requested
@@ -5658,7 +5684,7 @@ public class ConnectionService extends Service {
 							
 							//Updating the progress
 							final long finalTotalBytesRead = totalBytesRead;
-							handler.post(() -> finalCallbacks.onUploadProgress.accept(fileCopied ?
+							handler.post(() -> finalCallbacks.onUploadProgress.accept(fileNeedsCopy ?
 									(float) (copyProgressValue + (double) finalTotalBytesRead / (double) totalLength * (1F - copyProgressValue)) :
 									(float) finalTotalBytesRead / (float) totalLength));
 							
