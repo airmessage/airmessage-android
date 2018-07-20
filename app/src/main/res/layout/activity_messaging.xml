@@ -96,7 +96,7 @@
 			android:src="@drawable/chevron_right"
 			android:tint="?android:attr/textColorSecondary" />
 	</LinearLayout> -->
-	<!-- Message list (paddingBottom is 24 + 5) -->
+	<!-- Message list -->
 	<android.support.v7.widget.RecyclerView
 		android:id="@+id/list_messages"
 		android:layout_width="0px"
@@ -105,72 +105,47 @@
 		android:dividerHeight="0dp"
 		android:listSelector="@android:color/transparent"
 		android:paddingTop="5dp"
-		android:paddingBottom="29dp"
+		android:paddingBottom="5dp"
 		android:clipToPadding="false"
 		android:theme="@style/OverscrollNeutralizer"
 		app:layoutManager=".Messaging$SpeedyLinearLayoutManager"
-		app:layout_constraintBottom_toBottomOf="@id/inputbar_clearzone"
+		app:layout_constraintBottom_toTopOf="@id/inputbar"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/appbar"
 		app:stackFromEnd="true" />
 	
-	<!-- Input bar center line -->
-	<Space
-		android:id="@+id/inputbar_clearzone"
-		android:layout_width="0px"
-		android:layout_height="24dp"
-		android:orientation="horizontal"
-		app:layout_constraintTop_toTopOf="@id/inputbar" />
-	
-	<!-- Recycler view hider -->
-	<View
-		android:layout_width="0px"
-		android:layout_height="0px"
-		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/inputbar_clearzone"
-		app:layout_constraintBottom_toBottomOf="parent"
-		android:background="?android:attr/colorBackground" />
-	
 	<!-- Input bar -->
-	<FrameLayout
+	<LinearLayout
 		android:id="@+id/inputbar"
 		android:layout_width="0px"
 		android:layout_height="wrap_content"
-		android:layout_marginBottom="8dp"
-		android:layout_marginLeft="8dp"
-		android:layout_marginRight="8dp"
-		android:layout_marginTop="8dp"
 		android:clipChildren="false"
 		android:clipToPadding="false"
 		android:maxWidth="@dimen/contentwidth_max"
-		android:minHeight="45dp"
-		app:layout_constraintBottom_toTopOf="@id/panel_attachments"
+		android:orientation="vertical"
+		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="parent">
+		app:layout_constraintRight_toRightOf="parent"
+		android:background="?android:attr/colorBackgroundFloating"
+		android:elevation="8dp">
 		
-		<!-- Standard text input -->
-		<LinearLayout
-			android:id="@+id/inputbar_text"
+		<!-- Attachment bar -->
+		<android.support.v7.widget.RecyclerView
+			android:id="@+id/inputbar_attachments"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:clipToPadding="false"
-			android:minHeight="48dp"
-			android:orientation="vertical"
-			android:background="@drawable/rounded_inputbar"
-			android:backgroundTint="?android:attr/colorBackgroundFloating"
-			android:elevation="2dp">
-			<!-- Attachment bar -->
-			<android.support.v7.widget.RecyclerView
-				android:id="@+id/inputbar_attachments"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:overScrollMode="never"
-				android:requiresFadingEdge="vertical"
-				android:visibility="gone" />
-			
+			android:overScrollMode="never"
+			android:requiresFadingEdge="vertical"
+			android:visibility="gone" />
+		
+		<!-- Input bar (text / recording) -->
+		<FrameLayout
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content">
+			<!-- Standard text input -->
 			<LinearLayout
+				android:id="@+id/inputbar_text"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:orientation="horizontal">
@@ -185,7 +160,7 @@
 					android:contentDescription="@string/action_addcontent"
 					android:focusable="true"
 					android:padding="12dp"
-					android:src="@drawable/add_circle"
+					android:src="@drawable/add"
 					android:tag="@string/tag_primarytint"
 					android:tint="@color/colorPrimary"
 					android:tooltipText="@string/action_addcontent" />
@@ -235,14 +210,32 @@
 						android:background="?android:attr/selectableItemBackgroundBorderless"
 						android:contentDescription="@string/action_send"
 						android:padding="12dp"
-						android:src="@drawable/send"
+						android:src="@drawable/push"
 						android:tag="@string/tag_primarytint"
 						android:tint="@color/colorPrimary"
 						android:tooltipText="@string/action_send" />
 				</FrameLayout>
 			</LinearLayout>
+		</FrameLayout>
+		
+		<!-- Attachments section -->
+		<LinearLayout
+			android:id="@+id/panel_attachments"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/contentpanel_height"
+			android:visibility="gone"
+			android:orientation="vertical">
+			<View
+				android:layout_width="match_parent"
+				android:layout_height="1dp"
+				android:background="@color/colorDivider" />
+			<ViewStub
+				android:id="@+id/viewstub_attachments"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:layout="@layout/pane_attachments" />
 		</LinearLayout>
-	</FrameLayout>
+	</LinearLayout>
 	<!-- Content pane barrier -->
 	<!-- <android.support.constraint.Barrier
 		android:id="@+id/barrier_attachments"
@@ -250,7 +243,7 @@
 		android:layout_height="wrap_content"
 		app:barrierDirection="top"
 		app:constraint_referenced_ids="viewstub_attachments,pane_attachments" /> -->
-	<FrameLayout
+	<!-- <FrameLayout
 		android:id="@+id/panel_attachments"
 		android:layout_width="0px"
 		android:layout_height="wrap_content"
@@ -265,7 +258,7 @@
 			android:layout_width="match_parent"
 			android:layout_height="@dimen/contentpanel_height"
 			android:layout="@layout/pane_attachments" />
-	</FrameLayout>
+	</FrameLayout> -->
 	
 	<!-- Floating action button -->
 	<android.support.design.widget.FloatingActionButton
@@ -383,10 +376,12 @@
 		android:background="#52000000"
 		android:clickable="true"
 		android:visibility="gone"
+		android:alpha="0"
+		android:elevation="16dp"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toTopOf="parent" />
+		app:layout_constraintTop_toBottomOf="@id/appbar" />
 	<!-- Info page -->
 	<FrameLayout
 		android:id="@+id/panel_messaginginfo"

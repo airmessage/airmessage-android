@@ -47,6 +47,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.util.Pools;
+import android.support.v7.widget.CardView;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.RecyclerView;
@@ -113,6 +114,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private static final int permissionRequestStorage = 0;
 	private static final int permissionRequestAudio = 1;
+	private static final int permissionRequestAudioDirect = 2; //Used when requesting microphone usage directly form the input bar
 	
 	private static final int intentPickFile = 1;
 	private static final int intentTakePicture = 2;
@@ -171,7 +173,6 @@ public class Messaging extends AppCompatCompositeActivity {
 	private ImageButton buttonSendMessage;
 	private ImageButton buttonAddContent;
 	private EditText messageInputField;
-	private View recordingIndicator;
 	private TextView recordingTimeLabel;
 	private FloatingActionButton bottomFAB;
 	private TextView bottomFABBadge;
@@ -494,7 +495,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		buttonSendMessage = inputBar.findViewById(R.id.button_send);
 		buttonAddContent = inputBar.findViewById(R.id.button_addcontent);
 		messageInputField = inputBar.findViewById(R.id.messagebox);
-		recordingIndicator = findViewById(R.id.recordingindicator);
 		//recordingTimeLabel = inputBar.findViewById(R.id.recordingtime);
 		bottomFAB = findViewById(R.id.fab_bottom);
 		bottomFABBadge = findViewById(R.id.fab_bottom_badge);
@@ -594,8 +594,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
 		
 		//Restoring the panels
-		openDetailsPanel(true);
-		openAttachmentsPanel(true);
+		getWindow().getDecorView().post(() -> {
+			openDetailsPanel(true);
+			openAttachmentsPanel(true);
+		});
 		
 		//Updating the send button
 		updateSendButton();
@@ -953,7 +955,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void openAttachmentsPanel(boolean restore) {
 		//Returning if the conversation is not ready or the panel is already open
-		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || (!restore && viewModel.isAttachmentsPanelOpen) || (restore && !viewModel.isAttachmentsPanelOpen)) return;
+		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || restore != viewModel.isAttachmentsPanelOpen) return;
 		
 		//Setting the panel as open
 		viewModel.isAttachmentsPanelOpen = true;
@@ -964,20 +966,25 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Inflating the view stub
 			ViewGroup inflated = (ViewGroup) viewStub.inflate();
 			
+			/* LinearLayout.LayoutParams inflatedParams = (LinearLayout.LayoutParams) inflated.getLayoutParams();
+			inflatedParams.width = LinearLayout.LayoutParams.MATCH_PARENT;
+			inflatedParams.height = getResources().getDimensionPixelSize(R.dimen.contentpanel_height);
+			inflated.setLayoutParams(inflatedParams); */
+			
 			//Coloring the UI
 			colorUI(inflated);
 			
 			//Setting up the sections
 			setupAttachmentsGallerySection();
+			setupAttachmentsAudioSection();
 			setupAttachmentsDocumentsSection();
 		}
 		
 		if(restore) {
-		
+			//Showing the panel
+			findViewById(R.id.panel_attachments).setVisibility(View.VISIBLE);
 		} else {
 			//Animating in the panel
-			int windowHeight = findViewById(android.R.id.content).getHeight();
-			
 			int targetHeight = getResources().getDimensionPixelSize(R.dimen.contentpanel_height);
 			View panel = findViewById(R.id.panel_attachments);
 			ValueAnimator animator = ValueAnimator.ofInt(0, targetHeight);
@@ -986,7 +993,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			animator.addUpdateListener(animation -> {
 				int value = (int) animation.getAnimatedValue();
 				panel.getLayoutParams().height = value;
-				panel.setY(windowHeight - value);
 				panel.requestLayout();
 			});
 			animator.addListener(new AnimatorListenerAdapter() {
@@ -998,8 +1004,6 @@ public class Messaging extends AppCompatCompositeActivity {
 				@Override
 				public void onAnimationEnd(Animator animation) {
 					panel.getLayoutParams().height = targetHeight;
-					panel.setY(windowHeight - targetHeight);
-					
 					panel.requestLayout();
 				}
 			});
@@ -1015,8 +1019,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewModel.isAttachmentsPanelOpen = false;
 		
 		//Animating out the panel
-		int windowHeight = findViewById(android.R.id.content).getHeight();
-		
 		View panel = findViewById(R.id.panel_attachments);
 		ValueAnimator animator = ValueAnimator.ofInt(panel.getHeight(), 0);
 		animator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
@@ -1024,14 +1026,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		animator.addUpdateListener(animation -> {
 			int value = (int) animation.getAnimatedValue();
 			panel.getLayoutParams().height = value;
-			panel.setY(windowHeight - value);
 			panel.requestLayout();
 		});
 		animator.addListener(new AnimatorListenerAdapter() {
 			@Override
 			public void onAnimationEnd(Animator animation) {
 				panel.getLayoutParams().height = 0;
-				panel.setY(windowHeight);
 				panel.setVisibility(View.GONE);
 			}
 		});
@@ -1074,6 +1074,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			RecyclerView list = viewGroup.findViewById(R.id.list_attachment_gallery);
 			list.setVisibility(View.VISIBLE);
 			list.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+			list.addOnScrollListener(new AttachmentListScrollListener(viewGroup.findViewById(R.id.button_attachment_gallery_systempicker)));
 			
 			//Checking if the files are loaded
 			if(viewModel.getAttachmentState(ActivityViewModel.attachmentTypeGallery) == ActivityViewModel.attachmentsStateLoaded) {
@@ -1098,6 +1099,30 @@ public class Messaging extends AppCompatCompositeActivity {
 					}
 				}, adapter);
 			}
+		}
+	}
+	
+	private void setupAttachmentsAudioSection() {
+		//Getting the view
+		ViewGroup viewGroup = findViewById(R.id.viewgroup_attachment_audio);
+		if(viewGroup == null) return;
+		
+		//Setting the click listeners
+		viewGroup.findViewById(R.id.button_attachment_audio_systempicker).setOnClickListener(view -> requestAudioFile());
+		
+		//Checking if the permission has not been granted
+		if(ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+			//Setting up the permission request button
+			View permissionButton = viewGroup.findViewById(R.id.button_attachment_audio_permission);
+			permissionButton.setVisibility(View.VISIBLE);
+			permissionButton.setOnClickListener(view -> Constants.requestPermission(this, new String[]{Manifest.permission.RECORD_AUDIO}, permissionRequestAudio));
+			
+			//Hiding the recording view
+			viewGroup.findViewById(R.id.frame_attachment_audio_content).setVisibility(View.GONE);
+		} else {
+			//Swapping to the content view
+			viewGroup.findViewById(R.id.button_attachment_audio_permission).setVisibility(View.GONE);
+			viewGroup.findViewById(R.id.frame_attachment_audio_content).setVisibility(View.VISIBLE);
 		}
 	}
 	
@@ -1137,6 +1162,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			RecyclerView list = viewGroup.findViewById(R.id.list_attachment_documents);
 			list.setVisibility(View.VISIBLE);
 			list.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+			list.addOnScrollListener(new AttachmentListScrollListener(viewGroup.findViewById(R.id.button_attachment_documents_systempicker)));
 			
 			//Checking if the files are loaded
 			if(viewModel.getAttachmentState(ActivityViewModel.attachmentTypeDocument) == ActivityViewModel.attachmentsStateLoaded) {
@@ -1164,9 +1190,66 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
+	private class AttachmentListScrollListener extends RecyclerView.OnScrollListener {
+		boolean buttonIsBubble = false;
+		private final CardView pickerView;
+		
+		AttachmentListScrollListener(CardView pickerView) {
+			this.pickerView = pickerView;
+		}
+		
+		@Override
+		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+			boolean isAtStart = ((LinearLayoutManager) recyclerView.getLayoutManager()).findFirstCompletelyVisibleItemPosition() == 0;
+			if(buttonIsBubble == isAtStart) {
+				buttonIsBubble = !isAtStart;
+				setSystemPickerBubbleState(pickerView, buttonIsBubble);
+			}
+		}
+	}
+	
+	private float systemPickerBubbleStateSizeTile = -1;
+	private float systemPickerBubbleStateRadiusTile = -1;
+	private float systemPickerBubbleStateElevationBubble = -1;
+	void setSystemPickerBubbleState(CardView view, boolean bubble) {
+		//Fetching the reference target values if needed
+		if(systemPickerBubbleStateSizeTile == -1) {
+			systemPickerBubbleStateSizeTile = getResources().getDimensionPixelSize(R.dimen.contenttile_size);
+			systemPickerBubbleStateRadiusTile = getResources().getDimensionPixelSize(R.dimen.contenttile_radius);
+			systemPickerBubbleStateElevationBubble = Constants.dpToPx(4);
+		}
+		
+		//Establishing the target values
+		float sizeStart = view.getHeight();
+		float radiusStart = view.getRadius();
+		float elevationStart = view.getCardElevation();
+		float sizeTarget, radiusTarget, elevationTarget;
+		if(bubble) {
+			sizeTarget = view.getWidth();
+			radiusTarget = sizeTarget / 2F;
+			elevationTarget = systemPickerBubbleStateElevationBubble;
+		} else {
+			sizeTarget = systemPickerBubbleStateSizeTile;
+			radiusTarget = systemPickerBubbleStateRadiusTile;
+			elevationTarget = 0;
+		}
+		
+		//Setting the value animator
+		ValueAnimator valueAnimator = ValueAnimator.ofFloat(0, 1);
+		valueAnimator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
+		valueAnimator.addUpdateListener(animation -> {
+			float value = (float) animation.getAnimatedValue();
+			view.getLayoutParams().height = (int) Constants.lerp(value, sizeStart, sizeTarget);
+			view.setRadius(Constants.lerp(value, radiusStart, radiusTarget));
+			view.setCardElevation(Constants.lerp(value, elevationStart, elevationTarget));
+			view.requestLayout();
+		});
+		valueAnimator.start();
+	}
+	
 	private void openDetailsPanel(boolean restore) {
 		//Returning if the conversation is not ready or the panel is already open
-		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || (!restore && viewModel.isDetailsPanelOpen) || (restore && !viewModel.isDetailsPanelOpen)) return;
+		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || restore != viewModel.isDetailsPanelOpen) return;
 		
 		//Setting the panel as open
 		viewModel.isDetailsPanelOpen = true;
@@ -1264,7 +1347,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		content.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 		
 		//Comparing the content's height to the window's height
-		int primaryViewHeight = findViewById(android.R.id.content).getHeight() - appBar.getHeight();
+		int primaryViewHeight = getWindow().getDecorView().getHeight();
 		
 		//Checking if the view occupies more than 80% of the window
 		if(content.getMeasuredHeight() > primaryViewHeight * 0.8F) {
@@ -1923,7 +2006,14 @@ public class Messaging extends AppCompatCompositeActivity {
 					setupAttachmentsDocumentsSection();
 				}
 				break;
-			case permissionRequestAudio: {
+			case permissionRequestAudio:
+				//Checking if the request was granted
+				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+					//Updating the attachment section
+					setupAttachmentsAudioSection();
+				}
+				break;
+			case permissionRequestAudioDirect: {
 				//Checking if the request was denied
 				if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
 					//Creating a dialog
@@ -1960,6 +2050,9 @@ public class Messaging extends AppCompatCompositeActivity {
 					
 					//Displaying the dialog
 					dialog.show();
+				} else {
+					//Updating the attachment sections
+					setupAttachmentsAudioSection();
 				}
 			}
 		}
@@ -2006,37 +2099,25 @@ public class Messaging extends AppCompatCompositeActivity {
 		startActivityForResult(takePictureIntent, intentTakePicture);
 	}
 	
-	private void requestGalleryFile() {
-		//Launching the system's file picker
+	private void launchPickerIntent(String[] mimeTypes) {
 		Intent intent = new Intent();
 		intent.setType("*/*");
-		String[] mimeTypes = {"image/*", "video/*"};
 		intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
 		intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
 		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickFile);
 	}
 	
-	private void requestDocumentFile() {
-		//Launching the system's file picker
-		Intent intent = new Intent();
-		intent.setType("*/*");
-		intent.putExtra(Intent.EXTRA_MIME_TYPES, documentMimeTypes);
-		intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickFile);
+	private void requestGalleryFile() {
+		launchPickerIntent(new String[]{"image/*", "video/*"});
 	}
 	
-	private static boolean stringHasChar(String string) {
-		//Looping through the characters of the string
-		for(char character : string.toCharArray()) {
-			//Returning true if the character is not a control character
-			if(!Character.isISOControl(character) && !Character.isSpaceChar(character))
-				return true;
-		}
-		
-		//Returning false
-		return false;
+	private void requestAudioFile() {
+		launchPickerIntent(new String[]{"audio/*"});
+	}
+	
+	private void requestDocumentFile() {
+		launchPickerIntent(documentMimeTypes);
 	}
 	
 	public static ArrayList<Long> getForegroundConversations() {
@@ -2504,7 +2585,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			switch(viewType) {
 				case itemTypeActionButton: {
-					View actionButton = getLayoutInflater().inflate(R.layout.layout_attachment_actiontile, parent, false);
+					View actionButton = getLayoutInflater().inflate(R.layout.listitem_attachment_actiontile, parent, false);
 					TextView label = actionButton.findViewById(R.id.label);
 					label.setText(getActionButtonText());
 					label.setCompoundDrawablesWithIntrinsicBounds(0, getActionButtonDrawable(), 0, 0);
@@ -2512,7 +2593,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					return new ViewHolderImpl(actionButton);
 				}
 				case itemTypeOverflowButton: {
-					View overflowButton = getLayoutInflater().inflate(R.layout.layout_attachment_overflow, parent, false);
+					View overflowButton = getLayoutInflater().inflate(R.layout.listitem_attachment_overflow, parent, false);
 					overflowButton.setOnClickListener(view -> onOverflowButtonClick());
 					return new ViewHolderImpl(overflowButton);
 				}
@@ -2863,7 +2944,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		@Override
 		public QueueTileViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			//Inflating the layout
-			View layout = getLayoutInflater().inflate(R.layout.layout_attachment_queuetile, parent, false);
+			View layout = getLayoutInflater().inflate(R.layout.listitem_attachment_queuetile, parent, false);
 			FrameLayout container = layout.findViewById(R.id.container);
 			
 			//Creating the tile view
@@ -3220,7 +3301,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private final AttachmentTileHelper<AttachmentsMediaTileViewHolder> attachmentsMediaTileHelper = new AttachmentTileHelper<AttachmentsMediaTileViewHolder>() {
 		@Override
 		AttachmentsMediaTileViewHolder createViewHolder(ViewGroup parent) {
-			return new AttachmentsMediaTileViewHolder(getLayoutInflater().inflate(R.layout.layout_attachment_mediatile, parent, false));
+			return new AttachmentsMediaTileViewHolder(getLayoutInflater().inflate(R.layout.listitem_attachment_mediatile, parent, false));
 		}
 		
 		@Override
@@ -3295,7 +3376,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private final AttachmentTileHelper<AttachmentsDocumentTileViewHolder> attachmentsDocumentTileHelper = new AttachmentTileHelper<AttachmentsDocumentTileViewHolder>() {
 		@Override
 		AttachmentsDocumentTileViewHolder createViewHolder(ViewGroup parent) {
-			return new AttachmentsDocumentTileViewHolder(getLayoutInflater().inflate(R.layout.layout_attachment_documenttile, parent, false));
+			return new AttachmentsDocumentTileViewHolder(getLayoutInflater().inflate(R.layout.listitem_attachment_documenttile, parent, false));
 		}
 		
 		@Override

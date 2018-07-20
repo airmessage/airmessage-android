@@ -400,6 +400,10 @@ public class Constants {
 		return random;
 	}
 	
+	static float lerp(float val, float start, float end) {
+		return val * (end - start) + start;
+	}
+	
 	static Drawable createRoundedDrawable(boolean softenTop, boolean softenBottom, boolean alignToRight, int pxRadiusNormal, int pxRadiusSoftened) {
 		//Creating the drawable
 		GradientDrawable drawable = new GradientDrawable();

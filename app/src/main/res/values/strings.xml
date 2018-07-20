@@ -233,6 +233,7 @@
 	<string name="imperative_selectdestination">Select destination</string>
 	<string name="imperative_selectconversation">Select conversation</string>
 	<string name="imperative_mainsearch">Search messages</string>
+	<string name="imperative_drawerrecordinginstructions">Tap and hold</string>
 	
 	<string name="imperative_permission_media">Tap to give access to media</string>
 	<string name="imperative_permission_microphone">Tap to give access to microphone</string>

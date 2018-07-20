@@ -6,6 +6,7 @@
 	android:layout_marginEnd="@dimen/contenttile_margin"
 	android:background="@drawable/rounded_selectable_contenttile"
 	android:backgroundTint="?android:attr/colorButtonNormal"
+	android:foreground="@drawable/rounded_selectable_contenttile"
 	android:focusable="true"
 	android:clickable="true">
 	
@@ -28,5 +29,5 @@
 		android:id="@+id/viewstub_selection"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		android:layout="@layout/layout_attachment_tileselection" />
+		android:layout="@layout/listitem_attachment_tileselection" />
 </FrameLayout>

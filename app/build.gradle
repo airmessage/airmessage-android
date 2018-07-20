@@ -97,6 +97,7 @@ dependencies {
 	implementation "nl.dionsegijn:konfetti:1.1.2"
 	implementation "in.srain.cube:grid-view-with-header-footer:1.0.12"
 	implementation "pl.droidsonroids.gif:android-gif-drawable:1.2.12"
+	implementation "com.tyorikan:voice-recording-visualizer:1.0.3@aar"
 
 	//Services
 	implementation "com.google.firebase:firebase-core:16.0.1"
@@ -108,7 +109,8 @@ dependencies {
 	//Backend
 	implementation "org.java-websocket:Java-WebSocket:1.3.7"
 	implementation "org.jetbrains.kotlin:kotlin-stdlib:1.2.30"
-	implementation group: "org.bouncycastle", name: "bcprov-jdk15on", version: "1.59"
+	implementation "org.bouncycastle:bcprov-jdk15on:1.59"
+	//implementation group: "org.bouncycastle", name: "bcprov-jdk15on", version: "1.59"
 
 	implementation "com.github.bumptech.glide:glide:4.7.1"
 	//annotationProcessor "com.github.bumptech.glide:compiler:4.7.1"

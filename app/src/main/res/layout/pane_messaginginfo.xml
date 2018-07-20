@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-	android:id="@+id/group_messaginginfo_scroll"
 	xmlns:tools="http://schemas.android.com/tools"
+	android:id="@+id/group_messaginginfo_scroll"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	tools:context=".Messaging">
@@ -74,8 +74,7 @@
 		<View
 			android:layout_width="match_parent"
 			android:layout_height="1dp"
-			android:alpha="0.5"
-			android:background="@android:color/darker_gray" />
+			android:background="@color/colorDivider" />
 		
 		<!-- Conversation members -->
 		<TextView
@@ -133,8 +132,7 @@
 		<View
 			android:layout_width="match_parent"
 			android:layout_height="1dp"
-			android:alpha="0.5"
-			android:background="@android:color/darker_gray"
+			android:background="@color/colorDivider"
 			android:layout_marginTop="8dp"
 			android:layout_marginBottom="8dp" />
 		
