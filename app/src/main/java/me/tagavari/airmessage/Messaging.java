@@ -69,6 +69,7 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -108,6 +109,8 @@ import nl.dionsegijn.konfetti.models.Size;
 public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
 	private static final int quickScrollFABThreshold = 3;
+	private static final float bottomSheetFillThreshold = 0.8F;
+	private static final float contentPanelFillThreshold = 0.5F;
 	static final int messageChunkSize = 50;
 	static final int progressiveLoadThreshold = 10;
 	private static final String[] documentMimeTypes = {"text/*", "application/*", "font/*"};
@@ -162,6 +165,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	};
 	
+	
 	//Creating the view values
 	private View rootView;
 	private AppBarLayout appBar;
@@ -195,7 +199,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	//Creating the listeners
 	private final ViewTreeObserver.OnGlobalLayoutListener rootLayoutListener = () -> {
 		//Getting the height
-		int height = rootView.getHeight();
+		//int height = rootView.getHeight();
+		int height = messageList.getHeight();
 		
 		//Checking if the window is smaller than the minimum height, the window isn't in multi-window mode
 		if(height < getResources().getDimensionPixelSize(R.dimen.conversationwindow_minheight) && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode())) {
@@ -542,10 +547,15 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the listeners
 		rootView.getViewTreeObserver().addOnGlobalLayoutListener(rootLayoutListener);
 		messageInputField.addTextChangedListener(inputFieldTextWatcher);
+		messageInputField.setOnClickListener(view -> closeAttachmentsPanel(false));
 		buttonSendMessage.setOnClickListener(sendButtonClickListener);
 		buttonAddContent.setOnClickListener(view -> {
-			if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel();
-			else openAttachmentsPanel(false);
+			if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel(true);
+			else {
+				InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
+				boolean result = inputMethodManager.hideSoftInputFromWindow(view.getWindowToken(), 0);
+				openAttachmentsPanel(false, !result);
+			}
 		});
 		/* inputBar.findViewById(R.id.button_camera).setOnClickListener(view -> requestTakePicture());
 		inputBar.findViewById(R.id.button_gallery).setOnClickListener(view -> requestGalleryFile());
@@ -596,7 +606,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Restoring the panels
 		getWindow().getDecorView().post(() -> {
 			openDetailsPanel(true);
-			openAttachmentsPanel(true);
+			openAttachmentsPanel(true, false);
 		});
 		
 		//Updating the send button
@@ -948,12 +958,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Closing the details panel if it is open
 		if(viewModel.isDetailsPanelOpen) closeDetailsPanel();
 		//Closing the attachments panel if it is open
-		else if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel();
+		else if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel(true);
 		//Otherwise passing the event to the superclass
 		else super.onBackPressed();
 	}
 	
-	private void openAttachmentsPanel(boolean restore) {
+	private void openAttachmentsPanel(boolean restore, boolean animate) {
 		//Returning if the conversation is not ready or the panel is already open
 		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || restore != viewModel.isAttachmentsPanelOpen) return;
 		
@@ -980,13 +990,18 @@ public class Messaging extends AppCompatCompositeActivity {
 			setupAttachmentsDocumentsSection();
 		}
 		
-		if(restore) {
-			//Showing the panel
-			findViewById(R.id.panel_attachments).setVisibility(View.VISIBLE);
-		} else {
+		//Resolving the heights
+		int requestedPanelHeight = getResources().getDimensionPixelSize(R.dimen.contentpanel_height);
+		int windowThreshold = (int) (getAvailableWindowHeight() * contentPanelFillThreshold);
+		
+		//Limiting the panel height
+		int targetHeight = Math.min(requestedPanelHeight, windowThreshold);
+		
+		//Getting the panel
+		View panel = findViewById(R.id.panel_attachments);
+		
+		if(animate) {
 			//Animating in the panel
-			int targetHeight = getResources().getDimensionPixelSize(R.dimen.contentpanel_height);
-			View panel = findViewById(R.id.panel_attachments);
 			ValueAnimator animator = ValueAnimator.ofInt(0, targetHeight);
 			animator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
 			animator.setInterpolator(new AccelerateDecelerateInterpolator());
@@ -1008,34 +1023,47 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 			});
 			animator.start();
+		} else {
+			//Setting the panel height
+			panel.getLayoutParams().height = targetHeight;
+			
+			//Showing the panel
+			findViewById(R.id.panel_attachments).setVisibility(View.VISIBLE);
 		}
 	}
 	
-	private void closeAttachmentsPanel() {
+	private void closeAttachmentsPanel(boolean animate) {
 		//Returning if the conversation is not ready or the panel is already closed
 		if(viewModel.conversationInfo == null || !viewModel.isAttachmentsPanelOpen) return;
 		
 		//Setting the panel as closed
 		viewModel.isAttachmentsPanelOpen = false;
 		
-		//Animating out the panel
+		//Getting the panel
 		View panel = findViewById(R.id.panel_attachments);
-		ValueAnimator animator = ValueAnimator.ofInt(panel.getHeight(), 0);
-		animator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
-		animator.setInterpolator(new AccelerateDecelerateInterpolator());
-		animator.addUpdateListener(animation -> {
-			int value = (int) animation.getAnimatedValue();
-			panel.getLayoutParams().height = value;
-			panel.requestLayout();
-		});
-		animator.addListener(new AnimatorListenerAdapter() {
-			@Override
-			public void onAnimationEnd(Animator animation) {
-				panel.getLayoutParams().height = 0;
-				panel.setVisibility(View.GONE);
-			}
-		});
-		animator.start();
+		
+		//Closing the panel
+		if(animate) {
+			ValueAnimator animator = ValueAnimator.ofInt(panel.getHeight(), 0);
+			animator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
+			animator.setInterpolator(new AccelerateDecelerateInterpolator());
+			animator.addUpdateListener(animation -> {
+				int value = (int) animation.getAnimatedValue();
+				panel.getLayoutParams().height = value;
+				panel.requestLayout();
+			});
+			animator.addListener(new AnimatorListenerAdapter() {
+				@Override
+				public void onAnimationEnd(Animator animation) {
+					panel.getLayoutParams().height = 0;
+					panel.setVisibility(View.GONE);
+				}
+			});
+			animator.start();
+		} else {
+			panel.getLayoutParams().height = 0;
+			panel.setVisibility(View.GONE);
+		}
 	}
 	
 	private void setupAttachmentsGallerySection() {
@@ -1100,6 +1128,14 @@ public class Messaging extends AppCompatCompositeActivity {
 				}, adapter);
 			}
 		}
+	}
+	
+	/**
+	 * Gets the available window height: the height of the window, without the app bar
+	 * @return the available window height
+	 */
+	private int getAvailableWindowHeight() {
+		return getWindow().getDecorView().getHeight() - getSupportActionBar().getHeight();
 	}
 	
 	private void setupAttachmentsAudioSection() {
@@ -1346,11 +1382,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Measuring the content
 		content.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 		
-		//Comparing the content's height to the window's height
-		int primaryViewHeight = getWindow().getDecorView().getHeight();
-		
-		//Checking if the view occupies more than 80% of the window
-		if(content.getMeasuredHeight() > primaryViewHeight * 0.8F) {
+		//Checking if the view occupies most of the window
+		if(content.getMeasuredHeight() > getAvailableWindowHeight() * bottomSheetFillThreshold) {
 			//Instructing the panel to fill the entire view
 			ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) panel.getLayoutParams();
 			params.topToBottom = R.id.appbar;
@@ -2893,10 +2926,19 @@ public class Messaging extends AppCompatCompositeActivity {
 			service.addFileProcessingRequest(request);
 		}
 		
-		//Updating the listing
-		if(updateListing && item.getFile() != null && item.getListAdapter() != null) {
-			item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
-			((AttachmentsRecyclerAdapter<?>) item.getListAdapter()).recalculateIndices();
+		//Updating the listings
+		if(updateListing) {
+			//Updating the relevant adapters
+			List<AttachmentsRecyclerAdapter<?>> adapterList = new ArrayList<>();
+			for(int i = draftIndex; i < viewModel.draftQueueList.size(); i++) {
+				QueuedFileInfo listedItem = viewModel.draftQueueList.get(i);
+				if(listedItem.getItem().getListAdapter() == null || adapterList.contains(listedItem.getItem().getListAdapter())) continue;
+				adapterList.add(listedItem.getItem().getListAdapter());
+			}
+			for(AttachmentsRecyclerAdapter<?> adapter : adapterList) adapter.recalculateIndices();
+			
+			//Updating the item selection
+			if(item.getFile() != null && item.getListAdapter() != null) item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
 		}
 		
 		//Animating the list
@@ -3545,7 +3587,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			listIndex = index;
 		}
 		
-		RecyclerView.Adapter<?> getListAdapter() {
+		AttachmentsRecyclerAdapter<?> getListAdapter() {
 			return listAdapter;
 		}
 		
