@@ -621,10 +621,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		findViewById(R.id.error_text).setVisibility(View.VISIBLE);
 	} */
 	
-	public void onAudioRecordingTimeUpdate(String time) {
-		recordingTimeLabel.setText(time);
-	}
-	
 	@Override
 	public void onStart() {
 		//Calling the super method
@@ -3702,7 +3698,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the attachment values
 		File targetFile = null;
 		
-		Messaging.AudioMessageManager audioMessageManager = new AudioMessageManager();
+		final AudioPlaybackManager audioPlaybackManager = new AudioPlaybackManager();
 		
 		MutableLiveData<Integer> recordingDuration = new MutableLiveData<>();
 		boolean recordingDiscardHover = false; //If the user is hovering the recording indicator over the discard zone
@@ -3739,7 +3735,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(mediaRecorder != null) mediaRecorder.release();
 			
 			//Releasing the audio player
-			audioMessageManager.release();
+			audioPlaybackManager.release();
 			
 			//Checking if the conversation is valid
 			if(conversationInfo != null) {
@@ -4173,7 +4169,140 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	static class AudioMessageManager {
+	static class AudioPlaybackManager {
+		//Creating the values
+		private long requestID = -1;
+		private MediaPlayer mediaPlayer = new MediaPlayer();
+		private Callbacks callbacks = null;
+		private final Handler mediaPlayerHandler = new Handler(Looper.getMainLooper());
+		private final Runnable mediaPlayerHandlerRunnable = new Runnable() {
+			@Override
+			public void run() {
+				//Notifying the listener
+				callbacks.onProgress(mediaPlayer.getCurrentPosition());
+				
+				//Running again
+				mediaPlayerHandler.postDelayed(this, 10);
+			}
+		};
+		
+		AudioPlaybackManager() {
+			//Setting the media player listeners
+			mediaPlayer.setOnPreparedListener(player -> {
+				//Playing the media
+				player.start();
+				
+				//Starting the timer
+				startTimer();
+				
+				//Notifying the listener
+				callbacks.onPlay();
+			});
+			mediaPlayer.setOnCompletionListener(player -> {
+				//Cancelling the timer
+				stopTimer();
+				
+				//Notifying the listener
+				callbacks.onStop();
+			});
+		}
+		
+		void release() {
+			//Cancelling the timer
+			if(mediaPlayer.isPlaying()) mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
+			
+			//Releasing the media player
+			mediaPlayer.release();
+		}
+		
+		boolean play(File file, Callbacks callbacks) {
+			return play(-1, file, callbacks);
+		}
+		
+		boolean play(long requestID, File file, Callbacks callbacks) {
+			//Returning true if the request ID matches
+			if(requestID != -1 && this.requestID == requestID) return true;
+			
+			//Stopping the current media player
+			stop();
+			
+			//Resetting the media player
+			mediaPlayer.reset();
+			
+			try {
+				//Creating the media player
+				mediaPlayer.setDataSource(file.getPath());
+			} catch(IOException exception) {
+				//Printing the stack trace
+				exception.printStackTrace();
+				
+				//Returning false
+				return false;
+			}
+			
+			//Setting the request information
+			this.requestID = requestID;
+			this.callbacks = callbacks;
+			
+			//Preparing the media player
+			mediaPlayer.prepareAsync();
+			
+			//Returning true
+			return true;
+		}
+		
+		void togglePlaying() {
+			//Checking if the media player is playing
+			if(mediaPlayer.isPlaying()) {
+				//Pausing the media player
+				mediaPlayer.pause();
+				
+				//Cancelling the playback timer
+				stopTimer();
+				
+				//Notifying the listener
+				callbacks.onPause();
+			} else {
+				//Playing the media player
+				mediaPlayer.start();
+				
+				//Starting the playback timer
+				startTimer();
+				
+				//Notifying the listener
+				callbacks.onPlay();
+			}
+		}
+		
+		void stop() {
+			if(!mediaPlayer.isPlaying()) return;
+			
+			mediaPlayer.stop();
+			if(callbacks != null) callbacks.onStop();
+			stopTimer();
+		}
+		
+		boolean compareRequestID(long requestID) {
+			return this.requestID == requestID;
+		}
+		
+		interface Callbacks {
+			void onPlay();
+			void onProgress(long time);
+			void onPause();
+			void onStop();
+		}
+		
+		private void startTimer() {
+			mediaPlayerHandlerRunnable.run();
+		}
+		
+		private void stopTimer() {
+			mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
+		}
+	}
+	
+	/* static class AudioMessageManager {
 		//Creating the values
 		private MediaPlayer mediaPlayer = new MediaPlayer();
 		private String currentFilePath = "";
@@ -4288,7 +4417,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			ConversationManager.AudioAttachmentInfo attachment = getAttachmentInfo();
 			if(attachment != null) attachment.setMediaPlaying(mediaPlayer.isPlaying());
 		}
-	}
+	} */
 	
 	private static class UpdateUnreadMessageCount extends AsyncTask<Void, Void, Void> {
 		private final WeakReference<Context> contextReference;
@@ -4489,13 +4618,13 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		@Override
-		AudioMessageManager getAudioMessageManager() {
+		AudioPlaybackManager getAudioPlaybackManager() {
 			//Getting the activity
 			Messaging activity = activityReference.get();
 			if(activity == null) return null;
 			
 			//Returning the view model's audio message manager
-			return activity.viewModel.audioMessageManager;
+			return activity.viewModel.audioPlaybackManager;
 		}
 		
 		@Override

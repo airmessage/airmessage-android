@@ -1713,7 +1713,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 				Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT,
 				Contract.ConversationEntry.COLUMN_NAME_ARCHIVED,
 				Contract.ConversationEntry.COLUMN_NAME_MUTED,
-				Contract.ConversationEntry.COLUMN_NAME_COLOR}, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(localID)}, null, null, null)) {
+				Contract.ConversationEntry.COLUMN_NAME_COLOR,
+				Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE,
+				Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME}, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(localID)}, null, null, null)) {
 			//Returning null if there are no results
 			if(!cursor.moveToNext()) return null;
 			

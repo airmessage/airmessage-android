@@ -1391,7 +1391,7 @@ class ConversationManager {
 			abstract void chatUpdateMemberAdded(MemberInfo member, int index);
 			abstract void chatUpdateMemberRemoved(MemberInfo member, int index);
 			
-			abstract Messaging.AudioMessageManager getAudioMessageManager();
+			abstract Messaging.AudioPlaybackManager getAudioPlaybackManager();
 			
 			abstract void playScreenEffect(String effect, View target);
 		}
@@ -4913,9 +4913,9 @@ class ConversationManager {
 		
 		//Creating the media values
 		private long duration = 0;
+		private long mediaProgress = 0;
 		private byte fileState = fileStateIdle;
 		private boolean isPlaying = false;
-		private int mediaProgress = 0;
 		
 		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
 			super(localID, guid, message, fileName, fileType);
@@ -5043,19 +5043,43 @@ class ConversationManager {
 			if(callbacks == null) return;
 			
 			//Getting the audio message manager
-			Messaging.AudioMessageManager audioMessageManager = callbacks.getAudioMessageManager();
+			Messaging.AudioPlaybackManager audioPlaybackManager = callbacks.getAudioPlaybackManager();
 			
 			//Checking if the GUID matches
-			if(audioMessageManager.isCurrentMessage(file)) {
+			if(audioPlaybackManager.compareRequestID(localID)) {
 				//Toggling play
-				audioMessageManager.togglePlaying();
+				audioPlaybackManager.togglePlaying();
 				
 				//Returning
 				return;
 			}
 			
 			//Preparing the media player
-			audioMessageManager.prepareMediaPlayer(localID, file, this);
+			audioPlaybackManager.play(localID, file, new Messaging.AudioPlaybackManager.Callbacks() {
+				@Override
+				public void onPlay() {
+					setMediaPlaying(true);
+				}
+				
+				@Override
+				public void onProgress(long time) {
+					setMediaProgress(time);
+				}
+				
+				@Override
+				public void onPause() {
+					setMediaPlaying(false);
+				}
+				
+				@Override
+				public void onStop() {
+					ViewHolder viewHolder = getViewHolder();
+					if(viewHolder != null) {
+						setMediaPlaying(viewHolder, false);
+						setMediaProgress(viewHolder, 0);
+					}
+				}
+			});
 		}
 		
 		@Override
@@ -5080,13 +5104,13 @@ class ConversationManager {
 					resDrawablePlay);
 		}
 		
-		void setMediaProgress(int progress) {
+		void setMediaProgress(long progress) {
 			//Calling the overload method
 			ViewHolder viewHolder = getViewHolder();
 			if(viewHolder != null) setMediaProgress(viewHolder, progress);
 		}
 		
-		private void setMediaProgress(ViewHolder viewHolder, int progress) {
+		private void setMediaProgress(ViewHolder viewHolder, long progress) {
 			mediaProgress = progress;
 			updateMediaProgress(viewHolder);
 		}
@@ -5100,12 +5124,6 @@ class ConversationManager {
 		private void updateMediaProgress(ViewHolder viewHolder) {
 			viewHolder.contentProgress.setProgress((int) ((float) mediaProgress / (float) duration * 100F));
 			viewHolder.contentLabel.setText(Constants.getFormattedDuration((int) Math.floor(mediaProgress <= 0 ? duration / 1000L : mediaProgress / 1000L)));
-		}
-		
-		void resetPlaying() {
-			//Calling the overload method
-			ViewHolder viewHolder = getViewHolder();
-			if(viewHolder != null) resetPlaying(viewHolder);
 		}
 		
 		private void resetPlaying(ViewHolder viewHolder) {
