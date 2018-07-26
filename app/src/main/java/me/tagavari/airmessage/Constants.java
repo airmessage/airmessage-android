@@ -201,11 +201,11 @@ public class Constants {
 		} */
 	}
 	
-	static int dpToPx(float dp) {
+	public static int dpToPx(float dp) {
 		return (int) (dp * Resources.getSystem().getDisplayMetrics().density);
 	}
 	
-	static float pxToDp(int px) {
+	public static float pxToDp(int px) {
 		return px / Resources.getSystem().getDisplayMetrics().density;
 	}
 	

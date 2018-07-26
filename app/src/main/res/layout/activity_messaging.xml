@@ -137,6 +137,8 @@
 			android:layout_height="wrap_content"
 			android:overScrollMode="never"
 			android:requiresFadingEdge="vertical"
+			android:clipChildren="true"
+			android:clipToPadding="true"
 			android:visibility="gone" />
 		
 		<!-- Input bar (text / recording) -->

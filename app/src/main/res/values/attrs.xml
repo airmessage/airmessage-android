@@ -14,6 +14,12 @@
 		<attr name="target" format="reference" />
 	</declare-styleable>
 	
+	<declare-styleable name="VisualizerView">
+		<attr name="renderColor" format="color" />
+		<attr name="lineWidth" format="dimension" />
+		<attr name="lineSpacing" format="dimension" />
+	</declare-styleable>
+	
 	<declare-styleable name="EffectBalloon">
 		<attr name="effectballoon_color_light" format="color" />
 		<attr name="effectballoon_color_dark" format="color" />

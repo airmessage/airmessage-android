@@ -162,7 +162,7 @@
 				android:layout_marginLeft="@dimen/contenttile_margin"
 				android:layout_marginRight="@dimen/contenttile_margin"
 				android:layout_weight="1"
-				android:visibility="gone">
+				android:visibility="visible">
 				
 				<FrameLayout
 					android:id="@+id/frame_attachment_audio_gate"
@@ -202,13 +202,14 @@
 						android:text="Time"
 						android:textColor="@android:color/white" />
 					
-					<com.tyorikan.voicerecordingvisualizer.VisualizerView
+					<me.tagavari.airmessage.view.VisualizerView
 						android:id="@+id/visualizer_attachment_audio_recording"
 						android:layout_width="match_parent"
-						android:layout_height="20dp"
+						android:layout_height="40dp"
 						android:layout_centerVertical="true"
-						app:numColumns="25"
-						app:renderColor="@android:color/white" />
+						app:renderColor="@android:color/white"
+						app:lineWidth="3dp"
+						app:lineSpacing="1dp"/>
 				</RelativeLayout>
 			</FrameLayout>
 		</LinearLayout>

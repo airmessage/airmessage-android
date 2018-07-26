@@ -60,7 +60,9 @@ import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.view.ViewTreeObserver;
@@ -102,6 +104,7 @@ import java9.util.function.Consumer;
 import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.view.AppleEffectView;
+import me.tagavari.airmessage.view.VisualizerView;
 import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
@@ -114,6 +117,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	static final int messageChunkSize = 50;
 	static final int progressiveLoadThreshold = 10;
 	private static final String[] documentMimeTypes = {"text/*", "application/*", "font/*"};
+	
+	private static final long confettiDuration = 1000;
+	//private static final float disabledAlpha = 0.38F
 	
 	private static final int permissionRequestStorage = 0;
 	private static final int permissionRequestAudio = 1;
@@ -164,7 +170,22 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !viewModel.isProgressiveLoadInProgress() && !viewModel.progressiveLoadReachedLimit) recyclerView.post(viewModel::loadNextChunk);
 		}
 	};
-	
+	private final View.OnTouchListener recordingTouchListener = (view, motionEvent) -> {
+		//Performing the click
+		view.performClick();
+		
+		//Checking if the input state is content and the action is a down touch
+		if(motionEvent.getAction() == MotionEvent.ACTION_DOWN) {
+			//Attempting to start recording
+			startRecording(motionEvent.getX(), motionEvent.getY());
+			
+			//Returning true
+			return true;
+		}
+		
+		//Returning false
+		return false;
+	};
 	
 	//Creating the view values
 	private View rootView;
@@ -177,7 +198,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	private ImageButton buttonSendMessage;
 	private ImageButton buttonAddContent;
 	private EditText messageInputField;
+	private ViewGroup recordingActiveGroup;
 	private TextView recordingTimeLabel;
+	private VisualizerView recordingVisualizer;
 	private FloatingActionButton bottomFAB;
 	private TextView bottomFABBadge;
 	private AppleEffectView appleEffectView;
@@ -191,6 +214,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private final MessageListRecyclerAdapter messageListAdapter = new MessageListRecyclerAdapter();
 	private ActivityManager.TaskDescription lastTaskDescription;
 	
+	private boolean currentSendButtonState = true;
 	private boolean toolbarVisible = true;
 	
 	private DialogFragment currentColorPickerDialog = null;
@@ -223,7 +247,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//messageBoxHasText = stringHasChar(s.toString());
 			
 			//Updating the send button
-			updateSendButton();
+			updateSendButton(false);
 		}
 		
 		@Override
@@ -231,9 +255,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	};
 	private final View.OnClickListener sendButtonClickListener = view -> {
-		//Returning if the input state is not text
-		if(viewModel.inputState != ActivityViewModel.inputStateText) return;
-		
 		//Creating the message list
 		ArrayList<ConversationManager.MessageInfo> messageList = new ArrayList<>();
 		
@@ -407,7 +428,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					listAttachmentQueue.setVisibility(View.VISIBLE);
 					
 					//Updating the send button
-					updateSendButton();
+					updateSendButton(false);
 				}
 				
 				//Restoring the draft message
@@ -527,14 +548,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		}).get(ActivityViewModel.class);
 		
-		//Registering the observers
-		viewModel.messagesState.observe(this, messagesStateObserver);
-		viewModel.recordingDuration.observe(this, value -> recordingTimeLabel.setText(Constants.getFormattedDuration(value)));
-		viewModel.progressiveLoadInProgress.observe(this, value -> {
-			if(value) onProgressiveLoadStart();
-			else onProgressiveLoadFinish(viewModel.lastProgressiveLoadCount);
-		});
-		
 		//Restoring the input bar state
 		restoreInputBarState();
 		
@@ -610,7 +623,27 @@ public class Messaging extends AppCompatCompositeActivity {
 		});
 		
 		//Updating the send button
-		updateSendButton();
+		updateSendButton(true);
+		
+		//Registering the observers
+		viewModel.messagesState.observe(this, messagesStateObserver);
+		viewModel.isRecording.observe(this, value -> {
+			//Returning if the value is recording (already handled, since the activity has to initiate it)
+			if(value) return;
+			
+			//Concealing the recording view
+			concealRecordingView();
+			
+			//Queuing the target file (if it is available)
+			if(viewModel.targetFileRecording != null) new QueueFileAsyncTask(this).execute(viewModel.targetFileRecording);
+		});
+		viewModel.recordingDuration.observe(this, value -> {
+			if(recordingTimeLabel != null) recordingTimeLabel.setText(Constants.getFormattedDuration(value));
+		});
+		viewModel.progressiveLoadInProgress.observe(this, value -> {
+			if(value) onProgressiveLoadStart();
+			else onProgressiveLoadFinish(viewModel.lastProgressiveLoadCount);
+		});
 	}
 	
 	/* void onMessagesFailed() {
@@ -814,7 +847,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Checking if the result was a success
 			if(resultCode == RESULT_OK) {
 				//Queuing the file
-				new QueueFileAsyncTask(this).execute(viewModel.targetFile);
+				new QueueFileAsyncTask(this).execute(viewModel.targetFileIntent);
 			}
 		}
 		//Otherwise if the request code is the media picker
@@ -984,6 +1017,15 @@ public class Messaging extends AppCompatCompositeActivity {
 			setupAttachmentsGallerySection();
 			setupAttachmentsAudioSection();
 			setupAttachmentsDocumentsSection();
+			
+			//Setting the listeners
+			//inflated.findViewById(R.id.pane_attachments).setOnTouchListener(attachmentListTouchListener);
+			
+			//Checking if the request is a restore
+			if(restore) {
+				//Setting the recording panel
+				restoreRecordingView();
+			}
 		}
 		
 		//Resolving the heights
@@ -1155,6 +1197,15 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Swapping to the content view
 			viewGroup.findViewById(R.id.button_attachment_audio_permission).setVisibility(View.GONE);
 			viewGroup.findViewById(R.id.frame_attachment_audio_content).setVisibility(View.VISIBLE);
+			
+			//Getting the views
+			recordingActiveGroup = viewGroup.findViewById(R.id.frame_attachment_audio_recording);
+			recordingTimeLabel = viewGroup.findViewById(R.id.label_attachment_audio_recording);
+			recordingVisualizer = viewGroup.findViewById(R.id.visualizer_attachment_audio_recording);
+			
+			//Setting the listeners
+			viewGroup.findViewById(R.id.frame_attachment_audio_gate).setOnTouchListener(recordingTouchListener);
+			//recordingTouchListener
 		}
 	}
 	
@@ -1590,59 +1641,23 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(currentColorPickerDialog != null && currentColorPickerDialogMember == member) currentColorPickerDialog.dismiss();
 	}
 	
-	/* @Override
+	@Override
 	public boolean dispatchTouchEvent(MotionEvent event) {
-		//Returning if the current state isn't recording
-		if(viewModel.inputState != ActivityViewModel.inputStateRecording) {
-			return super.dispatchTouchEvent(event);
-		}
+		//Calling the super method if there is no recording taking place
+		if(!viewModel.isRecording()) return super.dispatchTouchEvent(event);
 		
-		//Checking if the action is a move touch
-		if(event.getAction() == MotionEvent.ACTION_MOVE) {
-			//Moving the recording indicator
-			recordingIndicator.setX(event.getRawX() - (float) recordingIndicator.getWidth() / 2f);
-			
-			//Checking if the hover values do not match
-			boolean isOverDiscardZone = isPosOverDiscardZone(event.getRawX());
-			if(viewModel.recordingDiscardHover != isOverDiscardZone) {
-				//Getting the colors
-				int colorBG = Constants.resolveColorAttr(this, android.R.attr.colorBackgroundFloating);
-				int colorWarn = getResources().getColor(R.color.colorRecordingDiscard, null);
-				
-				ValueAnimator colorAnimation = ValueAnimator.ofObject(new ArgbEvaluator(), isOverDiscardZone ? colorBG : colorWarn, isOverDiscardZone ? colorWarn : colorBG);
-				colorAnimation.setDuration(250);
-				colorAnimation.addUpdateListener(animation -> recordingBar.setBackgroundColor((int) animation.getAnimatedValue()));
-				colorAnimation.start();
-				
-				//Updating the view model's hover value
-				viewModel.recordingDiscardHover = isOverDiscardZone;
-			}
-			
-			//Returning true
-			return true;
-		}
-		//Checking if the action is an up touch
+		//Consuming the move event (as to not affect the elements below)
+		if(event.getAction() == MotionEvent.ACTION_MOVE) return true;
 		else if(event.getAction() == MotionEvent.ACTION_UP) {
 			//Stopping the recording session
-			stopRecording(isPosOverDiscardZone(event.getRawX()), (int) event.getRawX());
+			stopRecording();
 			
-			//Returning true
+			//Returning true to consume the event
 			return true;
 		}
 		
-		//Returning false
-		super.dispatchTouchEvent(event);
-		return false;
-	} */
-	
-	private boolean isPosOverDiscardZone(float posX) {
-		//Getting the display width
-		DisplayMetrics displaymetrics = new DisplayMetrics();
-		getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-		int width = displaymetrics.widthPixels;
-		
-		if(getResources().getBoolean(R.bool.is_left_to_right)) return posX < (float) width * 0.2F; //Left 20% of the display
-		else return posX > (float) width * 0.8F; //Right 20% of the display
+		//Calling the super method
+		return super.dispatchTouchEvent(event);
 	}
 	
 	private void colorUI(ViewGroup root) {
@@ -1707,11 +1722,17 @@ public class Messaging extends AppCompatCompositeActivity {
 		//if(enabled) ((InputMethodManager) activitySource.getActivity().getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(messageInputField, InputMethodManager.SHOW_FORCED);
 	}
 	
-	private void updateSendButton() {
-		//Setting the send button state
+	private void updateSendButton(boolean restore) {
+		//Getting the send button state
 		boolean state = messageInputField.getText().length() > 0 || !viewModel.draftQueueList.isEmpty();
+		if(currentSendButtonState == state) return;
+		currentSendButtonState = state;
+		
+		//Updating the button
 		buttonSendMessage.setClickable(state);
-		buttonSendMessage.setAlpha(state ? 1 : 0.38F);
+		float targetAlpha = state ? 1 : Constants.disabledAlpha;
+		if(restore) buttonSendMessage.setAlpha(targetAlpha);
+		else buttonSendMessage.animate().setDuration(100).alpha(targetAlpha);
 	}
 	
 	/* private boolean startRecording() {
@@ -2101,7 +2122,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Finding a free file
-		viewModel.targetFile = MainApplication.getDraftTarget(this, viewModel.conversationID, Constants.pictureName);
+		viewModel.targetFileIntent = MainApplication.getDraftTarget(this, viewModel.conversationID, Constants.pictureName);
 		
 		/* try {
 			//Creating the targets
@@ -2116,7 +2137,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		} */
 		
 		//Getting the content uri
-		Uri imageUri = FileProvider.getUriForFile(this, MainApplication.fileAuthority, viewModel.targetFile);
+		Uri imageUri = FileProvider.getUriForFile(this, MainApplication.fileAuthority, viewModel.targetFileIntent);
 		
 		//Setting the clip data
 		takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
@@ -2195,114 +2216,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		return list;
 	}
 	
-	private void sendFile(File file) {
-		//Creating a message
-		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
-		
-		//Starting the task
-		new SendFilePreparationTask(this, messageInfo, file).execute();
-	}
-	
-	private void sendFile(Uri uri) {
-		//Creating a message
-		ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
-		
-		//Starting the task
-		new SendFilePreparationTask(this, messageInfo, uri).execute();
-	}
-	
-	private static class SendFilePreparationTask extends AsyncTask<Void, Void, Void> {
-		//Creating the reference values
-		private final WeakReference<Messaging> activityReference;
-		private final WeakReference<Context> contextReference;
-		
-		//Creating the request values
-		private final ConversationManager.MessageInfo messageInfo;
-		private File targetFile;
-		private Uri targetUri;
-		
-		private SendFilePreparationTask(Messaging activity, ConversationManager.MessageInfo messageInfo) {
-			//Setting the references
-			activityReference = new WeakReference<>(activity);
-			contextReference = new WeakReference<>(activity.getApplicationContext());
-			
-			//Setting the basic values
-			this.messageInfo = messageInfo;
-		}
-		
-		SendFilePreparationTask(Messaging activity, ConversationManager.MessageInfo messageInfo, File file) {
-			//Calling the main constructor
-			this(activity, messageInfo);
-			
-			//Setting the request values
-			targetFile = file;
-			targetUri = null;
-		}
-		
-		SendFilePreparationTask(Messaging activity, ConversationManager.MessageInfo messageInfo, Uri uri) {
-			//Calling the main constructor
-			this(activity, messageInfo);
-			
-			//Setting the request values
-			targetFile = null;
-			targetUri = uri;
-		}
-		
-		@Override
-		protected Void doInBackground(Void... parameters) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return null;
-			
-			//Creating the attachment
-			ConversationManager.AttachmentInfo attachment;
-			if(targetFile != null) attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, targetFile.getName(), Constants.getMimeType(/*context, */targetFile), targetFile);
-			else attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, Constants.getUriName(context, targetUri), Constants.getMimeType(context, targetUri), targetUri);
-			
-			//Adding the item to the database
-			messageInfo.addAttachment(attachment);
-			DatabaseManager.getInstance().addConversationItem(messageInfo);
-			
-			//Returning
-			return null;
-		}
-		
-		@Override
-		protected void onPostExecute(Void parameter) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context != null) {
-				//Checking if the conversation is loaded
-				long currentConversationID = messageInfo.getConversationInfo().getLocalID();
-				boolean conversationFound = false;
-				for(long identifiers : Messaging.getForegroundConversations())
-					if(currentConversationID == identifiers) {
-						conversationFound = true;
-						break;
-					}
-				
-				//Checking if the conversation is still loaded
-				if(conversationFound) {
-					//Adding the message to the conversation in memory
-					messageInfo.getConversationInfo().addGhostMessage(context, messageInfo);
-					
-					//Getting the activity
-					Messaging activity = activityReference.get();
-					if(activity != null) {
-						//Scrolling to the bottom of the chat
-						activity.messageListAdapter.scrollToBottom();
-					}
-				}
-			}
-			
-			//Sending the message
-			Activity activity = activityReference.get();
-			if(activity != null) messageInfo.sendMessage(activity);
-		}
-	}
-	
-	private static final long confettiDuration = 1000;
-	
 	void playScreenEffect(String effect, View target) {
 		//Returning if an effect is already playing
 		if(currentScreenEffectPlaying) return;
@@ -2367,6 +2280,60 @@ public class Messaging extends AppCompatCompositeActivity {
 	void onProgressiveLoadFinish(int itemCount) {
 		messageListAdapter.notifyItemRemoved(0); //Removing the loading spinner
 		messageListAdapter.notifyItemRangeInserted(0, itemCount); //Inserting the new items
+	}
+	
+	void startRecording(float touchX, float touchY) {
+		//Telling the view model to start recording
+		boolean result = viewModel.startRecording(this);
+		if(!result) return;
+		
+		//Revealing the recording view
+		revealRecordingView(touchX, touchY);
+	}
+	
+	void stopRecording() {
+		//Telling the view model to stop recording
+		viewModel.stopRecording(true, false);
+	}
+	
+	private void restoreRecordingView() {
+		if(recordingActiveGroup == null || !viewModel.isRecording()) return;
+		recordingActiveGroup.setVisibility(View.VISIBLE);
+	}
+	
+	private void revealRecordingView(float touchX, float touchY) {
+		//Returning if the view is invalid
+		if(recordingActiveGroup == null) return;
+		
+		//Calculating the radius
+		float greaterX = Math.max(touchX, recordingActiveGroup.getWidth() - touchX);
+		float greaterY = Math.max(touchY, recordingActiveGroup.getHeight() - touchY);
+		float endRadius = (float) Math.hypot(greaterX, greaterY);
+		
+		//Revealing the recording view
+		Animator animator = ViewAnimationUtils.createCircularReveal(recordingActiveGroup, (int) touchX, (int) touchY, 0, endRadius);
+		animator.addListener(new AnimatorListenerAdapter() {
+			@Override
+			public void onAnimationStart(Animator animation) {
+				recordingActiveGroup.setAlpha(1);
+				recordingActiveGroup.setVisibility(View.VISIBLE);
+				recordingVisualizer.clear();
+				recordingVisualizer.attachMediaRecorder(viewModel.mediaRecorder);
+			}
+		});
+		animator.start();
+	}
+	
+	private void concealRecordingView() {
+		//Returning if the view is invalid
+		if(recordingActiveGroup == null) return;
+		
+		//Fading the view
+		recordingActiveGroup.animate().alpha(0).withEndAction(() -> {
+			if(viewModel.isRecording()) return;
+			recordingActiveGroup.setVisibility(View.GONE);
+			recordingVisualizer.detachMediaRecorder();
+		});
 	}
 	
 	class MessageListRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
@@ -2876,7 +2843,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Updating the send button
-		updateSendButton();
+		updateSendButton(false);
 		
 		//Returning the index
 		return draftIndex;
@@ -2961,7 +2928,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Updating the send button
-		updateSendButton();
+		updateSendButton(false);
 		
 		//Returning the removed item index
 		return draftIndex;
@@ -3650,10 +3617,6 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private static class ActivityViewModel extends AndroidViewModel {
-		//Creating the reference values
-		static final byte inputStateText = 0;
-		static final byte inputStateRecording = 1;
-		
 		static final byte messagesStateIdle = 0;
 		static final byte messagesStateLoadingConversation = 1;
 		static final byte messagesStateLoadingMessages = 2;
@@ -3671,8 +3634,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private static final int attachmentsTileCount = 12;
 		
 		//Creating the state values
-		byte inputState = inputStateText;
-		MutableLiveData<Byte> messagesState = new MutableLiveData<>();
+		private final MutableLiveData<Byte> messagesState = new MutableLiveData<>();
 		
 		final List<QueuedFileInfo> draftQueueList = new ArrayList<>(3);
 		private static final int attachmentTypesCount = 2;
@@ -3683,7 +3645,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		boolean isAttachmentsPanelOpen = false;
 		boolean isDetailsPanelOpen = false;
 		
-		MutableLiveData<Boolean> progressiveLoadInProgress = new MutableLiveData<>();
+		private final MutableLiveData<Boolean> progressiveLoadInProgress = new MutableLiveData<>();
 		boolean progressiveLoadReachedLimit = false;
 		int lastProgressiveLoadCount = -1;
 		
@@ -3696,13 +3658,14 @@ public class Messaging extends AppCompatCompositeActivity {
 		private ArrayList<ConversationManager.MessageInfo> conversationGhostList;
 		
 		//Creating the attachment values
-		File targetFile = null;
+		File targetFileIntent = null;
+		File targetFileRecording = null;
 		
 		final AudioPlaybackManager audioPlaybackManager = new AudioPlaybackManager();
 		
-		MutableLiveData<Integer> recordingDuration = new MutableLiveData<>();
-		boolean recordingDiscardHover = false; //If the user is hovering the recording indicator over the discard zone
 		MediaRecorder mediaRecorder = null;
+		private final MutableLiveData<Boolean> isRecording = new MutableLiveData<>();
+		private final MutableLiveData<Integer> recordingDuration = new MutableLiveData<>();
 		private final Handler recordingTimerHandler = new Handler(Looper.getMainLooper());
 		private final Runnable recordingTimerHandlerRunnable = new Runnable() {
 			@Override
@@ -3731,7 +3694,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		@Override
 		protected void onCleared() {
 			//Cleaning up the media recorder
-			if(inputState == inputStateRecording) stopRecording(true);
+			if(isRecording()) stopRecording(true, true);
 			if(mediaRecorder != null) mediaRecorder.release();
 			
 			//Releasing the audio player
@@ -3924,16 +3887,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			return value;
 		} */
 		
-		void startRecordingTimer() {
-			recordingDuration.setValue(0);
-			recordingTimerHandler.postDelayed(recordingTimerHandlerRunnable, 1000);
-		}
-		
-		void stopRecordingTimer() {
-			recordingTimerHandler.removeCallbacks(recordingTimerHandlerRunnable);
-		}
-		
-		private boolean startRecording(Activity activity) {
+		boolean startRecording(Activity activity) {
 			//Setting up the media recorder
 			boolean result = setupMediaRecorder(activity);
 			
@@ -3941,11 +3895,11 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(!result) return false;
 			
 			//Finding a target file
-			targetFile = MainApplication.findUploadFileTarget(activity, Constants.recordingName);
+			targetFileRecording = MainApplication.getDraftTarget(getApplication(), conversationID, Constants.recordingName);
 			
-			try {
+			/* try {
 				//Creating the targets
-				if(!targetFile.getParentFile().mkdir()) throw new IOException();
+				if(!targetFileRecording.getParentFile().mkdir()) throw new IOException();
 				//if(!targetFile.createNewFile()) throw new IOException();
 			} catch(IOException exception) {
 				//Printing the stack trace
@@ -3953,11 +3907,11 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Returning
 				return false;
-			}
+			} */
 			
 			//Setting the media recorder file
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) mediaRecorder.setOutputFile(targetFile);
-			else mediaRecorder.setOutputFile(targetFile.getAbsolutePath());
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) mediaRecorder.setOutputFile(targetFileRecording);
+			else mediaRecorder.setOutputFile(targetFileRecording.getAbsolutePath());
 			
 			try {
 				//Preparing the media recorder
@@ -3976,8 +3930,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Starting the media recorder
 			mediaRecorder.start();
 			
-			//Resetting the flags
-			recordingDiscardHover = false;
+			//Updating the state
+			isRecording.setValue(true);
 			
 			//Returning true
 			return true;
@@ -3985,25 +3939,31 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		/**
 		 * Stops the current recording session
-		 * @param discard whether the file should be discarded or not
+		 * @param cleanup whether or not to clean up the media recorder (usually wanted, unless the media recorder encountered an error)
+		 * @param discard whether or not to discard the recorded file
 		 * @return the file's availability (to be able to use or send)
 		 */
-		private boolean stopRecording(boolean discard) {
-			//Returning false if the input state is not recording
-			if(inputState != inputStateRecording) return true;
+		private boolean stopRecording(boolean cleanup, boolean discard) {
+			//Returning if the input state is not recording
+			if(!isRecording()) return true;
 			
 			//Stopping the timer
 			stopRecordingTimer();
 			
-			try {
-				//Stopping the media recorder
-				mediaRecorder.stop();
-			} catch(RuntimeException stopException) { //The media recorder couldn't capture any media
-				//Showing a toast
-				Toast.makeText(MainApplication.getInstance(), R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
-				
-				//Returning false
-				return false;
+			if(cleanup) {
+				try {
+					//Stopping the media recorder
+					mediaRecorder.stop();
+				} catch(RuntimeException stopException) { //The media recorder couldn't capture any media
+					//Showing a toast
+					Toast.makeText(MainApplication.getInstance(), R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
+					
+					//Invalidating the recording file reference
+					targetFileRecording = null;
+					
+					//Returning false
+					return false;
+				}
 			}
 			
 			//Checking if the recording was under a second
@@ -4017,15 +3977,23 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Checking if the recording should be discarded
 			if(discard) {
-				//Deleting the file
-				targetFile.delete();
+				//Deleting the file and invalidating its reference
+				targetFileRecording.delete();
+				targetFileRecording = null;
 				
 				//Returning false
 				return false;
 			}
 			
+			//Updating the state
+			isRecording.setValue(false);
+			
 			//Returning true
 			return true;
+		}
+		
+		boolean isRecording() {
+			return Boolean.TRUE.equals(isRecording.getValue());
 		}
 		
 		private boolean setupMediaRecorder(Activity activity) {
@@ -4048,8 +4016,29 @@ public class Messaging extends AppCompatCompositeActivity {
 			mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
 			mediaRecorder.setMaxDuration(10 * 60 * 1000); //10 minutes
 			
+			mediaRecorder.setOnInfoListener((recorder, what, extra) -> {
+				if(what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED ||
+						what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
+					stopRecording(false, false);
+				}
+			});
+			mediaRecorder.setOnErrorListener((recorder, what, extra) -> {
+				stopRecording(false, true);
+				mediaRecorder.release();
+				mediaRecorder = null;
+			});
+			
 			//Returning true
 			return true;
+		}
+		
+		private void startRecordingTimer() {
+			recordingDuration.setValue(0);
+			recordingTimerHandler.postDelayed(recordingTimerHandlerRunnable, 1000);
+		}
+		
+		private void stopRecordingTimer() {
+			recordingTimerHandler.removeCallbacks(recordingTimerHandlerRunnable);
 		}
 		
 		void indexAttachmentsGallery(AttachmentsLoadCallbacks listener, AttachmentsRecyclerAdapter<?> adapter) {

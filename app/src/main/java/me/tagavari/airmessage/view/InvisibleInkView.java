@@ -54,7 +54,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	private final Paint particlePaint;
 	
 	//Creating the rendering values (values used in the drawing thread)
-	private final Lock viewRadiiLock= new ReentrantLock();
+	private final Lock viewRadiiLock = new ReentrantLock();
 	private float[] viewRadii = new float[8];
 	private final AtomicInteger viewWidth = new AtomicInteger();
 	private final AtomicInteger viewHeight = new AtomicInteger();
