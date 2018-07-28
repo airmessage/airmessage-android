@@ -374,6 +374,18 @@ public class Constants {
 		return -1;
 	}
 	
+	/**
+	 * Compares file paths to check if the target file is parented anywhere under the parent directory
+	 * EXAMPLE:
+	 * /user/photos/2016, /user/photos/2016/image.jpg -> TRUE
+	 * /user/photos/2016, /user/photos/2016/january/12/image.jpg -> TRUE
+	 * /user/photos/2016, /user/images/2016/image.jpg -> FALSE
+	 * /user/photos/2016, /user/photos/2016 -> TRUE
+	 * /user/photos/2016, /user/photos/image.jpg -> FALSE
+	 * @param parentDir the parent directory
+	 * @param targetFile the target file to check ownership over
+	 * @return whether or not the parent directory directly or indirectly encapsulates the target file
+	 */
 	static boolean checkFileParent(File parentDir, File targetFile) {
 		//Path-indexing both files
 		List<File> parentDirPath = new ArrayList<>();
@@ -385,11 +397,11 @@ public class Constants {
 			while((file = file.getParentFile()) != null) targetFilePath.add(0, file);
 		}
 		
-		//Returning false if the parent path is longer than the target path
+		//Returning false if the parent path is longer than the target path (the target file path should be longer, as it is checking for a sub-file)
 		if(parentDirPath.size() > targetFilePath.size()) return false;
 		
 		//Returning false if there is a folder mismatch anywhere along the way (the paths don't line up)
-		for(int i = 0; i < parentDirPath.size(); i++) if(!parentDirPath.get(i).equals(parentDirPath.get(i))) return false;
+		for(int i = 0; i < parentDirPath.size(); i++) if(!parentDirPath.get(i).equals(targetFilePath.get(i))) return false;
 		
 		//Returning true (all the folders matched)
 		return true;

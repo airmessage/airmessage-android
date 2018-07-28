@@ -5421,15 +5421,6 @@ public class ConnectionService extends Service {
 						try(OutputStream outputStream = new FileOutputStream(targetFile)) {
 							//Clearing the reference to the context
 							context = null;
-						
-						/* //Checking if the input stream is invalid
-						if(inputStream == null) {
-							//Calling the fail method
-							handler.post(() -> finalCallbacks.onFail(messageSendInvalidContent));
-							
-							//Skipping the remainder of the iteration
-							continue;
-						} */
 							
 							//Preparing to read the file
 							long totalLength = inputStream.available();
