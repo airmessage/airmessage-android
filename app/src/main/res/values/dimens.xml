@@ -16,6 +16,7 @@
 	<dimen name="contentwidth_max">1000dp</dimen> <!-- The maximum width of the screen content before side margins are added -->
 	
 	<dimen name="contenttile_size">100dp</dimen> <!-- The width / height of a content tile in the messaging activity's attachment menu -->
+	<dimen name="contenttile_ring_innerRadius">35dp</dimen> <!-- The inner radius of circular shapes occupying the content tile -->
 	<dimen name="contenttile_margin">8dp</dimen> <!-- The amount of margin between content tiles in the messaging activity's attachment menu -->
 	<dimen name="contenttile_radius">4dp</dimen>
 	<dimen name="contentpanel_height">250dp</dimen> <!-- The height of the attachment panel -->

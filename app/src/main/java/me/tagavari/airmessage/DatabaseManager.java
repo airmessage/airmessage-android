@@ -705,13 +705,27 @@ class DatabaseManager extends SQLiteOpenHelper {
 			boolean chatArchived = cursor.getInt(indexChatArchived) != 0;
 			boolean chatMuted = cursor.getInt(indexChatMuted) != 0;
 			int chatColor = cursor.getInt(indexChatColor);
-			ConversationManager.LightConversationItem lightItem = getLightItem(context, chatID);
 			String draftMessage = cursor.getString(indexDraftMessage);
 			long draftUpdateTime = cursor.getLong(indexDraftUpdateTime);
 			
 			//Getting the members and drafts
 			ArrayList<ConversationManager.MemberInfo> conversationMembers = loadConversationMembers(database, chatID);
 			ArrayList<ConversationManager.DraftFile> draftFiles = loadDraftFiles(database, context, chatID);
+			
+			//Getting the light item
+			ConversationManager.LightConversationItem lightItem;
+			if(draftMessage != null) {
+				lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime);
+			} else if(!draftFiles.isEmpty()) {
+				//Converting the draft list to a string resource list
+				ArrayList<Integer> draftStringRes = new ArrayList<>();
+				for(ConversationManager.DraftFile draft : draftFiles) draftStringRes.add(ConversationManager.getNameFromContentType(draft.getFileType()));
+				
+				String summary;
+				if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
+				else summary = context.getResources().getQuantityString(R.plurals.message_multipleattachments, draftStringRes.size(), draftStringRes.size());
+				lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime);
+			} else lightItem = getLightItem(context, chatID);
 			
 			//Creating and adding the conversation info
 			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatName, chatUnreadMessages, chatColor, draftMessage, draftFiles, draftUpdateTime);
@@ -1773,7 +1787,17 @@ class DatabaseManager extends SQLiteOpenHelper {
 			int indexFileType = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILETYPE);
 			int indexOriginalPath = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH);
 			int indexModificationDate = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE);
-			while(cursor.moveToNext()) draftFiles.add(new ConversationManager.DraftFile(cursor.getLong(indexIdentifier), ConversationManager.DraftFile.getAbsolutePath(context, cursor.getString(indexFile)), cursor.getString(indexFileName), cursor.getLong(indexFileSize), cursor.getString(indexFileType), new File(cursor.getString(indexOriginalPath)), cursor.getLong(indexModificationDate)));
+			while(cursor.moveToNext()) {
+				String originalPath = cursor.getString(indexOriginalPath);
+				draftFiles.add(new ConversationManager.DraftFile(
+						cursor.getLong(indexIdentifier),
+						ConversationManager.DraftFile.getAbsolutePath(context, cursor.getString(indexFile)),
+						cursor.getString(indexFileName),
+						cursor.getLong(indexFileSize),
+						cursor.getString(indexFileType),
+						originalPath == null ? null : new File(originalPath),
+						cursor.getLong(indexModificationDate)));
+			}
 		}
 		return draftFiles;
 	}

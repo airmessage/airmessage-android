@@ -13,7 +13,6 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
-import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -5011,7 +5010,7 @@ class ConversationManager {
 			@Override
 			protected Long doInBackground(File... parameters) {
 				//Returning the duration
-				return getDurationMillis(parameters[0]);
+				return Constants.getMediaDuration(parameters[0]);
 			}
 			
 			@Override
@@ -5045,8 +5044,8 @@ class ConversationManager {
 			//Getting the audio message manager
 			Messaging.AudioPlaybackManager audioPlaybackManager = callbacks.getAudioPlaybackManager();
 			
-			//Checking if the GUID matches
-			if(audioPlaybackManager.compareRequestID(localID)) {
+			//Checking if the request ID matches
+			if(audioPlaybackManager.compareRequestID(Messaging.AudioPlaybackManager.requestTypeAttachment + localID)) {
 				//Toggling play
 				audioPlaybackManager.togglePlaying();
 				
@@ -5055,7 +5054,7 @@ class ConversationManager {
 			}
 			
 			//Preparing the media player
-			audioPlaybackManager.play(localID, file, new Messaging.AudioPlaybackManager.Callbacks() {
+			audioPlaybackManager.play(Messaging.AudioPlaybackManager.requestTypeAttachment + localID, file, new Messaging.AudioPlaybackManager.Callbacks() {
 				@Override
 				public void onPlay() {
 					setMediaPlaying(true);
@@ -5129,28 +5128,6 @@ class ConversationManager {
 		private void resetPlaying(ViewHolder viewHolder) {
 			setMediaPlaying(viewHolder, false);
 			setMediaProgress(viewHolder, 0);
-		}
-		
-		static long getDurationMillis(File file) {
-			//Creating a new media metadata retriever
-			MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-			
-			try {
-				//Setting the source file
-				mmr.setDataSource(file.getPath());
-				
-				//Getting the duration
-				return Long.parseLong(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
-			} catch(RuntimeException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-			} finally {
-				//Releasing the media metadata retriever
-				mmr.release();
-			}
-			
-			//Returning an invalid value
-			return -1;
 		}
 		
 		@Override

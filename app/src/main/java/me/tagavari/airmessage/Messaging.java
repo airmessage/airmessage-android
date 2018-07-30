@@ -2961,6 +2961,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				case AttachmentTileHelper.viewTypeDocument:
 					tileViewHolder = attachmentsDocumentTileHelper.createViewHolder(container);
 					break;
+				case AttachmentTileHelper.viewTypeAudio:
+					tileViewHolder = attachmentsAudioTileHelper.createViewHolder(container);
+					break;
 				default:
 					throw new IllegalArgumentException("Invalid view type received: " + viewType);
 			}
@@ -3099,6 +3102,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the reference values
 		static final int viewTypeMedia = 0;
 		static final int viewTypeDocument = 1;
+		static final int viewTypeAudio = 2;
 		
 		abstract VH createViewHolder(ViewGroup parent);
 		abstract void bindView(VH viewHolder, SimpleAttachmentInfo item);
@@ -3112,6 +3116,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		{
 			String mimeTypeGeneral = mimeType.split("/")[0];
 			if(mimeTypeGeneral.equals("image") || mimeTypeGeneral.equals("video")) return attachmentsMediaTileHelper;
+			else if(mimeTypeGeneral.equals("audio")) return attachmentsAudioTileHelper;
 		}
 		
 		return attachmentsDocumentTileHelper;
@@ -3478,6 +3483,82 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	};
 	
+	private class AttachmentsAudioTileViewHolder extends AttachmentTileViewHolder {
+		//Creating the reference values
+		static final int resourceDrawablePlay = R.drawable.play;
+		static final int resourceDrawablePause = R.drawable.pause;
+		
+		//Creating the view values
+		private ProgressBar progressBar;
+		private ImageView imagePlay;
+		//private TextView labelDuration;
+		
+		AttachmentsAudioTileViewHolder(View itemView) {
+			super(itemView);
+			progressBar = itemView.findViewById(R.id.progress);
+			imagePlay = itemView.findViewById(R.id.image_play);
+			//labelDuration = itemView.findViewById(R.id.label_duration);
+		}
+	}
+	
+	private final AttachmentTileHelper<AttachmentsAudioTileViewHolder> attachmentsAudioTileHelper = new AttachmentTileHelper<AttachmentsAudioTileViewHolder>() {
+		@Override
+		AttachmentsAudioTileViewHolder createViewHolder(ViewGroup parent) {
+			return new AttachmentsAudioTileViewHolder(getLayoutInflater().inflate(R.layout.listitem_attachment_audiotile, parent, false));
+		}
+		
+		@Override
+		void bindView(AttachmentsAudioTileViewHolder viewHolder, SimpleAttachmentInfo item) {
+			//Returning if the item is invalid
+			if(item == null) return;
+			
+			//Getting the extension
+			SimpleAttachmentInfo.AudioExtension extension = (SimpleAttachmentInfo.AudioExtension) item.getExtension();
+			
+			//Binding the view
+			extension.updateViewPlaying(viewHolder);
+			extension.updateViewProgress(viewHolder);
+			
+			//Creating the view holder source
+			Constants.ViewHolderSource<AttachmentsAudioTileViewHolder> viewHolderSource = () -> {
+				if(listAttachmentQueue == null) return null;
+				int itemIndex = findAttachmentInQueue(item);
+				if(itemIndex == -1) return null;
+				return (AttachmentsAudioTileViewHolder) ((AttachmentsQueueRecyclerAdapter.QueueTileViewHolder) listAttachmentQueue.findViewHolderForAdapterPosition(itemIndex)).contentViewHolder;
+			};
+			
+			//Finding the queued file info
+			QueuedFileInfo queuedInfo = null;
+			for(QueuedFileInfo allQueued : viewModel.draftQueueList) {
+				if(allQueued.getItem() != item) continue;
+				queuedInfo = allQueued;
+				break;
+			}
+			if(queuedInfo == null) return;
+			
+			//Setting the click listener
+			final QueuedFileInfo finalQueuedFileInfo = queuedInfo;
+			viewHolder.itemView.setOnClickListener(view -> extension.play(viewModel.audioPlaybackManager, finalQueuedFileInfo, viewHolderSource));
+		}
+		
+		private int findAttachmentInQueue(SimpleAttachmentInfo item) {
+			int queuedIndex;
+			QueuedFileInfo queuedItem;
+			for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext();) {
+				queuedIndex = iterator.nextIndex();
+				queuedItem = iterator.next();
+				if(queuedItem.getItem() == item) return queuedIndex;
+			}
+			
+			return -1;
+		}
+		
+		@Override
+		int getViewType() {
+			return viewTypeAudio;
+		}
+	};
+	
 	private static class SimpleAttachmentInfo {
 		private final File file;
 		private final Uri uri;
@@ -3485,6 +3566,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		private final String fileName;
 		private final long fileSize;
 		private final long modificationDate;
+		
+		private Extension extension;
 		
 		private AttachmentsRecyclerAdapter<?> listAdapter;
 		private int listIndex;
@@ -3505,6 +3588,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			this.modificationDate = modificationDate;
 			
 			this.uri = null;
+			
+			assignExtension();
 		}
 		
 		SimpleAttachmentInfo(Uri uri, String fileType, String fileName, long fileSize, long modificationDate) {
@@ -3515,10 +3600,19 @@ public class Messaging extends AppCompatCompositeActivity {
 			this.modificationDate = modificationDate;
 			
 			this.file = null;
+			
+			assignExtension();
 		}
 		
 		SimpleAttachmentInfo(ConversationManager.DraftFile draft) {
-			this(draft.getOriginalFile(), draft.getFileType(), draft.getFileName(), draft.getFileSize(), draft.getModificationDate());
+			this(draft.getOriginalFile() != null ? draft.getOriginalFile() : draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getFileSize(), draft.getModificationDate());
+		}
+		
+		private void assignExtension() {
+			if(fileType.split("/")[0].equals("audio")) extension = new AudioExtension();
+			else extension = null;
+			
+			if(extension != null) extension.initialize();
 		}
 		
 		File getFile() {
@@ -3560,6 +3654,107 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		public boolean compare(SimpleAttachmentInfo item) {
 			return this.getModificationDate() == item.getModificationDate() && Objects.equals(this.getFile(), item.getFile());
+		}
+		
+		abstract class Extension {
+			void initialize() {}
+		}
+		
+		Extension getExtension() {
+			return extension;
+		}
+		
+		class AudioExtension extends Extension {
+			//Creating the attachment info values
+			private long mediaDuration = -1;
+			
+			//Creating the playback values
+			private boolean isSelected = false;
+			private boolean isPlaying = false;
+			private long mediaProgress = 0;
+			
+			@Override
+			void initialize() {
+				if(file != null) mediaDuration = Constants.getMediaDuration(file);
+				else if(uri != null) mediaDuration = Constants.getMediaDuration(MainApplication.getInstance(), uri);
+			}
+			
+			long getMediaDuration() {
+				return mediaDuration;
+			}
+			
+			boolean isPlaying() {
+				return isPlaying;
+			}
+			
+			long getMediaProgress() {
+				return mediaProgress;
+			}
+			
+			void play(AudioPlaybackManager playbackManager, QueuedFileInfo queuedInfo, Constants.ViewHolderSource<AttachmentsAudioTileViewHolder> viewSource) {
+				//Returning if the file is invalid
+				File targetFile = queuedInfo.getDraftFile().getFile();
+				if(targetFile == null) return;
+				
+				if(isSelected) {
+					//Toggling play
+					playbackManager.togglePlaying();
+					
+					//Returning
+					return;
+				}
+				
+				//Playing the file
+				playbackManager.play(targetFile, new AudioPlaybackManager.Callbacks() {
+					@Override
+					public void onPlay() {
+						isPlaying = true;
+						
+						AttachmentsAudioTileViewHolder viewHolder = viewSource.get();
+						if(viewHolder != null) updateViewPlaying(viewHolder);
+					}
+					
+					@Override
+					public void onProgress(long time) {
+						mediaProgress = time;
+						
+						AttachmentsAudioTileViewHolder viewHolder = viewSource.get();
+						if(viewHolder != null) updateViewProgress(viewHolder);
+					}
+					
+					@Override
+					public void onPause() {
+						isPlaying = false;
+						
+						AttachmentsAudioTileViewHolder viewHolder = viewSource.get();
+						if(viewHolder != null) updateViewPlaying(viewHolder);
+					}
+					
+					@Override
+					public void onStop() {
+						isPlaying = false;
+						isSelected = false;
+						mediaProgress = 0;
+						
+						AttachmentsAudioTileViewHolder viewHolder = viewSource.get();
+						if(viewHolder != null) {
+							updateViewPlaying(viewHolder);
+							updateViewProgress(viewHolder);
+						}
+					}
+				});
+				
+				isSelected = true;
+			}
+			
+			void updateViewPlaying(AttachmentsAudioTileViewHolder viewHolder) {
+				viewHolder.imagePlay.setImageResource(isPlaying ? AttachmentsAudioTileViewHolder.resourceDrawablePause : AttachmentsAudioTileViewHolder.resourceDrawablePlay);
+			}
+			
+			void updateViewProgress(AttachmentsAudioTileViewHolder viewHolder) {
+				viewHolder.progressBar.setProgress((int) ((float) mediaProgress / (float) mediaDuration * 100F));
+				//viewHolder.labelDuration.setText(Constants.getFormattedDuration((int) Math.floor(mediaProgress <= 0 ? mediaDuration / 1000L : mediaProgress / 1000L)));
+			}
 		}
 	}
 	
@@ -4159,8 +4354,12 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	static class AudioPlaybackManager {
+		//Creating the constants
+		static final String requestTypeAttachment = "attachment-";
+		static final String requestTypeDraft = "draft-";
+		
 		//Creating the values
-		private long requestID = -1;
+		private String requestID = "";
 		private MediaPlayer mediaPlayer = new MediaPlayer();
 		private Callbacks callbacks = null;
 		private final Handler mediaPlayerHandler = new Handler(Looper.getMainLooper());
@@ -4205,12 +4404,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		boolean play(File file, Callbacks callbacks) {
-			return play(-1, file, callbacks);
+			return play(null, file, callbacks);
 		}
 		
-		boolean play(long requestID, File file, Callbacks callbacks) {
+		boolean play(String requestID, File file, Callbacks callbacks) {
 			//Returning true if the request ID matches
-			if(requestID != -1 && this.requestID == requestID) return true;
+			if(requestID != null && this.requestID.equals(requestID)) return true;
 			
 			//Stopping the current media player
 			stop();
@@ -4264,14 +4463,14 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		void stop() {
-			if(!mediaPlayer.isPlaying()) return;
+			//if(!mediaPlayer.isPlaying()) return;
 			
 			mediaPlayer.stop();
 			if(callbacks != null) callbacks.onStop();
 			stopTimer();
 		}
 		
-		boolean compareRequestID(long requestID) {
+		boolean compareRequestID(String requestID) {
 			return this.requestID == requestID;
 		}
 		
