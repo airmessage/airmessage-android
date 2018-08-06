@@ -31,24 +31,6 @@
 			android:background="?android:attr/colorBackgroundFloating"
 			android:orientation="vertical" />
 	</android.support.design.widget.AppBarLayout>
-	<!-- Recording indicator -->
-	<FrameLayout
-		android:id="@+id/recordingindicator"
-		android:layout_width="80dp"
-		android:layout_height="80dp"
-		android:background="@drawable/circle"
-		android:backgroundTint="@color/colorRecording"
-		android:clipToPadding="false"
-		android:elevation="8dp"
-		android:visibility="invisible">
-		
-		<ImageView
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:contentDescription="@null"
-			android:src="@drawable/microphone" />
-	</FrameLayout>
 	<!-- Search result bar -->
 	<!-- <LinearLayout
 		android:id="@+id/searchresults"
@@ -167,7 +149,7 @@
 					android:tint="@color/colorPrimary"
 					android:tooltipText="@string/action_addcontent" />
 				<!-- Message box -->
-				<EditText
+				<view class="me.tagavari.airmessage.Messaging$InsertionEditText"
 					android:id="@+id/messagebox"
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"

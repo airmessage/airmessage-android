@@ -17,6 +17,7 @@ import android.arch.lifecycle.ViewModel;
 import android.arch.lifecycle.ViewModelProvider;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.BroadcastReceiver;
+import android.content.ClipDescription;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -35,11 +36,14 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v13.view.inputmethod.EditorInfoCompat;
+import android.support.v13.view.inputmethod.InputConnectionCompat;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
@@ -47,6 +51,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.util.Pools;
+import android.support.v7.widget.AppCompatEditText;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.LinearSmoothScroller;
@@ -71,8 +76,9 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -197,7 +203,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private View inputBar;
 	private ImageButton buttonSendMessage;
 	private ImageButton buttonAddContent;
-	private EditText messageInputField;
+	private InsertionEditText messageInputField;
 	private ViewGroup recordingActiveGroup;
 	private TextView recordingTimeLabel;
 	private VisualizerView recordingVisualizer;
@@ -223,8 +229,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	//Creating the listeners
 	private final ViewTreeObserver.OnGlobalLayoutListener rootLayoutListener = () -> {
 		//Getting the height
-		//int height = rootView.getHeight();
-		int height = messageList.getHeight();
+		int height = messageList.getHeight() + appBar.getHeight();
 		
 		//Checking if the window is smaller than the minimum height, the window isn't in multi-window mode
 		if(height < getResources().getDimensionPixelSize(R.dimen.conversationwindow_minheight) && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode())) {
@@ -415,7 +420,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						}
 						
 						//Creating a new request if there was no current request in the queue
-						if(currentRequest == null) currentRequest = new ConnectionService.FilePushRequest(draft.getFile(), draft.getFileType(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), ConnectionService.FilePushRequest.stateQueued, 0, false);
+						if(currentRequest == null) currentRequest = new ConnectionService.FilePushRequest(draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), ConnectionService.FilePushRequest.stateQueued, 0, false);
 						
 						//Assigning the request to the queued item
 						queuedItem.setFilePushRequest(currentRequest);
@@ -578,15 +583,23 @@ public class Messaging extends AppCompatCompositeActivity {
 		appleEffectView.setFinishListener(() -> currentScreenEffectPlaying = false);
 		detailScrim.setOnClickListener(view -> closeDetailsPanel());
 		
-		//Setting up the attachment
+		//Configuring the input field
+		messageInputField.setContentProcessor((uri, type, name, size) -> queueAttachment(new SimpleAttachmentInfo(uri, type, name, size, -1), findAppropriateTileHelper(type), true));
+		
+		//Setting up the attachments
 		{
 			listAttachmentQueue.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 			listAttachmentQueue.setAdapter(new AttachmentsQueueRecyclerAdapter(viewModel.draftQueueList));
 		}
 		
 		//Setting the filler data
-		if(getIntent().hasExtra(Constants.intentParamDataText))
-			messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText));
+		if(getIntent().hasExtra(Constants.intentParamDataText)) messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText));
+		if(getIntent().hasExtra(Constants.intentParamDataFile)) {
+			Parcelable[] targetParcelables = getIntent().getParcelableArrayExtra(Constants.intentParamDataFile);
+			Uri[] targetUris = new Uri[targetParcelables.length];
+			for(int i = 0; i < targetParcelables.length; i++) targetUris[i] = (Uri) targetParcelables[i];
+			new QueueUriAsyncTask(this).execute(targetUris);
+		}
 		
 		//Iterating over the loaded conversations
 		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext(); ) {
@@ -2786,8 +2799,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Creating the processing request
 		ConnectionService.FilePushRequest request = item.getFile() != null ?
-				new ConnectionService.FilePushRequest(item.getFile(), item.getFileType(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false) :
-				new ConnectionService.FilePushRequest(item.getUri(), item.getFileType(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false);
+				new ConnectionService.FilePushRequest(item.getFile(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false) :
+				new ConnectionService.FilePushRequest(item.getUri(), item.getFileType(), item.getFileName(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false);
 		request.getCallbacks().onFail = result -> {
 			//Dequeuing the attachment
 			dequeueAttachment(item, true, false);
@@ -4943,5 +4956,100 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Returning the instance
 			return instance;
 		}
+	}
+	
+	public static class InsertionEditText extends AppCompatEditText {
+		private ContentProcessor contentProcessor = null;
+		
+		public InsertionEditText(Context context) {
+			super(context);
+		}
+		
+		public InsertionEditText(Context context, AttributeSet attrs) {
+			super(context, attrs);
+		}
+		
+		public InsertionEditText(Context context, AttributeSet attrs, int defStyleAttr) {
+			super(context, attrs, defStyleAttr);
+		}
+		
+		void setContentProcessor(ContentProcessor value) {
+			contentProcessor = value;
+		}
+		
+		@Override
+		public InputConnection onCreateInputConnection(EditorInfo editorInfo) {
+			//Configuring the input connection
+			InputConnection inputConnection = super.onCreateInputConnection(editorInfo);
+			EditorInfoCompat.setContentMimeTypes(editorInfo, new String[]{"image/*"});
+			
+			//Creating the callback
+			InputConnectionCompat.OnCommitContentListener callback = (inputContentInfo, flags, opts) -> {
+				//Returning false if the content processor is not ready
+				if(contentProcessor == null) return false;
+				
+				//Requesting permission to use image keyboard
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1 && (flags & InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION) != 0) {
+					try {
+						inputContentInfo.requestPermission();
+					} catch(Exception exception) {
+						exception.printStackTrace();
+						return false;
+					}
+				}
+				
+				//Getting the data
+				Uri uri = inputContentInfo.getContentUri();
+				ClipDescription itemDesc = inputContentInfo.getDescription();
+				String type = itemDesc.getMimeTypeCount() > 0 ? itemDesc.getMimeType(0) : Constants.defaultMIMEType;
+				
+				//Determining the correct file extension
+				String extension = null;
+				switch(type) {
+					case "image/bmp":
+						extension = "bmp";
+						break;
+					case "image/gif":
+						extension = "gif";
+						break;
+					case "image/x-icon":
+						extension = "ico";
+						break;
+					case "image/jpeg":
+						extension = "jpeg";
+						break;
+					case "image/png":
+						extension = "png";
+						break;
+					case "image/svg+html":
+						extension = "svg";
+						break;
+					case "image/tiff":
+						extension = "tiff";
+						break;
+					case "image/webp":
+						extension = "webp";
+						break;
+				}
+				System.out.println("Inserted item of type " + type + " / " + extension);
+				
+				//Getting the name
+				String name = itemDesc.getLabel().toString() + (extension == null ? "" : '.' + extension);
+				
+				//Sending the data to the content processor
+				contentProcessor.process(uri, type, name, -1);
+				new Handler().postDelayed(inputContentInfo::releasePermission, 1000);
+				
+				//Returning true
+				return true;
+			};
+			
+			//Returning the created data wrapper
+			return InputConnectionCompat.createWrapper(inputConnection, editorInfo, callback);
+		}
+	}
+	
+	private interface ContentProcessor {
+		void process(Uri content, String type, String name, long size);
 	}
 }

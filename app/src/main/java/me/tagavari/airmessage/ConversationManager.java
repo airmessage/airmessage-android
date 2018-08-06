@@ -12,6 +12,7 @@ import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -57,13 +58,14 @@ import android.widget.TextSwitcher;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.crashlytics.android.Crashlytics;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.bumptech.glide.request.RequestOptions;
 import com.pnikosis.materialishprogress.ProgressWheel;
 
 import org.lukhnos.nnio.file.Paths;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
 import java.text.DateFormat;
@@ -84,9 +86,7 @@ import java.util.Random;
 import java9.util.function.Consumer;
 import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.view.InvisibleInkView;
-import me.tagavari.airmessage.view.RoundedGifImageView;
 import me.tagavari.airmessage.view.RoundedImageView;
-import pl.droidsonroids.gif.GifDrawable;
 
 class ConversationManager {
 	//Message burst - Sending single messages one after the other
@@ -4684,9 +4684,20 @@ class ConversationManager {
 			
 			//Setting the bitmap
 			((ImageView) content.findViewById(R.id.content_view)).setImageBitmap(null); */
-			int pxBitmapSizeMax = (int) context.getResources().getDimension(R.dimen.image_size_max);
+			//int pxBitmapSizeMax = (int) context.getResources().getDimension(R.dimen.image_size_max);
 			
-			//Creating a weak reference to the context
+			//Requesting a Glide image load
+			viewHolder.imageContent.layout(0, 0, 0, 0);
+			Glide.with(context)
+					.load(file)
+					.transition(DrawableTransitionOptions.withCrossFade())
+					.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))))
+					.into(viewHolder.imageContent);
+			
+			//Revealing the layout
+			viewHolder.groupContent.setVisibility(View.VISIBLE);
+			
+			/*//Creating a weak reference to the context
 			WeakReference<Context> contextReference = new WeakReference<>(context);
 			
 			//Checking if the image is a GIF
@@ -4799,13 +4810,13 @@ class ConversationManager {
 						}
 					}
 				}, true, pxBitmapSizeMax, pxBitmapSizeMax);
-			}
+			} */
 		}
 		
 		@Override
 		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Assigning the drawable
-			viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable()); //TODO Apparently this causes a memory leak
+			//viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
 			
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
@@ -4862,14 +4873,12 @@ class ConversationManager {
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
-			final View backgroundContent;
-			final RoundedGifImageView imageContent;
+			final RoundedImageView imageContent;
 			final InvisibleInkView inkView;
 			
 			ViewHolder(View view) {
 				super(view);
 				
-				backgroundContent = groupContent.findViewById(R.id.content_background);
 				imageContent = groupContent.findViewById(R.id.content_view);
 				inkView = groupContent.findViewById(R.id.content_ink);
 			}
@@ -5198,7 +5207,18 @@ class ConversationManager {
 			//Setting the bitmap
 			((ImageView) content.findViewById(R.id.content_view)).setImageBitmap(null); */
 			
-			//Creating a weak reference to the context
+			//Requesting a Glide image load
+			viewHolder.imageContent.layout(0, 0, 0, 0);
+			Glide.with(context)
+					.load(file)
+					.transition(DrawableTransitionOptions.withCrossFade())
+					.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))))
+					.into(viewHolder.imageContent);
+			
+			//Revealing the layout
+			viewHolder.groupContent.setVisibility(View.VISIBLE);
+			
+			/* //Creating a weak reference to the context
 			WeakReference<Context> contextReference = new WeakReference<>(context);
 			
 			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromVideoFile(file.getPath(), file, new BitmapCacheHelper.ImageDecodeResult() {
@@ -5260,13 +5280,13 @@ class ConversationManager {
 						}
 					}
 				}
-			});
+			}); */
 		}
 		
 		@Override
 		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Assigning the drawable
-			viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
+			//viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
 			
 			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
@@ -5306,13 +5326,13 @@ class ConversationManager {
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
-			final View backgroundContent;
+			//final View backgroundContent;
 			final RoundedImageView imageContent;
 			
 			ViewHolder(View view) {
 				super(view);
 				
-				backgroundContent = groupContent.findViewById(R.id.content_background);
+				//backgroundContent = groupContent.findViewById(R.id.content_background);
 				imageContent = groupContent.findViewById(R.id.content_view);
 			}
 			
@@ -6396,6 +6416,7 @@ class ConversationManager {
 	}
 	
 	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType) {
+		if(fileType == null) fileType = Constants.defaultMIMEType;
 		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType);
 		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType);
 		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType);
@@ -6403,6 +6424,7 @@ class ConversationManager {
 	}
 	
 	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, File file) {
+		if(fileType == null) fileType = Constants.defaultMIMEType;
 		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, file);
 		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, file);
 		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, file);

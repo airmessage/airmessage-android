@@ -4867,6 +4867,7 @@ public class ConnectionService extends Service {
 		private File sendFile;
 		private Uri sendUri;
 		private String fileType;
+		private String fileName;
 		private long updateTime;
 		private long fileModificationDate = 0;
 		private boolean uploadRequested;
@@ -4904,7 +4905,7 @@ public class ConnectionService extends Service {
 			conversationID = conversationInfo.getLocalID();
 		}
 		
-		FilePushRequest(File file, String fileType, long fileModificationDate, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
+		FilePushRequest(File file, String fileType, String fileName, long fileModificationDate, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
 			//Calling the main constructor
 			this(conversationInfo, attachmentID, draftID, state, updateTime, uploadRequested);
 			
@@ -4912,13 +4913,14 @@ public class ConnectionService extends Service {
 			sendFile = file;
 			sendUri = null;
 			this.fileType = fileType;
+			this.fileName = fileName;
 			this.fileModificationDate = fileModificationDate;
 			
 			//Setting the state to queued if the file is in a queue folder
 			//if(Paths.get(sendFile.toURI()).startsWith(MainApplication.getDraftDirectory(MainApplication.getInstance()).getPath())) state = stateQueued;
 		}
 		
-		FilePushRequest(Uri uri, String fileType, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
+		FilePushRequest(Uri uri, String fileType, String fileName, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
 			//Calling the main constructor
 			this(conversationInfo, attachmentID, draftID, state, updateTime, uploadRequested);
 			
@@ -4926,6 +4928,7 @@ public class ConnectionService extends Service {
 			sendFile = null;
 			sendUri = uri;
 			this.fileType = fileType;
+			this.fileName = fileName;
 		}
 		
 		void setAttachmentID(long value) {
@@ -5338,8 +5341,11 @@ public class ConnectionService extends Service {
 							}
 							
 							//Finding a valid file
-							fileName = Constants.getUriName(context, pushRequest.sendUri);
-							if(fileName == null) fileName = Constants.defaultFileName;
+							fileName = pushRequest.fileName;
+							if(fileName == null) {
+								fileName = Constants.getUriName(context, pushRequest.sendUri);
+								if(fileName == null) fileName = Constants.defaultFileName;
+							}
 							
 							//Opening the input stream
 							inputStream = context.getContentResolver().openInputStream(pushRequest.sendUri);
@@ -5350,7 +5356,8 @@ public class ConnectionService extends Service {
 							File targetFolder = requestUpload ? MainApplication.getUploadDirectory(context) : MainApplication.getDraftDirectory(context);
 							if(!Constants.checkFileParent(targetFolder, pushRequest.sendFile)) {
 								//Getting the file name
-								fileName = pushRequest.sendFile.getName();
+								fileName = pushRequest.fileName;
+								if(fileName == null) fileName = pushRequest.sendFile.getName();
 								//if(fileName == null) fileName = Constants.defaultFileName;
 								
 								//Verifying the file size
@@ -7250,6 +7257,10 @@ public class ConnectionService extends Service {
 			//Invalidating empty strings
 			if(messageInfo.text != null && messageInfo.text.isEmpty()) messageInfo.text = null;
 			if(messageInfo.sendEffect != null && messageInfo.sendEffect.isEmpty()) messageInfo.sendEffect = null;
+			
+			for(Blocks.AttachmentInfo attachmentInfo : messageInfo.attachments) {
+				if(attachmentInfo.type == null) attachmentInfo.type = Constants.defaultMIMEType;
+			}
 		} else if(conversationItem instanceof Blocks.ChatRenameActionInfo) {
 			Blocks.ChatRenameActionInfo action = (Blocks.ChatRenameActionInfo) conversationItem;
 			

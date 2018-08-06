@@ -4,8 +4,8 @@
     <dimen name="activity_vertical_margin">16dp</dimen> -->
     
     <dimen name="profile_size">40dp</dimen> <!-- The width and height of profile images -->
-    <dimen name="image_size_min">50dp</dimen> <!-- The minimum width / height of media sent in conversations -->
-    <dimen name="image_size_max">250dp</dimen> <!-- The maximum width / height of media sent in conversations -->
+    <dimen name="image_width_preferred">200dp</dimen> <!-- The maximum width / height of media sent in conversations -->
+    <dimen name="image_height_min">112dp</dimen> <!-- The maximum width / height of media sent in conversations -->
 	
 	<dimen name="messagebubble_padding_x">12dp</dimen> <!-- The horizontal padding of a message bubble -->
 	<dimen name="messagebubble_padding_y">8dp</dimen> <!-- The vertical padding of a message bubble -->

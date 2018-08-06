@@ -2,6 +2,7 @@ package me.tagavari.airmessage;
 
 import android.content.Intent;
 import android.content.res.Resources;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -24,6 +25,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 	
 	//Creating the target values
 	private String targetText = null;
+	private Uri[] targetUris = null;
 	
 	public ShareHandler() {
 		//Setting the plugins
@@ -53,14 +55,12 @@ public class ShareHandler extends AppCompatCompositeActivity {
 				//Setting the target text
 				targetText = getIntent().getStringExtra(Intent.EXTRA_TEXT);
 			} else {
-				//Finishing the activity
-				finish();
-				return;
+				//Getting the target URI
+				targetUris = new Uri[]{getIntent().getParcelableExtra(Intent.EXTRA_STREAM)};
 			}
-		} else if (Intent.ACTION_SEND_MULTIPLE.equals(intentAction)) {
-			//Finishing the activity
-			finish();
-			return;
+		} else if(Intent.ACTION_SEND_MULTIPLE.equals(intentAction)) {
+			//Getting the target URI array
+			targetUris = getIntent().getParcelableArrayListExtra(Intent.EXTRA_STREAM).toArray(new Uri[0]);
 		} else {
 			//Finishing the activity
 			finish();
@@ -153,8 +153,9 @@ public class ShareHandler extends AppCompatCompositeActivity {
 				//Setting the target conversation
 				launchMessaging.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
 				
-				//Setting the fill text
+				//Setting the fill data
 				if(targetText != null) launchMessaging.putExtra(Constants.intentParamDataText, targetText);
+				if(targetUris != null) launchMessaging.putExtra(Constants.intentParamDataFile, targetUris);
 				
 				//Launching the activity
 				startActivity(launchMessaging);

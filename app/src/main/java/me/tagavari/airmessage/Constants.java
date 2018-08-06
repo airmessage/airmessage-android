@@ -1,7 +1,6 @@
 package me.tagavari.airmessage;
 
 import android.app.Activity;
-import android.arch.lifecycle.ViewModel;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -18,7 +17,6 @@ import android.os.Parcel;
 import android.provider.OpenableColumns;
 import android.support.annotation.AttrRes;
 import android.support.annotation.ColorInt;
-import android.support.annotation.NonNull;
 import android.support.customtabs.CustomTabsIntent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -67,6 +65,8 @@ public class Constants {
 	//static final int historicCommunicationsWS = 2;
 	
 	//static final int intentDisconnectService = 6;
+	
+	public static final String defaultMIMEType = "application/octet-stream";
 	
 	static final String intentParamTargetID = "targetID";
 	static final String intentParamGuid = "guid";
@@ -346,6 +346,8 @@ public class Constants {
 		if("content".equals(uri.getScheme())) {
 			try(Cursor cursor = context.getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
 				if(cursor != null && cursor.moveToFirst()) fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+			} catch(Exception exception) {
+				exception.printStackTrace();
 			}
 		}
 		
@@ -500,7 +502,8 @@ public class Constants {
 	} */
 	
 	static String getMimeType(Context context, Uri uri) {
-		return context.getContentResolver().getType(uri);
+		String type = context.getContentResolver().getType(uri);
+		return type == null ? defaultMIMEType : type;
 	}
 	
 	/* static String getMimeType(File file) {
@@ -673,7 +676,7 @@ public class Constants {
 		return stringBuilder.toString();
 	}
 	
-	public static abstract class ActivityViewModel<A extends Activity> extends ViewModel {
+	/* public static abstract class ActivityViewModel<A extends Activity> extends ViewModel {
 		private final WeakReference<A> activityReference;
 		
 		public ActivityViewModel(@NonNull A activity) {
@@ -683,22 +686,7 @@ public class Constants {
 		public A getActivity() {
 			return activityReference.get();
 		}
-	}
-	
-	static float calculateImageAttachmentMultiplier(Resources resources, int width, int height) {
-		//Getting the min and max values
-		int pxBitmapSizeMin = (int) resources.getDimension(R.dimen.image_size_min);
-		int pxBitmapSizeMax = (int) resources.getDimension(R.dimen.image_size_max);
-		
-		//Calculating the multiplier
-		int[] sortedDimens = width < height ? new int[]{width, height} : new int[]{height, width};
-		float multiplier = 1;
-		if(sortedDimens[0] < pxBitmapSizeMin) multiplier = (float) pxBitmapSizeMin / sortedDimens[0];
-		if(sortedDimens[1] > pxBitmapSizeMax) multiplier = (float) pxBitmapSizeMax / sortedDimens[1];
-		
-		//Returning the multiplier
-		return multiplier;
-	}
+	} */
 	
 	/* static void enforceContentWidth(Resources resources, View view) {
 		//Getting the maximum content width

@@ -58,31 +58,23 @@
 				android:tint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		
-		<RelativeLayout
+		<FrameLayout
 			android:id="@+id/content"
-			android:layout_width="0dp"
-			android:layout_height="0dp"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
 			android:visibility="gone">
-			
-			<View
-				android:id="@+id/content_background"
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:backgroundTint="@color/colorImageUnloaded" />
-			
 			<me.tagavari.airmessage.view.RoundedImageView
 				android:id="@+id/content_view"
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:adjustViewBounds="true"
-				android:scaleType="fitStart" />
+				android:layout_width="@dimen/image_width_preferred"
+				android:layout_height="wrap_content"
+				android:minHeight="@dimen/image_height_min" />
 			
 			<ImageView
 				android:layout_width="48dp"
 				android:layout_height="48dp"
-				android:layout_centerInParent="true"
+				android:layout_gravity="center"
 				android:src="@drawable/play_circle" />
-		</RelativeLayout>
+		</FrameLayout>
 		
 		<LinearLayout
 			android:id="@+id/failedcontent"
