@@ -5486,7 +5486,7 @@ public class ConnectionService extends Service {
 						//Setting the state
 						pushRequest.state = FilePushRequest.stateAttached;
 					} else {
-						ConversationManager.DraftFile draft = DatabaseManager.getInstance().addDraftReference(pushRequest.conversationID, pushRequest.sendFile, pushRequest.sendFile.getName(), pushRequest.sendFile.length(), pushRequest.fileType, originalFile, pushRequest.updateTime, pushRequest.fileModificationDate);
+						ConversationManager.DraftFile draft = DatabaseManager.getInstance().addDraftReference(pushRequest.conversationID, pushRequest.sendFile, pushRequest.sendFile.getName(), pushRequest.sendFile.length(), pushRequest.fileType, originalFile, pushRequest.fileModificationDate, pushRequest.updateTime);
 						if(draft == null) {
 							//Deleting the target file
 							pushRequest.sendFile.delete();

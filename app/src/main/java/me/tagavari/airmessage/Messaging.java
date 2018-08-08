@@ -123,6 +123,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	static final int messageChunkSize = 50;
 	static final int progressiveLoadThreshold = 10;
 	private static final String[] documentMimeTypes = {"text/*", "application/*", "font/*"};
+	private static final int draftCountLimit = 10;
 	
 	private static final long confettiDuration = 1000;
 	//private static final float disabledAlpha = 0.38F
@@ -229,7 +230,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	//Creating the listeners
 	private final ViewTreeObserver.OnGlobalLayoutListener rootLayoutListener = () -> {
 		//Getting the height
-		int height = messageList.getHeight() + appBar.getHeight();
+		int height = messageList.getHeight();
+		if(appBar.getVisibility() == View.VISIBLE) height += appBar.getHeight();
 		
 		//Checking if the window is smaller than the minimum height, the window isn't in multi-window mode
 		if(height < getResources().getDimensionPixelSize(R.dimen.conversationwindow_minheight) && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode())) {
@@ -2773,6 +2775,15 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private ValueAnimator currentListAttachmentQueueValueAnimator = null;
 	int queueAttachment(SimpleAttachmentInfo item, AttachmentTileHelper<?> tileHelper, boolean updateListing) {
+		//Checking if there is no more room for new attachments
+		if(viewModel.draftQueueList.size() >= draftCountLimit) {
+			//Displaying a toast message
+			Toast.makeText(this, R.string.message_draft_limitreached, Toast.LENGTH_SHORT).show();
+			
+			//Returning
+			return -1;
+		}
+		
 		//Getting the connection service
 		ConnectionService service = ConnectionService.getInstance();
 		if(service == null) {

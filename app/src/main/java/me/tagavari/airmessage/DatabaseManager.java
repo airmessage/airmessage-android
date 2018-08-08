@@ -1265,6 +1265,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 	private void updateConversationDraftUpdateTime(SQLiteDatabase database, long conversationID, long updateTime) {
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME, updateTime);
+		System.out.println("Updating draft update time to " + updateTime + " (current " + System.currentTimeMillis() + ')');
 		
 		database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " + ?", new String[]{Long.toString(conversationID)});
 	}
@@ -2756,6 +2757,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE, value);
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME, time);
+		System.out.println("Updating conversation draft message " + time + " (current " + System.currentTimeMillis() + ')');
 		
 		//Updating the conversation
 		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});

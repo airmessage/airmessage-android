@@ -208,6 +208,8 @@
 		<item quantity="other">%d messages blocked</item>
 	</plurals>
 	
+	<string name="message_draft_limitreached">Draft file limit reached</string>
+	
 	<string name="message_messagedetails_title">Message details</string>
 	<string name="message_messagedetails_type">Type: %s</string>
 	<string name="message_messagedetails_sender">From: %s</string>
@@ -235,7 +237,7 @@
 	<string name="imperative_mainsearch">Search messages</string>
 	<string name="imperative_drawerrecordinginstructions">Tap and hold</string>
 	
-	<string name="imperative_permission_media">Tap to give access to media</string>
+	<string name="imperative_permission_gallery">Tap to give access to gallery</string>
 	<string name="imperative_permission_microphone">Tap to give access to microphone</string>
 	<string name="imperative_permission_documents">Tap to give access to documents</string>
 	<string name="imperative_permission_location">Tap to give access to location</string>
@@ -245,7 +247,6 @@
 	
 	<string name="part_content_text">Text</string>
 	<string name="part_content_image">Image</string>
-	<string name="part_content_animatedimage">Animated image</string>
 	<string name="part_content_video">Video</string>
 	<string name="part_content_audio">Audio</string>
 	<string name="part_content_other">File</string>

@@ -45,7 +45,7 @@
 					android:layout_height="wrap_content"
 					android:layout_gravity="center"
 					android:gravity="center"
-					android:text="@string/imperative_permission_media" />
+					android:text="@string/imperative_permission_gallery" />
 			</FrameLayout>
 			
 			<TextView
