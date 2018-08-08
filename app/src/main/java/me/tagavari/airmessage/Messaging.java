@@ -2371,7 +2371,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			conversationItems = items;
 			
 			//Updating the view
-			//messageList.getRecycledViewPool().clear();
+			messageList.getRecycledViewPool().clear();
 			notifyDataSetChanged();
 		}
 		
