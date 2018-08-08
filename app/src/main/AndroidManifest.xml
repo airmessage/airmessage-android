@@ -47,12 +47,6 @@
 			android:parentActivityName=".Conversations"
 			android:theme="@style/AppTheme.AppCompat.NoActionBar"
 			android:windowSoftInputMode="adjustResize|stateVisible" />
-		<!-- Conversation information -->
-		<activity
-			android:exported="false"
-			android:label="@string/screen_conversationdetails"
-			android:name=".MessagingInfo"
-			android:parentActivityName=".Messaging" />
 		<!-- Preferences -->
 		<activity
 			android:exported="false"

@@ -2388,7 +2388,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Returning the correct view holder
 			switch(viewType) {
 				case ConversationManager.ConversationItem.viewTypeMessage:
-					return new ConversationManager.MessageInfo.ViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_messageimp, parent, false));
+					return new ConversationManager.MessageInfo.ViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_message, parent, false));
 				case ConversationManager.ConversationItem.viewTypeAction:
 					return new ConversationManager.ActionLineViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_action, parent, false));
 				case itemTypeLoadingBar: {

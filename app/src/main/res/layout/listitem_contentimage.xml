@@ -68,12 +68,12 @@
 				android:layout_height="wrap_content"
 				android:minHeight="@dimen/image_height_min" />
 			
-			<me.tagavari.airmessage.view.InvisibleInkView
+			<!-- <me.tagavari.airmessage.view.InvisibleInkView
 				android:id="@+id/content_ink"
 				android:layout_width="match_parent"
 				android:layout_height="match_parent"
 				app:target="@id/content_view"
-				android:visibility="gone" />
+				android:visibility="gone" /> -->
 			
 			<!-- <View
 				android:id="@+id/content_background"

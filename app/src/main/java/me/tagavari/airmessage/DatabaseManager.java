@@ -232,7 +232,18 @@ class DatabaseManager extends SQLiteOpenHelper {
 			}
 			case 3:
 				//Removing the "last viewed" column (it is now obsolete)
-				dropColumn(database, "conversations", "last_viewed", false);
+				rebuildTable(database, "conversations", "CREATE TABLE conversations (" +
+						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+						"guid TEXT UNIQUE, " +
+						"state INTEGER NOT NULL, " +
+						"service TEXT, " +
+						"name TEXT, " +
+						//"last_viewed INTEGER DEFAULT 0, " + (removed column)
+						"unread_message_count INTEGER NOT NULL DEFAULT 0," +
+						"archived INTEGER DEFAULT 0, " +
+						"muted INTEGER DEFAULT 0," +
+						"color INTEGER DEFAULT " + 0xFF000000 +
+						");", false);
 			case 4: {
 				//Adding the "send style viewed" column
 				database.execSQL("ALTER TABLE messages ADD send_style_viewed INTEGER NOT NULL DEFAULT 0;");
@@ -298,7 +309,15 @@ class DatabaseManager extends SQLiteOpenHelper {
 					}
 					
 					//Dropping the type ID column
-					dropColumn(database, "attachments", "type", false);
+					rebuildTable(database, "attachments", "CREATE TABLE attachments (" +
+							BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+							"guid TEXT UNIQUE," +
+							"message INTEGER NOT NULL," +
+							//"type INTEGER NOT NULL," + (removed column)
+							"name TEXT," +
+							"path TEXT," +
+							"checksum TEXT" +
+							");", false);
 					
 					//Adding the type column (allowing null values)
 					database.execSQL("ALTER TABLE attachments ADD type TEXT;");
@@ -456,87 +475,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 		instance.close();
 	}
 	
-	private void dropColumn(SQLiteDatabase writableDatabase, String tableName, String columnName, boolean useTransaction) {
-		//Extracting information from the table's creation command
-		Pattern columnsPattern = Pattern.compile("(?<=\\().*?(?=\\))");
-		String originalCreationCommand;
-		try(Cursor cursor = writableDatabase.query("sqlite_master", new String[]{"sql"}, "tbl_name = ? AND type = 'table'", new String[]{tableName}, null, null, null)) {
-			cursor.moveToNext();
-			originalCreationCommand = cursor.getString(0);
-		}
-		String[] columnCodes;
-		String tableCommandStart;
-		String tableCommandEnd;
-		{
-			Matcher columnMatcher = columnsPattern.matcher(originalCreationCommand);
-			columnMatcher.find();
-			tableCommandStart = originalCreationCommand.substring(0, columnMatcher.start());
-			tableCommandEnd = originalCreationCommand.substring(columnMatcher.end(), originalCreationCommand.length());
-			columnCodes = columnMatcher.group().split(", ?");
-		}
-		
-		//Rebuilding the creation command without the specified column
-		StringBuilder creationCommandSB = new StringBuilder();
-		creationCommandSB.append(tableCommandStart);
-		if(columnCodes.length > 0) {
-			creationCommandSB.append(columnCodes[0]);
-			for(int i = 1; i < columnCodes.length; i++) {
-				String column = columnCodes[i];
-				if(!column.startsWith(columnName)) creationCommandSB.append(',').append(column);
-			}
-		}
-		creationCommandSB.append(tableCommandEnd);
-		String creationCommand = creationCommandSB.toString();
-		
-		//Fetching the raw column names of the table
-		String columnTarget;
-		{
-			String columnNames[] = getColumnNames(writableDatabase, tableName);
-			StringBuilder columnTargetSB = new StringBuilder();
-			if(columnNames.length > 0) {
-				columnTargetSB.append(columnNames[0]);
-				for(int i = 1; i < columnNames.length; i++) {
-					String column = columnNames[i];
-					if(!column.equals(columnName)) columnTargetSB.append(',').append(column);
-				}
-			}
-			columnTarget = columnTargetSB.toString();
-		}
-		
-		//Logging the operation
-		Crashlytics.log("Column drop requested.\n" +
-				"Requested column: " + columnName + '\n' +
-				"Column target: " + columnTarget + '\n' +
-				"Creation command: " + creationCommand);
-		
-		//Starting the operation
-		if(useTransaction) writableDatabase.beginTransaction();
-		try {
-			writableDatabase.execSQL("CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnTarget + ");");
-			writableDatabase.execSQL("INSERT INTO " + tableName + "_backup SELECT " + columnTarget + " FROM " + tableName + ";");
-			writableDatabase.execSQL("DROP TABLE " + tableName + ";");
-			//writableDatabase.execSQL("CREATE TABLE " + tableName + "(" + columnTarget + ");");
-			writableDatabase.execSQL(creationCommand);
-			writableDatabase.execSQL("INSERT INTO " + tableName + " SELECT " + columnTarget + " FROM " + tableName + "_backup;");
-			writableDatabase.execSQL("DROP TABLE " + tableName + "_backup;");
-			if(useTransaction) writableDatabase.setTransactionSuccessful();
-		} finally {
-			if(useTransaction) writableDatabase.endTransaction();
-		}
-	}
-	
-	private void rebuildTable(SQLiteDatabase writableDatabase, String tableName, String creationCommand, boolean useTransaction) {
-		//Getting the column names form the table and sorting them
-		String[] columnNames = getColumnNames(writableDatabase, tableName);
-		Arrays.sort(columnNames);
-		
-		StringBuilder columnTargetSB = new StringBuilder();
-		if(columnNames.length > 0) {
-			columnTargetSB.append(columnNames[0]);
-			for(int i = 1; i < columnNames.length; i++) columnTargetSB.append(',').append(columnNames[i]);
-		}
-		String columnTarget = columnTargetSB.toString();
-		
+	/* private void dropColumn(SQLiteDatabase writableDatabase, String tableName, String creationCommand, String targetColumn, boolean useTransaction) {
+		String columnSelection; //A comma-delimited list of the column names (no type or flag information)
 		{
 			//Extracting information from the table's creation command
 			Pattern columnsPattern = Pattern.compile("(?<=\\().*?(?=\\))");
@@ -554,7 +494,99 @@ class DatabaseManager extends SQLiteOpenHelper {
 			//Sorting the column codes
 			Arrays.sort(columnCodes);
 			
-			//Rebuilding the creation command without the specified column
+			//Extracting the column targets
+			{
+				String[] tableColumns = new String[columnCodes.length];
+				for(int i = 0; i < columnCodes.length; i++) tableColumns[i] = columnCodes[i].split(" ", 2)[0];
+				
+				StringBuilder columnTargetSB = new StringBuilder();
+				if(tableColumns.length > 0) {
+					String columnName;
+					{
+						columnName = tableColumns[0];
+						if(!columnName.equals(targetColumn)) columnTargetSB.append(columnName);
+					}
+					for(int i = 1; i < tableColumns.length; i++) {
+						columnName = tableColumns[i];
+						if(!columnName.equals(targetColumn)) columnTargetSB.append(',').append(columnName);
+					}
+				}
+				columnSelection = columnTargetSB.toString();
+			}
+			
+			//Rebuilding the creation command
+			StringBuilder creationCommandSB = new StringBuilder();
+			creationCommandSB.append(tableCommandStart);
+			if(columnCodes.length > 0) {
+				String columnCode;
+				{
+					columnCode = columnCodes[0];
+					if(!columnCode.startsWith(targetColumn)) creationCommandSB.append(columnCode);
+				}
+				for(int i = 1; i < columnCodes.length; i++) {
+					columnCode = columnCodes[i];
+					if(!columnCode.startsWith(targetColumn)) creationCommandSB.append(',').append(columnCode);
+				}
+			}
+			creationCommandSB.append(tableCommandEnd);
+			creationCommand = creationCommandSB.toString();
+		}
+		
+		//Logging the operation
+		Crashlytics.log("Column drop requested.\n" +
+				"Requested column: " + targetColumn + '\n' +
+				"Column target: " + columnSelection + '\n' +
+				"Creation command: " + creationCommand);
+		
+		//Starting the operation
+		if(useTransaction) writableDatabase.beginTransaction();
+		try {
+			writableDatabase.execSQL("CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnSelection + ");");
+			writableDatabase.execSQL("INSERT INTO " + tableName + "_backup SELECT " + columnSelection + " FROM " + tableName + ";");
+			writableDatabase.execSQL("DROP TABLE " + tableName + ";");
+			//writableDatabase.execSQL("CREATE TABLE " + tableName + "(" + columnTarget + ");");
+			writableDatabase.execSQL(creationCommand);
+			writableDatabase.execSQL("INSERT INTO " + tableName + " SELECT " + columnSelection + " FROM " + tableName + "_backup;");
+			writableDatabase.execSQL("DROP TABLE " + tableName + "_backup;");
+			if(useTransaction) writableDatabase.setTransactionSuccessful();
+		} finally {
+			if(useTransaction) writableDatabase.endTransaction();
+		}
+	} */
+	
+	private void rebuildTable(SQLiteDatabase writableDatabase, String tableName, String creationCommand, boolean useTransaction) {
+		String columnSelection; //A comma-delimited list of the column names (no type or flag information)
+		{
+			//Extracting information from the table's creation command
+			Pattern columnsPattern = Pattern.compile("(?<=\\().*?(?=\\))");
+			String[] columnCodes;
+			String tableCommandStart;
+			String tableCommandEnd;
+			{
+				Matcher columnMatcher = columnsPattern.matcher(creationCommand);
+				columnMatcher.find();
+				tableCommandStart = creationCommand.substring(0, columnMatcher.start());
+				tableCommandEnd = creationCommand.substring(columnMatcher.end(), creationCommand.length());
+				columnCodes = columnMatcher.group().split(", ?");
+			}
+			
+			//Sorting the column codes
+			Arrays.sort(columnCodes);
+			
+			//Extracting the column targets
+			{
+				String[] tableColumns = new String[columnCodes.length];
+				for(int i = 0; i < columnCodes.length; i++) tableColumns[i] = columnCodes[i].split(" ", 2)[0];
+				
+				StringBuilder columnTargetSB = new StringBuilder();
+				if(tableColumns.length > 0) {
+					columnTargetSB.append(tableColumns[0]);
+					for(int i = 1; i < tableColumns.length; i++) columnTargetSB.append(',').append(tableColumns[i]);
+				}
+				columnSelection = columnTargetSB.toString();
+			}
+			
+			//Rebuilding the creation command
 			StringBuilder creationCommandSB = new StringBuilder();
 			creationCommandSB.append(tableCommandStart);
 			if(columnCodes.length > 0) {
@@ -567,18 +599,18 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Logging the operation
 		Crashlytics.log("Table rebuild requested.\n" +
-		"Column target: " + columnTarget + '\n' +
-		"Creation command: " + creationCommand);
+				"Column target: " + columnSelection + '\n' +
+				"Creation command: " + creationCommand);
 		
 		//Starting the operation
 		if(useTransaction) writableDatabase.beginTransaction();
 		try {
-			writableDatabase.execSQL("CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnTarget + ");");
-			writableDatabase.execSQL("INSERT INTO " + tableName + "_backup SELECT " + columnTarget + " FROM " + tableName + ";");
+			writableDatabase.execSQL("CREATE TEMPORARY TABLE " + tableName + "_backup(" + columnSelection + ");");
+			writableDatabase.execSQL("INSERT INTO " + tableName + "_backup SELECT " + columnSelection + " FROM " + tableName + ";");
 			writableDatabase.execSQL("DROP TABLE " + tableName + ";");
 			//writableDatabase.execSQL("CREATE TABLE " + tableName + "(" + columnTarget + ");");
 			writableDatabase.execSQL(creationCommand);
-			writableDatabase.execSQL("INSERT INTO " + tableName + " SELECT " + columnTarget + " FROM " + tableName + "_backup;");
+			writableDatabase.execSQL("INSERT INTO " + tableName + " SELECT " + columnSelection + " FROM " + tableName + "_backup;");
 			writableDatabase.execSQL("DROP TABLE " + tableName + "_backup;");
 			if(useTransaction) writableDatabase.setTransactionSuccessful();
 		} finally {

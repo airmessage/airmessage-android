@@ -59,6 +59,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 import com.pnikosis.materialishprogress.ProgressWheel;
@@ -84,6 +85,7 @@ import java.util.Objects;
 import java.util.Random;
 
 import java9.util.function.Consumer;
+import jp.wasabeef.glide.transformations.BlurTransformation;
 import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.view.InvisibleInkView;
 import me.tagavari.airmessage.view.RoundedImageView;
@@ -4688,11 +4690,13 @@ class ConversationManager {
 			
 			//Requesting a Glide image load
 			viewHolder.imageContent.layout(0, 0, 0, 0);
-			Glide.with(context)
+			RequestBuilder<Drawable> requestBuilder = Glide.with(context)
 					.load(file)
 					.transition(DrawableTransitionOptions.withCrossFade())
-					.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))))
-					.into(viewHolder.imageContent);
+					.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
+			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(25, 3)));
+			
+			requestBuilder.into(viewHolder.imageContent);
 			
 			//Revealing the layout
 			viewHolder.groupContent.setVisibility(View.VISIBLE);
@@ -4826,8 +4830,8 @@ class ConversationManager {
 			else viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 			viewHolder.imageContent.invalidate();
 			
-			if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			//if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+			//else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 		}
 		
 		@Override
@@ -4840,26 +4844,27 @@ class ConversationManager {
 			if(viewHolder == null) return;
 			
 			//Revealing the ink view (and checking if is already running a reveal)
-			if(viewHolder.inkView.getVisibility() != View.VISIBLE || viewHolder.inkView.reveal()) {
-				//Getting the file extension
-				String fileName = file.getName();
+			//if(viewHolder.inkView.getVisibility() != View.VISIBLE || viewHolder.inkView.reveal()) {
+			//}
+			
+			//Getting the file extension
+				/* String fileName = file.getName();
 				int substringStart = file.getName().lastIndexOf(".") + 1;
-				if(fileName.length() <= substringStart) return;
-				
-				//Getting the file mime type
-				//String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substring(substringStart));
-				
-				//Creating a content URI
-				Uri content = FileProvider.getUriForFile(activity, MainApplication.fileAuthority, file);
-				
-				//Launching the content viewer
-				Intent intent = new Intent();
-				intent.setAction(Intent.ACTION_VIEW);
-				intent.setDataAndType(content, fileType);
-				intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-				if(intent.resolveActivity(activity.getPackageManager()) != null) activity.startActivity(intent);
-				else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
-			}
+				if(fileName.length() <= substringStart) return; */
+			
+			//Getting the file mime type
+			//String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substring(substringStart));
+			
+			//Creating a content URI
+			Uri content = FileProvider.getUriForFile(activity, MainApplication.fileAuthority, file);
+			
+			//Launching the content viewer
+			Intent intent = new Intent();
+			intent.setAction(Intent.ACTION_VIEW);
+			intent.setDataAndType(content, fileType);
+			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+			if(intent.resolveActivity(activity.getPackageManager()) != null) activity.startActivity(intent);
+			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
 		}
 		
 		@Override
@@ -4874,18 +4879,18 @@ class ConversationManager {
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
 			final RoundedImageView imageContent;
-			final InvisibleInkView inkView;
+			//final InvisibleInkView inkView;
 			
 			ViewHolder(View view) {
 				super(view);
 				
 				imageContent = groupContent.findViewById(R.id.content_view);
-				inkView = groupContent.findViewById(R.id.content_ink);
+				//inkView = groupContent.findViewById(R.id.content_ink);
 			}
 			
 			@Override
 			void cleanupState() {
-				inkView.setState(false);
+				//inkView.setState(false);
 			}
 			
 			@Override
@@ -5209,11 +5214,13 @@ class ConversationManager {
 			
 			//Requesting a Glide image load
 			viewHolder.imageContent.layout(0, 0, 0, 0);
-			Glide.with(context)
+			RequestBuilder<Drawable> requestBuilder = Glide.with(context)
 					.load(file)
 					.transition(DrawableTransitionOptions.withCrossFade())
-					.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))))
-					.into(viewHolder.imageContent);
+					.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
+			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(25, 3)));
+			
+			requestBuilder.into(viewHolder.imageContent);
 			
 			//Revealing the layout
 			viewHolder.groupContent.setVisibility(View.VISIBLE);
