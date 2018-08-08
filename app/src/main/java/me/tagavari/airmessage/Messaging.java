@@ -4166,49 +4166,51 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Returning if the input state is not recording
 			if(!isRecording()) return true;
 			
-			//Stopping the timer
-			stopRecordingTimer();
-			
-			if(cleanup) {
-				try {
-					//Stopping the media recorder
-					mediaRecorder.stop();
-				} catch(RuntimeException stopException) { //The media recorder couldn't capture any media
+			try {
+				//Stopping the timer
+				stopRecordingTimer();
+				
+				if(cleanup) {
+					try {
+						//Stopping the media recorder
+						mediaRecorder.stop();
+					} catch(RuntimeException stopException) { //The media recorder couldn't capture any media
+						//Showing a toast
+						Toast.makeText(MainApplication.getInstance(), R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
+						
+						//Invalidating the recording file reference
+						targetFileRecording = null;
+						
+						//Returning false
+						return false;
+					}
+				}
+				
+				//Checking if the recording was under a second
+				if(recordingDuration.getValue() < 1) {
 					//Showing a toast
 					Toast.makeText(MainApplication.getInstance(), R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
 					
-					//Invalidating the recording file reference
+					//Discarding the file
+					discard = true;
+				}
+				
+				//Checking if the recording should be discarded
+				if(discard) {
+					//Deleting the file and invalidating its reference
+					targetFileRecording.delete();
 					targetFileRecording = null;
 					
 					//Returning false
 					return false;
 				}
-			}
-			
-			//Checking if the recording was under a second
-			if(recordingDuration.getValue() < 1) {
-				//Showing a toast
-				Toast.makeText(MainApplication.getInstance(), R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
 				
-				//Discarding the file
-				discard = true;
+				//Returning true
+				return true;
+			} finally {
+				//Updating the state
+				isRecording.setValue(false);
 			}
-			
-			//Checking if the recording should be discarded
-			if(discard) {
-				//Deleting the file and invalidating its reference
-				targetFileRecording.delete();
-				targetFileRecording = null;
-				
-				//Returning false
-				return false;
-			}
-			
-			//Updating the state
-			isRecording.setValue(false);
-			
-			//Returning true
-			return true;
 		}
 		
 		boolean isRecording() {
@@ -5042,7 +5044,6 @@ public class Messaging extends AppCompatCompositeActivity {
 						extension = "webp";
 						break;
 				}
-				System.out.println("Inserted item of type " + type + " / " + extension);
 				
 				//Getting the name
 				String name = itemDesc.getLabel().toString() + (extension == null ? "" : '.' + extension);
