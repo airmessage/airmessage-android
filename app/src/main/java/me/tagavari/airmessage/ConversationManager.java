@@ -2329,16 +2329,14 @@ class ConversationManager {
 			//Getting the view holder
 			ViewHolder viewHolder = getViewHolder();
 			
-			//Hiding the error view
-			if(viewHolder != null) viewHolder.buttonSendError.setVisibility(View.GONE);
-			
 			//Checking if there is text
 			if(messageText != null) {
-				//Hiding the progress views
 				if(viewHolder != null) {
+					//Hiding the error view
+					viewHolder.buttonSendError.setVisibility(View.GONE);
+					
+					//Hiding the progress view
 					viewHolder.progressSend.setVisibility(View.GONE);
-					//view.findViewById(R.id.sendProgressIndeterminate).setVisibility(View.GONE);
-					//view.findViewById(R.id.sendProgressDeterminate).setVisibility(View.GONE);
 				}
 				
 				//Sending the message and returning the result
@@ -2349,22 +2347,24 @@ class ConversationManager {
 				//Returning false if there are no attachments
 				if(attachments.isEmpty()) return false;
 				
-				//Showing and configuring the progress view
+				//Getting the attachment
+				AttachmentInfo attachmentInfo = attachments.get(0);
+				
 				if(viewHolder != null) {
+					//Hiding the error view
+					viewHolder.buttonSendError.setVisibility(View.GONE);
+					
+					//Showing and configuring the progress view
 					viewHolder.progressSend.setVisibility(View.VISIBLE);
 					viewHolder.progressSend.spin();
 				}
 				
-				//Getting the attachment
-				AttachmentInfo attachmentInfo = attachments.get(0);
-				
-				//Returning false if the attachment is not suitable
-				if(attachmentInfo.getDraftingPushRequest() == null) return false;
-				
 				//Constructing the push request
 				ConnectionService.FilePushRequest request = attachmentInfo.getDraftingPushRequest();
-				request.setAttachmentID(attachmentInfo.getLocalID());
-				request.setUploadRequested(true);
+				if(request != null) {
+					request.setAttachmentID(attachmentInfo.getLocalID());
+					request.setUploadRequested(true);
+				} else request = new ConnectionService.FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, ConnectionService.FilePushRequest.stateAttached, System.currentTimeMillis(), true);
 				request.getCallbacks().onStart = () -> {
 					//Updating the progress bar
 					ViewHolder newViewHolder = getViewHolder();
@@ -4033,7 +4033,7 @@ class ConversationManager {
 		File file = null;
 		byte[] fileChecksum = null;
 		Uri fileUri = null;
-		ConnectionService.FilePushRequest draftingPushRequest;
+		ConnectionService.FilePushRequest draftingPushRequest = null;
 		
 		//Creating the attachment request values
 		boolean isFetching = false;
