@@ -34,8 +34,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	private static final int pixelsPerParticle = 150;
 	private static final float particleVelocity = 0.01F;
 	private static final float particleRadius = 0.7F;
-	private static final int blurRadius = 50;
-	//private static final int blurRadius = 25;
 	
 	private static final int timeRevealTransition = 500; //0.5 seconds
 	private static final int timeRevealStay = 9 * 1000; //8 seconds
