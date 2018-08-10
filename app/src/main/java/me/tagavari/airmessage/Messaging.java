@@ -193,6 +193,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Returning false
 		return false;
 	};
+	private final ActivityViewModel.AttachmentsLoadCallbacks[] attachmentsLoadCallbacks = new ActivityViewModel.AttachmentsLoadCallbacks[2];
 	
 	//Creating the view values
 	private View rootView;
@@ -1168,17 +1169,23 @@ public class Messaging extends AppCompatCompositeActivity {
 				AttachmentsRecyclerAdapter<?> adapter = new AttachmentsGalleryRecyclerAdapter(itemList);
 				list.setAdapter(adapter);
 				
+				//Creating the listener
+				ActivityViewModel.AttachmentsLoadCallbacks callbacks = attachmentsLoadCallbacks[ActivityViewModel.attachmentTypeGallery];
+				if(callbacks == null) {
+					callbacks = attachmentsLoadCallbacks[ActivityViewModel.attachmentTypeGallery] = result -> {
+						if(result) {
+							//Setting the list adapter's list
+							((AttachmentsGalleryRecyclerAdapter) list.getAdapter()).setList(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery));
+						} else {
+							//Replacing the list view with the failed text
+							viewGroup.findViewById(R.id.list_attachment_gallery).setVisibility(View.GONE);
+							viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.VISIBLE);
+						}
+					};
+				}
+				
 				//Loading the media
-				viewModel.indexAttachmentsGallery(result -> {
-					if(result) {
-						//Setting the list adapter's list
-						((AttachmentsGalleryRecyclerAdapter) list.getAdapter()).setList(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery));
-					} else {
-						//Replacing the list view with the failed text
-						viewGroup.findViewById(R.id.list_attachment_gallery).setVisibility(View.GONE);
-						viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.VISIBLE);
-					}
-				}, adapter);
+				viewModel.indexAttachmentsGallery(callbacks, adapter);
 			}
 		}
 	}
@@ -1273,17 +1280,23 @@ public class Messaging extends AppCompatCompositeActivity {
 				AttachmentsRecyclerAdapter<?> adapter = new AttachmentsDocumentRecyclerAdapter(itemList);
 				list.setAdapter(adapter);
 				
+				//Creating the listener
+				ActivityViewModel.AttachmentsLoadCallbacks callbacks = attachmentsLoadCallbacks[ActivityViewModel.attachmentTypeDocument];
+				if(callbacks == null) {
+					callbacks = attachmentsLoadCallbacks[ActivityViewModel.attachmentTypeDocument] = result -> {
+						if(result) {
+							//Setting the list adapter's list
+							((AttachmentsDocumentRecyclerAdapter) list.getAdapter()).setList(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeDocument));
+						} else {
+							//Replacing the list view with the failed text
+							viewGroup.findViewById(R.id.list_attachment_documents).setVisibility(View.GONE);
+							viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.VISIBLE);
+						}
+					};
+				}
+				
 				//Loading the media
-				viewModel.indexAttachmentsDocument(result -> {
-					if(result) {
-						//Setting the list adapter's list
-						((AttachmentsDocumentRecyclerAdapter) list.getAdapter()).setList(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeDocument));
-					} else {
-						//Replacing the list view with the failed text
-						viewGroup.findViewById(R.id.list_attachment_documents).setVisibility(View.GONE);
-						viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.VISIBLE);
-					}
-				}, adapter);
+				viewModel.indexAttachmentsDocument(callbacks, adapter);
 			}
 		}
 	}
