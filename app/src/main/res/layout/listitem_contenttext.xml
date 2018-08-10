@@ -42,7 +42,8 @@
 				app:layout_constraintLeft_toLeftOf="@+id/message"
 				app:layout_constraintRight_toRightOf="@+id/message"
 				app:layout_constraintTop_toTopOf="@+id/message"
-				app:target="@+id/message" />
+				app:backgroundColor="@color/colorMessageOutgoing"
+				android:visibility="gone" />
 		</android.support.constraint.ConstraintLayout>
 		
 		<include layout="@layout/layout_tapbackcontainer" />

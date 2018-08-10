@@ -121,6 +121,9 @@ class ConversationManager {
 		return member1.name.compareTo(member2.name);
 	};
 	
+	private static final int invisibleInkBlurRadius = 2;
+	private static final int invisibleInkBlurSampling = 80;
+	
 	//Creating the conversation list
 	//private final ArrayList<ConversationInfo> conversations = new ArrayList<>();
 	
@@ -4694,9 +4697,14 @@ class ConversationManager {
 					.load(file)
 					.transition(DrawableTransitionOptions.withCrossFade())
 					.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
-			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(25, 3)));
-			
+			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(invisibleInkBlurRadius, invisibleInkBlurSampling)));
 			requestBuilder.into(viewHolder.imageContent);
+			
+			//Updating the ink view
+			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) {
+				viewHolder.inkView.setVisibility(View.VISIBLE);
+				viewHolder.inkView.setState(true);
+			} else viewHolder.inkView.setVisibility(View.GONE);
 			
 			//Revealing the layout
 			viewHolder.groupContent.setVisibility(View.VISIBLE);
@@ -4830,8 +4838,8 @@ class ConversationManager {
 			else viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 			viewHolder.imageContent.invalidate();
 			
-			//if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			//else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+			else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 		}
 		
 		@Override
@@ -4879,18 +4887,18 @@ class ConversationManager {
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
 			final RoundedImageView imageContent;
-			//final InvisibleInkView inkView;
+			final InvisibleInkView inkView;
 			
 			ViewHolder(View view) {
 				super(view);
 				
 				imageContent = groupContent.findViewById(R.id.content_view);
-				//inkView = groupContent.findViewById(R.id.content_ink);
+				inkView = groupContent.findViewById(R.id.content_ink);
 			}
 			
 			@Override
 			void cleanupState() {
-				//inkView.setState(false);
+				inkView.setState(false);
 			}
 			
 			@Override
@@ -5218,9 +5226,15 @@ class ConversationManager {
 					.load(file)
 					.transition(DrawableTransitionOptions.withCrossFade())
 					.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
-			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(25, 3)));
+			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(invisibleInkBlurRadius, invisibleInkBlurSampling)));
 			
 			requestBuilder.into(viewHolder.imageContent);
+			
+			//Updating the ink view
+			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) {
+				viewHolder.inkView.setVisibility(View.VISIBLE);
+				viewHolder.inkView.setState(true);
+			} else viewHolder.inkView.setVisibility(View.GONE);
 			
 			//Revealing the layout
 			viewHolder.groupContent.setVisibility(View.VISIBLE);
@@ -5302,6 +5316,9 @@ class ConversationManager {
 			if(alignToRight) viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
 			else viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 			viewHolder.imageContent.invalidate();
+			
+			if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+			else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 		}
 		
 		@Override
@@ -5333,14 +5350,19 @@ class ConversationManager {
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
-			//final View backgroundContent;
 			final RoundedImageView imageContent;
+			final InvisibleInkView inkView;
 			
 			ViewHolder(View view) {
 				super(view);
 				
-				//backgroundContent = groupContent.findViewById(R.id.content_background);
 				imageContent = groupContent.findViewById(R.id.content_view);
+				inkView = groupContent.findViewById(R.id.content_ink);
+			}
+			
+			@Override
+			void cleanupState() {
+				inkView.setState(false);
 			}
 			
 			@Override

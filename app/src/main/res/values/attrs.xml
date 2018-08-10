@@ -11,7 +11,7 @@
 	</declare-styleable>
 	
 	<declare-styleable name="InvisibleInkView">
-		<attr name="target" format="reference" />
+		<attr name="backgroundColor" format="color" />
 	</declare-styleable>
 	
 	<declare-styleable name="VisualizerView">

@@ -57,7 +57,7 @@
 				android:tint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		
-		<FrameLayout
+		<android.support.constraint.ConstraintLayout
 			android:id="@+id/content"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
@@ -66,14 +66,18 @@
 				android:id="@+id/content_view"
 				android:layout_width="@dimen/image_width_preferred"
 				android:layout_height="wrap_content"
+				android:adjustViewBounds="true"
 				android:minHeight="@dimen/image_height_min" />
 			
-			<!-- <me.tagavari.airmessage.view.InvisibleInkView
+			<me.tagavari.airmessage.view.InvisibleInkView
 				android:id="@+id/content_ink"
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				app:target="@id/content_view"
-				android:visibility="gone" /> -->
+				android:layout_width="0px"
+				android:layout_height="0px"
+				app:layout_constraintLeft_toLeftOf="@id/content_view"
+				app:layout_constraintRight_toRightOf="@id/content_view"
+				app:layout_constraintTop_toTopOf="@id/content_view"
+				app:layout_constraintBottom_toBottomOf="@id/content_view"
+				android:visibility="gone" />
 			
 			<!-- <View
 				android:id="@+id/content_background"
@@ -81,7 +85,7 @@
 				android:layout_height="match_parent"
 				android:backgroundTint="@color/colorImageUnloaded"
 				android:visibility="gone" /> -->
-		</FrameLayout>
+		</android.support.constraint.ConstraintLayout>
 		
 		<LinearLayout
 			android:id="@+id/failedcontent"
