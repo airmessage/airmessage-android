@@ -998,7 +998,7 @@ class ConversationManager {
 			} else {
 				//Getting the list
 				ArrayList<ConversationItem> conversationItems = getConversationItems();
-				if(conversationItems == null) return;
+				if(conversationItems == null || conversationItems.isEmpty()) return;
 				
 				//Getting the last conversation item
 				ConversationItem lastConversationItem = conversationItems.get(conversationItems.size() - 1);
