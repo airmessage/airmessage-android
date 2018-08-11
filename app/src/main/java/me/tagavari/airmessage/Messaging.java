@@ -137,7 +137,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	//Creating the static values
 	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
-	private static final List<WeakReference<Messaging>> loadedConversations = new ArrayList<>();
+	//private static final List<WeakReference<Messaging>> loadedConversations = new ArrayList<>();
 	
 	//Creating the view model and plugin values
 	private ActivityViewModel viewModel;
@@ -604,7 +604,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			new QueueUriAsyncTask(this).execute(targetUris);
 		}
 		
-		//Iterating over the loaded conversations
+		/* //Iterating over the loaded conversations
 		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext(); ) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
@@ -627,7 +627,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Adding the conversation as a loaded conversation
-		loadedConversations.add(new WeakReference<>(this));
+		loadedConversations.add(new WeakReference<>(this)); */
 		
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
@@ -728,7 +728,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Skipping the remainder of the iteration if the activity isn't this one
 			else if(activity != this) continue;
 			
-			//Removing the reference
+			//Removing the reference (to this activity)
 			iterator.remove();
 			
 			//Breaking from the loop
@@ -777,7 +777,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		super.onDestroy();
 		
 		//Iterating over the loaded conversations
-		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
+		/* for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			
@@ -794,7 +794,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Breaking from the loop
 			break;
-		}
+		} */
 		
 		//Notifying the views
 		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
@@ -2221,12 +2221,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		return list;
 	}
 	
-	public static ArrayList<Long> getLoadedConversations() {
+	/* public static ArrayList<Long> getActivityLoadedConversations() {
 		//Creating the list
 		ArrayList<Long> list = new ArrayList<>();
 		
 		//Iterating over the loaded conversations
-		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext(); ) {
+		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			
@@ -2242,7 +2242,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Returning the list
 		return list;
-	}
+	} */
 	
 	void playScreenEffect(String effect, View target) {
 		//Returning if an effect is already playing

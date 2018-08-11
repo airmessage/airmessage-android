@@ -302,11 +302,17 @@ class ConversationManager {
 		//Creating the list
 		ArrayList<ConversationInfo> list = new ArrayList<>();
 		
-		//Iterating over the loaded conversation IDs
-		for(long conversationID : Messaging.getLoadedConversations()) {
-			//Adding the conversation
-			ConversationInfo conversationInfo = findConversationInfo(conversationID);
-			if(conversationInfo != null) list.add(conversationInfo);
+		//Getting the conversations
+		ArrayList<ConversationInfo> conversations = getConversations();
+		if(conversations == null) return list;
+		
+		//Iterating over the conversations
+		for(ConversationInfo item : conversations) {
+			//Skipping the remainder of the iteration if the conversation's items aren't loaded
+			if(!item.isDataAvailable()) continue;
+			
+			//Adding the conversation to the list
+			list.add(item);
 		}
 		
 		//Returning the list
@@ -754,6 +760,10 @@ class ConversationManager {
 		
 		ArrayList<MessageInfo> getGhostMessages() {
 			return ghostMessagesReference == null ? null : ghostMessagesReference.get();
+		}
+		
+		boolean isDataAvailable() {
+			return getConversationItems() != null && getGhostMessages() != null;
 		}
 		
 		long getLocalID() {

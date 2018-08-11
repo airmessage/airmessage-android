@@ -6481,7 +6481,7 @@ public class ConnectionService extends Service {
 		private final List<ConversationManager.ConversationInfo> completeConversations = new ArrayList<>();
 		
 		//Creating the caches
-		private ArrayList<Long> loadedConversationsCache;
+		private List<Long> foregroundConversationsCache;
 		
 		MessageUpdateAsyncTask(ConnectionService serviceInstance, Context context, List<Blocks.ConversationItem> structConversationItems, boolean sendNotifications) {
 			//Setting the references
@@ -6493,7 +6493,7 @@ public class ConnectionService extends Service {
 			this.sendNotifications = sendNotifications;
 			
 			//Getting the caches
-			loadedConversationsCache = new ArrayList<>(Messaging.getLoadedConversations());
+			foregroundConversationsCache = Messaging.getForegroundConversations();
 		}
 		
 		@Override
@@ -6590,7 +6590,7 @@ public class ConnectionService extends Service {
 					newCompleteConversationItems.add(conversationItem);
 					
 					//Incrementing the unread count
-					if(!loadedConversationsCache.contains(parentConversation.getLocalID()) && (conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing())) DatabaseManager.getInstance().incrementUnreadMessageCount(parentConversation.getLocalID());
+					if(!foregroundConversationsCache.contains(parentConversation.getLocalID()) && (conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing())) DatabaseManager.getInstance().incrementUnreadMessageCount(parentConversation.getLocalID());
 				}
 				//Otherwise updating the last conversation item
 				else if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
@@ -6626,7 +6626,7 @@ public class ConnectionService extends Service {
 			
 			//Getting the loaded conversations
 			//List<Long> foregroundConversations = Messaging.getForegroundConversations();
-			//List<Long> loadedConversations = Messaging.getLoadedConversations();
+			//List<Long> loadedConversations = Messaging.getActivityLoadedConversations();
 			
 			//Checking if the conversations are loaded in memory
 			ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
@@ -6971,7 +6971,7 @@ public class ConnectionService extends Service {
 						conversationInfo.setGuid(transferData.guid);
 						conversationInfo.setState(transferData.state);
 						conversationInfo.setTitle(context, transferData.name);
-						if(Messaging.getLoadedConversations().contains(conversationInfo.getLocalID())) conversationInfo.addConversationItems(context, transferData.conversationItems);
+						if(conversationInfo.isDataAvailable()) conversationInfo.addConversationItems(context, transferData.conversationItems);
 						//conversationInfo.setUnreadMessageCount(conversationInfo.getUnreadMessageCount() + transferData.conversationItems.size());
 						//conversationInfo.updateUnreadStatus();
 					}
@@ -7114,7 +7114,7 @@ public class ConnectionService extends Service {
 				//Finding the referenced item
 				ConversationManager.ConversationItem conversationItem;
 				ConversationManager.MessageInfo messageInfo = null;
-				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getForegroundConversations()) {
+				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getLoadedConversations()) {
 					conversationItem = loadedConversation.findConversationItem(sticker.getMessageID());
 					if(conversationItem == null) continue;
 					if(!(conversationItem instanceof ConversationManager.MessageInfo)) break;
@@ -7133,7 +7133,7 @@ public class ConnectionService extends Service {
 			for(ConversationManager.TapbackInfo tapback : tapbackModifiers) {
 				//Finding the referenced item
 				ConversationManager.MessageInfo messageInfo = null;
-				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getForegroundConversations()) {
+				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getLoadedConversations()) {
 					ConversationManager.ConversationItem conversationItem;
 					conversationItem = loadedConversation.findConversationItem(tapback.getMessageID());
 					if(conversationItem == null) continue;
@@ -7154,7 +7154,7 @@ public class ConnectionService extends Service {
 				//Finding the referenced item
 				ConversationManager.ConversationItem conversationItem;
 				ConversationManager.MessageInfo messageInfo = null;
-				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getForegroundConversations()) {
+				for(ConversationManager.ConversationInfo loadedConversation : ConversationManager.getLoadedConversations()) {
 					conversationItem = loadedConversation.findConversationItem(tapback.message);
 					if(conversationItem == null) continue;
 					if(!(conversationItem instanceof ConversationManager.MessageInfo)) break;
