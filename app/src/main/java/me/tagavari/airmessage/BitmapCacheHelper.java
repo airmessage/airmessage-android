@@ -109,6 +109,20 @@ class BitmapCacheHelper {
 		getBitmapFromContact(context, name, name, callbacks);
 	}
 	
+	void measureBitmapFromImageFile(String id, File file, ImageDecodeResult callbacks, boolean resize, int pxMinX, int pxMinY) {
+		//Adding the listener
+		if(callbackList.containsKey(id))
+			callbackList.get(id).add(callbacks);
+		else {
+			ArrayList<ImageDecodeResult> resultList = new ArrayList<>();
+			resultList.add(callbacks);
+			callbackList.put(id, resultList);
+		}
+		
+		//Starting the task
+		new DecodeImageFileTask(id, this, resize, pxMinX, pxMinY, false).execute(file);
+	}
+	
 	void getBitmapFromImageFile(String id, File file, ImageDecodeResult callbacks, boolean resize, int pxMinX, int pxMinY) {
 		//Prefixing the identifier
 		id = cachePrefixAttachment + id;
@@ -128,7 +142,7 @@ class BitmapCacheHelper {
 			}
 			
 			//Starting the task
-			new DecodeImageFileTask(id, this, resize, pxMinX, pxMinY).execute(file);
+			new DecodeImageFileTask(id, this, resize, pxMinX, pxMinY, true).execute(file);
 		}
 		//Otherwise immediately telling the callback listener
 		else callbacks.onImageDecoded(bitmap, false);
@@ -389,8 +403,9 @@ class BitmapCacheHelper {
 		private final WeakReference<BitmapCacheHelper> superclassReference;
 		private final boolean resize;
 		private final int pxMaxX, pxMaxY;
+		private final boolean decode;
 		
-		DecodeImageFileTask(String requestKey, BitmapCacheHelper superclass, boolean resize, int pxMaxX, int pxMaxY) {
+		DecodeImageFileTask(String requestKey, BitmapCacheHelper superclass, boolean resize, int pxMaxX, int pxMaxY, boolean decode) {
 			//Setting the values
 			this.requestKey = requestKey;
 			superclassReference = new WeakReference<>(superclass);
@@ -398,6 +413,8 @@ class BitmapCacheHelper {
 			this.resize = resize;
 			this.pxMaxX = pxMaxX;
 			this.pxMaxY = pxMaxY;
+			
+			this.decode = decode;
 		}
 		
 		@Override
@@ -410,7 +427,7 @@ class BitmapCacheHelper {
 			int exifOrientation = -1;
 			
 			//Checking if the image is a JPEG file (contains EXIF data)
-			if("image/jpeg".equals(Constants.getMimeType(file))) {
+			if("image/jpeg".equals(Constants.getMimeType(/*MainApplication.getInstance(), */file))) {
 				//Reading the image's EXIF data
 				ExifInterface exif = null;
 				try {
@@ -442,17 +459,28 @@ class BitmapCacheHelper {
 				
 				//Decoding the entire bitmap
 				options.inJustDecodeBounds = false;
+			} else if(!decode) {
+				//Reading the dimensions of the image
+				options.inJustDecodeBounds = true;
+				BitmapFactory.decodeFile(file.getPath(), options);
+				
+				publishProgress(options.outWidth, options.outHeight);
+				
+				//Decoding the entire bitmap
+				options.inJustDecodeBounds = false;
 			}
 			
-			//Decoding the file
-			Bitmap bitmap = BitmapFactory.decodeFile(file.getPath(), options);
-			if(bitmap == null) return null;
-			
-			//Rotating the bitmap
-			if(useExif) bitmap = rotateBitmap(bitmap, exifOrientation);
-			
-			//Returning the bitmap
-			return bitmap;
+			if(decode) {
+				//Decoding the file
+				Bitmap bitmap = BitmapFactory.decodeFile(file.getPath(), options);
+				if(bitmap == null) return null;
+				
+				//Rotating the bitmap
+				if(useExif) bitmap = rotateBitmap(bitmap, exifOrientation);
+				
+				//Returning the bitmap
+				return bitmap;
+			} else return null;
 		}
 		
 		@Override
@@ -479,7 +507,7 @@ class BitmapCacheHelper {
 			
 			//Telling the result listeners
 			if(superclass.callbackList.containsKey(requestKey)) {
-				for(ImageDecodeResult callback : superclass.callbackList.get(requestKey)) callback.onImageDecoded(bitmap, true);
+				if(decode) for(ImageDecodeResult callback : superclass.callbackList.get(requestKey)) callback.onImageDecoded(bitmap, true);
 				superclass.callbackList.remove(requestKey);
 			}
 		}
@@ -626,7 +654,7 @@ class BitmapCacheHelper {
 		
 		abstract void onImageMeasured(int width, int height);
 		
-		abstract void onImageDecoded(Bitmap result, boolean wasTasked);
+		void onImageDecoded(Bitmap result, boolean wasTasked) {};
 	}
 	
 	private static int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {

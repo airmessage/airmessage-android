@@ -5,7 +5,6 @@ import android.app.AlertDialog;
 import android.arch.lifecycle.ViewModel;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.BroadcastReceiver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -47,6 +46,9 @@ import java.util.regex.Pattern;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 
 public class Conversations extends AppCompatCompositeActivity {
+	//Creating the constants
+	private static final int permissionRequestContacts = 0;
+	
 	//Creating the plugin values
 	private ConversationsBase conversationsBasePlugin;
 	private PluginMessageBar pluginMessageBar;
@@ -216,7 +218,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
 		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
-		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts));
+		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, permissionRequestContacts));
 		infoBarSystemUpdate = pluginMessageBar.create(R.drawable.update, getResources().getString(R.string.message_serverupdate));
 		
 		//Restoring the state
@@ -421,7 +423,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
 		//Checking if the request code is contacts access
-		if(requestCode == Constants.permissionReadContacts) {
+		if(requestCode == permissionRequestContacts) {
 			//Checking if the result is a success
 			if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 				//Hiding the contact request info bar
@@ -715,7 +717,6 @@ public class Conversations extends AppCompatCompositeActivity {
 	}
 	
 	void restoreSearchState() {
-		System.out.println("Restoring search state to " + viewModel.isSearching);
 		//Returning if the search is not active
 		if(!viewModel.isSearching) return;
 		
@@ -1160,12 +1161,8 @@ public class Conversations extends AppCompatCompositeActivity {
 				
 				//Checking if there are conversations to update in the database
 				if(!updatedConversations.isEmpty()) {
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, true);
-					
 					//Updating the conversations
-					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
+					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversationMuted(conversationID, true);
 				}
 				
 				//Finishing the action mode
@@ -1196,14 +1193,8 @@ public class Conversations extends AppCompatCompositeActivity {
 				
 				//Checking if there are conversations to update in the database
 				if(!updatedConversations.isEmpty()) {
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the muted value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_MUTED, false);
-					
 					//Updating the conversations
-					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationID, contentValues);
+					for(long conversationID : updatedConversations) DatabaseManager.getInstance().updateConversationMuted(conversationID, false);
 				}
 				
 				//Finishing the action mode
@@ -1234,32 +1225,16 @@ public class Conversations extends AppCompatCompositeActivity {
 					//Updating the list
 					conversationsBasePlugin.updateList(false);
 					
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the archived value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-					
 					//Updating the conversations
-					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
+					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), true);
 					
 					//Creating a snackbar
 					int affectedCount = updatedConversations.size();
 					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
-						//Creating the content values
-						ContentValues undoContentValues = new ContentValues();
-						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-						
-						//Iterating over the conversations
+						//Updating the conversations
 						for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) {
-							//Unarchiving the conversation
 							conversationInfo.setArchived(false);
-							
-							//Setting the archived value
-							contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-							
-							//Updating the conversations
-							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
+							DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), false);
 						}
 						
 						//Updating the list
@@ -1295,29 +1270,16 @@ public class Conversations extends AppCompatCompositeActivity {
 					//Updating the list
 					conversationsBasePlugin.updateList(false);
 					
-					//Creating the content values
-					ContentValues contentValues = new ContentValues();
-					
-					//Setting the archived value
-					contentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, false);
-					
 					//Updating the conversations
-					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), contentValues);
+					for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), false);
 					
 					//Creating a snackbar
 					int affectedCount = updatedConversations.size();
 					Snackbar.make(findViewById(R.id.root), getResources().getQuantityString(R.plurals.message_conversationunarchived, affectedCount, affectedCount), Snackbar.LENGTH_LONG).setAction(R.string.action_undo, view -> {
-						//Creating the content values
-						ContentValues undoContentValues = new ContentValues();
-						undoContentValues.put(DatabaseManager.Contract.ConversationEntry.COLUMN_NAME_ARCHIVED, true);
-						
-						//Iterating over the conversations
+						//Updating the conversations
 						for(ConversationManager.ConversationInfo conversationInfo : updatedConversations) {
-							//Archiving the conversation
 							conversationInfo.setArchived(true);
-							
-							//Updating the conversations
-							DatabaseManager.getInstance().updateConversation(conversationInfo.getLocalID(), undoContentValues);
+							DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), true);
 						}
 						
 						//Updating the list

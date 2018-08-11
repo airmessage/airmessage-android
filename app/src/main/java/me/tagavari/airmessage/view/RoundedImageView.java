@@ -1,13 +1,16 @@
-package me.tagavari.airmessage;
+package me.tagavari.airmessage.view;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
 
-class RoundedImageView extends AppCompatImageView {
+import me.tagavari.airmessage.R;
+
+public class RoundedImageView extends AppCompatImageView {
 	private float[] radii = new float[8];
 	
 	public RoundedImageView(Context context) {
@@ -16,10 +19,21 @@ class RoundedImageView extends AppCompatImageView {
 	
 	public RoundedImageView(Context context, AttributeSet attrs) {
 		super(context, attrs);
-	}
-	
-	public RoundedImageView(Context context, AttributeSet attrs, int defStyle) {
-		super(context, attrs, defStyle);
+		TypedArray typedArray = context.getTheme().obtainStyledAttributes(attrs, R.styleable.RoundedView, 0, 0);
+		
+		try {
+			float radius = typedArray.getDimensionPixelSize(R.styleable.RoundedView_radii, -1);
+			if(radius != -1) {
+				for(int i = 0; i < radii.length; i++) radii[i] = radius;
+			} else {
+				float radiusTop = typedArray.getDimensionPixelSize(R.styleable.RoundedView_radiusTop, 0);
+				for(int i = 0; i < 4; i++) radii[i] = radiusTop;
+				float radiusBottom = typedArray.getDimensionPixelSize(R.styleable.RoundedView_radiusBottom, 0);
+				for(int i = 4; i < 8; i++) radii[i] = radiusBottom;
+			}
+		} finally {
+			typedArray.recycle();
+		}
 	}
 	
 	public void setRadii(float topLeft, float topRight, float bottomRight, float bottomLeft) {

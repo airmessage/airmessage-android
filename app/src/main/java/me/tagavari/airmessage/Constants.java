@@ -1,7 +1,6 @@
 package me.tagavari.airmessage;
 
 import android.app.Activity;
-import android.arch.lifecycle.ViewModel;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -11,12 +10,13 @@ import android.database.Cursor;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Parcel;
 import android.provider.OpenableColumns;
 import android.support.annotation.AttrRes;
 import android.support.annotation.ColorInt;
-import android.support.annotation.NonNull;
 import android.support.customtabs.CustomTabsIntent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -47,23 +47,26 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import java9.util.function.BiConsumer;
+import java9.util.function.Consumer;
+
 public class Constants {
 	//Creating the constants
-	static final int intentPickMediaFile = 1;
-	static final int intentPickAnyFile = 2;
-	static final int intentTakePicture = 3;
-	static final int permissionRecordAudio = 4;
+	/* static final int permissionRecordAudio = 4;
 	static final int permissionReadContacts = 5;
-	static final int permissionAccessCoarseLocation = 6;
+	static final int permissionAccessCoarseLocation = 6; */
 	
-	static final int historicCommunicationsWS = 2;
+	//static final int historicCommunicationsWS = 2;
 	
-	static final int intentDisconnectService = 6;
+	//static final int intentDisconnectService = 6;
+	
+	public static final String defaultMIMEType = "application/octet-stream";
 	
 	static final String intentParamTargetID = "targetID";
 	static final String intentParamGuid = "guid";
@@ -165,7 +168,7 @@ public class Constants {
 		if(missingPermissions.isEmpty()) return false;
 		
 		//Requesting the permission
-		ActivityCompat.requestPermissions(activity, missingPermissions.toArray(new String[]{}), requestID);
+		ActivityCompat.requestPermissions(activity, missingPermissions.toArray(new String[0]), requestID);
 		
 		//Returning true
 		return true;
@@ -199,12 +202,16 @@ public class Constants {
 		} */
 	}
 	
-	static int dpToPx(float dp) {
+	public static int dpToPx(float dp) {
 		return (int) (dp * Resources.getSystem().getDisplayMetrics().density);
 	}
 	
-	static float pxToDp(int px) {
+	public static float pxToDp(int px) {
 		return px / Resources.getSystem().getDisplayMetrics().density;
+	}
+	
+	static boolean isLTR(Resources resources) {
+		return resources.getBoolean(R.bool.is_left_to_right);
 	}
 	
 	static void recursiveDelete(File file) {
@@ -213,6 +220,15 @@ public class Constants {
 			File[] childFiles = file.listFiles();
 			if(childFiles != null) for(File child : childFiles) recursiveDelete(child);
 			file.delete();
+		}
+	}
+	
+	static void recursiveInvalidate(ViewGroup layout) {
+		View child;
+		for (int i = 0; i < layout.getChildCount(); i++) {
+			child = layout.getChildAt(i);
+			child.invalidate();
+			if(child instanceof ViewGroup) recursiveInvalidate((ViewGroup) child);
 		}
 	}
 	
@@ -268,13 +284,26 @@ public class Constants {
 		}
 	}
 	
-	static File findFreeFile(File directory, String fileName) {
-		return findFreeFile(directory, fileName, "_", 0);
+	static File findFreeFile(File directory, boolean splitFileExtension) {
+		return findFreeFile(directory, "", splitFileExtension, "", 0);
 	}
 	
-	static File findFreeFile(File directory, String fileName, String separator, int startIndex) {
-		//Creating the file
-		File file = new File(directory, fileName);
+	static File findFreeFile(File directory, String fileName, boolean splitFileExtension) {
+		return findFreeFile(directory, fileName, splitFileExtension, "_", 0);
+	}
+	
+	/**
+	 * Finds a free file in the specified directory based on the file name by appending a counter to the end, increasing it until a suitable option is found
+	 * @param directory the directory to find a file in
+	 * @param fileName the name of the file
+	 * @param splitFileExtension if the counter should be placed between the file's name and the file's extension
+	 * @param separator a string of characters to place between the file's name and the file's counter
+	 * @param startIndex the number to start the counter at
+	 * @return the first available file found
+	 */
+	static File findFreeFile(File directory, String fileName, boolean splitFileExtension, String separator, int startIndex) {
+		//Creating the default file
+		File file = new File(directory, fileName.isEmpty() ? separator + startIndex : fileName);
 		
 		//Checking if the file directory doesn't exist
 		if(!directory.exists()) {
@@ -285,27 +314,40 @@ public class Constants {
 			return file;
 		}
 		
-		//Getting the file name and extension
-		String[] fileData = file.getName().split("\\.(?=[^.]+$)");
-		String baseFileName = fileData[0];
-		String fileExtension = fileData.length > 1 ? fileData[1] : "";
-		int currentIndex = startIndex;
+		//Returning the file if it doesn't exist
+		if(!file.exists()) return file;
 		
-		//Finding a free file
-		while(file.exists()) file = new File(directory, baseFileName + separator + currentIndex++ + '.' + fileExtension);
+		if(splitFileExtension) {
+			//Getting the file name and extension
+			String[] fileData = fileName.split("\\.(?=[^.]+$)");
+			String baseFileName = fileData[0];
+			String fileExtension = fileData.length > 1 ? fileData[1] : "";
+			
+			//Finding the first free file
+			do {
+				file = new File(directory, baseFileName + separator + startIndex++ + '.' + fileExtension);
+			} while(file.exists());
+		} else {
+			//Finding the first free file
+			do {
+				file = new File(directory, fileName + separator + startIndex++);
+			} while(file.exists());
+		}
 		
 		//Returning the file
 		return file;
 	}
 	
-	static String getFileName(Context context, Uri uri) {
+	static String getUriName(Context context, Uri uri) {
 		//Creating the file name variable
 		String fileName = null;
 		
 		//Attempting to pull the file name from the content resolver
 		if("content".equals(uri.getScheme())) {
-			try(Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
+			try(Cursor cursor = context.getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
 				if(cursor != null && cursor.moveToFirst()) fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+			} catch(Exception exception) {
+				exception.printStackTrace();
 			}
 		}
 		
@@ -320,19 +362,116 @@ public class Constants {
 		return fileName;
 	}
 	
+	static long getUriSize(Context context, Uri uri) {
+		//Creating the file name variable
+		String fileName = null;
+		
+		//Attempting to pull the file name from the content resolver
+		if("content".equals(uri.getScheme())) {
+			try(Cursor cursor = context.getContentResolver().query(uri, new String[]{OpenableColumns.SIZE}, null, null, null)) {
+				if(cursor != null && cursor.moveToFirst()) return cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
+			}
+		}
+		
+		//Returning -1
+		return -1;
+	}
+	
+	/**
+	 * Compares file paths to check if the target file is parented anywhere under the parent directory
+	 * EXAMPLE:
+	 * /user/photos/2016, /user/photos/2016/image.jpg -> TRUE
+	 * /user/photos/2016, /user/photos/2016/january/12/image.jpg -> TRUE
+	 * /user/photos/2016, /user/images/2016/image.jpg -> FALSE
+	 * /user/photos/2016, /user/photos/2016 -> TRUE
+	 * /user/photos/2016, /user/photos/image.jpg -> FALSE
+	 * @param parentDir the parent directory
+	 * @param targetFile the target file to check ownership over
+	 * @return whether or not the parent directory directly or indirectly encapsulates the target file
+	 */
+	static boolean checkFileParent(File parentDir, File targetFile) {
+		//Path-indexing both files
+		List<File> parentDirPath = new ArrayList<>();
+		List<File> targetFilePath = new ArrayList<>();
+		{
+			File file = parentDir;
+			while((file = file.getParentFile()) != null) parentDirPath.add(0, file);
+			file = targetFile;
+			while((file = file.getParentFile()) != null) targetFilePath.add(0, file);
+		}
+		
+		//Returning false if the parent path is longer than the target path (the target file path should be longer, as it is checking for a sub-file)
+		if(parentDirPath.size() > targetFilePath.size()) return false;
+		
+		//Returning false if there is a folder mismatch anywhere along the way (the paths don't line up)
+		for(int i = 0; i < parentDirPath.size(); i++) if(!parentDirPath.get(i).equals(targetFilePath.get(i))) return false;
+		
+		//Returning true (all the folders matched)
+		return true;
+	}
+	
+	/**
+	 * Retrieves the duration of a media file (ie. audio)
+	 * @param file the location of the file to check
+	 * @return the duration of the media file in milliseconds
+	 */
+	static long getMediaDuration(File file) {
+		//Creating a new media metadata retriever
+		MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+		
+		try {
+			//Setting the source file
+			mmr.setDataSource(file.getPath());
+			
+			//Getting the duration
+			return Long.parseLong(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+		} catch(RuntimeException exception) {
+			//Printing the stack trace
+			exception.printStackTrace();
+		} finally {
+			//Releasing the media metadata retriever
+			mmr.release();
+		}
+		
+		//Returning an invalid value
+		return -1;
+	}
+	
+	/**
+	 * Retrieves the duration of a media file (ie. audio)
+	 * @param context context to use to resolve the URI
+	 * @param uri the uri of the file to check
+	 * @return the duration of the media file in milliseconds
+	 */
+	static long getMediaDuration(Context context, Uri uri) {
+		//Creating a new media metadata retriever
+		MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+		
+		try {
+			//Setting the source file
+			mmr.setDataSource(context, uri);
+			
+			//Getting the duration
+			return Long.parseLong(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+		} catch(RuntimeException exception) {
+			//Printing the stack trace
+			exception.printStackTrace();
+		} finally {
+			//Releasing the media metadata retriever
+			mmr.release();
+		}
+		
+		//Returning an invalid value
+		return -1;
+	}
+	
 	private static Random random = new Random(System.currentTimeMillis());
 	static Random getRandom() {
 		return random;
 	}
 	
-	static void printViewHierarchy(ViewGroup vg, String prefix) {
-		for(int i = 0; i < vg.getChildCount(); i++) {
-			View v = vg.getChildAt(i);
-			String desc = prefix + " | " + "[" + i + "/" + (vg.getChildCount()-1) + "] "+ v.getClass().getSimpleName() + " " + v.getId();
-			System.out.println(desc);
-			
-			if(v instanceof ViewGroup) printViewHierarchy((ViewGroup) v, desc);
-		}
+	static float lerp(float val, float start, float end) {
+		return val * (end - start) + start;
 	}
 	
 	static Drawable createRoundedDrawable(boolean softenTop, boolean softenBottom, boolean alignToRight, int pxRadiusNormal, int pxRadiusSoftened) {
@@ -363,16 +502,23 @@ public class Constants {
 	} */
 	
 	static String getMimeType(Context context, Uri uri) {
-		return context.getContentResolver().getType(uri);
+		String type = context.getContentResolver().getType(uri);
+		return type == null ? defaultMIMEType : type;
 	}
 	
-	static String getMimeType(File file) {
+	/* static String getMimeType(File file) {
 		String type = null;
 		String extension = MimeTypeMap.getFileExtensionFromUrl(file.getPath());
-		if (extension != null) {
+		if(extension != null) {
 			type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
 		}
 		return type;
+	} */
+	
+	static String getMimeType(File file) {
+		String extension = MimeTypeMap.getFileExtensionFromUrl(file.getPath());
+		if(extension != null) return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+		return null;
 	}
 	
 	interface ResultCallback<T> {
@@ -530,7 +676,7 @@ public class Constants {
 		return stringBuilder.toString();
 	}
 	
-	public static abstract class ActivityViewModel<A extends Activity> extends ViewModel {
+	/* public static abstract class ActivityViewModel<A extends Activity> extends ViewModel {
 		private final WeakReference<A> activityReference;
 		
 		public ActivityViewModel(@NonNull A activity) {
@@ -540,22 +686,7 @@ public class Constants {
 		public A getActivity() {
 			return activityReference.get();
 		}
-	}
-	
-	static float calculateImageAttachmentMultiplier(Resources resources, int width, int height) {
-		//Getting the min and max values
-		int pxBitmapSizeMin = (int) resources.getDimension(R.dimen.image_size_min);
-		int pxBitmapSizeMax = (int) resources.getDimension(R.dimen.image_size_max);
-		
-		//Calculating the multiplier
-		int[] sortedDimens = width < height ? new int[]{width, height} : new int[]{height, width};
-		float multiplier = 1;
-		if(sortedDimens[0] < pxBitmapSizeMin) multiplier = (float) pxBitmapSizeMin / sortedDimens[0];
-		if(sortedDimens[1] > pxBitmapSizeMax) multiplier = (float) pxBitmapSizeMax / sortedDimens[1];
-		
-		//Returning the multiplier
-		return multiplier;
-	}
+	} */
 	
 	/* static void enforceContentWidth(Resources resources, View view) {
 		//Getting the maximum content width
@@ -694,9 +825,9 @@ public class Constants {
 		}
 	}
 	
-	interface BiConsumer<A1, A2> {
+	/* interface BiConsumer<A1, A2> {
 		void accept(A1 a1, A2 a2);
-	}
+	} */
 	
 	static boolean checkBrokenPipe(IOException exception) {
 		return exception.getMessage().toLowerCase().contains("broken pipe");
@@ -749,5 +880,89 @@ public class Constants {
 	
 	static float interpolate(float start, float end, float progress) {
 		return start + (end - start) * progress;
+	}
+	
+	static String humanReadableByteCount(long bytes, boolean si) {
+		int unit = si ? 1000 : 1024;
+		if (bytes < unit) return bytes + " B";
+		int exp = (int) (Math.log(bytes) / Math.log(unit));
+		String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp - 1) + (si ? "" : "i");
+		return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
+	}
+	
+	public static String intToFormattedString(int value) {
+		return String.format(Locale.getDefault(), "%d", value);
+	}
+	
+	public static String intToFormattedString(Resources resources, int value) {
+		return String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? resources.getConfiguration().getLocales().get(0) : resources.getConfiguration().locale, "%d", value);
+	}
+	
+	/* public static abstract class BindingViewHolder extends RecyclerView.ViewHolder {
+		public BindingViewHolder(View itemView) {
+			super(itemView);
+		}
+		
+		abstract BindingViewHolder bindView(View view);
+	} */
+	
+	public static class WeakRunnable implements Runnable {
+		private WeakReference<Runnable> reference = null;
+		
+		void set(Runnable runnable) {
+			reference = new WeakReference<>(runnable);
+		}
+		
+		Runnable get() {
+			return reference == null ? null : reference.get();
+		}
+		
+		@Override
+		public void run() {
+			if(reference == null) return;
+			Runnable runnable = reference.get();
+			if(runnable == null) return;
+			runnable.run();
+		}
+	}
+	
+	public static class WeakConsumer<T> implements Consumer<T> {
+		private WeakReference<Consumer<T>> reference = null;
+		
+		void set(Consumer<T> consumer) {
+			reference = new WeakReference<>(consumer);
+		}
+		
+		Consumer<T> get() {
+			return reference == null ? null : reference.get();
+		}
+		
+		@Override
+		public void accept(T t) {
+			if(reference == null) return;
+			Consumer<T> consumer = reference.get();
+			if(consumer == null) return;
+			consumer.accept(t);
+		}
+	}
+	
+	public static class WeakBiConsumer<T, U> implements BiConsumer<T, U> {
+		private WeakReference<BiConsumer<T, U>> reference = null;
+		
+		void set(BiConsumer<T, U> consumer) {
+			reference = new WeakReference<>(consumer);
+		}
+		
+		BiConsumer<T, U> get() {
+			return reference == null ? null : reference.get();
+		}
+		
+		@Override
+		public void accept(T t, U u) {
+			if(reference == null) return;
+			BiConsumer<T, U> consumer = reference.get();
+			if(consumer == null) return;
+			consumer.accept(t, u);
+		}
 	}
 }

@@ -9,18 +9,14 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
-import android.graphics.drawable.BitmapDrawable;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.v4.graphics.ColorUtils;
 import android.util.AttributeSet;
 import android.view.TextureView;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageView;
 
 import com.crashlytics.android.Crashlytics;
 
@@ -38,27 +34,22 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	private static final int pixelsPerParticle = 150;
 	private static final float particleVelocity = 0.01F;
 	private static final float particleRadius = 0.7F;
-	private static final int blurRadius = 50;
-	//private static final int blurRadius = 25;
 	
 	private static final int timeRevealTransition = 500; //0.5 seconds
 	private static final int timeRevealStay = 9 * 1000; //8 seconds
 	
 	//Creating the attribute values
-	private final int targetViewID;
-	private View targetView = null;
+	private int backgroundColor;
 	
 	//Creating the drawing values
-	private final Paint voidPaint;
 	private final Paint backgroundPaint;
 	private final Paint particlePaint;
 	
 	//Creating the rendering values (values used in the drawing thread)
-	private final Lock viewRadiiLock= new ReentrantLock();
+	private final Lock viewRadiiLock = new ReentrantLock();
 	private float[] viewRadii = new float[8];
 	private final AtomicInteger viewWidth = new AtomicInteger();
 	private final AtomicInteger viewHeight = new AtomicInteger();
-	private Bitmap backgroundBitmap = null;
 	
 	//Creating the threading values
 	private Thread viewThread = null;
@@ -80,7 +71,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	private float particleVelocityPx;
 	private float particleRadiusPx;
 	private long lastTimeCheck = getTime();
-	private int backgroundColor = Color.WHITE;
 	
 	public InvisibleInkView(Context context, @Nullable AttributeSet attrs) {
 		super(context, attrs);
@@ -92,8 +82,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		TypedArray attributes = context.getTheme().obtainStyledAttributes(attrs, R.styleable.InvisibleInkView, 0, 0);
 		
 		try {
-			targetViewID = attributes.getResourceId(R.styleable.InvisibleInkView_target, -1);
-			if(targetViewID == -1) throw new IllegalArgumentException("Target view not provided");
+			backgroundColor = attributes.getColor(R.styleable.InvisibleInkView_backgroundColor, Color.TRANSPARENT);
 		} finally {
 			attributes.recycle();
 		}
@@ -102,13 +91,10 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		particleVelocityPx = dpToPx(particleVelocity);
 		particleRadiusPx = dpToPx(particleRadius);
 		
-		//Setting up the paint
-		voidPaint = new Paint();
-		voidPaint.setStyle(Paint.Style.FILL);
-		voidPaint.setColor(Color.BLACK);
-		
+		//Setting up the paints
 		backgroundPaint = new Paint();
-		backgroundPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER));
+		backgroundPaint.setStyle(Paint.Style.FILL);
+		backgroundPaint.setColor(backgroundColor);
 		
 		particlePaint = new Paint();
 		particlePaint.setAntiAlias(true);
@@ -122,7 +108,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 				//Setting the drawing surface as available
 				surfaceAvailable = true;
 				
-				//Drawing a black box
+				/* //Drawing a black box
 				Canvas canvas = lockCanvas();
 				try {
 					Path clipPath = new Path();
@@ -143,7 +129,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 					canvas.drawPaint(voidPaint);
 				} finally {
 					unlockCanvasAndPost(canvas);
-				}
+				} */
 				
 				//Starting the drawing thread
 				if(viewRunning && firstLayoutPassCompleted && viewThread == null) startThread();
@@ -193,31 +179,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 					
 					//Checking if the view needs to be updated
 					if(viewUpdateRequested) {
-					/* //Drawing a black box
-					clipPath.reset();
-					clipRect.set(0, 0, viewWidth.get(), viewHeight.get());
-					
-					viewRadiiLock.lock();
-					try {
-						clipPath.addRoundRect(clipRect, viewRadii, Path.Direction.CW);
-					} finally {
-						viewRadiiLock.unlock();
-					}
-					
-					if(!viewRunning) return;
-					canvas.clipPath(clipPath);
-					
-					canvas.drawPaint(voidPaint); */
-						
-						//Updating the view
-						while(!processTargetView()) {
-							try {
-								Thread.sleep(100);
-							} catch(InterruptedException exception) {
-								exception.printStackTrace();
-							}
-						}
-						
+						processTargetView();
 						viewUpdateRequested = false;
 					}
 					
@@ -232,12 +194,9 @@ public class InvisibleInkView extends TextureView implements Runnable {
 					//Advancing the reveal time
 					if(revealTime > 0) {
 						revealTime = Math.max(revealTime - timeDiff, 0);
-						if(revealTime > timeRevealTransition + timeRevealStay) //Fade out stage
-							targetAlpha = lerpInt(0x00, startAlpha, (revealTime - (timeRevealTransition + timeRevealStay)) / (float) timeRevealTransition);
-						else if(revealTime > timeRevealTransition) //Stay stage
-							targetAlpha = 0x00;
-						else //Fade in stage
-							targetAlpha = lerpInt(0xFF, 0x00, revealTime / (float) timeRevealTransition);
+						if(revealTime > timeRevealTransition + timeRevealStay) targetAlpha = lerpInt(0x00, startAlpha, (revealTime - (timeRevealTransition + timeRevealStay)) / (float) timeRevealTransition); //Fade out stage
+						else if(revealTime > timeRevealTransition) targetAlpha = 0x00; //Stay stage
+						else targetAlpha = lerpInt(0xFF, 0x00, revealTime / (float) timeRevealTransition); //Fade in stage
 					} else viewRevealRunning = false;
 					
 					//Checking if a reveal had been requested
@@ -270,12 +229,9 @@ public class InvisibleInkView extends TextureView implements Runnable {
 					
 					//Drawing the background
 					if(!viewRunning) return;
-					if(backgroundBitmap == null) {
+					if(backgroundColor != Color.TRANSPARENT) {
 						backgroundPaint.setColor(ColorUtils.setAlphaComponent(backgroundColor, targetAlpha));
 						canvas.drawPaint(backgroundPaint);
-					} else {
-						backgroundPaint.setColor(Color.argb(targetAlpha, 0xFF, 0xFF, 0xFF));
-						canvas.drawBitmap(backgroundBitmap, 0, 0, backgroundPaint);
 					}
 					
 					//Drawing the particles
@@ -307,8 +263,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 	@Override
 	protected void onAttachedToWindow() {
 		super.onAttachedToWindow();
-		targetView = ((ViewGroup) getParent()).findViewById(targetViewID);
-		if(targetView == null) throw new IllegalArgumentException("Target view not found (id " + targetViewID + ")");
 		onResume();
 	}
 	
@@ -360,6 +314,9 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		viewWidth.set(width);
 		viewHeight.set(height);
 		
+		//Calculating the visible pixel count
+		visiblePixelCount = width * height;
+		
 		//Setting the layout pass as completed
 		boolean isFirst = !firstLayoutPassCompleted;
 		firstLayoutPassCompleted = true;
@@ -374,10 +331,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		if(isFirst && surfaceAvailable && firstStartRequestCompleted) startThread();
 	}
 	
-	boolean processTargetView() {
-		//Rebuilding the visibility map
-		if(!calculateVisibilityMap()) return false;
-		
+	void processTargetView() {
 		//Rebuilding the particle list
 		int targetListSize = visiblePixelCount / pixelsPerParticle;
 		if(particleList == null) {
@@ -394,8 +348,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 				for(int i = listSize; i < targetListSize; i++) particleList[i] = new Particle();
 			}
 		}
-		
-		return true;
 	}
 	
 	public void setState(boolean state) {
@@ -450,49 +402,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		if(viewRequestedRunning) start();
 	}
 	
-	private boolean calculateVisibilityMap() {
-		//Resetting the visible pixel count
-		visiblePixelCount = 0;
-		
-		//Requesting the target view's bitmap
-		targetView.buildDrawingCache();
-		
-		//Getting the bitmap
-		if(targetView.getDrawingCache() == null) {
-			targetView.destroyDrawingCache();
-			return false;
-		}
-		backgroundBitmap = targetView.getDrawingCache().copy(Bitmap.Config.ARGB_8888, false);
-		
-		//Mapping the bitmap's opacity
-		/* visibilityMap = new boolean[backgroundBitmap.getWidth()][backgroundBitmap.getHeight()];
-		for(int x = 0; x < backgroundBitmap.getWidth(); x++) {
-			for(int y = 0; y < backgroundBitmap.getHeight(); y++) {
-				boolean isVisible = Color.alpha(backgroundBitmap.getPixel(x, y)) > 255 / 2;
-				visibilityMap[x][y] = isVisible;
-				if(isVisible) visiblePixelCount++;
-			}
-		} */
-		visiblePixelCount = backgroundBitmap.getWidth() * backgroundBitmap.getHeight();
-		
-		//Destroying the drawing cache
-		targetView.destroyDrawingCache();
-		
-		//Checking if the target view is an image view
-		if(targetView instanceof ImageView) {
-			//Blurring the bitmap
-			Bitmap targetBitmap = ((BitmapDrawable) ((ImageView) targetView).getDrawable()).getBitmap();
-			if(targetBitmap == null) backgroundBitmap = null;
-			else backgroundBitmap = stackBlur(targetBitmap, (float) viewWidth.get() / (float) targetBitmap.getWidth(), blurRadius);
-			//else backgroundBitmap = renderScriptBlur(getContext(), targetBitmap, viewWidth.get(), viewHeight.get(), blurRadius);
-		} else {
-			//Invalidating the bitmap
-			backgroundBitmap = null;
-		}
-		
-		return true;
-	}
-	
 	public boolean reveal() {
 		viewRevealRequested = true;
 		return viewRevealRunning;
@@ -509,6 +418,11 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		} finally {
 			viewRadiiLock.unlock();
 		}
+	}
+	
+	public void setBackgroundColor(int color) {
+		//Setting the background color
+		backgroundColor = color;
 	}
 	
 	/**
@@ -762,11 +676,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		
 		return outputBitmap;
 	} */
-	
-	@Override
-	public void setBackgroundColor(int backgroundColor) {
-		this.backgroundColor = backgroundColor;
-	}
 	
 	/**
 	 * A class that represents a particle of the invisible ink

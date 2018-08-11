@@ -4,8 +4,8 @@
     <dimen name="activity_vertical_margin">16dp</dimen> -->
     
     <dimen name="profile_size">40dp</dimen> <!-- The width and height of profile images -->
-    <dimen name="image_size_min">50dp</dimen> <!-- The minimum width / height of media sent in conversations -->
-    <dimen name="image_size_max">250dp</dimen> <!-- The maximum width / height of media sent in conversations -->
+    <dimen name="image_width_preferred">200dp</dimen> <!-- The maximum width / height of media sent in conversations -->
+    <dimen name="image_height_min">112dp</dimen> <!-- The maximum width / height of media sent in conversations -->
 	
 	<dimen name="messagebubble_padding_x">12dp</dimen> <!-- The horizontal padding of a message bubble -->
 	<dimen name="messagebubble_padding_y">8dp</dimen> <!-- The vertical padding of a message bubble -->
@@ -13,5 +13,15 @@
 	
 	<dimen name="conversationwindow_minheight">250dp</dimen> <!-- The minimum height of the conversation window before the app bar is hidden -->
     <dimen name="dialogwidth_max">500dp</dimen> <!-- The maximum width of floating app dialogs -->
-    <dimen name="contentwidth_max">1000dp</dimen> <!-- The maximum width of the screen content before side margins are added -->
+	<dimen name="contentwidth_max">1000dp</dimen> <!-- The maximum width of the screen content before side margins are added -->
+	
+	<dimen name="contenttile_size">100dp</dimen> <!-- The width / height of a content tile in the messaging activity's attachment menu -->
+	<dimen name="contenttile_ring_innerRadius">35dp</dimen> <!-- The inner radius of circular shapes occupying the content tile -->
+	<dimen name="contenttile_margin">8dp</dimen> <!-- The amount of margin between content tiles in the messaging activity's attachment menu -->
+	<dimen name="contenttile_radius">4dp</dimen>
+	<dimen name="contentpanel_height">250dp</dimen> <!-- The height of the attachment panel -->
+	<dimen name="contentpanel_landscape_height">150dp</dimen> <!-- The height of the attachment in landscape view -->
+	
+	<dimen name="queuetile_size">60dp</dimen> <!-- The width / height of a content tile in the messaging activity's attachment queue -->
+	<dimen name="queuetilecontainer_size">84dp</dimen> <!-- The width / height of a content tile container (the part containing the preview and the close button) in the messaging activity's attachment queue -->
 </resources>

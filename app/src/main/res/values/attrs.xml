@@ -3,8 +3,21 @@
 	<!-- <declare-styleable name="AutoGridLayout">
 		<attr name="columnWidth" format="dimension" />
 	</declare-styleable> -->
+	
+	<declare-styleable name="RoundedView">
+		<attr name="radii" format="dimension" />
+		<attr name="radiusTop" format="dimension" />
+		<attr name="radiusBottom" format="dimension" />
+	</declare-styleable>
+	
 	<declare-styleable name="InvisibleInkView">
-		<attr name="target" format="reference" />
+		<attr name="backgroundColor" format="color" />
+	</declare-styleable>
+	
+	<declare-styleable name="VisualizerView">
+		<attr name="renderColor" format="color" />
+		<attr name="lineWidth" format="dimension" />
+		<attr name="lineSpacing" format="dimension" />
 	</declare-styleable>
 	
 	<declare-styleable name="EffectBalloon">

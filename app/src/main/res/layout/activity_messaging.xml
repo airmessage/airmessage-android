@@ -1,213 +1,138 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
+	tools:context=".Messaging"
 	android:clipChildren="false"
-	tools:context=".Messaging">
-	<!-- Recording indicator -->
-	<FrameLayout
-		android:id="@+id/recordingindicator"
-		android:layout_width="80dp"
-		android:layout_height="80dp"
-		android:background="@drawable/circle"
-		android:backgroundTint="@color/colorRecording"
-		android:clipToPadding="false"
-		android:elevation="8dp"
-		android:visibility="invisible">
+	android:clipToPadding="false">
+	<!-- App bar -->
+	<android.support.design.widget.AppBarLayout
+		android:id="@+id/appbar"
+		android:layout_width="0px"
+		android:layout_height="wrap_content"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent">
+		<!-- Toolbar -->
+		<android.support.v7.widget.Toolbar
+			android:id="@+id/toolbar"
+			android:layout_width="match_parent"
+			android:layout_height="?android:attr/actionBarSize"
+			android:theme="@style/SolidActionBar"
+			app:titleTextAppearance="@style/LightToolbarText" />
+		<!-- Info bar container -->
+		<LinearLayout
+			android:id="@+id/infobar_container"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:animateLayoutChanges="true"
+			android:background="?android:attr/colorBackgroundFloating"
+			android:orientation="vertical" />
+	</android.support.design.widget.AppBarLayout>
+	<!-- Search result bar -->
+	<!-- <LinearLayout
+		android:id="@+id/searchresults"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:background="?android:attr/colorBackgroundFloating"
+		android:elevation="4dp"
+		android:minHeight="48dp"
+		android:orientation="horizontal"
+		android:visibility="gone">
 		
-		<ImageView
+		<TextView
+			android:id="@+id/searchresults_message"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center_vertical"
+			android:layout_marginLeft="16dp"
+			android:layout_marginRight="16dp"
+			android:layout_weight="1"
+			android:gravity="center_vertical"
+			android:paddingBottom="12dp"
+			android:paddingTop="12dp"
+			android:text="@string/message_searchresults"
+			android:textColor="?android:attr/textColorSecondary" />
+		
+		<ImageButton
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:layout_gravity="center"
-			android:contentDescription="@null"
-			android:src="@drawable/microphone" />
-	</FrameLayout>
-	<!-- General layout -->
+			android:layout_gravity="center_vertical"
+			android:layout_marginEnd="5dp"
+			android:background="?android:attr/selectableItemBackgroundBorderless"
+			android:onClick="onClickSearchPrevious"
+			android:padding="5dp"
+			android:src="@drawable/chevron_left"
+			android:tint="?android:attr/textColorSecondary" />
+		
+		<ImageButton
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center_vertical"
+			android:layout_marginEnd="5dp"
+			android:background="?android:attr/selectableItemBackgroundBorderless"
+			android:onClick="onClickSearchNext"
+			android:padding="5dp"
+			android:src="@drawable/chevron_right"
+			android:tint="?android:attr/textColorSecondary" />
+	</LinearLayout> -->
+	<!-- Message list -->
+	<android.support.v7.widget.RecyclerView
+		android:id="@+id/list_messages"
+		android:layout_width="0px"
+		android:layout_height="0px"
+		android:divider="@null"
+		android:dividerHeight="0dp"
+		android:listSelector="@android:color/transparent"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
+		android:clipToPadding="false"
+		android:theme="@style/OverscrollNeutralizer"
+		app:layoutManager=".Messaging$SpeedyLinearLayoutManager"
+		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/appbar"
+		app:stackFromEnd="true" />
+	
+	<!-- Input bar -->
 	<LinearLayout
-		android:id="@+id/content"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent"
+		android:id="@+id/inputbar"
+		android:layout_width="0px"
+		android:layout_height="wrap_content"
 		android:clipChildren="false"
-		android:orientation="vertical">
-		<!-- App bar -->
-		<android.support.design.widget.AppBarLayout
-			android:id="@+id/app_bar"
+		android:clipToPadding="false"
+		android:maxWidth="@dimen/contentwidth_max"
+		android:orientation="vertical"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		android:background="?android:attr/colorBackgroundFloating"
+		android:elevation="8dp">
+		
+		<!-- Attachment bar -->
+		<android.support.v7.widget.RecyclerView
+			android:id="@+id/inputbar_attachments"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:overScrollMode="never"
+			android:requiresFadingEdge="vertical"
+			android:clipChildren="true"
+			android:clipToPadding="true"
+			android:visibility="gone" />
+		
+		<!-- Input bar (text / recording) -->
+		<FrameLayout
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content">
-			<!-- Toolbar -->
-			<android.support.v7.widget.Toolbar
-				android:id="@+id/toolbar"
-				android:layout_width="match_parent"
-				android:layout_height="?android:attr/actionBarSize"
-				android:theme="@style/SolidActionBar"
-				app:titleTextAppearance="@style/LightToolbarText"/>
-			<!-- Info bar container -->
+			<!-- Standard text input -->
 			<LinearLayout
-				android:id="@+id/infobar_container"
+				android:id="@+id/inputbar_text"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
-				android:animateLayoutChanges="true"
-				android:background="?android:attr/colorBackgroundFloating"
-				android:orientation="vertical" />
-		</android.support.design.widget.AppBarLayout>
-		<!-- Search result bar -->
-		<LinearLayout
-			android:id="@+id/searchresults"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:background="?android:attr/colorBackgroundFloating"
-			android:elevation="4dp"
-			android:minHeight="48dp"
-			android:orientation="horizontal"
-			android:visibility="gone">
-			
-			<TextView
-				android:id="@+id/searchresults_message"
-				android:layout_width="0dp"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:layout_marginLeft="16dp"
-				android:layout_marginRight="16dp"
-				android:layout_weight="1"
-				android:gravity="center_vertical"
-				android:paddingBottom="12dp"
-				android:paddingTop="12dp"
-				android:text="@string/message_searchresults"
-				android:textColor="?android:attr/textColorSecondary" />
-			
-			<ImageButton
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:layout_marginEnd="5dp"
-				android:background="?android:attr/selectableItemBackgroundBorderless"
-				android:onClick="onClickSearchPrevious"
-				android:padding="5dp"
-				android:src="@drawable/chevron_left"
-				android:tint="?android:attr/textColorSecondary" />
-			
-			<ImageButton
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:layout_marginEnd="5dp"
-				android:background="?android:attr/selectableItemBackgroundBorderless"
-				android:onClick="onClickSearchNext"
-				android:padding="5dp"
-				android:src="@drawable/chevron_right"
-				android:tint="?android:attr/textColorSecondary" />
-		</LinearLayout>
-		<!-- Message view -->
-		<android.support.constraint.ConstraintLayout
-			android:layout_width="match_parent"
-			android:layout_height="0dp"
-			android:layout_weight="1"
-			android:clipChildren="false">
-			<!-- Message list -->
-			<android.support.v7.widget.RecyclerView
-				android:id="@+id/list_messages"
-				android:layout_width="0px"
-				android:layout_height="0px"
-				android:clipChildren="false"
-				android:clipToPadding="false"
-				android:divider="@null"
-				android:dividerHeight="0dp"
-				android:listSelector="@android:color/transparent"
-				android:paddingBottom="5dp"
-				android:paddingTop="5dp"
-				android:theme="@style/OverscrollNeutralizer"
-				app:layoutManager=".Messaging$SpeedyLinearLayoutManager"
-				app:layout_constraintBottom_toBottomOf="parent"
-				app:layout_constraintLeft_toLeftOf="parent"
-				app:layout_constraintRight_toRightOf="parent"
-				app:layout_constraintTop_toTopOf="parent"
-				app:stackFromEnd="true" />
-			<!-- Foreground effect view -->
-			<me.tagavari.airmessage.view.AppleEffectView
-				android:id="@+id/effect_foreground"
-				android:layout_width="match_parent"
-				android:layout_height="match_parent" />
-			<!-- Konfetti view -->
-			<nl.dionsegijn.konfetti.KonfettiView
-				android:id="@+id/konfetti"
-				android:layout_width="match_parent"
-				android:layout_height="match_parent" />
-			<!-- Floating Action Button -->
-			<android.support.design.widget.FloatingActionButton
-				android:id="@+id/fab_bottom"
-				android:layout_width="40dp"
-				android:layout_height="40dp"
-				android:layout_margin="16dp"
-				android:src="@drawable/chevron_down"
-				android:visibility="gone"
-				app:backgroundTint="?android:attr/colorBackgroundFloating"
-				app:fabSize="mini"
-				app:layout_constraintBottom_toBottomOf="parent"
-				app:layout_constraintEnd_toEndOf="parent"
-				app:tint="@color/colorPrimary" />
-			
-			<TextView
-				android:id="@+id/fab_bottom_badge"
-				android:layout_width="wrap_content"
-				android:layout_height="19dp"
-				android:background="@drawable/rounded_circle"
-				android:backgroundTint="@color/colorPrimaryDark"
-				android:gravity="center"
-				android:maxLines="1"
-				android:minWidth="19dp"
-				android:paddingLeft="6dp"
-				android:paddingRight="6dp"
-				android:scaleX="0"
-				android:scaleY="0"
-				android:text="0"
-				android:textColor="@android:color/primary_text_dark"
-				android:textSize="12sp"
-				android:translationX="-6dp"
-				android:translationY="6dp"
-				android:translationZ="12dp"
-				android:visibility="gone"
-				app:layout_constraintBottom_toTopOf="@+id/fab_bottom"
-				app:layout_constraintEnd_toEndOf="@+id/fab_bottom"
-				app:layout_constraintStart_toEndOf="@+id/fab_bottom"
-				app:layout_constraintTop_toTopOf="@+id/fab_bottom" />
-			
-			<View
-				android:id="@+id/fab_bottom_splash"
-				android:layout_width="40dp"
-				android:layout_height="40dp"
-				android:alpha="0.5"
-				android:background="@drawable/circle"
-				android:visibility="gone"
-				app:layout_constraintLeft_toLeftOf="@+id/fab_bottom"
-				app:layout_constraintTop_toTopOf="@+id/fab_bottom" />
-		</android.support.constraint.ConstraintLayout>
-		<!-- Input bar -->
-		<RelativeLayout
-			android:id="@+id/inputbar"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:background="?android:attr/colorBackgroundFloating"
-			android:clipToPadding="false"
-			android:elevation="8dp"
-			android:minHeight="45dp"
-			android:visibility="visible">
-			<!-- Reference bar -->
-			<View
-				android:id="@+id/referencebar"
-				android:layout_width="wrap_content"
-				android:layout_height="45dp"
-				android:layout_gravity="bottom"
-				android:visibility="invisible" />
-			<!-- Message bar -->
-			<LinearLayout
-				android:id="@+id/messagebar"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:layout_gravity="bottom"
-				android:orientation="horizontal"
-				android:visibility="visible">
+				android:orientation="horizontal">
 				<!-- Add button -->
 				<ImageButton
 					android:id="@+id/button_addcontent"
@@ -218,13 +143,13 @@
 					android:clickable="true"
 					android:contentDescription="@string/action_addcontent"
 					android:focusable="true"
-					android:padding="10dp"
+					android:padding="12dp"
 					android:src="@drawable/add"
 					android:tag="@string/tag_primarytint"
 					android:tint="@color/colorPrimary"
 					android:tooltipText="@string/action_addcontent" />
 				<!-- Message box -->
-				<EditText
+				<view class="me.tagavari.airmessage.Messaging$InsertionEditText"
 					android:id="@+id/messagebox"
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
@@ -233,174 +158,165 @@
 					android:hint="@string/imperative_messageinput"
 					android:imeOptions="flagNoExtractUi"
 					android:inputType="text|textMultiLine|textAutoCorrect|textCapSentences"
+					android:textColor="?android:attr/textColorTertiary"
 					android:maxHeight="100dp"
 					android:maxLength="1000"
-					android:minHeight="45dp"
-					android:paddingBottom="5dp"
-					android:paddingTop="5dp"
-					android:textCursorDrawable="@null" />
-				<!-- Send button -->
-				<ImageButton
-					android:id="@+id/button_send"
+					android:minHeight="48dp"
+					android:paddingBottom="8dp"
+					android:paddingTop="8dp"
+					android:textCursorDrawable="@null"
+					app:layout_constraintTop_toBottomOf="@id/inputbar_attachments" />
+				
+				<FrameLayout
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:layout_gravity="bottom"
-					android:background="?android:attr/selectableItemBackgroundBorderless"
-					android:contentDescription="@string/action_send"
-					android:padding="10dp"
-					android:src="@drawable/push"
-					android:tag="@string/tag_primarytint"
-					android:tint="@color/colorPrimary"
-					android:tooltipText="@string/action_send" />
-			</LinearLayout>
-			<!-- Content bar -->
-			<RelativeLayout
-				android:id="@+id/contentbar"
-				android:layout_width="match_parent"
-				android:layout_height="45dp"
-				android:layout_gravity="bottom"
-				android:background="@color/colorPrimary"
-				android:tag="@string/tag_primarytint"
-				android:visibility="gone">
-				<!-- Close button -->
-				<ImageButton
-					android:id="@+id/button_closecontent"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:layout_centerVertical="true"
-					android:layout_gravity="bottom"
-					android:background="?android:attr/selectableItemBackgroundBorderless"
-					android:contentDescription="@string/action_close"
-					android:padding="10dp"
-					android:src="@drawable/add"
-					android:tint="@android:color/white"
-					android:tooltipText="@string/action_close" />
-				<!-- Content buttons -->
-				<LinearLayout
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:layout_alignParentEnd="true"
-					android:layout_centerVertical="true"
-					android:orientation="horizontal">
-					<!-- Camera button -->
-					<ImageButton
-						android:id="@+id/button_camera"
-						android:layout_width="wrap_content"
-						android:layout_height="wrap_content"
-						android:layout_gravity="bottom"
-						android:layout_marginEnd="5dp"
-						android:background="?android:attr/selectableItemBackgroundBorderless"
-						android:contentDescription="@string/action_takephoto"
-						android:padding="10dp"
-						android:src="@drawable/camera"
-						android:tint="@android:color/white"
-						android:tooltipText="@string/action_takephoto" />
-					<!-- Gallery button -->
-					<ImageButton
-						android:id="@+id/button_gallery"
-						android:layout_width="wrap_content"
-						android:layout_height="wrap_content"
-						android:layout_gravity="bottom"
-						android:layout_marginEnd="5dp"
-						android:background="?android:attr/selectableItemBackgroundBorderless"
-						android:contentDescription="@string/action_choosephoto"
-						android:padding="10dp"
-						android:src="@drawable/gallery"
-						android:tint="@android:color/white"
-						android:tooltipText="@string/action_choosephoto" />
-					<!-- Attach button -->
-					<ImageButton
-						android:id="@+id/button_attach"
-						android:layout_width="wrap_content"
-						android:layout_height="wrap_content"
-						android:layout_gravity="bottom"
-						android:layout_marginEnd="5dp"
-						android:background="?android:attr/selectableItemBackgroundBorderless"
-						android:contentDescription="@string/action_choosefile"
-						android:padding="10dp"
-						android:src="@drawable/attach"
-						android:tint="@android:color/white"
-						android:tooltipText="@string/action_choosefile" />
-					<!-- Microphone button -->
+					android:clipToPadding="false"
+					android:clipChildren="false">
+					<!-- Record button -->
 					<ImageButton
 						android:id="@+id/button_record"
 						android:layout_width="wrap_content"
 						android:layout_height="wrap_content"
-						android:layout_gravity="bottom"
 						android:background="?android:attr/selectableItemBackgroundBorderless"
-						android:contentDescription="@string/action_recordaudio"
-						android:padding="10dp"
+						android:contentDescription="@string/action_send"
+						android:padding="12dp"
 						android:src="@drawable/microphone"
-						android:tint="@android:color/white"
-						android:tooltipText="@string/action_recordaudio" />
-				</LinearLayout>
-			</RelativeLayout>
-			<!-- Recording bar -->
-			<LinearLayout
-				android:id="@+id/recordingbar"
-				android:layout_width="match_parent"
-				android:layout_height="45dp"
-				android:layout_gravity="bottom"
-				android:background="?android:attr/colorBackgroundFloating"
-				android:gravity="center_vertical"
-				android:orientation="horizontal"
-				android:paddingLeft="15dp"
-				android:paddingRight="15dp"
-				android:visibility="gone">
-				<!-- Recording dot -->
-				<View
-					android:id="@+id/recordingtime_dot"
-					android:layout_width="10dp"
-					android:layout_height="10dp"
-					android:background="@drawable/circle"
-					android:backgroundTint="@color/colorRecording" />
-				<!-- Recording time -->
-				<TextView
-					android:id="@+id/recordingtime"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:layout_gravity="center_vertical"
-					android:layout_marginStart="8dp"
-					android:text="@string/placeholder_recordingtime"
-					android:textColor="?android:attr/textColorPrimary"
-					android:textSize="15sp" />
-				<!-- Cancel text -->
-				<TextView
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:layout_gravity="center_vertical"
-					android:layout_marginStart="60dp"
-					android:drawableStart="@drawable/chevron_left"
-					android:drawableTint="?android:attr/textColorSecondary"
-					android:gravity="center"
-					android:text="@string/imperative_recording_cancel"
-					android:textColor="?android:attr/textColorSecondary"
-					app:layout_constraintBottom_toBottomOf="parent"
-					app:layout_constraintLeft_toLeftOf="parent"
-					app:layout_constraintRight_toRightOf="parent"
-					app:layout_constraintTop_toTopOf="parent" />
+						android:tag="@string/tag_primarytint"
+						android:tint="@color/colorPrimary"
+						android:tooltipText="@string/action_send"
+						android:visibility="gone" />
+					<!-- Send button -->
+					<ImageButton
+						android:id="@+id/button_send"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:background="?android:attr/selectableItemBackgroundBorderless"
+						android:contentDescription="@string/action_send"
+						android:padding="12dp"
+						android:src="@drawable/push"
+						android:tag="@string/tag_primarytint"
+						android:tint="@color/colorPrimary"
+						android:tooltipText="@string/action_send" />
+				</FrameLayout>
 			</LinearLayout>
-		</RelativeLayout>
+		</FrameLayout>
+		
+		<!-- Attachments section -->
+		<LinearLayout
+			android:id="@+id/panel_attachments"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/contentpanel_height"
+			android:visibility="gone"
+			android:orientation="vertical">
+			<View
+				android:layout_width="match_parent"
+				android:layout_height="1dp"
+				android:background="@color/colorDivider" />
+			<ViewStub
+				android:id="@+id/viewstub_attachments"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:layout="@layout/pane_attachments" />
+		</LinearLayout>
 	</LinearLayout>
+	<!-- Content pane barrier -->
+	<!-- <android.support.constraint.Barrier
+		android:id="@+id/barrier_attachments"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		app:barrierDirection="top"
+		app:constraint_referenced_ids="viewstub_attachments,pane_attachments" /> -->
+	<!-- <FrameLayout
+		android:id="@+id/panel_attachments"
+		android:layout_width="0px"
+		android:layout_height="wrap_content"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		android:layout_marginLeft="8dp"
+		android:layout_marginRight="8dp">
+		
+		<ViewStub
+			android:id="@+id/viewstub_attachments"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/contentpanel_height"
+			android:layout="@layout/pane_attachments" />
+	</FrameLayout> -->
+	
+	<!-- Floating action button -->
+	<android.support.design.widget.FloatingActionButton
+		android:id="@+id/fab_bottom"
+		android:layout_width="40dp"
+		android:layout_height="40dp"
+		android:layout_margin="16dp"
+		android:src="@drawable/chevron_down"
+		android:visibility="gone"
+		app:backgroundTint="?android:attr/colorBackgroundFloating"
+		app:fabSize="mini"
+		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:tint="@color/colorPrimary" />
+	<!-- FAB counter badge -->
+	<TextView
+		android:id="@+id/fab_bottom_badge"
+		android:layout_width="wrap_content"
+		android:layout_height="19dp"
+		android:background="@drawable/rounded_circle"
+		android:backgroundTint="@color/colorPrimaryDark"
+		android:gravity="center"
+		android:maxLines="1"
+		android:minWidth="19dp"
+		android:paddingLeft="6dp"
+		android:paddingRight="6dp"
+		android:scaleX="0"
+		android:scaleY="0"
+		android:text="0"
+		android:textColor="@android:color/primary_text_dark"
+		android:textSize="12sp"
+		android:translationX="-6dp"
+		android:translationY="6dp"
+		android:translationZ="12dp"
+		android:visibility="gone"
+		app:layout_constraintBottom_toTopOf="@+id/fab_bottom"
+		app:layout_constraintEnd_toEndOf="@+id/fab_bottom"
+		app:layout_constraintStart_toEndOf="@+id/fab_bottom"
+		app:layout_constraintTop_toTopOf="@+id/fab_bottom" />
+	<!-- FAB circular ripple effect view -->
+	<View
+		android:id="@+id/fab_bottom_splash"
+		android:layout_width="40dp"
+		android:layout_height="40dp"
+		android:alpha="0.5"
+		android:background="@drawable/circle"
+		android:visibility="gone"
+		app:layout_constraintLeft_toLeftOf="@+id/fab_bottom"
+		app:layout_constraintTop_toTopOf="@+id/fab_bottom" />
 	<!-- Loading label -->
 	<TextView
 		android:id="@+id/loading_text"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:layout_centerInParent="true"
 		android:text="@string/progress_loadingmessages"
 		android:textAlignment="center"
 		android:textColor="?android:textColorSecondary"
-		android:visibility="gone" />
+		android:visibility="gone"
+		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/appbar" />
 	<!-- Error view -->
 	<LinearLayout
 		android:id="@+id/group_error"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:layout_centerInParent="true"
 		android:gravity="center"
 		android:orientation="vertical"
-		android:visibility="gone">
+		android:visibility="gone"
+		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/appbar">
 		
 		<TextView
 			android:id="@+id/group_error_label"
@@ -418,4 +334,54 @@
 			android:tag="@string/tag_primarytint"
 			android:text="@string/action_retry" />
 	</LinearLayout>
-</RelativeLayout>
+	<!-- Foreground effect view -->
+	<me.tagavari.airmessage.view.AppleEffectView
+		android:id="@+id/effect_foreground"
+		android:layout_width="0px"
+		android:layout_height="0px"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/appbar" />
+	<!-- Konfetti view -->
+	<nl.dionsegijn.konfetti.KonfettiView
+		android:id="@+id/konfetti"
+		android:layout_width="0px"
+		android:layout_height="0px"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/appbar" />
+	<!-- Scrim -->
+	<View
+		android:id="@+id/scrim"
+		android:layout_width="0px"
+		android:layout_height="0px"
+		android:background="#52000000"
+		android:clickable="true"
+		android:visibility="gone"
+		android:alpha="0"
+		android:elevation="16dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/appbar" />
+	<!-- Info page -->
+	<FrameLayout
+		android:id="@+id/panel_messaginginfo"
+		android:layout_width="0px"
+		android:layout_height="wrap_content"
+		android:background="?android:attr/colorBackgroundFloating"
+		android:elevation="16dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/appbar">
+		
+		<ViewStub
+			android:id="@+id/viewstub_messaginginfo"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:layout="@layout/pane_messaginginfo" />
+	</FrameLayout>
+</android.support.constraint.ConstraintLayout>

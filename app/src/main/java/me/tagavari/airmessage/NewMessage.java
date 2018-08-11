@@ -52,6 +52,8 @@ public class NewMessage extends AppCompatActivity {
 	//Creating the constants
 	private static final int menuIdentifierConfirmParticipants = 0;
 	
+	private static final int permissionRequestContacts = 0;
+	
 	//Creating the view model and plugin values
 	private ActivityViewModel viewModel;
 	
@@ -298,7 +300,7 @@ public class NewMessage extends AppCompatActivity {
 		if(grantResults.length == 0) return;
 		
 		//Checking if the request code is contacts access
-		if(requestCode == Constants.permissionReadContacts) {
+		if(requestCode == permissionRequestContacts) {
 			//Checking if the result is a success
 			if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 				//Loading the contacts
@@ -431,7 +433,7 @@ public class NewMessage extends AppCompatActivity {
 	
 	public void onClickRequestContacts(View view) {
 		//Requesting the permission
-		Constants.requestPermission(this, new String[]{android.Manifest.permission.READ_CONTACTS}, Constants.permissionReadContacts);
+		Constants.requestPermission(this, new String[]{android.Manifest.permission.READ_CONTACTS}, permissionRequestContacts);
 	}
 	
 	public void onClickRetryLoad(View view) {

@@ -4,13 +4,15 @@
 	<string name="you">You</string>
 	<string name="to">To</string>
 	
-	<string name="prefix_you">You:</string>
+	<string name="prefix_you">You: %s</string>
+	<string name="prefix_draft">Draft: %s</string>
 	
 	<string name="action_send">Send</string>
 	<string name="action_next">Next</string>
 	<string name="action_back">Back</string>
 	<string name="action_skip">Skip</string>
 	<string name="action_delete">Delete</string>
+	<string name="action_deletemessage">Remove message</string>
 	<string name="action_reply">Reply</string>
 	<string name="action_retry">Retry</string>
 	<string name="action_search">Search</string>
@@ -50,9 +52,11 @@
 	<string name="action_addtext">Add text</string>
 	<string name="action_addaddress">Add address</string>
 	<string name="action_sendto">Send to %s</string>
-	<string name="action_editcontactcolor">Edit contact color</string>
-	<string name="action_editconversationcolor">Edit conversation color</string>
+	<string name="action_editcontactcolor">Change contact color</string>
+	<string name="action_editconversationcolor">Change conversation color</string>
 	<string name="action_confirmparticipants">Confirm participants</string>
+	<string name="action_getnotifications">Get notifications</string>
+	<string name="action_pinconversation">Pin conversation</string>
 	
 	<string name="screen_details">Details</string>
 	<string name="screen_settings">Settings</string>
@@ -80,6 +84,9 @@
 	<string name="message_loaderror_messages">Failed to load messages</string>
 	<string name="message_loaderror_contacts">Failed to load contacts</string>
 	<string name="message_loaderror_blocked">Failed to load blocked addresses</string>
+	
+	<string name="message_loaderror_gallery">Failed to load gallery images</string>
+	<string name="message_loaderror_documents">Failed to load documents</string>
 	
 	<string name="message_intenterror_open">Couldn\'t open file</string>
 	<string name="message_intenterror_camera">No camera app found</string>
@@ -201,6 +208,8 @@
 		<item quantity="other">%d messages blocked</item>
 	</plurals>
 	
+	<string name="message_draft_limitreached">Draft file limit reached</string>
+	
 	<string name="message_messagedetails_title">Message details</string>
 	<string name="message_messagedetails_type">Type: %s</string>
 	<string name="message_messagedetails_sender">From: %s</string>
@@ -226,6 +235,12 @@
 	<string name="imperative_selectdestination">Select destination</string>
 	<string name="imperative_selectconversation">Select conversation</string>
 	<string name="imperative_mainsearch">Search messages</string>
+	<string name="imperative_drawerrecordinginstructions">Tap and hold</string>
+	
+	<string name="imperative_permission_gallery">Tap to give access to gallery</string>
+	<string name="imperative_permission_microphone">Tap to give access to microphone</string>
+	<string name="imperative_permission_documents">Tap to give access to documents</string>
+	<string name="imperative_permission_location">Tap to give access to location</string>
 	
 	<string name="proper_imessage" translatable="false">iMessage</string>
 	<string name="proper_sms" translatable="false">SMS</string>
@@ -240,6 +255,7 @@
 	<string name="part_nodata">No data</string>
 	<string name="part_conversations">Conversations</string>
 	<string name="part_messages">Messages</string>
+	<string name="part_camera">Camera</string>
 	
 	<string name="state_sent">Sent</string>
 	<string name="state_delivered">Delivered</string>

@@ -1,0 +1,30 @@
+<FrameLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="@dimen/contenttile_size"
+	android:layout_height="@dimen/contenttile_size"
+	android:layout_marginEnd="@dimen/contenttile_margin"
+	android:background="@drawable/rounded_selectable_contenttile"
+	android:backgroundTint="@color/colorRecording"
+	android:focusable="true"
+	android:clickable="true">
+	<ProgressBar
+		android:id="@+id/progress"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		style="?android:attr/progressBarStyleHorizontal"
+		android:layout_gravity="center"
+		android:indeterminate="false"
+		android:progressDrawable="@drawable/audiotile_progressbar_circular"
+		android:background="@drawable/audiotile_progressbar_background"
+		android:max="100"
+		android:progress="0"
+		android:progressTint="@android:color/white"
+		android:backgroundTint="#3000"
+		android:rotation="-90" />
+	<ImageView
+		android:id="@+id/image_play"
+		android:layout_width="64dp"
+		android:layout_height="64dp"
+		android:src="@drawable/play"
+		android:layout_gravity="center" />
+</FrameLayout>

@@ -32,6 +32,9 @@ import com.takisoft.fix.support.v7.preference.RingtonePreferenceDialogFragmentCo
 import java.util.List;
 
 public class Preferences extends AppCompatActivity {
+	//Creating the reference values
+	private static final int permissionRequestLocation = 0;
+	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		//Calling the super method
@@ -262,7 +265,7 @@ public class Preferences extends AppCompatActivity {
 					//Opening the application settings if the permission has been granted
 					if(ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
 						//Otherwise requesting the permission
-					else requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION}, Constants.permissionAccessCoarseLocation);
+					else requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION}, permissionRequestLocation);
 					//else Constants.requestPermission(getActivity(), new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, Constants.permissionAccessCoarseLocation);
 					
 					//Returning false (to prevent the system from changing the option)
@@ -356,7 +359,7 @@ public class Preferences extends AppCompatActivity {
 		@Override
 		public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
 			//Checking if the request code is contacts access
-			if(requestCode == Constants.permissionAccessCoarseLocation) {
+			if(requestCode == permissionRequestLocation) {
 				//Checking if the result is a success
 				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 					//Enabling the toggle

@@ -75,7 +75,8 @@
 	<string name="action_enable">Activer</string>
 	<string name="to">À</string>
 	<string name="you">"Vous"</string>
-	<string name="prefix_you">"Vous:"</string>
+	<string name="prefix_you">"Vous: %s"</string>
+	<string name="prefix_draft">"Broullion: %s"</string>
 	<string name="part_content_text">Texte</string>
 	<string name="part_content_image">Image</string>
 	<string name="part_content_video">Vidéo</string>
@@ -269,4 +270,18 @@
 	<string name="message_confirm_deleteattachments_started">Toutes les pièces jointes ont été supprimées</string>
 	<string name="part_conversations">Conversations</string>
 	<string name="part_messages">Messages</string>
+	<string name="part_camera">Caméra</string>
+	<string name="action_deletemessage">Enlever le message</string>
+	<string name="action_getnotifications">Recevoir les notifications</string>
+	<string name="message_loaderror_gallery">Échec du chargement de la galerie de photos</string>
+	<string name="message_loaderror_documents">Échec du chargement des documents</string>
+	<string name="message_searchnoresults">Aucun résultat</string>
+	<string name="message_draft_limitreached">Limite de broullion atteinte</string>
+	<string name="imperative_mainsearch">Rechercher les messages</string>
+	<string name="imperative_drawerrecordinginstructions">Appuyez et maintenez</string>
+	<string name="imperative_permission_gallery">Appuyez sur pour donner accès à la galerie de photos</string>
+	<string name="imperative_permission_microphone">Appuyez sur pour donner accès au microphone</string>
+	<string name="imperative_permission_documents">Appuyez sur pour donner accès aux documents</string>
+	<string name="imperative_permission_location">Appuyez sur pour donner accès à l\'emplacement</string>
+	<string name="action_pinconversation">Épingler la conversation</string>
 </resources>
