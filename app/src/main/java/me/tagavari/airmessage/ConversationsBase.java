@@ -642,20 +642,20 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		
 		@Override
 		protected void onPostExecute(Void result) {
-			//Getting the snackbar parent view
-			View parentView = snackbarParentReference.get();
-			
 			//Syncing the messages
 			ConnectionService connectionService = ConnectionService.getInstance();
 			boolean messageResult = connectionService != null && connectionService.requestMassRetrieval();
-			if(!messageResult) {
-				//Displaying a snackbar
-				if(parentView != null) Snackbar.make(parentView, R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
-				return;
-			}
 			
 			//Showing a snackbar
-			if(parentView != null) Snackbar.make(parentView, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_SHORT).show();
+			View parentView = snackbarParentReference.get();
+			if(viewSnackbarValid(parentView)) {
+				if(messageResult) Snackbar.make(parentView, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_SHORT).show();
+				else Snackbar.make(parentView, R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
+			}
+		}
+		
+		private boolean viewSnackbarValid(View view) {
+			return view != null && view.getWindowToken() != null;
 		}
 	}
 	

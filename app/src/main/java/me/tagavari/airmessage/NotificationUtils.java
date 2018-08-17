@@ -131,7 +131,7 @@ class NotificationUtils {
 		
 		//Creating the remote input
 		RemoteInput remoteInput = new RemoteInput.Builder(Constants.notificationReplyKey)
-				.setLabel(context.getResources().getString(R.string.action_sendmessage))
+				.setLabel(context.getResources().getString(R.string.action_reply))
 				.build();
 		
 		//Creating the reply intent

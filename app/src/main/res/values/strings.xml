@@ -14,6 +14,7 @@
 	<string name="action_delete">Delete</string>
 	<string name="action_deletemessage">Remove message</string>
 	<string name="action_reply">Reply</string>
+	<string name="action_markread">Mark as read</string>
 	<string name="action_retry">Retry</string>
 	<string name="action_search">Search</string>
 	<string name="action_update">Update</string>
@@ -41,7 +42,6 @@
 	<string name="action_sendfeedback">Send feedback</string>
 	<string name="action_downloadmessages">Download messages</string>
 	<string name="action_deletemessages">Delete messages</string>
-	<string name="action_sendmessage">Send message</string>
 	<string name="action_sharemessage">Share message</string>
 	<string name="action_addcontent">Add content</string>
 	<string name="action_takephoto">Take photo</string>
