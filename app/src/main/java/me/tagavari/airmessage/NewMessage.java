@@ -3,10 +3,6 @@ package me.tagavari.airmessage;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Application;
-import android.arch.lifecycle.AndroidViewModel;
-import android.arch.lifecycle.MutableLiveData;
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
@@ -17,11 +13,6 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
@@ -42,11 +33,22 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.material.snackbar.Snackbar;
+
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 public class NewMessage extends AppCompatActivity {
 	//Creating the constants
@@ -318,7 +320,7 @@ public class NewMessage extends AppCompatActivity {
 						})
 						.show();
 				/* //Showing a dialog
-				new AlertDialog.Builder(this)
+				new AlertDialog.Builder(this, Constants.alertDialogStyle)
 						.setMessage(R.string.permission_rejected)
 						.setNegativeButton(R.string.button_dismiss, (dialog, which) -> {
 							dialog.dismiss();
@@ -769,7 +771,7 @@ public class NewMessage extends AppCompatActivity {
 					recipientInput.setText("");
 				} else {
 					//Showing a dialog
-					new AlertDialog.Builder(NewMessage.this)
+					new AlertDialog.Builder(NewMessage.this, Constants.alertDialogStyle)
 							.setTitle(R.string.contact_address_select)
 							.setItems(contactInfo.addresses.toArray(new String[0]), ((dialogInterface, index) -> {
 								//Adding the selected chip
@@ -1065,7 +1067,7 @@ public class NewMessage extends AppCompatActivity {
 							recipientInput.setText("");
 						} else {
 							//Showing a dialog
-							new AlertDialog.Builder(NewMessage.this)
+							new AlertDialog.Builder(NewMessage.this, Constants.alertDialogStyle)
 									.setTitle(R.string.imperative_selectdestination)
 									.setItems(contactInfo.addresses.toArray(new String[0]), ((dialogInterface, index) -> {
 										//Adding the selected chip

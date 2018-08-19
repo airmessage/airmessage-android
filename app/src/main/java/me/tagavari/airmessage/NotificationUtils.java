@@ -18,8 +18,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.service.notification.StatusBarNotification;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.RemoteInput;
+
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.RemoteInput;
 
 class NotificationUtils {
 	static void sendNotification(Context context, ConversationManager.MessageInfo messageInfo) {

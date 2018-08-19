@@ -9,6 +9,31 @@
 		<item name="android:windowBackground">@color/colorBackgroundLight</item>
 	</style> -->
 	
+	<style name="Base.DayNight" parent="@style/Theme.MaterialComponents.Light.DarkActionBar" />
+	<style name="Base.DayNight.NoActionBar" parent="@style/Theme.MaterialComponents.Light.NoActionBar" />
+	
+	<style name="Pass.DayNight" parent="@style/Base.DayNight" />
+	<style name="Pass.DayNight.NoActionBar" parent="@style/Base.DayNight.NoActionBar" />
+	
+	<style name="DayNight" parent="@style/Pass.DayNight">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorPrimary</item>
+		
+		<!--<item name="dialogTheme">@style/ThemeOverlay.MaterialComponents.Dialog</item>-->
+	</style>
+	
+	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorPrimary</item>
+		
+		<item name="windowActionModeOverlay">true</item>
+		<item name="android:actionModeBackground">@android:color/transparent</item>
+		<item name="android:actionModeCloseDrawable">@drawable/close</item>
+		<item name="actionBarPopupTheme">@style/ActionModeOverflowMenu</item>
+	</style>
+	
 	<style name="SolidActionBar" parent="@style/ThemeOverlay.AppCompat.ActionBar">
 		<item name="android:colorControlNormal">@android:color/white</item>
 		<item name="android:textColorPrimary">@android:color/white</item>
@@ -19,37 +44,12 @@
 		<item name="android:fontFamily">sans-serif"</item>
 	</style>
 	
-	<style name="AppTheme.AppCompat" parent="@style/Theme.AppCompat.DayNight.DarkActionBar">
+	<style name="AppTheme.Setup" parent="@style/Theme.MaterialComponents.Light.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="android:colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimary</item>
-		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-		<item name="android:colorAccent">@color/colorAccent</item>
-		<item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
-	</style>
-	
-	<style name="AppTheme.AppCompat.NoActionBar" parent="@style/Theme.AppCompat.DayNight.NoActionBar">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="android:colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimary</item>
-		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-		<item name="android:colorAccent">@color/colorAccent</item>
-		
-		<item name="windowActionModeOverlay">true</item>
-		<item name="android:actionModeBackground">@android:color/transparent</item>
-		<item name="android:actionModeCloseDrawable">@drawable/close</item>
-		<item name="actionBarPopupTheme">@style/ActionModeOverflowMenu</item>
-	</style>
-	
-	<style name="AppTheme.Setup" parent="@style/Theme.AppCompat.DayNight.NoActionBar">
-		<item name="android:colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorAccent</item>
-		<item name="android:navigationBarColor">@color/colorPrimaryDark</item>
 		
+		<item name="android:navigationBarColor">@color/colorPrimaryDark</item>
 		<item name="android:statusBarColor">#F5F5F5</item>
 		<item name="android:windowLightStatusBar">true</item>
 	</style>
@@ -58,11 +58,9 @@
 		<item name="android:textColor">@android:color/primary_text_light</item>
 	</style>
 	
-	<style name="ActivityDialogTheme" parent="@style/Theme.AppCompat.DayNight.Dialog"> <!-- @android:style/Theme.Material.Light.Dialog.NoActionBar -->
-		<!-- <item name="colorPrimary">@color/colorPrimary</item>
-		<item name="android:colorPrimary">@color/colorPrimary</item>
+	<style name="ActivityDialogTheme" parent="Theme.MaterialComponents.Light.Dialog"> <!-- @android:style/Theme.Material.Light.Dialog.NoActionBar -->
+		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item> -->
 		<item name="windowNoTitle">true</item>
 		
@@ -81,20 +79,4 @@
 		<item name="android:windowTranslucentNavigation">true</item>
 		<item name="android:fitsSystemWindows">true</item>
 	</style>
-	
-	<style name="AppTheme.ActionBar" parent="@style/ThemeOverlay.AppCompat.ActionBar">
-		<item name="android:titleTextColor">@android:color/white</item>
-		<item name="android:background">@color/colorPrimary</item>
-		<item name="colorControlNormal">@android:color/white</item>
-	</style>
-	
-	<!-- <style name="AppTheme.Dialog" parent="@android:style/Theme.Material.Light.Dialog.Alert" >
-		<item name="android:textColorPrimary">?android:textColorSecondary</item>
-		<item name="android:dialogTitle">?android:textColorPrimary</item>
-		<item name="android:buttonStyle">@style/AppTheme.Dialog.ButtonStyle</item>
-	</style>
-
-	<style name="AppTheme.Dialog.ButtonStyle" parent="@android:style/Theme.Material.Light.Dialog.Alert" >
-		<item name="android:textColor">@color/colorPrimary</item>
-	</style> -->
 </resources>

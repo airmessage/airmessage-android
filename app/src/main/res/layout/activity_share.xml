@@ -1,19 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:maxWidth="280dp"
 	android:orientation="vertical"
 	tools:context=".ShareHandler">
+	
 	<TextView
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_marginBottom="20dp"
+		android:layout_width="match_parent"
+		android:layout_height="64dp"
 		android:layout_marginLeft="24dp"
 		android:layout_marginRight="24dp"
-		android:layout_marginTop="24dp"
+		android:ellipsize="end"
 		android:fontFamily="sans-serif-medium"
+		android:gravity="center_vertical"
+		android:maxLines="1"
 		android:text="@string/imperative_selectconversation"
 		android:textColor="?android:attr/textColorPrimary"
 		android:textSize="20sp" />
@@ -38,7 +41,7 @@
 			android:minHeight="100dp"
 			android:theme="@style/OverscrollNeutralizer"
 			android:visibility="gone" /> -->
-		<android.support.v7.widget.RecyclerView
+		<androidx.recyclerview.widget.RecyclerView
 			android:id="@+id/list"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
@@ -47,7 +50,7 @@
 			android:minHeight="100dp"
 			android:theme="@style/OverscrollNeutralizer"
 			android:visibility="gone"
-			app:layoutManager="android.support.v7.widget.LinearLayoutManager" />
+			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 		<!-- Loading text -->
 		<TextView
 			android:id="@+id/loading_text"
@@ -97,9 +100,9 @@
 				android:layout_width="150dp"
 				android:layout_height="wrap_content"
 				android:layout_marginTop="10dp"
-				android:progressTint="@color/colorPrimary"
+				android:indeterminateTint="@color/colorPrimary"
 				android:progressBackgroundTint="@color/colorPrimary"
-				android:indeterminateTint="@color/colorPrimary" />
+				android:progressTint="@color/colorPrimary" />
 		</LinearLayout>
 		<!-- Error view -->
 		<LinearLayout
@@ -117,15 +120,15 @@
 				android:text="@string/message_loaderror_messages"
 				android:tint="?android:attr/textColorSecondary" />
 			
-			<Button
-				style="?android:attr/borderlessButtonStyle"
+			<com.google.android.material.button.MaterialButton
+				style="@style/Widget.MaterialComponents.Button.TextButton"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
 				android:text="@string/action_retry" />
 		</LinearLayout>
 		<!-- Connection view -->
-		<LinearLayout
+		<!-- <LinearLayout
 			android:id="@+id/serverwarning"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
@@ -146,14 +149,14 @@
 				android:textAlignment="center"
 				android:textColor="?android:attr/textColorSecondary" />
 			
-			<Button
+			<com.google.android.material.button.MaterialButton
 				android:id="@+id/serverwarning_button"
-				style="?android:attr/borderlessButtonStyle"
+				style="@style/Widget.MaterialComponents.Button.TextButton"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
 				android:text="@string/action_retry" />
-		</LinearLayout>
+		</LinearLayout> -->
 	</RelativeLayout>
 	
 	<View
@@ -165,29 +168,30 @@
 		android:layout_width="wrap_content"
 		android:layout_height="52dp"
 		android:layout_gravity="end"
-		android:layout_marginBottom="8dp"
-		android:layout_marginEnd="8dp"
-		android:layout_marginStart="24dp"
-		android:layout_marginTop="8dp"
-		android:orientation="horizontal">
+		android:orientation="horizontal"
+		android:padding="8dp">
 		
-		<Button
-			style="?android:attr/borderlessButtonStyle"
+		<com.google.android.material.button.MaterialButton
+			style="@style/Widget.MaterialComponents.Button.TextButton"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_gravity="center"
 			android:layout_marginEnd="8dp"
+			android:insetBottom="0px"
+			android:insetTop="0px"
 			android:minWidth="64dp"
 			android:onClick="closeDialog"
 			android:text="@android:string/cancel"
 			android:textColor="@color/colorPrimary" />
 		
-		<Button
+		<com.google.android.material.button.MaterialButton
 			android:id="@+id/button_new"
-			style="?android:attr/borderlessButtonStyle"
+			style="@style/Widget.MaterialComponents.Button.TextButton"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_gravity="center"
+			android:insetBottom="0px"
+			android:insetTop="0px"
 			android:minWidth="64dp"
 			android:onClick="createNewConversation"
 			android:text="@string/screen_newmessage"

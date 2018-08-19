@@ -1,37 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<style name="AppTheme.AppCompat" parent="@style/Theme.AppCompat.DayNight.DarkActionBar">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="android:colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimary</item>
-		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-		<item name="android:colorAccent">@color/colorAccent</item>
-		<item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
-		
+	<style name="Pass.DayNight" parent="Base.DayNight">
 		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
 		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
 		<item name="android:navigationBarColor">@color/navbarBackground</item>
 	</style>
 	
-	<style name="AppTheme.AppCompat.NoActionBar" parent="@style/Theme.AppCompat.DayNight.NoActionBar">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="android:colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimary</item>
-		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-		<item name="android:colorAccent">@color/colorAccent</item>
-		
-		<item name="windowActionModeOverlay">true</item>
-		<item name="android:actionModeBackground">@android:color/transparent</item>
-		<item name="android:actionModeCloseDrawable">@drawable/close</item>
-		<!--<item name="android:actionModeBackground">@color/colorPrimary</item>-->
-		<!--<item name="android:actionModeBackground">?attr/colorBackgroundFloating</item>-->
-		
+	<style name="Pass.DayNight.NoActionBar" parent="Base.DayNight.NoActionBar">
 		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
 		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
 		<item name="android:navigationBarColor">@color/navbarBackground</item>
-		
-		<item name="actionBarPopupTheme">@style/ActionModeOverflowMenu</item>
 	</style>
 </resources>

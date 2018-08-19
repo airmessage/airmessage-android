@@ -5,7 +5,8 @@
 	android:layout_height="56dp"
 	android:orientation="horizontal"
 	android:paddingLeft="16dp"
-	android:paddingRight="16dp" >
+	android:paddingRight="16dp"
+	android:background="?android:attr/selectableItemBackground">
 	<!-- Conversation Icon -->
 	<RelativeLayout
 		android:id="@+id/conversationicon"

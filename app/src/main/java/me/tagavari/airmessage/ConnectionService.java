@@ -22,8 +22,6 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.provider.OpenableColumns;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.LongSparseArray;
 import android.util.SparseArray;
 
@@ -98,6 +96,8 @@ import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java9.util.function.BiConsumer;
 import java9.util.function.Consumer;
 import me.tagavari.airmessage.common.Blocks;

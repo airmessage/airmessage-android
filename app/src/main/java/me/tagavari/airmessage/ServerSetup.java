@@ -1,6 +1,5 @@
 package me.tagavari.airmessage;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -9,12 +8,12 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.content.LocalBroadcastManager;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.Spanned;
 import android.text.TextWatcher;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -24,7 +23,10 @@ import android.widget.Toast;
 import java.util.List;
 import java.util.regex.Pattern;
 
-public class ServerSetup extends Activity {
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+public class ServerSetup extends AppCompatActivity {
 	//Creating the reference values
 	static final String intentExtraRequired = "isRequired";
 	
@@ -139,7 +141,11 @@ public class ServerSetup extends Activity {
 		});
 		
 		//Enforcing the maximum content width
-		Constants.enforceContentWidth(getResources(), findViewById(R.id.content));
+		{
+			int maxContentWidth = Constants.dpToPx(500);
+			ViewGroup content = findViewById(R.id.content);
+			for(int i = 0; i < content.getChildCount(); i++) Constants.enforceContentWidth(maxContentWidth, content.getChildAt(i));
+		}
 		
 		//Setting the address box watcher
 		hostnameInputField.addTextChangedListener(hostnameInputWatcher);
@@ -198,7 +204,7 @@ public class ServerSetup extends Activity {
 			List<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
 			if(conversations != null && !conversations.isEmpty()) {
 				//Showing a warning
-				new AlertDialog.Builder(this)
+				new AlertDialog.Builder(this, Constants.alertDialogStyle)
 						.setTitle(R.string.message_setup_sync_warning_title)
 						.setMessage(R.string.message_setup_sync_description)
 						.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
@@ -340,35 +346,35 @@ public class ServerSetup extends Activity {
 		
 		switch(reason) {
 			case ConnectionService.intentResultCodeInternalException: //Internal exception
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new AlertDialog.Builder(this, Constants.alertDialogStyle)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_internalexception)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultCodeBadRequest: //Bad request
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new AlertDialog.Builder(this, Constants.alertDialogStyle)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_badrequest)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultCodeConnection: //Connection failed
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new AlertDialog.Builder(this, Constants.alertDialogStyle)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_connectionerrror)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultCodeUnauthorized: //Authentication failed
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new AlertDialog.Builder(this, Constants.alertDialogStyle)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_authfail)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultCodeClientOutdated: //Client outdated
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new AlertDialog.Builder(this, Constants.alertDialogStyle)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_clientoutdated)
 						.setPositiveButton(R.string.action_update, (dialog, which) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))))
@@ -376,7 +382,7 @@ public class ServerSetup extends Activity {
 						.create();
 				break;
 			case ConnectionService.intentResultCodeServerOutdated: //Server outdated
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new AlertDialog.Builder(this, Constants.alertDialogStyle)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_serveroutdated)
 						.setPositiveButton(R.string.screen_help, (dialog, which) -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)))

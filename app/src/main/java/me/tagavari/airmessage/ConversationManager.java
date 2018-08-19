@@ -19,11 +19,6 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.support.annotation.DrawableRes;
-import android.support.constraint.ConstraintLayout;
-import android.support.v4.content.FileProvider;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
@@ -84,6 +79,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 
+import androidx.annotation.DrawableRes;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.FileProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.RecyclerView;
 import java9.util.function.Consumer;
 import jp.wasabeef.glide.transformations.BlurTransformation;
 import me.tagavari.airmessage.common.SharedValues;
@@ -2849,7 +2849,7 @@ class ConversationManager {
 				final WeakReference<Context> contextReference = new WeakReference<>(newContext);
 				
 				//Configuring the dialog
-				AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(newContext)
+				AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(newContext, Constants.alertDialogStyle)
 						.setTitle(R.string.message_messageerror_title)
 						.setNeutralButton(R.string.action_deletemessage, (dialog, which) -> {
 							Context anotherNewContext = contextReference.get();
@@ -3921,7 +3921,7 @@ class ConversationManager {
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
-						new AlertDialog.Builder(newContext)
+						new AlertDialog.Builder(newContext, Constants.alertDialogStyle)
 								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()
@@ -4462,7 +4462,7 @@ class ConversationManager {
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
-						new AlertDialog.Builder(newContext)
+						new AlertDialog.Builder(newContext, Constants.alertDialogStyle)
 								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()

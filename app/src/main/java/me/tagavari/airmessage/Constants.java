@@ -15,12 +15,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Parcel;
 import android.provider.OpenableColumns;
-import android.support.annotation.AttrRes;
-import android.support.annotation.ColorInt;
-import android.support.customtabs.CustomTabsIntent;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.widget.RecyclerView;
 import android.text.Spannable;
 import android.text.Spanned;
 import android.text.format.DateUtils;
@@ -53,6 +47,12 @@ import java.util.Random;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import androidx.annotation.AttrRes;
+import androidx.annotation.ColorInt;
+import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.RecyclerView;
 import java9.util.function.BiConsumer;
 import java9.util.function.Consumer;
 
@@ -151,6 +151,8 @@ public class Constants {
 			0x42A5F5, //Blue
 			0x7986CB //Indigo
 	};
+	
+	static final int alertDialogStyle = R.style.ThemeOverlay_MaterialComponents_Dialog;
 	
 	//Creating the regular expression constants
 	private static final String emailRegEx = "(?i)(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)])";
@@ -670,7 +672,7 @@ public class Constants {
 		else if(list.length > 2) {
 			stringBuilder.append(resources.getString(R.string.list_n_start, list[0]));
 			for(int i = 1; i < list.length - 1; i++) stringBuilder.append(resources.getString(R.string.list_n_middle, list[i]));
-			stringBuilder.append(resources.getString(R.string.list_n_start, list[list.length - 1]));
+			stringBuilder.append(resources.getString(R.string.list_n_end, list[list.length - 1]));
 		}
 		
 		return stringBuilder.toString();
@@ -697,9 +699,10 @@ public class Constants {
 	} */
 	
 	static void enforceContentWidth(Resources resources, View view) {
-		//Getting the maximum content width
-		int maxContentWidth = resources.getDimensionPixelSize(R.dimen.contentwidth_max);
-		
+		enforceContentWidth(resources.getDimensionPixelSize(R.dimen.contentwidth_max), view);
+	}
+	
+	static void enforceContentWidth(int maxContentWidth, View view) {
 		//Enforcing the maximum content width
 		view.post(() -> {
 			//Getting the width

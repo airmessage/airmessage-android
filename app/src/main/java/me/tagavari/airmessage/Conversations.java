@@ -2,8 +2,6 @@ package me.tagavari.airmessage;
 
 import android.animation.ValueAnimator;
 import android.app.AlertDialog;
-import android.arch.lifecycle.ViewModel;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -13,16 +11,6 @@ import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.design.widget.AppBarLayout;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.graphics.ColorUtils;
-import android.support.v7.app.ActionBar;
-import android.support.v7.view.ActionMode;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -38,11 +26,24 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
+
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.view.ActionMode;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.graphics.ColorUtils;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.RecyclerView;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 
 public class Conversations extends AppCompatCompositeActivity {
@@ -497,7 +498,7 @@ public class Conversations extends AppCompatCompositeActivity {
 				return true;
 			case R.id.action_feedback: //Send feedback
 				//Showing a dialog
-				new AlertDialog.Builder(this)
+				new AlertDialog.Builder(this, Constants.alertDialogStyle)
 						.setTitle(R.string.action_sendfeedback)
 						.setMessage(R.string.dialog_feedback_message)
 						.setNeutralButton(R.string.dialog_feedback_email, (dialog, which) -> {
@@ -1296,7 +1297,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Checking if the item is the delete button
 			else if(menuItem.getItemId() == R.id.action_delete) {
 				//Displaying a dialog
-				new AlertDialog.Builder(Conversations.this)
+				new AlertDialog.Builder(Conversations.this, Constants.alertDialogStyle)
 						//Setting the message
 						.setMessage(getResources().getQuantityString(R.plurals.message_confirm_deleteconversation, selectedConversations))
 						//Setting the button

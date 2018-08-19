@@ -1,7 +1,8 @@
 package me.tagavari.airmessage;
 
 import android.graphics.Color;
-import android.support.v4.graphics.ColorUtils;
+
+import androidx.core.graphics.ColorUtils;
 
 public class ColorHelper {
 	//Creating the reference values
