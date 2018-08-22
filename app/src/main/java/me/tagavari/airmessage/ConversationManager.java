@@ -2849,7 +2849,7 @@ class ConversationManager {
 				final WeakReference<Context> contextReference = new WeakReference<>(newContext);
 				
 				//Configuring the dialog
-				AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(newContext, Constants.alertDialogStyle)
+				AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(newContext)
 						.setTitle(R.string.message_messageerror_title)
 						.setNeutralButton(R.string.action_deletemessage, (dialog, which) -> {
 							Context anotherNewContext = contextReference.get();
@@ -3921,7 +3921,7 @@ class ConversationManager {
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
-						new AlertDialog.Builder(newContext, Constants.alertDialogStyle)
+						new AlertDialog.Builder(newContext)
 								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()
@@ -4462,7 +4462,7 @@ class ConversationManager {
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
-						new AlertDialog.Builder(newContext, Constants.alertDialogStyle)
+						new AlertDialog.Builder(newContext)
 								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()

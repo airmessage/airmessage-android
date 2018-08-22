@@ -24,6 +24,7 @@
 		android:textSize="18sp" />
 	
 	<com.google.android.material.button.MaterialButton
+		style="@style/Widget.MaterialComponents.Button"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_gravity="center"
@@ -44,6 +45,7 @@
 		android:textSize="18sp" />
 	
 	<com.google.android.material.button.MaterialButton
+		style="@style/Widget.MaterialComponents.Button"
 		android:id="@+id/deletemessages_button"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"

@@ -498,7 +498,7 @@ public class Conversations extends AppCompatCompositeActivity {
 				return true;
 			case R.id.action_feedback: //Send feedback
 				//Showing a dialog
-				new AlertDialog.Builder(this, Constants.alertDialogStyle)
+				new AlertDialog.Builder(this)
 						.setTitle(R.string.action_sendfeedback)
 						.setMessage(R.string.dialog_feedback_message)
 						.setNeutralButton(R.string.dialog_feedback_email, (dialog, which) -> {
@@ -1297,7 +1297,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Checking if the item is the delete button
 			else if(menuItem.getItemId() == R.id.action_delete) {
 				//Displaying a dialog
-				new AlertDialog.Builder(Conversations.this, Constants.alertDialogStyle)
+				new AlertDialog.Builder(Conversations.this)
 						//Setting the message
 						.setMessage(getResources().getQuantityString(R.plurals.message_confirm_deleteconversation, selectedConversations))
 						//Setting the button

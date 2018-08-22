@@ -1415,7 +1415,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			findViewById(R.id.button_delete).setOnClickListener(view -> {
 				//Creating a dialog
-				AlertDialog dialog = new AlertDialog.Builder(this, Constants.alertDialogStyle)
+				AlertDialog dialog = new AlertDialog.Builder(this)
 						.setMessage(R.string.message_confirm_deleteconversation_current)
 						.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
 						.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
@@ -2103,7 +2103,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Checking if the request was denied
 				if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
 					//Creating a dialog
-					AlertDialog dialog = new AlertDialog.Builder(Messaging.this, Constants.alertDialogStyle)
+					AlertDialog dialog = new AlertDialog.Builder(Messaging.this)
 							.setTitle(R.string.message_permissionrejected)
 							.setMessage(R.string.message_permissiondetails_microphone_failedrequest)
 							.setPositiveButton(R.string.action_retry, (dialogInterface, which) -> {

@@ -113,7 +113,7 @@ public class Preferences extends AppCompatActivity {
 		}; */
 		Preference.OnPreferenceClickListener deleteAttachmentsClickListener = preference -> {
 			//Creating a dialog
-			AlertDialog dialog = new AlertDialog.Builder(getActivity(), Constants.alertDialogStyle)
+			AlertDialog dialog = new AlertDialog.Builder(getActivity())
 					//Setting the name
 					.setMessage(R.string.message_confirm_deleteattachments)
 					//Setting the negative button
@@ -155,7 +155,7 @@ public class Preferences extends AppCompatActivity {
 		};
 		Preference.OnPreferenceClickListener deleteMessagesClickListener = preference -> {
 			//Creating a dialog
-			AlertDialog dialog = new AlertDialog.Builder(getActivity(), Constants.alertDialogStyle)
+			AlertDialog dialog = new AlertDialog.Builder(getActivity())
 					//Setting the name
 					.setMessage(R.string.message_confirm_deletemessages)
 					//Setting the negative button
@@ -201,7 +201,7 @@ public class Preferences extends AppCompatActivity {
 			}
 			
 			//Creating a dialog
-			AlertDialog dialog = new AlertDialog.Builder(getActivity(), Constants.alertDialogStyle)
+			AlertDialog dialog = new AlertDialog.Builder(getActivity())
 					//Setting the text
 					.setTitle(R.string.message_confirm_resyncmessages)
 					.setMessage(R.string.message_confirm_resyncmessages_description)

@@ -9,8 +9,8 @@
 		<item name="android:windowBackground">@color/colorBackgroundLight</item>
 	</style> -->
 	
-	<style name="Base.DayNight" parent="@style/Theme.MaterialComponents.Light.DarkActionBar" />
-	<style name="Base.DayNight.NoActionBar" parent="@style/Theme.MaterialComponents.Light.NoActionBar" />
+	<style name="Base.DayNight" parent="@style/Theme.MaterialComponents.Light.DarkActionBar.Bridge" />
+	<style name="Base.DayNight.NoActionBar" parent="@style/Theme.MaterialComponents.Light.NoActionBar.Bridge" />
 	
 	<style name="Pass.DayNight" parent="@style/Base.DayNight" />
 	<style name="Pass.DayNight.NoActionBar" parent="@style/Base.DayNight.NoActionBar" />
@@ -44,7 +44,7 @@
 		<item name="android:fontFamily">sans-serif"</item>
 	</style>
 	
-	<style name="AppTheme.Setup" parent="@style/Theme.MaterialComponents.Light.NoActionBar">
+	<style name="AppTheme.Setup" parent="@style/Theme.MaterialComponents.Light.NoActionBar.Bridge">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorAccent</item>

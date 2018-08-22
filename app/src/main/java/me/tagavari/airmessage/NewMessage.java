@@ -320,7 +320,7 @@ public class NewMessage extends AppCompatActivity {
 						})
 						.show();
 				/* //Showing a dialog
-				new AlertDialog.Builder(this, Constants.alertDialogStyle)
+				new AlertDialog.Builder(this)
 						.setMessage(R.string.permission_rejected)
 						.setNegativeButton(R.string.button_dismiss, (dialog, which) -> {
 							dialog.dismiss();
@@ -771,7 +771,7 @@ public class NewMessage extends AppCompatActivity {
 					recipientInput.setText("");
 				} else {
 					//Showing a dialog
-					new AlertDialog.Builder(NewMessage.this, Constants.alertDialogStyle)
+					new AlertDialog.Builder(NewMessage.this)
 							.setTitle(R.string.contact_address_select)
 							.setItems(contactInfo.addresses.toArray(new String[0]), ((dialogInterface, index) -> {
 								//Adding the selected chip
@@ -1067,7 +1067,7 @@ public class NewMessage extends AppCompatActivity {
 							recipientInput.setText("");
 						} else {
 							//Showing a dialog
-							new AlertDialog.Builder(NewMessage.this, Constants.alertDialogStyle)
+							new AlertDialog.Builder(NewMessage.this)
 									.setTitle(R.string.imperative_selectdestination)
 									.setItems(contactInfo.addresses.toArray(new String[0]), ((dialogInterface, index) -> {
 										//Adding the selected chip
