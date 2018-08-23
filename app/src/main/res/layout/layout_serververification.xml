@@ -21,7 +21,7 @@
 			android:layout_marginBottom="50dp" />
 		
 		<com.google.android.material.textfield.TextInputLayout
-			style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox.Dense"
+			style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:hint="@string/message_setup_connect_address"
@@ -35,7 +35,7 @@
 				android:maxLines="1" />
 		</com.google.android.material.textfield.TextInputLayout>
 		<com.google.android.material.textfield.TextInputLayout
-			style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox.Dense"
+			style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:hint="@string/message_setup_connect_password"

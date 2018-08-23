@@ -314,9 +314,6 @@ class BitmapCacheHelper {
 					
 					//Returning if the user has no profile image
 					if(!hasProfileImage) return null;
-					
-					//Closing the cursor
-					cursor.close();
 				}
 			} else {
 				//Getting the contact info

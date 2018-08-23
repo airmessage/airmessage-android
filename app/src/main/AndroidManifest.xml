@@ -108,7 +108,7 @@
 		<receiver
 			android:enabled="true"
 			android:exported="false"
-			android:name=".NotificationUtils$NotificationResponse" />
+			android:name=".NotificationUtils$NotificationBroadcastReceiver" />
 		<!-- Server connection manager service -->
 		<service
 			android:description="@string/servicedesc_connectionservice"

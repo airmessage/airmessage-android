@@ -14,13 +14,16 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.service.notification.StatusBarNotification;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.Person;
 import androidx.core.app.RemoteInput;
+import androidx.core.graphics.drawable.IconCompat;
 
 class NotificationUtils {
 	static void sendNotification(Context context, ConversationManager.MessageInfo messageInfo) {
@@ -79,7 +82,7 @@ class NotificationUtils {
 		return output;
 	}
 	
-	private static NotificationCompat.Builder getBaseMessageNotification(Context context, ConversationManager.ConversationInfo conversationInfo, Bitmap userIcon, String userUri, boolean playSound) {
+	private static NotificationCompat.Builder getBaseMessageNotification(Context context, ConversationManager.ConversationInfo conversationInfo, String userUri, boolean playSound) {
 		//Creating the click intent
 		Intent clickIntent = new Intent(context, Messaging.class);
 		clickIntent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
@@ -128,25 +131,52 @@ class NotificationUtils {
 		notificationBuilder.setOnlyAlertOnce(!playSound);
 		
 		//Setting the user icon if it is valid
-		if(userIcon != null) notificationBuilder.setLargeIcon(getCroppedBitmap(userIcon));
+		/* if(Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+			if(userIcon != null) notificationBuilder.setLargeIcon(getCroppedBitmap(userIcon));
+		} */
 		
-		//Creating the remote input
-		RemoteInput remoteInput = new RemoteInput.Builder(Constants.notificationReplyKey)
-				.setLabel(context.getResources().getString(R.string.action_reply))
-				.build();
+		{
+			//Creating the "mark as read" notification action
+			Intent intent = new Intent(context, NotificationBroadcastReceiver.class);
+			intent.setAction(NotificationBroadcastReceiver.intentActionMarkRead);
+			intent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
+			System.out.println("Created intent with target " + conversationInfo.getLocalID());
+			PendingIntent pendingIntent = PendingIntent.getBroadcast(context.getApplicationContext(), -(int) conversationInfo.getLocalID(), intent, 0);
+			
+			NotificationCompat.Action action =
+					new NotificationCompat.Action.Builder(R.drawable.check_circle, context.getResources().getString(R.string.action_markread), pendingIntent)
+							.setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
+							.build();
+			
+			//Adding the action
+			notificationBuilder.addAction(action);
+		}
 		
-		//Creating the reply intent
-		Intent replyIntent = new Intent(context, NotificationResponse.class);
-		replyIntent.putExtra(Constants.intentParamData, conversationInfo);
-		//replyIntent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
-		//replyIntent.putExtra(Constants.intentParamGuid, conversationInfo.getGuid());
-		PendingIntent replyPendingIntent = PendingIntent.getBroadcast(context.getApplicationContext(), (int) conversationInfo.getLocalID(), replyIntent, 0);
-		
-		//Getting a notification action from the remote input
-		NotificationCompat.Action action = new NotificationCompat.Action.Builder(R.drawable.reply, context.getResources().getString(R.string.action_reply), replyPendingIntent).setAllowGeneratedReplies(true).addRemoteInput(remoteInput).build();
-		
-		//Adding the action
-		notificationBuilder.addAction(action);
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) { //Remote input is not supported on Android versions below Nougat
+			//Creating the remote input
+			RemoteInput remoteInput = new RemoteInput.Builder(Constants.notificationReplyKey)
+					.setLabel(context.getResources().getString(R.string.action_reply))
+					.build();
+			
+			//Creating the reply intent
+			Intent intent = new Intent(context, NotificationBroadcastReceiver.class);
+			intent.setAction(NotificationBroadcastReceiver.intentActionReply);
+			intent.putExtra(Constants.intentParamData, conversationInfo);
+			//replyIntent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
+			//replyIntent.putExtra(Constants.intentParamGuid, conversationInfo.getGuid());
+			PendingIntent pendingIntent = PendingIntent.getBroadcast(context.getApplicationContext(), (int) conversationInfo.getLocalID(), intent, 0);
+			
+			//Creating the "reply" notification action from the remote input
+			NotificationCompat.Action action =
+					new NotificationCompat.Action.Builder(R.drawable.reply, context.getResources().getString(R.string.action_reply), pendingIntent)
+							.setAllowGeneratedReplies(true)
+							.addRemoteInput(remoteInput)
+							.setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+							.build();
+			
+			//Adding the action
+			notificationBuilder.addAction(action);
+		}
 		
 		//Returning the notification
 		return notificationBuilder;
@@ -158,38 +188,15 @@ class NotificationUtils {
 			//Checking if the sender is the user
 			if(sender == null) {
 				//Sending the notification without an icon if the conversation is a group chat or the chat has no members
-				if(conversationInfo.isGroupChat() || conversationInfo.getConversationMembers().isEmpty()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp);
-				else {
-					//Fetching the user info of the recipient member
-					String member = conversationInfo.getConversationMembers().get(0).getName();
-					MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, member, new UserCacheHelper.UserFetchResult() {
-						@Override
-						void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
-							//Sending the message without user info if no user info was found
-							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp);
-							//Otherwise fetching the icon of the recipient member
-							else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, member, member, new BitmapCacheHelper.ImageDecodeResult() {
-								@Override
-								void onImageMeasured(int width, int height) {}
-								
-								@Override
-								void onImageDecoded(Bitmap result, boolean wasTasked) {
-									//Sending the notification
-									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result, userInfo.getContactLookupUri().toString(), null, timestamp);
-								}
-							});
-						}
-					});
-				}
+				addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp);
 			}
 			//Otherwise getting the user info
 			else MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, sender, new UserCacheHelper.UserFetchResult() {
 				@Override
 				void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
-					//Sending the notification without an icon if the conversation is a group chat or the user is invalid
-					if(userInfo == null || conversationInfo.isGroupChat()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, userInfo == null || userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp);
-						//else if(conversationInfo.isGroupChat()) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, userInfo.getContactName() == null ? sender, timestamp);
-						//Otherwise fetching the user's icon
+					//Sending the notification without user information if the user is invalid
+					if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, sender, timestamp);
+					//Otherwise fetching the user's icon
 					else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, sender, sender, new BitmapCacheHelper.ImageDecodeResult() {
 						@Override
 						void onImageMeasured(int width, int height) {}
@@ -197,7 +204,7 @@ class NotificationUtils {
 						@Override
 						void onImageDecoded(Bitmap result, boolean wasTasked) {
 							//Sending the notification
-							addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result, userInfo.getContactLookupUri().toString(), userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp);
+							addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result == null ? null : IconCompat.createWithBitmap(getCroppedBitmap(result)), userInfo.getContactLookupUri().toString(), userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp);
 						}
 					});
 				}
@@ -205,9 +212,12 @@ class NotificationUtils {
 		});
 	}
 	
-	private static void addMessageToNotificationPrepared(Context context, ConversationManager.ConversationInfo conversationInfo, String conversationTitle, String message, Bitmap chatIcon, String chatUserUri, String senderName, long timestamp) {
+	private static void addMessageToNotificationPrepared(Context context, ConversationManager.ConversationInfo conversationInfo, String conversationTitle, String messageText, IconCompat chatUserIcon, String chatUserUri, String senderName, long timestamp) {
 		//Creating the base notification
-		NotificationCompat.Builder notification = getBaseMessageNotification(context, conversationInfo, chatIcon, chatUserUri, senderName != null);
+		NotificationCompat.Builder notification = getBaseMessageNotification(context, conversationInfo, chatUserUri, senderName != null);
+		
+		//Creating the message
+		NotificationCompat.MessagingStyle.Message message = new NotificationCompat.MessagingStyle.Message(messageText, timestamp, senderName == null ? null : new Person.Builder().setName(senderName).setIcon(chatUserIcon).setUri(chatUserUri).build());
 		
 		//Getting the notification manager
 		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -220,7 +230,7 @@ class NotificationUtils {
 			NotificationCompat.MessagingStyle messagingStyle = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(existingNotification);
 			
 			//Adding the new message
-			messagingStyle.addMessage(message, timestamp, senderName);
+			messagingStyle.addMessage(message);
 			
 			//Setting the messaging style to the notification
 			notification.setStyle(messagingStyle);
@@ -229,10 +239,13 @@ class NotificationUtils {
 			//notification.setLargeIcon(Bitmap.createBitmap());
 		} else {
 			//Creating the messaging style
-			NotificationCompat.MessagingStyle messagingStyle = new NotificationCompat.MessagingStyle(context.getResources().getString(R.string.you)).addMessage(message, timestamp, senderName);
+			NotificationCompat.MessagingStyle messagingStyle = new NotificationCompat.MessagingStyle(new Person.Builder().setName(context.getResources().getString(R.string.you)).build()).addMessage(message);
 			
 			//Configuring the messaging style
-			if(conversationInfo.isGroupChat()) messagingStyle.setConversationTitle(conversationTitle);
+			if(conversationInfo.isGroupChat()) {
+				messagingStyle.setGroupConversation(true);
+				messagingStyle.setConversationTitle(conversationTitle);
+			}
 			
 			//Setting the messaging style to the notification
 			notification.setStyle(messagingStyle);
@@ -242,9 +255,25 @@ class NotificationUtils {
 		notificationManager.notify((int) conversationInfo.getLocalID(), notification.build());
 	}
 	
-	public static class NotificationResponse extends BroadcastReceiver {
+	public static class NotificationBroadcastReceiver extends BroadcastReceiver {
+		//Creating the reference values
+		private static final String intentActionReply = "reply";
+		private static final String intentActionMarkRead = "mark_read";
+		
 		@Override
 		public void onReceive(Context context, Intent intent) {
+			if(intent.getAction() == null) return;
+			switch(intent.getAction()) {
+				case intentActionReply:
+					handleReply(context, intent);
+					break;
+				case intentActionMarkRead:
+					handleMarkRead(context, intent);
+					break;
+			}
+		}
+		
+		private void handleReply(Context context, Intent intent) {
 			//Getting the conversation info
 			final ConversationManager.ConversationInfo conversationInfo = (ConversationManager.ConversationInfo) intent.getSerializableExtra(Constants.intentParamData);
 			
@@ -299,12 +328,38 @@ class NotificationUtils {
 			});
 		}
 		
-		private CharSequence getMessage(Intent intent) {
-			Bundle remoteInput = android.app.RemoteInput.getResultsFromIntent(intent);
-			if(remoteInput != null) {
-				return remoteInput.getCharSequence(Constants.notificationReplyKey);
+		private void handleMarkRead(Context context, Intent intent) {
+			//Getting the conversation ID
+			long conversationID = intent.getLongExtra(Constants.intentParamTargetID, -1);
+			if(conversationID == -1) return;
+			
+			//Updating the conversation in memory
+			ConversationManager.ConversationInfo conversationInfo = ConversationManager.findConversationInfo(conversationID);
+			if(conversationInfo != null) {
+				conversationInfo.setUnreadMessageCount(0);
+				conversationInfo.updateUnreadStatus(context);
 			}
-			return null;
+			
+			//Updating the conversation on disk
+			new MarkReadAsyncTask().execute(conversationID);
+			
+			//Dismissing the notification
+			NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+			notificationManager.cancel((int) conversationID);
+		}
+		
+		private CharSequence getMessage(Intent intent) {
+			Bundle remoteInput = RemoteInput.getResultsFromIntent(intent);
+			if(remoteInput == null) return null;
+			else return remoteInput.getCharSequence(Constants.notificationReplyKey);
+		}
+		
+		private static class MarkReadAsyncTask extends AsyncTask<Long, Void, Void> {
+			@Override
+			protected Void doInBackground(Long... identifiers) {
+				for(long id : identifiers) DatabaseManager.getInstance().setUnreadMessageCount(id, 0);
+				return null;
+			}
 		}
 	}
 	

@@ -9,6 +9,7 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Application;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ClipDescription;
@@ -597,7 +598,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Setting the filler data
-		if(getIntent().hasExtra(Constants.intentParamDataText)) messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText));
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && getIntent().hasExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)) messageInputField.setText(getIntent().getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)); //Notification inline reply text (only supported on Android P and above)
+		else if(getIntent().hasExtra(Constants.intentParamDataText)) messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText)); //Shared text from activity
 		if(getIntent().hasExtra(Constants.intentParamDataFile)) {
 			Parcelable[] targetParcelables = getIntent().getParcelableArrayExtra(Constants.intentParamDataFile);
 			Uri[] targetUris = new Uri[targetParcelables.length];
