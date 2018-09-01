@@ -833,6 +833,12 @@ public class Constants {
 		void accept(A1 a1, A2 a2);
 	} */
 	
+	static boolean validateContext(Context context) {
+		if(context instanceof Activity) return ((Activity) context).isFinishing();
+		
+		return true;
+	}
+	
 	static boolean checkBrokenPipe(IOException exception) {
 		return exception.getMessage().toLowerCase().contains("broken pipe");
 	}

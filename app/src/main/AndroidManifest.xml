@@ -31,7 +31,7 @@
 			android:label="@string/app_name"
 			android:launchMode="singleTop"
 			android:name=".Conversations"
-			android:theme="@style/DayNight.NoActionBar"
+			android:theme="@style/DayNight.NoActionBar.SolidNavigation"
 			android:windowSoftInputMode="adjustResize">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
@@ -51,7 +51,7 @@
 			android:label="@string/screen_newconversation"
 			android:name=".NewMessage"
 			android:parentActivityName=".Conversations"
-			android:theme="@style/DayNight.NoActionBar"
+			android:theme="@style/DayNight.NoActionBar.SolidNavigation"
 			android:windowSoftInputMode="adjustResize|stateVisible" />
 		<!-- Preferences -->
 		<activity

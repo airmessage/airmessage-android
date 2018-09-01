@@ -9,13 +9,12 @@
 		<item name="popupTheme">@style/ThemeOverlay.AppCompat.Dark</item>
 	</style>
 	
-	<style name="AppTheme.Setup" parent="@style/Theme.MaterialComponents.NoActionBar.Bridge">
+	<style name="AppTheme.Setup" parent="@style/Pass.AppTheme.Setup">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorAccent</item>
 		
-		<item name="android:navigationBarColor">@color/colorPrimaryDark</item>
-		<item name="android:statusBarColor">#212121</item>
+		<item name="android:statusBarColor">@color/colorBackgroundSurface</item>
 		<item name="android:windowLightStatusBar">false</item>
 	</style>
 	

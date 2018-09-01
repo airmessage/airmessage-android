@@ -2,8 +2,12 @@
 <resources>
 	<color name="colorDivider">#1FFFFFFF</color>
 	
-	<color name="navbarDivider">#000000</color>
-	<color name="navbarBackground">#000000</color>
+	<color name="colorSubBackground">#1F1F1F</color>
+	
+	<color name="navbarDivider">#616161</color>
+	<color name="navbarBackground">#424242</color>
+	<color name="navbarBackgroundProtected">#303030</color>
+	<color name="colorBackgroundSurface">#212121</color>
 	
 	<color name="colorBGChip">#212121</color>
 	

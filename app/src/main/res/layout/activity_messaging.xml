@@ -216,8 +216,13 @@
 			<ViewStub
 				android:id="@+id/viewstub_attachments"
 				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:layout="@layout/pane_attachments" />
+				android:layout_height="0px"
+				android:layout="@layout/pane_attachments"
+				android:layout_weight="1" />
+			<View
+				android:layout_width="match_parent"
+				android:layout_height="1dp"
+				android:background="@color/colorDivider" />
 		</LinearLayout>
 	</LinearLayout>
 	<!-- Content pane barrier -->

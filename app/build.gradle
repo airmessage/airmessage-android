@@ -86,7 +86,7 @@ dependencies {
 	implementation "org.lukhnos:nnio:0.2"
 
 	//Layouts
-	implementation "androidx.constraintlayout:constraintlayout:1.1.2"
+	implementation "androidx.constraintlayout:constraintlayout:1.1.3"
 	implementation "com.google.android:flexbox:1.0.0"
 
 	implementation "com.pnikosis:materialish-progress:1.7"

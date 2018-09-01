@@ -34,6 +34,8 @@
 		<item name="actionBarPopupTheme">@style/ActionModeOverflowMenu</item>
 	</style>
 	
+	<style name="DayNight.NoActionBar.SolidNavigation" parent="DayNight.NoActionBar" />
+	
 	<style name="SolidActionBar" parent="@style/ThemeOverlay.AppCompat.ActionBar">
 		<item name="android:colorControlNormal">@android:color/white</item>
 		<item name="android:textColorPrimary">@android:color/white</item>
@@ -44,13 +46,13 @@
 		<item name="android:fontFamily">sans-serif"</item>
 	</style>
 	
-	<style name="AppTheme.Setup" parent="@style/Theme.MaterialComponents.Light.NoActionBar.Bridge">
+	<style name="Pass.AppTheme.Setup" parent="Base.DayNight.NoActionBar" />
+	<style name="AppTheme.Setup" parent="@style/Pass.AppTheme.Setup">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorAccent</item>
 		
-		<item name="android:navigationBarColor">@color/colorPrimaryDark</item>
-		<item name="android:statusBarColor">#F5F5F5</item>
+		<item name="android:statusBarColor">@color/colorBackgroundSurface</item>
 		<item name="android:windowLightStatusBar">true</item>
 	</style>
 	

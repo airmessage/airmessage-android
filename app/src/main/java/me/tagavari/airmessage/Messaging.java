@@ -3370,7 +3370,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//if(isFinishing() || isDestroyed()) return;
 			
 			//Setting the image thumbnail
-			Glide.with(getApplicationContext())
+			Glide.with(Messaging.this)
 					.load(item.getFile() != null ? item.getFile() : item.getUri())
 					.apply(RequestOptions.centerCropTransform())
 					.transition(DrawableTransitionOptions.withCrossFade())

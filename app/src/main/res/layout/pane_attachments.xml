@@ -5,7 +5,7 @@
 	android:id="@+id/pane_attachments"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	android:background="?android:attr/colorBackground"
+	android:background="@color/colorSubBackground"
 	android:clipChildren="true"
 	android:clipToPadding="true"
 	android:maxWidth="@dimen/contentwidth_max"

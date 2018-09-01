@@ -2,13 +2,26 @@
 <resources>
 	<style name="Pass.DayNight" parent="Base.DayNight">
 		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
-		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
 		<item name="android:navigationBarColor">@color/navbarBackground</item>
+		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
 	</style>
 	
 	<style name="Pass.DayNight.NoActionBar" parent="Base.DayNight.NoActionBar">
+		<!--<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>-->
+		<!--<item name="android:navigationBarDividerColor">@color/navbarDivider</item>-->
+		<!--<item name="android:navigationBarColor">@color/navbarBackground</item>-->
+		
 		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
-		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
+		<item name="android:navigationBarColor">@color/navbarBackgroundProtected</item>
+	</style>
+	
+	<style name="DayNight.NoActionBar.SolidNavigation" parent="DayNight.NoActionBar">
 		<item name="android:navigationBarColor">@color/navbarBackground</item>
+		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
+	</style>
+	
+	<style name="Pass.AppTheme.Setup" parent="Base.DayNight.NoActionBar">
+		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
+		<item name="android:navigationBarColor">@color/navbarBackgroundProtected</item>
 	</style>
 </resources>
