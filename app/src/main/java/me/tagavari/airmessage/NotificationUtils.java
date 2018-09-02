@@ -82,7 +82,7 @@ class NotificationUtils {
 		return output;
 	}
 	
-	private static NotificationCompat.Builder getBaseMessageNotification(Context context, ConversationManager.ConversationInfo conversationInfo, String userUri, boolean playSound) {
+	private static NotificationCompat.Builder getBaseMessageNotification(Context context, ConversationManager.ConversationInfo conversationInfo, String userUri, Bitmap userIcon, boolean isOutgoing) {
 		//Creating the click intent
 		Intent clickIntent = new Intent(context, Messaging.class);
 		clickIntent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
@@ -107,7 +107,7 @@ class NotificationUtils {
 				//Setting the intent
 				.setContentIntent(clickPendingIntent)
 				//Setting the color
-				.setColor(context.getResources().getColor(R.color.colorNotification, null))
+				.setColor(context.getResources().getColor(R.color.colorPrimary, null))
 				//Setting the group
 				.setGroup(MainApplication.notificationGroupMessage)
 				//Setting the category
@@ -115,7 +115,7 @@ class NotificationUtils {
 				//Adding the person
 				.addPerson(userUri);
 		
-		//Checking if the Android version is below Oreo
+		//Checking if the Android version is below Oreo (on API 26 and above, notification alert details are handled by the system's notification channels)
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
 			//Setting the sound
 			notificationBuilder.setSound(Uri.parse(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_messagenotifications_sound_key), Constants.defaultNotificationSound)));
@@ -128,19 +128,19 @@ class NotificationUtils {
 		}
 		
 		//Disabling alerts if a sound shouldn't be played
-		notificationBuilder.setOnlyAlertOnce(!playSound);
+		notificationBuilder.setOnlyAlertOnce(isOutgoing);
 		
-		//Setting the user icon if it is valid
-		/* if(Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-			if(userIcon != null) notificationBuilder.setLargeIcon(getCroppedBitmap(userIcon));
-		} */
+		//Setting the user icon if it is needed and it is valid
+		if(Build.VERSION.SDK_INT <= Build.VERSION_CODES.O_MR1 &&
+				!conversationInfo.isGroupChat() &&
+				userIcon != null)
+			notificationBuilder.setLargeIcon(userIcon);
 		
 		{
 			//Creating the "mark as read" notification action
 			Intent intent = new Intent(context, NotificationBroadcastReceiver.class);
 			intent.setAction(NotificationBroadcastReceiver.intentActionMarkRead);
 			intent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
-			System.out.println("Created intent with target " + conversationInfo.getLocalID());
 			PendingIntent pendingIntent = PendingIntent.getBroadcast(context.getApplicationContext(), -(int) conversationInfo.getLocalID(), intent, 0);
 			
 			NotificationCompat.Action action =
@@ -187,8 +187,32 @@ class NotificationUtils {
 		conversationInfo.buildTitle(context, (conversationTitle, wasTasked) -> {
 			//Checking if the sender is the user
 			if(sender == null) {
-				//Sending the notification without an icon if the conversation is a group chat or the chat has no members
-				addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp);
+				//Checking if the system version is at or below 8.1 Oreo (where MessagingStyle does not support user icons, and large icons are to be used instead) and the conversation is one-on-one
+				if(Build.VERSION.SDK_INT <= Build.VERSION_CODES.O_MR1 && !conversationInfo.isGroupChat() && !conversationInfo.getConversationMembers().isEmpty()) {
+					String otherUser = conversationInfo.getConversationMembers().get(0).getName();
+					
+					MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, otherUser, new UserCacheHelper.UserFetchResult() {
+						@Override
+						void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
+							//Sending the notification without user information if the user is invalid
+							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp);
+								//Otherwise fetching the user's icon
+							else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, otherUser, otherUser, new BitmapCacheHelper.ImageDecodeResult() {
+								@Override
+								void onImageMeasured(int width, int height) {}
+								
+								@Override
+								void onImageDecoded(Bitmap result, boolean wasTasked) {
+									//Sending the notification
+									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), null, timestamp);
+								}
+							});
+						}
+					});
+				} else {
+					//Sending the notification without an icon
+					addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp);
+				}
 			}
 			//Otherwise getting the user info
 			else MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, sender, new UserCacheHelper.UserFetchResult() {
@@ -204,7 +228,7 @@ class NotificationUtils {
 						@Override
 						void onImageDecoded(Bitmap result, boolean wasTasked) {
 							//Sending the notification
-							addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result == null ? null : IconCompat.createWithBitmap(getCroppedBitmap(result)), userInfo.getContactLookupUri().toString(), userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp);
+							addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp);
 						}
 					});
 				}
@@ -212,12 +236,12 @@ class NotificationUtils {
 		});
 	}
 	
-	private static void addMessageToNotificationPrepared(Context context, ConversationManager.ConversationInfo conversationInfo, String conversationTitle, String messageText, IconCompat chatUserIcon, String chatUserUri, String senderName, long timestamp) {
+	private static void addMessageToNotificationPrepared(Context context, ConversationManager.ConversationInfo conversationInfo, String conversationTitle, String messageText, Bitmap chatUserIcon, String chatUserUri, String senderName, long timestamp) {
 		//Creating the base notification
-		NotificationCompat.Builder notification = getBaseMessageNotification(context, conversationInfo, chatUserUri, senderName != null);
+		NotificationCompat.Builder notification = getBaseMessageNotification(context, conversationInfo, chatUserUri, chatUserIcon, senderName == null);
 		
 		//Creating the message
-		NotificationCompat.MessagingStyle.Message message = new NotificationCompat.MessagingStyle.Message(messageText, timestamp, senderName == null ? null : new Person.Builder().setName(senderName).setIcon(chatUserIcon).setUri(chatUserUri).build());
+		NotificationCompat.MessagingStyle.Message message = new NotificationCompat.MessagingStyle.Message(messageText, timestamp, senderName == null ? null : new Person.Builder().setName(senderName).setIcon(senderName == null || chatUserIcon == null ? null : IconCompat.createWithBitmap(chatUserIcon)).setUri(chatUserUri).build());
 		
 		//Getting the notification manager
 		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -326,6 +350,9 @@ class NotificationUtils {
 					if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
 				}
 			});
+			
+			//Marking the conversation as read
+			markConversationRead(context, conversationInfo.getLocalID(), false);
 		}
 		
 		private void handleMarkRead(Context context, Intent intent) {
@@ -333,6 +360,11 @@ class NotificationUtils {
 			long conversationID = intent.getLongExtra(Constants.intentParamTargetID, -1);
 			if(conversationID == -1) return;
 			
+			//Marking the conversation as read
+			markConversationRead(context, conversationID, true);
+		}
+		
+		private void markConversationRead(Context context, long conversationID, boolean dismissNotification) {
 			//Updating the conversation in memory
 			ConversationManager.ConversationInfo conversationInfo = ConversationManager.findConversationInfo(conversationID);
 			if(conversationInfo != null) {
@@ -344,8 +376,10 @@ class NotificationUtils {
 			new MarkReadAsyncTask().execute(conversationID);
 			
 			//Dismissing the notification
-			NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-			notificationManager.cancel((int) conversationID);
+			if(dismissNotification) {
+				NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+				notificationManager.cancel((int) conversationID);
+			}
 		}
 		
 		private CharSequence getMessage(Intent intent) {

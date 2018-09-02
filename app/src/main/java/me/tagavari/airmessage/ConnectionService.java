@@ -5348,7 +5348,19 @@ public class ConnectionService extends Service {
 							}
 							
 							//Opening the input stream
-							inputStream = context.getContentResolver().openInputStream(pushRequest.sendUri);
+							try {
+								inputStream = context.getContentResolver().openInputStream(pushRequest.sendUri);
+							} catch(IllegalArgumentException exception) {
+								//Printing the stack trace
+								exception.printStackTrace();
+								
+								//Calling the fail method
+								pushRequest.isInProcessing = false;
+								handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+								
+								//Skipping the remainder of the iteration
+								continue;
+							}
 						}
 						//Otherwise checking if the request is using a file
 						else if(pushRequest.sendFile != null) {

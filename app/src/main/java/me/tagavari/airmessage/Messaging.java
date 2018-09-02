@@ -5017,6 +5017,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		public InputConnection onCreateInputConnection(EditorInfo editorInfo) {
 			//Configuring the input connection
 			InputConnection inputConnection = super.onCreateInputConnection(editorInfo);
+			if(inputConnection == null) return null;
 			EditorInfoCompat.setContentMimeTypes(editorInfo, new String[]{"image/*"});
 			
 			//Creating the callback
