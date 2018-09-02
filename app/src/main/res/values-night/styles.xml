@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+	<style name="Base.DayNight" parent="Theme.MaterialComponents.Bridge" />
+	<style name="Base.DayNight.NoActionBar" parent="Theme.MaterialComponents.NoActionBar.Bridge" />
+	
 	<style name="SolidActionBar" parent="@style/ThemeOverlay.AppCompat.ActionBar">
 		<item name="android:colorControlNormal">@android:color/white</item>
 		<item name="android:textColorPrimary">@android:color/white</item>
 		<item name="popupTheme">@style/ThemeOverlay.AppCompat.Dark</item>
 	</style>
 	
-	<style name="AppTheme.Setup" parent="@style/Theme.AppCompat.DayNight.NoActionBar">
-		<item name="android:colorPrimary">@color/colorPrimary</item>
+	<style name="AppTheme.Setup" parent="@style/Pass.AppTheme.Setup">
 		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="android:colorAccent">@color/colorAccent</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorAccent</item>
-		<item name="android:navigationBarColor">@color/colorPrimaryDark</item>
 		
-		<item name="android:statusBarColor">#212121</item>
+		<item name="android:statusBarColor">@color/colorBackgroundSurface</item>
 		<item name="android:windowLightStatusBar">false</item>
 	</style>
 	

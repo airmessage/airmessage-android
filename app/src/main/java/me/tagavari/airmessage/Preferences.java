@@ -11,25 +11,26 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.preference.EditTextPreference;
-import android.support.v7.preference.ListPreference;
-import android.support.v7.preference.Preference;
-import android.support.v7.preference.PreferenceFragmentCompat;
-import android.support.v7.preference.SwitchPreferenceCompat;
 import android.view.MenuItem;
 import android.view.View;
 
-import com.takisoft.fix.support.v7.preference.RingtonePreference;
-import com.takisoft.fix.support.v7.preference.RingtonePreferenceDialogFragmentCompat;
+import com.google.android.material.snackbar.Snackbar;
+import com.takisoft.preferencex.RingtonePreference;
+import com.takisoft.preferencex.RingtonePreferenceDialogFragmentCompat;
 
 import java.util.List;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.DialogFragment;
+import androidx.preference.EditTextPreference;
+import androidx.preference.ListPreference;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.SwitchPreferenceCompat;
 
 public class Preferences extends AppCompatActivity {
 	//Creating the reference values
@@ -410,14 +411,13 @@ public class Preferences extends AppCompatActivity {
 			if(preference instanceof RingtonePreference) {
 				// Create a new instance of TimePreferenceDialogFragment with the key of the related
 				// Preference
-				dialogFragment = RingtonePreferenceDialogFragmentCompat
-						.newInstance(preference.getKey());
+				dialogFragment = RingtonePreferenceDialogFragmentCompat.newInstance(preference.getKey());
 			}
 			
 			// If it was one of our custom Preferences, show its dialog
 			if(dialogFragment != null) {
 				dialogFragment.setTargetFragment(this, 0);
-				dialogFragment.show(this.getFragmentManager(), "android.support.v7.preference" + ".PreferenceFragment.DIALOG");
+				dialogFragment.show(this.getFragmentManager(), "androidx.preference" + ".PreferenceFragment.DIALOG");
 			}
 			// Could not be handled here. Try with the super method.
 			else {

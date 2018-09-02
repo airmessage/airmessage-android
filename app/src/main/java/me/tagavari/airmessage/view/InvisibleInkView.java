@@ -12,8 +12,6 @@ import android.graphics.PorterDuff;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.os.SystemClock;
-import android.support.annotation.Nullable;
-import android.support.v4.graphics.ColorUtils;
 import android.util.AttributeSet;
 import android.view.TextureView;
 import android.view.View;
@@ -26,6 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import androidx.annotation.Nullable;
+import androidx.core.graphics.ColorUtils;
 import me.tagavari.airmessage.R;
 
 public class InvisibleInkView extends TextureView implements Runnable {

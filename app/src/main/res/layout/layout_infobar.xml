@@ -29,9 +29,9 @@
 		android:text="@android:string/untitled"
 		android:textColor="?android:attr/textColorSecondary" />
 	
-	<Button
+	<com.google.android.material.button.MaterialButton
 		android:id="@+id/button"
-		style="?android:attr/borderlessButtonStyle"
+		style="@style/Widget.MaterialComponents.Button.TextButton"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:text="@android:string/untitled"

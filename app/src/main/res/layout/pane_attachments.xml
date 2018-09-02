@@ -5,7 +5,7 @@
 	android:id="@+id/pane_attachments"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	android:background="?android:attr/colorBackground"
+	android:background="@color/colorSubBackground"
 	android:clipChildren="true"
 	android:clipToPadding="true"
 	android:maxWidth="@dimen/contentwidth_max"
@@ -18,7 +18,7 @@
 		android:paddingTop="@dimen/contenttile_margin"
 		android:paddingBottom="@dimen/contenttile_margin">
 		<!-- Gallery images -->
-		<android.support.constraint.ConstraintLayout
+		<androidx.constraintlayout.widget.ConstraintLayout
 			android:id="@+id/viewgroup_attachment_gallery"
 			android:layout_width="match_parent"
 			android:layout_height="@dimen/contenttile_size"
@@ -65,7 +65,7 @@
 				android:visibility="gone"/>
 			
 			<!-- 8 + 8 + 40 = 56 dp start padding -->
-			<android.support.v7.widget.RecyclerView
+			<androidx.recyclerview.widget.RecyclerView
 				android:id="@+id/list_attachment_gallery"
 				android:layout_width="0px"
 				android:layout_height="match_parent"
@@ -80,7 +80,7 @@
 				app:layout_constraintBottom_toBottomOf="parent"
 				android:visibility="gone"/>
 			
-			<android.support.v7.widget.CardView
+			<androidx.cardview.widget.CardView
 				android:id="@+id/button_attachment_gallery_systempicker"
 				android:layout_width="40dp"
 				android:layout_height="0px"
@@ -103,8 +103,8 @@
 					android:layout_gravity="center"
 					android:src="@drawable/gallery"
 					android:tint="@android:color/white" />
-			</android.support.v7.widget.CardView>
-		</android.support.constraint.ConstraintLayout>
+			</androidx.cardview.widget.CardView>
+		</androidx.constraintlayout.widget.ConstraintLayout>
 		<!-- Audio files -->
 		<LinearLayout
 			android:id="@+id/viewgroup_attachment_audio"
@@ -115,7 +115,7 @@
 			android:orientation="horizontal"
 			android:baselineAligned="false">
 			
-			<android.support.v7.widget.CardView
+			<androidx.cardview.widget.CardView
 				android:id="@+id/button_attachment_audio_systempicker"
 				android:layout_width="40dp"
 				android:layout_height="match_parent"
@@ -133,7 +133,7 @@
 					android:layout_gravity="center"
 					android:src="@drawable/volume"
 					android:tint="@android:color/white" />
-			</android.support.v7.widget.CardView>
+			</androidx.cardview.widget.CardView>
 			
 			<FrameLayout
 				android:id="@+id/button_attachment_audio_permission"
@@ -214,7 +214,7 @@
 			</FrameLayout>
 		</LinearLayout>
 		<!-- Generic documents -->
-		<android.support.constraint.ConstraintLayout
+		<androidx.constraintlayout.widget.ConstraintLayout
 			android:id="@+id/viewgroup_attachment_documents"
 			android:layout_width="match_parent"
 			android:layout_height="@dimen/contenttile_size"
@@ -260,7 +260,7 @@
 				android:visibility="gone"/>
 			
 			<!-- 8 + 8 + 40 = 56 dp start padding -->
-			<android.support.v7.widget.RecyclerView
+			<androidx.recyclerview.widget.RecyclerView
 				android:id="@+id/list_attachment_documents"
 				android:layout_width="0px"
 				android:layout_height="match_parent"
@@ -275,7 +275,7 @@
 				app:layout_constraintBottom_toBottomOf="parent"
 				android:visibility="gone"/>
 			
-			<android.support.v7.widget.CardView
+			<androidx.cardview.widget.CardView
 				android:id="@+id/button_attachment_documents_systempicker"
 				android:layout_width="40dp"
 				android:layout_height="0px"
@@ -298,7 +298,7 @@
 					android:layout_gravity="center"
 					android:src="@drawable/file"
 					android:tint="@android:color/white" />
-			</android.support.v7.widget.CardView>
-		</android.support.constraint.ConstraintLayout>
+			</androidx.cardview.widget.CardView>
+		</androidx.constraintlayout.widget.ConstraintLayout>
 	</LinearLayout>
 </ScrollView>

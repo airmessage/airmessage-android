@@ -1,14 +1,15 @@
 package me.tagavari.airmessage;
 
-import android.support.annotation.DrawableRes;
+import android.content.res.ColorStateList;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import org.jetbrains.annotations.NotNull;
+import com.google.android.material.button.MaterialButton;
 
+import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
 import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
 
 class PluginMessageBar extends AppCompatActivityPlugin {
@@ -45,7 +46,7 @@ class PluginMessageBar extends AppCompatActivityPlugin {
 		
 		private ImageView iconView;
 		private TextView textView;
-		private Button buttonView;
+		private MaterialButton buttonView;
 		
 		//Creating the state values
 		private int infoBarIndex;
@@ -73,13 +74,13 @@ class PluginMessageBar extends AppCompatActivityPlugin {
 			this.icon = icon;
 		}
 		
-		void setButton(@NotNull String text, @NotNull View.OnClickListener onClick) {
+		void setButton(@NonNull String text, @NonNull View.OnClickListener onClick) {
 			//Setting the values
 			buttonText = text;
 			buttonClickListener = onClick;
 		}
 		
-		void setButton(int textRes, @NotNull View.OnClickListener onClick) {
+		void setButton(int textRes, @NonNull View.OnClickListener onClick) {
 			setButton(getActivity().getResources().getString(textRes), onClick);
 		}
 		
@@ -89,7 +90,10 @@ class PluginMessageBar extends AppCompatActivityPlugin {
 		
 		void setColor(int color) {
 			if(view == null) infoBarColor = color;
-			else buttonView.setTextColor(color);
+			else {
+				buttonView.setTextColor(color);
+				buttonView.setRippleColor(ColorStateList.valueOf(color));
+			}
 		}
 		
 		private void prepareView() {

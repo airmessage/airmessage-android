@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
@@ -8,7 +8,7 @@
 	android:clipChildren="false"
 	android:clipToPadding="false">
 	<!-- App bar -->
-	<android.support.design.widget.AppBarLayout
+	<com.google.android.material.appbar.AppBarLayout
 		android:id="@+id/appbar"
 		android:layout_width="0px"
 		android:layout_height="wrap_content"
@@ -16,7 +16,7 @@
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent">
 		<!-- Toolbar -->
-		<android.support.v7.widget.Toolbar
+		<androidx.appcompat.widget.Toolbar
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
 			android:layout_height="?android:attr/actionBarSize"
@@ -30,7 +30,7 @@
 			android:animateLayoutChanges="true"
 			android:background="?android:attr/colorBackgroundFloating"
 			android:orientation="vertical" />
-	</android.support.design.widget.AppBarLayout>
+	</com.google.android.material.appbar.AppBarLayout>
 	<!-- Search result bar -->
 	<!-- <LinearLayout
 		android:id="@+id/searchresults"
@@ -79,7 +79,7 @@
 			android:tint="?android:attr/textColorSecondary" />
 	</LinearLayout> -->
 	<!-- Message list -->
-	<android.support.v7.widget.RecyclerView
+	<androidx.recyclerview.widget.RecyclerView
 		android:id="@+id/list_messages"
 		android:layout_width="0px"
 		android:layout_height="0px"
@@ -113,7 +113,7 @@
 		android:elevation="8dp">
 		
 		<!-- Attachment bar -->
-		<android.support.v7.widget.RecyclerView
+		<androidx.recyclerview.widget.RecyclerView
 			android:id="@+id/inputbar_attachments"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
@@ -216,12 +216,17 @@
 			<ViewStub
 				android:id="@+id/viewstub_attachments"
 				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:layout="@layout/pane_attachments" />
+				android:layout_height="0px"
+				android:layout="@layout/pane_attachments"
+				android:layout_weight="1" />
+			<View
+				android:layout_width="match_parent"
+				android:layout_height="1dp"
+				android:background="@color/colorDivider" />
 		</LinearLayout>
 	</LinearLayout>
 	<!-- Content pane barrier -->
-	<!-- <android.support.constraint.Barrier
+	<!-- <androidx.constraintlayout.widget.Barrier
 		android:id="@+id/barrier_attachments"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
@@ -245,7 +250,7 @@
 	</FrameLayout> -->
 	
 	<!-- Floating action button -->
-	<android.support.design.widget.FloatingActionButton
+	<com.google.android.material.floatingactionbutton.FloatingActionButton
 		android:id="@+id/fab_bottom"
 		android:layout_width="40dp"
 		android:layout_height="40dp"
@@ -326,8 +331,8 @@
 			android:textAlignment="center"
 			android:textColor="?android:textColorSecondary" />
 		
-		<Button
-			style="@style/Widget.AppCompat.Button.Borderless.Colored"
+		<com.google.android.material.button.MaterialButton
+			style="@style/Widget.MaterialComponents.Button.TextButton"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:onClick="onClickRetryLoad"
@@ -359,6 +364,7 @@
 		android:layout_height="0px"
 		android:background="#52000000"
 		android:clickable="true"
+		android:soundEffectsEnabled="false"
 		android:visibility="gone"
 		android:alpha="0"
 		android:elevation="16dp"
@@ -384,4 +390,4 @@
 			android:layout_height="match_parent"
 			android:layout="@layout/pane_messaginginfo" />
 	</FrameLayout>
-</android.support.constraint.ConstraintLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

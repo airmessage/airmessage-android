@@ -11,25 +11,46 @@
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
 		android:padding="20dp">
-		<!-- Title -->
-		<TextView
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:labelFor="@+id/input_address"
-			android:text="@string/message_setup_connect_title"
-			android:textSize="24sp"
-			android:textStyle="bold" />
-		<!-- Address Box -->
-		<EditText
-			android:id="@+id/input_address"
+		<!-- Header image -->
+		<ImageView
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:layout_marginLeft="-2dp"
-			android:layout_marginRight="-2dp"
-			android:imeOptions="actionNext|flagNoExtractUi"
-			android:inputType="textNoSuggestions|textVisiblePassword"
-			android:maxLines="1"
-			android:textSize="30sp" />
+			android:adjustViewBounds="true"
+			android:src="@drawable/promo_logo"
+			android:layout_marginTop="30dp"
+			android:layout_marginBottom="50dp" />
+		
+		<com.google.android.material.textfield.TextInputLayout
+			style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:hint="@string/message_setup_connect_address"
+			android:layout_marginBottom="10dp">
+			<com.google.android.material.textfield.TextInputEditText
+				android:id="@+id/input_address"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:imeOptions="actionNext|flagNoExtractUi"
+				android:inputType="textNoSuggestions|textVisiblePassword"
+				android:maxLines="1" />
+		</com.google.android.material.textfield.TextInputLayout>
+		<com.google.android.material.textfield.TextInputLayout
+			style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:hint="@string/message_setup_connect_password"
+			app:passwordToggleEnabled="true"
+			android:layout_marginBottom="24dp">
+			
+			<com.google.android.material.textfield.TextInputEditText
+				android:id="@+id/input_password"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:imeOptions="actionGo|flagNoExtractUi"
+				android:inputType="textPassword"
+				android:maxLines="1" />
+		</com.google.android.material.textfield.TextInputLayout>
+		
 		<!-- Don't have a server? -->
 		<TextView
 			android:layout_width="wrap_content"
@@ -45,40 +66,6 @@
 			android:textColor="@color/colorPrimary"
 			android:textSize="18sp"
 			android:textStyle="bold"
-			android:onClick="onClickLaunchServerGuide"/>
-		<!-- Credentials name -->
-		<TextView
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_marginTop="30dp"
-			android:labelFor="@+id/input_username"
-			android:text="@string/message_setup_connect_authentication"
-			android:textSize="18sp"
-			android:textStyle="bold" />
-		<!-- <EditText
-			android:id="@+id/input_password"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:layout_marginLeft="-2dp"
-			android:layout_marginRight="-2dp"
-			android:imeOptions="actionNone"
-			android:inputType="textPassword"
-			android:textSize="20sp" /> -->
-		<android.support.design.widget.TextInputLayout
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:layout_marginLeft="-2dp"
-			android:layout_marginRight="-2dp"
-			app:passwordToggleEnabled="true">
-			
-			<android.support.design.widget.TextInputEditText
-				android:id="@+id/input_password"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:imeOptions="actionGo|flagNoExtractUi"
-				android:maxLines="1"
-				android:inputType="textPassword"
-				android:textSize="20sp" />
-		</android.support.design.widget.TextInputLayout>
+			android:onClick="onClickLaunchServerGuide" />
 	</LinearLayout>
 </ScrollView>

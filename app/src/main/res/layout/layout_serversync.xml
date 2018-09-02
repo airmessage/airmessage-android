@@ -23,8 +23,8 @@
 		android:textColor="?android:textColorSecondary"
 		android:textSize="18sp" />
 	
-	<Button
-		style="@style/Widget.AppCompat.Button.Colored"
+	<com.google.android.material.button.MaterialButton
+		style="@style/Widget.MaterialComponents.Button"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_gravity="center"
@@ -44,9 +44,9 @@
 		android:textColor="?android:textColorSecondary"
 		android:textSize="18sp" />
 	
-	<Button
+	<com.google.android.material.button.MaterialButton
+		style="@style/Widget.MaterialComponents.Button"
 		android:id="@+id/deletemessages_button"
-		style="@style/Widget.AppCompat.Button.Colored"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_gravity="center"

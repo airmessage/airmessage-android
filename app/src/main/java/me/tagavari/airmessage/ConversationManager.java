@@ -19,11 +19,6 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.support.annotation.DrawableRes;
-import android.support.constraint.ConstraintLayout;
-import android.support.v4.content.FileProvider;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
@@ -84,6 +79,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 
+import androidx.annotation.DrawableRes;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.FileProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.RecyclerView;
 import java9.util.function.Consumer;
 import jp.wasabeef.glide.transformations.BlurTransformation;
 import me.tagavari.airmessage.common.SharedValues;
@@ -998,7 +998,7 @@ class ConversationManager {
 			} else {
 				//Getting the list
 				ArrayList<ConversationItem> conversationItems = getConversationItems();
-				if(conversationItems == null) return;
+				if(conversationItems == null || conversationItems.isEmpty()) return;
 				
 				//Getting the last conversation item
 				ConversationItem lastConversationItem = conversationItems.get(conversationItems.size() - 1);
@@ -4702,13 +4702,15 @@ class ConversationManager {
 			//int pxBitmapSizeMax = (int) context.getResources().getDimension(R.dimen.image_size_max);
 			
 			//Requesting a Glide image load
-			viewHolder.imageContent.layout(0, 0, 0, 0);
-			RequestBuilder<Drawable> requestBuilder = Glide.with(context)
-					.load(file)
-					.transition(DrawableTransitionOptions.withCrossFade())
-					.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
-			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(invisibleInkBlurRadius, invisibleInkBlurSampling)));
-			requestBuilder.into(viewHolder.imageContent);
+			if(Constants.validateContext(context)) {
+				viewHolder.imageContent.layout(0, 0, 0, 0);
+				RequestBuilder<Drawable> requestBuilder = Glide.with(context)
+						.load(file)
+						.transition(DrawableTransitionOptions.withCrossFade())
+						.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
+				if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(invisibleInkBlurRadius, invisibleInkBlurSampling)));
+				requestBuilder.into(viewHolder.imageContent);
+			}
 			
 			//Updating the ink view
 			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) {
@@ -5231,14 +5233,16 @@ class ConversationManager {
 			((ImageView) content.findViewById(R.id.content_view)).setImageBitmap(null); */
 			
 			//Requesting a Glide image load
-			viewHolder.imageContent.layout(0, 0, 0, 0);
-			RequestBuilder<Drawable> requestBuilder = Glide.with(context)
-					.load(file)
-					.transition(DrawableTransitionOptions.withCrossFade())
-					.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
-			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(invisibleInkBlurRadius, invisibleInkBlurSampling)));
-			
-			requestBuilder.into(viewHolder.imageContent);
+			if(Constants.validateContext(context)) {
+				viewHolder.imageContent.layout(0, 0, 0, 0);
+				RequestBuilder<Drawable> requestBuilder = Glide.with(context)
+						.load(file)
+						.transition(DrawableTransitionOptions.withCrossFade())
+						.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
+				if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(invisibleInkBlurRadius, invisibleInkBlurSampling)));
+				
+				requestBuilder.into(viewHolder.imageContent);
+			}
 			
 			//Updating the ink view
 			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) {

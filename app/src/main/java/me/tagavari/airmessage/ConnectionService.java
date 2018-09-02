@@ -22,8 +22,6 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.provider.OpenableColumns;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.LongSparseArray;
 import android.util.SparseArray;
 
@@ -98,6 +96,8 @@ import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java9.util.function.BiConsumer;
 import java9.util.function.Consumer;
 import me.tagavari.airmessage.common.Blocks;
@@ -5348,7 +5348,19 @@ public class ConnectionService extends Service {
 							}
 							
 							//Opening the input stream
-							inputStream = context.getContentResolver().openInputStream(pushRequest.sendUri);
+							try {
+								inputStream = context.getContentResolver().openInputStream(pushRequest.sendUri);
+							} catch(IllegalArgumentException exception) {
+								//Printing the stack trace
+								exception.printStackTrace();
+								
+								//Calling the fail method
+								pushRequest.isInProcessing = false;
+								handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+								
+								//Skipping the remainder of the iteration
+								continue;
+							}
 						}
 						//Otherwise checking if the request is using a file
 						else if(pushRequest.sendFile != null) {

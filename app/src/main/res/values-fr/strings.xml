@@ -100,11 +100,11 @@
 	<string name="message_eventtype_leave_you">Vous avez quitté la conversation</string>
 	<string name="message_eventtype_unknown">Événement inconnu</string>
 	<string name="message_messageeffect_invisibleink">Message envoyé avec une encre invisible</string>
-	<string name="message_setup_connect_title">Entrez l\'adresse du serveur</string>
+	<string name="message_setup_connect_address">L\'Adresse du serveur</string>
 	<string name="message_setup_connect_noserver">N\'avez-vous pas de serveur?</string>
 	<string name="message_setup_connect_serverguidelink">Lisez le guide du serveur</string>
 	<string name="message_setup_connect_connectionerror">La connexion a échoué</string>
-	<string name="message_setup_connect_authentication">Mot de passe</string>
+	<string name="message_setup_connect_password">Mot de passe</string>
 	
 	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages?</string>
 	<string name="message_setup_sync_download_description">Cette option remplacera tous les messages actuellement stockés sur l\'appareil. Si vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil.</string>
@@ -158,6 +158,7 @@
 	<string name="message_permissiondetails_microphone_missing">L\'autorisation d\'enregistrer de l\'audio est manquante</string>
 	<string name="action_draw">Dessiner</string>
 	<string name="action_addtext">Ajouter du texte</string>
+	<string name="action_markread">Marquer comme lu</string>
 	<string name="message_textcopied">Texte copié dans le presse-papiers</string>
 	<string name="notificationchannelimportance_1">Importance faible</string>
 	<string name="notificationchannelimportance_2">Importance moyenne</string>

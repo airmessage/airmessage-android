@@ -10,14 +10,14 @@ import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.RectF;
 import android.os.SystemClock;
-import android.support.annotation.Nullable;
-import android.support.v4.graphics.ColorUtils;
 import android.util.AttributeSet;
 import android.view.View;
 
 import java.util.Arrays;
 import java.util.Random;
 
+import androidx.annotation.Nullable;
+import androidx.core.graphics.ColorUtils;
 import me.tagavari.airmessage.R;
 
 public class InvisibleInkViewSync extends View {

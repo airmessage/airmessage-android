@@ -15,12 +15,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Parcel;
 import android.provider.OpenableColumns;
-import android.support.annotation.AttrRes;
-import android.support.annotation.ColorInt;
-import android.support.customtabs.CustomTabsIntent;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.widget.RecyclerView;
 import android.text.Spannable;
 import android.text.Spanned;
 import android.text.format.DateUtils;
@@ -53,6 +47,12 @@ import java.util.Random;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import androidx.annotation.AttrRes;
+import androidx.annotation.ColorInt;
+import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.RecyclerView;
 import java9.util.function.BiConsumer;
 import java9.util.function.Consumer;
 
@@ -370,6 +370,9 @@ public class Constants {
 		if("content".equals(uri.getScheme())) {
 			try(Cursor cursor = context.getContentResolver().query(uri, new String[]{OpenableColumns.SIZE}, null, null, null)) {
 				if(cursor != null && cursor.moveToFirst()) return cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
+			} catch(SecurityException exception) {
+				exception.printStackTrace();
+				return -1;
 			}
 		}
 		
@@ -670,7 +673,7 @@ public class Constants {
 		else if(list.length > 2) {
 			stringBuilder.append(resources.getString(R.string.list_n_start, list[0]));
 			for(int i = 1; i < list.length - 1; i++) stringBuilder.append(resources.getString(R.string.list_n_middle, list[i]));
-			stringBuilder.append(resources.getString(R.string.list_n_start, list[list.length - 1]));
+			stringBuilder.append(resources.getString(R.string.list_n_end, list[list.length - 1]));
 		}
 		
 		return stringBuilder.toString();
@@ -697,9 +700,10 @@ public class Constants {
 	} */
 	
 	static void enforceContentWidth(Resources resources, View view) {
-		//Getting the maximum content width
-		int maxContentWidth = resources.getDimensionPixelSize(R.dimen.contentwidth_max);
-		
+		enforceContentWidth(resources.getDimensionPixelSize(R.dimen.contentwidth_max), view);
+	}
+	
+	static void enforceContentWidth(int maxContentWidth, View view) {
 		//Enforcing the maximum content width
 		view.post(() -> {
 			//Getting the width
@@ -828,6 +832,12 @@ public class Constants {
 	/* interface BiConsumer<A1, A2> {
 		void accept(A1 a1, A2 a2);
 	} */
+	
+	static boolean validateContext(Context context) {
+		if(context instanceof Activity) return !((Activity) context).isFinishing();
+		
+		return true;
+	}
 	
 	static boolean checkBrokenPipe(IOException exception) {
 		return exception.getMessage().toLowerCase().contains("broken pipe");

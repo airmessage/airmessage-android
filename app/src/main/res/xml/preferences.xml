@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.v7.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-	<android.support.v7.preference.PreferenceCategory
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+	<androidx.preference.PreferenceCategory
 		android:key="@string/preferencegroup_messagenotifications_key"
 		android:title="@string/preferencegroup_messagenotifications_name" >
-		<android.support.v7.preference.SwitchPreferenceCompat
+		<androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_messagenotifications_getnotifications_key"
 			android:title="@string/preference_messagenotifications_getnotifications_title"
 			android:defaultValue="true" />
-		<com.takisoft.fix.support.v7.preference.RingtonePreference
+		<com.takisoft.preferencex.RingtonePreference
 			android:key="@string/preference_messagenotifications_sound_key"
 			android:dependency="@string/preference_messagenotifications_getnotifications_key"
 			android:title="@string/preference_messagenotifications_sound_title"
@@ -15,88 +15,88 @@
 			android:showSilent="true"
 			android:showDefault="true"
 			android:defaultValue="content://settings/system/notification_sound" />
-		<android.support.v7.preference.SwitchPreferenceCompat
+		<androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_messagenotifications_vibrate_key"
 			android:dependency="@string/preference_messagenotifications_getnotifications_key"
 			android:title="@string/preference_messagenotifications_vibrate_title"
 			android:defaultValue="true" />
-	</android.support.v7.preference.PreferenceCategory>
+	</androidx.preference.PreferenceCategory>
 	
-	<android.support.v7.preference.PreferenceCategory
+	<androidx.preference.PreferenceCategory
 		android:key="@string/preferencegroup_appearance_key"
 		android:title="@string/preferencegroup_appearance_name" >
-		<android.support.v7.preference.ListPreference
+		<androidx.preference.ListPreference
 			android:key="@string/preference_appearance_theme_key"
 			android:title="@string/preference_appearance_theme_title"
 			android:entries="@array/preference_appearance_theme_entries"
 			android:entryValues="@array/preference_appearance_theme_values"
 			android:defaultValue="follow_system"
 			android:summary="%s" />
-		<android.support.v7.preference.SwitchPreferenceCompat
+		<androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_appearance_location_key"
 			android:title="@string/preference_appearance_location_title"
 			android:summary="@string/preference_appearance_location_description"
 			android:persistent="false" />
-	</android.support.v7.preference.PreferenceCategory>
+	</androidx.preference.PreferenceCategory>
 
-    <android.support.v7.preference.PreferenceCategory
+    <androidx.preference.PreferenceCategory
         android:key="@string/preferencegroup_storage_key"
         android:title="@string/preferencegroup_storage_name" >
-		<android.support.v7.preference.SwitchPreferenceCompat
+		<androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_storage_autodownload_key"
 			android:title="@string/preference_storage_autodownload_name"
 			android:summary="@string/preference_storage_autodownload_desc"
 			android:defaultValue="false" />
-		<android.support.v7.preference.Preference
+		<androidx.preference.Preference
 			android:key="@string/preference_storage_deleteattachments_key"
 			android:title="@string/preference_storage_deleteattachments_name"
 			android:summary="@string/preference_storage_deleteattachments_desc" />
-        <android.support.v7.preference.Preference
+        <androidx.preference.Preference
             android:key="@string/preference_storage_deleteall_key"
             android:title="@string/preference_storage_deleteall_name" />
-    </android.support.v7.preference.PreferenceCategory>
+    </androidx.preference.PreferenceCategory>
 
-    <android.support.v7.preference.PreferenceCategory
+    <androidx.preference.PreferenceCategory
         android:key="@string/preferencegroup_server_key"
         android:title="@string/preferencegroup_server_name" >
-        <android.support.v7.preference.Preference
+        <androidx.preference.Preference
             android:key="@string/preference_server_serverdetails_key"
             android:title="@string/preference_server_serverdetails_title" >
 			<intent
 				android:action="android.intent.action.VIEW"
 				android:targetPackage="me.tagavari.airmessage"
 				android:targetClass="me.tagavari.airmessage.ServerSetup" />
-        </android.support.v7.preference.Preference>
-        <android.support.v7.preference.Preference
+        </androidx.preference.Preference>
+        <androidx.preference.Preference
             android:key="@string/preference_server_resync_key"
             android:title="@string/preference_server_resync_title" >
-        </android.support.v7.preference.Preference>
-		<!-- <android.support.v7.preference.SwitchPreferenceCompat
+        </androidx.preference.Preference>
+		<!-- <androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_foregroundservice_key"
 			android:title="@string/preference_server_foregroundservice_title"
 			android:summary="@string/preference_server_foregroundservice_description"
 			android:defaultValue="true" /> -->
-		<android.support.v7.preference.SwitchPreferenceCompat
+		<androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_connectionboot_key"
 			android:title="@string/preference_server_connectionboot_title"
 			android:defaultValue="true" />
-		<!-- <android.support.v7.preference.SwitchPreferenceCompat
+		<!-- <androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_disconnectionnotification_key"
 			android:title="@string/preference_server_disconnectionnotification_title"
 			android:summary="@string/preference_server_disconnectionnotification_description"
 			android:defaultValue="true" /> -->
-		<android.support.v7.preference.SwitchPreferenceCompat
+		<androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_dropreconnect_key"
 			android:title="@string/preference_server_dropreconnect_title"
 			android:summary="@string/preference_server_dropreconnect_description"
 			android:defaultValue="true" />
-		<android.support.v7.preference.SwitchPreferenceCompat
+		<androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_networkreconnect_key"
 			android:title="@string/preference_server_networkreconnect_title"
 			android:summary="@string/preference_server_networkreconnect_description"
 			android:defaultValue="true" />
-        <android.support.v7.preference.Preference
+        <androidx.preference.Preference
             android:key="@string/preference_server_help_key"
             android:title="@string/preference_server_help_title" />
-    </android.support.v7.preference.PreferenceCategory>
-</android.support.v7.preference.PreferenceScreen>
+    </androidx.preference.PreferenceCategory>
+</androidx.preference.PreferenceScreen>

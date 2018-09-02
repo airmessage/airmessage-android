@@ -9,13 +9,8 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Application;
+import android.app.Notification;
 import android.app.NotificationManager;
-import android.arch.lifecycle.AndroidViewModel;
-import android.arch.lifecycle.MutableLiveData;
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModel;
-import android.arch.lifecycle.ViewModelProvider;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.BroadcastReceiver;
 import android.content.ClipDescription;
 import android.content.Context;
@@ -38,24 +33,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcelable;
 import android.provider.MediaStore;
-import android.support.annotation.NonNull;
-import android.support.constraint.ConstraintLayout;
-import android.support.design.widget.AppBarLayout;
-import android.support.design.widget.FloatingActionButton;
-import android.support.v13.view.inputmethod.EditorInfoCompat;
-import android.support.v13.view.inputmethod.InputConnectionCompat;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentTransaction;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.content.FileProvider;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.util.Pools;
-import android.support.v7.widget.AppCompatEditText;
-import android.support.v7.widget.CardView;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.LinearSmoothScroller;
-import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.transition.TransitionManager;
@@ -93,6 +70,9 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 import com.crashlytics.android.Crashlytics;
+import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
 import java.io.IOException;
@@ -106,6 +86,28 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.widget.AppCompatEditText;
+import androidx.cardview.widget.CardView;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+import androidx.core.util.Pools;
+import androidx.core.view.inputmethod.EditorInfoCompat;
+import androidx.core.view.inputmethod.InputConnectionCompat;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.LinearSmoothScroller;
+import androidx.recyclerview.widget.RecyclerView;
 import java9.util.function.Consumer;
 import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
@@ -596,7 +598,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Setting the filler data
-		if(getIntent().hasExtra(Constants.intentParamDataText)) messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText));
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && getIntent().hasExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)) messageInputField.setText(getIntent().getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)); //Notification inline reply text (only supported on Android P and above)
+		else if(getIntent().hasExtra(Constants.intentParamDataText)) messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText)); //Shared text from activity
 		if(getIntent().hasExtra(Constants.intentParamDataFile)) {
 			Parcelable[] targetParcelables = getIntent().getParcelableArrayExtra(Constants.intentParamDataFile);
 			Uri[] targetUris = new Uri[targetParcelables.length];
@@ -1407,8 +1410,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				DatabaseManager.getInstance().updateConversationArchived(viewModel.conversationInfo.getLocalID(), newState);
 				
 				//Updating the button
-				((TextView) view.findViewById(R.id.button_archive_label)).setText(newState ? R.string.action_unarchive : R.string.action_archive);
-				((ImageView) view.findViewById(R.id.button_archive_icon)).setImageResource(newState ? R.drawable.unarchive : R.drawable.archive);
+				MaterialButton buttonView = (MaterialButton) view;
+				buttonView.setText(newState ? R.string.action_unarchive : R.string.action_archive);
+				buttonView.setIconResource(newState ? R.drawable.unarchive : R.drawable.archive);
 			});
 			
 			findViewById(R.id.button_delete).setOnClickListener(view -> {
@@ -1711,6 +1715,12 @@ public class Messaging extends AppCompatCompositeActivity {
 				Switch switchView = (Switch) view;
 				switchView.setThumbTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0xFFFAFAFA, color}));
 				switchView.setTrackTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0x61000000, color}));
+			}
+			else if(view instanceof MaterialButton) {
+				MaterialButton buttonView = (MaterialButton) view;
+				buttonView.setTextColor(color);
+				buttonView.setIconTint(ColorStateList.valueOf(color));
+				buttonView.setRippleColor(ColorStateList.valueOf(color));
 			}
 			else if(view instanceof TextView) ((TextView) view).setTextColor(color);
 			else if(view instanceof RelativeLayout) view.setBackground(new ColorDrawable(color));
@@ -3360,7 +3370,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//if(isFinishing() || isDestroyed()) return;
 			
 			//Setting the image thumbnail
-			Glide.with(getApplicationContext())
+			Glide.with(Messaging.this)
 					.load(item.getFile() != null ? item.getFile() : item.getUri())
 					.apply(RequestOptions.centerCropTransform())
 					.transition(DrawableTransitionOptions.withCrossFade())
@@ -5007,6 +5017,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		public InputConnection onCreateInputConnection(EditorInfo editorInfo) {
 			//Configuring the input connection
 			InputConnection inputConnection = super.onCreateInputConnection(editorInfo);
+			if(inputConnection == null) return null;
 			EditorInfoCompat.setContentMimeTypes(editorInfo, new String[]{"image/*"});
 			
 			//Creating the callback

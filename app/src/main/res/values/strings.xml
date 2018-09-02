@@ -14,6 +14,7 @@
 	<string name="action_delete">Delete</string>
 	<string name="action_deletemessage">Remove message</string>
 	<string name="action_reply">Reply</string>
+	<string name="action_markread">Mark as read</string>
 	<string name="action_retry">Retry</string>
 	<string name="action_search">Search</string>
 	<string name="action_update">Update</string>
@@ -41,7 +42,6 @@
 	<string name="action_sendfeedback">Send feedback</string>
 	<string name="action_downloadmessages">Download messages</string>
 	<string name="action_deletemessages">Delete messages</string>
-	<string name="action_sendmessage">Send message</string>
 	<string name="action_sharemessage">Share message</string>
 	<string name="action_addcontent">Add content</string>
 	<string name="action_takephoto">Take photo</string>
@@ -144,11 +144,11 @@
 	<string name="message_eventtype_kick_you_object">%s removed you from the conversation</string>
 	<string name="message_eventtype_unknown">Unknown event</string>
 	
-	<string name="message_setup_connect_title">Enter your server address</string>
+	<string name="message_setup_connect_address">Server address</string>
 	<string name="message_setup_connect_noserver">Don\'t have a server?</string>
 	<string name="message_setup_connect_serverguidelink">Take a look at the server guide</string>
 	<string name="message_setup_connect_connectionerror">Connection failed</string>
-	<string name="message_setup_connect_authentication">Password</string>
+	<string name="message_setup_connect_password">Password</string>
 	<string name="message_setup_sync_download_title">Download message history?</string>
 	<string name="message_setup_sync_download_description">This will replace any messages currently stored on the device. If you choose not to, only new messages will appear on this device.</string>
 	<string name="message_setup_sync_delete_description">Alternatively, you can start fresh and simply clear away your old messages</string>
