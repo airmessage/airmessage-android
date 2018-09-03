@@ -5,6 +5,8 @@
     <color name="colorAccent">@color/colorPrimary</color>
 	<color name="colorAccentDark">@color/colorPrimaryDark</color>
 	
+	<color name="colorExperimental">#651FFF</color>
+	
 	<color name="colorAppIcon">#FAFAFA</color>
 	
 	<color name="colorDivider">#1F000000</color>

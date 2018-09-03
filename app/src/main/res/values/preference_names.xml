@@ -1,10 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+	
+	<string name="preferencegroup_experimental_title">Experimental</string>
+	
+	<string name="preference_experimental_ordering_key" translatable="false">pref_experimental_ordering</string>
+	<string name="preference_experimental_ordering_title">Order messages by date received</string>
+	<string name="preference_experimental_ordering_desc">Change sorting method to prevent chat order from being lost</string>
+	
+	<string name="preference_experimental_ordering_post_key" translatable="false">pref_experimental_ordering_post</string>
+	<string name="preference_experimental_ordering_post_title">View associated post</string>
+	<string name="preference_experimental_ordering_post_desc">Get more info about this change and vote for or against it</string>
+	
     <string name="preference_messagenotifications_key" translatable="false">pref_messagenotifications</string>
-    <string name="preference_messagenotifications_name">Message notifications</string>
+    <string name="preference_messagenotifications_title">Message notifications</string>
 	
 	<string name="preferencegroup_appearance_key" translatable="false">pref_group_appearance</string>
-	<string name="preferencegroup_appearance_name">Appearance</string>
+	<string name="preferencegroup_appearance_title">Appearance</string>
 	<string name="preference_appearance_theme_key" translatable="false">pref_key_appearance_theme</string>
 	<string name="preference_appearance_theme_title">Theme</string>
 	<string-array name="preference_appearance_theme_entries">
@@ -24,7 +35,7 @@
 	<string name="preference_appearance_location_description">Use your current location to detect sunrise and sunset times for a more accurate night mode</string>
 	
     <string name="preferencegroup_messagenotifications_key" translatable="false">pref_group_notifications</string>
-    <string name="preferencegroup_messagenotifications_name">Notifications</string>
+    <string name="preferencegroup_messagenotifications_title">Notifications</string>
     <string name="preference_messagenotifications_getnotifications_key" translatable="false">pref_key_notifications_getnotifications</string>
     <string name="preference_messagenotifications_getnotifications_title">Get notifications</string>
     <string name="preference_messagenotifications_sound_key" translatable="false">pref_key_notifications_sound</string>
@@ -33,18 +44,18 @@
     <string name="preference_messagenotifications_vibrate_title">Vibrate</string>
 
     <string name="preferencegroup_storage_key" translatable="false">pref_group_storage</string>
-    <string name="preferencegroup_storage_name">Storage</string>
+    <string name="preferencegroup_storage_title">Storage</string>
 	<string name="preference_storage_autodownload_key" translatable="false">pref_key_storage_autodownload</string>
-	<string name="preference_storage_autodownload_name">Automatic downloads</string>
+	<string name="preference_storage_autodownload_title">Automatic downloads</string>
 	<string name="preference_storage_autodownload_desc">Automatically download new attachments</string>
 	<string name="preference_storage_deleteattachments_key" translatable="false">pref_key_storage_deleteattachments</string>
-	<string name="preference_storage_deleteattachments_name">Delete downloaded attachments</string>
+	<string name="preference_storage_deleteattachments_title">Delete downloaded attachments</string>
 	<string name="preference_storage_deleteattachments_desc">Attachments can be downloaded again at any time</string>
     <string name="preference_storage_deleteall_key" translatable="false">pref_key_storage_deleteall</string>
-    <string name="preference_storage_deleteall_name">Delete all messages</string>
+    <string name="preference_storage_deleteall_title">Delete all messages</string>
 
     <string name="preferencegroup_server_key" translatable="false">pref_group_server</string>
-    <string name="preferencegroup_server_name">Server</string>
+    <string name="preferencegroup_server_title">Server</string>
     <string name="preference_server_serverdetails_key" translatable="false">pref_key_server_address</string>
     <string name="preference_server_serverdetails_title">Edit server information</string>
 	<string name="preference_server_resync_key" translatable="false">pref_key_server_resync</string>

@@ -27,18 +27,18 @@
 	<string name="imperative_messageinput">Saisissez un message</string>
 	<string name="imperative_selectfile">Sélectionnez un fichier</string>
 	<string name="message_permissiondetails_microphone_failedrequest">AirMessage doit être capable d\'enregistrer de l\'audio pour envoyer des messages audio</string>
-	<string name="preference_messagenotifications_name">Notifications de message</string>
-	<string name="preferencegroup_messagenotifications_name">Notifications</string>
+	<string name="preference_messagenotifications_title">Notifications de message</string>
+	<string name="preferencegroup_messagenotifications_title">Notifications</string>
 	<string name="preference_messagenotifications_getnotifications_title">Recevoir des notifications</string>
 	<string name="preference_messagenotifications_sound_title">Son de notification</string>
 	<string name="preference_messagenotifications_vibrate_title">Vibrer</string>
-	<string name="preferencegroup_storage_name">Stockage</string>
-	<string name="preference_storage_autodownload_name">Téléchargements automatiques</string>
+	<string name="preferencegroup_storage_title">Stockage</string>
+	<string name="preference_storage_autodownload_title">Téléchargements automatiques</string>
 	<string name="preference_storage_autodownload_desc">Télécharger automatiquement les nouvelles pièces jointes</string>
-	<string name="preference_storage_deleteattachments_name">Supprimer les pièces jointes téléchargées</string>
+	<string name="preference_storage_deleteattachments_title">Supprimer les pièces jointes téléchargées</string>
 	<string name="preference_storage_deleteattachments_desc">Les pièces jointes peuvent être téléchargées à tout moment</string>
-	<string name="preference_storage_deleteall_name">Supprimer tous les messages</string>
-	<string name="preferencegroup_server_name">Serveur</string>
+	<string name="preference_storage_deleteall_title">Supprimer tous les messages</string>
+	<string name="preferencegroup_server_title">Serveur</string>
 	<string name="preference_server_serverdetails_title">Modifier les informations du serveur</string>
 	<string name="preference_server_resync_title">Resynchroniser les messages</string>
 	<string name="preference_server_connectionboot_title">Connexion automatique au démarrage</string>
@@ -123,7 +123,6 @@
 	<string name="message_confirm_resyncmessages_description">Cette action remplacera tous les messages actuellement stockés</string>
 	<string name="message_confirm_resyncmessages_started">Les nouveaux messages sont en cours de téléchargement</string>
 	<string name="message_confirm_resyncmessages_inprogress">Les nouveaux messages sont déjà en cours de téléchargement</string>
-	<string name="action_sendmessage">Répondre</string>
 	<string name="action_copytext">Copier le texte</string>
 	<string name="action_share">Partager</string>
 	<string name="action_deletedata">Supprimer la pièce jointe</string>
@@ -257,7 +256,7 @@
 	<string name="action_reconfigure">Reconfigurer</string>
 	<string name="preference_server_dropreconnect_description">Essayer de vous reconnecter immédiatement après la perte de la connexion</string>
 	<string name="preference_server_dropreconnect_title">Reconnexion de connexion perdue</string>
-	<string name="preferencegroup_appearance_name">Apparence</string>
+	<string name="preferencegroup_appearance_title">Apparence</string>
 	<string name="preference_appearance_theme_title">Thème</string>
 	<string name="preference_appearance_location_title">Détection de nuit améliorée</string>
 	<string name="preference_appearance_location_description">Utiliser votre position actuelle pour détecter les heures de lever et de coucher du soleil pour un mode de nuit plus précis</string>
@@ -285,4 +284,9 @@
 	<string name="imperative_permission_documents">Appuyez sur pour donner accès aux documents</string>
 	<string name="imperative_permission_location">Appuyez sur pour donner accès à l\'emplacement</string>
 	<string name="action_pinconversation">Épingler la conversation</string>
+	<string name="preferencegroup_experimental_title">Expérimental</string>
+	<string name="preference_experimental_ordering_title">Trier des messages par date de réception</string>
+	<string name="preference_experimental_ordering_desc">Modifier la méthode de tri pour éviter que l\'ordre de discussion ne soit perdu</string>
+	<string name="preference_experimental_ordering_post_title">Voir le post associé</string>
+	<string name="preference_experimental_ordering_post_desc">Obtenez plus d\'informations sur ce changement et votez pour ou contre</string>
 </resources>
