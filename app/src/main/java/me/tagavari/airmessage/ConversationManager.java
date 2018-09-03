@@ -3954,7 +3954,6 @@ class ConversationManager {
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.FULL).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
-						//stringBuilder.append("Timestamp: " + getMessageInfo().getDate()).append('\n'); //TESTING date
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog

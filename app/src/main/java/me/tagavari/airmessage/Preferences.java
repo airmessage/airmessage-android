@@ -486,6 +486,6 @@ public class Preferences extends AppCompatActivity {
 	}
 	
 	static boolean isExperimentalSortID() {
-		return PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_experimental_ordering_post_key), true);
+		return PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_experimental_ordering_key), true);
 	}
 }
