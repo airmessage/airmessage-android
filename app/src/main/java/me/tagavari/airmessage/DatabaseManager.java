@@ -1909,7 +1909,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
 									" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID +
 									" WHERE " + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + Blocks.MessageInfo.stateCodeGhost + " AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(attachmentChecksum, Base64.NO_WRAP) + "' AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID() +
-									" ORDER BY " + (Preferences.isExperimentalSortID() ? Contract.MessageEntry._ID : Contract.MessageEntry.COLUMN_NAME_DATE) + " DESC" +
+									" ORDER BY " + (Preferences.isExperimentalSortID() ? Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID : Contract.MessageEntry.COLUMN_NAME_DATE) + " DESC" +
 									" LIMIT 1;",
 							null)) {
 						//Checking if there are any results
@@ -2062,7 +2062,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
 									" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID +
 									" WHERE " + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + Blocks.MessageInfo.stateCodeGhost + " AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(attachmentChecksum, Base64.NO_WRAP) + "' AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID() +
-									" ORDER BY " + (Preferences.isExperimentalSortID() ? Contract.MessageEntry._ID : Contract.MessageEntry.COLUMN_NAME_DATE) + " DESC" +
+									" ORDER BY " + (Preferences.isExperimentalSortID() ? Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID : Contract.MessageEntry.COLUMN_NAME_DATE) + " DESC" +
 									" LIMIT 1;",
 							null)) {
 						//Checking if there are any results

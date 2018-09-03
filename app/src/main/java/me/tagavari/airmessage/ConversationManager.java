@@ -19,10 +19,11 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.Html;
+import android.text.SpannableString;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
+import android.text.style.StyleSpan;
 import android.transition.TransitionManager;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
@@ -2329,7 +2330,10 @@ class ConversationManager {
 					//Otherwise formatting the when as the date
 					else when = DateFormat.getDateInstance(DateFormat.SHORT).format(dateRead);
 					
-					return Html.fromHtml("<b>" + context.getResources().getString(R.string.state_read) + "</b> " + when);
+					String readState = context.getResources().getString(R.string.state_read);
+					SpannableString label = new SpannableString(readState + ' ' + when);
+					label.setSpan(new StyleSpan(Typeface.BOLD), 0, readState.length(), 0);
+					return label;
 				}
 			}
 		}
