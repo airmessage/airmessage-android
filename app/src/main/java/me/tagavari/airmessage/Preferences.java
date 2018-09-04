@@ -277,7 +277,7 @@ public class Preferences extends AppCompatActivity {
 			
 			//Setting the intents
 			findPreference(getResources().getString(R.string.preference_server_help_key)).setIntent(new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress));
-			findPreference(getResources().getString(R.string.preference_experimental_ordering_post_key)).setIntent(new Intent(Intent.ACTION_VIEW, Uri.parse("https://plus.google.com")));
+			findPreference(getResources().getString(R.string.preference_experimental_ordering_post_key)).setIntent(new Intent(Intent.ACTION_VIEW, Uri.parse("https://plus.google.com/+ColeFeuer/posts/LZSTvNpqxE5")));
 			
 			//Setting the listeners
 			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceClickListener(ringtoneClickListener);
