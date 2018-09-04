@@ -689,7 +689,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor, draftMessage, draftFiles, draftUpdateTime);
 			conversationInfo.setArchived(chatArchived);
 			conversationInfo.setMuted(chatMuted);
-			conversationInfo.setLastItem(lightItem, false);
+			conversationInfo.trySetLastItem(lightItem, false);
 			
 			//Adding the conversation to the list
 			conversationList.add(conversationInfo);
@@ -747,7 +747,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			//Getting the light item
 			ConversationManager.LightConversationItem lightItem;
 			if(draftMessage != null) {
-				lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime);
+				lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime, true);
 			} else if(!draftFiles.isEmpty()) {
 				//Converting the draft list to a string resource list
 				ArrayList<Integer> draftStringRes = new ArrayList<>();
@@ -756,14 +756,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 				String summary;
 				if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
 				else summary = context.getResources().getQuantityString(R.plurals.message_multipleattachments, draftStringRes.size(), draftStringRes.size());
-				lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime);
+				lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime, true);
 			} else lightItem = getLightItem(context, chatID);
 			
 			//Creating and adding the conversation info
 			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatName, chatUnreadMessages, chatColor, draftMessage, draftFiles, draftUpdateTime);
 			conversationInfo.setArchived(chatArchived);
 			conversationInfo.setMuted(chatMuted);
-			conversationInfo.setLastItem(lightItem, false);
+			conversationInfo.trySetLastItem(lightItem, false);
 			
 			//Adding the conversation to the list
 			conversationList.add(conversationInfo);
@@ -806,7 +806,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		List<ConversationManager.ConversationItem> conversationItems = new ArrayList<>();
 		
 		//Querying the database
-		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " ASC", null);
+		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, (Preferences.isExperimentalSortID() ? Contract.MessageEntry._ID : Contract.MessageEntry.COLUMN_NAME_DATE) + " ASC", null);
 		//Cursor cursor = database.rawQuery(SQL_FETCH_CONVERSATION_MESSAGES, new String[]{Long.toString(conversationInfo.getLocalID())});
 		
 		//Getting the indexes
@@ -990,7 +990,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?";
 			selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID())};
 		}
-		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, selection, selectionArgs, null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " DESC", Integer.toString(Messaging.messageChunkSize));
+		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, selection, selectionArgs, null, null, (Preferences.isExperimentalSortID() ? Contract.MessageEntry._ID : Contract.MessageEntry.COLUMN_NAME_DATE) + " DESC", Integer.toString(Messaging.messageChunkSize));
 		//Cursor cursor = database.rawQuery(SQL_FETCH_CONVERSATION_MESSAGES, new String[]{Long.toString(conversationInfo.getLocalID())});
 		
 		//Getting the indexes
@@ -1317,7 +1317,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				new String[]{Contract.MessageEntry._ID, Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, Contract.MessageEntry.COLUMN_NAME_DATE},
 				Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(chatID)},
 				null, null,
-				Contract.MessageEntry.COLUMN_NAME_DATE + " DESC ",
+				(Preferences.isExperimentalSortID() ? Contract.MessageEntry._ID : Contract.MessageEntry.COLUMN_NAME_DATE) + " DESC ",
 				"1");
 		
 		//Closing the cursor and returning if there are no results
@@ -1363,7 +1363,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Checking if the message is valid
 				if(message != null) {
 					//Returning the light message info (without the attachments)
-					return new ConversationManager.LightConversationItem(ConversationManager.MessageInfo.getSummary(context, sender == null, message, sendStyle, new ArrayList<>()), date);
+					return new ConversationManager.LightConversationItem(ConversationManager.MessageInfo.getSummary(context, sender == null, message, sendStyle, new ArrayList<>()), date, lastItemID, -1);
 				}
 				
 				//Retrieving the attachments
@@ -1375,7 +1375,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Closing the cursor and returning if an empty item there are no results
 				if(!cursor.moveToNext()) {
 					cursor.close();
-					return new ConversationManager.LightConversationItem(context.getResources().getString(R.string.part_unknown), date);
+					return new ConversationManager.LightConversationItem(context.getResources().getString(R.string.part_unknown), date, lastItemID, -1);
 				}
 				
 				//Getting the attachment string resources
@@ -1388,7 +1388,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				cursor.close();
 				
 				//Returning the light message info (without the message)
-				return new ConversationManager.LightConversationItem(ConversationManager.MessageInfo.getSummary(context, sender == null, null, sendStyle, attachmentStringRes), date);
+				return new ConversationManager.LightConversationItem(ConversationManager.MessageInfo.getSummary(context, sender == null, null, sendStyle, attachmentStringRes), date, lastItemID, -1);
 			case ConversationManager.GroupActionInfo.itemType: //Group action
 			{
 				//Retrieving the action data
@@ -1427,7 +1427,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				cursor.close();
 				
 				//Returning the light message info
-				return new ConversationManager.LightConversationItem(summary, date);
+				return new ConversationManager.LightConversationItem(summary, date, lastItemID, -1);
 			}
 			case ConversationManager.ChatRenameActionInfo.itemType: //Chat rename
 				//Retrieving the action data
@@ -1461,14 +1461,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 				cursor.close();
 				
 				//Returning the light conversation item
-				return new ConversationManager.LightConversationItem(summary, date);
+				return new ConversationManager.LightConversationItem(summary, date, lastItemID, -1);
 			case ConversationManager.ChatCreationMessage.itemType: //Chat creation
 				//Returning the light conversation item
-				return new ConversationManager.LightConversationItem(context.getString(R.string.message_conversationcreated), date);
+				return new ConversationManager.LightConversationItem(context.getString(R.string.message_conversationcreated), date, lastItemID, -1);
 		}
 		
 		//Returning the light message info
-		return new ConversationManager.LightConversationItem("", date);
+		return new ConversationManager.LightConversationItem("", date, lastItemID, -1);
 
 		/* //Getting the indexes
 		int senderColumnIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDER);
@@ -1656,7 +1656,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Adding the conversation created message
 		ConversationManager.ConversationItem createdMessage = new ConversationManager.ChatCreationMessage(localID, System.currentTimeMillis(), conversationInfo);
-		conversationInfo.setLastItem(createdMessage.toLightConversationItemSync(context), false);
+		conversationInfo.trySetLastItem(createdMessage.toLightConversationItemSync(context), false);
 		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
 		
 		contentValues = new ContentValues();
@@ -1747,7 +1747,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, conversationGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor, draftMessage, draftFiles, draftUpdateTime);
 		conversationInfo.setArchived(chatArchived);
 		conversationInfo.setMuted(chatMuted);
-		conversationInfo.setLastItem(lightItem, false);
+		conversationInfo.trySetLastItem(lightItem, false);
 		
 		//Returning the conversation info
 		return conversationInfo;
@@ -1799,7 +1799,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, conversationGUID, conversationState, service, conversationMembers, chatTitle, chatUnreadMessages, chatColor, draftMessage, draftFiles, draftUpdateTime);
 			conversationInfo.setArchived(chatArchived);
 			conversationInfo.setMuted(chatMuted);
-			conversationInfo.setLastItem(lightItem, false);
+			conversationInfo.trySetLastItem(lightItem, false);
 			
 			//Returning the conversation info
 			return conversationInfo;
@@ -1867,7 +1867,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID, Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED},
 							Contract.MessageEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?",
 							new String[]{Integer.toString(Blocks.MessageInfo.stateCodeGhost), messageStruct.text, Long.toString(conversationInfo.getLocalID())},
-							null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " DESC", "1")) {
+							null, null, (Preferences.isExperimentalSortID() ? Contract.MessageEntry._ID : Contract.MessageEntry.COLUMN_NAME_DATE) + " DESC", "1")) {
 						//Checking if there are any results
 						if(cursor.moveToFirst()) {
 							//Getting the message identifier
@@ -1909,7 +1909,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
 									" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID +
 									" WHERE " + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + Blocks.MessageInfo.stateCodeGhost + " AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(attachmentChecksum, Base64.NO_WRAP) + "' AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID() +
-									" ORDER BY " + Contract.MessageEntry.COLUMN_NAME_DATE + " DESC" +
+									" ORDER BY " + (Preferences.isExperimentalSortID() ? Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID : Contract.MessageEntry.COLUMN_NAME_DATE) + " DESC" +
 									" LIMIT 1;",
 							null)) {
 						//Checking if there are any results
@@ -2016,7 +2016,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID},
 							Contract.MessageEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?",
 							new String[]{Integer.toString(Blocks.MessageInfo.stateCodeGhost), message.getMessageText(), Long.toString(conversationInfo.getLocalID())},
-							null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " DESC", "1")) {
+							null, null, (Preferences.isExperimentalSortID() ? Contract.MessageEntry._ID : Contract.MessageEntry.COLUMN_NAME_DATE) + " DESC", "1")) {
 						//Checking if there are any results
 						if(cursor.moveToFirst()) {
 							//Getting the message identifier
@@ -2062,7 +2062,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
 									" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID +
 									" WHERE " + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + Blocks.MessageInfo.stateCodeGhost + " AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(attachmentChecksum, Base64.NO_WRAP) + "' AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID() +
-									" ORDER BY " + Contract.MessageEntry.COLUMN_NAME_DATE + " DESC" +
+									" ORDER BY " + (Preferences.isExperimentalSortID() ? Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID : Contract.MessageEntry.COLUMN_NAME_DATE) + " DESC" +
 									" LIMIT 1;",
 							null)) {
 						//Checking if there are any results

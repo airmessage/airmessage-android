@@ -4874,6 +4874,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	void detailSwitchConversationColor(int newColor) {
 		//Updating the conversation color
 		viewModel.conversationInfo.setConversationColor(newColor);
+		if(!viewModel.conversationInfo.isGroupChat()) viewModel.conversationInfo.updateViewUser(this);
 		
 		//Coloring the UI
 		colorUI(findViewById(android.R.id.content));
@@ -4896,6 +4897,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Updating the message colors
 		if(viewModel.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) conversationItem.updateViewColor(this);
+		
+		//Updating the listing color
+		viewModel.conversationInfo.updateViewUser(this);
 		
 		//Updating the member color on disk
 		DatabaseManager.getInstance().updateMemberColor(viewModel.conversationInfo.getLocalID(), member.getName(), newColor);

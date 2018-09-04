@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.view.MenuItem;
 import android.view.View;
@@ -276,6 +277,7 @@ public class Preferences extends AppCompatActivity {
 			
 			//Setting the intents
 			findPreference(getResources().getString(R.string.preference_server_help_key)).setIntent(new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress));
+			findPreference(getResources().getString(R.string.preference_experimental_ordering_post_key)).setIntent(new Intent(Intent.ACTION_VIEW, Uri.parse("https://plus.google.com/+ColeFeuer/posts/LZSTvNpqxE5")));
 			
 			//Setting the listeners
 			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceClickListener(ringtoneClickListener);
@@ -482,42 +484,8 @@ public class Preferences extends AppCompatActivity {
 			preference.setSummary(((MainApplication) getActivity().getApplication()).getConnectivitySharedPrefs().getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null));
 		}
 	}
-}
 	
-	/* @Override
-	public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
-		//Checking if the request code is contacts access
-		if(requestCode == Constants.permissionReadContacts) {
-			//Checking if the result is a success
-			if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-				//Getting the switch preference
-				SwitchPreference switchPreference = (SwitchPreference) findPreference(getResources().getString(R.string.preference_none_contacts_key));
-				
-				//Enabling the switch
-				switchPreference.setChecked(true);
-				
-				//Refreshing the users
-				UserCacheHelper.refreshUsers(this, ConversationManager.getConversations().toArray(new ConversationManager.ConversationInfo[0]));
-			}
-			//Otherwise checking if the result is a denial
-			else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
-				//Creating a snackbar
-				Snackbar snackbar = Snackbar.make(findViewById(android.R.id.content), R.string.permission_rejected, Snackbar.LENGTH_LONG).setAction(R.string.button_settings, new View.OnClickListener() {
-					@Override
-					public void onClick(View view) {
-						//Opening the application settings
-						Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-						intent.setData(Uri.parse("package:" + getPackageName()));
-						startActivity(intent);
-					}
-				});
-				
-				//Coloring the snackbar
-				//((TextView) snackbar.getView().findViewById(android.support.design.R.id.snackbar_text)).setTextColor(Color.WHITE);
-				((TextView) snackbar.getView().findViewById(android.support.design.R.id.snackbar_action)).setTextColor(getResources().getColor(R.color.colorAccent, null));
-				
-				//Showing the snackbar
-				snackbar.show();
-			}
-		}
-	} */
+	static boolean isExperimentalSortID() {
+		return PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_experimental_ordering_key), true);
+	}
+}

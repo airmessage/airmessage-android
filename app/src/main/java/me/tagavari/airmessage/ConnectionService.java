@@ -6007,8 +6007,7 @@ public class ConnectionService extends Service {
 						if(conversationItem == null) continue;
 						
 						//Updating the parent conversation's last item
-						if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
-							parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context), false);
+						parentConversation.trySetLastItem(conversationItem.toLightConversationItemSync(context), false);
 					}
 					
 					//Updating the progress
@@ -6515,7 +6514,7 @@ public class ConnectionService extends Service {
 			if(context == null) return null;
 			
 			//Iterating over the conversations from the received messages
-			Collections.sort(structConversationItems, (value1, value2) -> Long.compare(value1.date, value2.date));
+			//Collections.sort(structConversationItems, (value1, value2) -> Long.compare(value1.date, value2.date));
 			List<String> processedConversations = new ArrayList<>();
 			List<ConversationManager.ConversationInfo> incompleteServerConversations = new ArrayList<>();
 			for(Blocks.ConversationItem conversationItemStruct : structConversationItems) {
@@ -6605,8 +6604,7 @@ public class ConnectionService extends Service {
 					if(!foregroundConversationsCache.contains(parentConversation.getLocalID()) && (conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing())) DatabaseManager.getInstance().incrementUnreadMessageCount(parentConversation.getLocalID());
 				}
 				//Otherwise updating the last conversation item
-				else if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
-					parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context), false);
+				else parentConversation.trySetLastItem(conversationItem.toLightConversationItemSync(context), false);
 			}
 			
 			{
@@ -6672,7 +6670,7 @@ public class ConnectionService extends Service {
 					{
 						boolean addItemResult = parentConversation.addConversationItems(context, conversationItems);
 						//Setting the last item if the conversation items couldn't be added
-						if(!addItemResult) parentConversation.setLastItemUpdate(context, conversationItems.get(conversationItems.size() - 1), false);
+						if(!addItemResult) parentConversation.trySetLastItemUpdate(context, conversationItems.get(conversationItems.size() - 1), false);
 					}
 					
 					//Iterating over the conversation items
@@ -6798,7 +6796,7 @@ public class ConnectionService extends Service {
 				
 				//Updating the parent conversation's last item
 				if(parentConversation.getLastItem() == null || parentConversation.getLastItem().getDate() < conversationItem.getDate())
-					parentConversation.setLastItem(conversationItem.toLightConversationItemSync(context));
+					parentConversation.trySetLastItem(conversationItem.toLightConversationItemSync(context));
 				
 				//Publishing the progress
 				publishProgress(++progress);

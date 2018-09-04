@@ -19,10 +19,11 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.Html;
+import android.text.SpannableString;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
+import android.text.style.StyleSpan;
 import android.transition.TransitionManager;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
@@ -111,7 +112,12 @@ class ConversationManager {
 		if(message1 == null || message2 == null) return 0;
 		
 		//Returning the comparison
-		return Long.compare(message1.getDate(), message2.getDate());
+		if(Preferences.isExperimentalSortID()) {
+			if(message1.getLocalID() == -1 && message2.getLocalID() == -1) return Long.compare(message1.getDate(), message2.getDate());
+			if(message1.getLocalID() == -1) return 1;
+			if(message2.getLocalID() == -1) return -1;
+			return Long.compare(message1.getLocalID(), message2.getLocalID());
+		} else return Long.compare(message1.getDate(), message2.getDate());
 	};
 	static final Comparator<MemberInfo> memberInfoComparator = (member1, member2) -> {
 		//Returning 0 if either of the values are invalid
@@ -317,6 +323,38 @@ class ConversationManager {
 		
 		//Returning the list
 		return list;
+	}
+	
+	static int compareConversationItems(ConversationItem item1, ConversationItem item2) {
+		return conversationItemComparator.compare(item1, item2);
+	}
+	
+	static int compareConversationItems(LightConversationItem item1, ConversationItem item2) {
+		//Returning 0 if either of the values are invalid
+		if(item1 == null || item2 == null) return 0;
+		
+		//Returning the comparison
+		if(Preferences.isExperimentalSortID()) {
+			if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
+			if(item1.getLocalID() != -1 && item2.getLocalID() != -1) return Long.compare(item1.getLocalID(), item2.getLocalID());
+			if(item1.getLocalID() == -1 && item2.getLocalID() == -1) return Long.compare(item1.getDate(), item2.getDate());
+			if(item1.getLocalID() == -1) return 1;
+			return -1; //Item 2's local ID is -1
+		} else return Long.compare(item1.getDate(), item2.getDate());
+	}
+	
+	static int compareConversationItems(LightConversationItem item1, LightConversationItem item2) {
+		//Returning 0 if either of the values are invalid
+		if(item1 == null || item2 == null) return 0;
+		
+		//Returning the comparison
+		if(Preferences.isExperimentalSortID()) {
+			if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
+			if(item1.getLocalID() != -1 && item2.getLocalID() != -1) return Long.compare(item1.getLocalID(), item2.getLocalID());
+			if(item1.getLocalID() == -1 && item2.getLocalID() == -1) return Long.compare(item1.getDate(), item2.getDate());
+			if(item1.getLocalID() == -1) return 1;
+			return -1; //Item 2's local ID is -1
+		} else return Long.compare(item1.getDate(), item2.getDate());
 	}
 	
 	static class ConversationInfo implements Serializable {
@@ -858,7 +896,7 @@ class ConversationManager {
 					if(update) activityStateTarget.updateActivityStateDisplay(context);
 				} else {
 					//Replacing the item if the new one is more recent
-					if(activityStateTarget.getDate() >= activeMessage.getDate()) {
+					if(ConversationManager.compareConversationItems(activityStateTarget, activeMessage) >= 0) {
 						setActivityStateTargetLatest(activityStateTarget);
 						
 						//Updating the views
@@ -887,7 +925,7 @@ class ConversationManager {
 					}
 				} else {
 					//Replacing the item if the new one is more recent
-					if(activityStateTarget.getDate() >= activeMessageRead.getDate() &&
+					if(ConversationManager.compareConversationItems(activityStateTarget, activeMessageRead) >= 0 &&
 							(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
 						setActivityStateTargetRead(activityStateTarget);
 						setActivityStateTargetLatest(activityStateTarget);
@@ -915,7 +953,7 @@ class ConversationManager {
 			} else {
 				//Replacing the item if the new one is outgoing and more recent
 				if(activityStateTarget.isOutgoing() &&
-						activityStateTarget.getDate() >= activeMessage.getDate() &&
+						ConversationManager.compareConversationItems(activityStateTarget, activeMessage) >= 0 &&
 						(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
 					setActivityStateTargetRead(activityStateTarget);
 					
@@ -969,23 +1007,23 @@ class ConversationManager {
 			return lastItem;
 		}
 		
-		boolean setLastItem(LightConversationItem item, boolean force) {
-			if(force || lastItem == null || (lastItem.getDate() < item.getDate() && !lastItem.isPinned())) {
+		boolean trySetLastItem(LightConversationItem item, boolean force) {
+			if(force || lastItem == null || (ConversationManager.compareConversationItems(lastItem, item) < 0 && !lastItem.isPinned())) {
 				lastItem = item;
 				return true;
 			} else return false;
 		}
 		
-		void setLastItemUpdate(Context context, ConversationItem lastConversationItem, boolean force) {
+		void trySetLastItemUpdate(Context context, ConversationItem lastConversationItem, boolean force) {
 			//Setting the last item
-			LightConversationItem item = new LightConversationItem("", lastConversationItem.getDate());
-			if(setLastItem(item, force)) lastConversationItem.getSummary(context, (wasTasked, result) -> item.setMessage((String) result));
+			LightConversationItem item = new LightConversationItem("", lastConversationItem.getDate(), lastConversationItem.getLocalID(), lastConversationItem.getDate());
+			if(trySetLastItem(item, force)) lastConversationItem.getSummary(context, (wasTasked, result) -> item.setMessage((String) result));
 		}
 		
 		void updateLastItem(Context context) {
 			//Checking if there is a draft message
 			if(draftMessage != null) {
-				lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime);
+				lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime, true);
 			} else if(!draftFiles.isEmpty()) {
 				//Converting the draft list to a string resource list
 				ArrayList<Integer> draftStringRes = new ArrayList<>();
@@ -994,7 +1032,7 @@ class ConversationManager {
 				String summary;
 				if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
 				else summary = context.getResources().getQuantityString(R.plurals.message_multipleattachments, draftStringRes.size(), draftStringRes.size());
-				lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime);
+				lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime, true);
 			} else {
 				//Getting the list
 				ArrayList<ConversationItem> conversationItems = getConversationItems();
@@ -1004,7 +1042,7 @@ class ConversationManager {
 				ConversationItem lastConversationItem = conversationItems.get(conversationItems.size() - 1);
 				
 				//Setting the last item
-				lastItem = new LightConversationItem("", lastConversationItem.getDate());
+				lastItem = new LightConversationItem("", lastConversationItem.getDate(), lastConversationItem.getLocalID(), lastConversationItem.getServerID());
 				lastConversationItem.getSummary(context, new Constants.ResultCallback<String>() {
 					@Override
 					public void onResult(boolean wasTasked, String result) {
@@ -1295,7 +1333,7 @@ class ConversationManager {
 			//Iterating over the conversation items backwards (more recent items appear at the end of the list, and new items are more likely to be recent than old)
 			for(int i = conversationItems.size() - 1; i >= 0; i--) {
 				//Skipping the remainder of the iteration if the item is newer
-				if(conversationItems.get(i).date > conversationItem.date) continue;
+				if(ConversationManager.compareConversationItems(conversationItems.get(i), conversationItem) > 0) continue;
 				
 				//Adding the item
 				int addedIndex = i + 1;
@@ -1333,7 +1371,7 @@ class ConversationManager {
 			addConversationItemRelation(this, conversationItems, message, context, true);
 			
 			//Updating the last item
-			setLastItemUpdate(context, message, false);
+			trySetLastItemUpdate(context, message, false);
 			
 			//Updating the adapter
 			ActivityCallbacks updater = getActivityCallbacks();
@@ -2292,7 +2330,10 @@ class ConversationManager {
 					//Otherwise formatting the when as the date
 					else when = DateFormat.getDateInstance(DateFormat.SHORT).format(dateRead);
 					
-					return Html.fromHtml("<b>" + context.getResources().getString(R.string.state_read) + "</b> " + when);
+					String readState = context.getResources().getString(R.string.state_read);
+					SpannableString label = new SpannableString(readState + ' ' + when);
+					label.setSpan(new StyleSpan(Typeface.BOLD), 0, readState.length(), 0);
+					return label;
 				}
 			}
 		}
@@ -3153,7 +3194,7 @@ class ConversationManager {
 		
 		@Override
 		void toLightConversationItem(Context context, Constants.ResultCallback<LightConversationItem> callback) {
-			getSummary(context, (wasTasked, result) -> callback.onResult(wasTasked, new LightConversationItem(result, getDate())));
+			getSummary(context, (wasTasked, result) -> callback.onResult(wasTasked, new LightConversationItem(result, getDate(), getLocalID(), getServerID())));
 		}
 		
 		@Override
@@ -3164,7 +3205,7 @@ class ConversationManager {
 				attachmentStringRes.add(getNameFromContentType(attachment.getContentType()));
 			
 			//Returning the summary
-			return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes), getDate());
+			return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes), getDate(), getLocalID(), getServerID());
 		}
 		
 		void addSticker(StickerInfo sticker) {
@@ -3917,7 +3958,6 @@ class ConversationManager {
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.FULL).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
-						//stringBuilder.append("Timestamp: " + getMessageInfo().getDate()).append('\n'); //TESTING date
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
@@ -5747,7 +5787,7 @@ class ConversationManager {
 		
 		@Override
 		void toLightConversationItem(Context context, Constants.ResultCallback<LightConversationItem> callback) {
-			getSummary(context, (wasTasked, result) -> callback.onResult(wasTasked, new LightConversationItem(result, getDate())));
+			getSummary(context, (wasTasked, result) -> callback.onResult(wasTasked, new LightConversationItem(result, getDate(), getLocalID(), getServerID())));
 		}
 		
 		@Override
@@ -5769,7 +5809,7 @@ class ConversationManager {
 			}
 			
 			//Returning the light conversation item
-			return new LightConversationItem(getDirectSummary(context, titledAgent, titledOther, actionType), getDate());
+			return new LightConversationItem(getDirectSummary(context, titledAgent, titledOther, actionType), getDate(), getLocalID(), getServerID());
 		}
 	}
 	
@@ -5850,7 +5890,7 @@ class ConversationManager {
 		@Override
 		void toLightConversationItem(Context context, Constants.ResultCallback<LightConversationItem> callback) {
 			getSummary(context, (wasTasked, result) -> {
-				callback.onResult(wasTasked, new LightConversationItem(result, getDate()));
+				callback.onResult(wasTasked, new LightConversationItem(result, getDate(), getLocalID(), getServerID()));
 			});
 		}
 		
@@ -5875,7 +5915,7 @@ class ConversationManager {
 			}
 			
 			//Returning the light conversation item
-			return new LightConversationItem(summary, getDate());
+			return new LightConversationItem(summary, getDate(), getLocalID(), getServerID());
 		}
 	}
 	
@@ -5916,12 +5956,12 @@ class ConversationManager {
 		
 		@Override
 		void toLightConversationItem(Context context, Constants.ResultCallback<LightConversationItem> callback) {
-			callback.onResult(false, new LightConversationItem(getDirectSummary(context), getDate()));
+			callback.onResult(false, new LightConversationItem(getDirectSummary(context), getDate(), getLocalID(), getServerID()));
 		}
 		
 		@Override
 		LightConversationItem toLightConversationItemSync(Context context) {
-			return new LightConversationItem(getDirectSummary(context), getDate());
+			return new LightConversationItem(getDirectSummary(context), getDate(), getLocalID(), getServerID());
 		}
 	}
 	
@@ -5962,6 +6002,10 @@ class ConversationManager {
 		
 		long getLocalID() {
 			return localID;
+		}
+		
+		long getServerID() {
+			return -1;
 		}
 		
 		void setLocalID(long value) {
@@ -6112,18 +6156,23 @@ class ConversationManager {
 		//Creating the message values
 		private String message;
 		private final long date;
+		private final long localID;
+		private final long serverID;
 		private final boolean isPinned;
 		
-		LightConversationItem(String message, long date) {
+		LightConversationItem(String message, long date, long localID, long serverID) {
 			//Setting the values
 			this.message = message;
 			this.date = date;
+			this.localID = localID;
+			this.serverID = serverID;
 			this.isPinned = false;
 		}
 		
 		LightConversationItem(String message, long date, boolean isPinned) {
 			this.message = message;
 			this.date = date;
+			localID = serverID = -1;
 			this.isPinned = isPinned;
 		}
 		
@@ -6137,6 +6186,14 @@ class ConversationManager {
 		
 		long getDate() {
 			return date;
+		}
+		
+		long getLocalID() {
+			return localID;
+		}
+		
+		long getServerID() {
+			return serverID;
 		}
 		
 		boolean isPinned() {
