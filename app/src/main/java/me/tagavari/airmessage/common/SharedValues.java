@@ -156,7 +156,7 @@ public class SharedValues {
 			List<Blocks.TapbackModifierInfo> blockTapbacks = new ArrayList<>(tapbacks.size());
 			for(TapbackModifierInfo item : tapbacks) blockTapbacks.add(item.toBlock());
 			
-			return new Blocks.MessageInfo(guid, chatGuid, date, text, sender, blockAttachments, blockStickers, blockTapbacks, sendEffect, stateCode, errorCode, dateRead);
+			return new Blocks.MessageInfo(-1, guid, chatGuid, date, text, sender, blockAttachments, blockStickers, blockTapbacks, sendEffect, stateCode, errorCode, dateRead);
 		}
 	}
 	
@@ -185,7 +185,7 @@ public class SharedValues {
 		
 		@Override
 		public Blocks.AttachmentInfo toBlock() {
-			return new Blocks.AttachmentInfo(guid, name, type, checksum);
+			return new Blocks.AttachmentInfo(guid, name, type, -1, checksum);
 		}
 	}
 	
@@ -219,7 +219,7 @@ public class SharedValues {
 		
 		@Override
 		public Blocks.GroupActionInfo toBlock() {
-			return new Blocks.GroupActionInfo(guid, chatGuid, date, agent, other, groupActionType);
+			return new Blocks.GroupActionInfo(-1, guid, chatGuid, date, agent, other, groupActionType);
 		}
 	}
 	
@@ -250,7 +250,7 @@ public class SharedValues {
 		
 		@Override
 		public Blocks.ChatRenameActionInfo toBlock() {
-			return new Blocks.ChatRenameActionInfo(guid, chatGuid, date, agent, newChatName);
+			return new Blocks.ChatRenameActionInfo(-1, guid, chatGuid, date, agent, newChatName);
 		}
 	}
 	

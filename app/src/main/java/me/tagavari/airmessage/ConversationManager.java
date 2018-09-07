@@ -108,16 +108,7 @@ class ConversationManager {
 		return Long.compare(lastTime2, lastTime1);
 	};
 	static final Comparator<ConversationItem> conversationItemComparator = (message1, message2) -> {
-		//Returning 0 if either of the values are invalid
-		if(message1 == null || message2 == null) return 0;
-		
-		//Returning the comparison
-		if(Preferences.isExperimentalSortID()) {
-			if(message1.getLocalID() == -1 && message2.getLocalID() == -1) return Long.compare(message1.getDate(), message2.getDate());
-			if(message1.getLocalID() == -1) return 1;
-			if(message2.getLocalID() == -1) return -1;
-			return Long.compare(message1.getLocalID(), message2.getLocalID());
-		} else return Long.compare(message1.getDate(), message2.getDate());
+		return compareConversationItems(message1, message2);
 	};
 	static final Comparator<MemberInfo> memberInfoComparator = (member1, member2) -> {
 		//Returning 0 if either of the values are invalid
@@ -326,6 +317,14 @@ class ConversationManager {
 	}
 	
 	static int compareConversationItems(ConversationItem item1, ConversationItem item2) {
+		//Returning 0 if either of the arguments are invalid
+		if(item1 == null || item2 == null) return 0;
+		
+		//Returning the comparison
+		if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
+		if(item1.getLocalID() != -1 && item2.getLocalID() != -1) return Long.compare(item1.getLocalID(), item2.getLocalID());
+		if(item1.getLocalID() == -1 && item2.getLocalID() == -1) return Long.compare(item1.getDate(), item2.getDate());
+		if(item1.getLocalID() == -1) return 1; //Item 2's local ID is -1
 		return conversationItemComparator.compare(item1, item2);
 	}
 	
@@ -334,13 +333,11 @@ class ConversationManager {
 		if(item1 == null || item2 == null) return 0;
 		
 		//Returning the comparison
-		if(Preferences.isExperimentalSortID()) {
-			if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
-			if(item1.getLocalID() != -1 && item2.getLocalID() != -1) return Long.compare(item1.getLocalID(), item2.getLocalID());
-			if(item1.getLocalID() == -1 && item2.getLocalID() == -1) return Long.compare(item1.getDate(), item2.getDate());
-			if(item1.getLocalID() == -1) return 1;
-			return -1; //Item 2's local ID is -1
-		} else return Long.compare(item1.getDate(), item2.getDate());
+		if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
+		if(item1.getLocalID() != -1 && item2.getLocalID() != -1) return Long.compare(item1.getLocalID(), item2.getLocalID());
+		if(item1.getLocalID() == -1 && item2.getLocalID() == -1) return Long.compare(item1.getDate(), item2.getDate());
+		if(item1.getLocalID() == -1) return 1;
+		return -1; //Item 2's local ID is -1
 	}
 	
 	static int compareConversationItems(LightConversationItem item1, LightConversationItem item2) {
@@ -348,13 +345,11 @@ class ConversationManager {
 		if(item1 == null || item2 == null) return 0;
 		
 		//Returning the comparison
-		if(Preferences.isExperimentalSortID()) {
-			if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
-			if(item1.getLocalID() != -1 && item2.getLocalID() != -1) return Long.compare(item1.getLocalID(), item2.getLocalID());
-			if(item1.getLocalID() == -1 && item2.getLocalID() == -1) return Long.compare(item1.getDate(), item2.getDate());
-			if(item1.getLocalID() == -1) return 1;
-			return -1; //Item 2's local ID is -1
-		} else return Long.compare(item1.getDate(), item2.getDate());
+		if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
+		if(item1.getLocalID() != -1 && item2.getLocalID() != -1) return Long.compare(item1.getLocalID(), item2.getLocalID());
+		if(item1.getLocalID() == -1 && item2.getLocalID() == -1) return Long.compare(item1.getDate(), item2.getDate());
+		if(item1.getLocalID() == -1) return 1;
+		return -1; //Item 2's local ID is -1
 	}
 	
 	static class ConversationInfo implements Serializable {
@@ -1090,8 +1085,9 @@ class ConversationManager {
 								if(ghostMessage.getMessageText() == null || !messageInfo.getMessageText().equals(ghostMessage.getMessageText())) continue;
 								
 								//Updating the ghost item
-								ghostMessage.setDate(messageInfo.getDate());
+								ghostMessage.setServerID(messageInfo.getServerID());
 								ghostMessage.setGuid(messageInfo.getGuid());
+								ghostMessage.setDate(messageInfo.getDate());
 								ghostMessage.setMessageState(messageInfo.getMessageState());
 								ghostMessage.setErrorCode(messageInfo.getErrorCode());
 								ghostMessage.setDateRead(messageInfo.getDateRead());
@@ -1142,8 +1138,9 @@ class ConversationManager {
 									if(!Arrays.equals(attachmentInfo.getFileChecksum(), firstAttachment.getFileChecksum())) continue;
 									
 									//Updating the ghost item
-									ghostMessage.setDate(messageInfo.getDate());
+									ghostMessage.setServerID(messageInfo.getServerID());
 									ghostMessage.setGuid(messageInfo.getGuid());
+									ghostMessage.setDate(messageInfo.getDate());
 									ghostMessage.setErrorCode(messageInfo.getErrorCode());
 									ghostMessage.setMessageState(messageInfo.getMessageState());
 									ghostMessage.updateViewProgressState(context);
@@ -2025,9 +2022,9 @@ class ConversationManager {
 		//Creating the other values
 		private transient boolean playEffectRequested = false;
 		
-		MessageInfo(long localID, String guid, ConversationInfo conversationInfo, String sender, String messageText, ArrayList<AttachmentInfo> attachments, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, long dateRead) {
+		MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, ArrayList<AttachmentInfo> attachments, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, long dateRead) {
 			//Calling the super constructor
-			super(localID, guid, date, conversationInfo);
+			super(localID, serverID, guid, date, conversationInfo);
 			
 			//Invalidating the text if it is empty
 			//if(messageText != null && messageText.isEmpty()) messageText = null;
@@ -2043,9 +2040,9 @@ class ConversationManager {
 			this.dateRead = dateRead;
 		}
 		
-		MessageInfo(long localID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, long dateRead) {
+		MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, long dateRead) {
 			//Calling the super constructor
-			super(localID, guid, date, conversationInfo);
+			super(localID, serverID, guid, date, conversationInfo);
 			
 			//Setting the values
 			this.sender = sender;
@@ -3900,7 +3897,7 @@ class ConversationManager {
 			} else {
 				MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
 				backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColor = context.getResources().getColor(android.R.color.white, null);
+				textColor = context.getResources().getColor(R.color.colorTextWhite, null);
 			}
 			
 			//Assigning the colors
@@ -4083,6 +4080,7 @@ class ConversationManager {
 		//Creating the values
 		final String fileName;
 		final String fileType;
+		final long fileSize;
 		File file = null;
 		byte[] fileChecksum = null;
 		Uri fileUri = null;
@@ -4158,34 +4156,35 @@ class ConversationManager {
 			}
 		};
 		
-		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
+		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			//Calling the super constructor
 			super(localID, guid, message);
 			
 			//Setting the values
 			this.fileName = fileName;
 			this.fileType = fileType;
+			this.fileSize = fileSize;
 		}
 		
-		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, File file) {
+		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
 			//Calling the main constructor
-			this(localID, guid, message, fileName, fileType);
+			this(localID, guid, message, fileName, fileType, fileSize);
 			
 			//Setting the file
 			if(file.exists()) this.file = file;
 		}
 		
-		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, byte[] fileChecksum) {
+		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
 			//Calling the main constructor
-			this(localID, guid, message, fileName, fileType);
+			this(localID, guid, message, fileName, fileType, fileSize);
 			
 			//Setting the checksum
 			this.fileChecksum = fileChecksum;
 		}
 		
-		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, Uri fileUri) {
+		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
 			//Calling the main constructor
-			this(localID, guid, message, fileName, fileType);
+			this(localID, guid, message, fileName, fileType, fileSize);
 			
 			//Setting the uri
 			this.fileUri = fileUri;
@@ -4234,6 +4233,14 @@ class ConversationManager {
 			layoutParams.gravity = messageInfo.isOutgoing() ? Gravity.END : Gravity.START;
 			viewHolder.itemView.setLayoutParams(layoutParams); */
 			
+			//Configuring the download view
+			viewHolder.labelDownloadType.setText(getResourceTypeName());
+			if(fileSize == -1) viewHolder.labelDownloadSize.setVisibility(View.GONE);
+			else {
+				viewHolder.labelDownloadSize.setVisibility(View.GONE);
+				viewHolder.labelDownloadSize.setText(Constants.humanReadableByteCount(fileSize, true));
+			}
+			
 			//Building the view
 			buildView(viewHolder, context);
 			
@@ -4264,7 +4271,8 @@ class ConversationManager {
 					viewHolder.groupProcessing.setVisibility(View.GONE);
 					
 					//Hiding the content type
-					viewHolder.labelDownload.setVisibility(View.GONE);
+					viewHolder.labelDownloadSize.setVisibility(View.GONE);
+					viewHolder.labelDownloadType.setVisibility(View.GONE);
 					
 					//Disabling the download icon visually
 					viewHolder.imageDownload.setAlpha(Constants.disabledAlpha);
@@ -4288,7 +4296,8 @@ class ConversationManager {
 					if(viewHolder.groupFailed != null) viewHolder.groupFailed.setVisibility(View.GONE);
 					viewHolder.groupProcessing.setVisibility(View.GONE);
 					
-					viewHolder.labelDownload.setVisibility(View.VISIBLE);
+					if(fileSize != -1) viewHolder.labelDownloadSize.setVisibility(View.VISIBLE);
+					viewHolder.labelDownloadType.setVisibility(View.VISIBLE);
 					viewHolder.imageDownload.setAlpha(1F);
 					viewHolder.progressDownload.setVisibility(View.GONE);
 				}
@@ -4324,19 +4333,22 @@ class ConversationManager {
 		void updateViewColor(VH viewHolder, Context context) {
 			//Creating the color values
 			ColorStateList cslText;
+			ColorStateList cslSecondaryText;
 			ColorStateList cslBackground;
 			ColorStateList cslAccent;
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
 				cslText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
+				cslSecondaryText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
 				cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
 				cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
 			} else {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 				
-				cslText = ColorStateList.valueOf(context.getResources().getColor(android.R.color.white, null));
+				cslText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhite, null));
+				cslSecondaryText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhiteSecondary, null));
 				cslBackground = ColorStateList.valueOf(bubbleColor);
 				cslAccent = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
 			}
@@ -4344,7 +4356,8 @@ class ConversationManager {
 			//Coloring the views
 			viewHolder.groupDownload.setBackgroundTintList(cslBackground);
 			viewHolder.groupDownload.invalidate();
-			viewHolder.labelDownload.setTextColor(cslText);
+			viewHolder.labelDownloadSize.setTextColor(cslSecondaryText);
+			viewHolder.labelDownloadType.setTextColor(cslText);
 			viewHolder.imageDownload.setImageTintList(cslText);
 			viewHolder.progressDownload.setProgressTintList(cslAccent);
 			viewHolder.progressDownload.setIndeterminateTintList(cslAccent);
@@ -4616,6 +4629,8 @@ class ConversationManager {
 			return fileType;
 		}
 		
+		abstract int getResourceTypeName();
+		
 		ConnectionService.FilePushRequest getDraftingPushRequest() {
 			return draftingPushRequest;
 		}
@@ -4629,7 +4644,8 @@ class ConversationManager {
 		static abstract class ViewHolder extends MessageComponent.ViewHolder {
 			final ViewGroup groupDownload;
 			final ProgressBar progressDownload;
-			final TextView labelDownload;
+			final TextView labelDownloadSize;
+			final TextView labelDownloadType;
 			final ImageView imageDownload;
 			
 			final ViewGroup groupContent;
@@ -4645,7 +4661,8 @@ class ConversationManager {
 				
 				groupDownload = view.findViewById(R.id.downloadcontent);
 				progressDownload = groupDownload.findViewById(R.id.download_progress);
-				labelDownload = groupDownload.findViewById(R.id.download_label);
+				labelDownloadSize = groupDownload.findViewById(R.id.label_size);
+				labelDownloadType = groupDownload.findViewById(R.id.label_type);
 				imageDownload = groupDownload.findViewById(R.id.download_icon);
 				
 				groupContent = view.findViewById(R.id.content);
@@ -4673,20 +4690,20 @@ class ConversationManager {
 		static final String MIME_PREFIX = "image";
 		static final int RESOURCE_NAME = R.string.part_content_image;
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
-			super(localID, guid, message, fileName, fileType);
+		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, File file) {
-			super(localID, guid, message, fileName, fileType, file);
+		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, byte[] fileChecksum) {
-			super(localID, guid, message, fileName, fileType, fileChecksum);
+		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, Uri fileUri) {
-			super(localID, guid, message, fileName, fileType, fileUri);
+		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
 		/* @Override
@@ -4933,6 +4950,11 @@ class ConversationManager {
 		}
 		
 		@Override
+		int getResourceTypeName() {
+			return RESOURCE_NAME;
+		}
+		
+		@Override
 		ViewHolder createViewHolder(Context context, ViewGroup parent) {
 			return new ViewHolder(LayoutInflater.from(context).inflate(R.layout.listitem_contentimage, parent, false));
 		}
@@ -4990,20 +5012,20 @@ class ConversationManager {
 		private byte fileState = fileStateIdle;
 		private boolean isPlaying = false;
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
-			super(localID, guid, message, fileName, fileType);
+		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, File file) {
-			super(localID, guid, message, fileName, fileType, file);
+		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, byte[] fileChecksum) {
-			super(localID, guid, message, fileName, fileType, fileChecksum);
+		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, Uri fileUri) {
-			super(localID, guid, message, fileName, fileType, fileUri);
+		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
 		/* @Override
@@ -5160,6 +5182,11 @@ class ConversationManager {
 			return ITEM_VIEW_TYPE;
 		}
 		
+		@Override
+		int getResourceTypeName() {
+			return RESOURCE_NAME;
+		}
+		
 		void setMediaPlaying(boolean playing) {
 			//Calling the overload method
 			ViewHolder viewHolder = getViewHolder();
@@ -5237,20 +5264,20 @@ class ConversationManager {
 		static final String MIME_PREFIX = "video";
 		static final int RESOURCE_NAME = R.string.part_content_video;
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
-			super(localID, guid, message, fileName, fileType);
+		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, File file) {
-			super(localID, guid, message, fileName, fileType, file);
+		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, byte[] fileChecksum) {
-			super(localID, guid, message, fileName, fileType, fileChecksum);
+		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, Uri fileUri) {
-			super(localID, guid, message, fileName, fileType, fileUri);
+		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
 		@Override
@@ -5399,6 +5426,11 @@ class ConversationManager {
 		}
 		
 		@Override
+		int getResourceTypeName() {
+			return RESOURCE_NAME;
+		}
+		
+		@Override
 		ViewHolder createViewHolder(Context context, ViewGroup parent) {
 			return new ViewHolder(LayoutInflater.from(context).inflate(R.layout.listitem_contentvideo, parent, false));
 		}
@@ -5432,20 +5464,20 @@ class ConversationManager {
 		static final String MIME_PREFIX = "other";
 		static final int RESOURCE_NAME = R.string.part_content_other;
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType) {
-			super(localID, guid, message, fileName, fileType);
+		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, File file) {
-			super(localID, guid, message, fileName, fileType, file);
+		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, byte[] fileChecksum) {
-			super(localID, guid, message, fileName, fileType, fileChecksum);
+		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, Uri fileUri) {
-			super(localID, guid, message, fileName, fileType, fileUri);
+		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
 		@Override
@@ -5497,6 +5529,11 @@ class ConversationManager {
 		@Override
 		int getItemViewType() {
 			return ITEM_VIEW_TYPE;
+		}
+		
+		@Override
+		int getResourceTypeName() {
+			return RESOURCE_NAME;
 		}
 		
 		@Override
@@ -5669,9 +5706,9 @@ class ConversationManager {
 		//Creating the other values
 		public transient int color;
 		
-		GroupActionInfo(long localID, String guid, ConversationInfo conversationInfo, int actionType, String agent, String other, long date) {
+		GroupActionInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, int actionType, String agent, String other, long date) {
 			//Calling the super constructor
-			super(localID, guid, date, conversationInfo);
+			super(localID, serverID, guid, date, conversationInfo);
 			
 			//Setting the values
 			this.actionType = actionType;
@@ -5822,9 +5859,9 @@ class ConversationManager {
 		final String agent;
 		final String title;
 		
-		ChatRenameActionInfo(long localID, String guid, ConversationInfo conversationInfo, String agent, String title, long date) {
+		ChatRenameActionInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String agent, String title, long date) {
 			//Calling the super constructor
-			super(localID, guid, date, conversationInfo);
+			super(localID, serverID, guid, date, conversationInfo);
 			
 			//Setting the values
 			this.agent = agent;
@@ -5925,7 +5962,7 @@ class ConversationManager {
 		static final int itemViewType = ConversationItem.viewTypeAction;
 		
 		ChatCreationMessage(long localID, long date, ConversationInfo conversationInfo) {
-			super(localID, null, date, conversationInfo);
+			super(localID, -1, null, date, conversationInfo);
 		}
 		
 		@Override
@@ -5982,15 +6019,17 @@ class ConversationManager {
 		
 		//Creating the conversation item values
 		private long localID;
+		private long serverID;
 		private String guid;
 		private long date;
 		private ConversationInfo conversationInfo;
 		//private Constants.ViewSource viewSource;
 		private Constants.ViewHolderSource<VH> viewHolderSource;
 		
-		ConversationItem(long localID, String guid, long date, ConversationInfo conversationInfo) {
+		ConversationItem(long localID, long serverID, String guid, long date, ConversationInfo conversationInfo) {
 			//Setting the identifiers
 			this.localID = localID;
+			this.serverID = serverID;
 			this.guid = guid;
 			
 			//Setting the date
@@ -6004,12 +6043,16 @@ class ConversationManager {
 			return localID;
 		}
 		
-		long getServerID() {
-			return -1;
-		}
-		
 		void setLocalID(long value) {
 			localID = value;
+		}
+		
+		long getServerID() {
+			return serverID;
+		}
+		
+		void setServerID(long value) {
+			serverID = value;
 		}
 		
 		String getGuid() {
@@ -6515,27 +6558,27 @@ class ConversationManager {
 		else return OtherAttachmentInfo.RESOURCE_NAME;
 	}
 	
-	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType) {
+	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, long fileSize) {
 		if(fileType == null) fileType = Constants.defaultMIMEType;
-		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType);
-		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType);
-		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType);
-		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType);
+		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
+		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
+		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
+		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 	}
 	
-	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, File file) {
+	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, long fileSize, File file) {
 		if(fileType == null) fileType = Constants.defaultMIMEType;
-		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, file);
-		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, file);
-		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, file);
-		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, file);
+		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
+		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
+		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
+		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 	}
 	
-	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, Uri fileUri) {
-		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileUri);
-		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileUri);
-		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileUri);
-		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileUri);
+	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, long fileSize, Uri fileUri) {
+		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
+		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
+		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
+		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 	}
 	
 	private static int getMaxMessageWidth(Resources resources) {

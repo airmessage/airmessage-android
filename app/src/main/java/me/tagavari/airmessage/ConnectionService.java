@@ -1170,6 +1170,8 @@ public class ConnectionService extends Service {
 					return new ClientProtocol1();
 				case 2:
 					return new ClientProtocol2();
+				case 3:
+					return new ClientProtocol3();
 			}
 		}
 		
@@ -1983,6 +1985,87 @@ public class ConnectionService extends Service {
 			}
 		}
 		
+		private class ClientProtocol3 extends ClientProtocol2 {
+			@Override
+			List<Blocks.ConversationItem> deserializeConversationItems(ObjectInputStream in, int count) throws IOException, RuntimeException {
+				//Creating the list
+				List<Blocks.ConversationItem> list = new ArrayList<>(count);
+				
+				//Iterating over the items
+				for(int i = 0; i < count; i++) {
+					int type = in.readInt();
+					
+					long serverID = in.readLong();
+					String guid = in.readUTF();
+					String chatGuid = in.readUTF();
+					long date = in.readLong();
+					
+					switch(type) {
+						default:
+							throw new IOException("Invalid conversation item type: " + type);
+						case conversationItemTypeMessage: {
+							String text = in.readBoolean() ? in.readUTF() : null;
+							String sender = in.readBoolean() ? in.readUTF() : null;
+							List<Blocks.AttachmentInfo> attachments = deserializeAttachments(in, in.readInt());
+							List<Blocks.StickerModifierInfo> stickers = (List<Blocks.StickerModifierInfo>) (List<?>) deserializeModifiers(in, in.readInt());
+							List<Blocks.TapbackModifierInfo> tapbacks = (List<Blocks.TapbackModifierInfo>) (List<?>) deserializeModifiers(in, in.readInt());
+							String sendEffect = in.readBoolean() ? in.readUTF() : null;
+							int stateCode = in.readInt();
+							int errorCode = in.readInt();
+							long dateRead = in.readLong();
+							
+							list.add(new Blocks.MessageInfo(serverID, guid, chatGuid, date, text, sender, attachments, stickers, tapbacks, sendEffect, stateCode, errorCode, dateRead));
+							break;
+						}
+						case conversationItemTypeGroupAction: {
+							String agent = in.readBoolean() ? in.readUTF() : null;
+							String other = in.readBoolean() ? in.readUTF() : null;
+							int groupActionType = in.readInt();
+							
+							list.add(new Blocks.GroupActionInfo(serverID, guid, chatGuid, date, agent, other, groupActionType));
+							break;
+						}
+						case conversationItemTypeChatRename: {
+							String agent = in.readBoolean() ? in.readUTF() : null;
+							String newChatName = in.readBoolean() ? in.readUTF() : null;
+							
+							list.add(new Blocks.ChatRenameActionInfo(serverID, guid, chatGuid, date, agent, newChatName));
+							break;
+						}
+					}
+				}
+				
+				//Returning the list
+				return list;
+			}
+			
+			@Override
+			List<Blocks.AttachmentInfo> deserializeAttachments(ObjectInputStream in, int count) throws IOException, RuntimeException {
+				//Creating the list
+				List<Blocks.AttachmentInfo> list = new ArrayList<>(count);
+				
+				//Iterating over the items
+				for(int i = 0; i < count; i++) {
+					String guid = in.readUTF();
+					String name = in.readUTF();
+					String type = in.readBoolean() ? in.readUTF() : null;
+					long size = in.readLong();
+					byte[] checksum;
+					if(in.readBoolean()) {
+						checksum = new byte[in.readInt()];
+						in.readFully(checksum);
+					} else {
+						checksum = null;
+					}
+					
+					list.add(new Blocks.AttachmentInfo(guid, name, type, size, checksum));
+				}
+				
+				//Returning the list
+				return list;
+			}
+		}
+		
 		private class ClientProtocol2 extends ProtocolManager {
 			private final Packager protocolPackager = new PackagerComm3();
 			private static final String hashAlgorithm = "MD5";
@@ -2260,11 +2343,11 @@ public class ConnectionService extends Service {
 				return list;
 			}
 			
-			private static final int conversationItemTypeMessage = 0;
-			private static final int conversationItemTypeGroupAction = 1;
-			private static final int conversationItemTypeChatRename = 2;
+			static final int conversationItemTypeMessage = 0;
+			static final int conversationItemTypeGroupAction = 1;
+			static final int conversationItemTypeChatRename = 2;
 			
-			private List<Blocks.ConversationItem> deserializeConversationItems(ObjectInputStream in, int count) throws IOException, RuntimeException {
+			List<Blocks.ConversationItem> deserializeConversationItems(ObjectInputStream in, int count) throws IOException, RuntimeException {
 				//Creating the list
 				List<Blocks.ConversationItem> list = new ArrayList<>(count);
 				
@@ -2290,7 +2373,7 @@ public class ConnectionService extends Service {
 							int errorCode = in.readInt();
 							long dateRead = in.readLong();
 							
-							list.add(new Blocks.MessageInfo(guid, chatGuid, date, text, sender, attachments, stickers, tapbacks, sendEffect, stateCode, errorCode, dateRead));
+							list.add(new Blocks.MessageInfo(-1, guid, chatGuid, date, text, sender, attachments, stickers, tapbacks, sendEffect, stateCode, errorCode, dateRead));
 							break;
 						}
 						case conversationItemTypeGroupAction: {
@@ -2298,14 +2381,14 @@ public class ConnectionService extends Service {
 							String other = in.readBoolean() ? in.readUTF() : null;
 							int groupActionType = in.readInt();
 							
-							list.add(new Blocks.GroupActionInfo(guid, chatGuid, date, agent, other, groupActionType));
+							list.add(new Blocks.GroupActionInfo(-1, guid, chatGuid, date, agent, other, groupActionType));
 							break;
 						}
 						case conversationItemTypeChatRename: {
 							String agent = in.readBoolean() ? in.readUTF() : null;
 							String newChatName = in.readBoolean() ? in.readUTF() : null;
 							
-							list.add(new Blocks.ChatRenameActionInfo(guid, chatGuid, date, agent, newChatName));
+							list.add(new Blocks.ChatRenameActionInfo(-1, guid, chatGuid, date, agent, newChatName));
 							break;
 						}
 					}
@@ -2315,7 +2398,7 @@ public class ConnectionService extends Service {
 				return list;
 			}
 			
-			private List<Blocks.AttachmentInfo> deserializeAttachments(ObjectInputStream in, int count) throws IOException, RuntimeException {
+			List<Blocks.AttachmentInfo> deserializeAttachments(ObjectInputStream in, int count) throws IOException, RuntimeException {
 				//Creating the list
 				List<Blocks.AttachmentInfo> list = new ArrayList<>(count);
 				
@@ -2332,7 +2415,7 @@ public class ConnectionService extends Service {
 						checksum = null;
 					}
 					
-					list.add(new Blocks.AttachmentInfo(guid, name, type, checksum));
+					list.add(new Blocks.AttachmentInfo(guid, name, type, -1, checksum));
 				}
 				
 				//Returning the list
@@ -2343,7 +2426,7 @@ public class ConnectionService extends Service {
 			private static final int modifierTypeSticker = 1;
 			private static final int modifierTypeTapback = 2;
 			
-			private List<Blocks.ModifierInfo> deserializeModifiers(ObjectInputStream in, int count) throws IOException, RuntimeException {
+			List<Blocks.ModifierInfo> deserializeModifiers(ObjectInputStream in, int count) throws IOException, RuntimeException {
 				//Creating the list
 				List<Blocks.ModifierInfo> list = new ArrayList<>(count);
 				
