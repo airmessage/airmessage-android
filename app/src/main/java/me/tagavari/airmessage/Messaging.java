@@ -977,13 +977,13 @@ public class Messaging extends AppCompatCompositeActivity {
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch(item.getItemId()) {
-			case android.R.id.home:
+			/* case android.R.id.home:
 				//Closing the details panel if it is open
 				if(viewModel.isDetailsPanelOpen) closeDetailsPanel();
 				//Otherwise finishing the activity
 				else finish();
 				
-				return true;
+				return true; */
 			case R.id.action_details:
 				//Checking if the conversation is valid
 				if(viewModel.conversationInfo != null) {
