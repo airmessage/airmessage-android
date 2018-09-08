@@ -1,16 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	
-	<string name="preferencegroup_experimental_title">Experimental</string>
-	
-	<string name="preference_experimental_ordering_key" translatable="false">pref_experimental_ordering</string>
-	<string name="preference_experimental_ordering_title">Order messages by date received</string>
-	<string name="preference_experimental_ordering_desc">Change sorting method to prevent chat order from being lost</string>
-	
-	<string name="preference_experimental_ordering_post_key" translatable="false">pref_experimental_ordering_post</string>
-	<string name="preference_experimental_ordering_post_title">View associated post</string>
-	<string name="preference_experimental_ordering_post_desc">Get more info about this change and vote for or against it</string>
-	
     <string name="preference_messagenotifications_key" translatable="false">pref_messagenotifications</string>
     <string name="preference_messagenotifications_title">Message notifications</string>
 	

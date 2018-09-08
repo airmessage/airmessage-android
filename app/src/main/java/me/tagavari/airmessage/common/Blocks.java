@@ -52,11 +52,13 @@ public class Blocks {
 	}
 	
 	public static abstract class ConversationItem implements Block {
+		public long serverID;
 		public String guid;
 		public String chatGuid;
 		public long date;
 		
-		public ConversationItem(String guid, String chatGuid, long date) {
+		public ConversationItem(long serverID, String guid, String chatGuid, long date) {
+			this.serverID = serverID;
 			this.guid = guid;
 			this.chatGuid = chatGuid;
 			this.date = date;
@@ -66,6 +68,7 @@ public class Blocks {
 		public void writeObject(ObjectOutputStream stream) throws IOException {
 			stream.writeInt(getItemType());
 			
+			stream.writeLong(serverID);
 			stream.writeUTF(guid);
 			stream.writeUTF(chatGuid);
 			stream.writeLong(date);
@@ -93,9 +96,9 @@ public class Blocks {
 		public int errorCode;
 		public long dateRead;
 		
-		public MessageInfo(String guid, String chatGuid, long date, String text, String sender, List<AttachmentInfo> attachments, List<StickerModifierInfo> stickers, List<TapbackModifierInfo> tapbacks, String sendEffect, int stateCode, int errorCode, long dateRead) {
+		public MessageInfo(long serverID, String guid, String chatGuid, long date, String text, String sender, List<AttachmentInfo> attachments, List<StickerModifierInfo> stickers, List<TapbackModifierInfo> tapbacks, String sendEffect, int stateCode, int errorCode, long dateRead) {
 			//Calling the super constructor
-			super(guid, chatGuid, date);
+			super(serverID, guid, chatGuid, date);
 			
 			//Setting the variables
 			this.text = text;
@@ -144,9 +147,9 @@ public class Blocks {
 		public String other;
 		public int groupActionType;
 		
-		public GroupActionInfo(String guid, String chatGuid, long date, String agent, String other, int groupActionType) {
+		public GroupActionInfo(long serverID, String guid, String chatGuid, long date, String agent, String other, int groupActionType) {
 			//Calling the super constructor
-			super(guid, chatGuid, date);
+			super(serverID, guid, chatGuid, date);
 			
 			//Setting the variables
 			this.agent = agent;
@@ -178,9 +181,9 @@ public class Blocks {
 		public String agent;
 		public String newChatName;
 		
-		public ChatRenameActionInfo(String guid, String chatGuid, long date, String agent, String newChatName) {
+		public ChatRenameActionInfo(long serverID, String guid, String chatGuid, long date, String agent, String newChatName) {
 			//Calling the super constructor
-			super(guid, chatGuid, date);
+			super(serverID, guid, chatGuid, date);
 			
 			//Setting the variables
 			this.agent = agent;
@@ -208,13 +211,15 @@ public class Blocks {
 		public String guid;
 		public String name;
 		public String type;
+		public long size;
 		public byte[] checksum;
 		
-		public AttachmentInfo(String guid, String name, String type, byte[] checksum) {
+		public AttachmentInfo(String guid, String name, String type, long size, byte[] checksum) {
 			//Setting the variables
 			this.guid = guid;
 			this.name = name;
 			this.type = type;
+			this.size = size;
 			this.checksum = checksum;
 		}
 		
@@ -222,7 +227,9 @@ public class Blocks {
 		public void writeObject(ObjectOutputStream stream) throws IOException {
 			stream.writeUTF(guid);
 			stream.writeUTF(name);
-			stream.writeUTF(type);
+			stream.writeBoolean(type != null);
+			if(type != null) stream.writeUTF(type);
+			stream.writeLong(size);
 			stream.writeBoolean(checksum != null);
 			if(checksum != null) {
 				stream.writeInt(checksum.length);

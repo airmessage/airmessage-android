@@ -39,7 +39,7 @@
 				android:layout_marginStart="16dp"
 				android:tag="@string/tag_primarytint"
 				android:focusable="false"
-				android:clickable="false"/>
+				android:clickable="false" />
 		</LinearLayout>
 		
 		<!-- Pinning toggle -->

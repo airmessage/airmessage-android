@@ -10,7 +10,6 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.view.MenuItem;
 import android.view.View;
@@ -277,7 +276,6 @@ public class Preferences extends AppCompatActivity {
 			
 			//Setting the intents
 			findPreference(getResources().getString(R.string.preference_server_help_key)).setIntent(new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress));
-			findPreference(getResources().getString(R.string.preference_experimental_ordering_post_key)).setIntent(new Intent(Intent.ACTION_VIEW, Uri.parse("https://plus.google.com/+ColeFeuer/posts/LZSTvNpqxE5")));
 			
 			//Setting the listeners
 			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceClickListener(ringtoneClickListener);
@@ -483,9 +481,5 @@ public class Preferences extends AppCompatActivity {
 			//Setting the summary
 			preference.setSummary(((MainApplication) getActivity().getApplication()).getConnectivitySharedPrefs().getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null));
 		}
-	}
-	
-	static boolean isExperimentalSortID() {
-		return PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_experimental_ordering_key), true);
 	}
 }

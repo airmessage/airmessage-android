@@ -1,18 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-	<me.tagavari.airmessage.view.WarningPreferenceCategory
-		android:title="@string/preferencegroup_experimental_title">
-		<me.tagavari.airmessage.view.WarningSwitchPreference
-			android:defaultValue="true"
-			android:key="@string/preference_experimental_ordering_key"
-			android:title="@string/preference_experimental_ordering_title"
-			android:summary="@string/preference_experimental_ordering_desc" />
-		<androidx.preference.Preference
-			android:key="@string/preference_experimental_ordering_post_key"
-			android:title="@string/preference_experimental_ordering_post_title"
-			android:summary="@string/preference_experimental_ordering_post_desc" />
-	</me.tagavari.airmessage.view.WarningPreferenceCategory>
-	
 	<androidx.preference.PreferenceCategory
 		android:key="@string/preferencegroup_messagenotifications_key"
 		android:title="@string/preferencegroup_messagenotifications_title" >

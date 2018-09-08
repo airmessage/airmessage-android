@@ -280,7 +280,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(message.isEmpty()) return;
 			
 			//Creating a message
-			messageList.add(new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1));
+			messageList.add(new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1));
 			
 			//Clearing the message box
 			messageInputField.setText("");
@@ -291,11 +291,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Iterating over the drafts
 		for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
 			//Creating the message
-			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
 			
 			//Creating the attachment
 			SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
-			ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType());
+			ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType(), attachmentFile.getFileSize());
 			attachment.setDraftingPushRequest(queuedFile.getFilePushRequest());
 			
 			//Adding the attachment to the message
@@ -977,13 +977,13 @@ public class Messaging extends AppCompatCompositeActivity {
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch(item.getItemId()) {
-			case android.R.id.home:
+			/* case android.R.id.home:
 				//Closing the details panel if it is open
 				if(viewModel.isDetailsPanelOpen) closeDetailsPanel();
 				//Otherwise finishing the activity
 				else finish();
 				
-				return true;
+				return true; */
 			case R.id.action_details:
 				//Checking if the conversation is valid
 				if(viewModel.conversationInfo != null) {

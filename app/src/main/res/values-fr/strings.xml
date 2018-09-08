@@ -284,9 +284,4 @@
 	<string name="imperative_permission_documents">Appuyez sur pour donner accès aux documents</string>
 	<string name="imperative_permission_location">Appuyez sur pour donner accès à l\'emplacement</string>
 	<string name="action_pinconversation">Épingler la conversation</string>
-	<string name="preferencegroup_experimental_title">Expérimental</string>
-	<string name="preference_experimental_ordering_title">Trier des messages par date de réception</string>
-	<string name="preference_experimental_ordering_desc">Modifier la méthode de tri pour éviter que l\'ordre de discussion ne soit perdu</string>
-	<string name="preference_experimental_ordering_post_title">Voir le post associé</string>
-	<string name="preference_experimental_ordering_post_desc">Obtenez plus d\'informations sur ce changement et votez pour ou contre</string>
 </resources>
