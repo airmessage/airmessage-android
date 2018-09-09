@@ -29,7 +29,7 @@ import me.tagavari.airmessage.common.SharedValues;
 class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
 	private static final String DATABASE_NAME = "messages.db";
-	private static final int DATABASE_VERSION = 7;
+	private static final int DATABASE_VERSION = 8;
 	
 	//Creating the fetch statements
 	/* private static final String SQL_FETCH_CONVERSATIONS = "SELECT * FROM (" +
@@ -369,6 +369,12 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				//Adding the file size column
 				database.execSQL("ALTER TABLE attachments ADD size INTEGER;");
+			case 7: {
+				//Fixing null server IDs
+				ContentValues contentValues = new ContentValues();
+				contentValues.putNull("server_id");
+				database.update("messages", contentValues, "server_id = -1", null);
+			}
 		}
 	}
 	
@@ -1874,7 +1880,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			if(messageStruct.sender == null) {
 				//Creating the content values
 				ContentValues contentValues = new ContentValues();
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, messageStruct.serverID);
+				if(messageStruct.serverID != -1) contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, messageStruct.serverID);
 				contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, messageStruct.date);
 				contentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, messageStruct.guid);
 				contentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, messageStruct.stateCode);
@@ -2204,7 +2210,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Creating the content values and adding the common data
 		ContentValues contentValues = new ContentValues();
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, conversationItem.serverID);
+		if(conversationItem.serverID != -1) contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, conversationItem.serverID);
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, conversationItem.guid);
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, conversationItem.date);
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, conversationInfo.getLocalID());

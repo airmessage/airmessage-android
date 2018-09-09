@@ -21,8 +21,8 @@ android {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
 		targetSdkVersion 28
-		versionCode 35
-		versionName "0.2.3.5"
+		versionCode 36
+		versionName "0.2.3.6"
 
 		resConfigs "en", "fr"
 	}
@@ -77,7 +77,7 @@ dependencies {
 	implementation "androidx.browser:browser:$androidXVersion"
 
 	//Material components
-	implementation "com.google.android.material:material:1.0.0-rc01"
+	implementation "com.google.android.material:material:1.0.0-rc02"
 
 	//Android architecture components
 	implementation "androidx.lifecycle:lifecycle-extensions:2.0.0-rc01"

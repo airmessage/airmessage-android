@@ -111,7 +111,7 @@ public class ConnectionService extends Service {
 	 *  4 - Better stability and security, with sub-version support
 	 */
 	public static final int mmCommunicationsVersion = 4;
-	public static final int mmCommunicationsSubVersion = 2;
+	public static final int mmCommunicationsSubVersion = 3;
 	
 	private static final int[] applicableCommunicationsVersions = {4, 3, 2};
 	private static final int notificationID = -1;
