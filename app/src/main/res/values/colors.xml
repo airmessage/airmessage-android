@@ -49,7 +49,6 @@
 	<color name="colorServerDisconnected">#F44336</color>
 
     <color name="colorRecording">#F44336</color>
-    <color name="colorRecordingDiscard">#FF5252</color>
 	
 	<color name="colorTextWhite">#FFFFFF</color>
 	<color name="colorTextWhiteSecondary">#B3FFFFFF</color>
