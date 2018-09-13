@@ -4,8 +4,8 @@
 	
 	<color name="colorSubBackground">#1F1F1F</color>
 	
-	<color name="navbarDivider">#616161</color>
-	<color name="navbarBackground">#424242</color>
+	<color name="navbarDivider">#1FFFFFFF</color> <!-- #494949 -->
+	<color name="navbarBackground">#212121</color>
 	<color name="navbarBackgroundProtected">#303030</color>
 	<color name="colorBackgroundSurface">#212121</color>
 	
@@ -15,6 +15,4 @@
 	<color name="colorMessageOutgoingAccent">#616161</color>
 	
 	<color name="colorImageUnloaded">#424242</color>
-	
-	<color name="colorRecordingDiscard">#B71C1C</color>
 </resources>

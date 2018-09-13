@@ -403,7 +403,7 @@ class ConversationManager {
 		private boolean isMuted = false;
 		private int conversationColor = 0xFF000000; //Black
 		private transient WeakReference<MessageInfo> activityStateTargetReadReference = null;
-		private transient WeakReference<MessageInfo> activityStateTargetLatestReference = null;
+		private transient WeakReference<MessageInfo> activityStateTargetDeliveredReference = null;
 		private transient int currentUserViewIndex;
 		private transient LightConversationItem lastItem;
 		private transient String draftMessage;
@@ -732,7 +732,7 @@ class ConversationManager {
 			
 			//Resetting the active message info state listing
 			activityStateTargetReadReference = null;
-			activityStateTargetLatestReference = null;
+			activityStateTargetDeliveredReference = null;
 			
 			//Updating the adapter
 			ActivityCallbacks updater = getActivityCallbacks();
@@ -864,12 +864,12 @@ class ConversationManager {
 		}
 		
 		MessageInfo getActivityStateTargetLatest() {
-			if(activityStateTargetLatestReference == null) return null;
-			return activityStateTargetLatestReference.get();
+			if(activityStateTargetDeliveredReference == null) return null;
+			return activityStateTargetDeliveredReference.get();
 		}
 		
-		void setActivityStateTargetLatest(MessageInfo activityStateTarget) {
-			activityStateTargetLatestReference = new WeakReference<>(activityStateTarget);
+		void setActivityStateTargetDelivered(MessageInfo activityStateTarget) {
+			activityStateTargetDeliveredReference = new WeakReference<>(activityStateTarget);
 		}
 		
 		void tryActivityStateTarget(MessageInfo activityStateTarget, boolean update, Context context) {
@@ -883,14 +883,14 @@ class ConversationManager {
 				
 				//Replacing the item if it is invalid
 				if(activeMessage == null) {
-					setActivityStateTargetLatest(activityStateTarget);
+					setActivityStateTargetDelivered(activityStateTarget);
 					
 					//Updating the view
 					if(update) activityStateTarget.updateActivityStateDisplay(context);
 				} else {
 					//Replacing the item if the new one is more recent
 					if(ConversationManager.compareConversationItems(activityStateTarget, activeMessage) >= 0) {
-						setActivityStateTargetLatest(activityStateTarget);
+						setActivityStateTargetDelivered(activityStateTarget);
 						
 						//Updating the views
 						if(update) {
@@ -909,7 +909,7 @@ class ConversationManager {
 				//Replacing the item if it is invalid
 				if(activeMessageRead == null) {
 					setActivityStateTargetRead(activityStateTarget);
-					setActivityStateTargetLatest(activityStateTarget);
+					setActivityStateTargetDelivered(activityStateTarget);
 					
 					//Updating the view
 					if(update) {
@@ -921,7 +921,7 @@ class ConversationManager {
 					if(ConversationManager.compareConversationItems(activityStateTarget, activeMessageRead) >= 0 &&
 							(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
 						setActivityStateTargetRead(activityStateTarget);
-						setActivityStateTargetLatest(activityStateTarget);
+						setActivityStateTargetDelivered(activityStateTarget);
 						
 						//Updating the views
 						if(update) {
@@ -3671,7 +3671,7 @@ class ConversationManager {
 			//Iterating over the tapback groups
 			for(Map.Entry<Integer, Integer> entry : tapbackCounts.entrySet()) {
 				//Inflating the view
-				View tapbackView = LayoutInflater.from(context).inflate(R.layout.chip_tapback, viewHolder.tapbackContainer, false);
+				View tapbackView = LayoutInflater.from(viewHolder.itemView.getContext()).inflate(R.layout.chip_tapback, viewHolder.tapbackContainer, false);
 				
 				//Getting the display info
 				TapbackInfo.TapbackDisplay displayInfo = TapbackInfo.getTapbackDisplay(entry.getKey(), context);
@@ -6310,7 +6310,7 @@ class ConversationManager {
 			
 			//Setting the conversation's active message state list ID
 			if(!targetLatestSet && messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered) {
-				conversationInfo.setActivityStateTargetLatest(messageItem);
+				conversationInfo.setActivityStateTargetDelivered(messageItem);
 				targetLatestSet = true;
 			}
 			if(!targetReadSet && messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeRead) {
