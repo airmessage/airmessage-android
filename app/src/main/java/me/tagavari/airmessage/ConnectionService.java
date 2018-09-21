@@ -6598,7 +6598,7 @@ public class ConnectionService extends Service {
 			
 			//Iterating over the conversations from the received messages
 			//Collections.sort(structConversationItems, (value1, value2) -> Long.compare(value1.date, value2.date));
-			List<String> processedConversations = new ArrayList<>();
+			List<String> processedConversations = new ArrayList<>(); //Conversations that have been marked for updating (with new messages)
 			List<ConversationManager.ConversationInfo> incompleteServerConversations = new ArrayList<>();
 			for(Blocks.ConversationItem conversationItemStruct : structConversationItems) {
 				//Cleaning the conversation item
@@ -6961,13 +6961,13 @@ public class ConnectionService extends Service {
 			//Checking if there are any available conversations
 			if(!availableConversations.isEmpty()) {
 				//Iterating over the conversations
-				for(Iterator<ConversationInfoRequest> iterator = availableConversations.iterator(); iterator.hasNext(); ) {
+				for(ListIterator<ConversationInfoRequest> iterator = availableConversations.listIterator(); iterator.hasNext(); ) {
 					//Getting the conversation
-					ConversationManager.ConversationInfo availableConversation = iterator.next().conversationInfo;
+					ConversationInfoRequest availableConversationRequest = iterator.next();
+					ConversationManager.ConversationInfo availableConversation = availableConversationRequest.conversationInfo;
 					
 					//Reading and recording the conversation's items
 					List<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationItems(availableConversation);
-					availableConversationItems.put(availableConversation.getLocalID(), conversationItems);
 					
 					//Searching for a matching conversation in the database
 					ConversationManager.ConversationInfo clientConversation = DatabaseManager.getInstance().findConversationInfoWithMembers(context, Constants.normalizeAddresses(availableConversation.getConversationMembersAsCollection()), availableConversation.getService(), true);
@@ -6991,9 +6991,13 @@ public class ConnectionService extends Service {
 						//Updating the client conversation
 						DatabaseManager.getInstance().copyConversationInfo(availableConversation, clientConversation, false);
 						
-						//Marking the the available conversation as invalid (to be deleted)
+						//Removing the available conversation from the list
 						iterator.remove();
+						//iterator.add(new ConversationInfoRequest(availableConversation, availableConversationRequest.sendNotifications));
 					} else {
+						//Recording the available conversation items
+						availableConversationItems.put(availableConversation.getLocalID(), conversationItems);
+						
 						//Updating the available conversation
 						DatabaseManager.getInstance().updateConversationInfo(availableConversation, true);
 					}
@@ -7060,13 +7064,24 @@ public class ConnectionService extends Service {
 						ConversationManager.ConversationInfo conversationInfo = findConversationInMemory(pair.getKey().getLocalID());
 						if(conversationInfo == null) continue;
 						
+						//Updating the conversation details
 						TransferConversationStruct transferData = pair.getValue();
 						conversationInfo.setGuid(transferData.guid);
 						conversationInfo.setState(transferData.state);
 						conversationInfo.setTitle(context, transferData.name);
 						if(conversationInfo.isDataAvailable()) conversationInfo.addConversationItems(context, transferData.conversationItems);
-						//conversationInfo.setUnreadMessageCount(conversationInfo.getUnreadMessageCount() + transferData.conversationItems.size());
-						//conversationInfo.updateUnreadStatus();
+						
+						//Adding the unread messages
+						if(!transferData.conversationItems.isEmpty()) {
+							conversationInfo.setUnreadMessageCount(conversationInfo.getUnreadMessageCount() + transferData.conversationItems.size());
+							conversationInfo.updateUnreadStatus(context);
+							conversationInfo.trySetLastItemUpdate(context, transferData.conversationItems.get(transferData.conversationItems.size() - 1), false);
+						}
+						
+						//Sending notifications
+						for(ConversationManager.ConversationItem conversationItem : transferData.conversationItems)
+							if(conversationItem instanceof ConversationManager.MessageInfo)
+								NotificationUtils.sendNotification(context, (ConversationManager.MessageInfo) conversationItem);
 					}
 				}
 			}
