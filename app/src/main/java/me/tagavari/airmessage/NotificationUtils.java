@@ -398,13 +398,17 @@ class NotificationUtils {
 	}
 	
 	private static Notification getNotification(NotificationManager notificationManager, int identifier) {
-		//Getting the existing notification
-		for(StatusBarNotification statusBarNotification : notificationManager.getActiveNotifications()) {
-			//Skipping the remainder of the iteration if the ID does not match
-			if(statusBarNotification.getId() != identifier) continue;
-			
-			//Returning the notification
-			return statusBarNotification.getNotification();
+		try {
+			//Getting the existing notification
+			for(StatusBarNotification statusBarNotification : notificationManager.getActiveNotifications()) {
+				//Skipping the remainder of the iteration if the ID does not match
+				if(statusBarNotification.getId() != identifier) continue;
+				
+				//Returning the notification
+				return statusBarNotification.getNotification();
+			}
+		} catch(NullPointerException exception) {
+			exception.printStackTrace();
 		}
 		
 		//Returning null

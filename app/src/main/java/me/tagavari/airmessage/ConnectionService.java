@@ -6976,7 +6976,7 @@ public class ConnectionService extends Service {
 					if(clientConversation != null) {
 						//Switching the conversation item ownership to the new client conversation
 						DatabaseManager.getInstance().switchMessageOwnership(availableConversation, clientConversation);
-						for(ConversationManager.ConversationItem item : conversationItems) item.setConversationInfo(clientConversation);
+						//for(ConversationManager.ConversationItem item : conversationItems) item.setConversationInfo(clientConversation); //Doesn't work, because the client conversation info isn't actually the one in shared memory
 						
 						//Recording the conversation details
 						transferredConversations.put(clientConversation, new TransferConversationStruct(availableConversation.getGuid(),
@@ -7069,7 +7069,10 @@ public class ConnectionService extends Service {
 						conversationInfo.setGuid(transferData.guid);
 						conversationInfo.setState(transferData.state);
 						conversationInfo.setTitle(context, transferData.name);
-						if(conversationInfo.isDataAvailable()) conversationInfo.addConversationItems(context, transferData.conversationItems);
+						if(conversationInfo.isDataAvailable()) {
+							for(ConversationManager.ConversationItem item : transferData.conversationItems) item.setConversationInfo(conversationInfo);
+							conversationInfo.addConversationItems(context, transferData.conversationItems);
+						}
 						
 						//Adding the unread messages
 						if(!transferData.conversationItems.isEmpty()) {

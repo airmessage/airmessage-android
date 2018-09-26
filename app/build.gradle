@@ -72,15 +72,15 @@ dependencies {
 	testImplementation "junit:junit:4.12"
 
 	//Android extensions
-	def androidXVersion = "1.0.0-rc02"
+	def androidXVersion = "1.0.0"
 	implementation "androidx.preference:preference:$androidXVersion"
 	implementation "androidx.browser:browser:$androidXVersion"
 
 	//Material components
-	implementation "com.google.android.material:material:1.0.0-rc02"
+	implementation "com.google.android.material:material:1.0.0"
 
 	//Android architecture components
-	implementation "androidx.lifecycle:lifecycle-extensions:2.0.0-rc01"
+	implementation "androidx.lifecycle:lifecycle-extensions:2.0.0"
 
 	//Backports
 	implementation "net.sourceforge.streamsupport:android-retrostreams:1.6.3"
