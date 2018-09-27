@@ -5421,6 +5421,8 @@ public class ConnectionService extends Service {
 										continue;
 									}
 								}
+							} catch(SecurityException exception) {
+								exception.printStackTrace();
 							}
 							
 							//Finding a valid file

@@ -4458,8 +4458,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		boolean play(String requestID, File file, Callbacks callbacks) {
-			//Returning true if the request ID matches
-			if(requestID != null && this.requestID.equals(requestID)) return true;
+			//Returning true if the request ID matches (or the request ID is null)
+			if(this.requestID != null && this.requestID.equals(requestID)) return true;
 			
 			//Stopping the current media player
 			stop();
