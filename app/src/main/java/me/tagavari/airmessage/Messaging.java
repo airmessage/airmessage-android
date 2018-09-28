@@ -3834,6 +3834,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		@Override
+		public boolean supportsPredictiveItemAnimations() {
+			return false;
+		}
+		
+		@Override
 		public void smoothScrollToPosition(RecyclerView recyclerView, RecyclerView.State state, int position) {
 			//Calculating the speed
 			float millisPerInch = 50 - Math.min(Math.abs(findFirstVisibleItemPosition() - position), Math.abs(findLastVisibleItemPosition() - position));
