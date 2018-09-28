@@ -866,7 +866,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Checking if the result was a success
 			if(resultCode == RESULT_OK) {
 				//Queuing the file
-				new QueueFileAsyncTask(this).execute(viewModel.targetFileIntent);
+				if(viewModel.targetFileIntent != null) new QueueFileAsyncTask(this).execute(viewModel.targetFileIntent);
 			}
 		}
 		//Otherwise if the request code is the media picker
@@ -3366,8 +3366,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Returning if the item is invalid
 			if(item == null) return;
 			
-			//Returning if the activity is finishing
+			//Returning if the context is invalid
 			//if(isFinishing() || isDestroyed()) return;
+			if(!Constants.validateContext(Messaging.this)) return;
 			
 			//Setting the image thumbnail
 			Glide.with(Messaging.this)
@@ -3830,6 +3831,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		public SpeedyLinearLayoutManager(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
 			super(context, attrs, defStyleAttr, defStyleRes);
+		}
+		
+		@Override
+		public boolean supportsPredictiveItemAnimations() {
+			return false;
 		}
 		
 		@Override
@@ -4457,8 +4463,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		boolean play(String requestID, File file, Callbacks callbacks) {
-			//Returning true if the request ID matches
-			if(requestID != null && this.requestID.equals(requestID)) return true;
+			//Returning true if the request ID matches (or the request ID is null)
+			if(this.requestID != null && this.requestID.equals(requestID)) return true;
 			
 			//Stopping the current media player
 			stop();

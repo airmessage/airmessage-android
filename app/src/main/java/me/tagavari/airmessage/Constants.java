@@ -834,7 +834,10 @@ public class Constants {
 	} */
 	
 	static boolean validateContext(Context context) {
-		if(context instanceof Activity) return !((Activity) context).isFinishing();
+		if(context instanceof Activity) {
+			Activity activity = (Activity) context;
+			return !activity.isDestroyed() && !activity.isFinishing();
+		};
 		
 		return true;
 	}
