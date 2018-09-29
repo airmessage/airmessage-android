@@ -3,7 +3,6 @@ package me.tagavari.airmessage;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import androidx.appcompat.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -24,7 +23,6 @@ import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
 import android.text.style.StyleSpan;
-import android.transition.TransitionManager;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -81,10 +79,12 @@ import java.util.Objects;
 import java.util.Random;
 
 import androidx.annotation.DrawableRes;
+import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.FileProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.transition.TransitionManager;
 import java9.util.function.Consumer;
 import jp.wasabeef.glide.transformations.BlurTransformation;
 import me.tagavari.airmessage.common.SharedValues;
@@ -1089,7 +1089,7 @@ class ConversationManager {
 								ghostMessage.setMessageState(messageInfo.getMessageState());
 								ghostMessage.setErrorCode(messageInfo.getErrorCode());
 								ghostMessage.setDateRead(messageInfo.getDateRead());
-								ghostMessage.updateViewProgressState(context);
+								ghostMessage.updateViewProgressState();
 								ghostMessage.animateGhostStateChanges();
 								
 								//Adding the item to the reinsert queue
@@ -1141,7 +1141,7 @@ class ConversationManager {
 									ghostMessage.setDate(messageInfo.getDate());
 									ghostMessage.setErrorCode(messageInfo.getErrorCode());
 									ghostMessage.setMessageState(messageInfo.getMessageState());
-									ghostMessage.updateViewProgressState(context);
+									ghostMessage.updateViewProgressState();
 									ghostMessage.animateGhostStateChanges();
 									
 									firstAttachment.setGuid(attachmentInfo.getGuid());
@@ -2351,12 +2351,12 @@ class ConversationManager {
 					new UpdateErrorCodeTask(getLocalID(), errorCode).execute();
 					
 					//Getting the context
-					Context context = contextReference.get();
-					if(context == null) return;
+					//Context context = contextReference.get();
+					//if(context == null) return;
 					
 					//Updating the view
 					ViewHolder viewHolder = getViewHolder();
-					if(viewHolder != null) updateViewProgressState(viewHolder, context);
+					if(viewHolder != null) updateViewProgressState(viewHolder);
 				}
 			};
 			
@@ -2801,7 +2801,7 @@ class ConversationManager {
 			updateViewColor(viewHolder, context, false);
 			
 			//Updating the view state
-			updateViewProgressState(viewHolder, context);
+			updateViewProgressState(viewHolder);
 			
 			//Updating the time divider
 			configureTimeDivider(context, viewHolder.labelTimeDivider, hasTimeDivider);
@@ -2820,6 +2820,24 @@ class ConversationManager {
 				playEffect(viewHolder);
 				playEffectRequested = false;
 			}
+		}
+		
+		/**
+		 * When the view is scrolled to on the list
+		 * This can be used to update view components (eg. download progress), because sometimes bindView() will not be called when a view is just off the screen and there is no reason to recycle it
+		 */
+		void onScrollShow() {
+			ViewHolder viewHolder = getViewHolder();
+			
+			//Restoring the upload state
+			restoreUploadState(viewHolder);
+			
+			//Updating the view state display
+			prepareActivityStateDisplay(viewHolder, MainApplication.getInstance());
+			updateViewProgressState();
+			
+			//Updating the attachments
+			for(AttachmentInfo attachmentInfo : attachments) attachmentInfo.onScrollShow();
 		}
 		
 		@Override
@@ -2854,14 +2872,14 @@ class ConversationManager {
 			}
 		}
 		
-		void updateViewProgressState(Context context) {
+		void updateViewProgressState() {
 			//Calling the overload method
 			ViewHolder viewHolder = getViewHolder();
-			if(viewHolder != null) updateViewProgressState(viewHolder, context);
+			if(viewHolder != null) updateViewProgressState(viewHolder);
 		}
 		
 		private static final float ghostAlpha = 0.50F;
-		private void updateViewProgressState(ViewHolder viewHolder, Context context) {
+		private void updateViewProgressState(ViewHolder viewHolder) {
 			//Setting the message part container's alpha
 			if(messageState == SharedValues.MessageInfo.stateCodeGhost) viewHolder.containerMessagePart.setAlpha(ghostAlpha);
 			else viewHolder.containerMessagePart.setAlpha(1);
@@ -4231,13 +4249,13 @@ class ConversationManager {
 			layoutParams.gravity = messageInfo.isOutgoing() ? Gravity.END : Gravity.START;
 			viewHolder.itemView.setLayoutParams(layoutParams); */
 			
-			//Configuring the download view
+			/* //Configuring the download view
 			viewHolder.labelDownloadType.setText(getResourceTypeName());
 			if(fileSize == -1) viewHolder.labelDownloadSize.setVisibility(View.GONE);
 			else {
 				viewHolder.labelDownloadSize.setVisibility(View.GONE);
 				viewHolder.labelDownloadSize.setText(Constants.humanReadableByteCount(fileSize, true));
-			}
+			} */
 			
 			//Building the view
 			buildView(viewHolder, context);
@@ -4298,6 +4316,14 @@ class ConversationManager {
 					viewHolder.labelDownloadType.setVisibility(View.VISIBLE);
 					viewHolder.imageDownload.setAlpha(1F);
 					viewHolder.progressDownload.setVisibility(View.GONE);
+					
+					//Configuring the download view
+					viewHolder.labelDownloadType.setText(getResourceTypeName());
+					if(fileSize == -1) viewHolder.labelDownloadSize.setVisibility(View.GONE);
+					else {
+						viewHolder.labelDownloadSize.setVisibility(View.GONE);
+						viewHolder.labelDownloadSize.setText(Constants.humanReadableByteCount(fileSize, true));
+					}
 				}
 			} else {
 				//Hiding the views
@@ -4309,6 +4335,17 @@ class ConversationManager {
 				//Setting up the content view
 				updateContentView(viewHolder, context);
 			}
+		}
+		
+		void onScrollShow() {
+			VH viewHolder = getViewHolder();
+			Context context = viewHolder.itemView.getContext();
+			
+			//Building the view
+			//buildView(viewHolder, context);
+			
+			//Building the common views
+			//buildCommonViews(viewHolder, context);
 		}
 		
 		@Override
