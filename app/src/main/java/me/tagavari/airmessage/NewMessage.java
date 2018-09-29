@@ -1,7 +1,6 @@
 package me.tagavari.airmessage;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.app.Application;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -42,6 +41,7 @@ import java.util.List;
 import java.util.ListIterator;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.MutableLiveData;
