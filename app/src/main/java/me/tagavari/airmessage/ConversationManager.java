@@ -2828,6 +2828,7 @@ class ConversationManager {
 		 */
 		void onScrollShow() {
 			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder == null) return;
 			
 			//Restoring the upload state
 			restoreUploadState(viewHolder);
@@ -4321,7 +4322,7 @@ class ConversationManager {
 					viewHolder.labelDownloadType.setText(getResourceTypeName());
 					if(fileSize == -1) viewHolder.labelDownloadSize.setVisibility(View.GONE);
 					else {
-						viewHolder.labelDownloadSize.setVisibility(View.GONE);
+						viewHolder.labelDownloadSize.setVisibility(View.VISIBLE);
 						viewHolder.labelDownloadSize.setText(Constants.humanReadableByteCount(fileSize, true));
 					}
 				}

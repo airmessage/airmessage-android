@@ -188,8 +188,10 @@ public class Messaging extends AppCompatCompositeActivity {
 				if(viewHolder instanceof ConversationManager.MessageInfo.ViewHolder) {
 					((ConversationManager.MessageInfo.ViewHolder) viewHolder).onBind();
 				} */
-				ConversationManager.ConversationItem item = viewModel.conversationItemList.get(lastRevealedItem);
-				if(item instanceof ConversationManager.MessageInfo) ((ConversationManager.MessageInfo) item).onScrollShow();
+				if(lastRevealedItem > 0 && lastRevealedItem < viewModel.conversationItemList.size()) {
+					ConversationManager.ConversationItem item = viewModel.conversationItemList.get(lastRevealedItem);
+					if(item instanceof ConversationManager.MessageInfo) ((ConversationManager.MessageInfo) item).onScrollShow();
+				}
 			}
 		}
 	};
