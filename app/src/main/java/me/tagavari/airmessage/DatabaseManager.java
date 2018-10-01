@@ -2198,6 +2198,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 								exception.printStackTrace();
 								continue;
 							}
+							
+							//Marking the item as updated
+							replacedAttachmentIDList.add(attachmentID);
 						}
 					}
 					

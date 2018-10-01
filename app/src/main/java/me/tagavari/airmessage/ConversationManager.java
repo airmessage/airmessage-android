@@ -1123,57 +1123,94 @@ class ConversationManager {
 								//Breaking from the loop
 								break;
 							}
-						} else if(messageInfo.getAttachments().size() == 1) {
-							AttachmentInfo attachmentInfo = messageInfo.getAttachments().get(0);
-							if(attachmentInfo.getFileChecksum() != null) {
+						} else if(!messageInfo.getAttachments().isEmpty()) {
+							System.out.println("Adding message via attachments (" + messageInfo.getAttachments().size() + " count)");
+							//Creating the tracking values
+							ConversationManager.MessageInfo sharedMessageInfo = null;
+							List<Long> replacedAttachmentIDList = new ArrayList<>();
+							List<AttachmentInfo> unmatchedAttachments = new ArrayList<>();
+							
+							//Iterating over the attachments
+							for(AttachmentInfo attachmentInfo : messageInfo.getAttachments()) {
+								//Checking if the attachment has no checksum
+								if(attachmentInfo.getFileChecksum() == null) {
+									//Queuing the attachment if no message has been found
+									if(sharedMessageInfo == null) unmatchedAttachments.add(attachmentInfo);
+									//Otherwise adding the attachment directly
+									else sharedMessageInfo.addAttachment(attachmentInfo);
+								}
+								
+								//Iterating over the ghost messages
 								for(ListIterator<MessageInfo> listIterator = ghostMessages.listIterator(); listIterator.hasNext();) {
 									//Getting the item
 									MessageInfo ghostMessage = listIterator.next();
 									
-									//Skipping the remainder of the iteration if the item doesn't match
+									//Skipping the remainder of the iteration if there are no matching attachments
 									if(ghostMessage.getAttachments().isEmpty()) continue;
-									AttachmentInfo firstAttachment = ghostMessage.getAttachments().get(0);
-									if(!Arrays.equals(attachmentInfo.getFileChecksum(), firstAttachment.getFileChecksum())) continue;
+									AttachmentInfo matchingAttachment = null;
+									for(AttachmentInfo ghostAttachment : ghostMessage.getAttachments()) {
+										if(replacedAttachmentIDList.contains(ghostAttachment.getLocalID()) || !Arrays.equals(ghostAttachment.getFileChecksum(), attachmentInfo.getFileChecksum())) continue;
+										matchingAttachment = ghostAttachment;
+										break;
+									}
+									if(matchingAttachment == null) continue;
 									
-									//Updating the ghost item
-									ghostMessage.setServerID(messageInfo.getServerID());
-									ghostMessage.setGuid(messageInfo.getGuid());
-									ghostMessage.setDate(messageInfo.getDate());
-									ghostMessage.setErrorCode(messageInfo.getErrorCode());
-									ghostMessage.setMessageState(messageInfo.getMessageState());
-									ghostMessage.updateViewProgressState();
-									ghostMessage.animateGhostStateChanges();
-									
-									firstAttachment.setGuid(attachmentInfo.getGuid());
-									
-									//Adding the item to the reinsert queue
-									sortQueue.add(ghostMessage);
-									
-									/* //Re-sorting the item
-									{
-										int originalIndex = conversationItems.indexOf(ghostMessage);
-										conversationItems.remove(ghostMessage);
-										int newIndex = insertConversationItem(ghostMessage, context, false);
+									//Checking if there is no shared message
+									if(sharedMessageInfo == null) {
+										//Setting the shared message info
+										sharedMessageInfo = ghostMessage;
 										
-										//Updating the adapter
-										if(originalIndex != newIndex) {
-											//if(updater != null) updater.listUpdateMove(originalIndex, newIndex);
-											movedList.add(new ConversationItemMoveRecord(originalIndex, ghostMessage));
+										//Adding the unmatched attachments
+										for(AttachmentInfo unmatchedAttachment : unmatchedAttachments) sharedMessageInfo.addAttachment(unmatchedAttachment);
+										System.out.println("Shared message created, added " + unmatchedAttachments.size() + " unmatched attachments");
+									} else {
+										//Switching the attachment's message
+										attachmentInfo.setMessageInfo(sharedMessageInfo);
+										messageInfo.removeAttachment(attachmentInfo);
+										sharedMessageInfo.addAttachment(attachmentInfo);
+										
+										//Removing the message if it is empty
+										if(messageInfo.getMessageText() == null && messageInfo.getAttachments().isEmpty()) {
+											listIterator.remove();
+											if(updater != null) updater.listUpdateRemoved(conversationItems.indexOf(messageInfo));
+											conversationItems.remove(messageInfo);
 										}
-									} */
+										System.out.println("Attachment transferred");
+									}
 									
-									//Replacing the item in the final list
-									updateList.set(list.indexOf(conversationItem), ghostMessage);
+									//Updating the attachment
+									matchingAttachment.setGuid(attachmentInfo.getGuid());
 									
-									//Setting the message as replaced
-									messageReplaced = true;
-									
-									//Removing the item from the ghost list
-									listIterator.remove();
+									//Marking the item as updated
+									replacedAttachmentIDList.add(attachmentInfo.getLocalID());
 									
 									//Breaking from the loop
 									break;
 								}
+							}
+							
+							//Checking if a message was found
+							if(sharedMessageInfo != null) {
+								//Updating the ghost item
+								sharedMessageInfo.setServerID(messageInfo.getServerID());
+								sharedMessageInfo.setGuid(messageInfo.getGuid());
+								sharedMessageInfo.setDate(messageInfo.getDate());
+								sharedMessageInfo.setErrorCode(messageInfo.getErrorCode());
+								sharedMessageInfo.setMessageState(messageInfo.getMessageState());
+								sharedMessageInfo.updateViewProgressState();
+								sharedMessageInfo.animateGhostStateChanges();
+								
+								//Adding the item to the reinsert queue
+								sortQueue.add(sharedMessageInfo);
+								
+								//Replacing the item in the final list
+								updateList.set(list.indexOf(conversationItem), sharedMessageInfo);
+								
+								//Removing the item from the ghost list
+								ghostMessages.remove(sharedMessageInfo);
+								
+								//Setting the message as replaced
+								messageReplaced = true;
 							}
 						}
 					}
@@ -2055,6 +2092,10 @@ class ConversationManager {
 		
 		void addAttachment(AttachmentInfo attachment) {
 			attachments.add(attachment);
+		}
+		
+		void removeAttachment(AttachmentInfo attachment) {
+			attachments.remove(attachment);
 		}
 		
 		String getSender() {
@@ -3397,7 +3438,7 @@ class ConversationManager {
 		//Creating the data values
 		long localID;
 		String guid;
-		final MessageInfo messageInfo;
+		MessageInfo messageInfo;
 		
 		private Constants.ViewHolderSource<VH> viewHolderSource;
 		
@@ -3462,6 +3503,10 @@ class ConversationManager {
 		
 		void setGuid(String guid) {
 			this.guid = guid;
+		}
+		
+		void setMessageInfo(MessageInfo messageInfo) {
+			this.messageInfo = messageInfo;
 		}
 		
 		MessageInfo getMessageInfo() {
