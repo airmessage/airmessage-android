@@ -1124,7 +1124,6 @@ class ConversationManager {
 								break;
 							}
 						} else if(!messageInfo.getAttachments().isEmpty()) {
-							System.out.println("Adding message via attachments (" + messageInfo.getAttachments().size() + " count)");
 							//Creating the tracking values
 							ConversationManager.MessageInfo sharedMessageInfo = null;
 							List<Long> replacedAttachmentIDList = new ArrayList<>();
@@ -1162,7 +1161,6 @@ class ConversationManager {
 										
 										//Adding the unmatched attachments
 										for(AttachmentInfo unmatchedAttachment : unmatchedAttachments) sharedMessageInfo.addAttachment(unmatchedAttachment);
-										System.out.println("Shared message created, added " + unmatchedAttachments.size() + " unmatched attachments");
 									} else {
 										//Switching the attachment's message
 										attachmentInfo.setMessageInfo(sharedMessageInfo);
@@ -1175,7 +1173,6 @@ class ConversationManager {
 											if(updater != null) updater.listUpdateRemoved(conversationItems.indexOf(messageInfo));
 											conversationItems.remove(messageInfo);
 										}
-										System.out.println("Attachment transferred");
 									}
 									
 									//Updating the attachment
