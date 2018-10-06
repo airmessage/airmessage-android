@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<style name="Base.DayNight" parent="Theme.MaterialComponents.Bridge" />
-	<style name="Base.DayNight.NoActionBar" parent="Theme.MaterialComponents.NoActionBar.Bridge" />
+	<style name="Base.DayNight" parent="Theme.MaterialComponents" />
+	<style name="Base.DayNight.NoActionBar" parent="Theme.MaterialComponents.NoActionBar" />
 	
 	<style name="SolidActionBar" parent="@style/ThemeOverlay.AppCompat.ActionBar">
 		<item name="android:colorControlNormal">@android:color/white</item>
