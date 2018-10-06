@@ -3,6 +3,7 @@ package me.tagavari.airmessage;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteConstraintException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
@@ -1879,14 +1880,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 			//Checking if the message is outgoing
 			if(messageStruct.sender == null) {
 				//Creating the content values
-				ContentValues contentValues = new ContentValues();
-				if(messageStruct.serverID != -1) contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, messageStruct.serverID);
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, messageStruct.date);
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, messageStruct.guid);
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, messageStruct.stateCode);
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, messageStruct.errorCode);
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, messageStruct.dateRead);
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, conversationInfo.getLocalID());
+				ContentValues messageContentValues = new ContentValues();
+				if(messageStruct.serverID != -1) messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, messageStruct.serverID);
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, messageStruct.date);
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, messageStruct.guid);
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, messageStruct.stateCode);
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, messageStruct.errorCode);
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, messageStruct.dateRead);
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, conversationInfo.getLocalID());
 				
 				//Checking if the message is a text message
 				if(messageStruct.text != null && messageStruct.attachments.isEmpty()) {
@@ -1902,7 +1903,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 							
 							//Updating the message
 							try {
-								database.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+								database.update(Contract.MessageEntry.TABLE_NAME, messageContentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 							} catch(SQLiteConstraintException exception) {
 								//Printing the stack trace
 								exception.printStackTrace();
@@ -1925,57 +1926,55 @@ class DatabaseManager extends SQLiteOpenHelper {
 							return messageInfo;
 						}
 					}
-				} else if(messageStruct.attachments.size() == 1 && messageStruct.attachments.get(0).checksum != null) {
-					//Getting the checksum
-					byte[] attachmentChecksum = messageStruct.attachments.get(0).checksum;
+				} else if(!messageStruct.attachments.isEmpty()) {
+					//Creating the tracking values
+					ConversationManager.MessageInfo sharedMessageInfo = null;
+					List<Long> replacedAttachmentIDList = new ArrayList<>();
+					List<Blocks.AttachmentInfo> unmatchedAttachments = new ArrayList<>();
 					
-					//Finding a matching row
-					/* Cursor cursor = writableDatabase.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry.COLUMN_NAME_MESSAGE},
-							Contract.MessageEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " = ? AND " + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = ?",
-							new String[]{Integer.toString(Blocks.MessageInfo.stateCodeGhost), null, "x'" + Constants.bytesToHex(attachmentHash)}, null, null, null, "1"); */
-					try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
-									" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID +
-									" WHERE " + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + Blocks.MessageInfo.stateCodeGhost + " AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(attachmentChecksum, Base64.NO_WRAP) + "' AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID() +
-									" ORDER BY " + messageSortOrder + " DESC" +
-									" LIMIT 1;",
-							null)) {
-						//Checking if there are any results
-						if(cursor.moveToFirst()) {
+					//Iterating over the attachments
+					for(Blocks.AttachmentInfo attachment : messageStruct.attachments) {
+						//Checking if the attachment has no checksum
+						if(attachment.checksum == null) {
+							//Queuing the attachment if no message has been found
+							if(sharedMessageInfo == null) unmatchedAttachments.add(attachment);
+							//Otherwise adding the attachment directly
+							else {
+								ConversationManager.AttachmentInfo attachmentInfo = addMessageAttachment(sharedMessageInfo, attachment);
+								if(attachmentInfo != null) sharedMessageInfo.addAttachment(attachmentInfo);
+							}
+							continue;
+						}
+						
+						//Finding a matching row
+						try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
+										" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID +
+										" WHERE " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + Blocks.MessageInfo.stateCodeGhost + " AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(attachment.checksum, Base64.NO_WRAP) + "' AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID() + " AND " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + " NOT IN (" + Constants.listToString(replacedAttachmentIDList, ",") + ") " +
+										" ORDER BY " + messageSortOrder + " DESC" +
+										" LIMIT 1;",
+								null)) {
+							//Checking if there are no results
+							if(!cursor.moveToFirst()) {
+								//Queuing the attachment if no message has been found
+								if(sharedMessageInfo == null) unmatchedAttachments.add(attachment);
+								//Otherwise adding the attachment directly
+								else {
+									ConversationManager.AttachmentInfo attachmentInfo = addMessageAttachment(sharedMessageInfo, attachment);
+									if(attachmentInfo != null) sharedMessageInfo.addAttachment(attachmentInfo);
+								}
+								continue;
+							}
+							
 							//Getting the identifiers
 							long attachmentID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.AttachmentEntry._ID));
 							String attachmentFilePath = cursor.getString(cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH));
 							long messageID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE));
 							
-							//Checking if a file could be found
-							if(attachmentFilePath != null) {
-								//Getting the attachment file
-								File attachmentFile = ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentFilePath);
-								
-								//Updating the message
-								try {
-									database.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
-								} catch(SQLiteConstraintException exception) {
-									exception.printStackTrace();
-									return null;
-								}
-								
-								//Updating the attachment's GUID
-								contentValues = new ContentValues();
-								contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, messageStruct.attachments.get(0).guid);
-								try {
-									database.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(attachmentID)});
-								} catch(SQLiteConstraintException exception) {
-									//Printing the stack trace
-									exception.printStackTrace();
-									
-									//Returning
-									return null;
-								}
-								
-								//Adding the associations
-								List<ConversationManager.StickerInfo> stickers = addMessageStickers(messageID, messageStruct.stickers);
-								List<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(messageID, messageStruct.tapbacks);
-								
+							//Getting the attachment file
+							File attachmentFile = attachmentFilePath == null ? null : ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentFilePath);
+							
+							//Checking if there is no shared message
+							if(sharedMessageInfo == null) {
 								//Fetching the message information
 								boolean entryFound = false;
 								boolean sendStyleViewed = false;
@@ -1985,29 +1984,75 @@ class DatabaseManager extends SQLiteOpenHelper {
 										sendStyleViewed = messageCursor.getInt(messageCursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED)) != 0;
 									}
 								}
+								if(!entryFound) {
+									//Orphaned attachment
+									database.delete(Contract.AttachmentEntry.TABLE_NAME, Contract.AttachmentEntry._ID, new String[]{Long.toString(attachmentID)});
+									unmatchedAttachments.add(attachment);
+									continue;
+								}
 								
-								//Checking if an entry was found
-								if(entryFound) {
-									//Creating the message
-									ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.serverID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, messageStruct.dateRead);
-									for(ConversationManager.StickerInfo sticker : stickers) messageInfo.addSticker(sticker);
-									for(ConversationManager.TapbackInfo tapback : tapbacks) messageInfo.addTapback(tapback);
-									
-									//Creating the attachment
-									Blocks.AttachmentInfo attachmentStruct = messageStruct.attachments.get(0);
-									ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(attachmentID, attachmentStruct.guid, messageInfo, attachmentStruct.name, attachmentStruct.type, attachmentStruct.size, attachmentFile);
-									
-									//Setting the checksum
-									attachment.setFileChecksum(attachmentStruct.checksum);
-									
-									//Adding the attachment
-									messageInfo.addAttachment(attachment);
-									
-									//Returning the message
-									return messageInfo;
+								//Creating the message
+								sharedMessageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.serverID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, messageStruct.dateRead);
+								
+								//Adding the unmatched attachments
+								for(Blocks.AttachmentInfo unmatchedAttachment : unmatchedAttachments) {
+									ConversationManager.AttachmentInfo attachmentInfo = addMessageAttachment(sharedMessageInfo, unmatchedAttachment);
+									if(attachmentInfo != null) sharedMessageInfo.addAttachment(attachmentInfo);
+								}
+								
+								//Adding the current attachment
+								ConversationManager.AttachmentInfo attachmentInfo = ConversationManager.createAttachmentInfoFromType(attachmentID, attachment.guid, sharedMessageInfo, attachment.name, attachment.type, attachment.size, attachmentFile);
+								attachmentInfo.setFileChecksum(attachment.checksum);
+								sharedMessageInfo.addAttachment(attachmentInfo);
+							} else {
+								//Switching the attachment's message
+								ContentValues contentValues = new ContentValues();
+								contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, sharedMessageInfo.getLocalID());
+								database.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(attachmentID)});
+								
+								//Deleting the message if it is empty
+								if(DatabaseUtils.queryNumEntries(database, Contract.AttachmentEntry.TABLE_NAME, Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(messageID)}) == 0) {
+									database.delete(Contract.MessageEntry.TABLE_NAME, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 								}
 							}
+							
+							//Updating the attachment's GUID
+							ContentValues contentValues = new ContentValues();
+							contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, attachment.guid);
+							try {
+								database.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(attachmentID)});
+							} catch(SQLiteConstraintException exception) {
+								//Printing the stack trace
+								exception.printStackTrace();
+								
+								//Returning
+								return null;
+							}
+							
+							//Marking the item as updated
+							replacedAttachmentIDList.add(attachmentID);
 						}
+					}
+					
+					//Checking if a message has been found
+					if(sharedMessageInfo != null) {
+						//Updating the message
+						try {
+							database.update(Contract.MessageEntry.TABLE_NAME, messageContentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(sharedMessageInfo.getLocalID())});
+						} catch(SQLiteConstraintException exception) {
+							exception.printStackTrace();
+							return null;
+						}
+						
+						//Adding the associations
+						List<ConversationManager.StickerInfo> stickers = addMessageStickers(sharedMessageInfo.getLocalID(), messageStruct.stickers);
+						List<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(sharedMessageInfo.getLocalID(), messageStruct.tapbacks);
+						
+						for(ConversationManager.StickerInfo sticker : stickers) sharedMessageInfo.addSticker(sticker);
+						for(ConversationManager.TapbackInfo tapback : tapbacks) sharedMessageInfo.addTapback(tapback);
+						
+						//Returning the shared message
+						return sharedMessageInfo;
 					}
 				}
 			}
@@ -2029,15 +2074,15 @@ class DatabaseManager extends SQLiteOpenHelper {
 			//Checking if the message is outgoing
 			if(message.getSender() == null) {
 				//Creating the content values
-				ContentValues contentValues = new ContentValues();
-				if(message.getServerID() == -1) contentValues.putNull(Contract.MessageEntry.COLUMN_NAME_SERVERID);
-				else contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, message.getServerID());
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, message.getGuid());
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, message.getDate());
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, message.getMessageState());
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, message.getErrorCode());
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, message.getDateRead());
-				contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, conversationInfo.getLocalID());
+				ContentValues messageContentValues = new ContentValues();
+				if(message.getServerID() == -1) messageContentValues.putNull(Contract.MessageEntry.COLUMN_NAME_SERVERID);
+				else messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, message.getServerID());
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, message.getGuid());
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, message.getDate());
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, message.getMessageState());
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, message.getErrorCode());
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, message.getDateRead());
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, conversationInfo.getLocalID());
 				
 				//Checking if the message is a text message
 				if(message.getMessageText() != null && message.getAttachments().isEmpty()) {
@@ -2056,7 +2101,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 								database.delete(Contract.MessageEntry.TABLE_NAME, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(message.getLocalID())});
 								
 								//Updating the message
-								database.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+								database.update(Contract.MessageEntry.TABLE_NAME, messageContentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 							} catch(SQLiteConstraintException exception) {
 								//Printing the stack trace
 								exception.printStackTrace();
@@ -2080,88 +2125,101 @@ class DatabaseManager extends SQLiteOpenHelper {
 							return messageInfo; */
 						}
 					}
-				} else if(message.getAttachments().size() == 1 && message.getAttachments().get(0).getFileChecksum() != null) {
-					//Getting the checksum
-					byte[] attachmentChecksum = message.getAttachments().get(0).getFileChecksum();
+				} else if(!message.getAttachments().isEmpty()) {
+					//Creating the tracking values
+					long sharedMessageID = -1;
+					List<Long> replacedAttachmentIDList = new ArrayList<>();
+					List<ConversationManager.AttachmentInfo> unmatchedAttachments = new ArrayList<>();
 					
-					//Finding a matching row
-					/* Cursor cursor = writableDatabase.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry.COLUMN_NAME_MESSAGE},
-							Contract.MessageEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " = ? AND " + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = ?",
-							new String[]{Integer.toString(Blocks.MessageInfo.stateCodeGhost), null, "x'" + Constants.bytesToHex(attachmentHash)}, null, null, null, "1"); */
-					try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
-									" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID +
-									" WHERE " + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + Blocks.MessageInfo.stateCodeGhost + " AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(attachmentChecksum, Base64.NO_WRAP) + "' AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID() +
-									" ORDER BY " + messageSortOrder + " DESC" +
-									" LIMIT 1;",
-							null)) {
-						//Checking if there are any results
-						if(cursor.moveToFirst()) {
+					//Iterating over the attachments
+					for(ConversationManager.AttachmentInfo attachment : message.getAttachments()) {
+						//Checking if the attachment has no checksum
+						if(attachment.getFileChecksum() == null) {
+							//Queuing the attachment if no message has been found
+							if(sharedMessageID == -1) unmatchedAttachments.add(attachment);
+							//Otherwise adding the attachment directly
+							else {
+								ContentValues contentValues = new ContentValues();
+								contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, sharedMessageID);
+								database.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID, new String[]{Long.toString(attachment.getLocalID())});
+							}
+							continue;
+						}
+						
+						//Finding a matching row
+						try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
+										" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID +
+										" WHERE " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + Blocks.MessageInfo.stateCodeGhost + " AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(attachment.getFileChecksum(), Base64.NO_WRAP) + "' AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID() + " AND " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + " NOT IN (" + Constants.listToString(replacedAttachmentIDList, ",") + ") " +
+										" ORDER BY " + messageSortOrder + " DESC" +
+										" LIMIT 1;",
+								null)) {
+							//Checking if there are no results
+							if(!cursor.moveToFirst()) {
+								//Queuing the attachment if no message has been found
+								if(sharedMessageID == -1) unmatchedAttachments.add(attachment);
+								//Otherwise adding the attachment directly
+								else {
+									ContentValues contentValues = new ContentValues();
+									contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, sharedMessageID);
+									database.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID, new String[]{Long.toString(attachment.getLocalID())});
+								}
+								continue;
+							}
+							
 							//Getting the identifiers
 							long attachmentID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.AttachmentEntry._ID));
-							String attachmentFilePath = cursor.getString(cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH));
 							long messageID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE));
 							
-							//Checking if a file could be found
-							if(attachmentFilePath != null) {
-								//Getting the attachment file
-								//File attachmentFile = ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentFilePath);
+							//Checking if there is no shared message
+							if(sharedMessageID == -1) {
+								//Setting the shared message ID
+								sharedMessageID = messageID;
 								
-								try {
-									//Deleting the original message
-									database.delete(Contract.MessageEntry.TABLE_NAME, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(message.getLocalID())});
-									
-									//Updating the message
-									database.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
-								} catch(SQLiteConstraintException exception) {
-									exception.printStackTrace();
-									return;
+								//Writing the unmatched attachments
+								for(ConversationManager.AttachmentInfo unmatchedAttachment : unmatchedAttachments) addMessageAttachment(sharedMessageID, unmatchedAttachment);
+							} else {
+								//Switching the attachment's message
+								ContentValues contentValues = new ContentValues();
+								contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, sharedMessageID);
+								database.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(attachmentID)});
+								
+								//Deleting the message if it is empty
+								if(DatabaseUtils.queryNumEntries(database, Contract.AttachmentEntry.TABLE_NAME, Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(messageID)}) == 0) {
+									database.delete(Contract.MessageEntry.TABLE_NAME, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 								}
-								
-								//Building the content values
-								contentValues = new ContentValues();
-								contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, message.getAttachments().get(0).guid);
-								
-								try {
-									//Deleting the provided attachment
-									database.delete(Contract.AttachmentEntry.TABLE_NAME, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(message.getAttachments().get(0).getLocalID())});
-									
-									//Updating the attachment
-									database.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(attachmentID)});
-								} catch(SQLiteConstraintException exception) {
-									//Printing the stack trace
-									exception.printStackTrace();
-									
-									//Returning
-									return;
-								}
-								
-								//Fetching the message information
-								/* boolean entryFound = false;
-								boolean sendStyleViewed = false;
-								try(Cursor messageCursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED}, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)}, null, null, null)) {
-									if(messageCursor.moveToFirst()) {
-										entryFound = true;
-										sendStyleViewed = messageCursor.getInt(messageCursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED)) != 0;
-									}
-								}
-								
-								//Checking if an entry was found
-								if(entryFound) {
-									//Creating the message
-									ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageID, message.getGuid(), conversationInfo, message.getSender(), message.getMessageText(), message.getAttachments(), message.getSendStyle(), sendStyleViewed, message.date, message.stateCode, message.errorCode, message.dateRead);
-									
-									//Updating the associations
-									transferMessageStickers(messageID, message.getStickers());
-									transferMessageTapbacks(messageID, message.getTapbacks());
-									
-									//Transferring the file checksum
-									messageInfo.getAttachments().get(0).setFileChecksum(message.getAttachments().get(0).getFileChecksum());
-									
-									//Returning the message
-									return messageInfo;
-								} */
 							}
+							
+							//Updating the current attachment
+							ContentValues contentValues = new ContentValues();
+							contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, attachment.guid);
+							try {
+								database.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(attachmentID)});
+							} catch(SQLiteConstraintException exception) {
+								exception.printStackTrace();
+								continue;
+							}
+							
+							//Marking the item as updated
+							replacedAttachmentIDList.add(attachmentID);
 						}
+					}
+					
+					//Checking if a message has been found
+					if(sharedMessageID != -1) {
+						//Deleting the original message
+						deleteMessage(message.getLocalID());
+						
+						//Updating the message
+						try {
+							database.update(Contract.MessageEntry.TABLE_NAME, messageContentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(sharedMessageID)});
+						} catch(SQLiteConstraintException exception) {
+							exception.printStackTrace();
+							return;
+						}
+						
+						//Updating the associations
+						transferMessageStickers(sharedMessageID, message.getStickers());
+						transferMessageTapbacks(sharedMessageID, message.getTapbacks());
 					}
 				}
 			}
@@ -2250,34 +2308,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 			for(ConversationManager.StickerInfo sticker : stickers) messageInfo.addSticker(sticker);
 			for(ConversationManager.TapbackInfo tapback : tapbacks) messageInfo.addTapback(tapback);
 			
-			//Iterating over the attachments
+			//Adding the attachments
 			for(Blocks.AttachmentInfo attachmentStruct : messageInfoStruct.attachments) {
-				//Creating the content values
-				contentValues.clear();
-				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, attachmentStruct.guid);
-				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, messageLocalID);
-				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILENAME, attachmentStruct.name);
-				contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE, attachmentStruct.type);
-				if(attachmentStruct.size != -1) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILESIZE, attachmentStruct.size);
-				if(attachmentStruct.checksum != null) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM, Base64.encodeToString(attachmentStruct.checksum, Base64.NO_WRAP));
-				
-				//Inserting the attachment into the database
-				long localID;
-				try {
-					localID = database.insertOrThrow(Contract.AttachmentEntry.TABLE_NAME, null, contentValues);
-				} catch(SQLiteConstraintException exception) {
-					//Printing the stack trace
-					exception.printStackTrace();
-					
-					//Skipping the remainder of the iteration
-					continue;
-				}
-				
-				//Creating the attachment
-				ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(localID, attachmentStruct.guid, messageInfo, attachmentStruct.name, attachmentStruct.type, attachmentStruct.size);
-				
-				//Adding the attachment to the message
-				messageInfo.addAttachment(attachment);
+				ConversationManager.AttachmentInfo attachmentInfo = addMessageAttachment(messageInfo, attachmentStruct);
+				if(attachmentInfo != null) messageInfo.addAttachment(attachmentInfo);
 			}
 			
 			//Returning the message info
@@ -2446,6 +2480,64 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Setting the local ID
 		conversationItem.setLocalID(itemLocalID);
+	}
+	
+	private ConversationManager.AttachmentInfo addMessageAttachment(ConversationManager.MessageInfo messageInfo, Blocks.AttachmentInfo attachmentStruct) {
+		//Creating the content values
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, attachmentStruct.guid);
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, messageInfo.getLocalID());
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILENAME, attachmentStruct.name);
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE, attachmentStruct.type);
+		if(attachmentStruct.size != -1) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILESIZE, attachmentStruct.size);
+		if(attachmentStruct.checksum != null) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM, Base64.encodeToString(attachmentStruct.checksum, Base64.NO_WRAP));
+		
+		//Inserting the attachment into the database
+		long localID;
+		try {
+			localID = getWritableDatabase().insertOrThrow(Contract.AttachmentEntry.TABLE_NAME, null, contentValues);
+		} catch(SQLiteConstraintException exception) {
+			//Printing the stack trace
+			exception.printStackTrace();
+			
+			//Returning null
+			return null;
+		}
+		
+		//Creating and returning the attachment
+		ConversationManager.AttachmentInfo attachmentInfo = ConversationManager.createAttachmentInfoFromType(localID, attachmentStruct.guid, messageInfo, attachmentStruct.name, attachmentStruct.type, attachmentStruct.size);
+		attachmentInfo.setFileChecksum(attachmentInfo.fileChecksum);
+		return attachmentInfo;
+	}
+	
+	private boolean addMessageAttachment(long messageID, ConversationManager.AttachmentInfo attachment) {
+		//Creating the content values
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, attachment.guid);
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, messageID);
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILENAME, attachment.fileName);
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE, attachment.fileType);
+		if(attachment.fileSize != -1) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILESIZE, attachment.fileSize);
+		if(attachment.file != null) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, ConversationManager.AttachmentInfo.getRelativePath(MainApplication.getInstance(), attachment.file));
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM, attachment.fileChecksum);
+		
+		//Inserting the attachment into the database
+		long attachmentLocalID;
+		try {
+			attachmentLocalID = getWritableDatabase().insertOrThrow(Contract.AttachmentEntry.TABLE_NAME, null, contentValues);
+		} catch(SQLiteConstraintException exception) {
+			//Printing the stack trace
+			exception.printStackTrace();
+			
+			//Returning false
+			return false;
+		}
+		
+		//Setting the local ID
+		attachment.setLocalID(attachmentLocalID);
+		
+		//Returning true
+		return true;
 	}
 	
 	void setUnreadMessageCount(long conversationID, int count) {

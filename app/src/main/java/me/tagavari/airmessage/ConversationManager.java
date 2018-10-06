@@ -3,7 +3,6 @@ package me.tagavari.airmessage;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -24,7 +23,6 @@ import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
 import android.text.style.StyleSpan;
-import android.transition.TransitionManager;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -81,10 +79,12 @@ import java.util.Objects;
 import java.util.Random;
 
 import androidx.annotation.DrawableRes;
+import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.FileProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.transition.TransitionManager;
 import java9.util.function.Consumer;
 import jp.wasabeef.glide.transformations.BlurTransformation;
 import me.tagavari.airmessage.common.SharedValues;
@@ -1089,7 +1089,7 @@ class ConversationManager {
 								ghostMessage.setMessageState(messageInfo.getMessageState());
 								ghostMessage.setErrorCode(messageInfo.getErrorCode());
 								ghostMessage.setDateRead(messageInfo.getDateRead());
-								ghostMessage.updateViewProgressState(context);
+								ghostMessage.updateViewProgressState();
 								ghostMessage.animateGhostStateChanges();
 								
 								//Adding the item to the reinsert queue
@@ -1123,57 +1123,91 @@ class ConversationManager {
 								//Breaking from the loop
 								break;
 							}
-						} else if(messageInfo.getAttachments().size() == 1) {
-							AttachmentInfo attachmentInfo = messageInfo.getAttachments().get(0);
-							if(attachmentInfo.getFileChecksum() != null) {
+						} else if(!messageInfo.getAttachments().isEmpty()) {
+							//Creating the tracking values
+							ConversationManager.MessageInfo sharedMessageInfo = null;
+							List<Long> replacedAttachmentIDList = new ArrayList<>();
+							List<AttachmentInfo> unmatchedAttachments = new ArrayList<>();
+							
+							//Iterating over the attachments
+							for(AttachmentInfo attachmentInfo : messageInfo.getAttachments()) {
+								//Checking if the attachment has no checksum
+								if(attachmentInfo.getFileChecksum() == null) {
+									//Queuing the attachment if no message has been found
+									if(sharedMessageInfo == null) unmatchedAttachments.add(attachmentInfo);
+									//Otherwise adding the attachment directly
+									else sharedMessageInfo.addAttachment(attachmentInfo);
+								}
+								
+								//Iterating over the ghost messages
 								for(ListIterator<MessageInfo> listIterator = ghostMessages.listIterator(); listIterator.hasNext();) {
 									//Getting the item
 									MessageInfo ghostMessage = listIterator.next();
 									
-									//Skipping the remainder of the iteration if the item doesn't match
+									//Skipping the remainder of the iteration if there are no matching attachments
 									if(ghostMessage.getAttachments().isEmpty()) continue;
-									AttachmentInfo firstAttachment = ghostMessage.getAttachments().get(0);
-									if(!Arrays.equals(attachmentInfo.getFileChecksum(), firstAttachment.getFileChecksum())) continue;
+									AttachmentInfo matchingAttachment = null;
+									for(AttachmentInfo ghostAttachment : ghostMessage.getAttachments()) {
+										if(replacedAttachmentIDList.contains(ghostAttachment.getLocalID()) || !Arrays.equals(ghostAttachment.getFileChecksum(), attachmentInfo.getFileChecksum())) continue;
+										matchingAttachment = ghostAttachment;
+										break;
+									}
+									if(matchingAttachment == null) continue;
 									
-									//Updating the ghost item
-									ghostMessage.setServerID(messageInfo.getServerID());
-									ghostMessage.setGuid(messageInfo.getGuid());
-									ghostMessage.setDate(messageInfo.getDate());
-									ghostMessage.setErrorCode(messageInfo.getErrorCode());
-									ghostMessage.setMessageState(messageInfo.getMessageState());
-									ghostMessage.updateViewProgressState(context);
-									ghostMessage.animateGhostStateChanges();
-									
-									firstAttachment.setGuid(attachmentInfo.getGuid());
-									
-									//Adding the item to the reinsert queue
-									sortQueue.add(ghostMessage);
-									
-									/* //Re-sorting the item
-									{
-										int originalIndex = conversationItems.indexOf(ghostMessage);
-										conversationItems.remove(ghostMessage);
-										int newIndex = insertConversationItem(ghostMessage, context, false);
+									//Checking if there is no shared message
+									if(sharedMessageInfo == null) {
+										//Setting the shared message info
+										sharedMessageInfo = ghostMessage;
 										
-										//Updating the adapter
-										if(originalIndex != newIndex) {
-											//if(updater != null) updater.listUpdateMove(originalIndex, newIndex);
-											movedList.add(new ConversationItemMoveRecord(originalIndex, ghostMessage));
+										//Adding the unmatched attachments
+										for(AttachmentInfo unmatchedAttachment : unmatchedAttachments) sharedMessageInfo.addAttachment(unmatchedAttachment);
+									} else {
+										//Switching the attachment's message
+										attachmentInfo.setMessageInfo(sharedMessageInfo);
+										messageInfo.removeAttachment(attachmentInfo);
+										sharedMessageInfo.addAttachment(attachmentInfo);
+										
+										//Removing the message if it is empty
+										if(messageInfo.getMessageText() == null && messageInfo.getAttachments().isEmpty()) {
+											listIterator.remove();
+											if(updater != null) updater.listUpdateRemoved(conversationItems.indexOf(messageInfo));
+											conversationItems.remove(messageInfo);
 										}
-									} */
+									}
 									
-									//Replacing the item in the final list
-									updateList.set(list.indexOf(conversationItem), ghostMessage);
+									//Updating the attachment
+									matchingAttachment.setGuid(attachmentInfo.getGuid());
 									
-									//Setting the message as replaced
-									messageReplaced = true;
-									
-									//Removing the item from the ghost list
-									listIterator.remove();
+									//Marking the item as updated
+									replacedAttachmentIDList.add(attachmentInfo.getLocalID());
 									
 									//Breaking from the loop
 									break;
 								}
+							}
+							
+							//Checking if a message was found
+							if(sharedMessageInfo != null) {
+								//Updating the ghost item
+								sharedMessageInfo.setServerID(messageInfo.getServerID());
+								sharedMessageInfo.setGuid(messageInfo.getGuid());
+								sharedMessageInfo.setDate(messageInfo.getDate());
+								sharedMessageInfo.setErrorCode(messageInfo.getErrorCode());
+								sharedMessageInfo.setMessageState(messageInfo.getMessageState());
+								sharedMessageInfo.updateViewProgressState();
+								sharedMessageInfo.animateGhostStateChanges();
+								
+								//Adding the item to the reinsert queue
+								sortQueue.add(sharedMessageInfo);
+								
+								//Replacing the item in the final list
+								updateList.set(list.indexOf(conversationItem), sharedMessageInfo);
+								
+								//Removing the item from the ghost list
+								ghostMessages.remove(sharedMessageInfo);
+								
+								//Setting the message as replaced
+								messageReplaced = true;
 							}
 						}
 					}
@@ -2057,6 +2091,10 @@ class ConversationManager {
 			attachments.add(attachment);
 		}
 		
+		void removeAttachment(AttachmentInfo attachment) {
+			attachments.remove(attachment);
+		}
+		
 		String getSender() {
 			return sender;
 		}
@@ -2351,12 +2389,12 @@ class ConversationManager {
 					new UpdateErrorCodeTask(getLocalID(), errorCode).execute();
 					
 					//Getting the context
-					Context context = contextReference.get();
-					if(context == null) return;
+					//Context context = contextReference.get();
+					//if(context == null) return;
 					
 					//Updating the view
 					ViewHolder viewHolder = getViewHolder();
-					if(viewHolder != null) updateViewProgressState(viewHolder, context);
+					if(viewHolder != null) updateViewProgressState(viewHolder);
 				}
 			};
 			
@@ -2366,7 +2404,8 @@ class ConversationManager {
 				//Starting the service
 				//if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(new Intent(context, ConnectionService.class));
 				//else context.startService(new Intent(context, ConnectionService.class));
-				context.startService(new Intent(context, ConnectionService.class));
+				
+				//context.startService(new Intent(context, ConnectionService.class));
 				
 				//Telling the response manager
 				messageResponseManager.onFail(ConnectionService.messageSendNetworkException);
@@ -2801,7 +2840,7 @@ class ConversationManager {
 			updateViewColor(viewHolder, context, false);
 			
 			//Updating the view state
-			updateViewProgressState(viewHolder, context);
+			updateViewProgressState(viewHolder);
 			
 			//Updating the time divider
 			configureTimeDivider(context, viewHolder.labelTimeDivider, hasTimeDivider);
@@ -2820,6 +2859,25 @@ class ConversationManager {
 				playEffect(viewHolder);
 				playEffectRequested = false;
 			}
+		}
+		
+		/**
+		 * When the view is scrolled to on the list
+		 * This can be used to update view components (eg. download progress), because sometimes bindView() will not be called when a view is just off the screen and there is no reason to recycle it
+		 */
+		void onScrollShow() {
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder == null) return;
+			
+			//Restoring the upload state
+			restoreUploadState(viewHolder);
+			
+			//Updating the view state display
+			prepareActivityStateDisplay(viewHolder, MainApplication.getInstance());
+			updateViewProgressState();
+			
+			//Updating the attachments
+			for(AttachmentInfo attachmentInfo : attachments) attachmentInfo.onScrollShow();
 		}
 		
 		@Override
@@ -2854,14 +2912,14 @@ class ConversationManager {
 			}
 		}
 		
-		void updateViewProgressState(Context context) {
+		void updateViewProgressState() {
 			//Calling the overload method
 			ViewHolder viewHolder = getViewHolder();
-			if(viewHolder != null) updateViewProgressState(viewHolder, context);
+			if(viewHolder != null) updateViewProgressState(viewHolder);
 		}
 		
 		private static final float ghostAlpha = 0.50F;
-		private void updateViewProgressState(ViewHolder viewHolder, Context context) {
+		private void updateViewProgressState(ViewHolder viewHolder) {
 			//Setting the message part container's alpha
 			if(messageState == SharedValues.MessageInfo.stateCodeGhost) viewHolder.containerMessagePart.setAlpha(ghostAlpha);
 			else viewHolder.containerMessagePart.setAlpha(1);
@@ -3378,7 +3436,7 @@ class ConversationManager {
 		//Creating the data values
 		long localID;
 		String guid;
-		final MessageInfo messageInfo;
+		MessageInfo messageInfo;
 		
 		private Constants.ViewHolderSource<VH> viewHolderSource;
 		
@@ -3443,6 +3501,10 @@ class ConversationManager {
 		
 		void setGuid(String guid) {
 			this.guid = guid;
+		}
+		
+		void setMessageInfo(MessageInfo messageInfo) {
+			this.messageInfo = messageInfo;
 		}
 		
 		MessageInfo getMessageInfo() {
@@ -4231,13 +4293,13 @@ class ConversationManager {
 			layoutParams.gravity = messageInfo.isOutgoing() ? Gravity.END : Gravity.START;
 			viewHolder.itemView.setLayoutParams(layoutParams); */
 			
-			//Configuring the download view
+			/* //Configuring the download view
 			viewHolder.labelDownloadType.setText(getResourceTypeName());
 			if(fileSize == -1) viewHolder.labelDownloadSize.setVisibility(View.GONE);
 			else {
 				viewHolder.labelDownloadSize.setVisibility(View.GONE);
 				viewHolder.labelDownloadSize.setText(Constants.humanReadableByteCount(fileSize, true));
-			}
+			} */
 			
 			//Building the view
 			buildView(viewHolder, context);
@@ -4298,6 +4360,14 @@ class ConversationManager {
 					viewHolder.labelDownloadType.setVisibility(View.VISIBLE);
 					viewHolder.imageDownload.setAlpha(1F);
 					viewHolder.progressDownload.setVisibility(View.GONE);
+					
+					//Configuring the download view
+					viewHolder.labelDownloadType.setText(getResourceTypeName());
+					if(fileSize == -1) viewHolder.labelDownloadSize.setVisibility(View.GONE);
+					else {
+						viewHolder.labelDownloadSize.setVisibility(View.VISIBLE);
+						viewHolder.labelDownloadSize.setText(Constants.humanReadableByteCount(fileSize, true));
+					}
 				}
 			} else {
 				//Hiding the views
@@ -4309,6 +4379,17 @@ class ConversationManager {
 				//Setting up the content view
 				updateContentView(viewHolder, context);
 			}
+		}
+		
+		void onScrollShow() {
+			VH viewHolder = getViewHolder();
+			Context context = viewHolder.itemView.getContext();
+			
+			//Building the view
+			//buildView(viewHolder, context);
+			
+			//Building the common views
+			//buildCommonViews(viewHolder, context);
 		}
 		
 		@Override

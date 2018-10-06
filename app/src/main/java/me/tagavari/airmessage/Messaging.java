@@ -7,7 +7,6 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.app.AlertDialog;
 import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -87,6 +86,7 @@ import java.util.ListIterator;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -162,6 +162,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	};
 	private final RecyclerView.OnScrollListener messageListScrollListener = new RecyclerView.OnScrollListener() {
+		int lastRevealedItem = 0;
+		
 		@Override
 		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
 			//Getting the layout manager
@@ -177,6 +179,20 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Loading chunks if the user is scrolled to the top
 			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !viewModel.isProgressiveLoadInProgress() && !viewModel.progressiveLoadReachedLimit) recyclerView.post(viewModel::loadNextChunk);
+			
+			//Checking if the user is scrolling upwards
+			int newRevealedItem = dy < 0 ? linearLayoutManager.findFirstVisibleItemPosition() : linearLayoutManager.findLastVisibleItemPosition();
+			if(lastRevealedItem != newRevealedItem) {
+				lastRevealedItem = newRevealedItem;
+				/* RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForLayoutPosition(newRevealedItem);
+				if(viewHolder instanceof ConversationManager.MessageInfo.ViewHolder) {
+					((ConversationManager.MessageInfo.ViewHolder) viewHolder).onBind();
+				} */
+				if(lastRevealedItem > 0 && lastRevealedItem < viewModel.conversationItemList.size()) {
+					ConversationManager.ConversationItem item = viewModel.conversationItemList.get(lastRevealedItem);
+					if(item instanceof ConversationManager.MessageInfo) ((ConversationManager.MessageInfo) item).onScrollShow();
+				}
+			}
 		}
 	};
 	private final View.OnTouchListener recordingTouchListener = (view, motionEvent) -> {

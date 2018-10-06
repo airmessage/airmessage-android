@@ -919,6 +919,14 @@ public class Constants {
 		abstract BindingViewHolder bindView(View view);
 	} */
 	
+	public static String listToString(List list, String delimiter) {
+		StringBuilder stringBuilder = new StringBuilder();
+		if(list.isEmpty()) return stringBuilder.toString();
+		stringBuilder.append(list.get(0));
+		for(int i = 1; i < list.size(); i++) stringBuilder.append(delimiter).append(list.get(i));
+		return stringBuilder.toString();
+	}
+	
 	public static class WeakRunnable implements Runnable {
 		private WeakReference<Runnable> reference = null;
 		
