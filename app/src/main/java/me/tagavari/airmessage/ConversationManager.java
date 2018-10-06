@@ -2404,7 +2404,8 @@ class ConversationManager {
 				//Starting the service
 				//if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(new Intent(context, ConnectionService.class));
 				//else context.startService(new Intent(context, ConnectionService.class));
-				context.startService(new Intent(context, ConnectionService.class));
+				
+				//context.startService(new Intent(context, ConnectionService.class));
 				
 				//Telling the response manager
 				messageResponseManager.onFail(ConnectionService.messageSendNetworkException);

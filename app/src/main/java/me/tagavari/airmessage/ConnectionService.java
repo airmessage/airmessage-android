@@ -309,6 +309,9 @@ public class ConnectionService extends Service {
 		//Unregistering the broadcast receivers
 		unregisterReceiver(networkStateChangeBroadcastReceiver);
 		unregisterReceiver(pingBroadcastReceiver);
+		
+		//Removing the notification
+		clearNotification();
 	}
 	
 	/* void setForegroundState(boolean foregroundState) {
