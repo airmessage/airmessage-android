@@ -28,7 +28,7 @@ import androidx.core.graphics.drawable.IconCompat;
 class NotificationUtils {
 	static void sendNotification(Context context, ConversationManager.MessageInfo messageInfo) {
 		//Returning message is outgoing or the message's conversation is loaded
-		if(messageInfo.isOutgoing() || Messaging.getForegroundConversations().contains(messageInfo.getConversationInfo().getLocalID())) return;
+		if(messageInfo.isOutgoing() || Messaging.getForegroundConversations().contains(messageInfo.getConversationInfo().getLocalID()) || ConnectionService.getInstance() != null && ConnectionService.getInstance().isMassRetrievalInProgress()) return;
 		
 		//Returning if notifications are disabled or the conversation is muted
 		if((Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_getnotifications_key), false)) || messageInfo.getConversationInfo().isMuted()) return;

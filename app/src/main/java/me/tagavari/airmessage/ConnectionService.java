@@ -1494,8 +1494,11 @@ public class ConnectionService extends Service {
 							break;
 						}
 						
-						//Processing the messages
-						processMassRetrievalResult(listItems, listConversations);
+						//Processing the messages (done all in one shot, since this communications version does not support streaming)
+						if(massRetrievalThread == null) return;
+						massRetrievalThread.registerInfo(ConnectionService.this, listConversations, listItems.size());
+						massRetrievalThread.addPacket(ConnectionService.this, 1, listItems);
+						massRetrievalThread.finish();
 						
 						break;
 					}
@@ -2903,30 +2906,6 @@ public class ConnectionService extends Service {
 		addMessagingProcessingTask(new MessageUpdateAsyncTask(this, getApplicationContext(), structConversationItems, sendNotifications));
 	}
 	
-	private void processMassRetrievalResult(List<Blocks.ConversationItem> structConversationItems, List<Blocks.ConversationInfo> structConversations) {
-		/* //Stopping the timeout timer
-		massRetrievalTimeoutHandler.removeCallbacks(massRetrievalTimeoutRunnable);
-		
-		//Calculating the progress
-		massRetrievalProgress = 0;
-		massRetrievalProgressCount = structConversationItems.size() + structConversations.size(); */
-		
-		//Adding the data
-		if(massRetrievalThread == null) return;
-		massRetrievalThread.registerInfo(this, structConversations, structConversationItems.size());
-		massRetrievalThread.addPacket(this, 1, structConversationItems);
-		massRetrievalThread.finish();
-		
-		//Sending a progress message
-		/* LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval)
-				.putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress)
-				.putExtra(Constants.intentParamSize, massRetrievalProgressCount)); */
-		
-		//Creating and running the task
-		//new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations).execute();
-		//addMessagingProcessingTask(new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations));
-	}
-	
 	private void processChatInfoResponse(List<Blocks.ConversationInfo> structConversations) {
 		//Creating the list values
 		final ArrayList<ConversationManager.ConversationInfo> unavailableConversations = new ArrayList<>();
@@ -3680,7 +3659,7 @@ public class ConnectionService extends Service {
 							//Opening the input stream
 							try {
 								inputStream = context.getContentResolver().openInputStream(pushRequest.sendUri);
-							} catch(IllegalArgumentException exception) {
+							} catch(IllegalArgumentException | SecurityException exception) {
 								//Printing the stack trace
 								exception.printStackTrace();
 								
