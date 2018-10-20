@@ -17,6 +17,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.DeadSystemException;
 import android.preference.PreferenceManager;
 import android.service.notification.StatusBarNotification;
 
@@ -407,7 +408,7 @@ class NotificationUtils {
 				//Returning the notification
 				return statusBarNotification.getNotification();
 			}
-		} catch(NullPointerException exception) {
+		} catch(RuntimeException exception) {
 			exception.printStackTrace();
 		}
 		

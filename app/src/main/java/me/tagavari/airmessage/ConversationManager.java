@@ -4231,7 +4231,7 @@ class ConversationManager {
 			this(localID, guid, message, fileName, fileType, fileSize);
 			
 			//Setting the file
-			if(file.exists()) this.file = file;
+			if(file != null && file.exists()) this.file = file;
 		}
 		
 		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
