@@ -180,7 +180,7 @@ public class Preferences extends AppCompatActivity {
 			//Returning true
 			return true;
 		};
-		Preference.OnPreferenceClickListener resyncMessagesClickListener = preference -> {
+		Preference.OnPreferenceClickListener syncMessagesClickListener = preference -> {
 			//Checking if the service is ready
 			ConnectionService service = ConnectionService.getInstance();
 			if(service == null || service.getCurrentState() != ConnectionService.stateConnected) {
@@ -208,7 +208,7 @@ public class Preferences extends AppCompatActivity {
 					//Setting the negative button
 					.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> dialogInterface.dismiss())
 					//Setting the positive button
-					.setPositiveButton(R.string.action_resync, (DialogInterface dialogInterface, int which) -> new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), getView()).execute())
+					.setPositiveButton(R.string.action_syncmessages, (DialogInterface dialogInterface, int which) -> new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), getView()).execute())
 					//Creating the dialog
 					.create();
 			
@@ -216,6 +216,9 @@ public class Preferences extends AppCompatActivity {
 			dialog.show();
 			
 			//Returning true
+			return true;
+		};
+		Preference.OnPreferenceClickListener syncAttachmentsClickListener = preference -> {
 			return true;
 		};
 		Preference.OnPreferenceChangeListener themeChangeListener = (preference, newValue) -> {
@@ -283,9 +286,10 @@ public class Preferences extends AppCompatActivity {
 			//findPreference(getResources().getString(R.string.preference_server_foregroundservice_key)).setOnPreferenceChangeListener(useForegroundServiceChangeListener);
 			findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setOnPreferenceChangeListener(startOnBootChangeListener);
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
-			findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
+			//findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
-			findPreference(getResources().getString(R.string.preference_server_resync_key)).setOnPreferenceClickListener(resyncMessagesClickListener);
+			findPreference(getResources().getString(R.string.preference_server_downloadmessages_key)).setOnPreferenceClickListener(syncMessagesClickListener);
+			findPreference(getResources().getString(R.string.preference_server_downloadattachments_key)).setOnPreferenceClickListener(syncAttachmentsClickListener);
 			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener(themeChangeListener);
 		}
 		
@@ -322,7 +326,7 @@ public class Preferences extends AppCompatActivity {
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
 			findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
-			findPreference(getResources().getString(R.string.preference_server_resync_key)).setOnPreferenceClickListener(resyncMessagesClickListener);
+			findPreference(getResources().getString(R.string.preference_server_resync_key)).setOnPreferenceClickListener(syncMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener((preference, newValue) -> {
 				//Applying the dark mode
 				((MainApplication) getActivity().getApplication()).applyDarkMode((String) newValue);

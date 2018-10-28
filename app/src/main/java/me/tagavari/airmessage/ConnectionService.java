@@ -130,7 +130,6 @@ public class ConnectionService extends Service {
 	static final long dropReconnectDelayMillis = 1000; //1 second
 	
 	private static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
-	private static final Pattern regExValidProtocol = Pattern.compile("^ws(s?)://");
 	
 	private PendingIntent pingPendingIntent;
 	
@@ -583,7 +582,7 @@ public class ConnectionService extends Service {
 		/**
 		 * Sends a ping packet to the server
 		 *
-		 * @return whether or not the message was successful;y sent
+		 * @return whether or not the message was successfully sent
 		 */
 		boolean sendPing() {
 			//Starting the ping timer
@@ -649,9 +648,11 @@ public class ConnectionService extends Service {
 		 * Requests the download of a remote attachment
 		 *
 		 * @param requestID the ID of the request
+		 * @param attachmentGUID the GUID of the attachment to fetch
+		 * @param sentRunnable the runnable to call once the request has been sent (usually used to initialize the timeout)
 		 * @return whether or not the request was successful
 		 */
-		abstract boolean addDownloadRequest(short requestID, String attachmentGUID);
+		abstract boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable);
 		
 		/**
 		 * Uploads a file chunk to be sent to the specified conversation
@@ -780,7 +781,7 @@ public class ConnectionService extends Service {
 			 * @param requestID the ID of the request
 			 * @return whether or not the request was successful
 			 */
-			abstract boolean addDownloadRequest(short requestID, String attachmentGUID);
+			abstract boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable);
 			
 			/**
 			 * Uploads a file chunk to be sent to the specified conversation
@@ -978,9 +979,9 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		boolean addDownloadRequest(short requestID, String attachmentGUID) {
+		boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable) {
 			if(protocolManager == null) return false;
-			return protocolManager.addDownloadRequest(requestID, attachmentGUID);
+			return protocolManager.addDownloadRequest(requestID, attachmentGUID, sentRunnable);
 		}
 		
 		@Override
@@ -1776,7 +1777,7 @@ public class ConnectionService extends Service {
 			}
 			
 			@Override
-			boolean addDownloadRequest(short requestID, String attachmentGUID) {
+			boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable) {
 				//Preparing to serialize the request
 				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
 					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
@@ -1791,7 +1792,7 @@ public class ConnectionService extends Service {
 					out.flush();
 					
 					//Sending the message
-					return queuePacket(new PacketStruct(nhtAttachmentReq, trgt.toByteArray()));
+					return queuePacket(new PacketStruct(nhtAttachmentReq, trgt.toByteArray(), sentRunnable));
 				} catch(IOException | GeneralSecurityException exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
@@ -2482,7 +2483,7 @@ public class ConnectionService extends Service {
 			}
 			
 			@Override
-			boolean addDownloadRequest(short requestID, String attachmentGUID) {
+			boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable) {
 				//Preparing to serialize the request
 				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
 					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
@@ -2498,7 +2499,7 @@ public class ConnectionService extends Service {
 					out.flush();
 					
 					//Sending the message
-					return queuePacket(new PacketStruct(nhtAttachmentReq, trgt.toByteArray()));
+					return queuePacket(new PacketStruct(nhtAttachmentReq, trgt.toByteArray(), sentRunnable));
 				} catch(IOException | GeneralSecurityException exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
@@ -3077,14 +3078,15 @@ public class ConnectionService extends Service {
 		//Returning if there is no connection
 		if(currentConnectionManager == null || currentConnectionManager.getState() != stateConnected) return false;
 		
+		//Building the tracking request
+		FileDownloadRequest request = new FileDownloadRequest(callbacks, requestID, attachmentID, attachmentGUID, attachmentName);
+		
 		//Sending the request
-		boolean result = currentConnectionManager.addDownloadRequest(requestID, attachmentGUID);
+		boolean result = currentConnectionManager.addDownloadRequest(requestID, attachmentGUID, request::startTimer);
 		if(!result) return false;
 		
-		//Recording the request
-		FileDownloadRequest request = new FileDownloadRequest(callbacks, requestID, attachmentID, attachmentGUID, attachmentName);
+		//Recording the tracking request
 		fileDownloadRequests.add(request);
-		request.startTimer();
 		
 		//Returning true
 		return true;

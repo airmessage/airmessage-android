@@ -35,25 +35,25 @@
     <string name="preferencegroup_storage_key" translatable="false">pref_group_storage</string>
     <string name="preferencegroup_storage_title">Storage</string>
 	<string name="preference_storage_autodownload_key" translatable="false">pref_key_storage_autodownload</string>
-	<string name="preference_storage_autodownload_title">Automatic downloads</string>
-	<string name="preference_storage_autodownload_desc">Automatically download new attachments</string>
+	<string name="preference_storage_autodownload_title">Automatically download new attachment files</string>
+	<string name="preference_server_downloadattachments_key" translatable="false">pref_key_server_downloadattachments</string>
+	<string name="preference_server_downloadattachments_title">Download remote attachment files</string>
 	<string name="preference_storage_deleteattachments_key" translatable="false">pref_key_storage_deleteattachments</string>
-	<string name="preference_storage_deleteattachments_title">Delete downloaded attachments</string>
+	<string name="preference_storage_deleteattachments_title">Delete downloaded attachment files</string>
 	<string name="preference_storage_deleteattachments_desc">Attachments can be downloaded again at any time</string>
-    <string name="preference_storage_deleteall_key" translatable="false">pref_key_storage_deleteall</string>
-    <string name="preference_storage_deleteall_title">Delete all messages</string>
+	<string name="preference_server_downloadmessages_key" translatable="false">pref_key_server_resync</string>
+	<string name="preference_server_downloadmessages_title">Force-sync messages</string>
+	<string name="preference_server_downloadmessages_desc">Copy all messages from the server to this device</string>
 
     <string name="preferencegroup_server_key" translatable="false">pref_group_server</string>
-    <string name="preferencegroup_server_title">Server</string>
+    <string name="preferencegroup_server_title">Connection</string>
     <string name="preference_server_serverdetails_key" translatable="false">pref_key_server_address</string>
     <string name="preference_server_serverdetails_title">Edit server information</string>
-	<string name="preference_server_resync_key" translatable="false">pref_key_server_resync</string>
-	<string name="preference_server_resync_title">Resync messages</string>
 	<string name="preference_server_foregroundservice_key" translatable="false">pref_key_server_foregroundservice</string>
 	<string name="preference_server_foregroundservice_title">Run service in foreground</string>
 	<string name="preference_server_foregroundservice_description">Shows a notification and allows connecting on startup</string>
 	<string name="preference_server_connectionboot_key" translatable="false">pref_key_server_connectionboot</string>
-	<string name="preference_server_connectionboot_title">Automatically connect on startup</string>
+	<string name="preference_server_connectionboot_title">Automatically connect on device boot</string>
 	<string name="preference_server_disconnectionnotification_key" translatable="false">pref_key_server_disconnectionnotification</string>
 	<string name="preference_server_disconnectionnotification_title">Disconnected notification</string>
 	<string name="preference_server_disconnectionnotification_description">Display a notification when the connection is lost</string>

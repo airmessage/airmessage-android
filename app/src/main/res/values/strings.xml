@@ -23,6 +23,7 @@
 	<string name="action_undo">Undo</string>
 	<string name="action_replay">Replay</string>
 	<string name="action_refresh">Refresh</string>
+	<string name="action_syncmessages">Sync messages</string>
 	<string name="action_resync">Resync</string>
 	<string name="action_enable">Enable</string>
 	<string name="action_remove">Remove</string>
@@ -161,8 +162,8 @@
 	<string name="message_confirm_deletemessages_started">All messages have been deleted</string>
 	<string name="message_confirm_deleteattachments">Delete all downloaded attachments?</string>
 	<string name="message_confirm_deleteattachments_started">All downloaded attachments have been deleted</string>
-	<string name="message_confirm_resyncmessages">Resync messages?</string>
-	<string name="message_confirm_resyncmessages_description">This will replace any currently stored messages</string>
+	<string name="message_confirm_resyncmessages">Force-sync messages?</string>
+	<string name="message_confirm_resyncmessages_description">This will replace any messages currently stored on this device</string>
 	<string name="message_confirm_resyncmessages_started">New messages are being downloaded</string>
 	<string name="message_confirm_resyncmessages_inprogress">New messages are already being downloaded</string>
 	<plurals name="message_confirm_deleteconversation">

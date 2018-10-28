@@ -42,18 +42,14 @@
     <androidx.preference.PreferenceCategory
         android:key="@string/preferencegroup_storage_key"
         android:title="@string/preferencegroup_storage_title" >
-		<androidx.preference.SwitchPreferenceCompat
+		<me.tagavari.airmessage.view.MultiLineSwitchPreference
 			android:key="@string/preference_storage_autodownload_key"
 			android:title="@string/preference_storage_autodownload_title"
-			android:summary="@string/preference_storage_autodownload_desc"
 			android:defaultValue="false" />
 		<androidx.preference.Preference
 			android:key="@string/preference_storage_deleteattachments_key"
 			android:title="@string/preference_storage_deleteattachments_title"
 			android:summary="@string/preference_storage_deleteattachments_desc" />
-        <androidx.preference.Preference
-            android:key="@string/preference_storage_deleteall_key"
-            android:title="@string/preference_storage_deleteall_title" />
     </androidx.preference.PreferenceCategory>
 
     <androidx.preference.PreferenceCategory
@@ -67,16 +63,18 @@
 				android:targetPackage="me.tagavari.airmessage"
 				android:targetClass="me.tagavari.airmessage.ServerSetup" />
         </androidx.preference.Preference>
-        <androidx.preference.Preference
-            android:key="@string/preference_server_resync_key"
-            android:title="@string/preference_server_resync_title" >
-        </androidx.preference.Preference>
+		<androidx.preference.Preference
+			android:key="@string/preference_server_downloadmessages_key"
+			android:title="@string/preference_server_downloadmessages_title" />
+		<androidx.preference.Preference
+			android:key="@string/preference_server_downloadattachments_key"
+			android:title="@string/preference_server_downloadattachments_title" />
 		<!-- <androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_foregroundservice_key"
 			android:title="@string/preference_server_foregroundservice_title"
 			android:summary="@string/preference_server_foregroundservice_description"
 			android:defaultValue="true" /> -->
-		<androidx.preference.SwitchPreferenceCompat
+		<me.tagavari.airmessage.view.MultiLineSwitchPreference
 			android:key="@string/preference_server_connectionboot_key"
 			android:title="@string/preference_server_connectionboot_title"
 			android:defaultValue="true" />
