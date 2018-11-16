@@ -11,8 +11,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.SeekBar;
 
 import com.google.android.material.snackbar.Snackbar;
 import com.takisoft.preferencex.RingtonePreference;
@@ -208,17 +210,27 @@ public class Preferences extends AppCompatActivity {
 					//Setting the negative button
 					.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> dialogInterface.dismiss())
 					//Setting the positive button
-					.setPositiveButton(R.string.action_syncmessages, (DialogInterface dialogInterface, int which) -> new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), getView()).execute())
-					//Creating the dialog
+					.setPositiveButton(R.string.action_sync, (DialogInterface dialogInterface, int which) -> new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), getView()).execute())
+					.setNeutralButton(R.string.action_advanced, (DialogInterface dialogInterface, int which) -> {
+						dialogInterface.dismiss();
+						
+						//Creating the dialog manager
+						View view = new AdvancedSyncDialogManager(getLayoutInflater()).getView();
+						
+						//Creating and showing the actual dialog
+						new AlertDialog.Builder(getActivity())
+								.setTitle(R.string.message_confirm_resyncmessages_advanced)
+								.setView(view)
+								.setNegativeButton(android.R.string.cancel, (DialogInterface _dialogInterface, int _which) -> _dialogInterface.dismiss())
+								.setPositiveButton(R.string.action_sync, (DialogInterface _dialogInterface, int _which) -> new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), getView()).execute())
+								.show();
+					})
 					.create();
 			
 			//Showing the dialog
 			dialog.show();
 			
 			//Returning true
-			return true;
-		};
-		Preference.OnPreferenceClickListener syncAttachmentsClickListener = preference -> {
 			return true;
 		};
 		Preference.OnPreferenceChangeListener themeChangeListener = (preference, newValue) -> {
@@ -289,7 +301,6 @@ public class Preferences extends AppCompatActivity {
 			//findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
 			findPreference(getResources().getString(R.string.preference_server_downloadmessages_key)).setOnPreferenceClickListener(syncMessagesClickListener);
-			findPreference(getResources().getString(R.string.preference_server_downloadattachments_key)).setOnPreferenceClickListener(syncAttachmentsClickListener);
 			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener(themeChangeListener);
 		}
 		
@@ -484,6 +495,64 @@ public class Preferences extends AppCompatActivity {
 		private void updateServerURL(Preference preference) {
 			//Setting the summary
 			preference.setSummary(((MainApplication) getActivity().getApplication()).getConnectivitySharedPrefs().getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null));
+		}
+	}
+	
+	private static class AdvancedSyncDialogManager {
+		private final View view;
+		
+		private int currentSliderID;
+		
+		AdvancedSyncDialogManager(LayoutInflater inflater) {
+			view = inflater.inflate(R.layout.dialog_advancedsync, null);
+			
+			SeekBar sliderMessages = view.findViewById(R.id.slider_messages);
+			SeekBar sliderAttachments = view.findViewById(R.id.slider_attachments);
+			sliderMessages.setOnSeekBarChangeListener(new SeekBarListener(sliderAttachments, false));
+			sliderAttachments.setOnSeekBarChangeListener(new SeekBarListener(sliderMessages, true));
+		}
+		
+		View getView() {
+			return view;
+		}
+		
+		private class SeekBarListener implements SeekBar.OnSeekBarChangeListener {
+			private final SeekBar otherBar;
+			private final boolean enforceLower;
+			
+			private int otherBarStartProgress;
+			private boolean isActive;
+			
+			SeekBarListener(SeekBar otherBar, boolean enforceLower) {
+				this.otherBar = otherBar;
+				this.enforceLower = enforceLower;
+				
+				otherBar.setOnTouchListener((view, event) -> isActive);
+			}
+			
+			@Override
+			public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+				if(currentSliderID != seekBar.getId()) return;
+				if(enforceLower) {
+					if(otherBar.getProgress() < seekBar.getProgress()) otherBar.setProgress(seekBar.getProgress());
+					else if(otherBar.getProgress() != otherBarStartProgress) otherBar.setProgress(Math.max(otherBarStartProgress, seekBar.getProgress()));
+				} else {
+					if(otherBar.getProgress() > seekBar.getProgress()) otherBar.setProgress(seekBar.getProgress());
+					else if(otherBar.getProgress() != otherBarStartProgress) otherBar.setProgress(Math.min(otherBarStartProgress, seekBar.getProgress()));
+				}
+			}
+			
+			@Override
+			public void onStartTrackingTouch(SeekBar seekBar) {
+				currentSliderID = seekBar.getId();
+				otherBarStartProgress = otherBar.getProgress();
+				isActive = true;
+			}
+			
+			@Override
+			public void onStopTrackingTouch(SeekBar seekBar) {
+				isActive = false;
+			}
 		}
 	}
 }

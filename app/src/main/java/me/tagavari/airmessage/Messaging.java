@@ -960,6 +960,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Adding the files
 			for(Uri uri : uris) {
+				if(uri == null) continue;
 				list.add(new SimpleAttachmentInfo(uri, Constants.getMimeType(context, uri), Constants.getUriName(context, uri), Constants.getUriSize(context, uri), -1));
 			}
 			
@@ -2560,11 +2561,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		} */
 		
 		boolean isScrolledToBottom() {
-			return ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
+			return recyclerView != null && recyclerView.getLayoutManager() != null && ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
 		}
 		
 		boolean isDirectlyBelowFrame(int index) {
-			return ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() + 1 == index;
+			return recyclerView != null && recyclerView.getLayoutManager() != null && ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() + 1 == index;
 		}
 		
 		void scrollToBottom() {

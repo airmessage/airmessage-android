@@ -121,8 +121,8 @@ class NotificationUtils {
 			//Setting the sound
 			notificationBuilder.setSound(Uri.parse(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_messagenotifications_sound_key), Constants.defaultNotificationSound)));
 			
-			//Enabling vibration if it is enabled in the preferences
-			if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_vibrate_key), false)) notificationBuilder.setVibrate(new long[]{1000, 1000});
+			//Adding vibration if it is enabled in the preferences
+			if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_vibrate_key), false)) notificationBuilder.setVibrate(new long[]{0, 250, 250, 250});
 			
 			//Setting the priority
 			notificationBuilder.setPriority(Notification.PRIORITY_HIGH);

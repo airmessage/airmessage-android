@@ -345,7 +345,7 @@ public class Constants {
 		//Attempting to pull the file name from the content resolver
 		if("content".equals(uri.getScheme())) {
 			try(Cursor cursor = context.getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
-				if(cursor != null && cursor.moveToFirst()) fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+				if(cursor != null && cursor.moveToFirst()) fileName = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME));
 			} catch(Exception exception) {
 				exception.printStackTrace();
 			}
@@ -363,9 +363,6 @@ public class Constants {
 	}
 	
 	static long getUriSize(Context context, Uri uri) {
-		//Creating the file name variable
-		String fileName = null;
-		
 		//Attempting to pull the file name from the content resolver
 		if("content".equals(uri.getScheme())) {
 			try(Cursor cursor = context.getContentResolver().query(uri, new String[]{OpenableColumns.SIZE}, null, null, null)) {
@@ -505,6 +502,7 @@ public class Constants {
 	} */
 	
 	static String getMimeType(Context context, Uri uri) {
+		//if(uri == null) return defaultMIMEType;
 		String type = context.getContentResolver().getType(uri);
 		return type == null ? defaultMIMEType : type;
 	}

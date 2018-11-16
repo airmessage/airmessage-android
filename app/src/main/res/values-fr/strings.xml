@@ -33,18 +33,18 @@
 	<string name="preference_messagenotifications_sound_title">Son de notification</string>
 	<string name="preference_messagenotifications_vibrate_title">Vibrer</string>
 	<string name="preferencegroup_storage_title">Stockage</string>
-	<string name="preference_storage_autodownload_title">Téléchargement automatique des nouvelles pièces jointes</string>
+	<string name="preference_storage_autodownload_title">Téléchargement automatique des pièces jointes</string>
+	<string name="preference_storage_autodownload_desc">Télécharger automatiquement les pièces jointes lorsqu\'elles arrivent</string>
 	<string name="preference_storage_deleteattachments_title">Supprimer les pièces jointes téléchargées</string>
 	<string name="preference_storage_deleteattachments_desc">Les pièces jointes peuvent être téléchargées à tout moment</string>
 	<string name="preferencegroup_server_title">Connexion</string>
 	<string name="preference_server_serverdetails_title">Modifier les informations du serveur</string>
 	<string name="preference_server_downloadmessages_title">Synchroniser manuellement les messages</string>
 	<string name="preference_server_downloadmessages_desc">Copier tous les messages du serveur à cet appareil</string>
-	<string name="preference_server_downloadattachments_title">Télécharger des pièces jointes</string>
 	<string name="preference_server_connectionboot_title">Connexion automatique au démarrage de l\'appareil</string>
 	<string name="preference_server_networkreconnect_title">Reconnexion de changement de réseau</string>
 	<string name="preference_server_networkreconnect_description">Essayer de vous reconnecter lorsque l\'appareil se connecte à un nouveau réseau (par exemple: Wi-Fi à cellulaire)</string>
-	<string name="preference_server_help_title">Obtenir de l\'aide</string>
+	<string name="preference_server_help_title">Ouvrir le manuel d\'installation</string>
 	<string name="message_serverstatus_limitedfunctionality">%s. La fonctionnalité sera limitée.</string>
 	<string name="message_serverstatus_internalexception">Une erreur interne a eu lieu</string>
 	<string name="message_serverstatus_badrequest">Une erreur de compatibilité de connexion a eu lieu</string>
@@ -72,7 +72,7 @@
 	<string name="action_replay">Revoir</string>
 	<string name="action_refresh">Rafraîchir</string>
 	<string name="action_resync">Resynchroniser</string>
-	<string name="action_syncmessages">Synchroniser</string>
+	<string name="action_sync">Synchroniser</string>
 	<string name="action_enable">Activer</string>
 	<string name="to">À</string>
 	<string name="you">"Vous"</string>
@@ -103,7 +103,7 @@
 	<string name="message_messageeffect_invisibleink">Message envoyé avec une encre invisible</string>
 	<string name="message_setup_connect_address">L\'Adresse du serveur</string>
 	<string name="message_setup_connect_noserver">N\'avez-vous pas de serveur?</string>
-	<string name="message_setup_connect_serverguidelink">Lisez le guide du serveur</string>
+	<string name="message_setup_connect_serverguidelink">Lisez le manuel d\'installation</string>
 	<string name="message_setup_connect_connectionerror">La connexion a échoué</string>
 	<string name="message_setup_connect_password">Mot de passe</string>
 	
@@ -124,7 +124,9 @@
 	<string name="message_confirm_resyncmessages_description">Cette action remplacera tous les messages actuellement stockés</string>
 	<string name="message_confirm_resyncmessages_started">Les nouveaux messages sont en cours de téléchargement</string>
 	<string name="message_confirm_resyncmessages_inprogress">Les nouveaux messages sont déjà en cours de téléchargement</string>
+	<string name="message_confirm_resyncmessages_advanced">Synchronisation avancée</string>
 	<string name="action_copytext">Copier le texte</string>
+	<string name="action_advanced">Avancé</string>
 	<string name="action_share">Partager</string>
 	<string name="action_deletedata">Supprimer la pièce jointe</string>
 	<string name="action_archive">Archiver</string>

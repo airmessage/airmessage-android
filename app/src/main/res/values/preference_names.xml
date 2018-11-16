@@ -35,9 +35,8 @@
     <string name="preferencegroup_storage_key" translatable="false">pref_group_storage</string>
     <string name="preferencegroup_storage_title">Storage</string>
 	<string name="preference_storage_autodownload_key" translatable="false">pref_key_storage_autodownload</string>
-	<string name="preference_storage_autodownload_title">Automatically download new attachment files</string>
-	<string name="preference_server_downloadattachments_key" translatable="false">pref_key_server_downloadattachments</string>
-	<string name="preference_server_downloadattachments_title">Download remote attachment files</string>
+	<string name="preference_storage_autodownload_title">Auto-download attachments</string>
+	<string name="preference_storage_autodownload_desc">Automatically download attachment files as they arrive</string>
 	<string name="preference_storage_deleteattachments_key" translatable="false">pref_key_storage_deleteattachments</string>
 	<string name="preference_storage_deleteattachments_title">Delete downloaded attachment files</string>
 	<string name="preference_storage_deleteattachments_desc">Attachments can be downloaded again at any time</string>
@@ -64,5 +63,5 @@
 	<string name="preference_server_networkreconnect_title">Network switch reconnect</string>
 	<string name="preference_server_networkreconnect_description">Attempt to reconnect when the device connects to a new network (ex. Wi-Fi to Cellular)</string>
     <string name="preference_server_help_key" translatable="false">pref_key_server_help</string>
-    <string name="preference_server_help_title">Get help</string>
+    <string name="preference_server_help_title">View install guide</string>
 </resources>
