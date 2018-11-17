@@ -84,7 +84,7 @@
 			android:title="@string/preference_server_disconnectionnotification_title"
 			android:summary="@string/preference_server_disconnectionnotification_description"
 			android:defaultValue="true" /> -->
-		<androidx.preference.SwitchPreferenceCompat
+		<!-- <androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_dropreconnect_key"
 			android:title="@string/preference_server_dropreconnect_title"
 			android:summary="@string/preference_server_dropreconnect_description"
@@ -93,7 +93,7 @@
 			android:key="@string/preference_server_networkreconnect_key"
 			android:title="@string/preference_server_networkreconnect_title"
 			android:summary="@string/preference_server_networkreconnect_description"
-			android:defaultValue="true" />
+			android:defaultValue="true" /> -->
         <androidx.preference.Preference
             android:key="@string/preference_server_help_key"
             android:title="@string/preference_server_help_title" />

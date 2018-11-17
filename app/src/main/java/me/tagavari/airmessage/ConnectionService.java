@@ -178,7 +178,7 @@ public class ConnectionService extends Service {
 			schedulePing();
 		}
 	};
-	private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
+	/* private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Returning if automatic reconnects are disabled
@@ -186,8 +186,9 @@ public class ConnectionService extends Service {
 			
 			//Reconnecting if there is a connection available
 			if(!intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false)) reconnect();
+			System.out.println("No connectivity: " + intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false));
 		}
-	};
+	}; */
 	
 	//Creating the other values
 	private final SparseArray<MessageResponseManager> messageSendRequests = new SparseArray<>();
@@ -245,7 +246,7 @@ public class ConnectionService extends Service {
 		serviceReference = new WeakReference<>(this);
 		
 		//Registering the broadcast receivers
-		registerReceiver(networkStateChangeBroadcastReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+		//registerReceiver(networkStateChangeBroadcastReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
 		registerReceiver(pingBroadcastReceiver, new IntentFilter(BCPingTimer));
 		
 		//Setting the reference values
@@ -307,7 +308,7 @@ public class ConnectionService extends Service {
 		disconnect();
 		
 		//Unregistering the broadcast receivers
-		unregisterReceiver(networkStateChangeBroadcastReceiver);
+		//unregisterReceiver(networkStateChangeBroadcastReceiver);
 		unregisterReceiver(pingBroadcastReceiver);
 		
 		//Removing the notification
@@ -1069,7 +1070,7 @@ public class ConnectionService extends Service {
 							broadcastState(stateDisconnected, reason, launchID);
 						} else {
 							//Checking if a connection existed for reconnection and the preference is enabled
-							if(flagDropReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
+							if(flagDropReconnect/* && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)*/) {
 								//Updating the notification
 								postConnectedNotification(false);
 								

@@ -45,7 +45,7 @@
 	<string name="preference_server_downloadmessages_desc">Copy all messages from the server to this device</string>
 
     <string name="preferencegroup_server_key" translatable="false">pref_group_server</string>
-    <string name="preferencegroup_server_title">Connection</string>
+    <string name="preferencegroup_server_title">Server</string>
     <string name="preference_server_serverdetails_key" translatable="false">pref_key_server_address</string>
     <string name="preference_server_serverdetails_title">Edit server information</string>
 	<string name="preference_server_foregroundservice_key" translatable="false">pref_key_server_foregroundservice</string>
