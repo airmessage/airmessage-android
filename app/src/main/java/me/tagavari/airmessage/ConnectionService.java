@@ -32,6 +32,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -1163,7 +1164,7 @@ public class ConnectionService extends Service {
 				int verApplicability = checkCommVerApplicability(communicationsVersion);
 				if(verApplicability != 0) {
 					//Terminating the connection
-					connectionThread.closeConnection(verApplicability == -1 ? intentResultCodeServerOutdated : intentResultCodeClientOutdated, verApplicability == -1);
+					connectionThread.closeConnection(verApplicability < 0 ? intentResultCodeServerOutdated : intentResultCodeClientOutdated, verApplicability < 0);
 					return;
 				}
 				protocolManager = findProtocolManager(communicationsSubVersion);

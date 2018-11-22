@@ -8,7 +8,7 @@
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:progress="22"
-		android:max="22"
+		android:max="21"
 		android:layout_marginBottom="8dp" />
 	<TextView
 		android:id="@+id/label_messages"
@@ -28,7 +28,7 @@
 		android:layout_height="wrap_content"
 		android:layout_marginBottom="8dp"
 		android:progress="0"
-		android:max="22" />
+		android:max="21" />
 	<TextView
 		android:id="@+id/label_attachments"
 		android:layout_width="wrap_content"
