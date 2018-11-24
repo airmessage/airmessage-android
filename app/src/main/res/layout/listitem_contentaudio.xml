@@ -11,6 +11,7 @@
 		android:layout_height="wrap_content"
 		android:layout_gravity="center"
 		android:orientation="vertical">
+
 		<include layout="@layout/listitem_contentdownload" />
 		
 		<LinearLayout

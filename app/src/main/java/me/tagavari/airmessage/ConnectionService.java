@@ -98,6 +98,8 @@ public class ConnectionService extends Service {
 	public static final int mmCommunicationsVersion = 4;
 	public static final int mmCommunicationsSubVersion = 3;
 	
+	public static final String featureAdvancedSyncBoundaries1 = "advanced_sync_boundaries_1";
+	
 	private static final int notificationID = -1;
 	static final int maxPacketAllocation = 50 * 1024 * 1024; //50 MB
 	
@@ -179,17 +181,16 @@ public class ConnectionService extends Service {
 			schedulePing();
 		}
 	};
-	/* private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
+	private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Returning if automatic reconnects are disabled
-			if(!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_networkreconnect_key), false)) return;
+			//if(!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_networkreconnect_key), false)) return;
 			
 			//Reconnecting if there is a connection available
 			if(!intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false)) reconnect();
-			System.out.println("No connectivity: " + intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false));
 		}
-	}; */
+	};
 	
 	//Creating the other values
 	private final SparseArray<MessageResponseManager> messageSendRequests = new SparseArray<>();
@@ -247,7 +248,7 @@ public class ConnectionService extends Service {
 		serviceReference = new WeakReference<>(this);
 		
 		//Registering the broadcast receivers
-		//registerReceiver(networkStateChangeBroadcastReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+		registerReceiver(networkStateChangeBroadcastReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
 		registerReceiver(pingBroadcastReceiver, new IntentFilter(BCPingTimer));
 		
 		//Setting the reference values
@@ -309,7 +310,7 @@ public class ConnectionService extends Service {
 		disconnect();
 		
 		//Unregistering the broadcast receivers
-		//unregisterReceiver(networkStateChangeBroadcastReceiver);
+		unregisterReceiver(networkStateChangeBroadcastReceiver);
 		unregisterReceiver(pingBroadcastReceiver);
 		
 		//Removing the notification

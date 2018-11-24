@@ -238,7 +238,7 @@ public class Preferences extends AppCompatActivity {
 					.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> dialogInterface.dismiss())
 					//Setting the positive button
 					.setPositiveButton(R.string.action_sync, (DialogInterface dialogInterface, int which) -> new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), getView()).execute())
-					.setNeutralButton(R.string.action_advanced, (DialogInterface dialogInterface, int which) -> {
+					/*.setNeutralButton(R.string.action_advanced, (DialogInterface dialogInterface, int which) -> {
 						dialogInterface.dismiss();
 						
 						//Creating the dialog manager
@@ -257,7 +257,7 @@ public class Preferences extends AppCompatActivity {
 						
 						//Showing the dialog
 						_dialog.show();
-					})
+					})*/
 					.create();
 			
 			//Showing the dialog
