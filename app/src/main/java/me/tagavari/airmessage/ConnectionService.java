@@ -207,13 +207,17 @@ public class ConnectionService extends Service {
 		return serviceReference == null ? null : serviceReference.get();
 	}
 	
-	public static int getStaticActiveCommunicationsVersion() {
+	static int getStaticActiveCommunicationsVersion() {
 		//Getting the instance
 		ConnectionService connectionService = getInstance();
 		if(connectionService == null) return -1;
 		
 		//Returning the active communications version
 		return connectionService.activeCommunicationsVersion;
+	}
+	
+	static int compareLaunchID(byte launchID) {
+		return Integer.compare(currentLaunchID, launchID);
 	}
 	
 	int getActiveCommunicationsVersion() {
@@ -563,7 +567,10 @@ public class ConnectionService extends Service {
 		 * @return whether or not the request was successful
 		 */
 		boolean connect(byte launchID) {
-			if(currentConnectionManager != null && currentConnectionManager.getState() != stateDisconnected) currentConnectionManager.disconnect();
+			if(currentConnectionManager != null && currentConnectionManager.getState() != stateDisconnected) {
+				System.out.println("Disconnecting current connection manager");
+				currentConnectionManager.disconnect();
+			}
 			currentConnectionManager = this;
 			this.launchID = launchID;
 			return false;
@@ -930,6 +937,8 @@ public class ConnectionService extends Service {
 		private boolean connect(byte launchID, boolean reconnectionRequest) {
 			//Calling the super method
 			super.connect(launchID);
+			System.out.println("Connecting with launch ID " + launchID);
+			Thread.dumpStack();
 			
 			//Parsing the hostname
 			String cleanHostname = hostname;
@@ -1058,7 +1067,7 @@ public class ConnectionService extends Service {
 			//Cancelling an active mass retrieval
 			new Handler(Looper.getMainLooper()).post(ConnectionService.this::cancelMassRetrieval);
 			
-			//Attempting to connect via the legacy method
+			//Attempting to connect via a legacy method
 			if(!forwardRequest || !forwardRequest(launchID, true)) {
 				new Handler(Looper.getMainLooper()).post(() -> {
 					//Checking if this is the most recent launch
@@ -1092,6 +1101,9 @@ public class ConnectionService extends Service {
 						
 						//Clearing the flags
 						flagMarkEndTime = flagDropReconnect = false;
+					} else {
+						//Notifying the connection listeners
+						broadcastState(stateDisconnected, reason, launchID);
 					}
 				});
 			}
@@ -1256,8 +1268,15 @@ public class ConnectionService extends Service {
 					if(isInterrupted()) {
 						try {
 							socket.close();
-						} catch (IOException exception) {
+						} catch(IOException exception) {
+							//Printing the stack trace
 							exception.printStackTrace();
+							
+							//Updating the state
+							closeConnection(intentResultCodeConnection, !(exception instanceof ConnectException) && !(exception instanceof SocketTimeoutException));
+							
+							//Returning
+							return;
 						}
 						return;
 					}
@@ -1356,10 +1375,13 @@ public class ConnectionService extends Service {
 				//Sending a message and finishing the threads
 				if(writerThread == null) {
 					interrupt();
+					System.out.println("Interrupted current thread!");
 				} else {
+					System.out.println("Queued interruption!");
 					queuePacket(new PacketStruct(nhtClose, new byte[0], () -> {
 						interrupt();
 						writerThread.interrupt();
+						System.out.println("Interrupted current thread after packet!");
 					}));
 				}
 				
