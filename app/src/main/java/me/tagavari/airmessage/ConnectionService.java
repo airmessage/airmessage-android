@@ -568,7 +568,6 @@ public class ConnectionService extends Service {
 		 */
 		boolean connect(byte launchID) {
 			if(currentConnectionManager != null && currentConnectionManager.getState() != stateDisconnected) {
-				System.out.println("Disconnecting current connection manager");
 				currentConnectionManager.disconnect();
 			}
 			currentConnectionManager = this;
@@ -937,7 +936,6 @@ public class ConnectionService extends Service {
 		private boolean connect(byte launchID, boolean reconnectionRequest) {
 			//Calling the super method
 			super.connect(launchID);
-			System.out.println("Connecting with launch ID " + launchID);
 			Thread.dumpStack();
 			
 			//Parsing the hostname
@@ -1375,13 +1373,10 @@ public class ConnectionService extends Service {
 				//Sending a message and finishing the threads
 				if(writerThread == null) {
 					interrupt();
-					System.out.println("Interrupted current thread!");
 				} else {
-					System.out.println("Queued interruption!");
 					queuePacket(new PacketStruct(nhtClose, new byte[0], () -> {
 						interrupt();
 						writerThread.interrupt();
-						System.out.println("Interrupted current thread after packet!");
 					}));
 				}
 				
