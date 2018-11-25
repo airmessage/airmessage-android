@@ -21,8 +21,8 @@ android {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
 		targetSdkVersion 28
-		versionCode 39
-		versionName "0.2.3.9"
+		versionCode 40
+		versionName "0.2.4"
 
 		resConfigs "en", "fr"
 	}
@@ -95,7 +95,7 @@ dependencies {
 	implementation "nl.dionsegijn:konfetti:1.1.2"
 
 	//Services
-	implementation "com.google.firebase:firebase-core:16.0.3"
+	implementation "com.google.firebase:firebase-core:16.0.4"
 	implementation "com.crashlytics.sdk.android:crashlytics:2.9.5"
 
 	//Helper

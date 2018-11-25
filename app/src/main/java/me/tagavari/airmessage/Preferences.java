@@ -1,5 +1,6 @@
 package me.tagavari.airmessage;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.NotificationManager;
 import android.content.ComponentName;
@@ -11,8 +12,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.SeekBar;
+import android.widget.TextView;
 
 import com.google.android.material.snackbar.Snackbar;
 import com.takisoft.preferencex.RingtonePreference;
@@ -22,9 +26,12 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.PluralsRes;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.util.Consumer;
 import androidx.fragment.app.DialogFragment;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
@@ -35,6 +42,28 @@ import androidx.preference.SwitchPreferenceCompat;
 public class Preferences extends AppCompatActivity {
 	//Creating the reference values
 	private static final int permissionRequestLocation = 0;
+	private static final AdvancedSyncTime[] advancedSyncTimes = {
+			new AdvancedSyncTime(1 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_hour, 1), //1 hour
+			new AdvancedSyncTime(2 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_hour, 2), //2 hour
+			new AdvancedSyncTime(3 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_hour, 3), //3 hour
+			new AdvancedSyncTime(4 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_hour, 4), //4 hour
+			new AdvancedSyncTime(8 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_hour, 8), //8 hour
+			new AdvancedSyncTime(12 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_hour, 12), //12 hour
+			new AdvancedSyncTime(1 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_day, 1), //1 day
+			new AdvancedSyncTime(2 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_day, 2), //2 day
+			new AdvancedSyncTime(3 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_day, 3), //3 day
+			new AdvancedSyncTime(4 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_day, 4), //4 day
+			new AdvancedSyncTime(5 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_day, 5), //5 day
+			new AdvancedSyncTime(6 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_day, 6), //6 day
+			new AdvancedSyncTime(1 * 7 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_week, 1), //1 week
+			new AdvancedSyncTime(2 * 7 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_week, 2), //2 week
+			new AdvancedSyncTime(3 * 7 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_week, 3), //3 week
+			new AdvancedSyncTime(1 * 4 * 7 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_month, 1), //1 month
+			new AdvancedSyncTime(2 * 4 * 7 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_month, 2), //2 month
+			new AdvancedSyncTime(4 * 4 * 7 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_month, 4), //4 month
+			new AdvancedSyncTime(8 * 4 * 7 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_month, 8), //8 month
+			new AdvancedSyncTime(1 * 12 * 4 * 7 * 24 * 60 * 60 * 1000L, R.plurals.message_advancedsync_time_year, 1), //1 year
+	};
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -180,7 +209,7 @@ public class Preferences extends AppCompatActivity {
 			//Returning true
 			return true;
 		};
-		Preference.OnPreferenceClickListener resyncMessagesClickListener = preference -> {
+		Preference.OnPreferenceClickListener syncMessagesClickListener = preference -> {
 			//Checking if the service is ready
 			ConnectionService service = ConnectionService.getInstance();
 			if(service == null || service.getCurrentState() != ConnectionService.stateConnected) {
@@ -208,8 +237,27 @@ public class Preferences extends AppCompatActivity {
 					//Setting the negative button
 					.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> dialogInterface.dismiss())
 					//Setting the positive button
-					.setPositiveButton(R.string.action_resync, (DialogInterface dialogInterface, int which) -> new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), getView()).execute())
-					//Creating the dialog
+					.setPositiveButton(R.string.action_sync, (DialogInterface dialogInterface, int which) -> new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), getView()).execute())
+					/*.setNeutralButton(R.string.action_advanced, (DialogInterface dialogInterface, int which) -> {
+						dialogInterface.dismiss();
+						
+						//Creating the dialog manager
+						AdvancedSyncDialogManager _dialogManager = new AdvancedSyncDialogManager(getLayoutInflater());
+						
+						//Creating the dialog
+						AlertDialog _dialog = new AlertDialog.Builder(getActivity())
+								.setTitle(R.string.message_confirm_resyncmessages_advanced)
+								.setView(_dialogManager.getView())
+								.setNegativeButton(android.R.string.cancel, (DialogInterface _dialogInterface, int _which) -> _dialogInterface.dismiss())
+								.setPositiveButton(R.string.action_sync, (DialogInterface _dialogInterface, int _which) -> new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), getView()).execute())
+								.create();
+						
+						//Setting the dialog state updater
+						_dialogManager.setStateListener(state -> _dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(state));
+						
+						//Showing the dialog
+						_dialog.show();
+					})*/
 					.create();
 			
 			//Showing the dialog
@@ -283,9 +331,9 @@ public class Preferences extends AppCompatActivity {
 			//findPreference(getResources().getString(R.string.preference_server_foregroundservice_key)).setOnPreferenceChangeListener(useForegroundServiceChangeListener);
 			findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setOnPreferenceChangeListener(startOnBootChangeListener);
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
-			findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
+			//findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
-			findPreference(getResources().getString(R.string.preference_server_resync_key)).setOnPreferenceClickListener(resyncMessagesClickListener);
+			findPreference(getResources().getString(R.string.preference_server_downloadmessages_key)).setOnPreferenceClickListener(syncMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener(themeChangeListener);
 		}
 		
@@ -322,7 +370,7 @@ public class Preferences extends AppCompatActivity {
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
 			findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
-			findPreference(getResources().getString(R.string.preference_server_resync_key)).setOnPreferenceClickListener(resyncMessagesClickListener);
+			findPreference(getResources().getString(R.string.preference_server_resync_key)).setOnPreferenceClickListener(syncMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener((preference, newValue) -> {
 				//Applying the dark mode
 				((MainApplication) getActivity().getApplication()).applyDarkMode((String) newValue);
@@ -480,6 +528,113 @@ public class Preferences extends AppCompatActivity {
 		private void updateServerURL(Preference preference) {
 			//Setting the summary
 			preference.setSummary(((MainApplication) getActivity().getApplication()).getConnectivitySharedPrefs().getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null));
+		}
+		
+		private class AdvancedSyncDialogManager {
+			private final View view;
+			private Consumer<Boolean> stateListener = null;
+			
+			private int currentSliderID;
+			
+			AdvancedSyncDialogManager(LayoutInflater inflater) {
+				view = inflater.inflate(R.layout.dialog_advancedsync, null);
+				
+				SeekBar sliderMessages = view.findViewById(R.id.slider_messages);
+				TextView labelMessages = view.findViewById(R.id.label_messages);
+				SeekBar sliderAttachments = view.findViewById(R.id.slider_attachments);
+				TextView labelAttachments = view.findViewById(R.id.label_attachments);
+				sliderMessages.setOnSeekBarChangeListener(new SeekBarListener(sliderMessages, sliderAttachments, true, labelMessages));
+				sliderAttachments.setOnSeekBarChangeListener(new SeekBarListener(sliderAttachments, sliderMessages, false, labelAttachments));
+			}
+			
+			void setStateListener(Consumer<Boolean> listener) {
+				stateListener = listener;
+			}
+			
+			View getView() {
+				return view;
+			}
+			
+			private class SeekBarListener implements SeekBar.OnSeekBarChangeListener {
+				private final SeekBar otherBar;
+				private final boolean isMessagesSlider;
+				private final TextView descriptiveLabel;
+				
+				private int otherBarStartProgress;
+				private boolean isActive;
+				
+				@SuppressLint("ClickableViewAccessibility")
+				SeekBarListener(SeekBar thisBar, SeekBar otherBar, boolean isMessagesSlider, TextView descriptiveLabel) {
+					//Setting the parameters
+					this.otherBar = otherBar;
+					this.isMessagesSlider = isMessagesSlider;
+					this.descriptiveLabel = descriptiveLabel;
+					
+					//Setting the touch prevention listener on the other seekbar
+					otherBar.setOnTouchListener((view, event) -> isActive);
+					
+					//Updating the label
+					updateLabel(thisBar.getProgress());
+				}
+				
+				@Override
+				public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+					//Updating the label
+					updateLabel(progress);
+					
+					//Updating the button state
+					if(isMessagesSlider) stateListener.accept(progress > 0);
+					
+					//Returning if this is not the active seekbar (to prevent both seekbars from being activated at once)
+					if(currentSliderID != seekBar.getId()) return;
+					
+					//Enforcing the position onto the other seekbar
+					if(isMessagesSlider) {
+						if(otherBar.getProgress() > seekBar.getProgress()) otherBar.setProgress(seekBar.getProgress());
+						else if(otherBar.getProgress() != otherBarStartProgress) otherBar.setProgress(Math.min(otherBarStartProgress, seekBar.getProgress()));
+					} else {
+						if(otherBar.getProgress() < seekBar.getProgress()) otherBar.setProgress(seekBar.getProgress());
+						else if(otherBar.getProgress() != otherBarStartProgress) otherBar.setProgress(Math.max(otherBarStartProgress, seekBar.getProgress()));
+					}
+				}
+				
+				@Override
+				public void onStartTrackingTouch(SeekBar seekBar) {
+					currentSliderID = seekBar.getId();
+					otherBarStartProgress = otherBar.getProgress();
+					isActive = true;
+				}
+				
+				@Override
+				public void onStopTrackingTouch(SeekBar seekBar) {
+					isActive = false;
+				}
+				
+				private void updateLabel(int progress) {
+					//Updating the label
+					String text;
+					if(progress == 0) text = getResources().getString(isMessagesSlider ? R.string.message_advancedsync_downloadmessages_none : R.string.message_advancedsync_downloadattachments_none);
+					else if(progress - 1 == advancedSyncTimes.length) text = getResources().getString(isMessagesSlider ? R.string.message_advancedsync_downloadmessages_all : R.string.message_advancedsync_downloadattachments_all);
+					else {
+						AdvancedSyncTime data = advancedSyncTimes[progress - 1];
+						text = getResources().getString(isMessagesSlider ? R.string.message_advancedsync_downloadmessages : R.string.message_advancedsync_downloadattachments, getResources().getQuantityString(data.pluralRes, data.quantity, data.quantity));
+					}
+					descriptiveLabel.setText(text);
+				}
+			}
+		}
+	}
+	
+	private static class AdvancedSyncTime {
+		private final long duration;
+		@PluralsRes
+		private final int pluralRes;
+		private final int quantity;
+		
+		AdvancedSyncTime(long duration, int pluralRes, int quantity) {
+			this.duration = duration;
+			this.pluralRes = pluralRes;
+			this.quantity = quantity;
 		}
 	}
 }

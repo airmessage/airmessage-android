@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:orientation="vertical" android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:padding="24dp">
+	<SeekBar
+		android:id="@+id/slider_messages"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:progress="22"
+		android:max="21"
+		android:layout_marginBottom="8dp" />
+	<TextView
+		android:id="@+id/label_messages"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="end"
+		android:text="Download messages since"
+		android:textColor="?android:attr/textColorSecondary"
+		android:layout_marginLeft="12dp"
+		android:layout_marginRight="12dp" />
+	<Space
+		android:layout_width="0px"
+		android:layout_height="16dp" />
+	<SeekBar
+		android:id="@+id/slider_attachments"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginBottom="8dp"
+		android:progress="0"
+		android:max="21" />
+	<TextView
+		android:id="@+id/label_attachments"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="end"
+		android:text="Download attachments since"
+		android:textColor="?android:attr/textColorSecondary"
+		android:layout_marginLeft="12dp"
+		android:layout_marginRight="12dp" />
+</LinearLayout>

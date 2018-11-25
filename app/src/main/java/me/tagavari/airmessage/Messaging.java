@@ -154,6 +154,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
+			//Returning if this is not the latest launch
+			if(ConnectionService.compareLaunchID(intent.getByteExtra(Constants.intentParamLaunchID, (byte) -1)) != 0) return;
+			
 			int state = intent.getIntExtra(Constants.intentParamState, -1);
 			if(state == ConnectionService.stateDisconnected) {
 				int code = intent.getIntExtra(Constants.intentParamCode, -1);
@@ -960,6 +963,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Adding the files
 			for(Uri uri : uris) {
+				if(uri == null) continue;
 				list.add(new SimpleAttachmentInfo(uri, Constants.getMimeType(context, uri), Constants.getUriName(context, uri), Constants.getUriSize(context, uri), -1));
 			}
 			
@@ -2560,11 +2564,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		} */
 		
 		boolean isScrolledToBottom() {
-			return ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
+			return recyclerView != null && recyclerView.getLayoutManager() != null && ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() == getItemCount() - 1;
 		}
 		
 		boolean isDirectlyBelowFrame(int index) {
-			return ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() + 1 == index;
+			return recyclerView != null && recyclerView.getLayoutManager() != null && ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition() + 1 == index;
 		}
 		
 		void scrollToBottom() {

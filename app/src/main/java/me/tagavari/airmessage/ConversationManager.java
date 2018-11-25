@@ -2671,7 +2671,7 @@ class ConversationManager {
 					list.add(itemViewHolder);
 				};
 				
-				//Sorting the components
+				//Sorting the components by type into the map
 				for(MessageComponent.ViewHolder componentViewHolder : viewHolder.messageComponents) {
 					if(componentViewHolder instanceof MessageTextInfo.ViewHolder) viewAdder.accept(MessageTextInfo.itemViewType, componentViewHolder);
 					else if(componentViewHolder instanceof ImageAttachmentInfo.ViewHolder) viewAdder.accept(ImageAttachmentInfo.ITEM_VIEW_TYPE, componentViewHolder);
@@ -4014,7 +4014,7 @@ class ConversationManager {
 						StringBuilder stringBuilder = new StringBuilder();
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.FULL).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
@@ -4231,7 +4231,7 @@ class ConversationManager {
 			this(localID, guid, message, fileName, fileType, fileSize);
 			
 			//Setting the file
-			if(file.exists()) this.file = file;
+			if(file != null && file.exists()) this.file = file;
 		}
 		
 		AttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
@@ -4381,9 +4381,10 @@ class ConversationManager {
 			}
 		}
 		
+		//TODO: Check what exactly is going on here?
 		void onScrollShow() {
-			VH viewHolder = getViewHolder();
-			Context context = viewHolder.itemView.getContext();
+			//VH viewHolder = getViewHolder();
+			//Context context = viewHolder.itemView.getContext();
 			
 			//Building the view
 			//buildView(viewHolder, context);
@@ -4589,7 +4590,7 @@ class ConversationManager {
 						StringBuilder stringBuilder = new StringBuilder();
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(getNameFromContentType(getContentType())))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_size, file != null ? Formatter.formatShortFileSize(newContext, file.length()) : newContext.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment size
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						

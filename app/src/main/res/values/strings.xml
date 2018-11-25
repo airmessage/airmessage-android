@@ -23,7 +23,9 @@
 	<string name="action_undo">Undo</string>
 	<string name="action_replay">Replay</string>
 	<string name="action_refresh">Refresh</string>
+	<string name="action_sync">Sync</string>
 	<string name="action_resync">Resync</string>
+	<string name="action_advanced">Advanced</string>
 	<string name="action_enable">Enable</string>
 	<string name="action_remove">Remove</string>
 	<string name="action_unblock">Unblock</string>
@@ -146,7 +148,7 @@
 	
 	<string name="message_setup_connect_address">Server address</string>
 	<string name="message_setup_connect_noserver">Don\'t have a server?</string>
-	<string name="message_setup_connect_serverguidelink">Take a look at the server guide</string>
+	<string name="message_setup_connect_serverguidelink">Take a look at the install guide</string>
 	<string name="message_setup_connect_connectionerror">Connection failed</string>
 	<string name="message_setup_connect_password">Password</string>
 	<string name="message_setup_sync_download_title">Download message history?</string>
@@ -161,10 +163,11 @@
 	<string name="message_confirm_deletemessages_started">All messages have been deleted</string>
 	<string name="message_confirm_deleteattachments">Delete all downloaded attachments?</string>
 	<string name="message_confirm_deleteattachments_started">All downloaded attachments have been deleted</string>
-	<string name="message_confirm_resyncmessages">Resync messages?</string>
-	<string name="message_confirm_resyncmessages_description">This will replace any currently stored messages</string>
+	<string name="message_confirm_resyncmessages">Force-sync messages?</string>
+	<string name="message_confirm_resyncmessages_description">This will replace any messages currently stored on this device</string>
 	<string name="message_confirm_resyncmessages_started">New messages are being downloaded</string>
 	<string name="message_confirm_resyncmessages_inprogress">New messages are already being downloaded</string>
+	<string name="message_confirm_resyncmessages_advanced">Advanced sync</string>
 	<plurals name="message_confirm_deleteconversation">
 		<item quantity="one">Delete selected conversation?</item>
 		<item quantity="other">Delete selected conversations?</item>
@@ -216,7 +219,34 @@
 	<string name="message_messagedetails_size">Size: %s</string>
 	<string name="message_messagedetails_datesent">Sent: %s</string>
 	<string name="message_messagedetails_sendeffect">Send effect: %s</string>
-	
+
+	<string name="message_advancedsync_downloadmessages">Download messages since %s ago</string>
+	<string name="message_advancedsync_downloadattachments">Download attachment files since %s ago</string>
+	<string name="message_advancedsync_downloadmessages_none">Don\'t download any messages</string>
+	<string name="message_advancedsync_downloadmessages_all">Download all messages</string>
+	<string name="message_advancedsync_downloadattachments_none">Don\'t download any attachment files</string>
+	<string name="message_advancedsync_downloadattachments_all">Download all attachment files</string>
+	<plurals name="message_advancedsync_time_hour">
+		<item quantity="one">%d hour</item>
+		<item quantity="other">%d hours</item>
+	</plurals>
+	<plurals name="message_advancedsync_time_day">
+		<item quantity="one">%d day</item>
+		<item quantity="other">%d days</item>
+	</plurals>
+	<plurals name="message_advancedsync_time_week">
+		<item quantity="one">%d week</item>
+		<item quantity="other">%d weeks</item>
+	</plurals>
+	<plurals name="message_advancedsync_time_month">
+		<item quantity="one">%d month</item>
+		<item quantity="other">%d months</item>
+	</plurals>
+	<plurals name="message_advancedsync_time_year">
+		<item quantity="one">%d year</item>
+		<item quantity="other">%d years</item>
+	</plurals>
+
 	<string name="progress_loadingmessages">Loading messages&#8230;</string>
 	<string name="progress_loading">Loading&#8230;</string>
 	<string name="progress_sync">Getting your messages&#8230;</string>

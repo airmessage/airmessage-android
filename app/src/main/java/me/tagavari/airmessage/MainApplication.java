@@ -84,7 +84,6 @@ public class MainApplication extends Application {
 				NotificationChannel messageChannel = new NotificationChannel(notificationChannelMessage, getResources().getString(R.string.notificationchannel_message), NotificationManager.IMPORTANCE_HIGH);
 				messageChannel.setDescription(getString(R.string.notificationchannel_message_desc));
 				messageChannel.enableVibration(true);
-				messageChannel.setVibrationPattern(new long[]{1000, 1000});
 				messageChannel.setShowBadge(true);
 				messageChannel.enableLights(true);
 				//messageChannel.setGroup(notificationGroupMessage);

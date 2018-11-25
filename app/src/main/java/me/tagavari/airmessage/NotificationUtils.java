@@ -17,6 +17,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.DeadSystemException;
 import android.preference.PreferenceManager;
 import android.service.notification.StatusBarNotification;
 
@@ -28,7 +29,7 @@ import androidx.core.graphics.drawable.IconCompat;
 class NotificationUtils {
 	static void sendNotification(Context context, ConversationManager.MessageInfo messageInfo) {
 		//Returning message is outgoing or the message's conversation is loaded
-		if(messageInfo.isOutgoing() || Messaging.getForegroundConversations().contains(messageInfo.getConversationInfo().getLocalID())) return;
+		if(messageInfo.isOutgoing() || Messaging.getForegroundConversations().contains(messageInfo.getConversationInfo().getLocalID()) || ConnectionService.getInstance() != null && ConnectionService.getInstance().isMassRetrievalInProgress()) return;
 		
 		//Returning if notifications are disabled or the conversation is muted
 		if((Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_getnotifications_key), false)) || messageInfo.getConversationInfo().isMuted()) return;
@@ -120,8 +121,8 @@ class NotificationUtils {
 			//Setting the sound
 			notificationBuilder.setSound(Uri.parse(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_messagenotifications_sound_key), Constants.defaultNotificationSound)));
 			
-			//Enabling vibration if it is enabled in the preferences
-			if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_vibrate_key), false)) notificationBuilder.setVibrate(new long[]{1000, 1000});
+			//Adding vibration if it is enabled in the preferences
+			if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_vibrate_key), false)) notificationBuilder.setVibrate(new long[]{0, 250, 250, 250});
 			
 			//Setting the priority
 			notificationBuilder.setPriority(Notification.PRIORITY_HIGH);
@@ -407,7 +408,7 @@ class NotificationUtils {
 				//Returning the notification
 				return statusBarNotification.getNotification();
 			}
-		} catch(NullPointerException exception) {
+		} catch(RuntimeException exception) {
 			exception.printStackTrace();
 		}
 		

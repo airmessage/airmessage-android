@@ -101,6 +101,9 @@ public class Conversations extends AppCompatCompositeActivity {
 	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
+			//Returning if this is not the latest launch
+			if(ConnectionService.compareLaunchID(intent.getByteExtra(Constants.intentParamLaunchID, (byte) -1)) != 0) return;
+			
 			int state = intent.getIntExtra(Constants.intentParamState, -1);
 			if(state == ConnectionService.stateDisconnected) {
 				int code = intent.getIntExtra(Constants.intentParamCode, -1);

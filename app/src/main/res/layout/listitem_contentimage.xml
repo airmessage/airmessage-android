@@ -5,11 +5,13 @@
 	android:id="@+id/content_image"
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content">
-	
-	<FrameLayout
+
+	<LinearLayout
 		android:id="@+id/container"
 		android:layout_width="wrap_content"
-		android:layout_height="wrap_content">
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		android:layout_gravity="center">
 		
 		<include layout="@layout/listitem_contentdownload" />
 		
@@ -100,7 +102,7 @@
 		</LinearLayout>
 		
 		<include layout="@layout/layout_tapbackcontainer" />
-	</FrameLayout>
+	</LinearLayout>
 	
 	<include layout="@layout/layout_stickercontainer" />
 </FrameLayout>

@@ -32,6 +32,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -45,6 +46,7 @@ import java.lang.ref.WeakReference;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.security.DigestInputStream;
@@ -96,6 +98,8 @@ public class ConnectionService extends Service {
 	public static final int mmCommunicationsVersion = 4;
 	public static final int mmCommunicationsSubVersion = 3;
 	
+	public static final String featureAdvancedSyncBoundaries1 = "advanced_sync_boundaries_1";
+	
 	private static final int notificationID = -1;
 	static final int maxPacketAllocation = 50 * 1024 * 1024; //50 MB
 	
@@ -125,12 +129,11 @@ public class ConnectionService extends Service {
 	static final int stateConnected = 2;
 	
 	static final int attachmentChunkSize = 1024 * 1024; //1 MiB
-	static final long keepAliveMillis = 30 * 60 * 1000; //30 minutes
+	static final long keepAliveMillis = 10 * 60 * 1000;//30 * 60 * 1000; //10 minutes
 	static final long keepAliveWindowMillis = 5 * 60 * 1000; //5 minutes
-	static final long dropReconnectDelayMillis = 1000; //1 second
+	static final long[] dropReconnectDelayMillis = {1000, 5 * 1000, 10 * 1000, 30 * 1000}; //1 second, 5 seconds, 10 seconds, 30 seconds
 	
 	private static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
-	private static final Pattern regExValidProtocol = Pattern.compile("^ws(s?)://");
 	
 	private PendingIntent pingPendingIntent;
 	
@@ -182,7 +185,7 @@ public class ConnectionService extends Service {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Returning if automatic reconnects are disabled
-			if(!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_networkreconnect_key), false)) return;
+			//if(!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_networkreconnect_key), false)) return;
 			
 			//Reconnecting if there is a connection available
 			if(!intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false)) reconnect();
@@ -204,13 +207,17 @@ public class ConnectionService extends Service {
 		return serviceReference == null ? null : serviceReference.get();
 	}
 	
-	public static int getStaticActiveCommunicationsVersion() {
+	static int getStaticActiveCommunicationsVersion() {
 		//Getting the instance
 		ConnectionService connectionService = getInstance();
 		if(connectionService == null) return -1;
 		
 		//Returning the active communications version
 		return connectionService.activeCommunicationsVersion;
+	}
+	
+	static int compareLaunchID(byte launchID) {
+		return Integer.compare(currentLaunchID, launchID);
 	}
 	
 	int getActiveCommunicationsVersion() {
@@ -560,7 +567,9 @@ public class ConnectionService extends Service {
 		 * @return whether or not the request was successful
 		 */
 		boolean connect(byte launchID) {
-			if(currentConnectionManager != null && currentConnectionManager.getState() != stateDisconnected) currentConnectionManager.disconnect();
+			if(currentConnectionManager != null && currentConnectionManager.getState() != stateDisconnected) {
+				currentConnectionManager.disconnect();
+			}
 			currentConnectionManager = this;
 			this.launchID = launchID;
 			return false;
@@ -570,7 +579,17 @@ public class ConnectionService extends Service {
 		 * Disconnects the connection manager from the server
 		 */
 		void disconnect() {
+			//Clearing the reconnect flag
 			flagDropReconnect = false;
+		}
+		
+		/**
+		 * Cleans up timers after a disconnection occurs
+		 */
+		void handleDisconnection() {
+			//Cancelling the ping timer
+			((AlarmManager) getSystemService(ALARM_SERVICE)).cancel(pingPendingIntent);
+			handler.removeCallbacks(pingExpiryRunnable);
 		}
 		
 		/**
@@ -583,7 +602,7 @@ public class ConnectionService extends Service {
 		/**
 		 * Sends a ping packet to the server
 		 *
-		 * @return whether or not the message was successful;y sent
+		 * @return whether or not the message was successfully sent
 		 */
 		boolean sendPing() {
 			//Starting the ping timer
@@ -649,9 +668,11 @@ public class ConnectionService extends Service {
 		 * Requests the download of a remote attachment
 		 *
 		 * @param requestID the ID of the request
+		 * @param attachmentGUID the GUID of the attachment to fetch
+		 * @param sentRunnable the runnable to call once the request has been sent (usually used to initialize the timeout)
 		 * @return whether or not the request was successful
 		 */
-		abstract boolean addDownloadRequest(short requestID, String attachmentGUID);
+		abstract boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable);
 		
 		/**
 		 * Uploads a file chunk to be sent to the specified conversation
@@ -780,7 +801,7 @@ public class ConnectionService extends Service {
 			 * @param requestID the ID of the request
 			 * @return whether or not the request was successful
 			 */
-			abstract boolean addDownloadRequest(short requestID, String attachmentGUID);
+			abstract boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable);
 			
 			/**
 			 * Uploads a file chunk to be sent to the specified conversation
@@ -901,14 +922,21 @@ public class ConnectionService extends Service {
 		
 		//Creating the other values
 		private boolean connectionEstablished = false;
+		
 		private final Runnable handshakeExpiryRunnable = () -> {
 			if(connectionThread != null) connectionThread.closeConnection(intentResultCodeConnection, true);
 		};
 		
 		@Override
 		boolean connect(byte launchID) {
+			//Passing the request to the overload method
+			return connect(launchID, false);
+		}
+		
+		private boolean connect(byte launchID, boolean reconnectionRequest) {
 			//Calling the super method
 			super.connect(launchID);
+			Thread.dumpStack();
 			
 			//Parsing the hostname
 			String cleanHostname = hostname;
@@ -923,7 +951,7 @@ public class ConnectionService extends Service {
 			currentState = stateConnecting;
 			
 			//Starting the connection
-			connectionThread = new ConnectionThread(cleanHostname, port);
+			connectionThread = new ConnectionThread(cleanHostname, port, reconnectionRequest);
 			connectionThread.start();
 			
 			//Returning true
@@ -978,9 +1006,9 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		boolean addDownloadRequest(short requestID, String attachmentGUID) {
+		boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable) {
 			if(protocolManager == null) return false;
-			return protocolManager.addDownloadRequest(requestID, attachmentGUID);
+			return protocolManager.addDownloadRequest(requestID, attachmentGUID, sentRunnable);
 		}
 		
 		@Override
@@ -1019,6 +1047,9 @@ public class ConnectionService extends Service {
 		}
 		
 		private void updateStateDisconnected(int reason, boolean forwardRequest) {
+			//Cleaning up from the base connection manager
+			super.handleDisconnection();
+			
 			//Setting the state
 			currentState = stateDisconnected;
 			
@@ -1031,9 +1062,10 @@ public class ConnectionService extends Service {
 			//Invalidating the protocol manager
 			protocolManager = null;
 			
+			//Cancelling an active mass retrieval
 			new Handler(Looper.getMainLooper()).post(ConnectionService.this::cancelMassRetrieval);
 			
-			//Attempting to connect via the legacy method
+			//Attempting to connect via a legacy method
 			if(!forwardRequest || !forwardRequest(launchID, true)) {
 				new Handler(Looper.getMainLooper()).post(() -> {
 					//Checking if this is the most recent launch
@@ -1041,22 +1073,35 @@ public class ConnectionService extends Service {
 						//Setting the last connection result
 						lastConnectionResult = reason;
 						
-						//Notifying the connection listeners
-						broadcastState(stateDisconnected, reason, launchID);
-						
-						//Updating the notification state
-						if(!shutdownRequested) postDisconnectedNotification(false);
-						
-						//Checking if a connection existed for reconnection and the preference is enabled
-						if(flagDropReconnect && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)) {
-							//Reconnecting
-							new Handler().postDelayed(() -> {
-								if(currentState == stateDisconnected && currentLaunchID == launchID) connect(getNextLaunchID());
-							}, dropReconnectDelayMillis);
+						//Checking if the service is not expected to shut down
+						if(shutdownRequested) {
+							//Notifying the connection listeners
+							broadcastState(stateDisconnected, reason, launchID);
+						} else {
+							//Checking if a connection existed for reconnection and the preference is enabled
+							if(flagDropReconnect/* && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)*/) {
+								//Updating the notification
+								postConnectedNotification(false);
+								
+								//Notifying the connection listeners
+								broadcastState(stateConnecting, 0, launchID);
+								
+								//Reconnecting
+								connect(getNextLaunchID(), true);
+							} else {
+								//Updating the notification
+								postDisconnectedNotification(false);
+								
+								//Notifying the connection listeners
+								broadcastState(stateDisconnected, reason, launchID);
+							}
 						}
 						
 						//Clearing the flags
 						flagMarkEndTime = flagDropReconnect = false;
+					} else {
+						//Notifying the connection listeners
+						broadcastState(stateDisconnected, reason, launchID);
 					}
 				});
 			}
@@ -1130,7 +1175,7 @@ public class ConnectionService extends Service {
 				int verApplicability = checkCommVerApplicability(communicationsVersion);
 				if(verApplicability != 0) {
 					//Terminating the connection
-					connectionThread.closeConnection(verApplicability == -1 ? intentResultCodeServerOutdated : intentResultCodeClientOutdated, verApplicability == -1);
+					connectionThread.closeConnection(verApplicability < 0 ? intentResultCodeServerOutdated : intentResultCodeClientOutdated, verApplicability < 0);
 					return;
 				}
 				protocolManager = findProtocolManager(communicationsSubVersion);
@@ -1164,34 +1209,72 @@ public class ConnectionService extends Service {
 			//Creating the reference connection values
 			private final String hostname;
 			private final int port;
+			private final boolean reconnectionRequest;
 			
 			private Socket socket;
 			private DataInputStream inputStream;
 			private DataOutputStream outputStream;
 			private WriterThread writerThread = null;
 			
-			ConnectionThread(String hostname, int port) {
+			ConnectionThread(String hostname, int port, boolean reconnectionRequest) {
 				this.hostname = hostname;
 				this.port = port;
+				this.reconnectionRequest = reconnectionRequest;
 			}
 			
 			@Override
 			public void run() {
 				try {
 					//Returning if the thread is interrupted
-					if(isInterrupted()) return;
+					if (isInterrupted()) return;
 					
-					//Connecting to the server
-					socket = new Socket();
-					//socket.setKeepAlive(true);
-					socket.connect(new InetSocketAddress(hostname, port), 10 * 1000);
+					//Checking if the request is a reconnection request
+					if(reconnectionRequest) {
+						//Looping while there are available reconnection attempts
+						int reconnectionCount = 0;
+						boolean success = false;
+						while(!isInterrupted() && !success && reconnectionCount < dropReconnectDelayMillis.length) {
+							//Waiting for the delay to pass
+							try {
+								sleep(dropReconnectDelayMillis[reconnectionCount]);
+							} catch(InterruptedException interruptedException) {
+								interruptedException.printStackTrace();
+							}
+							
+							//Attempting another connection
+							success = true;
+							try {
+								socket = new Socket();
+								socket.connect(new InetSocketAddress(hostname, port), 10 * 1000);
+							} catch(SocketException | SocketTimeoutException exception) {
+								//Printing the stack trace
+								exception.printStackTrace();
+								
+								//Increasing the connection count
+								reconnectionCount++;
+								
+								success = false;
+							}
+						}
+					} else {
+						//Starting a regular connection
+						socket = new Socket();
+						socket.connect(new InetSocketAddress(hostname, port), 10 * 1000);
+					}
 					
 					//Returning if the thread is interrupted
 					if(isInterrupted()) {
 						try {
 							socket.close();
 						} catch(IOException exception) {
+							//Printing the stack trace
 							exception.printStackTrace();
+							
+							//Updating the state
+							closeConnection(intentResultCodeConnection, !(exception instanceof ConnectException) && !(exception instanceof SocketTimeoutException));
+							
+							//Returning
+							return;
 						}
 						return;
 					}
@@ -1494,8 +1577,11 @@ public class ConnectionService extends Service {
 							break;
 						}
 						
-						//Processing the messages
-						processMassRetrievalResult(listItems, listConversations);
+						//Processing the messages (done all in one shot, since this communications version does not support streaming)
+						if(massRetrievalThread == null) return;
+						massRetrievalThread.registerInfo(ConnectionService.this, listConversations, listItems.size());
+						massRetrievalThread.addPacket(ConnectionService.this, 1, listItems);
+						massRetrievalThread.finish();
 						
 						break;
 					}
@@ -1773,7 +1859,7 @@ public class ConnectionService extends Service {
 			}
 			
 			@Override
-			boolean addDownloadRequest(short requestID, String attachmentGUID) {
+			boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable) {
 				//Preparing to serialize the request
 				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
 					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
@@ -1788,7 +1874,7 @@ public class ConnectionService extends Service {
 					out.flush();
 					
 					//Sending the message
-					return queuePacket(new PacketStruct(nhtAttachmentReq, trgt.toByteArray()));
+					return queuePacket(new PacketStruct(nhtAttachmentReq, trgt.toByteArray(), sentRunnable));
 				} catch(IOException | GeneralSecurityException exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
@@ -2479,7 +2565,7 @@ public class ConnectionService extends Service {
 			}
 			
 			@Override
-			boolean addDownloadRequest(short requestID, String attachmentGUID) {
+			boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable) {
 				//Preparing to serialize the request
 				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
 					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
@@ -2495,7 +2581,7 @@ public class ConnectionService extends Service {
 					out.flush();
 					
 					//Sending the message
-					return queuePacket(new PacketStruct(nhtAttachmentReq, trgt.toByteArray()));
+					return queuePacket(new PacketStruct(nhtAttachmentReq, trgt.toByteArray(), sentRunnable));
 				} catch(IOException | GeneralSecurityException exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
@@ -2903,30 +2989,6 @@ public class ConnectionService extends Service {
 		addMessagingProcessingTask(new MessageUpdateAsyncTask(this, getApplicationContext(), structConversationItems, sendNotifications));
 	}
 	
-	private void processMassRetrievalResult(List<Blocks.ConversationItem> structConversationItems, List<Blocks.ConversationInfo> structConversations) {
-		/* //Stopping the timeout timer
-		massRetrievalTimeoutHandler.removeCallbacks(massRetrievalTimeoutRunnable);
-		
-		//Calculating the progress
-		massRetrievalProgress = 0;
-		massRetrievalProgressCount = structConversationItems.size() + structConversations.size(); */
-		
-		//Adding the data
-		if(massRetrievalThread == null) return;
-		massRetrievalThread.registerInfo(this, structConversations, structConversationItems.size());
-		massRetrievalThread.addPacket(this, 1, structConversationItems);
-		massRetrievalThread.finish();
-		
-		//Sending a progress message
-		/* LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(localBCMassRetrieval)
-				.putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress)
-				.putExtra(Constants.intentParamSize, massRetrievalProgressCount)); */
-		
-		//Creating and running the task
-		//new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations).execute();
-		//addMessagingProcessingTask(new MassRetrievalAsyncTask(this, getApplicationContext(), structConversationItems, structConversations));
-	}
-	
 	private void processChatInfoResponse(List<Blocks.ConversationInfo> structConversations) {
 		//Creating the list values
 		final ArrayList<ConversationManager.ConversationInfo> unavailableConversations = new ArrayList<>();
@@ -3098,14 +3160,15 @@ public class ConnectionService extends Service {
 		//Returning if there is no connection
 		if(currentConnectionManager == null || currentConnectionManager.getState() != stateConnected) return false;
 		
+		//Building the tracking request
+		FileDownloadRequest request = new FileDownloadRequest(callbacks, requestID, attachmentID, attachmentGUID, attachmentName);
+		
 		//Sending the request
-		boolean result = currentConnectionManager.addDownloadRequest(requestID, attachmentGUID);
+		boolean result = currentConnectionManager.addDownloadRequest(requestID, attachmentGUID, request::startTimer);
 		if(!result) return false;
 		
-		//Recording the request
-		FileDownloadRequest request = new FileDownloadRequest(callbacks, requestID, attachmentID, attachmentGUID, attachmentName);
+		//Recording the tracking request
 		fileDownloadRequests.add(request);
-		request.startTimer();
 		
 		//Returning true
 		return true;
@@ -3680,7 +3743,7 @@ public class ConnectionService extends Service {
 							//Opening the input stream
 							try {
 								inputStream = context.getContentResolver().openInputStream(pushRequest.sendUri);
-							} catch(IllegalArgumentException exception) {
+							} catch(IllegalArgumentException | SecurityException exception) {
 								//Printing the stack trace
 								exception.printStackTrace();
 								
@@ -4265,7 +4328,9 @@ public class ConnectionService extends Service {
 				if(context == null) return;
 				
 				for(Blocks.ConversationInfo structConversation : conversationList) {
-					conversationInfoList.add(DatabaseManager.getInstance().addReadyConversationInfo(context, structConversation));
+					ConversationManager.ConversationInfo item = DatabaseManager.getInstance().addReadyConversationInfo(context, structConversation);
+					//if(item == null) item = DatabaseManager.getInstance().fetchConversationInfo(context, structConversation.guid);
+					if(item != null) conversationInfoList.add(item);
 				}
 			}
 			
@@ -4337,7 +4402,6 @@ public class ConnectionService extends Service {
 					messageCountReceived += messagePacket.getList().size();
 					atomicMessageProgress.set(messageCountReceived);
 					LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress).putExtra(Constants.intentParamProgress, messageCountReceived));
-					
 				}
 			} catch(InterruptedException exception) {
 				exception.printStackTrace();
@@ -4373,12 +4437,6 @@ public class ConnectionService extends Service {
 		
 		//Getting the request ID
 		short requestID = getNextRequestID();
-		
-		//Validating the connection
-		if(currentConnectionManager == null || currentConnectionManager.getState() != stateConnected) {
-			responseListener.onFail(messageSendNetworkException);
-			return false;
-		}
 		
 		//Sending the message
 		boolean result = currentConnectionManager.sendMessage(requestID, chatGUID, message);
