@@ -2189,7 +2189,7 @@ class ConversationManager {
 				boolean itemAnchoredTop = messageText != null || attachmentIndex > 0 || isAnchoredTop;
 				boolean itemAnchoredBottom = attachmentIndex < attachments.size() - 1 || isAnchoredBottom;
 				
-				//Updating the uper padding
+				//Updating the upper padding
 				attachmentViewHolder.itemView.setPadding(attachmentViewHolder.itemView.getPaddingLeft(), attachmentIndex + messageTextDiff > 0 ? Constants.dpToPx(dpInterMessagePadding) : 0, attachmentViewHolder.itemView.getPaddingRight(), attachmentViewHolder.itemView.getPaddingBottom());
 				
 				//Updating the attachment's edges
@@ -2437,6 +2437,9 @@ class ConversationManager {
 				
 				//Getting the attachment
 				AttachmentInfo attachmentInfo = attachments.get(0);
+				
+				//Returning false if the attachment is invalid
+				if(attachmentInfo.file == null) return false;
 				
 				if(viewHolder != null) {
 					//Hiding the error view

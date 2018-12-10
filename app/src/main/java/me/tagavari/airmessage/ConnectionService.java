@@ -27,6 +27,8 @@ import android.util.SparseArray;
 
 import com.crashlytics.android.Crashlytics;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -81,6 +83,7 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLHandshakeException;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java9.util.function.BiConsumer;
@@ -129,7 +132,7 @@ public class ConnectionService extends Service {
 	static final int stateConnected = 2;
 	
 	static final int attachmentChunkSize = 1024 * 1024; //1 MiB
-	static final long keepAliveMillis = 10 * 60 * 1000;//30 * 60 * 1000; //10 minutes
+	static final long keepAliveMillis = 10 * 60 * 1000; //30 * 60 * 1000; //10 minutes
 	static final long keepAliveWindowMillis = 5 * 60 * 1000; //5 minutes
 	static final long[] dropReconnectDelayMillis = {1000, 5 * 1000, 10 * 1000, 30 * 1000}; //1 second, 5 seconds, 10 seconds, 30 seconds
 	
@@ -936,7 +939,6 @@ public class ConnectionService extends Service {
 		private boolean connect(byte launchID, boolean reconnectionRequest) {
 			//Calling the super method
 			super.connect(launchID);
-			Thread.dumpStack();
 			
 			//Parsing the hostname
 			String cleanHostname = hostname;
@@ -3296,9 +3298,11 @@ public class ConnectionService extends Service {
 			conversationID = conversationInfo.getLocalID();
 		}
 		
-		FilePushRequest(File file, String fileType, String fileName, long fileModificationDate, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
+		FilePushRequest(@NonNull File file, String fileType, String fileName, long fileModificationDate, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
 			//Calling the main constructor
 			this(conversationInfo, attachmentID, draftID, state, updateTime, uploadRequested);
+			
+			if(file == null) throw new NullPointerException("File reference cannot be null");
 			
 			//Setting the source values
 			sendFile = file;
@@ -3311,9 +3315,11 @@ public class ConnectionService extends Service {
 			//if(Paths.get(sendFile.toURI()).startsWith(MainApplication.getDraftDirectory(MainApplication.getInstance()).getPath())) state = stateQueued;
 		}
 		
-		FilePushRequest(Uri uri, String fileType, String fileName, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
+		FilePushRequest(@NonNull Uri uri, String fileType, String fileName, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
 			//Calling the main constructor
 			this(conversationInfo, attachmentID, draftID, state, updateTime, uploadRequested);
+			
+			if(uri == null) throw new NullPointerException("URI reference cannot be null");
 			
 			//Setting the source values
 			sendFile = null;
@@ -3759,7 +3765,7 @@ public class ConnectionService extends Service {
 						else if(pushRequest.sendFile != null) {
 							//Checking if the file is outside the target directory
 							File targetFolder = requestUpload ? MainApplication.getUploadDirectory(context) : MainApplication.getDraftDirectory(context);
-							if(!Constants.checkFileParent(targetFolder, pushRequest.sendFile)) {
+							if(!Constants.checkFileParent(targetFolder, pushRequest.sendFile)) { //If the file is already in the target directory, there is nothing to do
 								//Getting the file name
 								fileName = pushRequest.fileName;
 								if(fileName == null) fileName = pushRequest.sendFile.getName();
@@ -3795,11 +3801,12 @@ public class ConnectionService extends Service {
 						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
 						
 						//Closing the input stream
-						if(inputStream != null) try {
+						//Input stream is always null
+						/* if(inputStream != null) try {
 							inputStream.close();
 						} catch(IOException closeException) {
 							closeException.printStackTrace();
-						}
+						} */
 						
 						//Skipping the remainder of the iteration
 						continue;
@@ -3873,7 +3880,7 @@ public class ConnectionService extends Service {
 							//Skipping the remainder of the iteration
 							continue;
 						} finally {
-							if(inputStream != null) try {
+							try {
 								inputStream.close();
 							} catch(IOException exception) {
 								exception.printStackTrace();
@@ -3881,7 +3888,7 @@ public class ConnectionService extends Service {
 						}
 						
 						//Setting the request's file
-						if(targetFile != null) pushRequest.sendFile = targetFile;
+						pushRequest.sendFile = targetFile;
 					}
 					
 					if(requestUpload) {
@@ -5062,8 +5069,10 @@ public class ConnectionService extends Service {
 						//if(parentConversation.getState() != ConversationManager.ConversationInfo.ConversationState.READY) continue;
 						
 						//Incrementing the conversation's unread count
-						if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing()) parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
-						parentConversation.updateUnreadStatus(context);
+						if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing()) {
+							parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
+							parentConversation.updateUnreadStatus(context);
+						}
 						
 						//Renaming the conversation
 						if(conversationItem instanceof ConversationManager.ChatRenameActionInfo) parentConversation.setTitle(context, ((ConversationManager.ChatRenameActionInfo) conversationItem).title);
@@ -5249,8 +5258,6 @@ public class ConnectionService extends Service {
 		protected Void doInBackground() {
 			//Getting the context
 			Context context = contextReference.get();
-			
-			//Returning if the context is invalid
 			if(context == null) return null;
 			
 			//Removing the unavailable conversations from the database
@@ -5259,7 +5266,7 @@ public class ConnectionService extends Service {
 			//Checking if there are any available conversations
 			if(!availableConversations.isEmpty()) {
 				//Iterating over the conversations
-				for(ListIterator<ConversationInfoRequest> iterator = availableConversations.listIterator(); iterator.hasNext(); ) {
+				for(ListIterator<ConversationInfoRequest> iterator = availableConversations.listIterator(); iterator.hasNext();) {
 					//Getting the conversation
 					ConversationInfoRequest availableConversationRequest = iterator.next();
 					ConversationManager.ConversationInfo availableConversation = availableConversationRequest.conversationInfo;
@@ -5270,8 +5277,14 @@ public class ConnectionService extends Service {
 					//Searching for a matching conversation in the database
 					ConversationManager.ConversationInfo clientConversation = DatabaseManager.getInstance().findConversationInfoWithMembers(context, Constants.normalizeAddresses(availableConversation.getConversationMembersAsCollection()), availableConversation.getService(), true);
 					
-					//Checking if a client conversation has been found
-					if(clientConversation != null) {
+					//Checking if a client conversation has not been found (the conversation is a new conversation from the server)
+					if(clientConversation == null) {
+						//Recording the available conversation items
+						availableConversationItems.put(availableConversation.getLocalID(), conversationItems);
+						
+						//Updating the available conversation
+						DatabaseManager.getInstance().updateConversationInfo(availableConversation, true);
+					} else { //The newly fetched server conversation is merged into the client conversation (the one that originally resided on the device with no link data)
 						//Switching the conversation item ownership to the new client conversation
 						DatabaseManager.getInstance().switchMessageOwnership(availableConversation, clientConversation);
 						//for(ConversationManager.ConversationItem item : conversationItems) item.setConversationInfo(clientConversation); //Doesn't work, because the client conversation info isn't actually the one in shared memory
@@ -5289,23 +5302,11 @@ public class ConnectionService extends Service {
 						//Updating the client conversation
 						DatabaseManager.getInstance().copyConversationInfo(availableConversation, clientConversation, false);
 						
-						//Removing the available conversation from the list
+						//Removing the available conversation from the list (as it has now been merged into the original conversation)
 						iterator.remove();
-						//iterator.add(new ConversationInfoRequest(availableConversation, availableConversationRequest.sendNotifications));
-					} else {
-						//Recording the available conversation items
-						availableConversationItems.put(availableConversation.getLocalID(), conversationItems);
-						
-						//Updating the available conversation
-						DatabaseManager.getInstance().updateConversationInfo(availableConversation, true);
 					}
 				}
 			}
-			
-			//Loading the conversation members from the device's contacts
-			/* for(ConversationInfoRequest conversationRequest : availableConversations)
-				for(String user : conversationRequest.conversationInfo.getConversationMembersAsArray())
-					UserCacheHelper.loadUser(context, user); */
 			
 			//Returning
 			return null;
@@ -5350,7 +5351,7 @@ public class ConnectionService extends Service {
 					ConversationManager.addConversation(conversationInfoRequest.conversationInfo);
 					
 					//Adding the unread messages
-					conversationInfoRequest.conversationInfo.setUnreadMessageCount(availableConversationItems.get(conversationInfoRequest.conversationInfo.getLocalID()).size());
+					conversationInfoRequest.conversationInfo.setUnreadMessageCount(countUnreadMessages(availableConversationItems.get(conversationInfoRequest.conversationInfo.getLocalID())));
 					conversationInfoRequest.conversationInfo.updateUnreadStatus(context);
 					//availableConversation.updateView(ConnectionService.this);
 				}
@@ -5374,7 +5375,7 @@ public class ConnectionService extends Service {
 						
 						//Adding the unread messages
 						if(!transferData.conversationItems.isEmpty()) {
-							conversationInfo.setUnreadMessageCount(conversationInfo.getUnreadMessageCount() + transferData.conversationItems.size());
+							conversationInfo.setUnreadMessageCount(conversationInfo.getUnreadMessageCount() + countUnreadMessages(transferData.conversationItems));
 							conversationInfo.updateUnreadStatus(context);
 							conversationInfo.trySetLastItemUpdate(context, transferData.conversationItems.get(transferData.conversationItems.size() - 1), false);
 						}
@@ -5678,5 +5679,13 @@ public class ConnectionService extends Service {
 		}/* else if(conversationItem instanceof Blocks.GroupActionInfo) {
 			Blocks.GroupActionInfo action = (Blocks.GroupActionInfo) conversationItem;
 		}*/
+	}
+	
+	private static int countUnreadMessages(List<ConversationManager.ConversationItem> items) {
+		int count = 0;
+		for(ConversationManager.ConversationItem conversationItem : items) {
+			if(conversationItem instanceof ConversationManager.MessageInfo && !((ConversationManager.MessageInfo) conversationItem).isOutgoing()) count++;
+		}
+		return count;
 	}
 }

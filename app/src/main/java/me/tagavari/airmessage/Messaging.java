@@ -122,7 +122,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final int quickScrollFABThreshold = 3;
 	private static final float bottomSheetFillThreshold = 0.8F;
 	private static final float contentPanelFillThreshold = 0.5F;
-	static final int messageChunkSize = 50;
+	static final int messageChunkSize = 20;
 	static final int progressiveLoadThreshold = 10;
 	private static final String[] documentMimeTypes = {"text/*", "application/*", "font/*"};
 	private static final int draftCountLimit = 10;
@@ -4032,7 +4032,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					@Override
 					protected List<ConversationManager.ConversationItem> doInBackground(Void... params) {
 						//Loading the conversation items
-						List<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0);
+						List<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0, 0);
 						
 						//Setting up the conversation item relations
 						ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
@@ -4081,12 +4081,14 @@ public class Messaging extends AppCompatCompositeActivity {
 			progressiveLoadInProgress.setValue(true);
 			
 			//Loading a chunk
-			long lastMessageDate = conversationInfo.getConversationItems().get(0).getDate();
+			ConversationManager.ConversationItem lastItem = conversationInfo.getConversationItems().get(0);
+			long lastItemServerID = lastItem.getServerID();
+			long lastItemLocalID = lastItem.getLocalID();
 			new AsyncTask<Void, Void, List<ConversationManager.ConversationItem>>() {
 				@Override
 				protected List<ConversationManager.ConversationItem> doInBackground(Void... params) {
 					//Loading the conversation items
-					return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, lastMessageDate);
+					return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, lastItemServerID, lastItemLocalID);
 				}
 				
 				@Override
