@@ -14,12 +14,13 @@
 		<!-- Toolbar -->
 		<FrameLayout
 			android:layout_width="match_parent"
-			android:layout_height="?android:attr/actionBarSize">
+			android:layout_height="?android:attr/actionBarSize"
+			android:background="?android:attr/colorBackgroundFloating">
 			<androidx.appcompat.widget.Toolbar
 				android:id="@+id/toolbar"
 				android:layout_width="match_parent"
 				android:layout_height="match_parent"
-				android:theme="@style/SolidActionBar" />
+				android:theme="@style/SolidActionBarClear" />
 			<LinearLayout
 				android:id="@+id/layout_search"
 				android:layout_width="match_parent"
@@ -82,6 +83,7 @@
 		android:layout_gravity="bottom|end"
 		android:layout_margin="16dp"
 		android:src="@drawable/add"
+		android:foregroundTint="@color/colorPrimary"
 		app:fabSize="normal" />
 	<!-- Content layout -->
 	<RelativeLayout

@@ -360,22 +360,22 @@ class ConversationManager {
 		private static final String yearFormat = "y"; */
 		static final String bullet = " • ";
 		static final Integer[] standardUserColors = {
-				0xFFF44336, //Red
-				0xFFE91E63, //Pink
-				0xFF9C27B0, //Purple
-				0xFF673AB7, //Dark purple
-				0xFF3F51B5, //Indigo
-				0xFF2196F3, //Blue
-				0xFF03A9F4, //Light blue
-				0xFF00BCD4, //Cyan
-				0xFF009688, //Teal
-				0xFF4CAF50, //Green
-				0xFF8BC34A, //Light green
-				0xFFCDDC39, //Lime green
-				0xFFFDD835, //Yellow (400)
-				0xFFFFC107, //Amber
-				0xFFFF9800, //Orange
-				0xFFFF5722, //Deep orange
+				0xFFFF1744, //Red
+				0xFFF50057, //Pink
+				0xFFD500F9, //Purple
+				0xFF651FFF, //Dark purple
+				0xFF3D5AFE, //Indigo
+				0xFF2979FF, //Blue
+				0xFF00B0FF, //Light blue
+				0xFF00B8D4, //Cyan
+				0xFF00BFA5, //Teal
+				0xFF00C853, //Green
+				0xFF64DD17, //Light green
+				0xFFAEEA00, //Lime green
+				0xFFFFD600, //Yellow
+				0xFFFFC400, //Amber
+				0xFFFF9100, //Orange
+				0xFFFF3D00, //Deep orange
 				//0xFF795548, //Brown
 				//0xFF607D8B, //Blue grey
 		};
@@ -2180,7 +2180,6 @@ class ConversationManager {
 			//Iterating over the attachments
 			int attachmentIndex = 0;
 			int messageTextDiff = messageText == null ? 0 : 1;
-			//int componentIndex = messageText == null ? 0 : 1;
 			for(AttachmentInfo attachment : attachments) {
 				//Getting the view holder
 				AttachmentInfo.ViewHolder attachmentViewHolder = (AttachmentInfo.ViewHolder) viewHolder.messageComponents.get(attachmentIndex + messageTextDiff);
@@ -2189,7 +2188,7 @@ class ConversationManager {
 				boolean itemAnchoredTop = messageText != null || attachmentIndex > 0 || isAnchoredTop;
 				boolean itemAnchoredBottom = attachmentIndex < attachments.size() - 1 || isAnchoredBottom;
 				
-				//Updating the uper padding
+				//Updating the upper padding
 				attachmentViewHolder.itemView.setPadding(attachmentViewHolder.itemView.getPaddingLeft(), attachmentIndex + messageTextDiff > 0 ? Constants.dpToPx(dpInterMessagePadding) : 0, attachmentViewHolder.itemView.getPaddingRight(), attachmentViewHolder.itemView.getPaddingBottom());
 				
 				//Updating the attachment's edges
@@ -2201,7 +2200,6 @@ class ConversationManager {
 						pxCornerUnanchored);
 				
 				//Increasing the index
-				//componentIndex++;
 				attachmentIndex++;
 			}
 		}

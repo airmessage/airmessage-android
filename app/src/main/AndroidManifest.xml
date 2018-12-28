@@ -43,7 +43,7 @@
 			android:exported="false"
 			android:name=".Messaging"
 			android:parentActivityName=".Conversations"
-			android:theme="@style/DayNight.NoActionBar"
+			android:theme="@style/DayNight.Messaging"
 			android:windowSoftInputMode="adjustResize|stateUnchanged" />
 		<!-- New Message -->
 		<activity
@@ -58,6 +58,7 @@
 			android:exported="false"
 			android:label="@string/screen_settings"
 			android:name=".Preferences"
+			android:theme="@style/DayNight.NoActionBar.SolidNavigation"
 			android:parentActivityName=".Conversations">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />

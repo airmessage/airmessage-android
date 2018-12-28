@@ -15,7 +15,9 @@
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
 			android:layout_height="?android:attr/actionBarSize"
-			android:theme="@style/SolidActionBar" />
+			android:theme="@style/SolidActionBarClear"
+			android:background="?android:attr/colorBackgroundFloating"
+			app:titleTextAppearance="@style/LightToolbarText" />
 		<!-- Recipient input -->
 		<LinearLayout
 			android:id="@+id/user_input"

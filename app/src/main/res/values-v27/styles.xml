@@ -12,7 +12,7 @@
 		<!--<item name="android:navigationBarColor">@color/navbarBackground</item>-->
 		
 		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
-		<item name="android:navigationBarColor">@color/navbarBackgroundProtected</item>
+		<item name="android:navigationBarColor">?android:attr/colorBackground</item>
 	</style>
 	
 	<style name="DayNight.NoActionBar.SolidNavigation" parent="DayNight.NoActionBar">

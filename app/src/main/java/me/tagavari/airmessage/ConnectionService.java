@@ -936,7 +936,6 @@ public class ConnectionService extends Service {
 		private boolean connect(byte launchID, boolean reconnectionRequest) {
 			//Calling the super method
 			super.connect(launchID);
-			Thread.dumpStack();
 			
 			//Parsing the hostname
 			String cleanHostname = hostname;

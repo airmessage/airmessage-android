@@ -83,7 +83,7 @@ dependencies {
 	implementation "androidx.lifecycle:lifecycle-extensions:2.0.0"
 
 	//Backports
-	implementation "net.sourceforge.streamsupport:android-retrostreams:1.6.3"
+	implementation "net.sourceforge.streamsupport:android-retrostreams:1.7.0"
 	implementation "org.lukhnos:nnio:0.2"
 
 	//Layouts
@@ -95,18 +95,18 @@ dependencies {
 	implementation "nl.dionsegijn:konfetti:1.1.2"
 
 	//Services
-	implementation "com.google.firebase:firebase-core:16.0.4"
-	implementation "com.crashlytics.sdk.android:crashlytics:2.9.5"
+	implementation "com.google.firebase:firebase-core:16.0.5"
+	implementation "com.crashlytics.sdk.android:crashlytics:2.9.6"
 
 	//Helper
 	implementation "com.takisoft.preferencex:preferencex-ringtone:1.0.0-alpha2"
 
 	//Backend
-	implementation "org.jetbrains.kotlin:kotlin-stdlib:1.2.60"
+	implementation "org.jetbrains.kotlin:kotlin-stdlib:1.2.71"
 	implementation "org.bouncycastle:bcprov-jdk15on:1.60"
 
 	implementation "com.github.bumptech.glide:glide:4.8.0"
-	implementation "jp.wasabeef:glide-transformations:3.3.0"
+	implementation "jp.wasabeef:glide-transformations:4.0.1"
 	//annotationProcessor "com.github.bumptech.glide:compiler:4.7.1"
 }
 
