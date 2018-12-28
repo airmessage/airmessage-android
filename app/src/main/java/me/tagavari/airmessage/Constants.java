@@ -901,6 +901,14 @@ public class Constants {
 		return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
 	}
 	
+	static String humanReadableByteCountInt(long bytes, boolean si) {
+		int unit = si ? 1000 : 1024;
+		if (bytes < unit) return bytes + " B";
+		int exp = (int) (Math.log(bytes) / Math.log(unit));
+		String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp - 1) + (si ? "" : "i");
+		return String.format("%d %sB", (int) (bytes / Math.pow(unit, exp)), pre);
+	}
+	
 	public static String intToFormattedString(int value) {
 		return String.format(Locale.getDefault(), "%d", value);
 	}

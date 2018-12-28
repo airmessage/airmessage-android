@@ -510,13 +510,14 @@ public class Conversations extends AppCompatCompositeActivity {
 							intent.setData(Uri.parse("mailto:"));
 							intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 							intent.putExtra(Intent.EXTRA_EMAIL, new String[]{Constants.feedbackEmail});
-							intent.putExtra(Intent.EXTRA_SUBJECT, "AirMessage Feedback");
+							intent.putExtra(Intent.EXTRA_SUBJECT, "AirMessage feedback");
 							intent.putExtra(Intent.EXTRA_TEXT, "\r\n\r\n" +
 									"---------- DEVICE INFORMATION ----------" + "\r\n" +
 									"Device model: " + Build.MODEL + "\r\n" +
 									"Android version: " + Build.VERSION.RELEASE + "\r\n" +
 									"Client version: " + BuildConfig.VERSION_NAME + "\r\n" +
-									"AM communications version: " + ConnectionService.mmCommunicationsVersion + '.' + ConnectionService.mmCommunicationsSubVersion);
+									"AM current communications version: " + ConnectionService.getStaticActiveCommunicationsVersion() + '.' + ConnectionService.getStaticActiveCommunicationsSubVersion() + "\r\n" +
+									"AM target communications version: " + ConnectionService.mmCommunicationsVersion + '.' + ConnectionService.mmCommunicationsSubVersion);
 							//intent.setType("message/rfc822");
 							
 							//Launching the intent

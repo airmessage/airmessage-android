@@ -3504,18 +3504,32 @@ public class Messaging extends AppCompatCompositeActivity {
 						break;
 					case "application/msword":
 					case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+					case "application/vnd.openxmlformats-officedocument.wordprocessingml.template":
+					case "application/vnd.ms-word.document.macroEnabled.12":
+					case "application/vnd.ms-word.template.macroEnabled.12":
 						iconResource = R.drawable.file_msword;
 						viewColorBG = R.color.tile_blue_bg;
 						viewColorFG = R.color.tile_blue_fg;
 						break;
 					case "application/vnd.ms-excel":
 					case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+					case "application/vnd.openxmlformats-officedocument.spreadsheetml.template":
+					case "application/vnd.ms-excel.sheet.macroEnabled.12":
+					case "application/vnd.ms-excel.sheet.binary.macroEnabled.12":
+					case "application/vnd.ms-excel.template.macroEnabled.12":
+					case "application/vnd.ms-excel.addin.macroEnabled.12":
 						iconResource = R.drawable.file_msexcel;
 						viewColorBG = R.color.tile_green_bg;
 						viewColorFG = R.color.tile_green_fg;
 						break;
 					case "application/vnd.ms-powerpoint":
 					case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+					case "application/vnd.openxmlformats-officedocument.presentationml.template":
+					case "application/vnd.openxmlformats-officedocument.presentationml.slideshow":
+					case "application/vnd.ms-powerpoint.addin.macroEnabled.12":
+					case "application/vnd.ms-powerpoint.presentation.macroEnabled.12":
+					case "application/vnd.ms-powerpoint.template.macroEnabled.12":
+					case "application/vnd.ms-powerpoint.slideshow.macroEnabled.12":
 						iconResource = R.drawable.file_mspowerpoint;
 						viewColorBG = R.color.tile_yellow_bg;
 						viewColorFG = R.color.tile_yellow_fg;
@@ -3539,7 +3553,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			viewHolder.documentIcon.setImageResource(iconResource);
 			viewHolder.documentIcon.setImageTintList(ColorStateList.valueOf(viewColorFG));
 			
-			viewHolder.documentSize.setText(Constants.humanReadableByteCount(item.getFileSize(), true));
+			viewHolder.documentSize.setText(Constants.humanReadableByteCount(item.getFileSize(), false));
 			viewHolder.documentSize.setTextColor(viewColorFG);
 			
 			viewHolder.itemView.setBackgroundTintList(ColorStateList.valueOf(viewColorBG));

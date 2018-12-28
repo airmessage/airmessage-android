@@ -450,7 +450,7 @@ public class ServerSetup extends AppCompatActivity {
 	
 	private void deleteMessages(final boolean requestAfter) {
 		//Deleting / syncing the messages
-		if(requestAfter) new ConversationsBase.SyncMessagesTask(getApplicationContext(), null).execute();
+		if(requestAfter) new ConversationsBase.SyncMessagesTask(getApplicationContext(), null, new ConnectionService.MassRetrievalParams()).execute();
 		else new ConversationsBase.DeleteMessagesTask(getApplicationContext()).execute();
 		
 		//Finishing the activity

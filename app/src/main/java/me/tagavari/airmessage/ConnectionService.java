@@ -27,14 +27,11 @@ import android.util.SparseArray;
 
 import com.crashlytics.android.Crashlytics;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -99,9 +96,9 @@ public class ConnectionService extends Service {
 	 *  4 - Better stability and security, with sub-version support
 	 */
 	public static final int mmCommunicationsVersion = 4;
-	public static final int mmCommunicationsSubVersion = 3;
+	public static final int mmCommunicationsSubVersion = 4;
 	
-	public static final String featureAdvancedSyncBoundaries1 = "advanced_sync_boundaries_1";
+	public static final String featureAdvancedSync1 = "advanced_sync_1";
 	
 	private static final int notificationID = -1;
 	static final int maxPacketAllocation = 50 * 1024 * 1024; //50 MB
@@ -154,20 +151,22 @@ public class ConnectionService extends Service {
 	private boolean flagMarkEndTime = false; //Marks the time that the connection is closed, so that missed messages can be fetched since that time when reconnecting
 	private boolean flagDropReconnect = false; //Automatically starts a new connection when the connection is closed
 	private int activeCommunicationsVersion = -1;
+	private int activeCommunicationsSubVersion = -1;
 	
 	//private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
 	//private Thread fileUploadRequestThread = null;
 	
 	private final BlockingQueue<FileProcessingRequest> fileProcessingRequestQueue = new LinkedBlockingQueue<>();
 	private final AtomicReference<FileProcessingRequest> fileProcessingRequestCurrent = new AtomicReference<>(null);
-	private AtomicBoolean fileUploadRequestThreadRunning = new AtomicBoolean(false);
+	private AtomicBoolean fileProcessingThreadRunning = new AtomicBoolean(false);
+	private FileProcessingThread fileProcessingThread = null;
 	
 	private final BlockingQueue<QueueTask<?, ?>> messageProcessingQueue = new LinkedBlockingQueue<>();
 	private AtomicBoolean messageProcessingQueueThreadRunning = new AtomicBoolean(false);
 	
 	private MassRetrievalThread massRetrievalThread = null;
 	
-	private final List<FileDownloadRequest> fileDownloadRequests = new ArrayList<>();
+	private final ArrayList<FileDownloadRequest> fileDownloadRequests = new ArrayList<>();
 	
 	private static byte currentLaunchID = 0;
 	
@@ -197,6 +196,7 @@ public class ConnectionService extends Service {
 	
 	//Creating the other values
 	private final SparseArray<MessageResponseManager> messageSendRequests = new SparseArray<>();
+	private MassRetrievalParams currentMassRetrievalParams = null;
 	//private final LongSparseArray<MessageResponseManager> fileSendRequests = new LongSparseArray<>();
 	//private short currentRequestID = (short) (new Random(System.currentTimeMillis()).nextInt((int) Short.MAX_VALUE - (int) Short.MIN_VALUE + 1) + Short.MIN_VALUE);
 	//private short currentRequestID = (short) new Random(System.currentTimeMillis()).nextInt(1 << 16);
@@ -216,15 +216,28 @@ public class ConnectionService extends Service {
 		if(connectionService == null) return -1;
 		
 		//Returning the active communications version
-		return connectionService.activeCommunicationsVersion;
-	}
-	
-	static int compareLaunchID(byte launchID) {
-		return Integer.compare(currentLaunchID, launchID);
+		return connectionService.getActiveCommunicationsVersion();
 	}
 	
 	int getActiveCommunicationsVersion() {
 		return activeCommunicationsVersion;
+	}
+	
+	static int getStaticActiveCommunicationsSubVersion() {
+		//Getting the instance
+		ConnectionService connectionService = getInstance();
+		if(connectionService == null) return -1;
+		
+		//Returning the active communications version
+		return connectionService.getActiveCommunicationsSubVersion();
+	}
+	
+	int getActiveCommunicationsSubVersion() {
+		return activeCommunicationsSubVersion;
+	}
+	
+	static int compareLaunchID(byte launchID) {
+		return Integer.compare(currentLaunchID, launchID);
 	}
 	
 	int getCurrentState() {
@@ -498,6 +511,16 @@ public class ConnectionService extends Service {
 	
 	//ConnectionBinder binder = new ConnectionBinder();
 	
+	void cancelCurrentTasks() {
+		//Cancelling the file requests
+		List<FileDownloadRequest> requestList = (List<FileDownloadRequest>) fileDownloadRequests.clone();
+		for(FileDownloadRequest request : requestList) request.failDownload();
+		
+		//Interrupting the file processing request thread and clearing its contents
+		if(fileProcessingThreadRunning.get()) fileProcessingThread.interrupt();
+		fileProcessingRequestQueue.clear();
+	}
+	
 	@Override
 	public IBinder onBind(Intent intent) {
 		//Returning
@@ -724,9 +747,11 @@ public class ConnectionService extends Service {
 		/**
 		 * Requests a mass message retrieval
 		 *
+		 * @param requestID the ID used to validate conflicting requests
+		 * @param params the mass retrieval parameters to use
 		 * @return whether or not the request was successfully sent
 		 */
-		abstract boolean requestRetrievalAll();
+		abstract boolean requestRetrievalAll(short requestID, MassRetrievalParams params);
 		
 		/**
 		 * Checks if the specified communications version is applicable
@@ -753,6 +778,13 @@ public class ConnectionService extends Service {
 			} else connectionManagerPriorityList.get(targetIndex).get().connect(launchID);
 			return true;
 		}
+		
+		/**
+		 * Checks if the specified feature is supported by the current protocol
+		 * @param feature the feature to check
+		 * @return whether or not this protocol manager can handle the specified feature
+		 */
+		abstract boolean checkSupportsFeature(String feature);
 		
 		abstract class ProtocolManager {
 			/**
@@ -853,9 +885,11 @@ public class ConnectionService extends Service {
 			/**
 			 * Requests a mass message retrieval
 			 *
+			 * @param requestID the ID used to validate conflicting requests
+			 * @param params the mass retrieval parameters to use
 			 * @return whether or not the request was successfully sent
 			 */
-			abstract boolean requestRetrievalAll();
+			abstract boolean requestRetrievalAll(short requestID, MassRetrievalParams params);
 			
 			/**
 			 * Gets a packager for processing transferable data via this protocol version
@@ -885,6 +919,13 @@ public class ConnectionService extends Service {
 			 * @return whether or not this protocol manager can handle the specified version
 			 */
 			abstract boolean checkSubVerApplicability(int version);
+			
+			/**
+			 * Checks if the specified feature is supported by the current protocol
+			 * @param feature the feature to check
+			 * @return whether or not this protocol manager can handle the specified feature
+			 */
+			abstract boolean checkSupportsFeature(String feature);
 		}
 	}
 	
@@ -898,34 +939,14 @@ public class ConnectionService extends Service {
 		private final Handler handler = new Handler();
 		
 		//Creating the transmission values
-		private static final String stringCharset = "UTF-8";
 		private static final int nhtClose = -1;
 		private static final int nhtPing = -2;
 		private static final int nhtPong = -3;
 		private static final int nhtInformation = 0;
-		private static final int nhtAuthentication = 1;
-		private static final int nhtMessageUpdate = 2;
-		private static final int nhtTimeRetrieval = 3;
-		private static final int nhtMassRetrieval = 4;
-		private static final int nhtMassRetrievalFinish = 10;
-		private static final int nhtConversationUpdate = 5;
-		private static final int nhtModifierUpdate = 6;
-		private static final int nhtAttachmentReq = 7;
-		private static final int nhtAttachmentReqConfirm = 8;
-		private static final int nhtAttachmentReqFail = 9;
-		private static final int nhtSendResult = 100;
-		private static final int nhtSendTextExisting = 101;
-		private static final int nhtSendTextNew = 102;
-		private static final int nhtSendFileExisting = 103;
-		private static final int nhtSendFileNew = 104;
-		private static final int nhtAuthenticationOK = 0;
-		private static final int nhtAuthenticationUnauthorized = 1;
-		private static final int nhtAuthenticationBadRequest = 2;
-		private static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
-		
+
 		//Creating the other values
 		private boolean connectionEstablished = false;
-		
+
 		private final Runnable handshakeExpiryRunnable = () -> {
 			if(connectionThread != null) connectionThread.closeConnection(intentResultCodeConnection, true);
 		};
@@ -1038,9 +1059,9 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
-		boolean requestRetrievalAll() {
+		boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
 			if(protocolManager == null) return false;
-			return protocolManager.requestRetrievalAll();
+			return protocolManager.requestRetrievalAll(requestID, params);
 		}
 		
 		@Override
@@ -1187,7 +1208,10 @@ public class ConnectionService extends Service {
 				}
 				
 				//Recording the protocol version
-				new Handler(Looper.getMainLooper()).post(() -> activeCommunicationsVersion = communicationsVersion);
+				new Handler(Looper.getMainLooper()).post(() -> {
+					activeCommunicationsVersion = communicationsVersion;
+					activeCommunicationsSubVersion = communicationsSubVersion;
+				});
 				
 				//Sending the handshake data
 				protocolManager.sendAuthenticationRequest();
@@ -1204,6 +1228,8 @@ public class ConnectionService extends Service {
 					return new ClientProtocol2();
 				case 3:
 					return new ClientProtocol3();
+				case 4:
+					return new ClientProtocol4();
 			}
 		}
 		
@@ -1480,10 +1506,39 @@ public class ConnectionService extends Service {
 			}
 		}
 		
+		@Override
+		boolean checkSupportsFeature(String feature) {
+			//Forwarding the request to the protocol manager
+			if(protocolManager == null) return false;
+			return protocolManager.checkSupportsFeature(feature);
+		}
+		
 		private class ClientProtocol1 extends ProtocolManager {
-			private final Packager protocolPackager = new PackagerComm3();
-			private static final String hashAlgorithm = "MD5";
-			private static final String stringCharset = "UTF-8";
+			final Packager protocolPackager = new PackagerComm3();
+			static final String hashAlgorithm = "MD5";
+			static final String stringCharset = "UTF-8";
+			
+			//Top-level net header type values
+			static final int nhtAuthentication = 1;
+			static final int nhtMessageUpdate = 2;
+			static final int nhtTimeRetrieval = 3;
+			static final int nhtMassRetrieval = 4;
+			static final int nhtConversationUpdate = 5;
+			static final int nhtModifierUpdate = 6;
+			static final int nhtAttachmentReq = 7;
+			static final int nhtAttachmentReqConfirm = 8;
+			static final int nhtAttachmentReqFail = 9;
+			static final int nhtSendResult = 100;
+			static final int nhtSendTextExisting = 101;
+			static final int nhtSendTextNew = 102;
+			static final int nhtSendFileExisting = 103;
+			static final int nhtSendFileNew = 104;
+			
+			//Net subtype values
+			static final int nstAuthenticationOK = 0;
+			static final int nstAuthenticationUnauthorized = 1;
+			static final int nstAuthenticationBadRequest = 2;
+			static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
 			
 			@Override
 			boolean sendPing() {
@@ -1512,13 +1567,13 @@ public class ConnectionService extends Service {
 						
 						//Translating the result to the local value
 						switch(resultCode) {
-							case nhtAuthenticationOK:
+							case nstAuthenticationOK:
 								resultCode = intentResultCodeSuccess;
 								break;
-							case nhtAuthenticationUnauthorized:
+							case nstAuthenticationUnauthorized:
 								resultCode = intentResultCodeUnauthorized;
 								break;
-							case nhtAuthenticationBadRequest:
+							case nstAuthenticationBadRequest:
 								resultCode = intentResultCodeBadRequest;
 								break;
 									/* case nhtAuthenticationVersionMismatch:
@@ -1581,8 +1636,8 @@ public class ConnectionService extends Service {
 						
 						//Processing the messages (done all in one shot, since this communications version does not support streaming)
 						if(massRetrievalThread == null) return;
-						massRetrievalThread.registerInfo(ConnectionService.this, listConversations, listItems.size());
-						massRetrievalThread.addPacket(ConnectionService.this, 1, listItems);
+						massRetrievalThread.registerInfo(ConnectionService.this, (short) 0, listConversations, listItems.size());
+						massRetrievalThread.addPacket(ConnectionService.this, (short) 0, 1, listItems);
 						massRetrievalThread.finish();
 						
 						break;
@@ -2026,7 +2081,10 @@ public class ConnectionService extends Service {
 			}
 			
 			@Override
-			boolean requestRetrievalAll() {
+			boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
+				//Ignoring advanced requests
+				if(params.isAdvanced) throw new UnsupportedOperationException();
+				
 				//Returning false if there is no connection thread
 				if(connectionThread == null) return false;
 				
@@ -2056,12 +2114,40 @@ public class ConnectionService extends Service {
 			boolean checkSubVerApplicability(int version) {
 				return version == 1;
 			}
+			
+			@Override
+			boolean checkSupportsFeature(String feature) {
+				return false;
+			}
 		}
 		
 		private class ClientProtocol2 extends ProtocolManager {
-			private final Packager protocolPackager = new PackagerComm3();
-			private static final String hashAlgorithm = "MD5";
-			private static final String stringCharset = "UTF-8";
+			final Packager protocolPackager = new PackagerComm3();
+			static final String hashAlgorithm = "MD5";
+			static final String stringCharset = "UTF-8";
+			
+			//Top-level net header type values
+			static final int nhtAuthentication = 1;
+			static final int nhtMessageUpdate = 2;
+			static final int nhtTimeRetrieval = 3;
+			static final int nhtMassRetrieval = 4;
+			static final int nhtConversationUpdate = 5;
+			static final int nhtModifierUpdate = 6;
+			static final int nhtAttachmentReq = 7;
+			static final int nhtAttachmentReqConfirm = 8;
+			static final int nhtAttachmentReqFail = 9;
+			static final int nhtMassRetrievalFinish = 10;
+			static final int nhtSendResult = 100;
+			static final int nhtSendTextExisting = 101;
+			static final int nhtSendTextNew = 102;
+			static final int nhtSendFileExisting = 103;
+			static final int nhtSendFileNew = 104;
+			
+			//Net subtype values
+			static final int nstAuthenticationOK = 0;
+			static final int nstAuthenticationUnauthorized = 1;
+			static final int nstAuthenticationBadRequest = 2;
+			static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
 			
 			@Override
 			boolean sendPing() {
@@ -2088,15 +2174,15 @@ public class ConnectionService extends Service {
 						ByteBuffer dataBuffer = ByteBuffer.wrap(data);
 						int resultCode = dataBuffer.getInt();
 						
-						//Translating the result to the local value
+						//Translating the result code to a local value
 						switch(resultCode) {
-							case nhtAuthenticationOK:
+							case nstAuthenticationOK:
 								resultCode = intentResultCodeSuccess;
 								break;
-							case nhtAuthenticationUnauthorized:
+							case nstAuthenticationUnauthorized:
 								resultCode = intentResultCodeUnauthorized;
 								break;
-							case nhtAuthenticationBadRequest:
+							case nstAuthenticationBadRequest:
 								resultCode = intentResultCodeBadRequest;
 								break;
 									/* case nhtAuthenticationVersionMismatch:
@@ -2147,13 +2233,13 @@ public class ConnectionService extends Service {
 									int messageCount = inSec.readInt();
 									
 									//Registering the mass retrieval manager
-									if(massRetrievalThread != null) massRetrievalThread.registerInfo(ConnectionService.this, conversationList, messageCount);
+									if(massRetrievalThread != null) massRetrievalThread.registerInfo(ConnectionService.this, (short) 0, conversationList, messageCount);
 								} else {
 									//Reading the item list
 									List<Blocks.ConversationItem> listItems = deserializeConversationItems(inSec, inSec.readInt());
 									
 									//Processing the packet
-									if(massRetrievalThread != null) massRetrievalThread.addPacket(ConnectionService.this, packetIndex, listItems);
+									if(massRetrievalThread != null) massRetrievalThread.addPacket(ConnectionService.this, (short) 0, packetIndex, listItems);
 								}
 							}
 						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
@@ -2312,7 +2398,7 @@ public class ConnectionService extends Service {
 				}
 			}
 			
-			private List<Blocks.ConversationInfo> deserializeConversations(ObjectInputStream in, int count) throws IOException {
+			List<Blocks.ConversationInfo> deserializeConversations(ObjectInputStream in, int count) throws IOException {
 				//Creating the list
 				List<Blocks.ConversationInfo> list = new ArrayList<>(count);
 				
@@ -2736,7 +2822,10 @@ public class ConnectionService extends Service {
 			}
 			
 			@Override
-			boolean requestRetrievalAll() {
+			boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
+				//Ignoring advanced requests
+				if(params.isAdvanced) throw new UnsupportedOperationException();
+				
 				//Returning false if there is no connection thread
 				if(connectionThread == null) return false;
 				
@@ -2755,7 +2844,7 @@ public class ConnectionService extends Service {
 			private static final int encryptionKeyIterationCount = 10000;
 			private static final int encryptionKeyLength = 128; //128 bits
 			
-			private byte[] readEncrypted(ObjectInputStream stream, String password) throws IOException, GeneralSecurityException {
+			byte[] readEncrypted(ObjectInputStream stream, String password) throws IOException, GeneralSecurityException {
 				//Reading the data
 				byte[] salt = new byte[encryptionSaltLen];
 				stream.readFully(salt);
@@ -2835,8 +2924,14 @@ public class ConnectionService extends Service {
 			boolean checkSubVerApplicability(int version) {
 				return version == 1;
 			}
+			
+			@Override
+			boolean checkSupportsFeature(String feature) {
+				return false;
+			}
 		}
 		
+		//Serialization changes
 		private class ClientProtocol3 extends ClientProtocol2 {
 			@Override
 			List<Blocks.ConversationItem> deserializeConversationItems(ObjectInputStream in, int count) throws IOException, RuntimeException {
@@ -2915,6 +3010,123 @@ public class ConnectionService extends Service {
 				
 				//Returning the list
 				return list;
+			}
+			
+			@Override
+			boolean checkSupportsFeature(String feature) {
+				return false;
+			}
+		}
+		
+		//Advanced sync support
+		private class ClientProtocol4 extends ClientProtocol3 {
+			//Top-level net header type values
+			private static final int nhtMassRetrievalFile = 11;
+			
+			@Override
+			void processData(int messageType, byte[] data) {
+				switch(messageType) {
+					case nhtMassRetrieval: {
+						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
+							//Reading the packet information
+							short requestID = in.readShort();
+							int packetIndex = in.readInt();
+							
+							//Reading the secure data
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+								//Checking if this is the first packet
+								if(packetIndex == 0) {
+									//Reading the conversation list
+									List<Blocks.ConversationInfo> conversationList = deserializeConversations(inSec, inSec.readInt());
+									
+									//Reading the message count
+									int messageCount = inSec.readInt();
+									
+									//Registering the mass retrieval manager
+									if(massRetrievalThread != null) massRetrievalThread.registerInfo(ConnectionService.this, requestID, conversationList, messageCount);
+								} else {
+									//Reading the item list
+									List<Blocks.ConversationItem> listItems = deserializeConversationItems(inSec, inSec.readInt());
+									
+									//Processing the packet
+									if(massRetrievalThread != null) massRetrievalThread.addPacket(ConnectionService.this, requestID, packetIndex, listItems);
+								}
+							}
+						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
+							//Logging the exception
+							exception.printStackTrace();
+							
+							//Cancelling the mass retrieval process
+							massRetrievalThread.cancel(ConnectionService.this);
+						}
+						
+						break;
+					}
+					case nhtMassRetrievalFile:
+						
+						break;
+					default:
+						super.processData(messageType, data);
+						break;
+				}
+			}
+			
+			@Override
+			boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
+				//Returning false if there is no connection thread
+				if(connectionThread == null) return false;
+				
+				//Building the data
+				byte[] packetData;
+				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt)) {
+					//Adding the data
+					out.writeShort(requestID); //Request ID
+					out.writeBoolean(params.isAdvanced); //Advanced retrieval
+					
+					if(params.isAdvanced) {
+						out.writeBoolean(params.restrictMessages); //Whether or not to time-restrict messages
+						if(params.restrictMessages) out.writeLong(params.timeSinceMessages); //Messages time since
+						out.writeBoolean(params.downloadAttachments); //Whether or not to download attachments
+						if(params.downloadAttachments) {
+							out.writeBoolean(params.restrictAttachments); //Whether or not to time-restrict attachments
+							if(params.restrictAttachments) out.writeLong(params.timeSinceAttachments); //Attachments time since
+							out.writeBoolean(params.restrictAttachmentSizes); //Whether or not to size-restrict attachments
+							if(params.restrictAttachmentSizes) out.writeLong(params.attachmentSizeLimit); //Attachment size limit
+							
+							out.writeInt(params.attachmentFilterWhitelist.size()); //Attachment type whitelist
+							for(String filter : params.attachmentFilterWhitelist) out.writeUTF(filter);
+							out.writeInt(params.attachmentFilterBlacklist.size()); //Attachment type blacklist
+							for(String filter : params.attachmentFilterBlacklist) out.writeUTF(filter);
+							out.writeBoolean(params.attachmentFilterDLOutside); //Whether or not to download "other" items
+						}
+					}
+					
+					out.flush();
+					
+					packetData = trgt.toByteArray();
+				} catch(IOException exception) {
+					//Printing the stack trace
+					exception.printStackTrace();
+					
+					//Returning false
+					return false;
+				}
+				
+				//Queuing the packet
+				queuePacket(new PacketStruct(nhtMassRetrieval, packetData));
+				
+				//Returning true
+				return true;
+			}
+			
+			@Override
+			boolean checkSupportsFeature(String feature) {
+				switch(feature) {
+					case featureAdvancedSync1:
+						return true;
+				}
+				
+				return false;
 			}
 		}
 	}
@@ -3129,7 +3341,10 @@ public class ConnectionService extends Service {
 		fileProcessingRequestQueue.add(request);
 		
 		//Starting the thread if it isn't running
-		if(fileUploadRequestThreadRunning.compareAndSet(false, true)) new FileProcessingRequestThread(getApplicationContext(), this).start();
+		if(fileProcessingThreadRunning.compareAndSet(false, true)) {
+			fileProcessingThread = new FileProcessingThread(getApplicationContext(), this);
+			fileProcessingThread.start();
+		}
 	}
 	
 	FileProcessingRequest searchFileProcessingQueue(long draftID) {
@@ -3632,7 +3847,7 @@ public class ConnectionService extends Service {
 		}
 	}
 	
-	private static class FileProcessingRequestThread extends Thread {
+	private static class FileProcessingThread extends Thread {
 		//Creating the constants
 		private final float copyProgressValue = 0.2F;
 		
@@ -3643,7 +3858,7 @@ public class ConnectionService extends Service {
 		//Creating the other values
 		private final Handler handler = new Handler(Looper.getMainLooper());
 		
-		FileProcessingRequestThread(Context context, ConnectionService service) {
+		FileProcessingThread(Context context, ConnectionService service) {
 			contextReference = new WeakReference<>(context);
 			serviceReference = new WeakReference<>(service);
 		}
@@ -4164,7 +4379,7 @@ public class ConnectionService extends Service {
 			//Checking if the service is valid
 			if(service != null) {
 				//Telling the service that the processing thread is finished
-				service.fileUploadRequestThreadRunning.set(false);
+				service.fileProcessingThreadRunning.set(false);
 				
 				//Clearing the current processing item
 				service.fileProcessingRequestCurrent.set(null);
@@ -4210,14 +4425,15 @@ public class ConnectionService extends Service {
 		static final long startTimeout = 40 * 1000; //The timeout duration directly after requesting a mass retrieval - 40 seconds
 		static final long intervalTimeout = 10 * 1000; //The timeout duration between message packets - 10 seconds
 		
-		private static final int stateWaiting = 0;
-		private static final int stateRegistered = 1;
-		private static final int stateDownloading = 2;
-		private static final int stateFailed = 3;
-		private static final int stateFinished = 4;
+		private static final int stateCreated = 0;
+		private static final int stateWaiting = 1;
+		private static final int stateRegistered = 2;
+		private static final int stateDownloading = 3;
+		private static final int stateFailed = 4;
+		private static final int stateFinished = 5;
 		
 		//Creating the start information
-		private int currentState = stateWaiting;
+		private int currentState = stateCreated;
 		private final WeakReference<Context> contextReference;
 		private List<Blocks.ConversationInfo> conversationList;
 		private int messageCount;
@@ -4231,25 +4447,42 @@ public class ConnectionService extends Service {
 		private int lastMessagePacketIndex = 0;
 		private final BlockingQueue<MessagePacket> messagePacketQueue = new LinkedBlockingQueue<>();
 		
+		//Creating the other values
+		private short requestID;
+		
 		MassRetrievalThread(Context context) {
 			//Establishing the references
 			contextReference = new WeakReference<>(context);
 			
-			//Sending a start broadcast
-			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalStarted));
-			
-			//Starting the timeout timer
 			callbackFail = () -> {
 				Context newContext = contextReference.get();
 				if(newContext != null) cancel(newContext);
 			};
+		}
+		
+		short getRequestID() {
+			return requestID;
+		}
+		
+		void setRequestID(short requestID) {
+			this.requestID = requestID;
+		}
+		
+		void completeInit(Context context) {
+			//Sending a start broadcast
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalStarted));
+			
+			//Starting the timeout timer
 			handler.postDelayed(callbackFail, startTimeout);
 			
 			//Setting the state
 			currentState = stateWaiting;
 		}
 		
-		void registerInfo(Context context, List<Blocks.ConversationInfo> conversationList, int messageCount) {
+		void registerInfo(Context context, short requestID, List<Blocks.ConversationInfo> conversationList, int messageCount) {
+			//Ignoring the request if the identifier does not line up
+			if(this.requestID != requestID) return;
+			
 			//Handling the state
 			if(currentState != stateWaiting) return;
 			currentState = stateRegistered;
@@ -4269,7 +4502,10 @@ public class ConnectionService extends Service {
 			start();
 		}
 		
-		void addPacket(Context context, int index, List<Blocks.ConversationItem> itemList) {
+		void addPacket(Context context, short requestID, int index, List<Blocks.ConversationItem> itemList) {
+			//Ignoring the request if the identifier does not line up
+			if(this.requestID != requestID) return;
+			
 			//Handling the state
 			if(currentState != stateDownloading && currentState != stateRegistered) return;
 			currentState = stateDownloading;
@@ -4508,18 +4744,27 @@ public class ConnectionService extends Service {
 		return true;
 	}
 	
+	void setMassRetrievalParams(MassRetrievalParams params) {
+		currentMassRetrievalParams = params;
+	}
+	
 	boolean requestMassRetrieval() {
 		//Returning false if the client isn't ready or a mass retrieval is already in progress
-		if((massRetrievalThread != null && massRetrievalThread.isInProgress()) || getCurrentState() != stateConnected) return false;
+		if((massRetrievalThread != null && massRetrievalThread.isInProgress()) || getCurrentState() != stateConnected || currentMassRetrievalParams == null) return false;
+		
+		//Picking the next request ID
+		short requestID = currentConnectionManager.checkSupportsFeature(featureAdvancedSync1) ? getNextRequestID() : 0;
+		
+		//Creating the mass retrieval manager
+		massRetrievalThread = new MassRetrievalThread(getApplicationContext());
+		massRetrievalThread.setRequestID(requestID);
 		
 		//Sending the request
-		boolean result = currentConnectionManager.requestRetrievalAll();
-		
-		//Validating the result
+		boolean result = currentConnectionManager.requestRetrievalAll(requestID, currentMassRetrievalParams);
 		if(!result) return false;
 		
-		//Starting the mass retrieval manager thread thing
-		massRetrievalThread = new MassRetrievalThread(getApplicationContext());
+		//Starting the thread
+		massRetrievalThread.completeInit(getApplicationContext());
 		
 		//Sending the broadcast
 		//LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalStarted));
@@ -5590,6 +5835,48 @@ public class ConnectionService extends Service {
 				this.message = message;
 				this.messageIndex = messageIndex;
 			}
+		}
+	}
+	
+	static class MassRetrievalParams {
+		final boolean isAdvanced;
+		final boolean restrictMessages;
+		final long timeSinceMessages;
+		final boolean downloadAttachments;
+		final boolean restrictAttachments;
+		final long timeSinceAttachments;
+		final boolean restrictAttachmentSizes;
+		final long attachmentSizeLimit;
+		final List<String> attachmentFilterWhitelist;
+		final List<String> attachmentFilterBlacklist;
+		final boolean attachmentFilterDLOutside;
+		
+		MassRetrievalParams() {
+			isAdvanced = false;
+			restrictMessages = false;
+			timeSinceMessages = -1;
+			downloadAttachments = false;
+			restrictAttachments = false;
+			timeSinceAttachments = -1;
+			restrictAttachmentSizes = false;
+			attachmentSizeLimit = -1;
+			attachmentFilterWhitelist = null;
+			attachmentFilterBlacklist = null;
+			attachmentFilterDLOutside = false;
+		}
+		
+		MassRetrievalParams(boolean restrictMessages, long timeSinceMessages, boolean downloadAttachments, boolean restrictAttachments, long timeSinceAttachments, boolean restrictAttachmentSizes, long attachmentSizeLimit, List<String> attachmentFilterWhitelist, List<String> attachmentFilterBlacklist, boolean attachmentFilterDLOutside) {
+			isAdvanced = true;
+			this.restrictMessages = restrictMessages;
+			this.timeSinceMessages = timeSinceMessages;
+			this.downloadAttachments = downloadAttachments;
+			this.restrictAttachments = restrictAttachments;
+			this.timeSinceAttachments = timeSinceAttachments;
+			this.restrictAttachmentSizes = restrictAttachmentSizes;
+			this.attachmentSizeLimit = attachmentSizeLimit;
+			this.attachmentFilterWhitelist = attachmentFilterWhitelist;
+			this.attachmentFilterBlacklist = attachmentFilterBlacklist;
+			this.attachmentFilterDLOutside = attachmentFilterDLOutside;
 		}
 	}
 	

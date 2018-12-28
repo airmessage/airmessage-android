@@ -214,13 +214,20 @@
 	<string name="message_conversation_archived">La conversation a été archivée</string>
 	<string name="message_conversation_unarchived">La conversation a été desarchivée</string>
 	<string name="message_conversation_deleted">La conversation a été supprimée</string>
-
-	<string name="message_advancedsync_downloadmessages">Télécharger les messages depuis %s</string>
-	<string name="message_advancedsync_downloadattachments">Télécharger les pièces jointes depuis %s</string>
+	
+	<string name="message_advancedsync_downloadmessages">Télécharger les messages&#8230;</string>
+	<string name="message_advancedsync_downloadattachments">Télécharger les pièces jointes &#8230;</string>
+	<string name="message_advancedsync_constraint_time">Depuis %s</string>
+	<string name="message_advancedsync_constraint_size">Jusqu\'à %s</string>
 	<string name="message_advancedsync_downloadmessages_none">Ne télécharger aucun message</string>
-	<string name="message_advancedsync_downloadmessages_all">Télécharger tous les messages</string>
 	<string name="message_advancedsync_downloadattachments_none">Ne télécharger aucune pièce jointe</string>
-	<string name="message_advancedsync_downloadattachments_all">Télécharger toutes les pièces jointes</string>
+	<string name="message_advancedsync_anytime">Depuis n\'importe quel temps</string>
+	<string name="message_advancedsync_anysize">De n\'importe quelle taille</string>
+	<string name="message_advancedsync_type_image">Images</string>
+	<string name="message_advancedsync_type_video">Vidéo</string>
+	<string name="message_advancedsync_type_audio">Messages audio</string>
+	<string name="message_advancedsync_type_document">Documents</string>
+	<string name="message_advancedsync_type_other">Autres fichiers</string>
 	<plurals name="message_advancedsync_time_hour">
 		<item quantity="one">%d heure</item>
 		<item quantity="other">%d heures</item>

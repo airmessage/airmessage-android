@@ -4369,7 +4369,7 @@ class ConversationManager {
 					if(fileSize == -1) viewHolder.labelDownloadSize.setVisibility(View.GONE);
 					else {
 						viewHolder.labelDownloadSize.setVisibility(View.VISIBLE);
-						viewHolder.labelDownloadSize.setText(Constants.humanReadableByteCount(fileSize, true));
+						viewHolder.labelDownloadSize.setText(Constants.humanReadableByteCount(fileSize, false));
 					}
 				}
 			} else {
@@ -4963,7 +4963,6 @@ class ConversationManager {
 								viewHolder.inkView.setState(true);
 							}
 							else viewHolder.inkView.setVisibility(View.GONE);
-							//TODO update InvisibleInkView with bitmap
 							
 							//Fading in the view
 							if(wasTasked) {

@@ -605,11 +605,13 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		//Creating the values
 		private final WeakReference<Context> contextReference;
 		private final WeakReference<View> snackbarParentReference;
+		private final ConnectionService.MassRetrievalParams massRetrievalParams;
 		
-		SyncMessagesTask(Context context, View snackbarParent) {
+		SyncMessagesTask(Context context, View snackbarParent, ConnectionService.MassRetrievalParams massRetrievalParams) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
 			snackbarParentReference = new WeakReference<>(snackbarParent);
+			this.massRetrievalParams = massRetrievalParams;
 		}
 		
 		@Override
@@ -623,6 +625,10 @@ class ConversationsBase extends AppCompatActivityPlugin {
 			if(context != null) LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCConversationUpdate));
 			/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
 				callbacks.updateList(false); */
+			
+			//Cancelling all running tasks
+			ConnectionService service = ConnectionService.getInstance();
+			if(service != null) service.cancelCurrentTasks();
 		}
 		
 		@Override
@@ -642,15 +648,21 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		}
 		
 		@Override
-		protected void onPostExecute(Void result) {
+		protected void onPostExecute(Void output) {
 			//Syncing the messages
 			ConnectionService connectionService = ConnectionService.getInstance();
-			boolean messageResult = connectionService != null && connectionService.requestMassRetrieval();
+			boolean result;
+			if(connectionService == null) result = false;
+			else {
+				connectionService.setMassRetrievalParams(massRetrievalParams);
+				result = connectionService.requestMassRetrieval();
+			}
 			
 			//Showing a snackbar
 			View parentView = snackbarParentReference.get();
+			System.out.println("Snackbar view: " + parentView + " (" + viewSnackbarValid(parentView) + ")");
 			if(viewSnackbarValid(parentView)) {
-				if(messageResult) Snackbar.make(parentView, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_SHORT).show();
+				if(result) Snackbar.make(parentView, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_SHORT).show();
 				else Snackbar.make(parentView, R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
 			}
 		}

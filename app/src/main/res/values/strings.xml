@@ -122,8 +122,8 @@
 	<string name="message_serverstatus_internalexception">An internal error occurred</string>
 	<string name="message_serverstatus_badrequest">A connection compatibility error occurred</string>
 	<string name="message_serverstatus_noconnection">No connection to server</string>
-	<string name="message_serverstatus_clientoutdated">App outdated</string>
-	<string name="message_serverstatus_serveroutdated">Server outdated</string>
+	<string name="message_serverstatus_clientoutdated">App is out-of-date</string>
+	<string name="message_serverstatus_serveroutdated">Server is out-of-date</string>
 	<string name="message_serverstatus_authfail">Couldn\'t log in to server</string>
 	<string name="message_serverstatus_unknown">An unknown error occurred</string>
 	
@@ -220,12 +220,19 @@
 	<string name="message_messagedetails_datesent">Sent: %s</string>
 	<string name="message_messagedetails_sendeffect">Send effect: %s</string>
 
-	<string name="message_advancedsync_downloadmessages">Download messages since %s ago</string>
-	<string name="message_advancedsync_downloadattachments">Download attachment files since %s ago</string>
+	<string name="message_advancedsync_downloadmessages">Download messages&#8230;</string>
+	<string name="message_advancedsync_downloadattachments">Download attachment files&#8230;</string>
+	<string name="message_advancedsync_constraint_time">Since %s ago</string>
+	<string name="message_advancedsync_constraint_size">Up to %s</string>
 	<string name="message_advancedsync_downloadmessages_none">Don\'t download any messages</string>
-	<string name="message_advancedsync_downloadmessages_all">Download all messages</string>
 	<string name="message_advancedsync_downloadattachments_none">Don\'t download any attachment files</string>
-	<string name="message_advancedsync_downloadattachments_all">Download all attachment files</string>
+	<string name="message_advancedsync_anytime">Since any time</string>
+	<string name="message_advancedsync_anysize">Of any size</string>
+	<string name="message_advancedsync_type_image">Images</string>
+	<string name="message_advancedsync_type_video">Videos</string>
+	<string name="message_advancedsync_type_audio">Audio messages</string>
+	<string name="message_advancedsync_type_document">Documents</string>
+	<string name="message_advancedsync_type_other">Other files</string>
 	<plurals name="message_advancedsync_time_hour">
 		<item quantity="one">%d hour</item>
 		<item quantity="other">%d hours</item>
