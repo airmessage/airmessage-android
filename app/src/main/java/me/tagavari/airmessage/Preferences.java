@@ -54,16 +54,17 @@ public class Preferences extends AppCompatActivity {
 	public void onCreate(Bundle savedInstanceState) {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
-		
-		//setContentView(R.layout.activity_preferences);
+
+		//Setting the content view
+		setContentView(R.layout.activity_preferences);
 		
 		//Adding the fragment
 		getSupportFragmentManager().beginTransaction()
-				.replace(android.R.id.content, new SettingsFragment())
+				.replace(R.id.container, new SettingsFragment())
 				.commit();
 		
 		//Enabling the toolbar and up navigation
-		//setActionBar(findViewById(R.id.toolbar));
+		setSupportActionBar(findViewById(R.id.toolbar));
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 	}
 	

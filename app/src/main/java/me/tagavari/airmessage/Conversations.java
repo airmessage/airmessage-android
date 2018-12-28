@@ -12,7 +12,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.Spannable;
+import android.text.SpannableString;
 import android.text.TextWatcher;
+import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -43,6 +46,7 @@ import androidx.core.graphics.ColorUtils;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 
@@ -178,7 +182,8 @@ public class Conversations extends AppCompatCompositeActivity {
 		groupSearch = findViewById(R.id.viewgroup_search);
 		
 		//Setting the plugin views
-		conversationsBasePlugin.setViews(findViewById(R.id.list), findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
+		RecyclerView mainMessageList = findViewById(R.id.list);
+		conversationsBasePlugin.setViews(mainMessageList, findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
 		
 		//Getting the colors
@@ -218,6 +223,15 @@ public class Conversations extends AppCompatCompositeActivity {
 		});
 		editTextBarSearch.addTextChangedListener(searchTextWatcher);
 		buttonBarSearchClear.setOnClickListener(view -> editTextBarSearch.setText(""));
+		
+		//Configuring the app bar
+		appBarLayout.setLiftable(false);
+		mainMessageList.addOnScrollListener(new RecyclerView.OnScrollListener() {
+			@Override
+			public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+				appBarLayout.setLifted(((LinearLayoutManager) mainMessageList.getLayoutManager()).findFirstCompletelyVisibleItemPosition() > 0);
+			}
+		});
 		
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
@@ -945,22 +959,11 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Updating the menu item
 		menuItemSearch.setVisible(!state);
 		
-		//Animating the app bar color
-		{
-			int colorPrimary = getResources().getColor(R.color.colorPrimary, null);
-			int colorPrimaryDark = getResources().getColor(R.color.colorPrimaryDark, null);
-			int colorArchived = getResources().getColor(R.color.colorArchived, null);
-			int colorArchivedDark = getResources().getColor(R.color.colorArchivedDark, null);
-			
-			if(state) animateAppBarColor(colorPrimary, colorArchived, colorPrimaryDark, colorArchivedDark, getResources().getInteger(android.R.integer.config_mediumAnimTime));
-			else animateAppBarColor(colorArchived, colorPrimary, colorArchivedDark, colorPrimaryDark, getResources().getInteger(android.R.integer.config_mediumAnimTime));
-		}
-		
 		//Configuring the toolbar
 		ActionBar actionBar = getSupportActionBar();
 		if(state) {
 			actionBar.setDisplayHomeAsUpEnabled(true);
-			actionBar.setTitle(R.string.screen_archived);
+			actionBar.setTitle(getArchivedSpannable());
 		} else {
 			actionBar.setDisplayHomeAsUpEnabled(false);
 			actionBar.setTitle(R.string.app_name);
@@ -1019,19 +1022,20 @@ public class Conversations extends AppCompatCompositeActivity {
 		currentStatusBarColor = targetStatusBarColor;
 	}
 	
+	private Spannable getArchivedSpannable() {
+		Spannable text = new SpannableString(getResources().getString(R.string.screen_archived));
+		text.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.colorArchived, null)), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+		return text;
+	}
+	
 	void restoreListingArchivedState() {
 		//Returning if the state is not archived
 		if(!viewModel.listingArchived) return;
 		
-		//Tinting the window
-		int colorArchived = getResources().getColor(R.color.colorArchived, null);
-		int colorArchivedDark = getResources().getColor(R.color.colorArchivedDark, null);
-		setAppBarColor(colorArchived, colorArchivedDark);
-		
 		//Configuring the toolbar
 		ActionBar actionBar = getSupportActionBar();
 		actionBar.setDisplayHomeAsUpEnabled(true);
-		actionBar.setTitle(R.string.screen_archived);
+		actionBar.setTitle(getArchivedSpannable());
 		
 		if(menuItemSearch != null) menuItemSearch.setVisible(false);
 		
@@ -1099,9 +1103,9 @@ public class Conversations extends AppCompatCompositeActivity {
 			oldStatusBarColor = currentStatusBarColor;
 			
 			//Animating the app bar
-			int toolbarColor = getResources().getColor(R.color.colorContextualAppBar, null);
+			/* int toolbarColor = getResources().getColor(R.color.colorContextualAppBar, null);
 			int statusBarColor = getResources().getColor(R.color.colorContextualAppBarDark, null);
-			animateAppBarColor(toolbarColor, statusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime));
+			animateAppBarColor(toolbarColor, statusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime)); */
 			
 			//Hiding the FAB
 			floatingActionButton.hide();
@@ -1131,7 +1135,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			toolbar.animate().setStartDelay(50).alpha(1);
 			
 			//Animating the app bar
-			animateAppBarColor(oldToolbarColor, oldStatusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime));
+			//animateAppBarColor(oldToolbarColor, oldStatusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime));
 			
 			//Showing the FAB
 			floatingActionButton.show();

@@ -3,6 +3,7 @@ package me.tagavari.airmessage;
 import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -33,7 +34,11 @@ import android.os.Looper;
 import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.text.Editable;
+import android.text.Spannable;
+import android.text.SpannableString;
 import android.text.TextWatcher;
+import android.text.style.CharacterStyle;
+import android.text.style.ForegroundColorSpan;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
@@ -225,7 +230,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private RecyclerView messageList;
 	private View inputBar;
 	private ImageButton buttonSendMessage;
-	private ImageButton buttonAddContent;
+	private FrameLayout buttonAddContent;
 	private InsertionEditText messageInputField;
 	private ViewGroup recordingActiveGroup;
 	private TextView recordingTimeLabel;
@@ -388,7 +393,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Setting the conversation title
 				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
-					getSupportActionBar().setTitle(result);
+					setActionBarTitle(result);
 					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), viewModel.conversationInfo.getConversationColor()));
 				});
 				
@@ -413,7 +418,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Setting the conversation title
 				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
-					getSupportActionBar().setTitle(result);
+					setActionBarTitle(result);
 					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), viewModel.conversationInfo.getConversationColor()));
 				});
 				
@@ -1722,8 +1727,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		int lighterColor = ColorHelper.lightenColor(color);
 		
 		//Coloring the app and status bar
-		getSupportActionBar().setBackgroundDrawable(new ColorDrawable(color));
-		getWindow().setStatusBarColor(darkerColor);
+		//getSupportActionBar().setBackgroundDrawable(new ColorDrawable(color));
+		//getWindow().setStatusBarColor(darkerColor);
+		setActionBarTitle(getSupportActionBar().getTitle().toString());
 		
 		//Updating the task description
 		if(lastTaskDescription != null) setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(lastTaskDescription.getLabel(), lastTaskDescription.getIcon(), color));
@@ -1748,6 +1754,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Coloring the unique UI components
+		updateSendButton(true);
 		if(viewModel.lastUnreadCount == 0) bottomFAB.setImageTintList(ColorStateList.valueOf(color));
 		else bottomFAB.setBackgroundTintList(ColorStateList.valueOf(color));
 		bottomFABBadge.setBackgroundTintList(ColorStateList.valueOf(darkerColor));
@@ -1755,6 +1762,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Coloring the info bars
 		infoBarConnection.setColor(color);
+	}
+	
+	private void setActionBarTitle(String title) {
+		Spannable text = new SpannableString(title);
+		text.setSpan(new ForegroundColorSpan(viewModel.conversationInfo.getConversationColor()), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+		getSupportActionBar().setTitle(text);
 	}
 	
 	public void onClickRetryLoad(View view) {
@@ -1783,14 +1796,24 @@ public class Messaging extends AppCompatCompositeActivity {
 	private void updateSendButton(boolean restore) {
 		//Getting the send button state
 		boolean state = messageInputField.getText().length() > 0 || !viewModel.draftQueueList.isEmpty();
-		if(currentSendButtonState == state) return;
+		if(currentSendButtonState == state && !restore) return;
 		currentSendButtonState = state;
 		
 		//Updating the button
 		buttonSendMessage.setClickable(state);
-		float targetAlpha = state ? 1 : Constants.disabledAlpha;
-		if(restore) buttonSendMessage.setAlpha(targetAlpha);
-		else buttonSendMessage.animate().setDuration(100).alpha(targetAlpha);
+		int targetColor = state ? viewModel.conversationInfo.getConversationColor() : Constants.resolveColorAttr(this, android.R.attr.colorControlNormal);
+		/* if(restore) buttonSendMessage.setColorFilter(targetColor);
+		else {
+			int startColor = state ? Constants.resolveColorAttr(this, android.R.attr.colorControlNormal) : viewModel.conversationInfo.getConversationColor();
+			ValueAnimator animator = ValueAnimator.ofObject(new ArgbEvaluator(), startColor, targetColor);
+			animator.setDuration(100);
+			animator.addUpdateListener(animatorStage -> buttonSendMessage.setColorFilter((int) animatorStage.getAnimatedValue()));
+			animator.start();
+		} */
+		buttonSendMessage.setColorFilter(targetColor);
+		//buttonSendMessage.setImageTintList(ColorStateList.valueOf(state ? getResources().getColor(R.color.colorPrimary, null) : Constants.resolveColorAttr(this, android.R.attr.colorControlNormal)));
+		//if(restore) buttonSendMessage.setAlpha(targetAlpha);
+		//else buttonSendMessage.animate().setDuration(100).alpha(targetAlpha);
 	}
 	
 	/* private boolean startRecording() {
@@ -4858,7 +4881,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Building the conversation title
 			activity.viewModel.conversationInfo.buildTitle(activity, (result, wasTasked) -> {
 				//Setting the title in the app bar
-				activity.getSupportActionBar().setTitle(result);
+				activity.setActionBarTitle(result);
 				
 				//Updating the task description
 				activity.lastTaskDescription = new ActivityManager.TaskDescription(result, activity.lastTaskDescription.getIcon(), activity.viewModel.conversationInfo.getConversationColor());
