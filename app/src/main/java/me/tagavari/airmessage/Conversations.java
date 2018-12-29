@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
@@ -16,6 +17,8 @@ import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
+import android.text.style.TypefaceSpan;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -166,6 +169,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Enabling the toolbar
 		setSupportActionBar(findViewById(R.id.toolbar));
+		
+		//Configuring the toolbar
+		getSupportActionBar().setTitle(getTitleSpannable());
 		
 		//Getting the view model
 		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
@@ -966,7 +972,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			actionBar.setTitle(getArchivedSpannable());
 		} else {
 			actionBar.setDisplayHomeAsUpEnabled(false);
-			actionBar.setTitle(R.string.app_name);
+			actionBar.setTitle(getTitleSpannable());
 		}
 		
 		//Setting the fab
@@ -1022,9 +1028,17 @@ public class Conversations extends AppCompatCompositeActivity {
 		currentStatusBarColor = targetStatusBarColor;
 	}
 	
+	private Spannable getTitleSpannable() {
+		Spannable text = new SpannableString(getResources().getString(R.string.app_name));
+		text.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.colorPrimary, null)), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+		text.setSpan(new TypefaceSpan("sans-serif-medium"), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+		
+		return text;
+	}
+	
 	private Spannable getArchivedSpannable() {
 		Spannable text = new SpannableString(getResources().getString(R.string.screen_archived));
-		text.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.colorArchived, null)), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+		//text.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.colorArchived, null)), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
 		return text;
 	}
 	
@@ -1346,11 +1360,11 @@ public class Conversations extends AppCompatCompositeActivity {
 			return false;
 		}
 		
-		public void onItemCheckedStateToggled(ConversationManager.ConversationInfo item) {
+		void onItemCheckedStateToggled(ConversationManager.ConversationInfo item) {
 			onItemCheckedStateChanged(item, !isSelectedActionMode(item));
 		}
 		
-		public void onItemCheckedStateChanged(ConversationManager.ConversationInfo item, boolean checked) {
+		void onItemCheckedStateChanged(ConversationManager.ConversationInfo item, boolean checked) {
 			//Setting the item's checked state
 			if(checked) viewModel.actionModeSelections.add(item.getLocalID());
 			else viewModel.actionModeSelections.remove(item.getLocalID());
@@ -1371,7 +1385,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			if(selectedConversations == 0) actionMode.finish();
 		}
 		
-		public void updateActionModeContext() {
+		void updateActionModeContext() {
 			//Updating the title
 			actionMode.setTitle(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, selectedConversations));
 			

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:orientation="vertical">
 	<androidx.appcompat.widget.Toolbar
 		android:id="@+id/toolbar"
@@ -10,6 +10,7 @@
 		android:layout_height="?android:attr/actionBarSize"
 		android:background="?android:attr/colorBackgroundFloating"
 		android:theme="@style/SolidActionBarClear"
+		app:titleTextAppearance="@style/LightToolbarText"
 		android:elevation="4dp" />
     <!-- <Toolbar
         android:id="@+id/toolbar"

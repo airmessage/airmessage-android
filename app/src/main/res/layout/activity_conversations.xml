@@ -20,6 +20,7 @@
 				android:id="@+id/toolbar"
 				android:layout_width="match_parent"
 				android:layout_height="match_parent"
+				app:titleTextAppearance="@style/LightToolbarText"
 				android:theme="@style/SolidActionBarClear" />
 			<LinearLayout
 				android:id="@+id/layout_search"

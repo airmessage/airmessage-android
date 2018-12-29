@@ -3063,7 +3063,49 @@ public class ConnectionService extends Service {
 						break;
 					}
 					case nhtMassRetrievalFile:
+						//Reading the data
+						final short requestID;
+						final int requestIndex;
+						final String fileName;
+						final boolean isLast;
 						
+						final String fileGUID;
+						final byte[] compressedBytes;
+						
+						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
+							requestID = in.readShort();
+							requestIndex = in.readInt();
+							if(requestIndex == 0) fileName = in.readUTF();
+							else fileName = null;
+							isLast = in.readBoolean();
+							
+							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
+							dataSec.decrypt(password);
+							
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+								fileGUID = inSec.readUTF();
+								int contentLen = inSec.readInt();
+								if(contentLen > maxPacketAllocation) {
+									//Logging the error
+									Logger.getGlobal().log(Level.WARNING, "Rejecting large byte chunk (type: " + messageType + " - size: " + contentLen + ")");
+									
+									//Closing the connection
+									connectionThread.closeConnection(intentResultCodeConnection, false);
+									break;
+								}
+								compressedBytes = new byte[contentLen];
+								inSec.readFully(compressedBytes);
+							}
+						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
+							exception.printStackTrace();
+							break;
+						}
+						
+						//Processing the data
+						if(massRetrievalThread != null) {
+							if(requestIndex == 0) massRetrievalThread.startFileData(requestID, fileGUID, fileName, getPackager());
+							massRetrievalThread.appendFileData(requestID, requestIndex, fileGUID, compressedBytes, isLast);
+						}
 						break;
 					default:
 						super.processData(messageType, data);
@@ -4444,8 +4486,15 @@ public class ConnectionService extends Service {
 		private final Runnable callbackFail;
 		
 		//Creating the packet values
-		private int lastMessagePacketIndex = 0;
-		private final BlockingQueue<MessagePacket> messagePacketQueue = new LinkedBlockingQueue<>();
+		private int lastMessagePackageIndex = 0;
+		private final BlockingQueue<DataPackage> messagePacketQueue = new LinkedBlockingQueue<>();
+		private String currentFileGUID = null;
+		private long currentFileLocalID = -1;
+		private File currentFileTarget = null;
+		private FileOutputStream currentFileStream = null;
+		private int currentFileIndex = -1;
+		private Packager currentFilePackager = null;
+		private final List<ConversationManager.ConversationItem> lastAddedItems = new ArrayList<>(); //A list of the items from the last message update, used to associate attachment GUIDs to their local IDs
 		
 		//Creating the other values
 		private short requestID;
@@ -4458,10 +4507,6 @@ public class ConnectionService extends Service {
 				Context newContext = contextReference.get();
 				if(newContext != null) cancel(newContext);
 			};
-		}
-		
-		short getRequestID() {
-			return requestID;
 		}
 		
 		void setRequestID(short requestID) {
@@ -4511,7 +4556,7 @@ public class ConnectionService extends Service {
 			currentState = stateDownloading;
 			
 			//Checking if the indices don't line up or the list is invalid
-			if(lastMessagePacketIndex + 1 != index || itemList == null) {
+			if(lastMessagePackageIndex + 1 != index || itemList == null) {
 				//Cancelling the task
 				cancel(context);
 				
@@ -4520,14 +4565,39 @@ public class ConnectionService extends Service {
 			}
 			
 			//Updating the counters
-			lastMessagePacketIndex = index;
+			lastMessagePackageIndex = index;
 			
 			//Restarting the timeout timer
-			handler.removeCallbacks(callbackFail);
-			handler.postDelayed(callbackFail, intervalTimeout);
+			refreshTimeout();
 			
 			//Queueing the packet
-			messagePacketQueue.add(new MessagePacket(itemList));
+			messagePacketQueue.add(new MessagePackage(itemList));
+		}
+		
+		void startFileData(short requestID, String guid, String fileName, Packager packager) {
+			//Ignoring the request if the identifier does not line up
+			if(this.requestID != requestID) return;
+			if(currentState != stateDownloading) return;
+			
+			//Queueing the packet
+			messagePacketQueue.add(new FileDataInitPackage(guid, fileName, packager));
+		}
+		
+		void appendFileData(short requestID, int index, String guid, byte[] compressedBytes, boolean isLast) {
+			//Ignoring the request if the identifier does not line up
+			if(this.requestID != requestID) return;
+			if(currentState != stateDownloading) return;
+			
+			//Restarting the timeout timer
+			refreshTimeout();
+			
+			//Queueing the packet
+			messagePacketQueue.add(new FileDataContentPackage(index, guid, compressedBytes, isLast));
+		}
+		
+		private void refreshTimeout() {
+			handler.removeCallbacks(callbackFail);
+			handler.postDelayed(callbackFail, intervalTimeout);
 		}
 		
 		void finish() {
@@ -4538,8 +4608,8 @@ public class ConnectionService extends Service {
 			//Stopping the timeout timer
 			handler.removeCallbacks(callbackFail);
 			
-			//Queueing a finish flag packet (to use as a message that the process is finished)
-			messagePacketQueue.add(new MessagePacket());
+			//Queueing a finish flag package (to use as a message that the process is finished)
+			messagePacketQueue.add(new FinishPackage());
 		}
 		
 		void cancel(Context context) {
@@ -4582,10 +4652,13 @@ public class ConnectionService extends Service {
 			try {
 				while(!isInterrupted()) {
 					//Getting the list
-					MessagePacket messagePacket = messagePacketQueue.take();
+					DataPackage dataPackage = messagePacketQueue.take();
 					
-					//Checking if the packet is a finish flag
-					if(messagePacket.isFinishFlag()) {
+					//Checking if the package is a finish flag
+					if(dataPackage instanceof FinishPackage) {
+						//Cancelling the current file download
+						cancelCurrentFile();
+						
 						//Sorting the conversations
 						Collections.sort(conversationInfoList, ConversationManager.conversationComparator);
 						
@@ -4615,40 +4688,173 @@ public class ConnectionService extends Service {
 						//Returning
 						return;
 					}
-					
-					//Getting the context
-					Context context = contextReference.get();
-					if(context == null) return;
-					
-					//Adding the messages
-					for(Blocks.ConversationItem structItem : messagePacket.getList()) {
-						//Cleaning the conversation item
-						cleanConversationItem(structItem);
+					//Otherwise checking if the package is a message package
+					else if(dataPackage instanceof MessagePackage) {
+						//Getting the context
+						Context context = contextReference.get();
+						if(context == null) return;
 						
-						//Finding the parent conversation
-						ConversationManager.ConversationInfo parentConversation = null;
-						for(ConversationManager.ConversationInfo conversationInfo : conversationInfoList) {
-							if(!structItem.chatGuid.equals(conversationInfo.getGuid())) continue;
-							parentConversation = conversationInfo;
+						//Getting the lists
+						List<Blocks.ConversationItem> itemList = ((MessagePackage) dataPackage).messageList;
+						lastAddedItems.clear();
+						
+						//Adding the messages
+						for(Blocks.ConversationItem structItem : itemList) {
+							//Cleaning the conversation item
+							cleanConversationItem(structItem);
+							
+							//Finding the parent conversation
+							ConversationManager.ConversationInfo parentConversation = null;
+							for(ConversationManager.ConversationInfo conversationInfo : conversationInfoList) {
+								if(!structItem.chatGuid.equals(conversationInfo.getGuid())) continue;
+								parentConversation = conversationInfo;
+							}
+							if(parentConversation == null) continue;
+							
+							//Writing the item
+							ConversationManager.ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItem(structItem, parentConversation);
+							if(conversationItem == null) continue;
+							lastAddedItems.add(conversationItem);
+							
+							//Updating the parent conversation's last item
+							parentConversation.trySetLastItem(conversationItem.toLightConversationItemSync(context), false);
 						}
-						if(parentConversation == null) continue;
 						
-						//Writing the item
-						ConversationManager.ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItem(structItem, parentConversation);
-						if(conversationItem == null) continue;
-						
-						//Updating the parent conversation's last item
-						parentConversation.trySetLastItem(conversationItem.toLightConversationItemSync(context), false);
+						//Updating the progress
+						messageCountReceived += itemList.size();
+						atomicMessageProgress.set(messageCountReceived);
+						LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress).putExtra(Constants.intentParamProgress, messageCountReceived));
 					}
-					
-					//Updating the progress
-					messageCountReceived += messagePacket.getList().size();
-					atomicMessageProgress.set(messageCountReceived);
-					LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalProgress).putExtra(Constants.intentParamProgress, messageCountReceived));
+					//Otherwise checking if the package is an attachment download initiation
+					else if(dataPackage instanceof FileDataInitPackage) {
+						//Getting the context
+						Context context = contextReference.get();
+						if(context == null) return;
+						
+						//Cancelling the file
+						cancelCurrentFile();
+						
+						//Setting the file values
+						FileDataInitPackage data = (FileDataInitPackage) dataPackage;
+						
+						//Finding the local ID
+						{
+							long localID = -1;
+							conversationLoop:
+							for(ConversationManager.ConversationItem item : lastAddedItems) {
+								if(!(item instanceof ConversationManager.MessageInfo)) continue;
+								for(ConversationManager.AttachmentInfo attachment : ((ConversationManager.MessageInfo) item).getAttachments()) {
+									if(!data.guid.equals(attachment.guid)) continue;
+									localID = attachment.localID;
+									break conversationLoop;
+								}
+							}
+							
+							//Ignoring the request if no ID could be found
+							if(localID == -1) continue;
+							currentFileLocalID = localID;
+						}
+						
+						//Setting the GUID
+						currentFileGUID = data.guid;
+						System.out.println("Downloading file: " + data.fileName + " - " + currentFileLocalID + " - " + data.guid);
+						
+						//Assigning the file
+						File targetFileDir = new File(MainApplication.getDownloadDirectory(context), Long.toString(currentFileLocalID));
+						if(!targetFileDir.exists()) targetFileDir.mkdir();
+						else if(targetFileDir.isFile()) {
+							Constants.recursiveDelete(targetFileDir);
+							targetFileDir.mkdir();
+						}
+						currentFileTarget = new File(targetFileDir, data.fileName);
+						try {
+							currentFileStream = new FileOutputStream(currentFileTarget);
+							currentFilePackager = data.packager;
+						} catch(IOException exception) {
+							//Printing the stack trace
+							exception.printStackTrace();
+							
+							//Cleaning up
+							targetFileDir.delete();
+							resetFileValues();
+						}
+					}
+					//Otherwise checking if the package is an attachment download
+					else if(dataPackage instanceof FileDataContentPackage) {
+						//Getting the context
+						Context context = contextReference.get();
+						if(context == null) return;
+						
+						FileDataContentPackage data = (FileDataContentPackage) dataPackage;
+						
+						//Ignoring the message if there is no current attachment or the index does not line up
+						if(!data.guid.equals(currentFileGUID) || currentFileIndex + 1 != data.index) continue;
+						
+						//Decompressing the bytes
+						byte[] decompressedBytes = currentFilePackager.unpackageData(data.compressedBytes);
+						
+						try {
+							//Writing the bytes
+							currentFileStream.write(decompressedBytes);
+						} catch(IOException exception) {
+							exception.printStackTrace();
+							cancelCurrentFile();
+							continue;
+						}
+						
+						//Checking if this is the last file
+						if(data.isLast) {
+							//Closing the stream
+							try {
+								currentFileStream.close();
+							} catch(IOException exception) {
+								exception.printStackTrace();
+								cancelCurrentFile();
+								continue;
+							}
+							
+							//Updating the database entry
+							DatabaseManager.getInstance().updateAttachmentFile(currentFileLocalID, MainApplication.getInstance(), currentFileTarget);
+							
+							//Cleaning up
+							resetFileValues();
+						} else {
+							//Updating the index
+							currentFileIndex = data.index;
+						}
+					}
 				}
 			} catch(InterruptedException exception) {
 				exception.printStackTrace();
 			}
+		}
+		
+		private void cancelCurrentFile() {
+			//Returning if there is no current file
+			if(currentFileGUID == null) return;
+			
+			//Killing the stream
+			try {
+				currentFileStream.close();
+			} catch(IOException exception) {
+				exception.printStackTrace();
+			}
+			
+			//Deleting the file
+			currentFileTarget.delete();
+			currentFileTarget.getParentFile().delete();
+			
+			//Invalidating the values
+			resetFileValues();
+		}
+		
+		private void resetFileValues() {
+			currentFileGUID = null;
+			currentFileLocalID = -1;
+			currentFileTarget = null;
+			currentFileStream = null;
+			currentFileIndex = -1;
+			currentFilePackager = null;
 		}
 		
 		int getProgress() {
@@ -4665,6 +4871,48 @@ public class ConnectionService extends Service {
 		
 		boolean isWaiting() {
 			return currentState == stateWaiting;
+		}
+		
+		private static abstract class DataPackage {
+		
+		}
+		
+		private static class FinishPackage extends DataPackage {
+		
+		}
+		
+		private static class MessagePackage extends DataPackage {
+			final List<Blocks.ConversationItem> messageList;
+			
+			MessagePackage(List<Blocks.ConversationItem> messageList) {
+				this.messageList = messageList;
+			}
+		}
+		
+		private static class FileDataInitPackage extends DataPackage {
+			final String guid;
+			final String fileName;
+			final Packager packager;
+			
+			FileDataInitPackage(String guid, String fileName, Packager packager) {
+				this.guid = guid;
+				this.fileName = fileName;
+				this.packager = packager;
+			}
+		}
+		
+		private static class FileDataContentPackage extends DataPackage {
+			final int index;
+			final String guid;
+			final byte[] compressedBytes;
+			final boolean isLast;
+			
+			FileDataContentPackage(int index, String guid, byte[] compressedBytes, boolean isLast) {
+				this.index = index;
+				this.guid = guid;
+				this.compressedBytes = compressedBytes;
+				this.isLast = isLast;
+			}
 		}
 	}
 	
@@ -4776,29 +5024,6 @@ public class ConnectionService extends Service {
 	private void cancelMassRetrieval() {
 		//Forwarding the request
 		if(massRetrievalThread != null) massRetrievalThread.cancel(this);
-	}
-	
-	private static class MessagePacket {
-		private final boolean isFinishFlag;
-		private final List<Blocks.ConversationItem> messageList;
-		
-		MessagePacket() {
-			isFinishFlag = true;
-			messageList = null;
-		}
-		
-		MessagePacket(List<Blocks.ConversationItem> messageList) {
-			isFinishFlag = false;
-			this.messageList = messageList;
-		}
-		
-		boolean isFinishFlag() {
-			return isFinishFlag;
-		}
-		
-		List<Blocks.ConversationItem> getList() {
-			return messageList;
-		}
 	}
 	
 	/* boolean sendFile(short requestID, int requestIndex, String chatGUID, byte[] fileBytes, String fileName, boolean isLast, MessageResponseManager responseListener) {
