@@ -2436,9 +2436,6 @@ class ConversationManager {
 				//Getting the attachment
 				AttachmentInfo attachmentInfo = attachments.get(0);
 				
-				//Returning false if the attachment is invalid
-				if(attachmentInfo.file == null) return false;
-				
 				if(viewHolder != null) {
 					//Hiding the error view
 					viewHolder.buttonSendError.setVisibility(View.GONE);
@@ -5092,19 +5089,19 @@ class ConversationManager {
 		private byte fileState = fileStateIdle;
 		private boolean isPlaying = false;
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
 			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
@@ -5213,7 +5210,7 @@ class ConversationManager {
 			//Returning if there is no content
 			if(file == null) return;
 			
-			//Getting the activiy callbacks
+			//Getting the activity callbacks
 			ConversationInfo.ActivityCallbacks callbacks = getMessageInfo().getConversationInfo().activityCallbacks;
 			if(callbacks == null) return;
 			

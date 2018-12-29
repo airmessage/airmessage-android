@@ -23,7 +23,7 @@
 	
 	<color name="colorBGChip">#F5F5F5</color>
 
-    <color name="colorMessageOutgoing">#F2F2F2</color> <!-- E0E0E0 (darker) / F2F2F2 (lighter) -->
+    <color name="colorMessageOutgoing">#EDEDED</color> <!-- E0E0E0 (darker) / F2F2F2 (lighter) -->
 	<color name="colorMessageOutgoingAccent">#9E9E9E</color>
 	
 	<color name="colorImageUnloaded">#E0E0E0</color>

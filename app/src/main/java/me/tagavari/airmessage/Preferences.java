@@ -567,17 +567,17 @@ public class Preferences extends AppCompatActivity {
 					1024 * 1024 * 1024
 			};
 			private final AdvancedSyncFilter[] advancedSyncFilters = {
-					new AdvancedSyncFilter(new String[]{"image/*"}, R.drawable.gallery, R.string.message_advancedsync_type_image),
-					new AdvancedSyncFilter(new String[]{"video/*"}, R.drawable.movie, R.string.message_advancedsync_type_video),
-					new AdvancedSyncFilter(new String[]{"audio/*"}, R.drawable.microphone, R.string.message_advancedsync_type_audio),
+					new AdvancedSyncFilter(new String[]{"image/*"}, R.drawable.gallery_outlined, R.string.message_advancedsync_type_image),
+					new AdvancedSyncFilter(new String[]{"video/*"}, R.drawable.movie_outlined, R.string.message_advancedsync_type_video),
+					new AdvancedSyncFilter(new String[]{"audio/*"}, R.drawable.volume_outlined, R.string.message_advancedsync_type_audio),
 					new AdvancedSyncFilter(new String[]{
 							"text/plain", "text/richtext", "application/rtf", "application/x-rtf",
 							"application/pdf",
 							"application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.wordprocessingml.template", "application/vnd.ms-word.document.macroEnabled.12", "application/vnd.ms-word.template.macroEnabled.12",
 							"application/vnd.ms-excel", "pplication/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "pplication/vnd.openxmlformats-officedocument.spreadsheetml.template", "application/vnd.ms-excel.sheet.macroEnabled.12", "application/vnd.ms-excel.sheet.binary.macroEnabled.12", "application/vnd.ms-excel.template.macroEnabled.12", "application/vnd.ms-excel.addin.macroEnabled.12",
 							"application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/vnd.openxmlformats-officedocument.presentationml.template", "application/vnd.openxmlformats-officedocument.presentationml.slideshow", "application/vnd.ms-powerpoint.presentation.macroEnabled.12", "application/vnd.ms-powerpoint.template.macroEnabled.12", "application/vnd.ms-powerpoint.slideshow.macroEnabled.12", "application/vnd.ms-powerpoint.addin.macroEnabled.12"},
-							R.drawable.file_document, R.string.message_advancedsync_type_document),
-					new AdvancedSyncFilter(null, R.drawable.file, R.string.message_advancedsync_type_other)
+							R.drawable.file_document_outlined, R.string.message_advancedsync_type_document),
+					new AdvancedSyncFilter(null, R.drawable.file_outlined, R.string.message_advancedsync_type_other)
 			};
 			
 			AdvancedSyncDialogManager(LayoutInflater inflater) {

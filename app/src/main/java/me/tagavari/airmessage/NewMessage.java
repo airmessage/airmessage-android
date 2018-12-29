@@ -6,6 +6,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -240,7 +241,7 @@ public class NewMessage extends AppCompatActivity {
 			((ImageButton) findViewById(R.id.recipients_inputtoggle)).setImageResource(R.drawable.dialpad);
 		} else {
 			recipientInput.setInputType(InputType.TYPE_CLASS_PHONE);
-			((ImageButton) findViewById(R.id.recipients_inputtoggle)).setImageResource(R.drawable.keyboard);
+			((ImageButton) findViewById(R.id.recipients_inputtoggle)).setImageResource(R.drawable.keyboard_outlined);
 		}
 		
 		//Restoring the chips
@@ -266,6 +267,7 @@ public class NewMessage extends AppCompatActivity {
 		//Creating the "confirm participants" menu button
 		confirmMenuItem = menu.add(Menu.NONE, menuIdentifierConfirmParticipants, Menu.NONE, R.string.action_confirmparticipants);
 		confirmMenuItem.setIcon(R.drawable.next);
+		//confirmMenuItem.setIconTintList(ColorStateList.valueOf(Constants.resolveColorAttr(this, android.R.attr.colorControlNormal)));
 		confirmMenuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 		
 		//Hiding the menu button
@@ -349,7 +351,7 @@ public class NewMessage extends AppCompatActivity {
 			//recipientInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
 			
 			//Setting the toggle input type icon
-			((ImageButton) view).setImageResource(R.drawable.keyboard);
+			((ImageButton) view).setImageResource(R.drawable.keyboard_outlined);
 			
 			//Setting the alphabetical input variable
 			viewModel.recipientInputAlphabetical = false;

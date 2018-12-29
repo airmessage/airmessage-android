@@ -92,7 +92,7 @@
 		android:layout_height="16dp"
 		android:layout_marginRight="8dp"
 		android:layout_marginLeft="8dp"
-		android:src="@drawable/notifications_off"
+		android:src="@drawable/notifications_off_outlined"
 		android:tint="?android:attr/textColorSecondary"
 		android:tintMode="src_in"
 		app:layout_constraintEnd_toStartOf="@+id/time"

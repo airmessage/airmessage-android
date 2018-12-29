@@ -66,5 +66,5 @@ https://stackoverflow.com/questions/36320781/android-custom-popup-menu-with-swit
 		android:layout_marginEnd="16dp"
 		android:background="?android:selectableItemBackgroundBorderless"
 		android:src="@drawable/cancel"
-		android:tint="@color/colorPrimary" />
+		android:tint="?android:attr/colorControlNormal" />
 </LinearLayout>

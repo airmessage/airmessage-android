@@ -1462,7 +1462,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Updating the button
 				MaterialButton buttonView = (MaterialButton) view;
 				buttonView.setText(newState ? R.string.action_unarchive : R.string.action_archive);
-				buttonView.setIconResource(newState ? R.drawable.unarchive : R.drawable.archive);
+				buttonView.setIconResource(newState ? R.drawable.unarchive_outlined : R.drawable.archive_outlined);
 			});
 			
 			findViewById(R.id.button_delete).setOnClickListener(view -> {
@@ -4646,7 +4646,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		boolean compareRequestID(String requestID) {
-			return this.requestID == requestID;
+			return this.requestID.equals(requestID);
 		}
 		
 		interface Callbacks {

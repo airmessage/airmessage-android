@@ -4757,7 +4757,6 @@ public class ConnectionService extends Service {
 						
 						//Setting the GUID
 						currentFileGUID = data.guid;
-						System.out.println("Downloading file: " + data.fileName + " - " + currentFileLocalID + " - " + data.guid);
 						
 						//Assigning the file
 						File targetFileDir = new File(MainApplication.getDownloadDirectory(context), Long.toString(currentFileLocalID));

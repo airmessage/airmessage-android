@@ -660,7 +660,6 @@ class ConversationsBase extends AppCompatActivityPlugin {
 			
 			//Showing a snackbar
 			View parentView = snackbarParentReference.get();
-			System.out.println("Snackbar view: " + parentView + " (" + viewSnackbarValid(parentView) + ")");
 			if(viewSnackbarValid(parentView)) {
 				if(result) Snackbar.make(parentView, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_SHORT).show();
 				else Snackbar.make(parentView, R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();

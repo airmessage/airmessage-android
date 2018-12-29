@@ -15,7 +15,8 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:src="@drawable/close_circle"
-		android:tint="?android:attr/textColorSecondary" />
+		android:tint="?android:attr/textColorSecondary"
+		android:tintMode="src_in" />
 	
 	<TextView
 		android:id="@+id/label"

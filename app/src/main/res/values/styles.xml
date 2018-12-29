@@ -41,8 +41,8 @@
 	</style>
 
 	<style name="DayNight.Messaging" parent="@style/DayNight.NoActionBar">
-		<item name="android:windowBackground">@color/colorBackgroundClean</item>
-		<item name="android:navigationBarColor">@color/colorBackgroundClean</item>
+		<!--<item name="android:windowBackground">@color/colorBackgroundClean</item>-->
+		<!--<item name="android:navigationBarColor">@color/colorBackgroundClean</item>-->
 	</style>
 	
 	<style name="DayNight.NoActionBar.SolidNavigation" parent="DayNight.NoActionBar" />
@@ -81,7 +81,7 @@
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorAccent</item>
 		
-		<item name="android:statusBarColor">@color/colorBackgroundSurface</item>
+		<item name="android:statusBarColor">?android:attr/colorBackground</item>
 		<item name="android:windowLightStatusBar">true</item>
 	</style>
 	
