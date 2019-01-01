@@ -12,6 +12,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -248,6 +249,9 @@ public class Preferences extends AppCompatActivity {
 			
 			//Showing the dialog
 			dialog.show();
+			
+			//Setting up the button
+			if(!service.checkSupportsFeature(ConnectionService.featureAdvancedSync1)) dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setEnabled(false);
 			
 			//Returning true
 			return true;
@@ -664,6 +668,10 @@ public class Preferences extends AppCompatActivity {
 			}
 			
 			void startSync() {
+				//Ignoring the request if the service is not set up to receive an advanced mass retrieval request
+				if(!ConnectionService.staticCheckSupportsFeature(ConnectionService.featureAdvancedSync1)) return;
+				
+				//Getting the parameters
 				boolean restrictMessages;
 				long timeSinceMessages = -1;
 				{
@@ -881,5 +889,13 @@ public class Preferences extends AppCompatActivity {
 				}
 			}
 		}
+	}
+	
+	static boolean checkPreferenceAdvancedColor(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_advancedcolor_key), false);
+	}
+	
+	static boolean checkPreferenceShowReadReceipts(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_showreadreceipts_key), true);
 	}
 }

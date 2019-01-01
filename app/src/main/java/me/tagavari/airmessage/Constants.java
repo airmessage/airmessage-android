@@ -49,6 +49,7 @@ import java.util.zip.GZIPOutputStream;
 
 import androidx.annotation.AttrRes;
 import androidx.annotation.ColorInt;
+import androidx.annotation.NonNull;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -990,6 +991,25 @@ public class Constants {
 			BiConsumer<T, U> consumer = reference.get();
 			if(consumer == null) return;
 			consumer.accept(t, u);
+		}
+	}
+	
+	public static class SpacesItemDecoration extends RecyclerView.ItemDecoration {
+		private final int spaceTop, spaceBottom, spaceLeft, spaceRight;
+		
+		SpacesItemDecoration(int spaceTop, int spaceBottom, int spaceLeft, int spaceRight) {
+			this.spaceTop = spaceTop;
+			this.spaceBottom = spaceBottom;
+			this.spaceLeft = spaceLeft;
+			this.spaceRight = spaceRight;
+		}
+		
+		@Override
+		public void getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+			outRect.top = spaceTop;
+			outRect.bottom = spaceBottom;
+			outRect.left = spaceLeft;
+			outRect.right = spaceRight;
 		}
 	}
 }

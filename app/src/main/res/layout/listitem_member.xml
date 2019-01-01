@@ -54,7 +54,7 @@
 		android:padding="8dp"
 		android:background="?android:selectableItemBackgroundBorderless"
 		android:contentDescription="@string/action_editcontactcolor"
-		android:src="@drawable/palette"
+		android:src="@drawable/palette_outlined"
 		android:tint="@color/colorPrimary"
 		android:tooltipText="@string/action_editcontactcolor" />
 </LinearLayout>

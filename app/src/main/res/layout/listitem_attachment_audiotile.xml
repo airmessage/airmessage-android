@@ -9,8 +9,8 @@
 	android:clickable="true">
 	<ProgressBar
 		android:id="@+id/progress"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent"
+		android:layout_width="80dp"
+		android:layout_height="80dp"
 		style="?android:attr/progressBarStyleHorizontal"
 		android:layout_gravity="center"
 		android:indeterminate="false"
@@ -23,8 +23,8 @@
 		android:rotation="-90" />
 	<ImageView
 		android:id="@+id/image_play"
-		android:layout_width="64dp"
-		android:layout_height="64dp"
+		android:layout_width="48dp"
+		android:layout_height="48dp"
 		android:src="@drawable/play"
 		android:layout_gravity="center" />
 </FrameLayout>

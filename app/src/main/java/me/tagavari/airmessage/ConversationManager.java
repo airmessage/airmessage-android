@@ -11,8 +11,8 @@ import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.PaintDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -362,17 +362,17 @@ class ConversationManager {
 		static final Integer[] standardUserColors = {
 				0xFFFF1744, //Red
 				0xFFF50057, //Pink
-				0xFFD500F9, //Purple
-				0xFF651FFF, //Dark purple
+				0xFFB317CF, //Purple
+				0xFF703BE3, //Dark purple
 				0xFF3D5AFE, //Indigo
 				0xFF2979FF, //Blue
 				0xFF00B0FF, //Light blue
 				0xFF00B8D4, //Cyan
 				0xFF00BFA5, //Teal
 				0xFF00C853, //Green
-				0xFF64DD17, //Light green
-				0xFFAEEA00, //Lime green
-				0xFFFFD600, //Yellow
+				0xFF5DD016, //Light green
+				0xFF99CC00, //Lime green
+				0xFFF2CC0D, //Yellow
 				0xFFFFC400, //Amber
 				0xFFFF9100, //Orange
 				0xFFFF3D00, //Deep orange
@@ -2205,6 +2205,9 @@ class ConversationManager {
 		}
 		
 		private void prepareActivityStateDisplay(ViewHolder viewHolder, Context context) {
+			//Returning if read receipt showing is disabled
+			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			
 			//Getting the requested state
 			isShowingMessageState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetLatest()) &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
@@ -2221,6 +2224,9 @@ class ConversationManager {
 		}
 		
 		void updateActivityStateDisplay(Context context) {
+			//Returning if read receipt showing is disabled
+			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			
 			//Getting the requested state
 			boolean requestedState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetLatest()) &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
@@ -2236,6 +2242,9 @@ class ConversationManager {
 		}
 		
 		private void updateActivityStateDisplay(ViewHolder viewHolder, Context context, boolean currentState, boolean requestedState) {
+			//Returning if read receipt showing is disabled
+			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			
 			//Checking if the requested state matches the current state
 			if(requestedState == currentState) {
 				//Updating the text
@@ -2436,21 +2445,15 @@ class ConversationManager {
 				//Getting the attachment
 				AttachmentInfo attachmentInfo = attachments.get(0);
 				
-				if(viewHolder != null) {
-					//Hiding the error view
-					viewHolder.buttonSendError.setVisibility(View.GONE);
-					
-					//Showing and configuring the progress view
-					viewHolder.progressSend.setVisibility(View.VISIBLE);
-					viewHolder.progressSend.spin();
-				}
-				
 				//Constructing the push request
 				ConnectionService.FilePushRequest request = attachmentInfo.getDraftingPushRequest();
 				if(request != null) {
 					request.setAttachmentID(attachmentInfo.getLocalID());
 					request.setUploadRequested(true);
-				} else request = new ConnectionService.FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, ConnectionService.FilePushRequest.stateAttached, System.currentTimeMillis(), true);
+				} else {
+					if(attachmentInfo.file == null) return false;
+					request = new ConnectionService.FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, ConnectionService.FilePushRequest.stateAttached, System.currentTimeMillis(), true);
+				}
 				request.getCallbacks().onStart = () -> {
 					//Updating the progress bar
 					ViewHolder newViewHolder = getViewHolder();
@@ -2528,6 +2531,15 @@ class ConversationManager {
 				//Setting the upload values
 				isSending = true;
 				sendProgress = -1;
+				
+				if(viewHolder != null) {
+					//Hiding the error view
+					viewHolder.buttonSendError.setVisibility(View.GONE);
+					
+					//Showing and configuring the progress view
+					viewHolder.progressSend.setVisibility(View.VISIBLE);
+					viewHolder.progressSend.spin();
+				}
 				
 				//Returning true
 				return true;
@@ -2895,7 +2907,7 @@ class ConversationManager {
 			}
 			
 			//Setting the upload spinner tint
-			viewHolder.progressSend.setBarColor(getConversationInfo().getConversationColor());
+			viewHolder.progressSend.setBarColor(Preferences.checkPreferenceAdvancedColor(context) ? getConversationInfo().getConversationColor() : context.getResources().getColor(R.color.colorPrimary, null));
 			
 			//Updating the message colors
 			if(updateComponents && messageText != null) {
@@ -3949,13 +3961,22 @@ class ConversationManager {
 			int textColor;
 			
 			if(getMessageInfo().isOutgoing()) {
-				//backgroundColor = resources.getColor(R.color.colorMessageOutgoing, null);
-				backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
-				textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
+				if(Preferences.checkPreferenceAdvancedColor(context)) {
+					backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
+					textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
+				} else {
+					backgroundColor = context.getResources().getColor(R.color.colorPrimary, null);
+					textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+				}
 			} else {
-				MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
-				backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+				if(Preferences.checkPreferenceAdvancedColor(context)) {
+					MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
+					backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
+					textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+				} else {
+					backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
+					textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
+				}
 			}
 			
 			//Assigning the colors
@@ -4417,18 +4438,32 @@ class ConversationManager {
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				cslText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
-				cslSecondaryText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
-				cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
-				cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
+				if(Preferences.checkPreferenceAdvancedColor(context)) {
+					cslText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
+					cslSecondaryText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
+					cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
+					cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
+				} else {
+					cslText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhite, null));
+					cslSecondaryText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhiteSecondary, null));
+					cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorPrimary, null));
+					cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorPrimaryLight, null));
+				}
 			} else {
-				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
-				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				
-				cslText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhite, null));
-				cslSecondaryText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhiteSecondary, null));
-				cslBackground = ColorStateList.valueOf(bubbleColor);
-				cslAccent = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
+				if(Preferences.checkPreferenceAdvancedColor(context)) {
+					MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
+					int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
+					
+					cslText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhite, null));
+					cslSecondaryText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhiteSecondary, null));
+					cslBackground = ColorStateList.valueOf(bubbleColor);
+					cslAccent = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
+				} else {
+					cslText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
+					cslSecondaryText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
+					cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
+					cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
+				}
 			}
 			
 			//Coloring the views
@@ -4768,19 +4803,19 @@ class ConversationManager {
 		static final String MIME_PREFIX = "image";
 		static final int RESOURCE_NAME = R.string.part_content_image;
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
 			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
@@ -4841,8 +4876,8 @@ class ConversationManager {
 				viewHolder.imageContent.layout(0, 0, 0, 0);
 				RequestBuilder<Drawable> requestBuilder = Glide.with(context)
 						.load(file)
-						.transition(DrawableTransitionOptions.withCrossFade())
-						.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
+						.transition(DrawableTransitionOptions.withCrossFade());
+						//.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
 				if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(invisibleInkBlurRadius, invisibleInkBlurSampling)));
 				requestBuilder.into(viewHolder.imageContent);
 			}
@@ -4976,16 +5011,20 @@ class ConversationManager {
 			//Assigning the drawable
 			//viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
 			
-			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
 			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
+			PaintDrawable backgroundDrawable = new PaintDrawable();
 			
-			if(alignToRight) viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
-			viewHolder.imageContent.invalidate();
-			
-			if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			if(alignToRight) {
+				viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+				viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+				backgroundDrawable.setCornerRadii(new float[]{pxCornerUnanchored, pxCornerUnanchored, radiusTop, radiusTop, radiusBottom, radiusBottom, pxCornerUnanchored, pxCornerUnanchored});
+			} else {
+				viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+				viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+				backgroundDrawable.setCornerRadii(new float[]{radiusTop, radiusTop, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, radiusBottom, radiusBottom});
+			}
+			viewHolder.backgroundView.setBackground(backgroundDrawable);
 		}
 		
 		@Override
@@ -5039,12 +5078,14 @@ class ConversationManager {
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
 			final RoundedImageView imageContent;
 			final InvisibleInkView inkView;
+			final View backgroundView;
 			
 			ViewHolder(View view) {
 				super(view);
 				
 				imageContent = groupContent.findViewById(R.id.content_view);
 				inkView = groupContent.findViewById(R.id.content_ink);
+				backgroundView = groupContent.findViewById(R.id.content_background);
 			}
 			
 			@Override
@@ -5341,19 +5382,19 @@ class ConversationManager {
 		static final String MIME_PREFIX = "video";
 		static final int RESOURCE_NAME = R.string.part_content_video;
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
 			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
@@ -5381,8 +5422,8 @@ class ConversationManager {
 				viewHolder.imageContent.layout(0, 0, 0, 0);
 				RequestBuilder<Drawable> requestBuilder = Glide.with(context)
 						.load(file)
-						.transition(DrawableTransitionOptions.withCrossFade())
-						.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
+						.transition(DrawableTransitionOptions.withCrossFade());
+						//.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
 				if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(invisibleInkBlurRadius, invisibleInkBlurSampling)));
 				
 				requestBuilder.into(viewHolder.imageContent);
@@ -5467,16 +5508,20 @@ class ConversationManager {
 			//Assigning the drawable
 			//viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
 			
-			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
 			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
+			PaintDrawable backgroundDrawable = new PaintDrawable();
 			
-			if(alignToRight) viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
-			viewHolder.imageContent.invalidate();
-			
-			if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			if(alignToRight) {
+				viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+				viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+				backgroundDrawable.setCornerRadii(new float[]{pxCornerUnanchored, pxCornerUnanchored, radiusTop, radiusTop, radiusBottom, radiusBottom, pxCornerUnanchored, pxCornerUnanchored});
+			} else {
+				viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+				viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+				backgroundDrawable.setCornerRadii(new float[]{radiusTop, radiusTop, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, radiusBottom, radiusBottom});
+			}
+			viewHolder.backgroundView.setBackground(backgroundDrawable);
 		}
 		
 		@Override
@@ -5515,12 +5560,14 @@ class ConversationManager {
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
 			final RoundedImageView imageContent;
 			final InvisibleInkView inkView;
+			final View backgroundView;
 			
 			ViewHolder(View view) {
 				super(view);
 				
 				imageContent = groupContent.findViewById(R.id.content_view);
 				inkView = groupContent.findViewById(R.id.content_ink);
+				backgroundView = groupContent.findViewById(R.id.content_background);
 			}
 			
 			@Override
@@ -5541,19 +5588,19 @@ class ConversationManager {
 		static final String MIME_PREFIX = "other";
 		static final int RESOURCE_NAME = R.string.part_content_other;
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
 			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
@@ -6296,11 +6343,11 @@ class ConversationManager {
 			this.isPinned = isPinned;
 		}
 		
-		public String getMessage() {
+		String getMessage() {
 			return message;
 		}
 		
-		public void setMessage(String message) {
+		void setMessage(String message) {
 			this.message = message;
 		}
 		

@@ -236,6 +236,17 @@ public class ConnectionService extends Service {
 		return activeCommunicationsSubVersion;
 	}
 	
+	static boolean staticCheckSupportsFeature(String feature) {
+		ConnectionService connectionService = getInstance();
+		if(connectionService == null) return false;
+		return connectionService.checkSupportsFeature(feature);
+	}
+	
+	boolean checkSupportsFeature(String feature) {
+		if(currentConnectionManager == null) return false;
+		return currentConnectionManager.checkSupportsFeature(feature);
+	}
+	
 	static int compareLaunchID(byte launchID) {
 		return Integer.compare(currentLaunchID, launchID);
 	}
@@ -1636,7 +1647,7 @@ public class ConnectionService extends Service {
 						
 						//Processing the messages (done all in one shot, since this communications version does not support streaming)
 						if(massRetrievalThread == null) return;
-						massRetrievalThread.registerInfo(ConnectionService.this, (short) 0, listConversations, listItems.size());
+						massRetrievalThread.registerInfo(ConnectionService.this, (short) 0, listConversations, listItems.size(), getPackager());
 						massRetrievalThread.addPacket(ConnectionService.this, (short) 0, 1, listItems);
 						massRetrievalThread.finish();
 						
@@ -2233,7 +2244,7 @@ public class ConnectionService extends Service {
 									int messageCount = inSec.readInt();
 									
 									//Registering the mass retrieval manager
-									if(massRetrievalThread != null) massRetrievalThread.registerInfo(ConnectionService.this, (short) 0, conversationList, messageCount);
+									if(massRetrievalThread != null) massRetrievalThread.registerInfo(ConnectionService.this, (short) 0, conversationList, messageCount, getPackager());
 								} else {
 									//Reading the item list
 									List<Blocks.ConversationItem> listItems = deserializeConversationItems(inSec, inSec.readInt());
@@ -3043,7 +3054,7 @@ public class ConnectionService extends Service {
 									int messageCount = inSec.readInt();
 									
 									//Registering the mass retrieval manager
-									if(massRetrievalThread != null) massRetrievalThread.registerInfo(ConnectionService.this, requestID, conversationList, messageCount);
+									if(massRetrievalThread != null) massRetrievalThread.registerInfo(ConnectionService.this, requestID, conversationList, messageCount, getPackager());
 								} else {
 									//Reading the item list
 									List<Blocks.ConversationItem> listItems = deserializeConversationItems(inSec, inSec.readInt());
@@ -3103,7 +3114,7 @@ public class ConnectionService extends Service {
 						
 						//Processing the data
 						if(massRetrievalThread != null) {
-							if(requestIndex == 0) massRetrievalThread.startFileData(requestID, fileGUID, fileName, getPackager());
+							if(requestIndex == 0) massRetrievalThread.startFileData(requestID, fileGUID, fileName);
 							massRetrievalThread.appendFileData(requestID, requestIndex, fileGUID, compressedBytes, isLast);
 						}
 						break;
@@ -4524,7 +4535,7 @@ public class ConnectionService extends Service {
 			currentState = stateWaiting;
 		}
 		
-		void registerInfo(Context context, short requestID, List<Blocks.ConversationInfo> conversationList, int messageCount) {
+		void registerInfo(Context context, short requestID, List<Blocks.ConversationInfo> conversationList, int messageCount, Packager packager) {
 			//Ignoring the request if the identifier does not line up
 			if(this.requestID != requestID) return;
 			
@@ -4535,6 +4546,7 @@ public class ConnectionService extends Service {
 			//Setting the information
 			this.conversationList = conversationList;
 			this.messageCount = messageCount;
+			currentFilePackager = packager;
 			
 			//Restarting the timeout timer with the packet delay
 			handler.removeCallbacks(callbackFail);
@@ -4574,13 +4586,13 @@ public class ConnectionService extends Service {
 			messagePacketQueue.add(new MessagePackage(itemList));
 		}
 		
-		void startFileData(short requestID, String guid, String fileName, Packager packager) {
+		void startFileData(short requestID, String guid, String fileName) {
 			//Ignoring the request if the identifier does not line up
 			if(this.requestID != requestID) return;
 			if(currentState != stateDownloading) return;
 			
 			//Queueing the packet
-			messagePacketQueue.add(new FileDataInitPackage(guid, fileName, packager));
+			messagePacketQueue.add(new FileDataInitPackage(guid, fileName));
 		}
 		
 		void appendFileData(short requestID, int index, String guid, byte[] compressedBytes, boolean isLast) {
@@ -4703,6 +4715,12 @@ public class ConnectionService extends Service {
 							//Cleaning the conversation item
 							cleanConversationItem(structItem);
 							
+							//Decompressing the item data
+							if(structItem instanceof Blocks.MessageInfo) {
+								Blocks.MessageInfo structMessage = (Blocks.MessageInfo) structItem;
+								for(Blocks.StickerModifierInfo stickerInfo : structMessage.stickers)stickerInfo.image = currentFilePackager.unpackageData(stickerInfo.image);
+							}
+							
 							//Finding the parent conversation
 							ConversationManager.ConversationInfo parentConversation = null;
 							for(ConversationManager.ConversationInfo conversationInfo : conversationInfoList) {
@@ -4768,7 +4786,6 @@ public class ConnectionService extends Service {
 						currentFileTarget = new File(targetFileDir, data.fileName);
 						try {
 							currentFileStream = new FileOutputStream(currentFileTarget);
-							currentFilePackager = data.packager;
 						} catch(IOException exception) {
 							//Printing the stack trace
 							exception.printStackTrace();
@@ -4853,7 +4870,6 @@ public class ConnectionService extends Service {
 			currentFileTarget = null;
 			currentFileStream = null;
 			currentFileIndex = -1;
-			currentFilePackager = null;
 		}
 		
 		int getProgress() {
@@ -4891,12 +4907,10 @@ public class ConnectionService extends Service {
 		private static class FileDataInitPackage extends DataPackage {
 			final String guid;
 			final String fileName;
-			final Packager packager;
 			
-			FileDataInitPackage(String guid, String fileName, Packager packager) {
+			FileDataInitPackage(String guid, String fileName) {
 				this.guid = guid;
 				this.fileName = fileName;
-				this.packager = packager;
 			}
 		}
 		

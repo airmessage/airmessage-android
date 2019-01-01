@@ -24,6 +24,12 @@
 			android:paddingRight="16dp"
 			android:gravity="center_vertical"
 			android:orientation="horizontal">
+			<ImageView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:src="@drawable/notifications_outlined"
+				android:tint="?android:textColorPrimary"
+				android:layout_marginEnd="16dp" />
 			<TextView
 				android:layout_width="0px"
 				android:layout_height="wrap_content"

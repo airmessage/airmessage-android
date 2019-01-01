@@ -10,7 +10,6 @@
 	<string name="dialog_feedback_message">Avez-vous un bogue à signaler, une fonction à suggérer, ou quelque chose d\'autre à dire? Contactez-nous ou discutez avec les autres par les liens ci-dessous.</string>
 	<string name="dialog_feedback_email">Envoyer un courriel</string>
 	<string name="dialog_feedback_googleplus">Ouvrir la communauté G+</string>
-	<string name="app_name">AirMessage</string>
 	<string name="title_conversation_members">Participants à cette conversation</string>
 	<string name="title_conversation_files">Fichiers à cette conversation</string>
 	<string name="message_permissionrejected">Demande d\'autorisation rejetée</string>
@@ -291,12 +290,18 @@
 	<string name="message_serverstatus_authfail">Le mot de passe a été rejeté</string>
 	<string name="message_serverupdate">Une mise à jour de serveur est disponible</string>
 	<string name="action_reconfigure">Reconfigurer</string>
+	<string name="action_short_picture">Photo</string>
+	<string name="action_short_video">Vidéo</string>
 	<string name="preference_server_dropreconnect_description">Essayer de vous reconnecter immédiatement après la perte de la connexion</string>
 	<string name="preference_server_dropreconnect_title">Reconnexion de connexion perdue</string>
 	<string name="preferencegroup_appearance_title">Apparence</string>
 	<string name="preference_appearance_theme_title">Thème</string>
 	<string name="preference_appearance_location_title">Détection de nuit améliorée</string>
 	<string name="preference_appearance_location_description">Utiliser votre position actuelle pour détecter les heures de lever et de coucher du soleil pour un mode de nuit plus précis</string>
+	<string name="preference_appearance_advancedcolor_title">Chats arc-en-ciel</string>
+	<string name="preference_appearance_advancedcolor_description">Colorier les conversations et messages séparément</string>
+	<string name="preference_appearance_showreadreceipts_title">Afficher les accusés de lecture</string>
+	<string name="preference_appearance_showreadreceipts_description">Affiche un indicateur lorsque vos messages ont été lus. S\'applique à toutes les conversations.</string>
 	<string name="preference_server_foregroundservice_title">Exécuter le service au premier plan</string>
 	<string name="preference_server_foregroundservice_description">Affiche une notification et permet de connecter au démarrage</string>
 	<string name="preference_server_disconnectionnotification_title">Notification de déconnexion</string>

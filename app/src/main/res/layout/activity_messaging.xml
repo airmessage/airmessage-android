@@ -115,24 +115,14 @@
 		android:background="?android:attr/colorBackground"
 		android:stateListAnimator="@animator/inputbar_elevation">
 		
-		<!-- Attachment bar -->
-		<androidx.recyclerview.widget.RecyclerView
-			android:id="@+id/inputbar_attachments"
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:overScrollMode="never"
-			android:requiresFadingEdge="vertical"
-			android:clipChildren="true"
-			android:clipToPadding="true"
-			android:visibility="gone" />
-		
 		<!-- Standard text input -->
 		<LinearLayout
 			android:id="@+id/inputbar_text"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:orientation="horizontal"
-			android:padding="8dp">
+			android:padding="8dp"
+			android:baselineAligned="false">
 			<!-- Add button -->
 			<FrameLayout
 				android:id="@+id/button_addcontent"
@@ -170,17 +160,32 @@
 				android:tint="@color/colorPrimary"
 				android:tooltipText="@string/action_addcontent" /> -->
 			<!-- Message box -->
-			<LinearLayout
+			<androidx.constraintlayout.widget.ConstraintLayout
 				android:layout_width="0dp"
 				android:layout_height="wrap_content"
 				android:layout_weight="1"
 				android:background="@drawable/rounded_inputbar"
 				android:backgroundTint="@color/colorMessageOutgoing">
+				<!-- Attachment bar -->
+				<androidx.recyclerview.widget.RecyclerView
+					android:id="@+id/inputbar_attachments"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					app:layout_constraintLeft_toLeftOf="parent"
+					app:layout_constraintRight_toRightOf="parent"
+					app:layout_constraintBottom_toTopOf="@id/messagebox"
+					app:layout_constraintTop_toTopOf="parent"
+					android:clipChildren="true"
+					android:clipToPadding="true"
+					android:theme="@style/OverscrollNeutralizer"
+					android:visibility="gone" />
 				<view class="me.tagavari.airmessage.Messaging$InsertionEditText"
 					android:id="@+id/messagebox"
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
-					android:layout_weight="1"
+					app:layout_constraintBottom_toBottomOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintEnd_toStartOf="@id/button_send"
 					android:background="@null"
 					android:hint="@string/imperative_messageinput"
 					android:imeOptions="flagNoExtractUi"
@@ -194,39 +199,20 @@
 					android:paddingBottom="8dp"
 					android:paddingLeft="12dp"
 					android:paddingRight="12dp"
-					android:textCursorDrawable="@null"
-					app:layout_constraintTop_toBottomOf="@id/inputbar_attachments" />
-
-				<FrameLayout
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:layout_gravity="bottom"
-					android:clipToPadding="false"
-					android:clipChildren="false">
-					<!-- Record button -->
-					<ImageButton
-						android:id="@+id/button_record"
-						android:layout_width="40dp"
-						android:layout_height="40dp"
-						android:background="?android:attr/selectableItemBackgroundBorderless"
-						android:contentDescription="@string/action_send"
-						android:src="@drawable/microphone"
-						android:tag="@string/tag_primarytint"
-						android:tint="@color/colorPrimary"
-						android:tooltipText="@string/action_send"
-						android:visibility="gone" />
-					<!-- Send button -->
-					<ImageButton
-						android:id="@+id/button_send"
-						android:layout_width="40dp"
-						android:layout_height="40dp"
-						android:background="?android:attr/selectableItemBackgroundBorderless"
-						android:contentDescription="@string/action_send"
-						android:src="@drawable/push"
-						android:tint="?android:attr/colorControlNormal"
-						android:tooltipText="@string/action_send" />
-				</FrameLayout>
-			</LinearLayout>
+					android:textCursorDrawable="@null" />
+				<!-- Send button -->
+				<ImageButton
+					android:id="@+id/button_send"
+					android:layout_width="40dp"
+					android:layout_height="40dp"
+					android:background="?android:attr/selectableItemBackgroundBorderless"
+					android:contentDescription="@string/action_send"
+					app:layout_constraintBottom_toBottomOf="parent"
+					app:layout_constraintEnd_toEndOf="parent"
+					android:src="@drawable/push"
+					android:tint="?android:attr/colorControlNormal"
+					android:tooltipText="@string/action_send" />
+			</androidx.constraintlayout.widget.ConstraintLayout>
 		</LinearLayout>
 		
 		<!-- Attachments section -->
@@ -321,6 +307,7 @@
 		android:layout_height="40dp"
 		android:alpha="0.5"
 		android:background="@drawable/circle"
+		android:backgroundTint="@color/colorPrimaryLight"
 		android:visibility="gone"
 		app:layout_constraintLeft_toLeftOf="@+id/fab_bottom"
 		app:layout_constraintTop_toTopOf="@+id/fab_bottom" />

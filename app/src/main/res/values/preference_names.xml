@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
     <string name="preference_messagenotifications_key" translatable="false">pref_messagenotifications</string>
     <string name="preference_messagenotifications_title">Message notifications</string>
-	
+
 	<string name="preferencegroup_appearance_key" translatable="false">pref_group_appearance</string>
 	<string name="preferencegroup_appearance_title">Appearance</string>
 	<string name="preference_appearance_theme_key" translatable="false">pref_key_appearance_theme</string>
@@ -22,7 +22,13 @@
 	<string name="preference_appearance_location_key" translatable="false">pref_key_appearance_location</string>
 	<string name="preference_appearance_location_title">Enhanced night detection</string>
 	<string name="preference_appearance_location_description">Use your current location to detect sunrise and sunset times for a more accurate night mode</string>
-	
+	<string name="preference_appearance_advancedcolor_key" translatable="false">pref_key_appearance_advancedcolor</string>
+	<string name="preference_appearance_advancedcolor_title">Rainbow chats</string>
+	<string name="preference_appearance_advancedcolor_description">Enable colour theming on a per-contact per-chat basis</string>
+	<string name="preference_appearance_showreadreceipts_key" translatable="false">pref_key_appearance_showreadreceipts</string>
+	<string name="preference_appearance_showreadreceipts_title">Show read receipts</string>
+	<string name="preference_appearance_showreadreceipts_description">Display an indicator when people have read your messages. Applies to all conversations.</string>
+
     <string name="preferencegroup_messagenotifications_key" translatable="false">pref_group_notifications</string>
     <string name="preferencegroup_messagenotifications_title">Notifications</string>
     <string name="preference_messagenotifications_getnotifications_key" translatable="false">pref_key_notifications_getnotifications</string>

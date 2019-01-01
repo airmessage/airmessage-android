@@ -112,7 +112,8 @@
 		android:padding="2.5dp"
 		android:textColor="?android:textColorSecondary"
 		app:layout_constraintEnd_toEndOf="@id/messagepart_container"
-		app:layout_constraintTop_toBottomOf="@id/messagepart_container">
+		app:layout_constraintTop_toBottomOf="@id/messagepart_container"
+		android:visibility="gone">
 		<TextView
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
