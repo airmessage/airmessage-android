@@ -13,7 +13,7 @@
 	
 	<color name="colorBGChip">#212121</color>
 	
-	<color name="colorMessageOutgoing">#1F1F1F</color>
+	<color name="colorMessageOutgoing">#424242</color>
 	<color name="colorMessageOutgoingAccent">#616161</color>
 
 	<color name="colorImageUnloaded">#424242</color>

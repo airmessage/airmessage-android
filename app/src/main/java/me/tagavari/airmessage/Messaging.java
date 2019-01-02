@@ -1220,7 +1220,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			layoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
 				@Override
 				public int getSpanSize(int position) {
-					return position == 0 || position == ActivityViewModel.attachmentsTileCount + 1 ? 2 : 1;
+					List<SimpleAttachmentInfo> items = viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery);
+					int itemCount = items == null ? ActivityViewModel.attachmentsTileCount : items.size();
+					return (position == 0 || position == itemCount + 1) ? 2 : 1;
 				}
 			});
 			list.setLayoutManager(layoutManager);
@@ -1262,9 +1264,13 @@ public class Messaging extends AppCompatCompositeActivity {
 	private class AttachmentsDoubleSpacingDecoration extends RecyclerView.ItemDecoration {
 		@Override
 		public void getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+			//Getting the item count
+			List<SimpleAttachmentInfo> items = viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery);
+			int itemCount = items == null ? ActivityViewModel.attachmentsTileCount : items.size();
+			
 			//Adding top margin for items on the bottom row
 			int position = parent.getChildLayoutPosition(view);
-			if(position != 0 && position != ActivityViewModel.attachmentsTileCount + 1 && parent.getChildLayoutPosition(view) % 2 == 0) {
+			if(position != 0 && position != itemCount + 1 && parent.getChildLayoutPosition(view) % 2 == 0) {
 				outRect.top = getResources().getDimensionPixelSize(R.dimen.contenttile_margin) / 2;
 			}
 		}
@@ -1809,6 +1815,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			animator.start();
 		} */
 		buttonSendMessage.setColorFilter(targetColor);
+		if(Constants.isNightMode(getResources())) buttonSendMessage.setAlpha(state ? 1 : 0.4F);
+		
 		//buttonSendMessage.setImageTintList(ColorStateList.valueOf(state ? getResources().getColor(R.color.colorPrimary, null) : Constants.resolveColorAttr(this, android.R.attr.colorControlNormal)));
 		//if(restore) buttonSendMessage.setAlpha(targetAlpha);
 		//else buttonSendMessage.animate().setDuration(100).alpha(targetAlpha);

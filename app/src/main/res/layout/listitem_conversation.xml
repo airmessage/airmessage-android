@@ -94,7 +94,7 @@
 		android:layout_marginLeft="8dp"
 		android:src="@drawable/notifications_off_outlined"
 		android:tint="?android:attr/textColorSecondary"
-		android:tintMode="src_in"
+		android:tintMode="multiply"
 		app:layout_constraintEnd_toStartOf="@+id/time"
 		app:layout_constraintBottom_toBottomOf="@id/title"
 		app:layout_constraintTop_toTopOf="@id/title" />

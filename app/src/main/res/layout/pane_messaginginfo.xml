@@ -29,6 +29,7 @@
 				android:layout_height="wrap_content"
 				android:src="@drawable/notifications_outlined"
 				android:tint="?android:textColorPrimary"
+				android:tintMode="multiply"
 				android:layout_marginEnd="16dp" />
 			<TextView
 				android:layout_width="0px"
@@ -113,6 +114,7 @@
 			app:icon="@drawable/palette_outlined"
 			app:iconGravity="textStart"
 			app:iconPadding="24dp"
+			app:iconTintMode="multiply"
 			android:tag="@string/tag_primarytint" />
 		
 		<View
@@ -142,7 +144,8 @@
 				app:icon="@drawable/archive_outlined"
 				app:iconGravity="textStart"
 				app:iconPadding="8dp"
-				app:iconTint="@color/colorActionArchive" />
+				app:iconTint="@color/colorActionArchive"
+				app:iconTintMode="multiply" />
 			<Space
 				android:layout_width="8dp"
 				android:layout_height="0px" />
@@ -159,7 +162,8 @@
 				app:icon="@drawable/delete_outlined"
 				app:iconGravity="textStart"
 				app:iconPadding="8dp"
-				app:iconTint="@color/colorActionDelete" />
+				app:iconTint="@color/colorActionDelete"
+				app:iconTintMode="multiply" />
 		</LinearLayout>
 	</LinearLayout>
 </ScrollView>
