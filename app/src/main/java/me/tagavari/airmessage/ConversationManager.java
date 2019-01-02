@@ -13,16 +13,16 @@ import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.PaintDrawable;
+import android.icu.text.SimpleDateFormat;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.SpannableString;
+import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
-import android.text.style.StyleSpan;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -63,7 +63,6 @@ import org.lukhnos.nnio.file.Paths;
 import java.io.File;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
-import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -77,6 +76,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import androidx.annotation.DrawableRes;
 import androidx.appcompat.app.AlertDialog;
@@ -358,7 +358,6 @@ class ConversationManager {
 		private static final String dayFormat = "MMM d";
 		private static final String weekdayFormat = "E";
 		private static final String yearFormat = "y"; */
-		static final String bullet = " • ";
 		static final Integer[] standardUserColors = {
 				0xFFFF1744, //Red
 				0xFFF50057, //Pink
@@ -636,10 +635,47 @@ class ConversationManager {
 			}
 			
 			//Setting the time
-			itemView.conversationTime.setText(
+			/* itemView.conversationTime.setText(
 					System.currentTimeMillis() - lastItem.getDate() < conversationJustNowTimeMillis ?
 							context.getResources().getString(R.string.time_now) :
-							DateUtils.getRelativeTimeSpanString(lastItem.getDate(), System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_ALL).toString());
+							DateUtils.getRelativeTimeSpanString(lastItem.getDate(), System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_ALL).toString()); */
+			itemView.conversationTime.setText(getLastUpdateStatusTime(context, lastItem.getDate()));
+		}
+		
+		private static String getLastUpdateStatusTime(Context context, long date) {
+			long timeNow = System.currentTimeMillis();
+			long timeDiff = timeNow - date;
+			
+			//Just now
+			if(timeDiff < conversationJustNowTimeMillis) return context.getResources().getString(R.string.time_now);
+			
+			//Within the hour
+			if(timeDiff < 60 * 60 * 60 * 1000) return context.getResources().getString(R.string.time_minutes, (int) (timeDiff / (60 * 60 * 1000)));
+			
+			Calendar thenCal = Calendar.getInstance();
+			thenCal.setTimeInMillis(date);
+			Calendar nowCal = Calendar.getInstance();
+			nowCal.setTimeInMillis(timeNow);
+			
+			//Within the day (14:11)
+			if(thenCal.get(Calendar.ERA) == nowCal.get(Calendar.ERA) && thenCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) && nowCal.get(Calendar.DAY_OF_YEAR) == thenCal.get(Calendar.DAY_OF_YEAR)) return DateFormat.getTimeFormat(context).format(thenCal);
+			
+			//Within the week (Sun)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
+				if(thenCal.compareTo(compareCal) > 0) return DateFormat.format("EEE", thenCal).toString();
+			}
+			
+			//Within the year (Dec 9)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
+				if(thenCal.compareTo(compareCal) > 0) return DateFormat.format("MMM d", thenCal).toString();
+			}
+			
+			//Anytime (Dec 2018)
+			return DateFormat.format("MMM yyyy", thenCal).toString();
 		}
 		
 		void updateViewUser(Context context) {
@@ -2355,27 +2391,49 @@ class ConversationManager {
 				case SharedValues.MessageInfo.stateCodeDelivered:
 					return context.getResources().getString(R.string.state_delivered);
 				case SharedValues.MessageInfo.stateCodeRead: {
-					//Creating the when variable
-					String when;
-					
 					//Creating the calendars
-					Calendar calNow = Calendar.getInstance();
-					Calendar calThen = Calendar.getInstance();
-					calThen.setTimeInMillis(dateRead);
+					Calendar sentCal = Calendar.getInstance();
+					sentCal.setTimeInMillis(dateRead);
+					Calendar nowCal = Calendar.getInstance();
 					
-					//Formatting the when as the time if the days are the same
-					if(calNow.get(Calendar.ERA) == calThen.get(Calendar.ERA) &&
-							calNow.get(Calendar.YEAR) == calThen.get(Calendar.YEAR) &&
-							calNow.get(Calendar.DAY_OF_YEAR) == calThen.get(Calendar.DAY_OF_YEAR)) when = DateFormat.getTimeInstance(DateFormat.SHORT).format(dateRead);
-					//Otherwise formatting the when as the date
-					else when = DateFormat.getDateInstance(DateFormat.SHORT).format(dateRead);
-					
-					String readState = context.getResources().getString(R.string.state_read);
-					SpannableString label = new SpannableString(readState + ' ' + when);
-					label.setSpan(new StyleSpan(Typeface.BOLD), 0, readState.length(), 0);
-					return label;
+					//Creating the string
+					return context.getResources().getString(R.string.state_read) + Constants.bulletSeparator + getDeliveryStatusTime(context, sentCal, nowCal);
 				}
 			}
+		}
+		
+		private static String getDeliveryStatusTime(Context context, Calendar sentCal, Calendar nowCal) {
+			//Creating the date
+			Date sentDate = sentCal.getTime();
+			
+			//If the message was sent today
+			if(sentCal.get(Calendar.ERA) == nowCal.get(Calendar.ERA) && sentCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) && nowCal.get(Calendar.DAY_OF_YEAR) == sentCal.get(Calendar.DAY_OF_YEAR))
+				return DateFormat.getTimeFormat(context).format(sentDate);
+			
+			//If the message was sent yesterday
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.DAY_OF_YEAR, -1); //Today (now) -> Yesterday
+				if(sentCal.get(Calendar.ERA) == compareCal.get(Calendar.ERA) && sentCal.get(Calendar.YEAR) == compareCal.get(Calendar.YEAR) && sentCal.get(Calendar.DAY_OF_YEAR) == compareCal.get(Calendar.DAY_OF_YEAR))
+					return context.getResources().getString(R.string.time_yesterday);
+			}
+			
+			//If the days are within the same 7-day period (Sunday)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
+				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE", sentCal).toString();
+			}
+			
+			//If the days are within the same year period (Dec 9)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
+				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("MMM d", sentCal).toString();
+			}
+			
+			//Different years (Dec 9, 2018)
+			return DateFormat.format("MMM d, yyyy", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 		}
 		
 		boolean sendMessage(Context context) {
@@ -2623,27 +2681,41 @@ class ConversationManager {
 		
 		private String generateTimeDividerString(Context context) {
 			//Getting the calendars
-			Calendar nowCalendar = Calendar.getInstance();
-			Calendar sentCalendar = Calendar.getInstance();
-			sentCalendar.setTimeInMillis(getDate());
+			Calendar sentCal = Calendar.getInstance();
+			sentCal.setTimeInMillis(getDate());
+			Calendar nowCal = Calendar.getInstance();
 			
 			//Creating the date
 			Date sentDate = new Date(getDate());
 			
-			//Checking if the calendars are of the same year
-			if(sentCalendar.get(Calendar.YEAR) == nowCalendar.get(Calendar.YEAR)) {
-				//If the message was sent today
-				if(nowCalendar.get(Calendar.DAY_OF_YEAR) == sentCalendar.get(Calendar.DAY_OF_YEAR)) return context.getResources().getString(R.string.time_today) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
-				//If the message was sent yesterday
-				else {
-					nowCalendar.add(Calendar.DAY_OF_YEAR, -1); //Today (now) -> Yesterday
-					if(nowCalendar.get(Calendar.DAY_OF_YEAR) == sentCalendar.get(Calendar.DAY_OF_YEAR))
-						return context.getResources().getString(R.string.time_yesterday) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
-				}
+			//If the message was sent today
+			if(sentCal.get(Calendar.ERA) == nowCal.get(Calendar.ERA) && sentCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) && nowCal.get(Calendar.DAY_OF_YEAR) == sentCal.get(Calendar.DAY_OF_YEAR))
+				return /*context.getResources().getString(R.string.time_today) + Constants.bulletSeparator + */DateFormat.getTimeFormat(context).format(sentDate);
+			
+			//If the message was sent yesterday
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.DAY_OF_YEAR, -1); //Today (now) -> Yesterday
+				if(sentCal.get(Calendar.ERA) == compareCal.get(Calendar.ERA) && sentCal.get(Calendar.YEAR) == compareCal.get(Calendar.YEAR) && sentCal.get(Calendar.DAY_OF_YEAR) == compareCal.get(Calendar.DAY_OF_YEAR))
+					return context.getResources().getString(R.string.time_yesterday) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 			}
 			
-			//Returning an absolute time
-			return android.text.format.DateFormat.getDateFormat(context).format(sentDate) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
+			//If the days are within the same 7-day period (Sunday)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
+				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+			}
+			
+			//If the days are within the same year period (Sunday, Dec 9)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
+				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE, MMM d", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+			}
+			
+			//Different years (Dec 9, 2018)
+			return DateFormat.format("MMM d, yyyy", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 		}
 		
 		void setHasTimeDivider(boolean hasTimeDivider) {
@@ -3884,7 +3956,7 @@ class ConversationManager {
 		
 		private void setupTextLinks(TextView textView) {
 			//Setting up the URL checker
-			textView.setTransformationMethod(new Constants.CustomTabsLinkTransformationMethod(getMessageInfo().getConversationInfo().getConversationColor()));
+			textView.setTransformationMethod(new Constants.CustomTabsLinkTransformationMethod(0xFFFFFFFF));
 			textView.setMovementMethod(LinkMovementMethod.getInstance());
 		}
 		
@@ -4033,7 +4105,7 @@ class ConversationManager {
 						StringBuilder stringBuilder = new StringBuilder();
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateFormat(newContext).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
@@ -4105,12 +4177,12 @@ class ConversationManager {
 			intent.setAction(Intent.ACTION_SEND);
 			
 			//Creating the formatters
-			DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM); //android.text.format.DateFormat.getLongDateFormat(activity);
+			//DateFormat dateFormat = DateFormat.getDateFormat(context); //android.text.format.DateFormat.getLongDateFormat(activity);
 			
 			//Getting the text
 			String text = name == null ?
-					context.getResources().getString(R.string.message_shareable_text_you, dateFormat.format(date), message) :
-					context.getResources().getString(R.string.message_shareable_text, dateFormat.format(date), name, message);
+					context.getResources().getString(R.string.message_shareable_text_you, DateFormat.getDateFormat(context).format(date), message) :
+					context.getResources().getString(R.string.message_shareable_text, DateFormat.getDateFormat(context).format(date), name, message);
 			
 			//Setting the text
 			intent.putExtra(Intent.EXTRA_TEXT, text);
@@ -4623,7 +4695,7 @@ class ConversationManager {
 						StringBuilder stringBuilder = new StringBuilder();
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(getNameFromContentType(getContentType())))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateFormat(newContext).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_size, fileSize != -1 ? Formatter.formatFileSize(newContext, fileSize) : newContext.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment file size
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						

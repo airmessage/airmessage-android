@@ -265,6 +265,7 @@
 	<string name="progress_connectingtoserver">Connecting to server&#8230;</string>
 
 	<string name="time_now">Just now</string>
+	<string name="time_minutes">%d min</string>
 	<string name="time_today">Today</string>
 	<string name="time_yesterday">Yesterday</string>
 

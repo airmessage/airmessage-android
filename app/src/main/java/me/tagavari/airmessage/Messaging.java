@@ -19,7 +19,6 @@ import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
-import android.graphics.BitmapFactory;
 import android.graphics.Outline;
 import android.graphics.PointF;
 import android.graphics.Rect;
@@ -127,7 +126,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
 	private static final int quickScrollFABThreshold = 3;
 	private static final float bottomSheetFillThreshold = 0.8F;
-	private static final float contentPanelFillThreshold = 0.8F;
+	private static final float contentPanelMinAllowanceDP = 275;
 	static final int messageChunkSize = 20;
 	static final int progressiveLoadThreshold = 10;
 	private static final String[] documentMimeTypes = {"text/*", "application/*", "font/*"};
@@ -401,7 +400,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Setting the conversation title
 				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
 					setActionBarTitle(result);
-					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), getConversationUIColor()));
+					//setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), getConversationUIColor()));
 				});
 				
 				//Coloring the UI
@@ -426,7 +425,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Setting the conversation title
 				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
 					setActionBarTitle(result);
-					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), getConversationUIColor()));
+					//setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), getConversationUIColor()));
 				});
 				
 				//Setting the activity callbacks
@@ -1073,8 +1072,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void openAttachmentsPanel(boolean restore, boolean animate) {
 		//Returning if the conversation is not ready or the panel is already open
-		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || restore != viewModel.isAttachmentsPanelOpen)
-			return;
+		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || restore != viewModel.isAttachmentsPanelOpen) return;
 		
 		//Setting the panel as open
 		viewModel.isAttachmentsPanelOpen = true;
@@ -1109,7 +1107,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Resolving the heights
 		int requestedPanelHeight = getResources().getDimensionPixelSize(R.dimen.contentpanel_height);
-		int windowThreshold = (int) (getAvailableWindowHeight() * contentPanelFillThreshold);
+		int windowThreshold = getWindow().getDecorView().getHeight() - Constants.dpToPx(contentPanelMinAllowanceDP);
 		
 		//Limiting the panel height
 		int targetHeight = Math.min(requestedPanelHeight, windowThreshold);
@@ -1729,7 +1727,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//setActionBarTitle(getSupportActionBar().getTitle().toString());
 		
 		//Updating the task description
-		if(lastTaskDescription != null) setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(lastTaskDescription.getLabel(), lastTaskDescription.getIcon(), color));
+		//if(lastTaskDescription != null) setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(lastTaskDescription.getLabel(), lastTaskDescription.getIcon(), color));
 		
 		//Coloring tagged parts of the UI
 		for(View view : Constants.getViewsByTag(root, getResources().getString(R.string.tag_primarytint))) {
@@ -4851,7 +4849,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Updating the task description
 				activity.lastTaskDescription = new ActivityManager.TaskDescription(result, activity.lastTaskDescription.getIcon(), activity.getConversationUIColor());
-				activity.setTaskDescription(activity.lastTaskDescription);
+				//activity.setTaskDescription(activity.lastTaskDescription);
 			});
 		}
 		

@@ -2,11 +2,14 @@ package me.tagavari.airmessage;
 
 import android.animation.ValueAnimator;
 import androidx.appcompat.app.AlertDialog;
+
+import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;

@@ -111,7 +111,6 @@
 			android:id="@+id/viewgroup_attachment_audio"
 			android:layout_width="match_parent"
 			android:layout_height="@dimen/contenttile_size"
-			android:layout_marginBottom="@dimen/contenttile_margin"
 			android:layout_marginStart="@dimen/contenttile_margin"
 			android:orientation="horizontal"
 			android:baselineAligned="false">

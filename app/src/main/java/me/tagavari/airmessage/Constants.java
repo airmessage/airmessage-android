@@ -130,7 +130,6 @@ public class Constants {
 	static final String feedbackEmail = "hello@airmessage.org";
 	
 	static final int defaultPort = 1359;
-	static final String defaultProtocol = "wss://";
 	static final String recordingName = "recording.amr";
 	static final String pictureName = "image.jpg";
 	static final String defaultFileName = "file";
@@ -141,6 +140,8 @@ public class Constants {
 	//static final int viewTagTypeKey = 0;
 	static final String viewTagTypeItem = "item";
 	static final String viewTagTypeAction = "action";
+	
+	static final String bulletSeparator = " • ";
 	
 	//Creating the reference constants
 	static final float disabledAlpha = 0.54f;

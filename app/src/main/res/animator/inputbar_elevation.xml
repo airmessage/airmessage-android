@@ -4,7 +4,7 @@
 		<objectAnimator
 			android:duration="@android:integer/config_shortAnimTime"
 			android:propertyName="elevation"
-			android:valueTo="32dp"
+			android:valueTo="8dp"
 			android:valueType="floatType" />
 	</item>
 

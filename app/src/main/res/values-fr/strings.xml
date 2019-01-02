@@ -184,6 +184,7 @@
 	<string name="action_confirmparticipants">Confirmer les participants</string>
 	<string name="message_conversationcreated">Nouvelle conversation est créé</string>
 	<string name="time_now">Maintenant</string>
+	<string name="time_minutes">%d min</string>
 	<string name="imperative_selectconversation">Sélectionnez une conversation</string>
 	<string name="screen_newmessage">Nouveau message</string>
 	<string name="message_messageerror_title">Votre message n\'a pas pu être envoyé</string>
