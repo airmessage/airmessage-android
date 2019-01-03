@@ -76,16 +76,18 @@
 			android:animateLayoutChanges="true"
 			android:background="?android:attr/colorBackgroundFloating" />
 	</com.google.android.material.appbar.AppBarLayout>
+
 	<!-- Floating Action Button -->
 	<com.google.android.material.floatingactionbutton.FloatingActionButton
 		android:id="@+id/fab"
-		android:layout_width="56dp"
-		android:layout_height="56dp"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
 		android:layout_gravity="bottom|end"
 		android:layout_margin="16dp"
-		android:src="@drawable/add"
+		android:src="@drawable/chat_rounded"
 		android:foregroundTint="@color/colorPrimary"
 		app:fabSize="normal" />
+
 	<!-- Content layout -->
 	<RelativeLayout
 		android:layout_width="match_parent"
@@ -219,4 +221,12 @@
 				app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 		</RelativeLayout>
 	</RelativeLayout>
+
+	<!-- Bottom shadow -->
+	<View
+		android:id="@+id/bottomshadow"
+		android:layout_width="match_parent"
+		android:layout_height="3dp"
+		android:background="@drawable/appear_bottomshadow"
+		android:layout_gravity="bottom" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

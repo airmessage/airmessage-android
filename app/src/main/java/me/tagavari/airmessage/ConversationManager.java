@@ -5413,7 +5413,7 @@ class ConversationManager {
 		
 		private void updateMediaProgress(ViewHolder viewHolder) {
 			viewHolder.contentProgress.setProgress((int) ((float) mediaProgress / (float) duration * 100F));
-			viewHolder.contentLabel.setText(Constants.getFormattedDuration((int) Math.floor(mediaProgress <= 0 ? duration / 1000L : mediaProgress / 1000L)));
+			viewHolder.contentLabel.setText(DateUtils.formatElapsedTime(((int) Math.floor(mediaProgress <= 0 ? duration / 1000L : mediaProgress / 1000L))));
 		}
 		
 		private void resetPlaying(ViewHolder viewHolder) {
@@ -5443,7 +5443,7 @@ class ConversationManager {
 			void releaseResources() {
 				contentIcon.setImageResource(resDrawablePlay);
 				contentProgress.setProgress(0);
-				contentLabel.setText(Constants.getFormattedDuration(0));
+				contentLabel.setText(DateUtils.formatElapsedTime(0));
 			}
 		}
 	}

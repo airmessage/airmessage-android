@@ -60,6 +60,7 @@
 	<string name="action_confirmparticipants">Confirm participants</string>
 	<string name="action_getnotifications">Get notifications</string>
 	<string name="action_pinconversation">Pin conversation</string>
+	<string name="action_startchat">NEW CHAT</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Picture</string>

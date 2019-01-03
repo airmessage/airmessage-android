@@ -79,7 +79,7 @@
 	<!-- Contact list -->
 	<RelativeLayout
 		android:layout_width="match_parent"
-		android:layout_height="match_parent" >
+		android:layout_height="match_parent">
 		<!-- Contacts list -->
 		<!-- <ListView
 			android:id="@+id/list_contacts"
@@ -158,5 +158,13 @@
 				android:tag="@string/tag_primarytint"
 				android:text="@string/action_retry" />
 		</LinearLayout>
+
+		<!-- Bottom shadow -->
+		<View
+			android:id="@+id/bottomshadow"
+			android:layout_width="match_parent"
+			android:layout_height="3dp"
+			android:background="@drawable/appear_bottomshadow"
+			android:layout_alignParentBottom="true" />
 	</RelativeLayout>
 </LinearLayout>

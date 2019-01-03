@@ -35,6 +35,7 @@ import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
@@ -129,8 +130,12 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final float contentPanelMinAllowanceDP = 275;
 	static final int messageChunkSize = 20;
 	static final int progressiveLoadThreshold = 10;
-	private static final String[] documentMimeTypes = {"text/*", "application/*", "font/*"};
 	private static final int draftCountLimit = 10;
+	
+	private static final String mimeTypeImage = "image/*";
+	private static final String mimeTypeVideo = "video/*";
+	private static final String mimeTypeAudio = "audio/*";
+	private static final String mimeTypeGIF = "image/gif";
 	
 	private static final long confettiDuration = 1000;
 	//private static final float disabledAlpha = 0.38F
@@ -233,6 +238,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private TextView labelLoadFail;
 	private RecyclerView messageList;
 	private View inputBar;
+	private View inputBarShadow;
 	private ImageButton buttonSendMessage;
 	private FrameLayout buttonAddContent;
 	private InsertionEditText messageInputField;
@@ -562,6 +568,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		labelLoadFail = findViewById(R.id.group_error_label);
 		messageList = findViewById(R.id.list_messages);
 		inputBar = findViewById(R.id.inputbar);
+		inputBarShadow = findViewById(R.id.bottomshadow);
 		buttonSendMessage = inputBar.findViewById(R.id.button_send);
 		buttonAddContent = inputBar.findViewById(R.id.button_addcontent);
 		messageInputField = inputBar.findViewById(R.id.messagebox);
@@ -602,8 +609,17 @@ public class Messaging extends AppCompatCompositeActivity {
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 		
 		//Setting the input bar elevation animation
-		messageList.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
-			inputBar.setSelected(messageList.canScrollVertically(1));
+		messageList.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+			boolean isShadowVisible = false;
+			
+			@Override
+			public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+				boolean visibility = messageList.canScrollVertically(1);
+				if(isShadowVisible == visibility) return;
+				isShadowVisible = visibility;
+				
+				inputBarShadow.animate().alpha(visibility ? 1 : 0);
+			}
 		});
 		
 		//Setting the listeners
@@ -710,7 +726,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		});
 		viewModel.recordingDuration.observe(this, value -> {
 			if(recordingTimeLabel != null)
-				recordingTimeLabel.setText(Constants.getFormattedDuration(value));
+				recordingTimeLabel.setText(DateUtils.formatElapsedTime(value));
 		});
 		viewModel.progressiveLoadInProgress.observe(this, value -> {
 			if(value) onProgressiveLoadStart();
@@ -1815,7 +1831,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			animator.start();
 		} */
 		buttonSendMessage.setColorFilter(targetColor);
-		if(Constants.isNightMode(getResources())) buttonSendMessage.setAlpha(state ? 1 : 0.4F);
+		buttonSendMessage.setAlpha(state ? 1 : 0.5F);
 		
 		//buttonSendMessage.setImageTintList(ColorStateList.valueOf(state ? getResources().getColor(R.color.colorPrimary, null) : Constants.resolveColorAttr(this, android.R.attr.colorControlNormal)));
 		//if(restore) buttonSendMessage.setAlpha(targetAlpha);
@@ -2235,10 +2251,6 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void requestAudioFile() {
 		launchPickerIntent(new String[]{"audio/*"});
-	}
-	
-	private void requestDocumentFile() {
-		launchPickerIntent(documentMimeTypes);
 	}
 	
 	public static ArrayList<Long> getForegroundConversations() {
@@ -3195,10 +3207,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(mimeType == null) return attachmentsDocumentTileHelper;
 		
 		{
-			String mimeTypeGeneral = mimeType.split("/")[0];
-			if(mimeTypeGeneral.equals("image") || mimeTypeGeneral.equals("video"))
+			if(Constants.compareMimeTypes(mimeType, mimeTypeImage) || Constants.compareMimeTypes(mimeType, mimeTypeVideo))
 				return attachmentsMediaTileHelper;
-			else if(mimeTypeGeneral.equals("audio")) return attachmentsAudioTileHelper;
+			else if(Constants.compareMimeTypes(mimeType, mimeTypeAudio)) return attachmentsAudioTileHelper;
 		}
 		
 		return attachmentsDocumentTileHelper;
@@ -3397,11 +3408,16 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the view values
 		private final ImageView imageThumbnail;
 		private final ImageView imageFlagGIF;
+		private final ViewGroup groupVideo;
+		private final TextView labelVideo;
 		
 		AttachmentsMediaTileViewHolder(View itemView) {
 			super(itemView);
 			imageThumbnail = itemView.findViewById(R.id.image);
 			imageFlagGIF = itemView.findViewById(R.id.image_flag_gif);
+			
+			groupVideo = itemView.findViewById(R.id.group_flag_video);
+			labelVideo = groupVideo.findViewById(R.id.label_flag_video);
 		}
 	}
 	
@@ -3426,6 +3442,19 @@ public class Messaging extends AppCompatCompositeActivity {
 					.apply(RequestOptions.centerCropTransform())
 					.transition(DrawableTransitionOptions.withCrossFade())
 					.into(viewHolder.imageThumbnail);
+			
+			//Setting the image flags
+			if(Constants.compareMimeTypes(item.getFileType(), mimeTypeGIF)) {
+				viewHolder.imageFlagGIF.setVisibility(View.VISIBLE);
+				viewHolder.groupVideo.setVisibility(View.GONE);
+			} else if(Constants.compareMimeTypes(item.getFileType(), mimeTypeVideo)) {
+				viewHolder.imageFlagGIF.setVisibility(View.GONE);
+				viewHolder.groupVideo.setVisibility(View.VISIBLE);
+				viewHolder.labelVideo.setText(DateUtils.formatElapsedTime((int) Math.floor(((SimpleAttachmentInfo.VideoExtension) item.getExtension()).mediaDuration / 1000L)));
+			} else {
+				viewHolder.imageFlagGIF.setVisibility(View.GONE);
+				viewHolder.groupVideo.setVisibility(View.GONE);
+			}
 		}
 		
 		@Override
@@ -3688,7 +3717,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		private void assignExtension() {
-			if(fileType.split("/")[0].equals("audio")) extension = new AudioExtension();
+			if(Constants.compareMimeTypes(fileType, "audio/*")) extension = new AudioExtension();
+			else if(Constants.compareMimeTypes(fileType, "video/*")) extension = new VideoExtension();
 			else extension = null;
 			
 			if(extension != null) extension.initialize();
@@ -3736,8 +3766,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		abstract class Extension {
-			void initialize() {
-			}
+			abstract void initialize();
 		}
 		
 		Extension getExtension() {
@@ -3756,20 +3785,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			@Override
 			void initialize() {
 				if(file != null) mediaDuration = Constants.getMediaDuration(file);
-				else if(uri != null)
-					mediaDuration = Constants.getMediaDuration(MainApplication.getInstance(), uri);
-			}
-			
-			long getMediaDuration() {
-				return mediaDuration;
-			}
-			
-			boolean isPlaying() {
-				return isPlaying;
-			}
-			
-			long getMediaProgress() {
-				return mediaProgress;
+				else if(uri != null) mediaDuration = Constants.getMediaDuration(MainApplication.getInstance(), uri);
 			}
 			
 			void play(AudioPlaybackManager playbackManager, QueuedFileInfo queuedInfo, Constants.ViewHolderSource<AttachmentsAudioTileViewHolder> viewSource) {
@@ -3835,6 +3851,22 @@ public class Messaging extends AppCompatCompositeActivity {
 			void updateViewProgress(AttachmentsAudioTileViewHolder viewHolder) {
 				viewHolder.progressBar.setProgress((int) ((float) mediaProgress / (float) mediaDuration * 100F));
 				//viewHolder.labelDuration.setText(Constants.getFormattedDuration((int) Math.floor(mediaProgress <= 0 ? mediaDuration / 1000L : mediaProgress / 1000L)));
+			}
+		}
+		
+		class VideoExtension extends Extension {
+			//Creating the attachment info values
+			private long mediaDuration = -1;
+			
+			@Override
+			void initialize() {
+				//Getting the media duration
+				if(file != null) mediaDuration = Constants.getMediaDuration(file);
+				else if(uri != null) mediaDuration = Constants.getMediaDuration(MainApplication.getInstance(), uri);
+			}
+			
+			long getMediaDuration() {
+				return mediaDuration;
 			}
 		}
 	}

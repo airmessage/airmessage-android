@@ -31,7 +31,7 @@
 			android:label="@string/app_name"
 			android:launchMode="singleTop"
 			android:name=".Conversations"
-			android:theme="@style/DayNight.NoActionBar.SolidNavigation"
+			android:theme="@style/DayNight.NoActionbar.Unprotected"
 			android:windowSoftInputMode="adjustResize">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
@@ -43,7 +43,7 @@
 			android:exported="false"
 			android:name=".Messaging"
 			android:parentActivityName=".Conversations"
-			android:theme="@style/DayNight.Messaging"
+			android:theme="@style/DayNight.NoActionbar.Unprotected"
 			android:windowSoftInputMode="adjustResize|stateUnchanged" />
 		<!-- New Message -->
 		<activity
@@ -51,14 +51,14 @@
 			android:label="@string/screen_newconversation"
 			android:name=".NewMessage"
 			android:parentActivityName=".Conversations"
-			android:theme="@style/DayNight.NoActionBar.SolidNavigation"
+			android:theme="@style/DayNight.NoActionbar.Unprotected"
 			android:windowSoftInputMode="adjustResize|stateVisible" />
 		<!-- Preferences -->
 		<activity
 			android:exported="false"
 			android:label="@string/screen_settings"
 			android:name=".Preferences"
-			android:theme="@style/DayNight.NoActionBar.SolidNavigation"
+			android:theme="@style/DayNight.NoActionbar.Unprotected"
 			android:parentActivityName=".Conversations">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />

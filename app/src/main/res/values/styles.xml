@@ -40,7 +40,7 @@
 		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
 	</style>
 
-	<style name="DayNight.Messaging" parent="@style/DayNight.NoActionBar">
+	<style name="DayNight.NoActionbar.Unprotected" parent="@style/DayNight.NoActionBar">
 		<!--<item name="android:windowBackground">@color/colorBackgroundClean</item>-->
 		<!--<item name="android:navigationBarColor">@color/colorBackgroundClean</item>-->
 	</style>

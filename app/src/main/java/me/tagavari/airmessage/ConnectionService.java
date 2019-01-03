@@ -106,6 +106,7 @@ public class ConnectionService extends Service {
 	static final String localBCStateUpdate = "LocalMSG-ConnectionService-State";
 	static final String localBCMassRetrieval = "LocalMSG-ConnectionService-MassRetrievalProgress";
 	static final String BCPingTimer = "me.tagavari.airmessage.ConnectionService-StartPing";
+	static final String BCReconnectTimer = "me.tagavari.airmessage.ConnectionService-StartReconnect";
 	
 	static final int intentResultCodeSuccess = 0;
 	static final int intentResultCodeInternalException = 1;
@@ -132,10 +133,13 @@ public class ConnectionService extends Service {
 	static final long keepAliveMillis = 10 * 60 * 1000; //30 * 60 * 1000; //10 minutes
 	static final long keepAliveWindowMillis = 5 * 60 * 1000; //5 minutes
 	static final long[] dropReconnectDelayMillis = {1000, 5 * 1000, 10 * 1000, 30 * 1000}; //1 second, 5 seconds, 10 seconds, 30 seconds
+	static final long passiveReconnectFrequencyMillis = 20 * 60 * 1000; //20 minutes
+	static final long passiveReconnectWindowMillis = 5 * 60 * 1000; //5 minutes
 	
 	private static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
 	
 	private PendingIntent pingPendingIntent;
+	private PendingIntent reconnectPendingIntent;
 	
 	private final List<Class> connectionManagerClassPriorityList = Collections.singletonList(ClientCommCaladium.class);
 	private final List<ConnectionManagerSource> connectionManagerPriorityList = Collections.singletonList(ClientCommCaladium::new);
@@ -181,6 +185,16 @@ public class ConnectionService extends Service {
 			
 			//Rescheduling the ping
 			schedulePing();
+		}
+	};
+	private final BroadcastReceiver reconnectionBroadcastReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			//Returning if the connection manager is already ready
+			if(currentConnectionManager != null && currentConnectionManager.getState() != stateDisconnected) return;
+			
+			//Connecting to the server
+			connect(getNextLaunchID());
 		}
 	};
 	private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
@@ -281,9 +295,11 @@ public class ConnectionService extends Service {
 		//Registering the broadcast receivers
 		registerReceiver(networkStateChangeBroadcastReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
 		registerReceiver(pingBroadcastReceiver, new IntentFilter(BCPingTimer));
+		registerReceiver(reconnectionBroadcastReceiver, new IntentFilter(BCReconnectTimer));
 		
 		//Setting the reference values
 		pingPendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(BCPingTimer), PendingIntent.FLAG_UPDATE_CURRENT);
+		reconnectPendingIntent = PendingIntent.getBroadcast(this, 1, new Intent(BCReconnectTimer), PendingIntent.FLAG_UPDATE_CURRENT);
 		
 		//Starting the service as a foreground service (if enabled in the preferences)
 		if(foregroundServiceRequested()) startForeground(-1, getBackgroundNotification(false));
@@ -491,7 +507,7 @@ public class ConnectionService extends Service {
 				.setContentTitle(isConnected ? getResources().getString(R.string.message_connection_connected) : getResources().getString(R.string.progress_connectingtoserver))
 				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
 				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT))
-				.addAction(R.drawable.wifi_off, getResources().getString(R.string.action_disconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionDisconnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
+				//.addAction(R.drawable.wifi_off, getResources().getString(R.string.action_disconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionDisconnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.addAction(R.drawable.close_circle, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.setShowWhen(false)
 				.setPriority(Notification.PRIORITY_MIN)
@@ -604,11 +620,16 @@ public class ConnectionService extends Service {
 		 * @return whether or not the request was successful
 		 */
 		boolean connect(byte launchID) {
-			if(currentConnectionManager != null && currentConnectionManager.getState() != stateDisconnected) {
-				currentConnectionManager.disconnect();
-			}
+			//Disconnecting the current connection manager
+			if(currentConnectionManager != null && currentConnectionManager.getState() != stateDisconnected) currentConnectionManager.disconnect();
+			
+			//Updating the connection manager information
 			currentConnectionManager = this;
 			this.launchID = launchID;
+			
+			//Stopping the passive reconnection timer
+			((AlarmManager) getSystemService(ALARM_SERVICE)).cancel(reconnectPendingIntent);
+			
 			return false;
 		}
 		
@@ -624,9 +645,14 @@ public class ConnectionService extends Service {
 		 * Cleans up timers after a disconnection occurs
 		 */
 		void handleDisconnection() {
-			//Cancelling the ping timer
+			//Cancelling the keepalive timer
 			((AlarmManager) getSystemService(ALARM_SERVICE)).cancel(pingPendingIntent);
+			
+			//Cancelling the expiry timer
 			handler.removeCallbacks(pingExpiryRunnable);
+			
+			//Starting the passive reconnection timer
+			scheduleReconnection();
 		}
 		
 		/**
@@ -1265,7 +1291,7 @@ public class ConnectionService extends Service {
 			public void run() {
 				try {
 					//Returning if the thread is interrupted
-					if (isInterrupted()) return;
+					if(isInterrupted()) return;
 					
 					//Checking if the request is a reconnection request
 					if(reconnectionRequest) {
@@ -5176,6 +5202,14 @@ public class ConnectionService extends Service {
 		//Cancelling the timer
 		((AlarmManager) getSystemService(ALARM_SERVICE)).cancel(pingPendingIntent);
 	} */
+	
+	private void scheduleReconnection() {
+		//Scheduling the reconnection
+		((AlarmManager) getSystemService(ALARM_SERVICE)).setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+				SystemClock.elapsedRealtime() + passiveReconnectFrequencyMillis - passiveReconnectWindowMillis,
+				passiveReconnectWindowMillis * 2,
+				reconnectPendingIntent);
+	}
 	
 	//TODO use when API 23 is obsolete
 	/* private static class ScheduledPingAlarm extends AlarmManager.OnAlarmListener {

@@ -15,7 +15,7 @@
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
 		app:radii="4dp" />
-	
+
 	<ImageView
 		android:id="@+id/image_flag_gif"
 		android:layout_width="wrap_content"
@@ -24,6 +24,30 @@
 		android:layout_margin="3dp"
 		android:src="@drawable/gif"
 		android:visibility="gone" />
+
+	<LinearLayout
+		android:id="@+id/group_flag_video"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		android:layout_gravity="bottom|end"
+		android:gravity="center"
+		android:layout_margin="3dp">
+		<TextView
+			android:id="@+id/label_flag_video"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginEnd="4dp"
+			android:textColor="@android:color/primary_text_dark"
+			android:text="0:00" />
+		<ImageView
+			android:id="@+id/image_flag_video"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_gravity="bottom|end"
+			android:src="@drawable/play_circle"
+			android:visibility="visible" />
+	</LinearLayout>
 	
 	<ViewStub
 		android:id="@+id/viewstub_selection"

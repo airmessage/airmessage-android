@@ -99,6 +99,17 @@
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/appbar"
 		app:stackFromEnd="true" />
+
+	<!-- Input bar shadow -->
+	<View
+		android:id="@+id/bottomshadow"
+		android:layout_width="0px"
+		android:layout_height="3dp"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		android:background="@drawable/appear_bottomshadow"
+		android:alpha="0" />
 	
 	<!-- Input bar -->
 	<LinearLayout
@@ -112,8 +123,7 @@
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		android:background="?android:attr/colorBackground"
-		android:stateListAnimator="@animator/inputbar_elevation">
+		android:background="?android:attr/colorBackground">
 		
 		<!-- Standard text input -->
 		<LinearLayout
@@ -268,7 +278,7 @@
 		android:layout_width="40dp"
 		android:layout_height="40dp"
 		android:layout_margin="16dp"
-		android:src="@drawable/chevron_down"
+		android:src="@drawable/chevron_down_rounded"
 		android:visibility="gone"
 		app:backgroundTint="?android:attr/colorBackgroundFloating"
 		app:fabSize="mini"

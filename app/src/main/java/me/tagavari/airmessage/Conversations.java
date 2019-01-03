@@ -1,17 +1,10 @@
 package me.tagavari.airmessage;
 
-import android.animation.ValueAnimator;
-import androidx.appcompat.app.AlertDialog;
-
-import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.graphics.BitmapFactory;
-import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,7 +13,6 @@ import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
-import android.text.style.StyleSpan;
 import android.text.style.TypefaceSpan;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -28,7 +20,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -46,9 +37,9 @@ import java.util.regex.Pattern;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.view.ActionMode;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.graphics.ColorUtils;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -81,9 +72,6 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	private ViewGroup groupSearch;
 	private SearchRecyclerAdapter searchRecyclerAdapter = null;
-	
-	private int currentToolbarColor;
-	private int currentStatusBarColor;
 	
 	//Creating the listener values
 	private ActionMode actionMode = null;
@@ -158,14 +146,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Returning
 			return;
-		}/* else {
-			//Starting the connection service
-			Intent serviceIntent = new Intent(this, ConnectionService.class);
-			startService(serviceIntent);
-			
-			//Launching the conversations activity
-			startActivity(new Intent(this, Conversations.class));
-		} */
+		}
 		
 		//Setting the content view
 		setContentView(R.layout.activity_conversations);
@@ -185,7 +166,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		groupBarSearch = findViewById(R.id.layout_search);
 		editTextBarSearch = findViewById(R.id.search_edittext);
 		buttonBarSearchClear = findViewById(R.id.search_buttonclear);
-		
 		floatingActionButton = findViewById(R.id.fab);
 		
 		groupSearch = findViewById(R.id.viewgroup_search);
@@ -194,10 +174,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		RecyclerView mainMessageList = findViewById(R.id.list);
 		conversationsBasePlugin.setViews(mainMessageList, findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
-		
-		//Getting the colors
-		currentToolbarColor = getResources().getColor(R.color.colorPrimary, null);
-		currentStatusBarColor = getResources().getColor(R.color.colorPrimaryDark, null);
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), conversationsBasePlugin.recyclerView);
@@ -987,7 +963,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		//((ListAdapter) listView.getAdapter()).filterAndUpdate();
 	}
 	
-	void animateAppBarColor(int targetToolbarColor, int targetStatusBarColor, int duration) {
+	/* void animateAppBarColor(int targetToolbarColor, int targetStatusBarColor, int duration) {
 		animateAppBarColor(currentToolbarColor, targetToolbarColor, currentStatusBarColor, targetStatusBarColor, duration);
 	}
 	
@@ -1029,7 +1005,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Setting the colors
 		currentToolbarColor = targetToolbarColor;
 		currentStatusBarColor = targetStatusBarColor;
-	}
+	} */
 	
 	private Spannable getTitleSpannable() {
 		Spannable text = new SpannableString(getResources().getString(R.string.app_name));
@@ -1100,9 +1076,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		int archivedConversations = 0;
 		int nonArchivedConversations = 0;
 		
-		int oldToolbarColor;
-		int oldStatusBarColor;
-		
 		@Override
 		public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
 			//Inflating the menu
@@ -1114,10 +1087,6 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Hiding the toolbar
 			toolbar.animate().alpha(0).withEndAction(() -> toolbar.setVisibility(View.INVISIBLE));
-			
-			//Recording the old colors
-			oldToolbarColor = currentToolbarColor;
-			oldStatusBarColor = currentStatusBarColor;
 			
 			//Animating the app bar
 			/* int toolbarColor = getResources().getColor(R.color.colorContextualAppBar, null);
