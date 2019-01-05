@@ -137,8 +137,8 @@
 	<string name="action_reconnect">Reconnecter</string>
 	<string name="action_quit">Quitter</string>
 	<string name="action_sharemessage">Partager le message</string>
-	<string name="message_shareable_text">Le %1$s, %2$s a écrit: %3$s</string>
-	<string name="message_shareable_text_you">Le %1$s, j\'ai écrit: %2$s</string>
+	<string name="message_shareable_text">Le %s à %s, %s a écrit: %s</string>
+	<string name="message_shareable_text_you">Le %s à %s, j\'ai écrit: %s</string>
 	<string name="imperative_userinput">Saisissez un nom, un adresse de courriel ou un numéro de téléphone</string>
 	<string name="action_addcontent">Ajouter une pièce jointe</string>
 	<string name="action_takephoto">Prendre une photo</string>

@@ -44,7 +44,7 @@
 			android:name=".Messaging"
 			android:parentActivityName=".Conversations"
 			android:theme="@style/DayNight.NoActionbar.Unprotected"
-			android:windowSoftInputMode="adjustResize|stateUnchanged" />
+			android:windowSoftInputMode="adjustResize" />
 		<!-- New Message -->
 		<activity
 			android:exported="false"

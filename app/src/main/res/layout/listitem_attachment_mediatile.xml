@@ -38,7 +38,7 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_marginEnd="4dp"
-			android:textColor="@android:color/primary_text_dark"
+			android:textColor="@android:color/white"
 			android:text="0:00" />
 		<ImageView
 			android:id="@+id/image_flag_video"

@@ -650,7 +650,7 @@ class ConversationManager {
 			if(timeDiff < conversationJustNowTimeMillis) return context.getResources().getString(R.string.time_now);
 			
 			//Within the hour
-			if(timeDiff < 60 * 60 * 60 * 1000) return context.getResources().getString(R.string.time_minutes, (int) (timeDiff / (60 * 60 * 1000)));
+			if(timeDiff < 60 * 60 * 1000) return context.getResources().getString(R.string.time_minutes, (int) (timeDiff / (60 * 1000)));
 			
 			Calendar thenCal = Calendar.getInstance();
 			thenCal.setTimeInMillis(date);
@@ -1303,7 +1303,6 @@ class ConversationManager {
 				
 				//Updating the new messages
 				if(!newMessages.isEmpty()) {
-					boolean applicableScrollTargetsExist = false;
 					int[] indices = new int[newMessages.size()];
 					int incomingMessagesCount = 0;
 					for(ConversationItem newItem : newMessages) {
@@ -1313,15 +1312,12 @@ class ConversationManager {
 						//Notifying the list
 						updater.listUpdateInserted(itemIndex);
 						
-						//Setting the applicable scroll targets exist flag
-						if(!applicableScrollTargetsExist && (!(newItem instanceof MessageInfo) || !((MessageInfo) newItem).isOutgoing())) applicableScrollTargetsExist = true;
-						
 						//Adding the item index
 						indices[incomingMessagesCount++] = itemIndex;
 					}
 					
 					//Scrolling the list
-					if(applicableScrollTargetsExist) updater.listAttemptScrollToBottom(Arrays.copyOf(indices, incomingMessagesCount));
+					updater.listAttemptScrollToBottom(Arrays.copyOf(indices, incomingMessagesCount));
 				}
 				
 				//Updating the unread messages
@@ -4101,11 +4097,13 @@ class ConversationManager {
 				
 				switch(menuItem.getItemId()) {
 					case R.id.action_details: {
+						Date sentDate = new Date(getMessageInfo().getDate());
+						
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateFormat(newContext).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getTimeFormat(newContext).format(sentDate) + Constants.bulletSeparator + DateFormat.getLongDateFormat(newContext).format(sentDate))).append('\n'); //Time sent
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
@@ -4181,8 +4179,8 @@ class ConversationManager {
 			
 			//Getting the text
 			String text = name == null ?
-					context.getResources().getString(R.string.message_shareable_text_you, DateFormat.getDateFormat(context).format(date), message) :
-					context.getResources().getString(R.string.message_shareable_text, DateFormat.getDateFormat(context).format(date), name, message);
+					context.getResources().getString(R.string.message_shareable_text_you, DateFormat.getLongDateFormat(context).format(date), DateFormat.getTimeFormat(context).format(date), message) :
+					context.getResources().getString(R.string.message_shareable_text, DateFormat.getLongDateFormat(context).format(date), DateFormat.getTimeFormat(context).format(date), name, message);
 			
 			//Setting the text
 			intent.putExtra(Intent.EXTRA_TEXT, text);
@@ -4691,11 +4689,13 @@ class ConversationManager {
 				
 				switch(menuItem.getItemId()) {
 					case R.id.action_details: {
+						Date sentDate = new Date(getMessageInfo().getDate());
+						
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(getNameFromContentType(getContentType())))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateFormat(newContext).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getTimeFormat(newContext).format(sentDate) + Constants.bulletSeparator + DateFormat.getLongDateFormat(newContext).format(sentDate))).append('\n'); //Time sent
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_size, fileSize != -1 ? Formatter.formatFileSize(newContext, fileSize) : newContext.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment file size
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
@@ -5657,7 +5657,7 @@ class ConversationManager {
 	static class OtherAttachmentInfo extends AttachmentInfo<OtherAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
-		static final String MIME_PREFIX = "other";
+		//static final String MIME_PREFIX = "other";
 		static final int RESOURCE_NAME = R.string.part_content_other;
 		
 		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
@@ -5685,6 +5685,9 @@ class ConversationManager {
 		
 		@Override
 		void updateContentView(ViewHolder viewHolder, Context context) {
+			//Enforcing the maximum content width
+			viewHolder.labelContent.setMaxWidth(getMaxMessageWidth(context.getResources()));
+			
 			//Configuring the content view
 			viewHolder.labelContent.setText(fileName);
 			
@@ -6778,6 +6781,6 @@ class ConversationManager {
 	}
 	
 	private static int getMaxMessageWidth(Resources resources) {
-		return (int) Math.min(resources.getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, resources.getDisplayMetrics().widthPixels * .7F);
+		return (int) Math.min(resources.getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, resources.getDisplayMetrics().widthPixels * 0.7F);
 	}
 }

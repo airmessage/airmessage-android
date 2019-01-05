@@ -125,7 +125,7 @@
 		app:layout_constraintRight_toRightOf="parent"
 		android:background="?android:attr/colorBackground">
 		
-		<!-- Standard text input -->
+		<!-- Text input -->
 		<LinearLayout
 			android:id="@+id/inputbar_text"
 			android:layout_width="match_parent"

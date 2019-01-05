@@ -78,6 +78,10 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEvent;
+import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEventListener;
+import net.yslibrary.android.keyboardvisibilityevent.util.UIUtil;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -158,6 +162,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	//Creating the info bar values
 	private PluginMessageBar.InfoBar infoBarConnection;
 	
+	//Creating the state values
+	private boolean attachmentsWaitingForKeyboard = false;
 	private boolean currentScreenEffectPlaying = false;
 	
 	//Creating the listener values
@@ -625,14 +631,22 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the listeners
 		rootView.getViewTreeObserver().addOnGlobalLayoutListener(rootLayoutListener);
 		messageInputField.addTextChangedListener(inputFieldTextWatcher);
-		messageInputField.setOnClickListener(view -> closeAttachmentsPanel(false));
+		//messageInputField.setOnClickListener(view -> closeAttachmentsPanel(false));
 		buttonSendMessage.setOnClickListener(sendButtonClickListener);
 		buttonAddContent.setOnClickListener(view -> {
-			if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel(true);
-			else {
-				InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
+			if(viewModel.isAttachmentsPanelOpen) {
+				if(KeyboardVisibilityEvent.isKeyboardVisible(Messaging.this)) UIUtil.showKeyboard(Messaging.this, messageInputField); //The attachment drawer is automatically hidden when the keyboard is opened
+				else closeAttachmentsPanel(true);
+			} else {
+				/*InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
 				boolean result = inputMethodManager.hideSoftInputFromWindow(view.getWindowToken(), 0);
-				openAttachmentsPanel(false, !result);
+				openAttachmentsPanel(false, !result); */
+				
+				if(KeyboardVisibilityEvent.isKeyboardVisible(Messaging.this)) {
+					//Waiting for the keyboard to close itself before opening the attachment drawer
+					attachmentsWaitingForKeyboard = true;
+					UIUtil.hideKeyboard(Messaging.this);
+				} else openAttachmentsPanel(false, true);
 			}
 		});
 		/* inputBar.findViewById(R.id.button_camera).setOnClickListener(view -> requestTakePicture());
@@ -731,6 +745,31 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewModel.progressiveLoadInProgress.observe(this, value -> {
 			if(value) onProgressiveLoadStart();
 			else onProgressiveLoadFinish(viewModel.lastProgressiveLoadCount);
+		});
+		
+		/* KeyboardVisibilityEvent.setEventListener(this, isOpen -> {
+			//Closing the attachment drawer if it is open
+			if(isOpen && viewModel.isAttachmentsPanelOpen) {
+				closeAttachmentsPanel(false);
+			}
+			//Checking if the activity is waiting for the keyboard and the drawer is closed
+			else if(!isOpen && !viewModel.isAttachmentsPanelOpen && attachmentsWaitingForKeyboard) {
+				//Updating the attachment drawer
+				attachmentsWaitingForKeyboard = false;
+			}
+		}); */
+		
+		inputBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+			boolean movingUp = top < oldTop;
+			if(attachmentsWaitingForKeyboard && !movingUp) {
+				openAttachmentsPanel(false, false);
+				attachmentsWaitingForKeyboard = false;
+			} else if(movingUp) {
+				if(KeyboardVisibilityEvent.isKeyboardVisible(this)) {
+					closeAttachmentsPanel(false);
+					inputBar.post(() -> inputBar.requestLayout());
+				}
+			}
 		});
 	}
 	
@@ -4863,7 +4902,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			Messaging activity = activityReference.get();
 			if(activity == null) return;
 			
-			//Updating the adapter
+			//Checking if the new message will cause the list to scroll
 			boolean newMessageAdded = false;
 			for(int index : newIndices) {
 				if(activity.messageListAdapter.isDirectlyBelowFrame(index)) {
@@ -4872,7 +4911,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 			}
 			
-			//Scrolling to the bottom of the list
+			//Scrolling down to the item (or the bottom of the list, same thing)
 			if(newMessageAdded) activity.messageListAdapter.scrollToBottom();
 		}
 		

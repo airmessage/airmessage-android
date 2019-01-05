@@ -196,8 +196,8 @@
 	</plurals>
 	<string name="message_confirm_unblock">Unblock %s?</string>
 
-	<string name="message_shareable_text">On %1$s, %2$s wrote: %3$s</string>
-	<string name="message_shareable_text_you">On %1$s, I wrote: %2$s</string>
+	<string name="message_shareable_text">On %s at %s, %s wrote: %s</string>
+	<string name="message_shareable_text_you">On %s at %s, I wrote: %s</string>
 
 	<string name="message_connection_connected">Connected to server</string>
 	<string name="message_connection_disconnected">Connection lost</string>

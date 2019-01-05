@@ -218,6 +218,7 @@ public class NewMessage extends AppCompatActivity {
 		recipientInput.addTextChangedListener(recipientInputTextWatcher);
 		recipientInput.setOnKeyListener(recipientInputOnKeyListener);
 		recipientInput.setOnEditorActionListener(recipientInputOnActionListener);
+		recipientInput.requestFocus();
 		
 		//Getting the view model
 		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
