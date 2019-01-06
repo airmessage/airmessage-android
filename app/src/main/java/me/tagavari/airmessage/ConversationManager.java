@@ -13,7 +13,6 @@ import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.PaintDrawable;
-import android.icu.text.SimpleDateFormat;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -76,7 +75,6 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
 import androidx.annotation.DrawableRes;
 import androidx.appcompat.app.AlertDialog;
@@ -658,7 +656,7 @@ class ConversationManager {
 			nowCal.setTimeInMillis(timeNow);
 			
 			//Within the day (14:11)
-			if(thenCal.get(Calendar.ERA) == nowCal.get(Calendar.ERA) && thenCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) && nowCal.get(Calendar.DAY_OF_YEAR) == thenCal.get(Calendar.DAY_OF_YEAR)) return DateFormat.getTimeFormat(context).format(thenCal);
+			if(thenCal.get(Calendar.ERA) == nowCal.get(Calendar.ERA) && thenCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) && nowCal.get(Calendar.DAY_OF_YEAR) == thenCal.get(Calendar.DAY_OF_YEAR)) return DateFormat.getTimeFormat(context).format(thenCal.getTime());
 			
 			//Within the week (Sun)
 			{
