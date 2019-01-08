@@ -758,7 +758,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			int chatColor = cursor.getInt(indexChatColor);
 			String draftMessage = cursor.getString(indexDraftMessage);
 			long draftUpdateTime = cursor.getLong(indexDraftUpdateTime);
-			
+
 			//Getting the members and drafts
 			ArrayList<ConversationManager.MemberInfo> conversationMembers = loadConversationMembers(database, chatID);
 			ArrayList<ConversationManager.DraftFile> draftFiles = loadDraftFiles(database, context, chatID);
@@ -996,7 +996,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return conversationItems;
 	}
 	
-	List<ConversationManager.ConversationItem> loadConversationChunk(ConversationManager.ConversationInfo conversationInfo, boolean useFirstDate, long firstMessageDate) {
+	List<ConversationManager.ConversationItem> loadConversationChunk(ConversationManager.ConversationInfo conversationInfo, boolean filtered, long firstMessageServerID, long firstMessageLocalID) {
 		//Getting the database
 		SQLiteDatabase database = getReadableDatabase();
 		
@@ -1006,9 +1006,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 		//Querying the database
 		String selection;
 		String[] selectionArgs;
-		if(useFirstDate) {
-			selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_DATE + " < ?";
-			selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID()), Long.toString(firstMessageDate)};
+		if(filtered) {
+			if(firstMessageServerID == -1) {
+				selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + " < ?";
+				selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID()), Long.toString(firstMessageLocalID)};
+			} else {
+				selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? AND ((" + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " IS NOT NULL AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " < ?) OR (" + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " IS NULL AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + " < ?))";
+				selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID()), Long.toString(firstMessageServerID), Long.toString(firstMessageLocalID)};
+			}
 		} else {
 			selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?";
 			selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID())};

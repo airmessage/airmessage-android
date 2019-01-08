@@ -24,6 +24,13 @@
 			android:paddingRight="16dp"
 			android:gravity="center_vertical"
 			android:orientation="horizontal">
+			<ImageView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:src="@drawable/notifications_outlined"
+				android:tint="?android:textColorPrimary"
+				android:tintMode="multiply"
+				android:layout_marginEnd="16dp" />
 			<TextView
 				android:layout_width="0px"
 				android:layout_height="wrap_content"
@@ -104,9 +111,10 @@
 			android:layout_marginLeft="16dp"
 			android:layout_marginRight="16dp"
 			android:text="@string/action_editconversationcolor"
-			app:icon="@drawable/palette"
+			app:icon="@drawable/palette_outlined"
 			app:iconGravity="textStart"
 			app:iconPadding="24dp"
+			app:iconTintMode="multiply"
 			android:tag="@string/tag_primarytint" />
 		
 		<View
@@ -133,10 +141,11 @@
 				android:text="@string/action_archive"
 				android:textColor="@color/colorActionArchive"
 				app:rippleColor="@color/colorActionArchive"
-				app:icon="@drawable/archive"
+				app:icon="@drawable/archive_outlined"
 				app:iconGravity="textStart"
 				app:iconPadding="8dp"
-				app:iconTint="@color/colorActionArchive" />
+				app:iconTint="@color/colorActionArchive"
+				app:iconTintMode="multiply" />
 			<Space
 				android:layout_width="8dp"
 				android:layout_height="0px" />
@@ -150,10 +159,11 @@
 				android:text="@string/action_delete"
 				android:textColor="@color/colorActionDelete"
 				app:rippleColor="@color/colorActionDelete"
-				app:icon="@drawable/delete"
+				app:icon="@drawable/delete_outlined"
 				app:iconGravity="textStart"
 				app:iconPadding="8dp"
-				app:iconTint="@color/colorActionDelete" />
+				app:iconTint="@color/colorActionDelete"
+				app:iconTintMode="multiply" />
 		</LinearLayout>
 	</LinearLayout>
 </ScrollView>

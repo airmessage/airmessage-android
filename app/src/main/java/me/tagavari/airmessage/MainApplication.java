@@ -1,6 +1,5 @@
 package me.tagavari.airmessage;
 
-import android.annotation.SuppressLint;
 import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -99,9 +98,6 @@ public class MainApplication extends Application {
 			}
 		}
 		
-		//Migrating the shared preferences TODO remove on next release
-		migrateSharedPreferences();
-		
 		//Getting the connection service information
 		SharedPreferences sharedPrefs = getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
 		ConnectionService.hostname = sharedPrefs.getString(sharedPreferencesConnectivityKeyHostname, "");
@@ -134,7 +130,7 @@ public class MainApplication extends Application {
 		Fabric.with(this, new Crashlytics.Builder().core(core).build());
 	}
 	
-	private static final String oldSharedPrefsName = "me.tagavari.airmessage.MAIN_PREFERENCES";
+	/* private static final String oldSharedPrefsName = "me.tagavari.airmessage.MAIN_PREFERENCES";
 	@SuppressLint("ApplySharedPref")
 	private boolean migrateSharedPreferences() {
 		//Returning false if the file doesn't exist
@@ -156,7 +152,7 @@ public class MainApplication extends Application {
 		
 		//Returning true
 		return true;
-	}
+	} */
 	
 	static File getAttachmentDirectory(Context context) {
 		//Getting the media directory

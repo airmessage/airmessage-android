@@ -37,6 +37,16 @@
 			android:title="@string/preference_appearance_location_title"
 			android:summary="@string/preference_appearance_location_description"
 			android:persistent="false" />
+		<androidx.preference.SwitchPreferenceCompat
+			android:key="@string/preference_appearance_advancedcolor_key"
+			android:title="@string/preference_appearance_advancedcolor_title"
+			android:summary="@string/preference_appearance_advancedcolor_description"
+			android:defaultValue="false" />
+		<androidx.preference.SwitchPreferenceCompat
+			android:key="@string/preference_appearance_showreadreceipts_key"
+			android:title="@string/preference_appearance_showreadreceipts_title"
+			android:summary="@string/preference_appearance_showreadreceipts_description"
+			android:defaultValue="true" />
 	</androidx.preference.PreferenceCategory>
 
     <androidx.preference.PreferenceCategory

@@ -49,6 +49,7 @@ import java.util.zip.GZIPOutputStream;
 
 import androidx.annotation.AttrRes;
 import androidx.annotation.ColorInt;
+import androidx.annotation.NonNull;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -129,7 +130,6 @@ public class Constants {
 	static final String feedbackEmail = "hello@airmessage.org";
 	
 	static final int defaultPort = 1359;
-	static final String defaultProtocol = "wss://";
 	static final String recordingName = "recording.amr";
 	static final String pictureName = "image.jpg";
 	static final String defaultFileName = "file";
@@ -140,6 +140,8 @@ public class Constants {
 	//static final int viewTagTypeKey = 0;
 	static final String viewTagTypeItem = "item";
 	static final String viewTagTypeAction = "action";
+	
+	static final String bulletSeparator = " • ";
 	
 	//Creating the reference constants
 	static final float disabledAlpha = 0.54f;
@@ -172,34 +174,6 @@ public class Constants {
 		
 		//Returning true
 		return true;
-	}
-	
-	static String getFormattedDuration(long seconds) {
-		return DateUtils.formatElapsedTime(seconds);
-		/* //Getting the values
-		int seconds = (int) (duration / 1000L);
-		int minutes = seconds / 60;
-		seconds %= 60;
-		int hours = minutes / 60;
-		minutes %= 60;
-		
-		//Getting the values as string
-		String hourString = Integer.toString(hours);
-		String minuteString = Integer.toString(minutes);
-		String secondString = Integer.toString(seconds);
-		
-		//Adding an extra 0 if the number is only 1 digit
-		if(minuteString.length() <= 1) minuteString = "0" + minuteString;
-		if(secondString.length() <= 1) secondString = "0" + secondString;
-		
-		//Checking if the duration is more than an hour
-		if(hours >= 1f) {
-			//Returning the time with hours
-			return hourString + ":" + minuteString + ":" + secondString;
-		} else {
-			//Returning the time without hours
-			return minuteString + ":" + secondString;
-		} */
 	}
 	
 	public static int dpToPx(float dp) {
@@ -901,11 +875,19 @@ public class Constants {
 		return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
 	}
 	
-	public static String intToFormattedString(int value) {
+	static String humanReadableByteCountInt(long bytes, boolean si) {
+		int unit = si ? 1000 : 1024;
+		if (bytes < unit) return bytes + " B";
+		int exp = (int) (Math.log(bytes) / Math.log(unit));
+		String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp - 1) + (si ? "" : "i");
+		return String.format("%d %sB", (int) (bytes / Math.pow(unit, exp)), pre);
+	}
+	
+	static String intToFormattedString(int value) {
 		return String.format(Locale.getDefault(), "%d", value);
 	}
 	
-	public static String intToFormattedString(Resources resources, int value) {
+	static String intToFormattedString(Resources resources, int value) {
 		return String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? resources.getConfiguration().getLocales().get(0) : resources.getConfiguration().locale, "%d", value);
 	}
 	
@@ -917,12 +899,20 @@ public class Constants {
 		abstract BindingViewHolder bindView(View view);
 	} */
 	
-	public static String listToString(List list, String delimiter) {
+	static String listToString(List list, String delimiter) {
 		StringBuilder stringBuilder = new StringBuilder();
 		if(list.isEmpty()) return stringBuilder.toString();
 		stringBuilder.append(list.get(0));
 		for(int i = 1; i < list.size(); i++) stringBuilder.append(delimiter).append(list.get(i));
 		return stringBuilder.toString();
+	}
+	
+	static boolean compareMimeTypes(String one, String two) {
+		if(one.equals("*/*") || two.equals("*/*")) return true;
+		String[] oneComponents = one.split("/");
+		String[] twoComponents = two.split("/");
+		if(oneComponents[1].equals("*") || twoComponents[1].equals("*")) return oneComponents[0].equals(twoComponents[0]);
+		return one.equals(two);
 	}
 	
 	public static class WeakRunnable implements Runnable {
@@ -982,6 +972,25 @@ public class Constants {
 			BiConsumer<T, U> consumer = reference.get();
 			if(consumer == null) return;
 			consumer.accept(t, u);
+		}
+	}
+	
+	public static class SpacesItemDecoration extends RecyclerView.ItemDecoration {
+		private final int spaceTop, spaceBottom, spaceLeft, spaceRight;
+		
+		SpacesItemDecoration(int spaceTop, int spaceBottom, int spaceLeft, int spaceRight) {
+			this.spaceTop = spaceTop;
+			this.spaceBottom = spaceBottom;
+			this.spaceLeft = spaceLeft;
+			this.spaceRight = spaceRight;
+		}
+		
+		@Override
+		public void getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+			outRect.top = spaceTop;
+			outRect.bottom = spaceBottom;
+			outRect.left = spaceLeft;
+			outRect.right = spaceRight;
 		}
 	}
 }

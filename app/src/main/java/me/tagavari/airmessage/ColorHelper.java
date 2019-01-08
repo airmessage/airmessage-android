@@ -19,15 +19,15 @@ public class ColorHelper {
 		return modifyColorAdd(color, darkColorDiff);
 	} */
 	
-	public static int lightenColor(int color) {
+	static int lightenColor(int color) {
 		return modifyColorRaw(color, lightColorRatio);
 	}
 	
-	public static int darkenColor(int color) {
+	static int darkenColor(int color) {
 		return modifyColorRaw(color, darkColorRatio);
 	}
 	
-	private static int modifyColorRaw(int color, float factor) {
+	static int modifyColorRaw(int color, float factor) {
 		int a = Color.alpha(color);
 		int r = Math.round(Color.red(color) * factor);
 		int g = Math.round(Color.green(color) * factor);

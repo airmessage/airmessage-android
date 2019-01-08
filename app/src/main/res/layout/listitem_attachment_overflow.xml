@@ -1,9 +1,9 @@
 <FrameLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="40dp"
-	android:layout_height="@dimen/contenttile_size"
+	android:layout_height="match_parent"
 	android:background="@drawable/rounded_selectable_contenttile"
-	android:backgroundTint="?android:attr/colorButtonNormal"
+	android:backgroundTint="?android:attr/colorBackground"
 	android:padding="10dp">
 	
 	<ImageView

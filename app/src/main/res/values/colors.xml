@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#448AFF</color>
-    <color name="colorPrimaryDark">#366ECC</color>
+    <color name="colorPrimary">#448BFF</color>
+    <color name="colorPrimaryDark">#366FCC</color>
+    <color name="colorPrimaryLight">#52A7FF</color>
     <color name="colorAccent">@color/colorPrimary</color>
 	<color name="colorAccentDark">@color/colorPrimaryDark</color>
+
+	<color name="colorTextPrimary">#DE000000</color>
 	
 	<color name="colorExperimental">#651FFF</color>
 	
@@ -17,10 +20,11 @@
 	<color name="navbarBackground">#FFF</color>
 	<color name="navbarBackgroundProtected">#F5F5F5</color>
 	<color name="colorBackgroundSurface">#F5F5F5</color>
+	<color name="colorBackgroundClean">#FFF</color>
 	
 	<color name="colorBGChip">#F5F5F5</color>
 
-    <color name="colorMessageOutgoing">#E0E0E0</color> <!-- F2F2F2 (lighter) -->
+    <color name="colorMessageOutgoing">#EDEDED</color> <!-- E0E0E0 (darker) / F2F2F2 (lighter) -->
 	<color name="colorMessageOutgoingAccent">#9E9E9E</color>
 	
 	<color name="colorImageUnloaded">#E0E0E0</color>
@@ -48,7 +52,7 @@
     <color name="colorNotification">#2196F3</color>
 	<color name="colorServerDisconnected">#F44336</color>
 
-    <color name="colorRecording">#F44336</color>
+    <color name="colorRecording">#FF5252</color>
 	
 	<color name="colorTextWhite">#FFFFFF</color>
 	<color name="colorTextWhiteSecondary">#B3FFFFFF</color>

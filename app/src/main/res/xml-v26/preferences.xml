@@ -11,13 +11,23 @@
 			android:entries="@array/preference_appearance_theme_entries"
 			android:entryValues="@array/preference_appearance_theme_values"
 			android:key="@string/preference_appearance_theme_key"
-			android:summary="%s"
-			android:title="@string/preference_appearance_theme_title" />
+			android:title="@string/preference_appearance_theme_title"
+			android:summary="%s" />
 		<androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_appearance_location_key"
 			android:persistent="false"
-			android:summary="@string/preference_appearance_location_description"
-			android:title="@string/preference_appearance_location_title" />
+			android:title="@string/preference_appearance_location_title"
+			android:summary="@string/preference_appearance_location_description" />
+		<androidx.preference.SwitchPreferenceCompat
+			android:key="@string/preference_appearance_advancedcolor_key"
+			android:title="@string/preference_appearance_advancedcolor_title"
+			android:summary="@string/preference_appearance_advancedcolor_description"
+			android:defaultValue="false" />
+		<androidx.preference.SwitchPreferenceCompat
+			android:key="@string/preference_appearance_showreadreceipts_key"
+			android:title="@string/preference_appearance_showreadreceipts_title"
+			android:summary="@string/preference_appearance_showreadreceipts_description"
+			android:defaultValue="true" />
 	</androidx.preference.PreferenceCategory>
 	<androidx.preference.PreferenceCategory
 		android:key="@string/preferencegroup_storage_key"
@@ -32,8 +42,8 @@
 			android:title="@string/preference_server_downloadattachments_title" /> -->
 		<androidx.preference.Preference
 			android:key="@string/preference_storage_deleteattachments_key"
-			android:summary="@string/preference_storage_deleteattachments_desc"
-			android:title="@string/preference_storage_deleteattachments_title" />
+			android:title="@string/preference_storage_deleteattachments_title"
+			android:summary="@string/preference_storage_deleteattachments_desc" />
 		<androidx.preference.Preference
 			android:key="@string/preference_server_downloadmessages_key"
 			android:title="@string/preference_server_downloadmessages_title" />

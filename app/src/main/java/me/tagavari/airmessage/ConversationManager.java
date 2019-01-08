@@ -11,18 +11,17 @@ import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.PaintDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.SpannableString;
+import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
-import android.text.style.StyleSpan;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -63,7 +62,6 @@ import org.lukhnos.nnio.file.Paths;
 import java.io.File;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
-import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -358,24 +356,23 @@ class ConversationManager {
 		private static final String dayFormat = "MMM d";
 		private static final String weekdayFormat = "E";
 		private static final String yearFormat = "y"; */
-		static final String bullet = " • ";
 		static final Integer[] standardUserColors = {
-				0xFFF44336, //Red
-				0xFFE91E63, //Pink
-				0xFF9C27B0, //Purple
-				0xFF673AB7, //Dark purple
-				0xFF3F51B5, //Indigo
-				0xFF2196F3, //Blue
-				0xFF03A9F4, //Light blue
-				0xFF00BCD4, //Cyan
-				0xFF009688, //Teal
-				0xFF4CAF50, //Green
-				0xFF8BC34A, //Light green
-				0xFFCDDC39, //Lime green
-				0xFFFDD835, //Yellow (400)
-				0xFFFFC107, //Amber
-				0xFFFF9800, //Orange
-				0xFFFF5722, //Deep orange
+				0xFFFF1744, //Red
+				0xFFF50057, //Pink
+				0xFFB317CF, //Purple
+				0xFF703BE3, //Dark purple
+				0xFF3D5AFE, //Indigo
+				0xFF2979FF, //Blue
+				0xFF00B0FF, //Light blue
+				0xFF00B8D4, //Cyan
+				0xFF00BFA5, //Teal
+				0xFF00C853, //Green
+				0xFF5DD016, //Light green
+				0xFF99CC00, //Lime green
+				0xFFF2CC0D, //Yellow
+				0xFFFFC400, //Amber
+				0xFFFF9100, //Orange
+				0xFFFF3D00, //Deep orange
 				//0xFF795548, //Brown
 				//0xFF607D8B, //Blue grey
 		};
@@ -636,10 +633,47 @@ class ConversationManager {
 			}
 			
 			//Setting the time
-			itemView.conversationTime.setText(
+			/* itemView.conversationTime.setText(
 					System.currentTimeMillis() - lastItem.getDate() < conversationJustNowTimeMillis ?
 							context.getResources().getString(R.string.time_now) :
-							DateUtils.getRelativeTimeSpanString(lastItem.getDate(), System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_ALL).toString());
+							DateUtils.getRelativeTimeSpanString(lastItem.getDate(), System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_ALL).toString()); */
+			itemView.conversationTime.setText(getLastUpdateStatusTime(context, lastItem.getDate()));
+		}
+		
+		private static String getLastUpdateStatusTime(Context context, long date) {
+			long timeNow = System.currentTimeMillis();
+			long timeDiff = timeNow - date;
+			
+			//Just now
+			if(timeDiff < conversationJustNowTimeMillis) return context.getResources().getString(R.string.time_now);
+			
+			//Within the hour
+			if(timeDiff < 60 * 60 * 1000) return context.getResources().getString(R.string.time_minutes, (int) (timeDiff / (60 * 1000)));
+			
+			Calendar thenCal = Calendar.getInstance();
+			thenCal.setTimeInMillis(date);
+			Calendar nowCal = Calendar.getInstance();
+			nowCal.setTimeInMillis(timeNow);
+			
+			//Within the day (14:11)
+			if(thenCal.get(Calendar.ERA) == nowCal.get(Calendar.ERA) && thenCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) && nowCal.get(Calendar.DAY_OF_YEAR) == thenCal.get(Calendar.DAY_OF_YEAR)) return DateFormat.getTimeFormat(context).format(thenCal.getTime());
+			
+			//Within the week (Sun)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
+				if(thenCal.compareTo(compareCal) > 0) return DateFormat.format("EEE", thenCal).toString();
+			}
+			
+			//Within the year (Dec 9)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
+				if(thenCal.compareTo(compareCal) > 0) return DateFormat.format("MMM d", thenCal).toString();
+			}
+			
+			//Anytime (Dec 2018)
+			return DateFormat.format("MMM yyyy", thenCal).toString();
 		}
 		
 		void updateViewUser(Context context) {
@@ -1267,7 +1301,6 @@ class ConversationManager {
 				
 				//Updating the new messages
 				if(!newMessages.isEmpty()) {
-					boolean applicableScrollTargetsExist = false;
 					int[] indices = new int[newMessages.size()];
 					int incomingMessagesCount = 0;
 					for(ConversationItem newItem : newMessages) {
@@ -1277,15 +1310,12 @@ class ConversationManager {
 						//Notifying the list
 						updater.listUpdateInserted(itemIndex);
 						
-						//Setting the applicable scroll targets exist flag
-						if(!applicableScrollTargetsExist && (!(newItem instanceof MessageInfo) || !((MessageInfo) newItem).isOutgoing())) applicableScrollTargetsExist = true;
-						
 						//Adding the item index
 						indices[incomingMessagesCount++] = itemIndex;
 					}
 					
 					//Scrolling the list
-					if(applicableScrollTargetsExist) updater.listAttemptScrollToBottom(Arrays.copyOf(indices, incomingMessagesCount));
+					updater.listAttemptScrollToBottom(Arrays.copyOf(indices, incomingMessagesCount));
 				}
 				
 				//Updating the unread messages
@@ -2180,7 +2210,6 @@ class ConversationManager {
 			//Iterating over the attachments
 			int attachmentIndex = 0;
 			int messageTextDiff = messageText == null ? 0 : 1;
-			//int componentIndex = messageText == null ? 0 : 1;
 			for(AttachmentInfo attachment : attachments) {
 				//Getting the view holder
 				AttachmentInfo.ViewHolder attachmentViewHolder = (AttachmentInfo.ViewHolder) viewHolder.messageComponents.get(attachmentIndex + messageTextDiff);
@@ -2189,7 +2218,7 @@ class ConversationManager {
 				boolean itemAnchoredTop = messageText != null || attachmentIndex > 0 || isAnchoredTop;
 				boolean itemAnchoredBottom = attachmentIndex < attachments.size() - 1 || isAnchoredBottom;
 				
-				//Updating the uper padding
+				//Updating the upper padding
 				attachmentViewHolder.itemView.setPadding(attachmentViewHolder.itemView.getPaddingLeft(), attachmentIndex + messageTextDiff > 0 ? Constants.dpToPx(dpInterMessagePadding) : 0, attachmentViewHolder.itemView.getPaddingRight(), attachmentViewHolder.itemView.getPaddingBottom());
 				
 				//Updating the attachment's edges
@@ -2201,12 +2230,14 @@ class ConversationManager {
 						pxCornerUnanchored);
 				
 				//Increasing the index
-				//componentIndex++;
 				attachmentIndex++;
 			}
 		}
 		
 		private void prepareActivityStateDisplay(ViewHolder viewHolder, Context context) {
+			//Returning if read receipt showing is disabled
+			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			
 			//Getting the requested state
 			isShowingMessageState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetLatest()) &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
@@ -2223,6 +2254,9 @@ class ConversationManager {
 		}
 		
 		void updateActivityStateDisplay(Context context) {
+			//Returning if read receipt showing is disabled
+			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			
 			//Getting the requested state
 			boolean requestedState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetLatest()) &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
@@ -2238,6 +2272,9 @@ class ConversationManager {
 		}
 		
 		private void updateActivityStateDisplay(ViewHolder viewHolder, Context context, boolean currentState, boolean requestedState) {
+			//Returning if read receipt showing is disabled
+			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			
 			//Checking if the requested state matches the current state
 			if(requestedState == currentState) {
 				//Updating the text
@@ -2348,27 +2385,49 @@ class ConversationManager {
 				case SharedValues.MessageInfo.stateCodeDelivered:
 					return context.getResources().getString(R.string.state_delivered);
 				case SharedValues.MessageInfo.stateCodeRead: {
-					//Creating the when variable
-					String when;
-					
 					//Creating the calendars
-					Calendar calNow = Calendar.getInstance();
-					Calendar calThen = Calendar.getInstance();
-					calThen.setTimeInMillis(dateRead);
+					Calendar sentCal = Calendar.getInstance();
+					sentCal.setTimeInMillis(dateRead);
+					Calendar nowCal = Calendar.getInstance();
 					
-					//Formatting the when as the time if the days are the same
-					if(calNow.get(Calendar.ERA) == calThen.get(Calendar.ERA) &&
-							calNow.get(Calendar.YEAR) == calThen.get(Calendar.YEAR) &&
-							calNow.get(Calendar.DAY_OF_YEAR) == calThen.get(Calendar.DAY_OF_YEAR)) when = DateFormat.getTimeInstance(DateFormat.SHORT).format(dateRead);
-					//Otherwise formatting the when as the date
-					else when = DateFormat.getDateInstance(DateFormat.SHORT).format(dateRead);
-					
-					String readState = context.getResources().getString(R.string.state_read);
-					SpannableString label = new SpannableString(readState + ' ' + when);
-					label.setSpan(new StyleSpan(Typeface.BOLD), 0, readState.length(), 0);
-					return label;
+					//Creating the string
+					return context.getResources().getString(R.string.state_read) + Constants.bulletSeparator + getDeliveryStatusTime(context, sentCal, nowCal);
 				}
 			}
+		}
+		
+		private static String getDeliveryStatusTime(Context context, Calendar sentCal, Calendar nowCal) {
+			//Creating the date
+			Date sentDate = sentCal.getTime();
+			
+			//If the message was sent today
+			if(sentCal.get(Calendar.ERA) == nowCal.get(Calendar.ERA) && sentCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) && nowCal.get(Calendar.DAY_OF_YEAR) == sentCal.get(Calendar.DAY_OF_YEAR))
+				return DateFormat.getTimeFormat(context).format(sentDate);
+			
+			//If the message was sent yesterday
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.DAY_OF_YEAR, -1); //Today (now) -> Yesterday
+				if(sentCal.get(Calendar.ERA) == compareCal.get(Calendar.ERA) && sentCal.get(Calendar.YEAR) == compareCal.get(Calendar.YEAR) && sentCal.get(Calendar.DAY_OF_YEAR) == compareCal.get(Calendar.DAY_OF_YEAR))
+					return context.getResources().getString(R.string.time_yesterday);
+			}
+			
+			//If the days are within the same 7-day period (Sunday)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
+				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE", sentCal).toString();
+			}
+			
+			//If the days are within the same year period (Dec 9)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
+				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("MMM d", sentCal).toString();
+			}
+			
+			//Different years (Dec 9, 2018)
+			return DateFormat.format("MMM d, yyyy", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 		}
 		
 		boolean sendMessage(Context context) {
@@ -2438,21 +2497,15 @@ class ConversationManager {
 				//Getting the attachment
 				AttachmentInfo attachmentInfo = attachments.get(0);
 				
-				if(viewHolder != null) {
-					//Hiding the error view
-					viewHolder.buttonSendError.setVisibility(View.GONE);
-					
-					//Showing and configuring the progress view
-					viewHolder.progressSend.setVisibility(View.VISIBLE);
-					viewHolder.progressSend.spin();
-				}
-				
 				//Constructing the push request
 				ConnectionService.FilePushRequest request = attachmentInfo.getDraftingPushRequest();
 				if(request != null) {
 					request.setAttachmentID(attachmentInfo.getLocalID());
 					request.setUploadRequested(true);
-				} else request = new ConnectionService.FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, ConnectionService.FilePushRequest.stateAttached, System.currentTimeMillis(), true);
+				} else {
+					if(attachmentInfo.file == null) return false;
+					request = new ConnectionService.FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, ConnectionService.FilePushRequest.stateAttached, System.currentTimeMillis(), true);
+				}
 				request.getCallbacks().onStart = () -> {
 					//Updating the progress bar
 					ViewHolder newViewHolder = getViewHolder();
@@ -2530,6 +2583,15 @@ class ConversationManager {
 				//Setting the upload values
 				isSending = true;
 				sendProgress = -1;
+				
+				if(viewHolder != null) {
+					//Hiding the error view
+					viewHolder.buttonSendError.setVisibility(View.GONE);
+					
+					//Showing and configuring the progress view
+					viewHolder.progressSend.setVisibility(View.VISIBLE);
+					viewHolder.progressSend.spin();
+				}
 				
 				//Returning true
 				return true;
@@ -2613,27 +2675,41 @@ class ConversationManager {
 		
 		private String generateTimeDividerString(Context context) {
 			//Getting the calendars
-			Calendar nowCalendar = Calendar.getInstance();
-			Calendar sentCalendar = Calendar.getInstance();
-			sentCalendar.setTimeInMillis(getDate());
+			Calendar sentCal = Calendar.getInstance();
+			sentCal.setTimeInMillis(getDate());
+			Calendar nowCal = Calendar.getInstance();
 			
 			//Creating the date
 			Date sentDate = new Date(getDate());
 			
-			//Checking if the calendars are of the same year
-			if(sentCalendar.get(Calendar.YEAR) == nowCalendar.get(Calendar.YEAR)) {
-				//If the message was sent today
-				if(nowCalendar.get(Calendar.DAY_OF_YEAR) == sentCalendar.get(Calendar.DAY_OF_YEAR)) return context.getResources().getString(R.string.time_today) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
-				//If the message was sent yesterday
-				else {
-					nowCalendar.add(Calendar.DAY_OF_YEAR, -1); //Today (now) -> Yesterday
-					if(nowCalendar.get(Calendar.DAY_OF_YEAR) == sentCalendar.get(Calendar.DAY_OF_YEAR))
-						return context.getResources().getString(R.string.time_yesterday) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
-				}
+			//If the message was sent today
+			if(sentCal.get(Calendar.ERA) == nowCal.get(Calendar.ERA) && sentCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) && nowCal.get(Calendar.DAY_OF_YEAR) == sentCal.get(Calendar.DAY_OF_YEAR))
+				return /*context.getResources().getString(R.string.time_today) + Constants.bulletSeparator + */DateFormat.getTimeFormat(context).format(sentDate);
+			
+			//If the message was sent yesterday
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.DAY_OF_YEAR, -1); //Today (now) -> Yesterday
+				if(sentCal.get(Calendar.ERA) == compareCal.get(Calendar.ERA) && sentCal.get(Calendar.YEAR) == compareCal.get(Calendar.YEAR) && sentCal.get(Calendar.DAY_OF_YEAR) == compareCal.get(Calendar.DAY_OF_YEAR))
+					return context.getResources().getString(R.string.time_yesterday) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 			}
 			
-			//Returning an absolute time
-			return android.text.format.DateFormat.getDateFormat(context).format(sentDate) + ConversationInfo.bullet + android.text.format.DateFormat.getTimeFormat(context).format(sentDate);
+			//If the days are within the same 7-day period (Sunday)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
+				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+			}
+			
+			//If the days are within the same year period (Sunday, Dec 9)
+			{
+				Calendar compareCal = (Calendar) nowCal.clone();
+				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
+				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE, MMM d", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+			}
+			
+			//Different years (Dec 9, 2018)
+			return DateFormat.format("MMM d, yyyy", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 		}
 		
 		void setHasTimeDivider(boolean hasTimeDivider) {
@@ -2897,7 +2973,7 @@ class ConversationManager {
 			}
 			
 			//Setting the upload spinner tint
-			viewHolder.progressSend.setBarColor(getConversationInfo().getConversationColor());
+			viewHolder.progressSend.setBarColor(Preferences.checkPreferenceAdvancedColor(context) ? getConversationInfo().getConversationColor() : context.getResources().getColor(R.color.colorPrimary, null));
 			
 			//Updating the message colors
 			if(updateComponents && messageText != null) {
@@ -3874,7 +3950,7 @@ class ConversationManager {
 		
 		private void setupTextLinks(TextView textView) {
 			//Setting up the URL checker
-			textView.setTransformationMethod(new Constants.CustomTabsLinkTransformationMethod(getMessageInfo().getConversationInfo().getConversationColor()));
+			textView.setTransformationMethod(new Constants.CustomTabsLinkTransformationMethod(0xFFFFFFFF));
 			textView.setMovementMethod(LinkMovementMethod.getInstance());
 		}
 		
@@ -3951,13 +4027,22 @@ class ConversationManager {
 			int textColor;
 			
 			if(getMessageInfo().isOutgoing()) {
-				//backgroundColor = resources.getColor(R.color.colorMessageOutgoing, null);
-				backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
-				textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
+				if(Preferences.checkPreferenceAdvancedColor(context)) {
+					backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
+					textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
+				} else {
+					backgroundColor = context.getResources().getColor(R.color.colorPrimary, null);
+					textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+				}
 			} else {
-				MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
-				backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+				if(Preferences.checkPreferenceAdvancedColor(context)) {
+					MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
+					backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
+					textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+				} else {
+					backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
+					textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
+				}
 			}
 			
 			//Assigning the colors
@@ -4010,11 +4095,13 @@ class ConversationManager {
 				
 				switch(menuItem.getItemId()) {
 					case R.id.action_details: {
+						Date sentDate = new Date(getMessageInfo().getDate());
+						
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getTimeFormat(newContext).format(sentDate) + Constants.bulletSeparator + DateFormat.getLongDateFormat(newContext).format(sentDate))).append('\n'); //Time sent
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
@@ -4086,12 +4173,12 @@ class ConversationManager {
 			intent.setAction(Intent.ACTION_SEND);
 			
 			//Creating the formatters
-			DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM); //android.text.format.DateFormat.getLongDateFormat(activity);
+			//DateFormat dateFormat = DateFormat.getDateFormat(context); //android.text.format.DateFormat.getLongDateFormat(activity);
 			
 			//Getting the text
 			String text = name == null ?
-					context.getResources().getString(R.string.message_shareable_text_you, dateFormat.format(date), message) :
-					context.getResources().getString(R.string.message_shareable_text, dateFormat.format(date), name, message);
+					context.getResources().getString(R.string.message_shareable_text_you, DateFormat.getLongDateFormat(context).format(date), DateFormat.getTimeFormat(context).format(date), message) :
+					context.getResources().getString(R.string.message_shareable_text, DateFormat.getLongDateFormat(context).format(date), DateFormat.getTimeFormat(context).format(date), name, message);
 			
 			//Setting the text
 			intent.putExtra(Intent.EXTRA_TEXT, text);
@@ -4366,7 +4453,7 @@ class ConversationManager {
 					if(fileSize == -1) viewHolder.labelDownloadSize.setVisibility(View.GONE);
 					else {
 						viewHolder.labelDownloadSize.setVisibility(View.VISIBLE);
-						viewHolder.labelDownloadSize.setText(Constants.humanReadableByteCount(fileSize, true));
+						viewHolder.labelDownloadSize.setText(Formatter.formatShortFileSize(context, fileSize));
 					}
 				}
 			} else {
@@ -4419,18 +4506,32 @@ class ConversationManager {
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				cslText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
-				cslSecondaryText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
-				cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
-				cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
+				if(Preferences.checkPreferenceAdvancedColor(context)) {
+					cslText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
+					cslSecondaryText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
+					cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
+					cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
+				} else {
+					cslText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhite, null));
+					cslSecondaryText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhiteSecondary, null));
+					cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorPrimary, null));
+					cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorPrimaryLight, null));
+				}
 			} else {
-				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
-				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				
-				cslText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhite, null));
-				cslSecondaryText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhiteSecondary, null));
-				cslBackground = ColorStateList.valueOf(bubbleColor);
-				cslAccent = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
+				if(Preferences.checkPreferenceAdvancedColor(context)) {
+					MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
+					int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
+					
+					cslText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhite, null));
+					cslSecondaryText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhiteSecondary, null));
+					cslBackground = ColorStateList.valueOf(bubbleColor);
+					cslAccent = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
+				} else {
+					cslText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
+					cslSecondaryText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
+					cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
+					cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
+				}
 			}
 			
 			//Coloring the views
@@ -4586,12 +4687,14 @@ class ConversationManager {
 				
 				switch(menuItem.getItemId()) {
 					case R.id.action_details: {
+						Date sentDate = new Date(getMessageInfo().getDate());
+						
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(getNameFromContentType(getContentType())))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM).format(new Date(getMessageInfo().getDate())))).append('\n'); //Time sent
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_size, file != null ? Formatter.formatShortFileSize(newContext, file.length()) : newContext.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment size
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getTimeFormat(newContext).format(sentDate) + Constants.bulletSeparator + DateFormat.getLongDateFormat(newContext).format(sentDate))).append('\n'); //Time sent
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_size, fileSize != -1 ? Formatter.formatFileSize(newContext, fileSize) : newContext.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment file size
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
@@ -4770,19 +4873,19 @@ class ConversationManager {
 		static final String MIME_PREFIX = "image";
 		static final int RESOURCE_NAME = R.string.part_content_image;
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
 			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
@@ -4843,8 +4946,8 @@ class ConversationManager {
 				viewHolder.imageContent.layout(0, 0, 0, 0);
 				RequestBuilder<Drawable> requestBuilder = Glide.with(context)
 						.load(file)
-						.transition(DrawableTransitionOptions.withCrossFade())
-						.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
+						.transition(DrawableTransitionOptions.withCrossFade());
+						//.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
 				if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(invisibleInkBlurRadius, invisibleInkBlurSampling)));
 				requestBuilder.into(viewHolder.imageContent);
 			}
@@ -4960,7 +5063,6 @@ class ConversationManager {
 								viewHolder.inkView.setState(true);
 							}
 							else viewHolder.inkView.setVisibility(View.GONE);
-							//TODO update InvisibleInkView with bitmap
 							
 							//Fading in the view
 							if(wasTasked) {
@@ -4979,16 +5081,20 @@ class ConversationManager {
 			//Assigning the drawable
 			//viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
 			
-			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
 			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
+			PaintDrawable backgroundDrawable = new PaintDrawable();
 			
-			if(alignToRight) viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
-			viewHolder.imageContent.invalidate();
-			
-			if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			if(alignToRight) {
+				viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+				viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+				backgroundDrawable.setCornerRadii(new float[]{pxCornerUnanchored, pxCornerUnanchored, radiusTop, radiusTop, radiusBottom, radiusBottom, pxCornerUnanchored, pxCornerUnanchored});
+			} else {
+				viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+				viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+				backgroundDrawable.setCornerRadii(new float[]{radiusTop, radiusTop, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, radiusBottom, radiusBottom});
+			}
+			viewHolder.backgroundView.setBackground(backgroundDrawable);
 		}
 		
 		@Override
@@ -5042,12 +5148,14 @@ class ConversationManager {
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
 			final RoundedImageView imageContent;
 			final InvisibleInkView inkView;
+			final View backgroundView;
 			
 			ViewHolder(View view) {
 				super(view);
 				
 				imageContent = groupContent.findViewById(R.id.content_view);
 				inkView = groupContent.findViewById(R.id.content_ink);
+				backgroundView = groupContent.findViewById(R.id.content_background);
 			}
 			
 			@Override
@@ -5092,19 +5200,19 @@ class ConversationManager {
 		private byte fileState = fileStateIdle;
 		private boolean isPlaying = false;
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
 			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
@@ -5213,7 +5321,7 @@ class ConversationManager {
 			//Returning if there is no content
 			if(file == null) return;
 			
-			//Getting the activiy callbacks
+			//Getting the activity callbacks
 			ConversationInfo.ActivityCallbacks callbacks = getMessageInfo().getConversationInfo().activityCallbacks;
 			if(callbacks == null) return;
 			
@@ -5303,7 +5411,7 @@ class ConversationManager {
 		
 		private void updateMediaProgress(ViewHolder viewHolder) {
 			viewHolder.contentProgress.setProgress((int) ((float) mediaProgress / (float) duration * 100F));
-			viewHolder.contentLabel.setText(Constants.getFormattedDuration((int) Math.floor(mediaProgress <= 0 ? duration / 1000L : mediaProgress / 1000L)));
+			viewHolder.contentLabel.setText(DateUtils.formatElapsedTime(((int) Math.floor(mediaProgress <= 0 ? duration / 1000L : mediaProgress / 1000L))));
 		}
 		
 		private void resetPlaying(ViewHolder viewHolder) {
@@ -5333,7 +5441,7 @@ class ConversationManager {
 			void releaseResources() {
 				contentIcon.setImageResource(resDrawablePlay);
 				contentProgress.setProgress(0);
-				contentLabel.setText(Constants.getFormattedDuration(0));
+				contentLabel.setText(DateUtils.formatElapsedTime(0));
 			}
 		}
 	}
@@ -5344,19 +5452,19 @@ class ConversationManager {
 		static final String MIME_PREFIX = "video";
 		static final int RESOURCE_NAME = R.string.part_content_video;
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
 			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
@@ -5384,8 +5492,8 @@ class ConversationManager {
 				viewHolder.imageContent.layout(0, 0, 0, 0);
 				RequestBuilder<Drawable> requestBuilder = Glide.with(context)
 						.load(file)
-						.transition(DrawableTransitionOptions.withCrossFade())
-						.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
+						.transition(DrawableTransitionOptions.withCrossFade());
+						//.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
 				if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(invisibleInkBlurRadius, invisibleInkBlurSampling)));
 				
 				requestBuilder.into(viewHolder.imageContent);
@@ -5470,16 +5578,20 @@ class ConversationManager {
 			//Assigning the drawable
 			//viewHolder.backgroundContent.setBackground(drawable.getConstantState().newDrawable());
 			
-			//Rounding the image view
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
 			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
+			PaintDrawable backgroundDrawable = new PaintDrawable();
 			
-			if(alignToRight) viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
-			viewHolder.imageContent.invalidate();
-			
-			if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			if(alignToRight) {
+				viewHolder.imageContent.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+				viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+				backgroundDrawable.setCornerRadii(new float[]{pxCornerUnanchored, pxCornerUnanchored, radiusTop, radiusTop, radiusBottom, radiusBottom, pxCornerUnanchored, pxCornerUnanchored});
+			} else {
+				viewHolder.imageContent.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+				viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+				backgroundDrawable.setCornerRadii(new float[]{radiusTop, radiusTop, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, radiusBottom, radiusBottom});
+			}
+			viewHolder.backgroundView.setBackground(backgroundDrawable);
 		}
 		
 		@Override
@@ -5518,12 +5630,14 @@ class ConversationManager {
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
 			final RoundedImageView imageContent;
 			final InvisibleInkView inkView;
+			final View backgroundView;
 			
 			ViewHolder(View view) {
 				super(view);
 				
 				imageContent = groupContent.findViewById(R.id.content_view);
 				inkView = groupContent.findViewById(R.id.content_ink);
+				backgroundView = groupContent.findViewById(R.id.content_background);
 			}
 			
 			@Override
@@ -5541,22 +5655,22 @@ class ConversationManager {
 	static class OtherAttachmentInfo extends AttachmentInfo<OtherAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
-		static final String MIME_PREFIX = "other";
+		//static final String MIME_PREFIX = "other";
 		static final int RESOURCE_NAME = R.string.part_content_other;
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
 			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		public OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+		OtherAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
@@ -5569,6 +5683,9 @@ class ConversationManager {
 		
 		@Override
 		void updateContentView(ViewHolder viewHolder, Context context) {
+			//Enforcing the maximum content width
+			viewHolder.labelContent.setMaxWidth(getMaxMessageWidth(context.getResources()));
+			
 			//Configuring the content view
 			viewHolder.labelContent.setText(fileName);
 			
@@ -6299,11 +6416,11 @@ class ConversationManager {
 			this.isPinned = isPinned;
 		}
 		
-		public String getMessage() {
+		String getMessage() {
 			return message;
 		}
 		
-		public void setMessage(String message) {
+		void setMessage(String message) {
 			this.message = message;
 		}
 		
@@ -6662,6 +6779,6 @@ class ConversationManager {
 	}
 	
 	private static int getMaxMessageWidth(Resources resources) {
-		return (int) Math.min(resources.getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, resources.getDisplayMetrics().widthPixels * .7F);
+		return (int) Math.min(resources.getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, resources.getDisplayMetrics().widthPixels * 0.7F);
 	}
 }

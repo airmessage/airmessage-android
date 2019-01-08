@@ -20,6 +20,16 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:visibility="gone">
+			<View
+				android:id="@+id/content_background"
+				android:layout_width="0px"
+				android:layout_height="0px"
+				app:layout_constraintLeft_toLeftOf="@id/content_view"
+				app:layout_constraintRight_toRightOf="@id/content_view"
+				app:layout_constraintTop_toTopOf="@id/content_view"
+				app:layout_constraintBottom_toBottomOf="@id/content_view"
+				android:backgroundTint="@color/colorImageUnloaded" />
+
 			<me.tagavari.airmessage.view.RoundedImageView
 				android:id="@+id/content_view"
 				android:layout_width="@dimen/image_width_preferred"
@@ -36,13 +46,6 @@
 				app:layout_constraintTop_toTopOf="@id/content_view"
 				app:layout_constraintBottom_toBottomOf="@id/content_view"
 				android:visibility="gone" />
-			
-			<!-- <View
-				android:id="@+id/content_background"
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:backgroundTint="@color/colorImageUnloaded"
-				android:visibility="gone" /> -->
 		</androidx.constraintlayout.widget.ConstraintLayout>
 		
 		<LinearLayout

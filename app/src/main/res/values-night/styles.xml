@@ -9,15 +9,6 @@
 		<item name="popupTheme">@style/ThemeOverlay.AppCompat.Dark</item>
 	</style>
 	
-	<style name="AppTheme.Setup" parent="@style/Pass.AppTheme.Setup">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorAccent</item>
-		
-		<item name="android:statusBarColor">@color/colorBackgroundSurface</item>
-		<item name="android:windowLightStatusBar">false</item>
-	</style>
-	
 	<style name="ActionModeOverflowMenu" parent="Widget.AppCompat.ListPopupWindow">
 		<item name="android:textColor">@android:color/primary_text_dark</item>
 	</style>

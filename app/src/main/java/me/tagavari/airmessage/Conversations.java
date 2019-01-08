@@ -1,25 +1,25 @@
 package me.tagavari.airmessage;
 
-import android.animation.ValueAnimator;
-import androidx.appcompat.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.Spannable;
+import android.text.SpannableString;
 import android.text.TextWatcher;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.TypefaceSpan;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -37,12 +37,13 @@ import java.util.regex.Pattern;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.view.ActionMode;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.graphics.ColorUtils;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 
@@ -71,9 +72,6 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	private ViewGroup groupSearch;
 	private SearchRecyclerAdapter searchRecyclerAdapter = null;
-	
-	private int currentToolbarColor;
-	private int currentStatusBarColor;
 	
 	//Creating the listener values
 	private ActionMode actionMode = null;
@@ -148,20 +146,16 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Returning
 			return;
-		}/* else {
-			//Starting the connection service
-			Intent serviceIntent = new Intent(this, ConnectionService.class);
-			startService(serviceIntent);
-			
-			//Launching the conversations activity
-			startActivity(new Intent(this, Conversations.class));
-		} */
+		}
 		
 		//Setting the content view
 		setContentView(R.layout.activity_conversations);
 		
 		//Enabling the toolbar
 		setSupportActionBar(findViewById(R.id.toolbar));
+		
+		//Configuring the toolbar
+		getSupportActionBar().setTitle(getTitleSpannable());
 		
 		//Getting the view model
 		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
@@ -172,18 +166,14 @@ public class Conversations extends AppCompatCompositeActivity {
 		groupBarSearch = findViewById(R.id.layout_search);
 		editTextBarSearch = findViewById(R.id.search_edittext);
 		buttonBarSearchClear = findViewById(R.id.search_buttonclear);
-		
 		floatingActionButton = findViewById(R.id.fab);
 		
 		groupSearch = findViewById(R.id.viewgroup_search);
 		
 		//Setting the plugin views
-		conversationsBasePlugin.setViews(findViewById(R.id.list), findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
+		RecyclerView mainMessageList = findViewById(R.id.list);
+		conversationsBasePlugin.setViews(mainMessageList, findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
-		
-		//Getting the colors
-		currentToolbarColor = getResources().getColor(R.color.colorPrimary, null);
-		currentStatusBarColor = getResources().getColor(R.color.colorPrimaryDark, null);
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), conversationsBasePlugin.recyclerView);
@@ -218,6 +208,15 @@ public class Conversations extends AppCompatCompositeActivity {
 		});
 		editTextBarSearch.addTextChangedListener(searchTextWatcher);
 		buttonBarSearchClear.setOnClickListener(view -> editTextBarSearch.setText(""));
+		
+		//Configuring the app bar
+		appBarLayout.setLiftable(false);
+		mainMessageList.addOnScrollListener(new RecyclerView.OnScrollListener() {
+			@Override
+			public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+				appBarLayout.setLifted(((LinearLayoutManager) mainMessageList.getLayoutManager()).findFirstCompletelyVisibleItemPosition() > 0);
+			}
+		});
 		
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
@@ -510,13 +509,14 @@ public class Conversations extends AppCompatCompositeActivity {
 							intent.setData(Uri.parse("mailto:"));
 							intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 							intent.putExtra(Intent.EXTRA_EMAIL, new String[]{Constants.feedbackEmail});
-							intent.putExtra(Intent.EXTRA_SUBJECT, "AirMessage Feedback");
+							intent.putExtra(Intent.EXTRA_SUBJECT, "AirMessage feedback");
 							intent.putExtra(Intent.EXTRA_TEXT, "\r\n\r\n" +
 									"---------- DEVICE INFORMATION ----------" + "\r\n" +
 									"Device model: " + Build.MODEL + "\r\n" +
 									"Android version: " + Build.VERSION.RELEASE + "\r\n" +
 									"Client version: " + BuildConfig.VERSION_NAME + "\r\n" +
-									"AM communications version: " + ConnectionService.mmCommunicationsVersion + '.' + ConnectionService.mmCommunicationsSubVersion);
+									"AM current communications version: " + ConnectionService.getStaticActiveCommunicationsVersion() + '.' + ConnectionService.getStaticActiveCommunicationsSubVersion() + "\r\n" +
+									"AM target communications version: " + ConnectionService.mmCommunicationsVersion + '.' + ConnectionService.mmCommunicationsSubVersion);
 							//intent.setType("message/rfc822");
 							
 							//Launching the intent
@@ -944,25 +944,14 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Updating the menu item
 		menuItemSearch.setVisible(!state);
 		
-		//Animating the app bar color
-		{
-			int colorPrimary = getResources().getColor(R.color.colorPrimary, null);
-			int colorPrimaryDark = getResources().getColor(R.color.colorPrimaryDark, null);
-			int colorArchived = getResources().getColor(R.color.colorArchived, null);
-			int colorArchivedDark = getResources().getColor(R.color.colorArchivedDark, null);
-			
-			if(state) animateAppBarColor(colorPrimary, colorArchived, colorPrimaryDark, colorArchivedDark, getResources().getInteger(android.R.integer.config_mediumAnimTime));
-			else animateAppBarColor(colorArchived, colorPrimary, colorArchivedDark, colorPrimaryDark, getResources().getInteger(android.R.integer.config_mediumAnimTime));
-		}
-		
 		//Configuring the toolbar
 		ActionBar actionBar = getSupportActionBar();
 		if(state) {
 			actionBar.setDisplayHomeAsUpEnabled(true);
-			actionBar.setTitle(R.string.screen_archived);
+			actionBar.setTitle(getArchivedSpannable());
 		} else {
 			actionBar.setDisplayHomeAsUpEnabled(false);
-			actionBar.setTitle(R.string.app_name);
+			actionBar.setTitle(getTitleSpannable());
 		}
 		
 		//Setting the fab
@@ -974,7 +963,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		//((ListAdapter) listView.getAdapter()).filterAndUpdate();
 	}
 	
-	void animateAppBarColor(int targetToolbarColor, int targetStatusBarColor, int duration) {
+	/* void animateAppBarColor(int targetToolbarColor, int targetStatusBarColor, int duration) {
 		animateAppBarColor(currentToolbarColor, targetToolbarColor, currentStatusBarColor, targetStatusBarColor, duration);
 	}
 	
@@ -1016,21 +1005,30 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Setting the colors
 		currentToolbarColor = targetToolbarColor;
 		currentStatusBarColor = targetStatusBarColor;
+	} */
+	
+	private Spannable getTitleSpannable() {
+		Spannable text = new SpannableString(getResources().getString(R.string.app_name));
+		text.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.colorPrimary, null)), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+		text.setSpan(new TypefaceSpan("sans-serif-medium"), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+		
+		return text;
+	}
+	
+	private Spannable getArchivedSpannable() {
+		Spannable text = new SpannableString(getResources().getString(R.string.screen_archived));
+		//text.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.colorArchived, null)), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+		return text;
 	}
 	
 	void restoreListingArchivedState() {
 		//Returning if the state is not archived
 		if(!viewModel.listingArchived) return;
 		
-		//Tinting the window
-		int colorArchived = getResources().getColor(R.color.colorArchived, null);
-		int colorArchivedDark = getResources().getColor(R.color.colorArchivedDark, null);
-		setAppBarColor(colorArchived, colorArchivedDark);
-		
 		//Configuring the toolbar
 		ActionBar actionBar = getSupportActionBar();
 		actionBar.setDisplayHomeAsUpEnabled(true);
-		actionBar.setTitle(R.string.screen_archived);
+		actionBar.setTitle(getArchivedSpannable());
 		
 		if(menuItemSearch != null) menuItemSearch.setVisible(false);
 		
@@ -1078,9 +1076,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		int archivedConversations = 0;
 		int nonArchivedConversations = 0;
 		
-		int oldToolbarColor;
-		int oldStatusBarColor;
-		
 		@Override
 		public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
 			//Inflating the menu
@@ -1093,14 +1088,10 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Hiding the toolbar
 			toolbar.animate().alpha(0).withEndAction(() -> toolbar.setVisibility(View.INVISIBLE));
 			
-			//Recording the old colors
-			oldToolbarColor = currentToolbarColor;
-			oldStatusBarColor = currentStatusBarColor;
-			
 			//Animating the app bar
-			int toolbarColor = getResources().getColor(R.color.colorContextualAppBar, null);
+			/* int toolbarColor = getResources().getColor(R.color.colorContextualAppBar, null);
 			int statusBarColor = getResources().getColor(R.color.colorContextualAppBarDark, null);
-			animateAppBarColor(toolbarColor, statusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime));
+			animateAppBarColor(toolbarColor, statusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime)); */
 			
 			//Hiding the FAB
 			floatingActionButton.hide();
@@ -1130,7 +1121,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			toolbar.animate().setStartDelay(50).alpha(1);
 			
 			//Animating the app bar
-			animateAppBarColor(oldToolbarColor, oldStatusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime));
+			//animateAppBarColor(oldToolbarColor, oldStatusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime));
 			
 			//Showing the FAB
 			floatingActionButton.show();
@@ -1341,11 +1332,11 @@ public class Conversations extends AppCompatCompositeActivity {
 			return false;
 		}
 		
-		public void onItemCheckedStateToggled(ConversationManager.ConversationInfo item) {
+		void onItemCheckedStateToggled(ConversationManager.ConversationInfo item) {
 			onItemCheckedStateChanged(item, !isSelectedActionMode(item));
 		}
 		
-		public void onItemCheckedStateChanged(ConversationManager.ConversationInfo item, boolean checked) {
+		void onItemCheckedStateChanged(ConversationManager.ConversationInfo item, boolean checked) {
 			//Setting the item's checked state
 			if(checked) viewModel.actionModeSelections.add(item.getLocalID());
 			else viewModel.actionModeSelections.remove(item.getLocalID());
@@ -1366,7 +1357,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			if(selectedConversations == 0) actionMode.finish();
 		}
 		
-		public void updateActionModeContext() {
+		void updateActionModeContext() {
 			//Updating the title
 			actionMode.setTitle(getResources().getQuantityString(R.plurals.message_selectioncount, selectedConversations, selectedConversations));
 			

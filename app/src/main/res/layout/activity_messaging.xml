@@ -20,8 +20,11 @@
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
 			android:layout_height="?android:attr/actionBarSize"
-			android:theme="@style/SolidActionBar"
+			android:theme="@style/SolidActionBarClear"
+			android:background="?android:attr/colorBackgroundFloating"
 			app:titleTextAppearance="@style/LightToolbarText" />
+		<!-- app:titleTextAppearance="@style/LightToolbarText" -->
+
 		<!-- Info bar container -->
 		<LinearLayout
 			android:id="@+id/infobar_container"
@@ -96,6 +99,17 @@
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/appbar"
 		app:stackFromEnd="true" />
+
+	<!-- Input bar shadow -->
+	<View
+		android:id="@+id/bottomshadow"
+		android:layout_width="0px"
+		android:layout_height="3dp"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		android:background="@drawable/appear_bottomshadow"
+		android:alpha="0" />
 	
 	<!-- Input bar -->
 	<LinearLayout
@@ -109,98 +123,107 @@
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		android:background="?android:attr/colorBackgroundFloating"
-		android:elevation="8dp">
+		android:background="?android:attr/colorBackground">
 		
-		<!-- Attachment bar -->
-		<androidx.recyclerview.widget.RecyclerView
-			android:id="@+id/inputbar_attachments"
+		<!-- Text input -->
+		<LinearLayout
+			android:id="@+id/inputbar_text"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:overScrollMode="never"
-			android:requiresFadingEdge="vertical"
-			android:clipChildren="true"
-			android:clipToPadding="true"
-			android:visibility="gone" />
-		
-		<!-- Input bar (text / recording) -->
-		<FrameLayout
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content">
-			<!-- Standard text input -->
-			<LinearLayout
-				android:id="@+id/inputbar_text"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:orientation="horizontal">
-				<!-- Add button -->
-				<ImageButton
-					android:id="@+id/button_addcontent"
+			android:orientation="horizontal"
+			android:padding="8dp"
+			android:baselineAligned="false">
+			<!-- Add button -->
+			<FrameLayout
+				android:id="@+id/button_addcontent"
+				android:layout_width="40dp"
+				android:layout_height="40dp"
+				android:layout_marginEnd="8dp"
+				android:tag="@string/tag_primarytint"
+				android:background="@drawable/rounded_inputbar"
+				android:backgroundTint="@color/colorPrimary"
+				android:foreground="@drawable/rounded_selectable_inputbar"
+				android:contentDescription="@string/action_addcontent"
+				android:tooltipText="@string/action_addcontent"
+				android:layout_gravity="bottom"
+				android:focusable="true"
+				android:clickable="true">
+				<ImageView
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_gravity="bottom"
-					android:background="?android:attr/selectableItemBackgroundBorderless"
-					android:clickable="true"
-					android:contentDescription="@string/action_addcontent"
-					android:focusable="true"
-					android:padding="12dp"
-					android:src="@drawable/add"
-					android:tag="@string/tag_primarytint"
-					android:tint="@color/colorPrimary"
-					android:tooltipText="@string/action_addcontent" />
-				<!-- Message box -->
+					android:src="@drawable/add_rounded"
+					android:layout_gravity="center" />
+			</FrameLayout>
+
+			<!-- <ImageButton
+				android:id="@+id/button_addcontent"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="bottom"
+				android:background="?android:attr/selectableItemBackgroundBorderless"
+				android:clickable="true"
+				android:contentDescription="@string/action_addcontent"
+				android:focusable="true"
+				android:padding="12dp"
+				android:src="@drawable/add"
+				android:tag="@string/tag_primarytint"
+				android:tint="@color/colorPrimary"
+				android:tooltipText="@string/action_addcontent" /> -->
+			<!-- Message box -->
+			<androidx.constraintlayout.widget.ConstraintLayout
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:background="@drawable/rounded_inputbar"
+				android:backgroundTint="@color/colorMessageOutgoing">
+				<!-- Attachment bar -->
+				<androidx.recyclerview.widget.RecyclerView
+					android:id="@+id/inputbar_attachments"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					app:layout_constraintLeft_toLeftOf="parent"
+					app:layout_constraintRight_toRightOf="parent"
+					app:layout_constraintBottom_toTopOf="@id/messagebox"
+					app:layout_constraintTop_toTopOf="parent"
+					android:clipChildren="true"
+					android:clipToPadding="true"
+					android:theme="@style/OverscrollNeutralizer"
+					android:visibility="gone" />
 				<view class="me.tagavari.airmessage.Messaging$InsertionEditText"
 					android:id="@+id/messagebox"
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
-					android:layout_weight="1"
+					app:layout_constraintBottom_toBottomOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintEnd_toStartOf="@id/button_send"
 					android:background="@null"
 					android:hint="@string/imperative_messageinput"
 					android:imeOptions="flagNoExtractUi"
 					android:inputType="text|textMultiLine|textAutoCorrect|textCapSentences"
-					android:textColor="?android:attr/textColorTertiary"
+					android:textColor="?android:attr/textColorPrimary"
+					android:textSize="16sp"
 					android:maxHeight="100dp"
 					android:maxLength="1000"
-					android:minHeight="48dp"
-					android:paddingBottom="8dp"
+					android:minHeight="40dp"
 					android:paddingTop="8dp"
-					android:textCursorDrawable="@null"
-					app:layout_constraintTop_toBottomOf="@id/inputbar_attachments" />
-				
-				<FrameLayout
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:layout_gravity="bottom"
-					android:clipToPadding="false"
-					android:clipChildren="false">
-					<!-- Record button -->
-					<ImageButton
-						android:id="@+id/button_record"
-						android:layout_width="wrap_content"
-						android:layout_height="wrap_content"
-						android:background="?android:attr/selectableItemBackgroundBorderless"
-						android:contentDescription="@string/action_send"
-						android:padding="12dp"
-						android:src="@drawable/microphone"
-						android:tag="@string/tag_primarytint"
-						android:tint="@color/colorPrimary"
-						android:tooltipText="@string/action_send"
-						android:visibility="gone" />
-					<!-- Send button -->
-					<ImageButton
-						android:id="@+id/button_send"
-						android:layout_width="wrap_content"
-						android:layout_height="wrap_content"
-						android:background="?android:attr/selectableItemBackgroundBorderless"
-						android:contentDescription="@string/action_send"
-						android:padding="12dp"
-						android:src="@drawable/push"
-						android:tag="@string/tag_primarytint"
-						android:tint="@color/colorPrimary"
-						android:tooltipText="@string/action_send" />
-				</FrameLayout>
-			</LinearLayout>
-		</FrameLayout>
+					android:paddingBottom="8dp"
+					android:paddingLeft="12dp"
+					android:paddingRight="12dp"
+					android:textCursorDrawable="@null" />
+				<!-- Send button -->
+				<ImageButton
+					android:id="@+id/button_send"
+					android:layout_width="40dp"
+					android:layout_height="40dp"
+					android:background="?android:attr/selectableItemBackgroundBorderless"
+					android:contentDescription="@string/action_send"
+					app:layout_constraintBottom_toBottomOf="parent"
+					app:layout_constraintEnd_toEndOf="parent"
+					android:src="@drawable/push"
+					android:tint="?android:attr/colorControlNormal"
+					android:tooltipText="@string/action_send" />
+			</androidx.constraintlayout.widget.ConstraintLayout>
+		</LinearLayout>
 		
 		<!-- Attachments section -->
 		<LinearLayout
@@ -255,7 +278,7 @@
 		android:layout_width="40dp"
 		android:layout_height="40dp"
 		android:layout_margin="16dp"
-		android:src="@drawable/chevron_down"
+		android:src="@drawable/chevron_down_rounded"
 		android:visibility="gone"
 		app:backgroundTint="?android:attr/colorBackgroundFloating"
 		app:fabSize="mini"
@@ -294,6 +317,7 @@
 		android:layout_height="40dp"
 		android:alpha="0.5"
 		android:background="@drawable/circle"
+		android:backgroundTint="@color/colorPrimaryLight"
 		android:visibility="gone"
 		app:layout_constraintLeft_toLeftOf="@+id/fab_bottom"
 		app:layout_constraintTop_toTopOf="@+id/fab_bottom" />
@@ -383,7 +407,6 @@
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/appbar">
-		
 		<ViewStub
 			android:id="@+id/viewstub_messaginginfo"
 			android:layout_width="match_parent"

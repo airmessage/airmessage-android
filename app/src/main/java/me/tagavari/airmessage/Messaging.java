@@ -19,8 +19,9 @@ import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
-import android.graphics.BitmapFactory;
+import android.graphics.Outline;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
@@ -34,6 +35,8 @@ import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.text.format.DateUtils;
+import android.text.format.Formatter;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
@@ -45,6 +48,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.view.ViewStub;
 import android.view.ViewTreeObserver;
 import android.view.animation.AccelerateDecelerateInterpolator;
@@ -55,6 +59,7 @@ import android.view.animation.OvershootInterpolator;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -72,6 +77,10 @@ import com.crashlytics.android.Crashlytics;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
+import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEvent;
+import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEventListener;
+import net.yslibrary.android.keyboardvisibilityevent.util.UIUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -105,6 +114,7 @@ import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView;
@@ -121,11 +131,15 @@ public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
 	private static final int quickScrollFABThreshold = 3;
 	private static final float bottomSheetFillThreshold = 0.8F;
-	private static final float contentPanelFillThreshold = 0.5F;
-	static final int messageChunkSize = 50;
+	private static final float contentPanelMinAllowanceDP = 275;
+	static final int messageChunkSize = 20;
 	static final int progressiveLoadThreshold = 10;
-	private static final String[] documentMimeTypes = {"text/*", "application/*", "font/*"};
 	private static final int draftCountLimit = 10;
+	
+	private static final String mimeTypeImage = "image/*";
+	private static final String mimeTypeVideo = "video/*";
+	private static final String mimeTypeAudio = "audio/*";
+	private static final String mimeTypeGIF = "image/gif";
 	
 	private static final long confettiDuration = 1000;
 	//private static final float disabledAlpha = 0.38F
@@ -148,6 +162,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	//Creating the info bar values
 	private PluginMessageBar.InfoBar infoBarConnection;
 	
+	//Creating the state values
+	private boolean attachmentsWaitingForKeyboard = false;
 	private boolean currentScreenEffectPlaying = false;
 	
 	//Creating the listener values
@@ -155,7 +171,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Returning if this is not the latest launch
-			if(ConnectionService.compareLaunchID(intent.getByteExtra(Constants.intentParamLaunchID, (byte) -1)) != 0) return;
+			if(ConnectionService.compareLaunchID(intent.getByteExtra(Constants.intentParamLaunchID, (byte) -1)) != 0)
+				return;
 			
 			int state = intent.getIntExtra(Constants.intentParamState, -1);
 			if(state == ConnectionService.stateDisconnected) {
@@ -178,10 +195,12 @@ public class Messaging extends AppCompatCompositeActivity {
 			else setFABVisibility(false);
 			
 			//Marking viewed items as read
-			if(itemsScrolledFromBottom < viewModel.conversationInfo.getUnreadMessageCount()) viewModel.conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
+			if(itemsScrolledFromBottom < viewModel.conversationInfo.getUnreadMessageCount())
+				viewModel.conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
 			
 			//Loading chunks if the user is scrolled to the top
-			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !viewModel.isProgressiveLoadInProgress() && !viewModel.progressiveLoadReachedLimit) recyclerView.post(viewModel::loadNextChunk);
+			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !viewModel.isProgressiveLoadInProgress() && !viewModel.progressiveLoadReachedLimit)
+				recyclerView.post(viewModel::loadNextChunk);
 			
 			//Checking if the user is scrolling upwards
 			int newRevealedItem = dy < 0 ? linearLayoutManager.findFirstVisibleItemPosition() : linearLayoutManager.findLastVisibleItemPosition();
@@ -193,7 +212,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				} */
 				if(lastRevealedItem > 0 && lastRevealedItem < viewModel.conversationItemList.size()) {
 					ConversationManager.ConversationItem item = viewModel.conversationItemList.get(lastRevealedItem);
-					if(item instanceof ConversationManager.MessageInfo) ((ConversationManager.MessageInfo) item).onScrollShow();
+					if(item instanceof ConversationManager.MessageInfo)
+						((ConversationManager.MessageInfo) item).onScrollShow();
 				}
 			}
 		}
@@ -224,8 +244,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	private TextView labelLoadFail;
 	private RecyclerView messageList;
 	private View inputBar;
+	private View inputBarShadow;
 	private ImageButton buttonSendMessage;
-	private ImageButton buttonAddContent;
+	private FrameLayout buttonAddContent;
 	private InsertionEditText messageInputField;
 	private ViewGroup recordingActiveGroup;
 	private TextView recordingTimeLabel;
@@ -340,6 +361,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Scrolling to the bottom of the chat
 		messageListAdapter.scrollToBottom();
 	};
+	
 	private static class GhostMessageFinishHandler implements Consumer<ConversationManager.MessageInfo> {
 		@Override
 		public void accept(ConversationManager.MessageInfo messageInfo) {
@@ -350,6 +372,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			messageInfo.sendMessage(MainApplication.getInstance());
 		}
 	}
+	
 	/* private final View.OnTouchListener recordingTouchListener = new View.OnTouchListener() {
 		@Override
 		public boolean onTouch(View view, MotionEvent motionEvent) {
@@ -388,8 +411,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Setting the conversation title
 				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
-					getSupportActionBar().setTitle(result);
-					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), viewModel.conversationInfo.getConversationColor()));
+					setActionBarTitle(result);
+					//setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), getConversationUIColor()));
 				});
 				
 				//Coloring the UI
@@ -413,8 +436,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Setting the conversation title
 				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
-					getSupportActionBar().setTitle(result);
-					setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), viewModel.conversationInfo.getConversationColor()));
+					setActionBarTitle(result);
+					//setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), getConversationUIColor()));
 				});
 				
 				//Setting the activity callbacks
@@ -431,27 +454,30 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Checking if there are drafts files saved in the conversation
 				if(!viewModel.conversationInfo.getDrafts().isEmpty()) {
 					//Copying the drafts to the activity
-					if(viewModel.draftQueueList.isEmpty()) for(ConversationManager.DraftFile draft : viewModel.conversationInfo.getDrafts()) {
-						//Creating the queued item
-						QueuedFileInfo queuedItem = new QueuedFileInfo(draft);
-						
-						//Searching for the item's push request
-						ConnectionService.FilePushRequest currentRequest = null;
-						ConnectionService service = ConnectionService.getInstance();
-						if(service != null) {
-							ConnectionService.FileProcessingRequest processingRequest = service.searchFileProcessingQueue(draft.getLocalID());
-							if(processingRequest instanceof ConnectionService.FilePushRequest) currentRequest = (ConnectionService.FilePushRequest) processingRequest;
+					if(viewModel.draftQueueList.isEmpty())
+						for(ConversationManager.DraftFile draft : viewModel.conversationInfo.getDrafts()) {
+							//Creating the queued item
+							QueuedFileInfo queuedItem = new QueuedFileInfo(draft);
+							
+							//Searching for the item's push request
+							ConnectionService.FilePushRequest currentRequest = null;
+							ConnectionService service = ConnectionService.getInstance();
+							if(service != null) {
+								ConnectionService.FileProcessingRequest processingRequest = service.searchFileProcessingQueue(draft.getLocalID());
+								if(processingRequest instanceof ConnectionService.FilePushRequest)
+									currentRequest = (ConnectionService.FilePushRequest) processingRequest;
+							}
+							
+							//Creating a new request if there was no current request in the queue
+							if(currentRequest == null)
+								currentRequest = new ConnectionService.FilePushRequest(draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), ConnectionService.FilePushRequest.stateQueued, 0, false);
+							
+							//Assigning the request to the queued item
+							queuedItem.setFilePushRequest(currentRequest);
+							
+							//Adding the queued item
+							viewModel.draftQueueList.add(queuedItem);
 						}
-						
-						//Creating a new request if there was no current request in the queue
-						if(currentRequest == null) currentRequest = new ConnectionService.FilePushRequest(draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), ConnectionService.FilePushRequest.stateQueued, 0, false);
-						
-						//Assigning the request to the queued item
-						queuedItem.setFilePushRequest(currentRequest);
-						
-						//Adding the queued item
-						viewModel.draftQueueList.add(queuedItem);
-					}
 					
 					//Showing the draft bar
 					listAttachmentQueue.setVisibility(View.VISIBLE);
@@ -461,7 +487,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 				
 				//Restoring the draft message
-				if(messageInputField.getText().length() == 0) messageInputField.setText(viewModel.conversationInfo.getDraftMessage());
+				if(messageInputField.getText().length() == 0)
+					messageInputField.setText(viewModel.conversationInfo.getDraftMessage());
 				
 				/* //Finding the latest send effect
 				for(int i = viewModel.conversationItemList.size() - 1; i >= 0 && i >= viewModel.conversationItemList.size() - viewModel.conversationInfo.getUnreadMessageCount(); i--) {
@@ -489,20 +516,20 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Setting the last message count
 				viewModel.lastUnreadCount = viewModel.conversationInfo.getUnreadMessageCount();
+			
+			{
+				//Getting the layout manager
+				LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
+				int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
 				
-				{
-					//Getting the layout manager
-					LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
-					int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
-					
-					//Showing the FAB if the user has scrolled more than 3 items
-					if(itemsScrolledFromBottom > quickScrollFABThreshold) {
-						bottomFAB.show();
-						restoreUnreadIndicator();
-					}
+				//Showing the FAB if the user has scrolled more than 3 items
+				if(itemsScrolledFromBottom > quickScrollFABThreshold) {
+					bottomFAB.show();
+					restoreUnreadIndicator();
 				}
-				
-				break;
+			}
+			
+			break;
 			case ActivityViewModel.messagesStateFailedConversation:
 				labelLoading.setVisibility(View.GONE);
 				groupLoadFail.setVisibility(View.VISIBLE);
@@ -547,6 +574,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		labelLoadFail = findViewById(R.id.group_error_label);
 		messageList = findViewById(R.id.list_messages);
 		inputBar = findViewById(R.id.inputbar);
+		inputBarShadow = findViewById(R.id.bottomshadow);
 		buttonSendMessage = inputBar.findViewById(R.id.button_send);
 		buttonAddContent = inputBar.findViewById(R.id.button_addcontent);
 		messageInputField = inputBar.findViewById(R.id.messagebox);
@@ -586,17 +614,39 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Enabling the toolbar's up navigation
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 		
+		//Setting the input bar elevation animation
+		messageList.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+			boolean isShadowVisible = false;
+			
+			@Override
+			public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+				boolean visibility = messageList.canScrollVertically(1);
+				if(isShadowVisible == visibility) return;
+				isShadowVisible = visibility;
+				
+				inputBarShadow.animate().alpha(visibility ? 1 : 0);
+			}
+		});
+		
 		//Setting the listeners
 		rootView.getViewTreeObserver().addOnGlobalLayoutListener(rootLayoutListener);
 		messageInputField.addTextChangedListener(inputFieldTextWatcher);
-		messageInputField.setOnClickListener(view -> closeAttachmentsPanel(false));
+		//messageInputField.setOnClickListener(view -> closeAttachmentsPanel(false));
 		buttonSendMessage.setOnClickListener(sendButtonClickListener);
 		buttonAddContent.setOnClickListener(view -> {
-			if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel(true);
-			else {
-				InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
+			if(viewModel.isAttachmentsPanelOpen) {
+				if(KeyboardVisibilityEvent.isKeyboardVisible(Messaging.this)) UIUtil.showKeyboard(Messaging.this, messageInputField); //The attachment drawer is automatically hidden when the keyboard is opened
+				else closeAttachmentsPanel(true);
+			} else {
+				/*InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
 				boolean result = inputMethodManager.hideSoftInputFromWindow(view.getWindowToken(), 0);
-				openAttachmentsPanel(false, !result);
+				openAttachmentsPanel(false, !result); */
+				
+				if(KeyboardVisibilityEvent.isKeyboardVisible(Messaging.this)) {
+					//Waiting for the keyboard to close itself before opening the attachment drawer
+					attachmentsWaitingForKeyboard = true;
+					UIUtil.hideKeyboard(Messaging.this);
+				} else openAttachmentsPanel(false, true);
 			}
 		});
 		/* inputBar.findViewById(R.id.button_camera).setOnClickListener(view -> requestTakePicture());
@@ -614,15 +664,27 @@ public class Messaging extends AppCompatCompositeActivity {
 		{
 			listAttachmentQueue.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 			listAttachmentQueue.setAdapter(new AttachmentsQueueRecyclerAdapter(viewModel.draftQueueList));
+			
+			listAttachmentQueue.setOutlineProvider(new ViewOutlineProvider() {
+				@Override
+				public void getOutline(View view, Outline outline) {
+					int radius = getResources().getDimensionPixelSize(R.dimen.inputbar_radius);
+					outline.setRoundRect(0, 0, view.getWidth(), view.getHeight() + radius, radius);
+				}
+			});
+			listAttachmentQueue.setClipToOutline(true);
 		}
 		
 		//Setting the filler data
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && getIntent().hasExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)) messageInputField.setText(getIntent().getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)); //Notification inline reply text (only supported on Android P and above)
-		else if(getIntent().hasExtra(Constants.intentParamDataText)) messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText)); //Shared text from activity
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && getIntent().hasExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT))
+			messageInputField.setText(getIntent().getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)); //Notification inline reply text (only supported on Android P and above)
+		else if(getIntent().hasExtra(Constants.intentParamDataText))
+			messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText)); //Shared text from activity
 		if(getIntent().hasExtra(Constants.intentParamDataFile)) {
 			Parcelable[] targetParcelables = getIntent().getParcelableArrayExtra(Constants.intentParamDataFile);
 			Uri[] targetUris = new Uri[targetParcelables.length];
-			for(int i = 0; i < targetParcelables.length; i++) targetUris[i] = (Uri) targetParcelables[i];
+			for(int i = 0; i < targetParcelables.length; i++)
+				targetUris[i] = (Uri) targetParcelables[i];
 			new QueueUriAsyncTask(this).execute(targetUris);
 		}
 		
@@ -673,14 +735,41 @@ public class Messaging extends AppCompatCompositeActivity {
 			concealRecordingView();
 			
 			//Queuing the target file (if it is available)
-			if(viewModel.targetFileRecording != null) new QueueFileAsyncTask(this).execute(viewModel.targetFileRecording);
+			if(viewModel.targetFileRecording != null)
+				new QueueFileAsyncTask(this).execute(viewModel.targetFileRecording);
 		});
 		viewModel.recordingDuration.observe(this, value -> {
-			if(recordingTimeLabel != null) recordingTimeLabel.setText(Constants.getFormattedDuration(value));
+			if(recordingTimeLabel != null)
+				recordingTimeLabel.setText(DateUtils.formatElapsedTime(value));
 		});
 		viewModel.progressiveLoadInProgress.observe(this, value -> {
 			if(value) onProgressiveLoadStart();
 			else onProgressiveLoadFinish(viewModel.lastProgressiveLoadCount);
+		});
+		
+		/* KeyboardVisibilityEvent.setEventListener(this, isOpen -> {
+			//Closing the attachment drawer if it is open
+			if(isOpen && viewModel.isAttachmentsPanelOpen) {
+				closeAttachmentsPanel(false);
+			}
+			//Checking if the activity is waiting for the keyboard and the drawer is closed
+			else if(!isOpen && !viewModel.isAttachmentsPanelOpen && attachmentsWaitingForKeyboard) {
+				//Updating the attachment drawer
+				attachmentsWaitingForKeyboard = false;
+			}
+		}); */
+		
+		inputBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+			boolean movingUp = top < oldTop;
+			if(attachmentsWaitingForKeyboard && !movingUp) {
+				openAttachmentsPanel(false, false);
+				attachmentsWaitingForKeyboard = false;
+			} else if(movingUp) {
+				if(KeyboardVisibilityEvent.isKeyboardVisible(this)) {
+					closeAttachmentsPanel(false);
+					inputBar.post(() -> inputBar.requestLayout());
+				}
+			}
 		});
 	}
 	
@@ -885,7 +974,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Checking if the result was a success
 			if(resultCode == RESULT_OK) {
 				//Queuing the file
-				if(viewModel.targetFileIntent != null) new QueueFileAsyncTask(this).execute(viewModel.targetFileIntent);
+				if(viewModel.targetFileIntent != null)
+					new QueueFileAsyncTask(this).execute(viewModel.targetFileIntent);
 			}
 		}
 		//Otherwise if the request code is the media picker
@@ -901,7 +991,8 @@ public class Messaging extends AppCompatCompositeActivity {
 					new QueueUriAsyncTask(this).execute(intent.getData());
 				} else if(intent.getClipData() != null) {
 					Uri[] list = new Uri[intent.getClipData().getItemCount()];
-					for(int i = 0; i < intent.getClipData().getItemCount(); i++) list[i] = intent.getClipData().getItemAt(i).getUri();
+					for(int i = 0; i < intent.getClipData().getItemCount(); i++)
+						list[i] = intent.getClipData().getItemAt(i).getUri();
 					new QueueUriAsyncTask(this).execute(list);
 				}
 			}
@@ -925,7 +1016,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(context == null) return null;
 			
 			//Adding the files
-			for(File file : files) list.add(new SimpleAttachmentInfo(file, Constants.getMimeType(file), file.getName(), file.length(), -1));
+			for(File file : files)
+				list.add(new SimpleAttachmentInfo(file, Constants.getMimeType(file), file.getName(), file.length(), -1));
 			
 			//Returning
 			return list;
@@ -941,7 +1033,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(activity == null) return;
 			
 			//Queuing the files
-			for(SimpleAttachmentInfo attachmentInfo : results) activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
+			for(SimpleAttachmentInfo attachmentInfo : results)
+				activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
 		}
 	}
 	
@@ -981,7 +1074,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(activity == null) return;
 			
 			//Queuing the files
-			for(SimpleAttachmentInfo attachmentInfo : results) activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
+			for(SimpleAttachmentInfo attachmentInfo : results)
+				activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
 		}
 	}
 	
@@ -1025,9 +1119,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	public void onBackPressed() {
 		//Closing the details panel if it is open
 		if(viewModel.isDetailsPanelOpen) closeDetailsPanel();
-		//Closing the attachments panel if it is open
+			//Closing the attachments panel if it is open
 		else if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel(true);
-		//Otherwise passing the event to the superclass
+			//Otherwise passing the event to the superclass
 		else super.onBackPressed();
 	}
 	
@@ -1055,7 +1149,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Setting up the sections
 			setupAttachmentsGallerySection();
 			setupAttachmentsAudioSection();
-			setupAttachmentsDocumentsSection();
 			
 			//Setting the listeners
 			//inflated.findViewById(R.id.pane_attachments).setOnTouchListener(attachmentListTouchListener);
@@ -1069,7 +1162,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Resolving the heights
 		int requestedPanelHeight = getResources().getDimensionPixelSize(R.dimen.contentpanel_height);
-		int windowThreshold = (int) (getAvailableWindowHeight() * contentPanelFillThreshold);
+		int windowThreshold = getWindow().getDecorView().getHeight() - Constants.dpToPx(contentPanelMinAllowanceDP);
 		
 		//Limiting the panel height
 		int targetHeight = Math.min(requestedPanelHeight, windowThreshold);
@@ -1178,8 +1271,18 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Setting up the list
 			RecyclerView list = viewGroup.findViewById(R.id.list_attachment_gallery);
 			list.setVisibility(View.VISIBLE);
-			list.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-			list.addOnScrollListener(new AttachmentListScrollListener(viewGroup.findViewById(R.id.button_attachment_gallery_systempicker)));
+			GridLayoutManager layoutManager = new GridLayoutManager(this, 2, LinearLayoutManager.HORIZONTAL, false);
+			layoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
+				@Override
+				public int getSpanSize(int position) {
+					List<SimpleAttachmentInfo> items = viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery);
+					int itemCount = items == null ? ActivityViewModel.attachmentsTileCount : items.size();
+					return (position == 0 || position == itemCount + 1) ? 2 : 1;
+				}
+			});
+			list.setLayoutManager(layoutManager);
+			list.addOnScrollListener(new AttachmentListScrollListener(viewGroup.findViewById(R.id.button_attachment_gallery_systempicker), getResources().getDimensionPixelSize(R.dimen.contenttile_size_double)));
+			list.addItemDecoration(new AttachmentsDoubleSpacingDecoration());
 			
 			//Checking if the files are loaded
 			if(viewModel.getAttachmentState(ActivityViewModel.attachmentTypeGallery) == ActivityViewModel.attachmentsStateLoaded) {
@@ -1213,8 +1316,24 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
+	private class AttachmentsDoubleSpacingDecoration extends RecyclerView.ItemDecoration {
+		@Override
+		public void getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+			//Getting the item count
+			List<SimpleAttachmentInfo> items = viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery);
+			int itemCount = items == null ? ActivityViewModel.attachmentsTileCount : items.size();
+			
+			//Adding top margin for items on the bottom row
+			int position = parent.getChildLayoutPosition(view);
+			if(position != 0 && position != itemCount + 1 && parent.getChildLayoutPosition(view) % 2 == 0) {
+				outRect.top = getResources().getDimensionPixelSize(R.dimen.contenttile_margin) / 2;
+			}
+		}
+	}
+	
 	/**
 	 * Gets the available window height: the height of the window, without the app bar
+	 *
 	 * @return the available window height
 	 */
 	private int getAvailableWindowHeight() {
@@ -1254,101 +1373,35 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private void setupAttachmentsDocumentsSection() {
-		//Getting the view
-		ViewGroup viewGroup = findViewById(R.id.viewgroup_attachment_documents);
-		if(viewGroup == null) return;
-		
-		//Setting the click listeners
-		viewGroup.findViewById(R.id.button_attachment_documents_systempicker).setOnClickListener(view -> requestDocumentFile());
-		
-		//Checking if the state is failed
-		if(viewModel.getAttachmentState(ActivityViewModel.attachmentTypeDocument) == ActivityViewModel.attachmentsStateFailed) {
-			//Showing the failed text
-			viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.VISIBLE);
-			
-			//Hiding the permission request button and the list
-			viewGroup.findViewById(R.id.button_attachment_documents_permission).setVisibility(View.GONE);
-			viewGroup.findViewById(R.id.list_attachment_documents).setVisibility(View.GONE);
-		}
-		//Checking if the permission has not been granted
-		else if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-			//Hiding the list and failed text
-			viewGroup.findViewById(R.id.list_attachment_documents).setVisibility(View.GONE);
-			viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.GONE);
-			
-			//Setting up the permission request button
-			View permissionButton = viewGroup.findViewById(R.id.button_attachment_documents_permission);
-			permissionButton.setVisibility(View.VISIBLE);
-			permissionButton.setOnClickListener(view -> Constants.requestPermission(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, permissionRequestStorage));
-		} else {
-			//Hiding the permission request button and the failed text
-			viewGroup.findViewById(R.id.button_attachment_documents_permission).setVisibility(View.GONE);
-			viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.GONE);
-			
-			//Setting up the list
-			RecyclerView list = viewGroup.findViewById(R.id.list_attachment_documents);
-			list.setVisibility(View.VISIBLE);
-			list.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-			list.addOnScrollListener(new AttachmentListScrollListener(viewGroup.findViewById(R.id.button_attachment_documents_systempicker)));
-			
-			//Checking if the files are loaded
-			if(viewModel.getAttachmentState(ActivityViewModel.attachmentTypeDocument) == ActivityViewModel.attachmentsStateLoaded) {
-				//Setting the list adapter
-				list.setAdapter(new AttachmentsDocumentRecyclerAdapter(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeDocument)));
-			} else {
-				//Setting the list adapter
-				List<SimpleAttachmentInfo> itemList = new ArrayList<>();
-				for(int i = 0; i < ActivityViewModel.attachmentsTileCount; i++) itemList.add(null);
-				AttachmentsRecyclerAdapter<?> adapter = new AttachmentsDocumentRecyclerAdapter(itemList);
-				list.setAdapter(adapter);
-				
-				//Creating the listener
-				ActivityViewModel.AttachmentsLoadCallbacks callbacks = attachmentsLoadCallbacks[ActivityViewModel.attachmentTypeDocument];
-				if(callbacks == null) {
-					callbacks = attachmentsLoadCallbacks[ActivityViewModel.attachmentTypeDocument] = result -> {
-						if(result) {
-							//Setting the list adapter's list
-							((AttachmentsDocumentRecyclerAdapter) list.getAdapter()).setList(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeDocument));
-						} else {
-							//Replacing the list view with the failed text
-							viewGroup.findViewById(R.id.list_attachment_documents).setVisibility(View.GONE);
-							viewGroup.findViewById(R.id.label_attachment_documents_failed).setVisibility(View.VISIBLE);
-						}
-					};
-				}
-				
-				//Loading the media
-				viewModel.indexAttachmentsDocument(callbacks, adapter);
-			}
-		}
-	}
-	
 	private class AttachmentListScrollListener extends RecyclerView.OnScrollListener {
 		boolean buttonIsBubble = false;
 		private final CardView pickerView;
+		private final int fullHeight;
 		
-		AttachmentListScrollListener(CardView pickerView) {
+		AttachmentListScrollListener(CardView pickerView, int fullHeight) {
 			this.pickerView = pickerView;
+			this.fullHeight = fullHeight;
 		}
 		
 		@Override
 		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-			boolean isAtStart = ((LinearLayoutManager) recyclerView.getLayoutManager()).findFirstCompletelyVisibleItemPosition() == 0;
+			//boolean isAtStart = ((LinearLayoutManager) recyclerView.getLayoutManager()).findFirstCompletelyVisibleItemPosition() == 0;
+			boolean isAtStart = !recyclerView.canScrollHorizontally(-1);
 			if(buttonIsBubble == isAtStart) {
 				buttonIsBubble = !isAtStart;
-				setSystemPickerBubbleState(pickerView, buttonIsBubble);
+				setSystemPickerBubbleState(pickerView, buttonIsBubble, fullHeight);
 			}
 		}
 	}
 	
-	private float systemPickerBubbleStateSizeTile = -1;
+	//private float systemPickerBubbleStateSizeTile = -1;
 	private float systemPickerBubbleStateRadiusTile = -1;
 	private float systemPickerBubbleStateElevationBubble = -1;
-	void setSystemPickerBubbleState(CardView view, boolean bubble) {
+	
+	void setSystemPickerBubbleState(CardView view, boolean bubble, int tileSize) {
 		//Fetching the reference target values if needed
-		if(systemPickerBubbleStateSizeTile == -1) {
-			systemPickerBubbleStateSizeTile = getResources().getDimensionPixelSize(R.dimen.contenttile_size);
+		if(systemPickerBubbleStateRadiusTile == -1) {
+			//systemPickerBubbleStateSizeTile = getResources().getDimensionPixelSize(R.dimen.contenttile_size);
 			systemPickerBubbleStateRadiusTile = getResources().getDimensionPixelSize(R.dimen.contenttile_radius);
 			systemPickerBubbleStateElevationBubble = Constants.dpToPx(4);
 		}
@@ -1363,7 +1416,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			radiusTarget = sizeTarget / 2F;
 			elevationTarget = systemPickerBubbleStateElevationBubble;
 		} else {
-			sizeTarget = systemPickerBubbleStateSizeTile;
+			sizeTarget = tileSize;
 			radiusTarget = systemPickerBubbleStateRadiusTile;
 			elevationTarget = 0;
 		}
@@ -1415,7 +1468,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 			});
 			//inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
-			inflated.findViewById(R.id.button_changecolor).setOnClickListener(view -> showColorDialog(null, viewModel.conversationInfo.getConversationColor()));
+			Button buttonChangeColor = inflated.findViewById(R.id.button_changecolor);
+			if(Preferences.checkPreferenceAdvancedColor(this)) buttonChangeColor.setOnClickListener(view -> showColorDialog(null, viewModel.conversationInfo.getConversationColor()));
+			else buttonChangeColor.setVisibility(View.GONE);
 			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
 			
 			findViewById(R.id.button_archive).setOnClickListener(view -> {
@@ -1432,7 +1487,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Updating the button
 				MaterialButton buttonView = (MaterialButton) view;
 				buttonView.setText(newState ? R.string.action_unarchive : R.string.action_archive);
-				buttonView.setIconResource(newState ? R.drawable.unarchive : R.drawable.archive);
+				buttonView.setIconResource(newState ? R.drawable.unarchive_outlined : R.drawable.archive_outlined);
 			});
 			
 			findViewById(R.id.button_delete).setOnClickListener(view -> {
@@ -1443,7 +1498,8 @@ public class Messaging extends AppCompatCompositeActivity {
 						.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
 							//Removing the conversation from memory
 							ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-							if(conversations != null) conversations.remove(viewModel.conversationInfo);
+							if(conversations != null)
+								conversations.remove(viewModel.conversationInfo);
 							
 							//Deleting the conversation from the database
 							DatabaseManager.getInstance().deleteConversation(viewModel.conversationInfo);
@@ -1509,10 +1565,12 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 				
 				@Override
-				public void onAnimationEnd(Animation animation) {}
+				public void onAnimationEnd(Animation animation) {
+				}
 				
 				@Override
-				public void onAnimationRepeat(Animation animation) {}
+				public void onAnimationRepeat(Animation animation) {
+				}
 			});
 			panel.startAnimation(animation);
 			detailScrim.animate().alpha(1).withStartAction(() -> detailScrim.setVisibility(View.VISIBLE)).setDuration(duration).start();
@@ -1531,7 +1589,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		Animation animation = AnimationUtils.loadAnimation(this, R.anim.messagedetails_slide_out_bottom);
 		animation.setAnimationListener(new Animation.AnimationListener() {
 			@Override
-			public void onAnimationStart(Animation animation) {}
+			public void onAnimationStart(Animation animation) {
+			}
 			
 			@Override
 			public void onAnimationEnd(Animation animation) {
@@ -1539,7 +1598,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 			
 			@Override
-			public void onAnimationRepeat(Animation animation) {}
+			public void onAnimationRepeat(Animation animation) {
+			}
 		});
 		panel.startAnimation(animation);
 		
@@ -1655,7 +1715,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Configuring the color editor
 		ImageView changeColorButton = memberEntry.findViewById(R.id.button_change_color);
-		if(showColor) {
+		if(showColor && Preferences.checkPreferenceAdvancedColor(this)) {
 			changeColorButton.setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
 			changeColorButton.setOnClickListener(view -> showColorDialog(member, member.getColor()));
 			changeColorButton.setVisibility(View.VISIBLE);
@@ -1690,7 +1750,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		memberListViews.remove(member);
 		
 		//Closing the dialog
-		if(currentColorPickerDialog != null && currentColorPickerDialogMember == member) currentColorPickerDialog.dismiss();
+		if(currentColorPickerDialog != null && currentColorPickerDialogMember == member)
+			currentColorPickerDialog.dismiss();
 	}
 	
 	@Override
@@ -1713,8 +1774,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private void colorUI(ViewGroup root) {
-		//Returning if the conversation is invalid
-		if(viewModel.conversationInfo == null) return;
+		//Returning if the conversation is invalid or "rainbow chats" is not enabled
+		if(!Preferences.checkPreferenceAdvancedColor(this) || viewModel.conversationInfo == null) return;
 		
 		//Getting the color
 		int color = viewModel.conversationInfo.getConversationColor();
@@ -1722,11 +1783,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		int lighterColor = ColorHelper.lightenColor(color);
 		
 		//Coloring the app and status bar
-		getSupportActionBar().setBackgroundDrawable(new ColorDrawable(color));
-		getWindow().setStatusBarColor(darkerColor);
+		//getSupportActionBar().setBackgroundDrawable(new ColorDrawable(color));
+		//getWindow().setStatusBarColor(darkerColor);
+		//setActionBarTitle(getSupportActionBar().getTitle().toString());
 		
 		//Updating the task description
-		if(lastTaskDescription != null) setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(lastTaskDescription.getLabel(), lastTaskDescription.getIcon(), color));
+		//if(lastTaskDescription != null) setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(lastTaskDescription.getLabel(), lastTaskDescription.getIcon(), color));
 		
 		//Coloring tagged parts of the UI
 		for(View view : Constants.getViewsByTag(root, getResources().getString(R.string.tag_primarytint))) {
@@ -1735,19 +1797,18 @@ public class Messaging extends AppCompatCompositeActivity {
 				Switch switchView = (Switch) view;
 				switchView.setThumbTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0xFFFAFAFA, color}));
 				switchView.setTrackTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0x61000000, color}));
-			}
-			else if(view instanceof MaterialButton) {
+			} else if(view instanceof MaterialButton) {
 				MaterialButton buttonView = (MaterialButton) view;
 				buttonView.setTextColor(color);
 				buttonView.setIconTint(ColorStateList.valueOf(color));
 				buttonView.setRippleColor(ColorStateList.valueOf(color));
-			}
-			else if(view instanceof TextView) ((TextView) view).setTextColor(color);
+			} else if(view instanceof TextView) ((TextView) view).setTextColor(color);
 			else if(view instanceof RelativeLayout) view.setBackground(new ColorDrawable(color));
 			else if(view instanceof FrameLayout) view.setBackgroundTintList(ColorStateList.valueOf(color));
 		}
 		
 		//Coloring the unique UI components
+		updateSendButton(true);
 		if(viewModel.lastUnreadCount == 0) bottomFAB.setImageTintList(ColorStateList.valueOf(color));
 		else bottomFAB.setBackgroundTintList(ColorStateList.valueOf(color));
 		bottomFABBadge.setBackgroundTintList(ColorStateList.valueOf(darkerColor));
@@ -1755,6 +1816,17 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Coloring the info bars
 		infoBarConnection.setColor(color);
+	}
+	
+	int getConversationUIColor() {
+		return Preferences.checkPreferenceAdvancedColor(this) ? viewModel.conversationInfo.getConversationColor() : getResources().getColor(R.color.colorPrimary, null);
+	}
+	
+	private void setActionBarTitle(String title) {
+		/* Spannable text = new SpannableString(title);
+		text.setSpan(new ForegroundColorSpan(viewModel.conversationInfo.getConversationColor()), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+		getSupportActionBar().setTitle(text); */
+		getSupportActionBar().setTitle(title);
 	}
 	
 	public void onClickRetryLoad(View view) {
@@ -1783,14 +1855,26 @@ public class Messaging extends AppCompatCompositeActivity {
 	private void updateSendButton(boolean restore) {
 		//Getting the send button state
 		boolean state = messageInputField.getText().length() > 0 || !viewModel.draftQueueList.isEmpty();
-		if(currentSendButtonState == state) return;
+		if(currentSendButtonState == state && !restore) return;
 		currentSendButtonState = state;
 		
 		//Updating the button
 		buttonSendMessage.setClickable(state);
-		float targetAlpha = state ? 1 : Constants.disabledAlpha;
-		if(restore) buttonSendMessage.setAlpha(targetAlpha);
-		else buttonSendMessage.animate().setDuration(100).alpha(targetAlpha);
+		int targetColor = state ? getConversationUIColor() : Constants.resolveColorAttr(this, android.R.attr.colorControlNormal);
+		/* if(restore) buttonSendMessage.setColorFilter(targetColor);
+		else {
+			int startColor = state ? Constants.resolveColorAttr(this, android.R.attr.colorControlNormal) : viewModel.conversationInfo.getConversationColor();
+			ValueAnimator animator = ValueAnimator.ofObject(new ArgbEvaluator(), startColor, targetColor);
+			animator.setDuration(100);
+			animator.addUpdateListener(animatorStage -> buttonSendMessage.setColorFilter((int) animatorStage.getAnimatedValue()));
+			animator.start();
+		} */
+		buttonSendMessage.setColorFilter(targetColor);
+		buttonSendMessage.setAlpha(state ? 1 : 0.5F);
+		
+		//buttonSendMessage.setImageTintList(ColorStateList.valueOf(state ? getResources().getColor(R.color.colorPrimary, null) : Constants.resolveColorAttr(this, android.R.attr.colorControlNormal)));
+		//if(restore) buttonSendMessage.setAlpha(targetAlpha);
+		//else buttonSendMessage.animate().setDuration(100).alpha(targetAlpha);
 	}
 	
 	/* private boolean startRecording() {
@@ -2028,7 +2112,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(viewModel.conversationInfo.getUnreadMessageCount() == 0) return;
 		
 		//Coloring the FAB
-		bottomFAB.setBackgroundTintList(ColorStateList.valueOf(viewModel.conversationInfo.getConversationColor()));
+		bottomFAB.setBackgroundTintList(ColorStateList.valueOf(getConversationUIColor()));
 		bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
 		
 		//Updating the badge
@@ -2043,12 +2127,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(viewModel.lastUnreadCount == viewModel.conversationInfo.getUnreadMessageCount()) return;
 		
 		//Getting the color
-		int colorTint = viewModel.conversationInfo.getConversationColor();
+		int colorTint = getConversationUIColor();
 		
 		//Checking if there are any unread messages
 		if(viewModel.conversationInfo.getUnreadMessageCount() > 0) {
 			//Coloring the FAB
-			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(viewModel.conversationInfo.getConversationColor()));
+			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(colorTint));
 			bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
 			
 			//Updating the badge text
@@ -2111,7 +2195,6 @@ public class Messaging extends AppCompatCompositeActivity {
 				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 					//Updating the attachment sections
 					setupAttachmentsGallerySection();
-					setupAttachmentsDocumentsSection();
 				}
 				break;
 			case permissionRequestAudio:
@@ -2150,7 +2233,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					//Configuring the dialog's listener
 					dialog.setOnShowListener(dialogInterface -> {
 						//Setting the button's colors
-						int color = viewModel.conversationInfo.getConversationColor();
+						int color = getConversationUIColor();
 						dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
 						dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(color);
 						dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
@@ -2166,9 +2249,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private void requestTakePicture() {
+	private void requestCamera(boolean video) {
 		//Creating the intent
-		Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+		Intent takePictureIntent = new Intent(video ? MediaStore.ACTION_VIDEO_CAPTURE : MediaStore.ACTION_IMAGE_CAPTURE);
 		
 		//Checking if there are no apps that can take the intent
 		if(takePictureIntent.resolveActivity(getPackageManager()) == null) {
@@ -2182,26 +2265,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Finding a free file
 		viewModel.targetFileIntent = MainApplication.getDraftTarget(this, viewModel.conversationID, Constants.pictureName);
 		
-		/* try {
-			//Creating the targets
-			if(!viewModel.targetFile.getParentFile().mkdir()) throw new IOException();
-			//if(!viewModel.targetFile.createNewFile()) throw new IOException();
-		} catch(IOException exception) {
-			//Printing the stack trace
-			exception.printStackTrace();
-			
-			//Returning
-			return;
-		} */
-		
 		//Getting the content uri
 		Uri imageUri = FileProvider.getUriForFile(this, MainApplication.fileAuthority, viewModel.targetFileIntent);
 		
 		//Setting the clip data
 		takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
-		
-		//Setting the file path (for future reference)
-		//takePictureIntent.putExtra(Constants.intentParamDataFile, viewModel.targetFile);
 		
 		//Starting the activity
 		startActivityForResult(takePictureIntent, intentTakePicture);
@@ -2222,10 +2290,6 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void requestAudioFile() {
 		launchPickerIntent(new String[]{"audio/*"});
-	}
-	
-	private void requestDocumentFile() {
-		launchPickerIntent(documentMimeTypes);
 	}
 	
 	public static ArrayList<Long> getForegroundConversations() {
@@ -2438,7 +2502,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					return new ConversationManager.ActionLineViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_action, parent, false));
 				case itemTypeLoadingBar: {
 					View loadingView = LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_loading, parent, false);
-					((ProgressBar) loadingView.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(viewModel.conversationInfo.getConversationColor()));
+					((ProgressBar) loadingView.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(getConversationUIColor()));
 					return new LoadingViewHolder(loadingView);
 				}
 				default:
@@ -2462,7 +2526,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Getting the item
 			ConversationManager.ConversationItem conversationItem;
-			if(viewModel.isProgressiveLoadInProgress()) conversationItem = conversationItems.get(position - 1);
+			if(viewModel.isProgressiveLoadInProgress())
+				conversationItem = conversationItems.get(position - 1);
 			else conversationItem = conversationItems.get(position);
 			
 			//Checking if the item is a message
@@ -2597,16 +2662,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		abstract boolean usesActionButton();
-		int getActionButtonText() {
-			return -1;
-		}
-		int getActionButtonDrawable() {
-			return -1;
-		}
 		
-		void onActionButtonClick() {}
+		abstract void onOverflowButtonClick();
 		
-		void onOverflowButtonClick() {}
+		abstract View inflateActionButton(@NonNull ViewGroup parent);
 		
 		@Override
 		public int getItemCount() {
@@ -2639,12 +2698,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			switch(viewType) {
 				case itemTypeActionButton: {
-					View actionButton = getLayoutInflater().inflate(R.layout.listitem_attachment_actiontile, parent, false);
-					TextView label = actionButton.findViewById(R.id.label);
-					label.setText(getActionButtonText());
-					label.setCompoundDrawablesWithIntrinsicBounds(0, getActionButtonDrawable(), 0, 0);
-					actionButton.setOnClickListener(view -> onActionButtonClick());
-					return new ViewHolderImpl(actionButton);
+					return new ViewHolderImpl(inflateActionButton(parent));
 				}
 				case itemTypeOverflowButton: {
 					View overflowButton = getLayoutInflater().inflate(R.layout.listitem_attachment_overflow, parent, false);
@@ -2749,6 +2803,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private void assignItemClickListener(AttachmentTileViewHolder viewHolder, SimpleAttachmentInfo item, int draftIndex) {
 			viewHolder.itemView.setOnClickListener(new View.OnClickListener() {
 				private int newDraftIndex;
+				
 				{
 					newDraftIndex = draftIndex;
 				}
@@ -2786,19 +2841,21 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		void linkToQueue(List<QueuedFileInfo> queueList) {
 			//Iterating over the queue and item lists
-			for(QueuedFileInfo queuedItem : queueList) for(ListIterator<SimpleAttachmentInfo> loadedIterator = fileList.listIterator(); loadedIterator.hasNext();) {
-				//Getting the item information
-				int loadedIndex = loadedIterator.nextIndex();
-				if(usesActionButton()) loadedIndex += 1; //The action button takes up the first slot at the start
-				SimpleAttachmentInfo loadedItem = loadedIterator.next();
-				
-				//Skipping the remainder of the iteration if the items don't match
-				if(!loadedItem.compare(queuedItem.getItem())) continue;
-				
-				//Updating the items' adapter information
-				queuedItem.getItem().setAdapterInformation(this, loadedIndex);
-				loadedItem.setAdapterInformation(this, loadedIndex);
-			}
+			for(QueuedFileInfo queuedItem : queueList)
+				for(ListIterator<SimpleAttachmentInfo> loadedIterator = fileList.listIterator(); loadedIterator.hasNext(); ) {
+					//Getting the item information
+					int loadedIndex = loadedIterator.nextIndex();
+					if(usesActionButton())
+						loadedIndex += 1; //The action button takes up the first slot at the start
+					SimpleAttachmentInfo loadedItem = loadedIterator.next();
+					
+					//Skipping the remainder of the iteration if the items don't match
+					if(!loadedItem.compare(queuedItem.getItem())) continue;
+					
+					//Updating the items' adapter information
+					queuedItem.getItem().setAdapterInformation(this, loadedIndex);
+					loadedItem.setAdapterInformation(this, loadedIndex);
+				}
 		}
 		
 		/* private int getItemIndex(SimpleAttachmentInfo item) {
@@ -2817,6 +2874,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private ValueAnimator currentListAttachmentQueueValueAnimator = null;
+	
 	int queueAttachment(SimpleAttachmentInfo item, AttachmentTileHelper<?> tileHelper, boolean updateListing) {
 		//Checking if there is no more room for new attachments
 		if(viewModel.draftQueueList.size() >= draftCountLimit) {
@@ -2853,8 +2911,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Creating the processing request
 		ConnectionService.FilePushRequest request = item.getFile() != null ?
-				new ConnectionService.FilePushRequest(item.getFile(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false) :
-				new ConnectionService.FilePushRequest(item.getUri(), item.getFileType(), item.getFileName(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false);
+													new ConnectionService.FilePushRequest(item.getFile(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false) :
+													new ConnectionService.FilePushRequest(item.getUri(), item.getFileType(), item.getFileName(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false);
 		request.getCallbacks().onFail = result -> {
 			//Dequeuing the attachment
 			dequeueAttachment(item, true, false);
@@ -2866,7 +2924,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			draft.setDraftFile(draftFile);
 			
 			//Adding the draft file to the conversation in memory
-			if(viewModel.conversationInfo != null) viewModel.conversationInfo.addDraftFileUpdate(Messaging.this, draftFile, updateTime);
+			if(viewModel.conversationInfo != null)
+				viewModel.conversationInfo.addDraftFileUpdate(Messaging.this, draftFile, updateTime);
 			
 			//Updating the attachment
 			listAttachmentQueue.getAdapter().notifyItemChanged(viewModel.draftQueueList.indexOf(draft), AttachmentsQueueRecyclerAdapter.payloadUpdateState);
@@ -2878,7 +2937,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Animating the list
 		if(listStartedEmpty) {
-			if(currentListAttachmentQueueValueAnimator != null) currentListAttachmentQueueValueAnimator.cancel();
+			if(currentListAttachmentQueueValueAnimator != null)
+				currentListAttachmentQueueValueAnimator.cancel();
 			
 			listAttachmentQueue.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 			ValueAnimator anim = ValueAnimator.ofInt(0, listAttachmentQueue.getMeasuredHeight());
@@ -2921,7 +2981,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Removing the item
 		QueuedFileInfo queuedItem = null;
-		for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext();) {
+		for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext(); ) {
 			draftIndex = iterator.nextIndex();
 			queuedItem = iterator.next();
 			if(queuedItem.getItem().compare(item)) {
@@ -2951,7 +3011,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			final QueuedFileInfo finalQueuedItem = queuedItem;
 			request.getCallbacks().onRemovalFinish = () -> {
 				//Removing the draft from the conversation in memory
-				if(viewModel.conversationInfo != null) viewModel.conversationInfo.removeDraftFileUpdate(Messaging.this, finalQueuedItem.getDraftFile(), updateTime);
+				if(viewModel.conversationInfo != null)
+					viewModel.conversationInfo.removeDraftFileUpdate(Messaging.this, finalQueuedItem.getDraftFile(), updateTime);
 			};
 			service.addFileProcessingRequest(request);
 		}
@@ -2962,18 +3023,21 @@ public class Messaging extends AppCompatCompositeActivity {
 			List<AttachmentsRecyclerAdapter<?>> adapterList = new ArrayList<>();
 			for(int i = draftIndex; i < viewModel.draftQueueList.size(); i++) {
 				QueuedFileInfo listedItem = viewModel.draftQueueList.get(i);
-				if(listedItem.getItem().getListAdapter() == null || adapterList.contains(listedItem.getItem().getListAdapter())) continue;
+				if(listedItem.getItem().getListAdapter() == null || adapterList.contains(listedItem.getItem().getListAdapter()))
+					continue;
 				adapterList.add(listedItem.getItem().getListAdapter());
 			}
 			for(AttachmentsRecyclerAdapter<?> adapter : adapterList) adapter.recalculateIndices();
 			
 			//Updating the item selection
-			if(item.getFile() != null && item.getListAdapter() != null) item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
+			if(item.getFile() != null && item.getListAdapter() != null)
+				item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
 		}
 		
 		//Animating the list
 		if(viewModel.draftQueueList.isEmpty()) {
-			if(currentListAttachmentQueueValueAnimator != null) currentListAttachmentQueueValueAnimator.cancel();
+			if(currentListAttachmentQueueValueAnimator != null)
+				currentListAttachmentQueueValueAnimator.cancel();
 			//listAttachmentQueue.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 			
 			ValueAnimator anim = ValueAnimator.ofInt(listAttachmentQueue.getHeight(), 0);
@@ -3172,6 +3236,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final int viewTypeAudio = 2;
 		
 		abstract VH createViewHolder(ViewGroup parent);
+		
 		abstract void bindView(VH viewHolder, SimpleAttachmentInfo item);
 		
 		abstract int getViewType();
@@ -3181,9 +3246,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(mimeType == null) return attachmentsDocumentTileHelper;
 		
 		{
-			String mimeTypeGeneral = mimeType.split("/")[0];
-			if(mimeTypeGeneral.equals("image") || mimeTypeGeneral.equals("video")) return attachmentsMediaTileHelper;
-			else if(mimeTypeGeneral.equals("audio")) return attachmentsAudioTileHelper;
+			if(Constants.compareMimeTypes(mimeType, mimeTypeImage) || Constants.compareMimeTypes(mimeType, mimeTypeVideo))
+				return attachmentsMediaTileHelper;
+			else if(Constants.compareMimeTypes(mimeType, mimeTypeAudio)) return attachmentsAudioTileHelper;
 		}
 		
 		return attachmentsDocumentTileHelper;
@@ -3310,19 +3375,33 @@ public class Messaging extends AppCompatCompositeActivity {
 			return true;
 		}
 		
-		@Override
-		int getActionButtonText() {
-			return R.string.part_camera;
-		}
+		/* @Override
+		View inflateActionButton(@NonNull ViewGroup parent) {
+			View actionButton = getLayoutInflater().inflate(R.layout.listitem_attachment_actiontile, parent, false);
+			TextView label = actionButton.findViewById(R.id.label);
+			label.setText(R.string.part_camera);
+			label.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.camera, 0, 0);
+			actionButton.setOnClickListener(view -> requestTakePicture());
+			return actionButton;
+		} */
 		
-		@Override
-		int getActionButtonDrawable() {
-			return R.drawable.camera;
-		}
-		
-		@Override
-		void onActionButtonClick() {
-			requestTakePicture();
+		View inflateActionButton(@NonNull ViewGroup parent) {
+			View actionButton = getLayoutInflater().inflate(R.layout.listitem_attachment_actiontile_double, parent, false);
+			{
+				ViewGroup group = actionButton.findViewById(R.id.group_1);
+				TextView label = group.findViewById(R.id.label_1);
+				label.setText(R.string.action_short_picture);
+				label.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.camera_outlined, 0, 0);
+				group.setOnClickListener(view -> requestCamera(false));
+			}
+			{
+				ViewGroup group = actionButton.findViewById(R.id.group_2);
+				TextView label = group.findViewById(R.id.label_2);
+				label.setText(R.string.action_short_video);
+				label.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.videocam_outlined, 0, 0);
+				group.setOnClickListener(view -> requestCamera(true));
+			}
+			return actionButton;
 		}
 		
 		@Override
@@ -3353,6 +3432,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	/**
 	 * Retrieves the index of the selected attachment item
+	 *
 	 * @param item the selected item
 	 * @return the index of the selected
 	 */
@@ -3367,11 +3447,16 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the view values
 		private final ImageView imageThumbnail;
 		private final ImageView imageFlagGIF;
+		private final ViewGroup groupVideo;
+		private final TextView labelVideo;
 		
 		AttachmentsMediaTileViewHolder(View itemView) {
 			super(itemView);
 			imageThumbnail = itemView.findViewById(R.id.image);
 			imageFlagGIF = itemView.findViewById(R.id.image_flag_gif);
+			
+			groupVideo = itemView.findViewById(R.id.group_flag_video);
+			labelVideo = groupVideo.findViewById(R.id.label_flag_video);
 		}
 	}
 	
@@ -3396,6 +3481,19 @@ public class Messaging extends AppCompatCompositeActivity {
 					.apply(RequestOptions.centerCropTransform())
 					.transition(DrawableTransitionOptions.withCrossFade())
 					.into(viewHolder.imageThumbnail);
+			
+			//Setting the image flags
+			if(Constants.compareMimeTypes(item.getFileType(), mimeTypeGIF)) {
+				viewHolder.imageFlagGIF.setVisibility(View.VISIBLE);
+				viewHolder.groupVideo.setVisibility(View.GONE);
+			} else if(Constants.compareMimeTypes(item.getFileType(), mimeTypeVideo)) {
+				viewHolder.imageFlagGIF.setVisibility(View.GONE);
+				viewHolder.groupVideo.setVisibility(View.VISIBLE);
+				viewHolder.labelVideo.setText(DateUtils.formatElapsedTime((int) Math.floor(((SimpleAttachmentInfo.VideoExtension) item.getExtension()).mediaDuration / 1000L)));
+			} else {
+				viewHolder.imageFlagGIF.setVisibility(View.GONE);
+				viewHolder.groupVideo.setVisibility(View.GONE);
+			}
 		}
 		
 		@Override
@@ -3403,39 +3501,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			return viewTypeMedia;
 		}
 	};
-	
-	private class AttachmentsDocumentRecyclerAdapter extends AttachmentsRecyclerAdapter<AttachmentsDocumentTileViewHolder> {
-		//Creating the reference values
-		private final AttachmentTileHelper<AttachmentsDocumentTileViewHolder> tileHelper = attachmentsDocumentTileHelper;
-		AttachmentsDocumentRecyclerAdapter(List<SimpleAttachmentInfo> list) {
-			super(list);
-		}
-		
-		@Override
-		boolean usesActionButton() {
-			return false;
-		}
-		
-		@Override
-		void onOverflowButtonClick() {
-			requestDocumentFile();
-		}
-		
-		@Override
-		AttachmentsDocumentTileViewHolder createContentViewHolder(@NonNull ViewGroup parent) {
-			return attachmentsDocumentTileHelper.createViewHolder(parent);
-		}
-		
-		@Override
-		void bindContentViewHolder(AttachmentsDocumentTileViewHolder viewHolder, SimpleAttachmentInfo document, int draftIndex) {
-			tileHelper.bindView(viewHolder, document);
-		}
-		
-		@Override
-		AttachmentTileHelper<?> getTileHelper() {
-			return tileHelper;
-		}
-	}
 	
 	private class AttachmentsDocumentTileViewHolder extends AttachmentTileViewHolder {
 		//Creating the view values
@@ -3504,18 +3569,32 @@ public class Messaging extends AppCompatCompositeActivity {
 						break;
 					case "application/msword":
 					case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+					case "application/vnd.openxmlformats-officedocument.wordprocessingml.template":
+					case "application/vnd.ms-word.document.macroEnabled.12":
+					case "application/vnd.ms-word.template.macroEnabled.12":
 						iconResource = R.drawable.file_msword;
 						viewColorBG = R.color.tile_blue_bg;
 						viewColorFG = R.color.tile_blue_fg;
 						break;
 					case "application/vnd.ms-excel":
 					case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+					case "application/vnd.openxmlformats-officedocument.spreadsheetml.template":
+					case "application/vnd.ms-excel.sheet.macroEnabled.12":
+					case "application/vnd.ms-excel.sheet.binary.macroEnabled.12":
+					case "application/vnd.ms-excel.template.macroEnabled.12":
+					case "application/vnd.ms-excel.addin.macroEnabled.12":
 						iconResource = R.drawable.file_msexcel;
 						viewColorBG = R.color.tile_green_bg;
 						viewColorFG = R.color.tile_green_fg;
 						break;
 					case "application/vnd.ms-powerpoint":
 					case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+					case "application/vnd.openxmlformats-officedocument.presentationml.template":
+					case "application/vnd.openxmlformats-officedocument.presentationml.slideshow":
+					case "application/vnd.ms-powerpoint.addin.macroEnabled.12":
+					case "application/vnd.ms-powerpoint.presentation.macroEnabled.12":
+					case "application/vnd.ms-powerpoint.template.macroEnabled.12":
+					case "application/vnd.ms-powerpoint.slideshow.macroEnabled.12":
 						iconResource = R.drawable.file_mspowerpoint;
 						viewColorBG = R.color.tile_yellow_bg;
 						viewColorFG = R.color.tile_yellow_fg;
@@ -3539,7 +3618,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			viewHolder.documentIcon.setImageResource(iconResource);
 			viewHolder.documentIcon.setImageTintList(ColorStateList.valueOf(viewColorFG));
 			
-			viewHolder.documentSize.setText(Constants.humanReadableByteCount(item.getFileSize(), true));
+			viewHolder.documentSize.setText(Formatter.formatFileSize(Messaging.this, item.getFileSize()));
 			viewHolder.documentSize.setTextColor(viewColorFG);
 			
 			viewHolder.itemView.setBackgroundTintList(ColorStateList.valueOf(viewColorBG));
@@ -3612,7 +3691,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private int findAttachmentInQueue(SimpleAttachmentInfo item) {
 			int queuedIndex;
 			QueuedFileInfo queuedItem;
-			for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext();) {
+			for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext(); ) {
 				queuedIndex = iterator.nextIndex();
 				queuedItem = iterator.next();
 				if(queuedItem.getItem() == item) return queuedIndex;
@@ -3677,7 +3756,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		private void assignExtension() {
-			if(fileType.split("/")[0].equals("audio")) extension = new AudioExtension();
+			if(Constants.compareMimeTypes(fileType, "audio/*")) extension = new AudioExtension();
+			else if(Constants.compareMimeTypes(fileType, "video/*")) extension = new VideoExtension();
 			else extension = null;
 			
 			if(extension != null) extension.initialize();
@@ -3725,7 +3805,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		abstract class Extension {
-			void initialize() {}
+			abstract void initialize();
 		}
 		
 		Extension getExtension() {
@@ -3745,18 +3825,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			void initialize() {
 				if(file != null) mediaDuration = Constants.getMediaDuration(file);
 				else if(uri != null) mediaDuration = Constants.getMediaDuration(MainApplication.getInstance(), uri);
-			}
-			
-			long getMediaDuration() {
-				return mediaDuration;
-			}
-			
-			boolean isPlaying() {
-				return isPlaying;
-			}
-			
-			long getMediaProgress() {
-				return mediaProgress;
 			}
 			
 			void play(AudioPlaybackManager playbackManager, QueuedFileInfo queuedInfo, Constants.ViewHolderSource<AttachmentsAudioTileViewHolder> viewSource) {
@@ -3824,12 +3892,29 @@ public class Messaging extends AppCompatCompositeActivity {
 				//viewHolder.labelDuration.setText(Constants.getFormattedDuration((int) Math.floor(mediaProgress <= 0 ? mediaDuration / 1000L : mediaProgress / 1000L)));
 			}
 		}
+		
+		class VideoExtension extends Extension {
+			//Creating the attachment info values
+			private long mediaDuration = -1;
+			
+			@Override
+			void initialize() {
+				//Getting the media duration
+				if(file != null) mediaDuration = Constants.getMediaDuration(file);
+				else if(uri != null) mediaDuration = Constants.getMediaDuration(MainApplication.getInstance(), uri);
+			}
+			
+			long getMediaDuration() {
+				return mediaDuration;
+			}
+		}
 	}
 	
 	private static class TaskMarkMessageSendStyleViewed extends AsyncTask<ConversationManager.MessageInfo, Void, Void> {
 		@Override
 		protected Void doInBackground(ConversationManager.MessageInfo... items) {
-			for(ConversationManager.MessageInfo item : items) DatabaseManager.getInstance().markSendStyleViewed(item.getLocalID());
+			for(ConversationManager.MessageInfo item : items)
+				DatabaseManager.getInstance().markSendStyleViewed(item.getLocalID());
 			return null;
 		}
 	}
@@ -3898,8 +3983,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final byte attachmentsStateFailed = 3;
 		
 		static final int attachmentTypeGallery = 0;
-		static final int attachmentTypeDocument = 1;
-		private static final int attachmentsTileCount = 12;
+		//static final int attachmentTypeDocument = 1;
+		private static final int attachmentsTileCount = 24;
 		
 		//Creating the state values
 		private final MutableLiveData<Byte> messagesState = new MutableLiveData<>();
@@ -4032,7 +4117,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					@Override
 					protected List<ConversationManager.ConversationItem> doInBackground(Void... params) {
 						//Loading the conversation items
-						List<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0);
+						List<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0, 0);
 						
 						//Setting up the conversation item relations
 						ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
@@ -4075,18 +4160,21 @@ public class Messaging extends AppCompatCompositeActivity {
 		@SuppressLint("StaticFieldLeak")
 		void loadNextChunk() {
 			//Returning if the conversation isn't ready, a load is already in progress or there are no conversation items
-			if(messagesState.getValue() != messagesStateReady || isProgressiveLoadInProgress() || progressiveLoadReachedLimit || conversationInfo.getConversationItems().isEmpty()) return;
+			if(messagesState.getValue() != messagesStateReady || isProgressiveLoadInProgress() || progressiveLoadReachedLimit || conversationInfo.getConversationItems().isEmpty())
+				return;
 			
 			//Setting the flags
 			progressiveLoadInProgress.setValue(true);
 			
 			//Loading a chunk
-			long lastMessageDate = conversationInfo.getConversationItems().get(0).getDate();
+			ConversationManager.ConversationItem lastItem = conversationInfo.getConversationItems().get(0);
+			long lastItemServerID = lastItem.getServerID();
+			long lastItemLocalID = lastItem.getLocalID();
 			new AsyncTask<Void, Void, List<ConversationManager.ConversationItem>>() {
 				@Override
 				protected List<ConversationManager.ConversationItem> doInBackground(Void... params) {
 					//Loading the conversation items
-					return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, lastMessageDate);
+					return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, lastItemServerID, lastItemLocalID);
 				}
 				
 				@Override
@@ -4178,7 +4266,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			} */
 			
 			//Setting the media recorder file
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) mediaRecorder.setOutputFile(targetFileRecording);
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+				mediaRecorder.setOutputFile(targetFileRecording);
 			else mediaRecorder.setOutputFile(targetFileRecording.getAbsolutePath());
 			
 			try {
@@ -4207,6 +4296,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		/**
 		 * Stops the current recording session
+		 *
 		 * @param cleanup whether or not to clean up the media recorder (usually wanted, unless the media recorder encountered an error)
 		 * @param discard whether or not to discard the recorded file
 		 * @return the file's availability (to be able to use or send)
@@ -4288,7 +4378,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			mediaRecorder.setOnInfoListener((recorder, what, extra) -> {
 				if(what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED ||
-						what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
+				   what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
 					stopRecording(false, false);
 				}
 			});
@@ -4315,20 +4405,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			indexAttachmentsFromMediaStore(listener, attachmentTypeGallery, MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO, adapter);
 		}
 		
-		void indexAttachmentsDocument(AttachmentsLoadCallbacks listener, AttachmentsRecyclerAdapter<?> adapter) {
-			StringBuilder selectionQuery = new StringBuilder(MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_NONE + " AND " + MediaStore.Files.FileColumns.SIZE + " <= " + ConnectionService.largestFileSize);
-			for(int i = 0; i < documentMimeTypes.length; i++) {
-				String mimeType = documentMimeTypes[i];
-				if(mimeType.endsWith("*")) mimeType = mimeType.substring(0, mimeType.length() - 1);
-				if(i == 0) selectionQuery.append(" AND (");
-				else selectionQuery.append(" OR ");
-				selectionQuery.append(MediaStore.Files.FileColumns.MIME_TYPE).append(" LIKE ").append('"').append(mimeType).append('%').append('"');
-				if(i + 1 == documentMimeTypes.length) selectionQuery.append(")");
-			}
-			
-			indexAttachmentsFromMediaStore(listener, attachmentTypeDocument, selectionQuery.toString(), adapter);
-		}
-		
 		byte getAttachmentState(int itemType) {
 			return attachmentStates[itemType];
 		}
@@ -4344,7 +4420,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Returning if the state is incapable of handling the request
 			int currentState = attachmentStates[itemType];
-			if(currentState == attachmentsStateLoading || currentState == attachmentsStateLoaded) return;
+			if(currentState == attachmentsStateLoading || currentState == attachmentsStateLoaded)
+				return;
 			
 			//Setting the state
 			attachmentStates[itemType] = attachmentsStateLoading;
@@ -4472,7 +4549,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		void release() {
 			//Cancelling the timer
-			if(mediaPlayer.isPlaying()) mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
+			if(mediaPlayer.isPlaying())
+				mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
 			
 			//Releasing the media player
 			mediaPlayer.release();
@@ -4546,13 +4624,16 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		boolean compareRequestID(String requestID) {
-			return this.requestID == requestID;
+			return this.requestID.equals(requestID);
 		}
 		
 		interface Callbacks {
 			void onPlay();
+			
 			void onProgress(long time);
+			
 			void onPause();
+			
 			void onStop();
 		}
 		
@@ -4738,7 +4819,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		@Override
 		protected void onProgressUpdate(ConversationManager.MessageInfo... messages) {
-			for(ConversationManager.MessageInfo message : messages) onFinishListener.accept(message);
+			for(ConversationManager.MessageInfo message : messages)
+				onFinishListener.accept(message);
 		}
 	}
 	
@@ -4820,7 +4902,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			Messaging activity = activityReference.get();
 			if(activity == null) return;
 			
-			//Updating the adapter
+			//Checking if the new message will cause the list to scroll
 			boolean newMessageAdded = false;
 			for(int index : newIndices) {
 				if(activity.messageListAdapter.isDirectlyBelowFrame(index)) {
@@ -4829,7 +4911,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 			}
 			
-			//Scrolling to the bottom of the list
+			//Scrolling down to the item (or the bottom of the list, same thing)
 			if(newMessageAdded) activity.messageListAdapter.scrollToBottom();
 		}
 		
@@ -4842,11 +4924,11 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Building the conversation title
 			activity.viewModel.conversationInfo.buildTitle(activity, (result, wasTasked) -> {
 				//Setting the title in the app bar
-				activity.getSupportActionBar().setTitle(result);
+				activity.setActionBarTitle(result);
 				
 				//Updating the task description
-				activity.lastTaskDescription = new ActivityManager.TaskDescription(result, activity.lastTaskDescription.getIcon(), activity.viewModel.conversationInfo.getConversationColor());
-				activity.setTaskDescription(activity.lastTaskDescription);
+				activity.lastTaskDescription = new ActivityManager.TaskDescription(result, activity.lastTaskDescription.getIcon(), activity.getConversationUIColor());
+				//activity.setTaskDescription(activity.lastTaskDescription);
 			});
 		}
 		
@@ -4900,7 +4982,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	void detailSwitchConversationColor(int newColor) {
 		//Updating the conversation color
 		viewModel.conversationInfo.setConversationColor(newColor);
-		if(!viewModel.conversationInfo.isGroupChat()) viewModel.conversationInfo.updateViewUser(this);
+		if(!viewModel.conversationInfo.isGroupChat())
+			viewModel.conversationInfo.updateViewUser(this);
 		
 		//Coloring the UI
 		colorUI(findViewById(android.R.id.content));
@@ -4909,7 +4992,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		DatabaseManager.getInstance().updateConversationColor(viewModel.conversationInfo.getLocalID(), newColor);
 		
 		//Updating the member if there is only one member as well
-		if(viewModel.conversationInfo.getConversationMembers().size() == 1) detailSwitchMemberColor(viewModel.conversationInfo.getConversationMembers().get(0), newColor);
+		if(viewModel.conversationInfo.getConversationMembers().size() == 1)
+			detailSwitchMemberColor(viewModel.conversationInfo.getConversationMembers().get(0), newColor);
 	}
 	
 	void detailSwitchMemberColor(ConversationManager.MemberInfo member, int newColor) {
@@ -4922,7 +5006,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		((ImageView) memberView.findViewById(R.id.profile_default)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
 		
 		//Updating the message colors
-		if(viewModel.conversationItemList != null) for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList) conversationItem.updateViewColor(this);
+		if(viewModel.conversationItemList != null)
+			for(ConversationManager.ConversationItem conversationItem : viewModel.conversationItemList)
+				conversationItem.updateViewColor(this);
 		
 		//Updating the listing color
 		viewModel.conversationInfo.updateViewUser(this);
@@ -4932,6 +5018,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private static final String colorDialogTag = "colorPickerDialog";
+	
 	void showColorDialog(ConversationManager.MemberInfo member, int currentColor) {
 		//Starting a fragment transaction
 		FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
@@ -4988,14 +5075,17 @@ public class Messaging extends AppCompatCompositeActivity {
 				colorView.setColorFilter(standardColor);
 				
 				final boolean isSelectedColor = selectedColor == standardColor;
-				if(isSelectedColor) item.findViewById(R.id.colorpickeritem_selection).setVisibility(View.VISIBLE);
+				if(isSelectedColor)
+					item.findViewById(R.id.colorpickeritem_selection).setVisibility(View.VISIBLE);
 				
 				//Setting the click listener
 				colorView.setOnClickListener(view -> {
 					//Telling the activity
 					if(!isSelectedColor) {
-						if(member == null) ((Messaging) getActivity()).detailSwitchConversationColor(standardColor);
-						else ((Messaging) getActivity()).detailSwitchMemberColor(member, standardColor);
+						if(member == null)
+							((Messaging) getActivity()).detailSwitchConversationColor(standardColor);
+						else
+							((Messaging) getActivity()).detailSwitchMemberColor(member, standardColor);
 					}
 					
 					getDialog().dismiss();
