@@ -262,7 +262,6 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	//Creating the other values
 	private final MessageListRecyclerAdapter messageListAdapter = new MessageListRecyclerAdapter();
-	private ActivityManager.TaskDescription lastTaskDescription;
 	
 	private boolean currentSendButtonState = true;
 	private boolean toolbarVisible = true;
@@ -412,7 +411,6 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Setting the conversation title
 				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
 					setActionBarTitle(result);
-					//setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), getConversationUIColor()));
 				});
 				
 				//Coloring the UI
@@ -437,7 +435,6 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Setting the conversation title
 				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
 					setActionBarTitle(result);
-					//setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(result, BitmapFactory.decodeResource(getResources(), R.mipmap.app_icon), getConversationUIColor()));
 				});
 				
 				//Setting the activity callbacks
@@ -1781,14 +1778,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		int color = viewModel.conversationInfo.getConversationColor();
 		int darkerColor = ColorHelper.darkenColor(color);
 		int lighterColor = ColorHelper.lightenColor(color);
-		
-		//Coloring the app and status bar
-		//getSupportActionBar().setBackgroundDrawable(new ColorDrawable(color));
-		//getWindow().setStatusBarColor(darkerColor);
-		//setActionBarTitle(getSupportActionBar().getTitle().toString());
-		
-		//Updating the task description
-		//if(lastTaskDescription != null) setTaskDescription(lastTaskDescription = new ActivityManager.TaskDescription(lastTaskDescription.getLabel(), lastTaskDescription.getIcon(), color));
 		
 		//Coloring tagged parts of the UI
 		for(View view : Constants.getViewsByTag(root, getResources().getString(R.string.tag_primarytint))) {
@@ -4925,10 +4914,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			activity.viewModel.conversationInfo.buildTitle(activity, (result, wasTasked) -> {
 				//Setting the title in the app bar
 				activity.setActionBarTitle(result);
-				
-				//Updating the task description
-				activity.lastTaskDescription = new ActivityManager.TaskDescription(result, activity.lastTaskDescription.getIcon(), activity.getConversationUIColor());
-				//activity.setTaskDescription(activity.lastTaskDescription);
 			});
 		}
 		
