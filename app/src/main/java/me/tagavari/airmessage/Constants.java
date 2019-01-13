@@ -36,6 +36,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -889,6 +890,18 @@ public class Constants {
 	
 	static String intToFormattedString(Resources resources, int value) {
 		return String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? resources.getConfiguration().getLocales().get(0) : resources.getConfiguration().locale, "%d", value);
+	}
+	
+	/*
+	cal1 < cal2 -> <0
+	cal2 > cal1 -> >0
+	 */
+	static int compareCalendarDates(Calendar cal1, Calendar cal2) {
+		if(cal1.get(Calendar.ERA) < cal2.get(Calendar.ERA)) return -1;
+		if(cal1.get(Calendar.ERA) > cal2.get(Calendar.ERA)) return 1;
+		if(cal1.get(Calendar.YEAR) < cal2.get(Calendar.YEAR)) return -1;
+		if(cal1.get(Calendar.YEAR) > cal2.get(Calendar.YEAR)) return 1;
+		return Integer.compare(cal1.get(Calendar.DAY_OF_YEAR), cal2.get(Calendar.DAY_OF_YEAR));
 	}
 	
 	/* public static abstract class BindingViewHolder extends RecyclerView.ViewHolder {

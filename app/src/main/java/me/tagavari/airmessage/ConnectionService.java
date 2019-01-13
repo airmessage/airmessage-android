@@ -12,6 +12,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -204,7 +205,7 @@ public class ConnectionService extends Service {
 			//if(!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_networkreconnect_key), false)) return;
 			
 			//Reconnecting if there is a connection available
-			if(!intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false)) reconnect();
+			if(!intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false) && getCurrentState() == stateDisconnected) reconnect();
 		}
 	};
 	

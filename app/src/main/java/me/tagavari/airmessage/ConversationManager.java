@@ -662,14 +662,14 @@ class ConversationManager {
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
-				if(thenCal.compareTo(compareCal) > 0) return DateFormat.format("EEE", thenCal).toString();
+				if(Constants.compareCalendarDates(thenCal, compareCal) > 0) return DateFormat.format("EEE", thenCal).toString();
 			}
 			
 			//Within the year (Dec 9)
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
-				if(thenCal.compareTo(compareCal) > 0) return DateFormat.format("MMM d", thenCal).toString();
+				if(Constants.compareCalendarDates(thenCal, compareCal) > 0) return DateFormat.format("MMM d", thenCal).toString();
 			}
 			
 			//Anytime (Dec 2018)
@@ -2416,14 +2416,14 @@ class ConversationManager {
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
-				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE", sentCal).toString();
+				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format("EEEE", sentCal).toString();
 			}
 			
 			//If the days are within the same year period (Dec 9)
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
-				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("MMM d", sentCal).toString();
+				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format("MMM d", sentCal).toString();
 			}
 			
 			//Different years (Dec 9, 2018)
@@ -2698,14 +2698,14 @@ class ConversationManager {
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
-				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format("EEEE", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 			}
 			
 			//If the days are within the same year period (Sunday, Dec 9)
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
-				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE, MMM d", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format("EEEE, MMM d", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 			}
 			
 			//Different years (Dec 9, 2018)
