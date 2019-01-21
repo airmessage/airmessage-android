@@ -30,6 +30,7 @@
 				android:paddingLeft="@dimen/messagebubble_padding_x"
 				android:paddingRight="@dimen/messagebubble_padding_x"
 				android:paddingTop="@dimen/messagebubble_padding_y"
+				android:textSize="16sp"
 				android:text="@string/placeholder_message"
 				android:textColor="?android:attr/textColorPrimary"
 				android:textColorLink="?android:attr/colorBackgroundFloating" />

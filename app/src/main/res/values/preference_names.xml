@@ -24,7 +24,7 @@
 	<string name="preference_appearance_location_description">Use your current location to detect sunrise and sunset times for a more accurate night mode</string>
 	<string name="preference_appearance_advancedcolor_key" translatable="false">pref_key_appearance_advancedcolor</string>
 	<string name="preference_appearance_advancedcolor_title">Rainbow chats</string>
-	<string name="preference_appearance_advancedcolor_description">Enable colour theming on a per-contact per-chat basis</string>
+	<string name="preference_appearance_advancedcolor_description">Enable color theming on a per-contact per-chat basis</string>
 	<string name="preference_appearance_showreadreceipts_key" translatable="false">pref_key_appearance_showreadreceipts</string>
 	<string name="preference_appearance_showreadreceipts_title">Show read receipts</string>
 	<string name="preference_appearance_showreadreceipts_description">Display an indicator when people have read your messages. Applies to all conversations.</string>

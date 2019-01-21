@@ -32,7 +32,8 @@
 		android:orientation="horizontal"
 		android:layout_gravity="bottom|end"
 		android:gravity="center"
-		android:layout_margin="3dp">
+		android:layout_margin="3dp"
+		android:visibility="gone">
 		<TextView
 			android:id="@+id/label_flag_video"
 			android:layout_width="wrap_content"

@@ -42,6 +42,7 @@
 				android:layout_height="wrap_content"
 				android:text="@string/placeholder_audioduration"
 				android:textColor="?android:attr/textColorPrimary"
+				android:textSize="16sp"
 				android:gravity="center_vertical" />
 			
 			<ProgressBar
@@ -81,6 +82,7 @@
 				android:textColor="?android:attr/textColorPrimary"
 				android:drawableEnd="@drawable/open"
 				android:drawablePadding="4dp"
+				android:textSize="16sp"
 				android:drawableTint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		
@@ -109,6 +111,7 @@
 				android:textColor="?android:attr/textColorPrimary"
 				android:drawableEnd="@drawable/upload"
 				android:drawablePadding="4dp"
+				android:textSize="16sp"
 				android:drawableTint="?android:attr/textColorPrimary" />
 		</LinearLayout>
 		

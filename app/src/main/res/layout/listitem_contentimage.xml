@@ -72,6 +72,7 @@
 				android:drawablePadding="4dp"
 				android:drawableTint="?android:attr/textColorPrimary"
 				android:gravity="center_vertical"
+				android:textSize="16sp"
 				android:text="@string/part_content_image"
 				android:textColor="?android:attr/textColorPrimary" />
 		</LinearLayout>
@@ -100,6 +101,7 @@
 				android:drawablePadding="4dp"
 				android:drawableTint="?android:attr/textColorPrimary"
 				android:gravity="center_vertical"
+				android:textSize="16sp"
 				android:text="@string/part_content_image"
 				android:textColor="?android:attr/textColorPrimary" />
 		</LinearLayout>
