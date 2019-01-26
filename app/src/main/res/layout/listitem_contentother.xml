@@ -55,7 +55,7 @@
 			android:backgroundTint="@color/colorMessageOutgoing"
 			android:orientation="horizontal"
 			android:gravity="center_vertical"
-			android:visibility="visible">
+			android:visibility="gone">
 			<TextView
 				android:id="@+id/content_label"
 				android:layout_width="0dp"
@@ -69,7 +69,7 @@
 				android:gravity="center_vertical"
 				android:textColor="?android:attr/textColorPrimary"
 				android:textSize="16sp"
-				android:drawableEnd="@drawable/open"
+				android:drawableEnd="@drawable/open_rounded"
 				android:drawablePadding="4dp"
 				android:drawableTint="?android:attr/textColorPrimary" />
 		</LinearLayout>
@@ -98,7 +98,7 @@
 				android:gravity="center_vertical"
 				android:textColor="?android:attr/textColorPrimary"
 				android:textSize="16sp"
-				android:drawableEnd="@drawable/upload"
+				android:drawableEnd="@drawable/upload_rounded"
 				android:drawablePadding="4dp"
 				android:drawableTint="?android:attr/textColorPrimary" />
 		</LinearLayout>

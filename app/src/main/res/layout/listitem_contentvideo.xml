@@ -54,7 +54,7 @@
 				app:layout_constraintRight_toRightOf="parent"
 				app:layout_constraintTop_toTopOf="parent"
 				app:layout_constraintBottom_toBottomOf="parent"
-				android:src="@drawable/play_circle" />
+				android:src="@drawable/play_circle_rounded" />
 		</androidx.constraintlayout.widget.ConstraintLayout>
 		
 		<LinearLayout
@@ -81,7 +81,7 @@
 				android:text="@string/part_content_video"
 				android:textColor="?android:attr/textColorPrimary"
 				android:textSize="16sp"
-				android:drawableEnd="@drawable/open"
+				android:drawableEnd="@drawable/open_rounded"
 				android:drawablePadding="4dp"
 				android:drawableTint="?android:attr/textColorPrimary" />
 		</LinearLayout>
@@ -110,7 +110,7 @@
 				android:gravity="center_vertical"
 				android:textColor="?android:attr/textColorPrimary"
 				android:textSize="16sp"
-				android:drawableEnd="@drawable/upload"
+				android:drawableEnd="@drawable/upload_rounded"
 				android:drawablePadding="4dp"
 				android:drawableTint="?android:attr/textColorPrimary" />
 		</LinearLayout>

@@ -32,7 +32,7 @@
 				android:id="@+id/content_icon"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:src="@drawable/play_outlined"
+				android:src="@drawable/play_rounded"
 				android:tint="?android:attr/textColorPrimary"
 				android:layout_marginEnd="4dp"/>
 			
@@ -50,11 +50,12 @@
 				style="?android:attr/progressBarStyleHorizontal"
 				android:theme="@style/Theme.AppCompat.Light"
 				android:layout_width="80dp"
-				android:layout_height="wrap_content"
+				android:layout_height="5dp"
 				android:width="0dip"
 				android:layout_marginStart="8dp"
 				android:indeterminate="false"
-				android:max="100" />
+				android:max="100"
+				android:progressDrawable="@drawable/progressbar_rounded" />
 		</LinearLayout>
 		
 		<LinearLayout
@@ -80,7 +81,7 @@
 				android:gravity="center_vertical"
 				android:text="@string/part_content_audio"
 				android:textColor="?android:attr/textColorPrimary"
-				android:drawableEnd="@drawable/open"
+				android:drawableEnd="@drawable/open_rounded"
 				android:drawablePadding="4dp"
 				android:textSize="16sp"
 				android:drawableTint="?android:attr/textColorPrimary" />
@@ -109,7 +110,7 @@
 				android:text="@string/part_content_audio"
 				android:gravity="center_vertical"
 				android:textColor="?android:attr/textColorPrimary"
-				android:drawableEnd="@drawable/upload"
+				android:drawableEnd="@drawable/upload_rounded"
 				android:drawablePadding="4dp"
 				android:textSize="16sp"
 				android:drawableTint="?android:attr/textColorPrimary" />

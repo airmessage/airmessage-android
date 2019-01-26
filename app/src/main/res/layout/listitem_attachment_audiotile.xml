@@ -25,6 +25,6 @@
 		android:id="@+id/image_play"
 		android:layout_width="48dp"
 		android:layout_height="48dp"
-		android:src="@drawable/play"
+		android:src="@drawable/play_rounded"
 		android:layout_gravity="center" />
 </FrameLayout>

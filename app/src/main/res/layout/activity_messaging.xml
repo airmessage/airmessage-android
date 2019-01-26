@@ -219,7 +219,7 @@
 					android:contentDescription="@string/action_send"
 					app:layout_constraintBottom_toBottomOf="parent"
 					app:layout_constraintEnd_toEndOf="parent"
-					android:src="@drawable/push"
+					android:src="@drawable/push_rounded"
 					android:tint="?android:attr/colorControlNormal"
 					android:tooltipText="@string/action_send" />
 			</androidx.constraintlayout.widget.ConstraintLayout>

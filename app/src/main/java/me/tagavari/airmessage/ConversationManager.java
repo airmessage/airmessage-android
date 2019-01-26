@@ -4540,9 +4540,10 @@ class ConversationManager {
 			viewHolder.labelDownloadSize.setTextColor(cslSecondaryText);
 			viewHolder.labelDownloadType.setTextColor(cslText);
 			viewHolder.imageDownload.setImageTintList(cslText);
-			viewHolder.progressDownload.setProgressTintList(cslAccent);
-			viewHolder.progressDownload.setIndeterminateTintList(cslAccent);
-			viewHolder.progressDownload.setProgressBackgroundTintList(cslAccent);
+			viewHolder.progressDownload.setProgressTintList(cslText);
+			//viewHolder.progressDownload.setSecondaryProgressTintList(cslAccent);
+			viewHolder.progressDownload.setIndeterminateTintList(ColorStateList.valueOf(ColorHelper.modifyColorRaw(cslBackground.getDefaultColor(), 0.9F)));
+			viewHolder.progressDownload.setProgressBackgroundTintList(ColorStateList.valueOf(ColorHelper.modifyColorRaw(cslBackground.getDefaultColor(), 0.9F)));
 			
 			viewHolder.groupProcessing.setBackgroundTintList(cslBackground);
 			viewHolder.labelProcessing.setTextColor(cslText);
@@ -5186,8 +5187,8 @@ class ConversationManager {
 		static final String MIME_PREFIX = "audio";
 		static final int RESOURCE_NAME = R.string.part_content_audio;
 		
-		private static final int resDrawablePlay = R.drawable.play;
-		private static final int resDrawablePause = R.drawable.pause;
+		private static final int resDrawablePlay = R.drawable.play_rounded;
+		private static final int resDrawablePause = R.drawable.pause_rounded;
 		
 		private static final byte fileStateIdle = 0;
 		private static final byte fileStateLoading = 1;
@@ -5253,8 +5254,9 @@ class ConversationManager {
 			viewHolder.groupContent.setBackgroundTintList(cslBackground);
 			viewHolder.contentIcon.setImageTintList(cslText);
 			viewHolder.contentLabel.setTextColor(cslText);
-			viewHolder.contentProgress.setBackgroundTintList(cslText); //cslBackground
 			viewHolder.contentProgress.setProgressTintList(cslText);
+			//viewHolder.contentProgress.setBackgroundTintList(cslText); //cslBackground
+			viewHolder.contentProgress.setProgressBackgroundTintList(ColorStateList.valueOf(ColorHelper.modifyColorRaw(cslBackground.getDefaultColor(), 0.9F))); //cslBackground //TODO possibly use less lazy and hacky method
 		}
 		
 		@Override

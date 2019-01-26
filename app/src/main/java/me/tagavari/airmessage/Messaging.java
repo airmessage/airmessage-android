@@ -1438,6 +1438,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the panel as open
 		viewModel.isDetailsPanelOpen = true;
 		
+		//Closing the keyboard
+		UIUtil.hideKeyboard(this);
+		
 		//Inflating the view
 		ViewStub viewStub = findViewById(R.id.viewstub_messaginginfo);
 		if(viewStub != null) {
