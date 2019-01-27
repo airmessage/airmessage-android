@@ -66,12 +66,12 @@
 	<color name="drawColor_purple">#9C27B0</color>
 	<color name="imageDrawTextBarBG">#80000000</color>
 	
-	<color name="tapback_red">#F44336</color>
-	<color name="tapback_yellow">#FFEB3B</color>
-	<color name="tapback_orange">#FF9800</color>
-	<color name="tapback_pink">#E91E63</color>
-	<color name="tapback_blue">#2196F3</color>
-	<color name="tapback_purple">#9C27B0</color>
+	<color name="tapback_love">#F50057</color>
+	<color name="tapback_like">#FFEA00</color>
+	<color name="tapback_dislike">#FF9100</color>
+	<color name="tapback_laugh">#00E676</color>
+	<color name="tapback_exclamation">#2979FF</color>
+	<color name="tapback_question">#D500F9</color>
 	
 	<color name="tile_red_bg">#FFCDD2</color>
 	<color name="tile_red_fg">#D32F2F</color>

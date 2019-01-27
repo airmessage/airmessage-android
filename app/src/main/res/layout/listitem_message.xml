@@ -60,10 +60,13 @@
 		android:maxLines="1"
 		android:text="@string/placeholder_sender"
 		android:textColor="?android:textColorSecondary"
-		android:layout_marginStart="56dp"
-		app:layout_constraintStart_toStartOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/timedivider" />
-	
+		android:textSize="12sp"
+		android:layout_marginStart="11.5dp"
+		android:paddingBottom="2.5dp"
+		app:layout_constraintStart_toStartOf="@id/messagepart_container"
+		app:layout_constraintTop_toBottomOf="@id/timedivider"
+		app:layout_constraintBottom_toTopOf="@id/messagepart_container" />
+
 	<!-- Message part container -->
 	<LinearLayout
 		android:id="@+id/messagepart_container"

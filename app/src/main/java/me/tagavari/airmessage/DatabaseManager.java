@@ -1645,7 +1645,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		if(existingConversation != null) return existingConversation;
 		
 		//Picking a conversation color
-		int conversationColor = ConversationManager.ConversationInfo.getRandomColor();
+		int conversationColor = ConversationManager.ConversationInfo.getRandomConversationColor();
 		
 		//Setting the content values
 		ContentValues contentValues = new ContentValues();

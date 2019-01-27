@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.PaintDrawable;
@@ -1572,7 +1573,7 @@ class ConversationManager {
 			return array;
 		}
 		
-		static int getRandomColor() {
+		static int getRandomConversationColor() {
 			return standardUserColors[Constants.getRandom().nextInt(standardUserColors.length)];
 		}
 		
@@ -4037,8 +4038,10 @@ class ConversationManager {
 			} else {
 				if(Preferences.checkPreferenceAdvancedColor(context)) {
 					MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
-					backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-					textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+					int targetColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
+					//textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+					textColor = ColorHelper.modifyColorRaw(targetColor, Constants.isNightMode(context.getResources()) ? 1.3F : 0.75F);
+					backgroundColor = Color.argb(80, Color.red(targetColor), Color.green(targetColor), Color.blue(targetColor));
 				} else {
 					backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
 					textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
@@ -5864,17 +5867,17 @@ class ConversationManager {
 		static TapbackDisplay getTapbackDisplay(int code, Context context) {
 			switch(code) {
 				case tapbackLove:
-					return new TapbackDisplay(R.drawable.heart, context.getResources().getColor(R.color.tapback_red, null));
+					return new TapbackDisplay(R.drawable.love_rounded, context.getResources().getColor(R.color.tapback_love, null));
 				case tapbackLike:
-					return new TapbackDisplay(R.drawable.like, context.getResources().getColor(R.color.tapback_yellow, null));
+					return new TapbackDisplay(R.drawable.like_rounded, context.getResources().getColor(R.color.tapback_like, null));
 				case tapbackDislike:
-					return new TapbackDisplay(R.drawable.dislike, context.getResources().getColor(R.color.tapback_orange, null));
+					return new TapbackDisplay(R.drawable.dislike_rounded, context.getResources().getColor(R.color.tapback_dislike, null));
 				case tapbackLaugh:
-					return new TapbackDisplay(R.drawable.excited, context.getResources().getColor(R.color.tapback_pink, null));
+					return new TapbackDisplay(R.drawable.excited_rounded, context.getResources().getColor(R.color.tapback_laugh, null));
 				case tapbackEmphasis:
-					return new TapbackDisplay(R.drawable.exclamation, context.getResources().getColor(R.color.tapback_purple, null));
+					return new TapbackDisplay(R.drawable.exclamation_rounded, context.getResources().getColor(R.color.tapback_exclamation, null));
 				case tapbackQuestion:
-					return new TapbackDisplay(R.drawable.question, context.getResources().getColor(R.color.tapback_blue, null));
+					return new TapbackDisplay(R.drawable.question_rounded, context.getResources().getColor(R.color.tapback_question, null));
 				default:
 					return null;
 			}
