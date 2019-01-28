@@ -5859,8 +5859,8 @@ class ConversationManager {
 					return tapbackEmphasis;
 				case SharedValues.TapbackModifierInfo.tapbackBaseAdd + SharedValues.TapbackModifierInfo.tapbackQuestion:
 					return tapbackQuestion;
-					default:
-						return -1;
+				default:
+					return -1;
 			}
 		}
 		

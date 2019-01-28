@@ -4444,6 +4444,7 @@ public class Messaging extends AppCompatCompositeActivity {
 								//Getting the file information
 								File file = new File(cursor.getString(indexData));
 								String fileType = cursor.getString(indexType);
+								if(fileType == null) fileType = "application/octet-stream";
 								String fileName = file.getName();
 								long fileSize = cursor.getLong(indexSize);
 								long modificationDate = cursor.getLong(indexModificationDate);

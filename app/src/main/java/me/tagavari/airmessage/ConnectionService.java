@@ -199,13 +199,24 @@ public class ConnectionService extends Service {
 		}
 	};
 	private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
+		private long lastDisconnectionTime = -1;
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Returning if automatic reconnects are disabled
 			//if(!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_networkreconnect_key), false)) return;
 			
-			//Reconnecting if there is a connection available
-			if(!intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false) && getCurrentState() == stateDisconnected) reconnect();
+			//Getting the current active network
+			NetworkInfo activeNetwork = intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK_INFO);
+			//NetworkInfo activeNetwork = ((ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
+			//if(activeNetwork == null) return;
+			
+			if(activeNetwork.isConnected()) {
+				//Reconnecting if it is a network swap or the client is disconnected
+				if((lastDisconnectionTime != -1 && lastDisconnectionTime >= SystemClock.elapsedRealtime() - 100L) || getCurrentState() == stateDisconnected) reconnect();
+			} else {
+				//Marking the time (there is nothing we can do here - the network is disconnected)
+				lastDisconnectionTime = SystemClock.elapsedRealtime();
+			}
 		}
 	};
 	
