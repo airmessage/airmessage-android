@@ -23,8 +23,11 @@ import android.graphics.Outline;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.media.SoundPool;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -737,8 +740,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				new QueueFileAsyncTask(this).execute(viewModel.targetFileRecording);
 		});
 		viewModel.recordingDuration.observe(this, value -> {
-			if(recordingTimeLabel != null)
-				recordingTimeLabel.setText(DateUtils.formatElapsedTime(value));
+			if(recordingTimeLabel != null) recordingTimeLabel.setText(DateUtils.formatElapsedTime(value));
 		});
 		viewModel.progressiveLoadInProgress.observe(this, value -> {
 			if(value) onProgressiveLoadStart();
@@ -2438,6 +2440,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	void startRecording(float touchX, float touchY) {
+		//Playing a sound
+		viewModel.playSound(ActivityViewModel.soundRecordingStart);
+		
 		//Telling the view model to start recording
 		boolean result = viewModel.startRecording(this);
 		if(!result) return;
@@ -2477,6 +2482,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		});
 		animator.start();
+		
+		//Resetting the time label
+		recordingTimeLabel.setText(DateUtils.formatElapsedTime(0));
 	}
 	
 	private void concealRecordingView() {
@@ -4018,6 +4026,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final byte soundMessageIncoming = 0;
 		static final byte soundMessageOutgoing = 1;
 		static final byte soundMessageError = 2;
+		static final byte soundRecordingStart = 3;
+		static final byte soundRecordingEnd = 4;
 		
 		static final int attachmentTypeGallery = 0;
 		//static final int attachmentTypeDocument = 1;
@@ -4052,13 +4062,21 @@ public class Messaging extends AppCompatCompositeActivity {
 		File targetFileRecording = null;
 		
 		//Creating the sound values
-		private MediaPlayer messageIncomingMedia = MediaPlayer.create(getApplication(), R.raw.message_received);
-		private MediaPlayer messageOutgoingMedia = MediaPlayer.create(getApplication(), R.raw.message_sent);
-		private MediaPlayer messageErrorMedia = MediaPlayer.create(getApplication(), R.raw.message_error);
+		private static final float soundVolume = 0.15F;
+		private SoundPool soundPool = new SoundPool.Builder().setAudioAttributes(new AudioAttributes.Builder()
+				.setLegacyStreamType(AudioManager.STREAM_SYSTEM)
+				.build())
+				.setMaxStreams(2)
+				.build();
+		private int soundIDMessageIncoming = soundPool.load(getApplication(), R.raw.message_received, 1);
+		private int soundIDMessageOutgoing = soundPool.load(getApplication(), R.raw.message_sent, 1);
+		private int soundIDMessageError = soundPool.load(getApplication(), R.raw.message_error, 1);
+		private int soundIDRecordingStart = soundPool.load(getApplication(), R.raw.recording_start, 1);
+		private int soundIDRecordingEnd = soundPool.load(getApplication(), R.raw.recording_end, 1);
 		
 		final AudioPlaybackManager audioPlaybackManager = new AudioPlaybackManager();
 		
-		MediaRecorder mediaRecorder = null;
+		private MediaRecorder mediaRecorder = null;
 		private final MutableLiveData<Boolean> isRecording = new MutableLiveData<>();
 		private final MutableLiveData<Integer> recordingDuration = new MutableLiveData<>();
 		private final Handler recordingTimerHandler = new Handler(Looper.getMainLooper());
@@ -4071,6 +4089,14 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Scheduling the next run
 				recordingTimerHandler.postDelayed(this, 1000);
 			}
+		};
+		private final Handler mediaRecorderHandler = new Handler();
+		private final Runnable mediaRecorderRunnable = () -> {
+			//Starting the recording timer
+			startRecordingTimer();
+			
+			//Starting the media recorder
+			mediaRecorder.start();
 		};
 		
 		ActivityViewModel(Application application, long conversationID) {
@@ -4089,9 +4115,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		@Override
 		protected void onCleared() {
 			//Releasing the sounds
-			messageIncomingMedia.release();
-			messageOutgoingMedia.release();
-			messageErrorMedia.release();
+			soundPool.release();
 			
 			//Cleaning up the media recorder
 			if(isRecording()) stopRecording(true, true);
@@ -4287,13 +4311,19 @@ public class Messaging extends AppCompatCompositeActivity {
 		void playSound(byte id) {
 			switch(id) {
 				case soundMessageIncoming:
-					messageIncomingMedia.start();
+					soundPool.play(soundIDMessageIncoming, soundVolume, soundVolume, 0, 0, 1);
 					break;
 				case soundMessageOutgoing:
-					messageOutgoingMedia.start();
+					soundPool.play(soundIDMessageOutgoing, soundVolume, soundVolume, 0, 0, 1);
 					break;
 				case soundMessageError:
-					messageErrorMedia.start();
+					soundPool.play(soundIDMessageError, soundVolume, soundVolume, 1, 0, 1);
+					break;
+				case soundRecordingStart:
+					soundPool.play(soundIDRecordingStart, soundVolume, soundVolume, 1, 0, 1);
+					break;
+				case soundRecordingEnd:
+					soundPool.play(soundIDRecordingEnd, soundVolume, soundVolume, 1, 0, 1);
 					break;
 				default:
 					throw new IllegalArgumentException("Unknown sound ID " + id);
@@ -4344,14 +4374,11 @@ public class Messaging extends AppCompatCompositeActivity {
 				return false;
 			}
 			
-			//Starting the recording timer
-			startRecordingTimer();
-			
-			//Starting the media recorder
-			mediaRecorder.start();
-			
 			//Updating the state
 			isRecording.setValue(true);
+			
+			//Queueing a delay for the audio recorder
+			mediaRecorderHandler.postDelayed(mediaRecorderRunnable, 70);
 			
 			//Returning true
 			return true;
@@ -4367,6 +4394,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		private boolean stopRecording(boolean cleanup, boolean discard) {
 			//Returning if the input state is not recording
 			if(!isRecording()) return true;
+			
+			//Removing the timer callback
+			mediaRecorderHandler.removeCallbacks(mediaRecorderRunnable);
 			
 			try {
 				//Stopping the timer
@@ -4407,6 +4437,9 @@ public class Messaging extends AppCompatCompositeActivity {
 					return false;
 				}
 				
+				//Playing a sound
+				playSound(soundRecordingEnd);
+				
 				//Returning true
 				return true;
 			} finally {
@@ -4442,6 +4475,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			mediaRecorder.setOnInfoListener((recorder, what, extra) -> {
 				if(what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED ||
 				   what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
+					//Stopping recording
 					stopRecording(false, false);
 				}
 			});
