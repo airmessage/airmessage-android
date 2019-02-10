@@ -8,6 +8,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
+import android.net.Uri;
 import android.os.Build;
 import android.preference.PreferenceManager;
 
@@ -85,6 +87,11 @@ public class MainApplication extends Application {
 				messageChannel.enableVibration(true);
 				messageChannel.setShowBadge(true);
 				messageChannel.enableLights(true);
+				messageChannel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.notification_ding),
+						new AudioAttributes.Builder()
+						.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+						.setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+						.build());
 				//messageChannel.setGroup(notificationGroupMessage);
 				notificationManager.createNotificationChannel(messageChannel);
 			}

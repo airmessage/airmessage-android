@@ -32,6 +32,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcelable;
+import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -1159,7 +1160,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Resolving the heights
 		int requestedPanelHeight = getResources().getDimensionPixelSize(R.dimen.contentpanel_height);
-		int windowThreshold = getWindow().getDecorView().getHeight() - Constants.dpToPx(contentPanelMinAllowanceDP);
+		int windowThreshold = Constants.getWindowHeight(this) - Constants.dpToPx(contentPanelMinAllowanceDP);
 		
 		//Limiting the panel height
 		int targetHeight = Math.min(requestedPanelHeight, windowThreshold);
@@ -1694,15 +1695,19 @@ public class Messaging extends AppCompatCompositeActivity {
 		MainApplication.getInstance().getUserCacheHelper().getUserInfo(this, member.getName(), new UserCacheHelper.UserFetchResult(memberEntry) {
 			@Override
 			void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
-				//Returning if the user info is invalid
-				if(userInfo == null) return;
-				
 				//Getting the view
 				View memberEntry = viewReference.get();
 				if(memberEntry == null) return;
 				
-				//Setting the tag
-				memberEntry.setTag(userInfo.getContactLookupUri());
+				//Checking if the user info is invalid
+				if(userInfo == null) {
+					//Setting the tag (for a new contact request)
+					memberEntry.setTag(new ContactAccessInfo(member.getName()));
+					return;
+				}
+				
+				//Setting the tag (for a contact view link)
+				memberEntry.setTag(new ContactAccessInfo(userInfo.getContactLookupUri()));
 				
 				//Setting the member's name
 				((TextView) memberEntry.findViewById(R.id.label_member)).setText(userInfo.getContactName());
@@ -1729,10 +1734,11 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(view.getTag() == null) return;
 			
 			//Opening the user's contact profile
-			Intent intent = new Intent(Intent.ACTION_VIEW);
+			/* Intent intent = new Intent(Intent.ACTION_VIEW);
 			intent.setData((Uri) view.getTag());
 			//intent.setData(Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(view.getTag())));
-			view.getContext().startActivity(intent);
+			view.getContext().startActivity(intent); */
+			((ContactAccessInfo) view.getTag()).openContact(view.getContext());
 		});
 		
 		//Adding the view
@@ -1752,6 +1758,41 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Closing the dialog
 		if(currentColorPickerDialog != null && currentColorPickerDialogMember == member)
 			currentColorPickerDialog.dismiss();
+	}
+	
+	private static class ContactAccessInfo {
+		private final Uri accessUri;
+		private final String address;
+		
+		ContactAccessInfo(Uri accessUri) {
+			this.accessUri = accessUri;
+			address = null;
+		}
+		
+		ContactAccessInfo(String address) {
+			accessUri = null;
+			this.address = address;
+		}
+		
+		boolean openContact(Context context) {
+			if(accessUri != null) {
+				Intent intent = new Intent(Intent.ACTION_VIEW);
+				intent.setData(accessUri);
+				context.startActivity(intent);
+				return true;
+			} else if(address != null) {
+				Intent intent = new Intent(Intent.ACTION_INSERT_OR_EDIT);
+				intent.setType(ContactsContract.Contacts.CONTENT_ITEM_TYPE);
+				
+				if(Constants.validateEmail(address)) intent.putExtra(ContactsContract.Intents.Insert.EMAIL, address);
+				else if(Constants.validatePhoneNumber(address)) intent.putExtra(ContactsContract.Intents.Insert.PHONE, address);
+				else return false;
+				
+				context.startActivity(intent);
+			}
+			
+			return false;
+		}
 	}
 	
 	@Override
@@ -3974,6 +4015,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final byte attachmentsStateLoaded = 2;
 		static final byte attachmentsStateFailed = 3;
 		
+		static final byte soundMessageIncoming = 0;
+		static final byte soundMessageOutgoing = 1;
+		static final byte soundMessageError = 2;
+		
 		static final int attachmentTypeGallery = 0;
 		//static final int attachmentTypeDocument = 1;
 		private static final int attachmentsTileCount = 24;
@@ -4005,6 +4050,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the attachment values
 		File targetFileIntent = null;
 		File targetFileRecording = null;
+		
+		//Creating the sound values
+		private MediaPlayer messageIncomingMedia = MediaPlayer.create(getApplication(), R.raw.message_received);
+		private MediaPlayer messageOutgoingMedia = MediaPlayer.create(getApplication(), R.raw.message_sent);
+		private MediaPlayer messageErrorMedia = MediaPlayer.create(getApplication(), R.raw.message_error);
 		
 		final AudioPlaybackManager audioPlaybackManager = new AudioPlaybackManager();
 		
@@ -4038,6 +4088,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		@Override
 		protected void onCleared() {
+			//Releasing the sounds
+			messageIncomingMedia.release();
+			messageOutgoingMedia.release();
+			messageErrorMedia.release();
+			
 			//Cleaning up the media recorder
 			if(isRecording()) stopRecording(true, true);
 			if(mediaRecorder != null) mediaRecorder.release();
@@ -4227,6 +4282,22 @@ public class Messaging extends AppCompatCompositeActivity {
 		boolean isProgressiveLoadInProgress() {
 			Boolean value = progressiveLoadInProgress.getValue();
 			return value == null ? false : value;
+		}
+		
+		void playSound(byte id) {
+			switch(id) {
+				case soundMessageIncoming:
+					messageIncomingMedia.start();
+					break;
+				case soundMessageOutgoing:
+					messageOutgoingMedia.start();
+					break;
+				case soundMessageError:
+					messageErrorMedia.start();
+					break;
+				default:
+					throw new IllegalArgumentException("Unknown sound ID " + id);
+			}
 		}
 		
 		/* int getRecordingDuration() {
@@ -4952,6 +5023,57 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		@Override
+		void itemsAdded(List<ConversationManager.ConversationItem> list) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Returning if the activity is not in the foreground
+			if(!activity.hasWindowFocus()) return;
+			
+			boolean messageIncoming = false;
+			boolean messageOutgoing = false;
+			
+			for(ConversationManager.ConversationItem item : list) {
+				//Ignoring items other than messages
+				if(!(item instanceof ConversationManager.MessageInfo)) continue;
+				
+				//Tracking the message types
+				ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) item;
+				if(messageInfo.isOutgoing()) messageOutgoing = true;
+				else messageIncoming = true;
+				if(messageIncoming && messageOutgoing) break;
+			}
+			
+			//Playing sounds
+			if(messageIncoming) activity.viewModel.playSound(ActivityViewModel.soundMessageIncoming);
+			if(messageOutgoing) activity.viewModel.playSound(ActivityViewModel.soundMessageOutgoing);
+		}
+		
+		@Override
+		void tapbackAdded(ConversationManager.TapbackInfo item) {
+		
+		}
+		
+		@Override
+		void stickerAdded(ConversationManager.StickerInfo item) {
+		
+		}
+		
+		@Override
+		void messageSendFailed(ConversationManager.MessageInfo message) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Returning if the activity is not in the foreground
+			if(!activity.hasWindowFocus()) return;
+			
+			//Playing a sound
+			activity.viewModel.playSound(ActivityViewModel.soundMessageError);
+		}
+		
+		@Override
 		AudioPlaybackManager getAudioPlaybackManager() {
 			//Getting the activity
 			Messaging activity = activityReference.get();
@@ -5064,8 +5186,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				colorView.setColorFilter(standardColor);
 				
 				final boolean isSelectedColor = selectedColor == standardColor;
-				if(isSelectedColor)
-					item.findViewById(R.id.colorpickeritem_selection).setVisibility(View.VISIBLE);
+				if(isSelectedColor) item.findViewById(R.id.colorpickeritem_selection).setVisibility(View.VISIBLE);
 				
 				//Setting the click listener
 				colorView.setOnClickListener(view -> {

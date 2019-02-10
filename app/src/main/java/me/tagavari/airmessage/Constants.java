@@ -622,14 +622,15 @@ public class Constants {
 	}
 	
 	static boolean validateAddress(String address) {
-		//Returning true if the address is an E-Mail address
-		if(address.matches(emailRegEx)) return true;
-		
-		//Returning true if the address is a telephone number
-		if(address.replaceAll("[^\\d+]", "").length() >= 3 && address.matches("^\\+?[ \\d().-]+$")) return true;
-		
-		//Returning false
-		return false;
+		return validateEmail(address) || validatePhoneNumber(address);
+	}
+	
+	static boolean validateEmail(String address) {
+		return address.matches(emailRegEx);
+	}
+	
+	static boolean validatePhoneNumber(String address) {
+		return address.replaceAll("[^\\d+]", "").length() >= 3 && address.matches("^\\+?[ \\d().-]+$");
 	}
 	
 	static <K, V extends Comparable<? super V>> Map<K, V> sortMapByValueDesc(Map<K, V> map) {
@@ -929,6 +930,10 @@ public class Constants {
 		String[] twoComponents = two.split("/");
 		if(oneComponents[1].equals("*") || twoComponents[1].equals("*")) return oneComponents[0].equals(twoComponents[0]);
 		return one.equals(two);
+	}
+	
+	static int getWindowHeight(Activity activity) {
+		return activity.getWindow().getDecorView().getHeight();
 	}
 	
 	static void debugIntent(Intent intent, String tag) {

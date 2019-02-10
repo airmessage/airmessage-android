@@ -106,8 +106,8 @@
 	<string name="message_setup_connect_connectionerror">La connexion a échoué</string>
 	<string name="message_setup_connect_password">Mot de passe</string>
 	
-	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages?</string>
-	<string name="message_setup_sync_download_description">Cette option remplacera tous les messages actuellement stockés sur l\'appareil. Si vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil.</string>
+	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages</string>
+	<string name="message_setup_sync_download_description">Copiez vos messages précédents de votre ordinateur et reprenez là où vous l\'avez laissé\n\nSi vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil</string>
 	<string name="action_downloadmessages">Télécharger les messages</string>
 	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages</string>
 	<string name="action_deletemessages">Supprimer les messages</string>

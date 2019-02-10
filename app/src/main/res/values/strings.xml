@@ -156,11 +156,11 @@
 	<string name="message_setup_connect_serverguidelink">Take a look at the install guide</string>
 	<string name="message_setup_connect_connectionerror">Connection failed</string>
 	<string name="message_setup_connect_password">Password</string>
-	<string name="message_setup_sync_download_title">Download message history?</string>
-	<string name="message_setup_sync_download_description">This will replace any messages currently stored on the device. If you choose not to, only new messages will appear on this device.</string>
+	<string name="message_setup_sync_download_title">Download message history</string>
+	<string name="message_setup_sync_download_description">Copy your previous messages from your computer and continue right where you left off\n\nIf you choose not to, only new messages will appear on this device</string>
 	<string name="message_setup_sync_delete_description">Alternatively, you can start fresh and simply clear away your old messages</string>
 	<string name="message_setup_sync_warning_title">Skip clearing messages?</string>
-	<string name="message_setup_sync_description">If you are connecting to a new server or Apple account and you don\'t clear your messages, your old conversations may be incorrectly modified.</string>
+	<string name="message_setup_sync_description">If you are connecting to a new server or Apple account and you don\'t clear your messages, your old conversations may be incorrectly modified</string>
 
 	<string name="message_messageeffect_invisibleink">Message sent with Invisible Ink</string>
 

@@ -31,8 +31,8 @@
 	
 	<color name="colorArchived">#607D8B</color>
 	<color name="colorArchivedDark">#455A64</color>
-	
-	<color name="colorError">#F44336</color>
+
+	<color name="colorError">#FF5252</color>
 	
 	<color name="colorContextualAppBar">#212121</color>
 	<color name="colorContextualAppBarDark">#000000</color>

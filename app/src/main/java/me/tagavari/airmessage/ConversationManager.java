@@ -1094,7 +1094,7 @@ class ConversationManager {
 			List<ConversationItem> updateList = new ArrayList<>(list);
 			List<ConversationItem> sortQueue = new ArrayList<>();
 			List<ConversationItemMoveRecord> movedList = new ArrayList<>();
-			List<ConversationItem> newMessages = new ArrayList<>(); //New messages that aren't replacing ghost messages
+			List<ConversationItem> newItems = new ArrayList<>(); //New items that aren't replacing ghost messages
 			//ConversationItem latestNewMessage = null; //Most recent message that isn't replacing a ghost message
 			
 			//Iterating over the conversation items
@@ -1251,7 +1251,7 @@ class ConversationManager {
 				//Checking if a message could not be replaced
 				if(!messageReplaced) {
 					//Marking the item as a new item
-					newMessages.add(conversationItem);
+					newItems.add(conversationItem);
 					
 					//Inserting the item
 					//int index = insertConversationItem(conversationItem, context, false);
@@ -1284,7 +1284,7 @@ class ConversationManager {
 			}
 			
 			//Inserting the new items
-			for(ConversationItem item : newMessages) insertConversationItem(item, context, false);
+			for(ConversationItem item : newItems) insertConversationItem(item, context, false);
 			
 			//Updating the conversation items' relations
 			addConversationItemRelations(this, conversationItems, updateList, MainApplication.getInstance(), true);
@@ -1294,6 +1294,9 @@ class ConversationManager {
 			
 			//Updating the adapter
 			if(updater != null) {
+				//Telling the updater
+				updater.itemsAdded(newItems);
+				
 				//Updating the moved messages
 				for(ConversationItemMoveRecord record : movedList) {
 					int newIndex = conversationItems.indexOf(record.item);
@@ -1301,10 +1304,10 @@ class ConversationManager {
 				}
 				
 				//Updating the new messages
-				if(!newMessages.isEmpty()) {
-					int[] indices = new int[newMessages.size()];
+				if(!newItems.isEmpty()) {
+					int[] indices = new int[newItems.size()];
 					int incomingMessagesCount = 0;
-					for(ConversationItem newItem : newMessages) {
+					for(ConversationItem newItem : newItems) {
 						//Finding the item index
 						int itemIndex = conversationItems.indexOf(newItem);
 						
@@ -1433,9 +1436,10 @@ class ConversationManager {
 			//Updating the last item
 			trySetLastItemUpdate(context, message, false);
 			
-			//Updating the adapter
+			//Telling the updater
 			ActivityCallbacks updater = getActivityCallbacks();
 			if(updater != null) {
+				updater.itemsAdded(Collections.singletonList(message));
 				updater.listUpdateInserted(conversationItems.size() - 1);
 				updater.listScrollToBottom();
 			}
@@ -1502,6 +1506,11 @@ class ConversationManager {
 			abstract void chatUpdateUnreadCount();
 			abstract void chatUpdateMemberAdded(MemberInfo member, int index);
 			abstract void chatUpdateMemberRemoved(MemberInfo member, int index);
+			
+			abstract void itemsAdded(List<ConversationManager.ConversationItem> list);
+			abstract void tapbackAdded(TapbackInfo item);
+			abstract void stickerAdded(StickerInfo item);
+			abstract void messageSendFailed(MessageInfo message);
 			
 			abstract Messaging.AudioPlaybackManager getAudioPlaybackManager();
 			
@@ -2447,6 +2456,10 @@ class ConversationManager {
 					
 					//Updating the message's database entry
 					new UpdateErrorCodeTask(getLocalID(), errorCode).execute();
+					
+					//Updating the adapter
+					ConversationInfo.ActivityCallbacks updater = getConversationInfo().getActivityCallbacks();
+					if(updater != null) updater.messageSendFailed(MessageInfo.this);
 					
 					//Getting the context
 					//Context context = contextReference.get();

@@ -16,6 +16,7 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -185,6 +186,22 @@ public class ServerSetup extends AppCompatActivity {
 			ConnectionService.hostname = viewModel.newHostname;
 			ConnectionService.password = viewModel.newPassword;
 		}
+		
+		//Configuring the header images
+		getWindow().getDecorView().post(() -> {
+			float windowHeight = Constants.pxToDp(Constants.getWindowHeight(this));
+			ImageView imageHeader = findViewById(R.id.image_header);
+			if(windowHeight < 577) {
+				//Short banner
+				imageHeader.setImageResource(R.drawable.onboarding_download_short);
+			} else if(windowHeight < 772) {
+				//Medium banner
+				imageHeader.setImageResource(R.drawable.onboarding_download_medium);
+			} else {
+				//Tall banner
+				imageHeader.setImageResource(R.drawable.onboarding_download_tall);
+			}
+		});
 	}
 	
 	@Override

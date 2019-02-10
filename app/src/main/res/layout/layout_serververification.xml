@@ -65,7 +65,7 @@
 			android:text="@string/message_setup_connect_serverguidelink"
 			android:textColor="@color/colorPrimary"
 			android:textSize="18sp"
-			android:textStyle="bold"
+			android:fontFamily="sans-serif-medium"
 			android:onClick="onClickLaunchServerGuide" />
 	</LinearLayout>
 </ScrollView>
