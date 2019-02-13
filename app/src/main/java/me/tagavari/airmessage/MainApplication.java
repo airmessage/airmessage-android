@@ -107,8 +107,8 @@ public class MainApplication extends Application {
 		
 		//Getting the connection service information
 		SharedPreferences sharedPrefs = getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
-		ConnectionService.hostname = sharedPrefs.getString(sharedPreferencesConnectivityKeyHostname, "");
-		ConnectionService.password = sharedPrefs.getString(sharedPreferencesConnectivityKeyPassword, "");
+		ConnectionService.hostname = sharedPrefs.getString(sharedPreferencesConnectivityKeyHostname, null);
+		ConnectionService.password = sharedPrefs.getString(sharedPreferencesConnectivityKeyPassword, null);
 		
 		//Creating the cache helpers
 		bitmapCacheHelper = new BitmapCacheHelper();
