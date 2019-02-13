@@ -157,10 +157,10 @@
 	<string name="message_setup_connect_connectionerror">Connection failed</string>
 	<string name="message_setup_connect_password">Password</string>
 	<string name="message_setup_sync_download_title">Download message history</string>
-	<string name="message_setup_sync_download_description">Copy your previous messages from your computer and continue right where you left off\n\nIf you choose not to, only new messages will appear on this device</string>
-	<string name="message_setup_sync_delete_description">Alternatively, you can start fresh and simply clear away your old messages</string>
+	<string name="message_setup_sync_download_description">Copy your recent messages from your computer and continue right where you left off.\n\nIf you choose not to, only new messages will appear on this device.</string>
+	<string name="message_setup_sync_delete_description">Alternatively, you can start fresh and simply clear away your old messages from this device</string>
 	<string name="message_setup_sync_warning_title">Skip clearing messages?</string>
-	<string name="message_setup_sync_description">If you are connecting to a new server or Apple account and you don\'t clear your messages, your old conversations may be incorrectly modified</string>
+	<string name="message_setup_sync_description">Only use this if you are connecting to the same computer and Apple account that was previously being used.\n\nRetaining your old conversations may cause them to merge with your new conversations or lose functionality.</string>
 
 	<string name="message_messageeffect_invisibleink">Message sent with Invisible Ink</string>
 
@@ -168,10 +168,10 @@
 	<string name="message_confirm_deletemessages_started">All messages have been deleted</string>
 	<string name="message_confirm_deleteattachments">Delete all downloaded attachments?</string>
 	<string name="message_confirm_deleteattachments_started">All downloaded attachments have been deleted</string>
-	<string name="message_confirm_resyncmessages">Force-sync messages?</string>
+	<string name="message_confirm_resyncmessages">Sync recent messages?</string>
 	<string name="message_confirm_resyncmessages_description">This will replace any messages currently stored on this device</string>
-	<string name="message_confirm_resyncmessages_started">New messages are being downloaded</string>
-	<string name="message_confirm_resyncmessages_inprogress">New messages are already being downloaded</string>
+	<string name="message_confirm_resyncmessages_started">Recent messages are being downloaded</string>
+	<string name="message_confirm_resyncmessages_inprogress">Recent messages are already being downloaded</string>
 	<string name="message_confirm_resyncmessages_advanced">Advanced sync</string>
 	<plurals name="message_confirm_deleteconversation">
 		<item quantity="one">Delete selected conversation?</item>

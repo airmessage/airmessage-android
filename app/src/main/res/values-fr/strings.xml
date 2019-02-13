@@ -107,22 +107,22 @@
 	<string name="message_setup_connect_password">Mot de passe</string>
 	
 	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages</string>
-	<string name="message_setup_sync_download_description">Copiez vos messages précédents de votre ordinateur et reprenez là où vous l\'avez laissé\n\nSi vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil</string>
+	<string name="message_setup_sync_download_description">Copiez vos messages récents de votre ordinateur et reprenez là où vous l\'avez laissé.\n\nSi vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil.</string>
 	<string name="action_downloadmessages">Télécharger les messages</string>
-	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages</string>
+	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages de cet appareil</string>
 	<string name="action_deletemessages">Supprimer les messages</string>
 	<string name="message_setup_sync_warning_title">Passer la suppression des messages?</string>
-	<string name="message_setup_sync_description">Si vous vous connectez à un nouveau serveur ou compte Apple et vous n\'effacez pas vos messages, vos anciennes conversations peuvent être modifiées de manière incorrecte.</string>
+	<string name="message_setup_sync_description">Utilisez cet option uniquement si vous vous connectez au même ordinateur et au même compte Apple que celui utilisé auparavant.\n\nSi vous conservez vos anciennes conversations, elles risquent de mélanger avec vos nouvelles conversations ou de perdre des fonctionnalités.</string>
 	<string name="message_syncerror">Échec de téléchargement des messages</string>
 	
 	<string name="imperative_recording_cancel">Glissez pour annuler</string>
 	<string name="imperative_recording_instructions">Tapez et maintenez pour enregistrer</string>
 	<string name="message_confirm_deletemessages">Supprimer tous les messages?</string>
 	<string name="message_confirm_deleteattachments">Supprimer toutes les pièces jointes?</string>
-	<string name="message_confirm_resyncmessages">Synchroniser manuellement les messages?</string>
+	<string name="message_confirm_resyncmessages">Synchroniser les messages récents?</string>
 	<string name="message_confirm_resyncmessages_description">Cette action remplacera tous les messages actuellement stockés</string>
-	<string name="message_confirm_resyncmessages_started">Les nouveaux messages sont en cours de téléchargement</string>
-	<string name="message_confirm_resyncmessages_inprogress">Les nouveaux messages sont déjà en cours de téléchargement</string>
+	<string name="message_confirm_resyncmessages_started">Les messages récents sont en cours de téléchargement</string>
+	<string name="message_confirm_resyncmessages_inprogress">Les messages récents sont déjà en cours de téléchargement</string>
 	<string name="message_confirm_resyncmessages_advanced">Synchronisation avancée</string>
 	<string name="action_copytext">Copier le texte</string>
 	<string name="action_advanced">Avancé</string>
