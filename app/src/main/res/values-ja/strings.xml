@@ -251,7 +251,7 @@
 	<string name="action_draw">ドロー</string>
 	<string name="action_addtext">テキストを追加</string>
 	<string name="action_addaddress">連絡先を追加</string>
-	<string name="action_pinconversation">会話をリストの先頭に固定</string>
+	<string name="action_pinconversation">会話を固定</string>
 	<string name="message_draft_limitreached">下書きファイルの制限です</string>
 	<string name="imperative_recording_cancel">スライドしてキャンセル</string>
 	<string name="notificationchannel_message_desc">着信のメッセージの通知</string>
@@ -262,7 +262,7 @@
 	<string name="notificationchannelimportance_4">緊急の重要度</string>
 	<string name="preference_appearance_location_description">現在地を使用して日の出と入りの時間を検出してもっと正確ナイトモードを提供</string>
 	<string name="servicedesc_connectionservice">AirMessageサーバの接続を作成し維持してメッセージを送受信します</string>
-	<string name="message_messageeffect_invisibleink">見えないインクで送信したメッセージ</string>
+	<string name="message_messageeffect_invisibleink">見えないインクのメッセージ</string>
 	<string name="message_setup_sync_description">同じコンピューとAppleアカウントに接続の以外、スキップしないでください。\n\n古い会話を保持すると、新しい会話と結合したり機能が失われたりする可能性があります。</string>
 	<string name="dialog_feedback_message">報告するべきバグし、提案したい機能し、何か言いたい事がありますか？下記のリンクを使用して私達に連絡するか他の人と話し合ってください。</string>
 

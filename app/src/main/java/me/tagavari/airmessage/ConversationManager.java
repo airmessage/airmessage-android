@@ -898,7 +898,7 @@ class ConversationManager {
 			activityStateTargetReadReference = new WeakReference<>(activityStateTarget);
 		}
 		
-		MessageInfo getActivityStateTargetLatest() {
+		MessageInfo getActivityStateTargetDelivered() {
 			if(activityStateTargetDeliveredReference == null) return null;
 			return activityStateTargetDeliveredReference.get();
 		}
@@ -914,23 +914,23 @@ class ConversationManager {
 			//Checking if the item is delivered
 			if(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered) {
 				//Getting the current item
-				MessageInfo activeMessage = getActivityStateTargetLatest();
+				MessageInfo activeMessageDelivered = getActivityStateTargetDelivered();
 				
 				//Replacing the item if it is invalid
-				if(activeMessage == null) {
+				if(activeMessageDelivered == null) {
 					setActivityStateTargetDelivered(activityStateTarget);
 					
 					//Updating the view
 					if(update) activityStateTarget.updateActivityStateDisplay(context);
 				} else {
 					//Replacing the item if the new one is more recent
-					if(ConversationManager.compareConversationItems(activityStateTarget, activeMessage) >= 0) {
+					if(ConversationManager.compareConversationItems(activityStateTarget, activeMessageDelivered) >= 0) {
 						setActivityStateTargetDelivered(activityStateTarget);
 						
 						//Updating the views
 						if(update) {
 							activityStateTarget.updateActivityStateDisplay(context);
-							activeMessage.updateActivityStateDisplay(context);
+							activeMessageDelivered.updateActivityStateDisplay(context);
 						}
 					}
 				}
@@ -938,13 +938,13 @@ class ConversationManager {
 			//Otherwise checking if the item is read
 			else if(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead) {
 				//Getting the current item
+				MessageInfo activeMessageDelivered = getActivityStateTargetDelivered();
 				MessageInfo activeMessageRead = getActivityStateTargetRead();
-				//MessageInfo activeMessageLatest = getActivityStateTargetLatest();
 				
 				//Replacing the item if it is invalid
 				if(activeMessageRead == null) {
-					setActivityStateTargetRead(activityStateTarget);
 					setActivityStateTargetDelivered(activityStateTarget);
+					setActivityStateTargetRead(activityStateTarget);
 					
 					//Updating the view
 					if(update) {
@@ -955,40 +955,15 @@ class ConversationManager {
 					//Replacing the item if the new one is more recent
 					if(ConversationManager.compareConversationItems(activityStateTarget, activeMessageRead) >= 0 &&
 							(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
-						setActivityStateTargetRead(activityStateTarget);
 						setActivityStateTargetDelivered(activityStateTarget);
+						setActivityStateTargetRead(activityStateTarget);
 						
 						//Updating the views
 						if(update) {
 							activityStateTarget.updateActivityStateDisplay(context);
 							activeMessageRead.updateActivityStateDisplay(context);
+							if(activeMessageDelivered != null && activeMessageDelivered != activeMessageRead) activeMessageDelivered.updateActivityStateDisplay(context);
 						}
-					}
-				}
-			}
-		}
-		
-		void tryActivityStateTargetRead(MessageInfo activityStateTarget, boolean update, Context context) {
-			//Getting the current item
-			MessageInfo activeMessage = getActivityStateTargetRead();
-			
-			//Replacing the item if it is invalid
-			if(activeMessage == null) {
-				setActivityStateTargetRead(activityStateTarget);
-				
-				//Updating the view
-				if(update) activityStateTarget.updateActivityStateDisplay(context);
-			} else {
-				//Replacing the item if the new one is outgoing and more recent
-				if(activityStateTarget.isOutgoing() &&
-						ConversationManager.compareConversationItems(activityStateTarget, activeMessage) >= 0 &&
-						(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
-					setActivityStateTargetRead(activityStateTarget);
-					
-					//Updating the views
-					if(update) {
-						activityStateTarget.updateActivityStateDisplay(context);
-						activeMessage.updateActivityStateDisplay(context);
 					}
 				}
 			}
@@ -2249,7 +2224,7 @@ class ConversationManager {
 			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
 			
 			//Getting the requested state
-			isShowingMessageState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetLatest()) &&
+			isShowingMessageState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetDelivered()) &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
 					messageState != SharedValues.MessageInfo.stateCodeIdle &&
 					messageState != SharedValues.MessageInfo.stateCodeSent;
@@ -2268,7 +2243,7 @@ class ConversationManager {
 			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
 			
 			//Getting the requested state
-			boolean requestedState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetLatest()) &&
+			boolean requestedState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetDelivered()) &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
 					messageState != SharedValues.MessageInfo.stateCodeIdle &&
 					messageState != SharedValues.MessageInfo.stateCodeSent;
@@ -6510,8 +6485,8 @@ class ConversationManager {
 		}
 		
 		//Finding the message to show the state on
-		boolean targetLatestSet = false;
-		boolean targetReadSet = false;
+		boolean targetDeliveredSet = false;
+		//boolean targetReadSet = false;
 		for(int i = conversationItems.size() - 1; i >= 0; i--) {
 			//Getting the item
 			ConversationManager.ConversationItem item = conversationItems.get(i);
@@ -6526,17 +6501,19 @@ class ConversationManager {
 			if(!messageItem.isOutgoing()) continue;
 			
 			//Setting the conversation's active message state list ID
-			if(!targetLatestSet && messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered) {
+			if(!targetDeliveredSet && messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered) {
 				conversationInfo.setActivityStateTargetDelivered(messageItem);
-				targetLatestSet = true;
+				targetDeliveredSet = true;
 			}
-			if(!targetReadSet && messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeRead) {
+			if(/*!targetReadSet && */messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeRead) {
+				if(!targetDeliveredSet) conversationInfo.setActivityStateTargetDelivered(messageItem); //The delivered and read message would be the same thing
 				conversationInfo.setActivityStateTargetRead(messageItem);
-				targetReadSet = true;
+				//targetReadSet = true;
+				break; //Break on the first instance of a read message; if no delivered message has been found, then this takes priority anyways (the delivered message will overlap with this one, or be someplace above due to an awkward update)
 			}
 			
 			//Breaking from the loop
-			if(targetLatestSet && targetReadSet) break;
+			//if(targetDeliveredSet && targetReadSet) break;
 		}
 	}
 	
