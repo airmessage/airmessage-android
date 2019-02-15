@@ -24,7 +24,7 @@ android {
 		versionCode 42
 		versionName "0.3.1"
 
-		resConfigs "en", "fr"
+		resConfigs "en", "fr", "ja"
 	}
 	buildTypes {
 		debug {

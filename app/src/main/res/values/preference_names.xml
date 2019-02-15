@@ -47,7 +47,7 @@
 	<string name="preference_storage_deleteattachments_title">Delete downloaded attachment files</string>
 	<string name="preference_storage_deleteattachments_desc">Attachments can be downloaded again at any time</string>
 	<string name="preference_server_downloadmessages_key" translatable="false">pref_key_server_resync</string>
-	<string name="preference_server_downloadmessages_title">Force-sync messages</string>
+	<string name="preference_server_downloadmessages_title">Sync messages</string>
 	<string name="preference_server_downloadmessages_desc">Copy all messages from the server to this device</string>
 
     <string name="preferencegroup_server_key" translatable="false">pref_group_server</string>

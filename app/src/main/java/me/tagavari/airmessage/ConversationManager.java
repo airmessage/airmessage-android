@@ -670,11 +670,11 @@ class ConversationManager {
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
-				if(Constants.compareCalendarDates(thenCal, compareCal) > 0) return DateFormat.format("MMM d", thenCal).toString();
+				if(Constants.compareCalendarDates(thenCal, compareCal) > 0) return DateFormat.format(context.getResources().getString(R.string.dateformat_withinyear), thenCal).toString();//return DateFormat.format("MMM d", thenCal).toString();
 			}
 			
 			//Anytime (Dec 2018)
-			return DateFormat.format("MMM yyyy", thenCal).toString();
+			return DateFormat.format(context.getString(R.string.dateformat_outsideyear_simple), thenCal).toString();
 		}
 		
 		void updateViewUser(Context context) {
@@ -2433,11 +2433,11 @@ class ConversationManager {
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
-				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format("MMM d", sentCal).toString();
+				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format(context.getString(R.string.dateformat_withinyear), sentCal).toString();
 			}
 			
 			//Different years (Dec 9, 2018)
-			return DateFormat.format("MMM d, yyyy", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+			return DateFormat.format(context.getString(R.string.dateformat_outsideyear), sentCal).toString();
 		}
 		
 		boolean sendMessage(Context context) {
@@ -2719,11 +2719,11 @@ class ConversationManager {
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
-				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format("EEEE, MMM d", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format(context.getString(R.string.dateformat_withinyear_weekday), sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 			}
 			
 			//Different years (Dec 9, 2018)
-			return DateFormat.format("MMM d, yyyy", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+			return DateFormat.format(context.getString(R.string.dateformat_outsideyear), sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 		}
 		
 		void setHasTimeDivider(boolean hasTimeDivider) {

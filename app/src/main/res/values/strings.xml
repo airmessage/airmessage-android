@@ -101,8 +101,8 @@
 	<string name="message_intenterror_email">No E-Mail app found</string>
 
 	<string name="message_messageerror_title">Your message could not be sent</string>
-	<string name="message_messageerror_desc_air_invalidcontent">Selected content is unavailable</string>
-	<string name="message_messageerror_desc_air_filetoolarge">Selected content is too large to send</string>
+	<string name="message_messageerror_desc_air_invalidcontent">The selected content is unavailable</string>
+	<string name="message_messageerror_desc_air_filetoolarge">The selected content is too large to send</string>
 	<string name="message_messageerror_desc_air_io">Couldn\'t process selected content</string>
 	<string name="message_messageerror_desc_air_network">Couldn\'t connect to AirMessage server</string>
 	<string name="message_messageerror_desc_air_external">An external error occurred</string>
@@ -135,18 +135,18 @@
 	<string name="message_serverupdate">A server update is available</string>
 	<string name="message_searchnoresults">No results</string>
 
-	<string name="message_eventtype_chatrename_change">%s named the conversation \"%s\"</string>
+	<string name="message_eventtype_chatrename_change">%1$s named the conversation \"%2$s\"</string>
 	<string name="message_eventtype_chatrename_change_you">You named the conversation \"%s\"</string>
 	<string name="message_eventtype_chatrename_remove">%s removed the conversation name</string>
 	<string name="message_eventtype_chatrename_remove_you">You removed the conversation name</string>
 	<string name="message_eventtype_join">%s joined the conversation</string>
 	<string name="message_eventtype_join_you">You joined the conversation</string>
-	<string name="message_eventtype_invite">%s added %s to the conversation</string>
+	<string name="message_eventtype_invite">%1$s added %2$s to the conversation</string>
 	<string name="message_eventtype_invite_you_agent">You added %s to the conversation</string>
 	<string name="message_eventtype_invite_you_object">%s added you to the conversation</string>
 	<string name="message_eventtype_leave">%s left the conversation</string>
 	<string name="message_eventtype_leave_you">You left the conversation</string>
-	<string name="message_eventtype_kick">%s removed %s from the conversation</string>
+	<string name="message_eventtype_kick">%1$s removed %2$s from the conversation</string>
 	<string name="message_eventtype_kick_you_agent">You removed %s from the conversation</string>
 	<string name="message_eventtype_kick_you_object">%s removed you from the conversation</string>
 	<string name="message_eventtype_unknown">Unknown event</string>
@@ -195,8 +195,8 @@
 	</plurals>
 	<string name="message_confirm_unblock">Unblock %s?</string>
 
-	<string name="message_shareable_text">On %s at %s, %s wrote: %s</string>
-	<string name="message_shareable_text_you">On %s at %s, I wrote: %s</string>
+	<string name="message_shareable_text">On %1$s at %2$s, %3$s wrote: %4$s</string>
+	<string name="message_shareable_text_you">On %1$s at %2$s, I wrote: %3$s</string>
 
 	<string name="message_connection_connected">Connected to server</string>
 	<string name="message_connection_disconnected">Connection lost</string>
@@ -270,7 +270,7 @@
 	<string name="time_yesterday">Yesterday</string>
 
 	<string name="imperative_messageinput">Type a message</string>
-	<string name="imperative_selectfile">Select file</string>
+	<string name="imperative_selectfile">Select a file</string>
 	<string name="imperative_userinput">Type a name, email or phone number</string>
 	<string name="imperative_recording_instructions">Tap and hold to record</string>
 	<string name="imperative_recording_cancel">Slide to cancel</string>
@@ -343,4 +343,9 @@
 		<item quantity="many">%d/%d results</item>
 		<item quantity="other">%d/%d results</item>
 	</plurals> -->
+
+	<string name="dateformat_withinyear">MMM d</string>
+	<string name="dateformat_withinyear_weekday">EEEE, MMM d</string>
+	<string name="dateformat_outsideyear_simple">MMM yyyy</string>
+	<string name="dateformat_outsideyear">MMM d, yyyy</string>
 </resources>
