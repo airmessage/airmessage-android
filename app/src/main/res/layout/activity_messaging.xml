@@ -81,6 +81,37 @@
 			android:src="@drawable/chevron_right"
 			android:tint="?android:attr/textColorSecondary" />
 	</LinearLayout> -->
+
+	<!-- Error view -->
+	<LinearLayout
+		android:id="@+id/group_error"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:gravity="center"
+		android:orientation="vertical"
+		android:visibility="gone"
+		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/appbar">
+
+		<TextView
+			android:id="@+id/group_error_label"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/message_loaderror_conversation"
+			android:textAlignment="center"
+			android:textColor="?android:textColorSecondary" />
+
+		<com.google.android.material.button.MaterialButton
+			style="@style/Widget.MaterialComponents.Button.TextButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:onClick="onClickRetryLoad"
+			android:tag="@string/tag_primarytint"
+			android:text="@string/action_retry" />
+	</LinearLayout>
+
 	<!-- Message list -->
 	<androidx.recyclerview.widget.RecyclerView
 		android:id="@+id/list_messages"
@@ -100,17 +131,40 @@
 		app:layout_constraintTop_toBottomOf="@id/appbar"
 		app:stackFromEnd="true" />
 
-	<!-- Input bar shadow -->
-	<View
-		android:id="@+id/bottomshadow"
+	<!-- Loading label -->
+	<TextView
+		android:id="@+id/loading_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="@string/progress_loadingmessages"
+		android:textAlignment="center"
+		android:textColor="?android:textColorSecondary"
+		android:visibility="gone"
+		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/appbar" />
+
+	<!-- Foreground effect view -->
+	<me.tagavari.airmessage.view.AppleEffectView
+		android:id="@+id/effect_foreground"
 		android:layout_width="0px"
-		android:layout_height="3dp"
+		android:layout_height="0px"
+		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/appbar" />
+
+	<!-- Konfetti view -->
+	<nl.dionsegijn.konfetti.KonfettiView
+		android:id="@+id/konfetti"
+		android:layout_width="0px"
+		android:layout_height="0px"
+		app:layout_constraintTop_toBottomOf="@id/appbar"
 		app:layout_constraintBottom_toTopOf="@id/inputbar"
-		android:background="@drawable/appear_bottomshadow"
-		android:alpha="0" />
-	
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent" />
+
 	<!-- Input bar -->
 	<LinearLayout
 		android:id="@+id/inputbar"
@@ -219,7 +273,7 @@
 					android:contentDescription="@string/action_send"
 					app:layout_constraintBottom_toBottomOf="parent"
 					app:layout_constraintEnd_toEndOf="parent"
-					android:src="@drawable/push"
+					android:src="@drawable/push_rounded"
 					android:tint="?android:attr/colorControlNormal"
 					android:tooltipText="@string/action_send" />
 			</androidx.constraintlayout.widget.ConstraintLayout>
@@ -248,29 +302,17 @@
 				android:background="@color/colorDivider" />
 		</LinearLayout>
 	</LinearLayout>
-	<!-- Content pane barrier -->
-	<!-- <androidx.constraintlayout.widget.Barrier
-		android:id="@+id/barrier_attachments"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		app:barrierDirection="top"
-		app:constraint_referenced_ids="viewstub_attachments,pane_attachments" /> -->
-	<!-- <FrameLayout
-		android:id="@+id/panel_attachments"
+
+	<!-- Input bar shadow -->
+	<View
+		android:id="@+id/bottomshadow"
 		android:layout_width="0px"
-		android:layout_height="wrap_content"
-		app:layout_constraintBottom_toBottomOf="parent"
+		android:layout_height="3dp"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		android:layout_marginLeft="8dp"
-		android:layout_marginRight="8dp">
-		
-		<ViewStub
-			android:id="@+id/viewstub_attachments"
-			android:layout_width="match_parent"
-			android:layout_height="@dimen/contentpanel_height"
-			android:layout="@layout/pane_attachments" />
-	</FrameLayout> -->
+		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		android:background="@drawable/appear_bottomshadow"
+		android:alpha="0" />
 	
 	<!-- Floating action button -->
 	<com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -285,6 +327,7 @@
 		app:layout_constraintBottom_toTopOf="@id/inputbar"
 		app:layout_constraintEnd_toEndOf="parent"
 		app:tint="@color/colorPrimary" />
+
 	<!-- FAB counter badge -->
 	<TextView
 		android:id="@+id/fab_bottom_badge"
@@ -310,6 +353,7 @@
 		app:layout_constraintEnd_toEndOf="@+id/fab_bottom"
 		app:layout_constraintStart_toEndOf="@+id/fab_bottom"
 		app:layout_constraintTop_toTopOf="@+id/fab_bottom" />
+
 	<!-- FAB circular ripple effect view -->
 	<View
 		android:id="@+id/fab_bottom_splash"
@@ -321,66 +365,7 @@
 		android:visibility="gone"
 		app:layout_constraintLeft_toLeftOf="@+id/fab_bottom"
 		app:layout_constraintTop_toTopOf="@+id/fab_bottom" />
-	<!-- Loading label -->
-	<TextView
-		android:id="@+id/loading_text"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:text="@string/progress_loadingmessages"
-		android:textAlignment="center"
-		android:textColor="?android:textColorSecondary"
-		android:visibility="gone"
-		app:layout_constraintBottom_toTopOf="@id/inputbar"
-		app:layout_constraintEnd_toEndOf="parent"
-		app:layout_constraintStart_toStartOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/appbar" />
-	<!-- Error view -->
-	<LinearLayout
-		android:id="@+id/group_error"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:gravity="center"
-		android:orientation="vertical"
-		android:visibility="gone"
-		app:layout_constraintBottom_toTopOf="@id/inputbar"
-		app:layout_constraintEnd_toEndOf="parent"
-		app:layout_constraintStart_toStartOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/appbar">
-		
-		<TextView
-			android:id="@+id/group_error_label"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:text="@string/message_loaderror_conversation"
-			android:textAlignment="center"
-			android:textColor="?android:textColorSecondary" />
-		
-		<com.google.android.material.button.MaterialButton
-			style="@style/Widget.MaterialComponents.Button.TextButton"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:onClick="onClickRetryLoad"
-			android:tag="@string/tag_primarytint"
-			android:text="@string/action_retry" />
-	</LinearLayout>
-	<!-- Foreground effect view -->
-	<me.tagavari.airmessage.view.AppleEffectView
-		android:id="@+id/effect_foreground"
-		android:layout_width="0px"
-		android:layout_height="0px"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/appbar" />
-	<!-- Konfetti view -->
-	<nl.dionsegijn.konfetti.KonfettiView
-		android:id="@+id/konfetti"
-		android:layout_width="0px"
-		android:layout_height="0px"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/appbar" />
+
 	<!-- Scrim -->
 	<View
 		android:id="@+id/scrim"
@@ -396,6 +381,7 @@
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/appbar" />
+
 	<!-- Info page -->
 	<FrameLayout
 		android:id="@+id/panel_messaginginfo"

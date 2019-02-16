@@ -9,7 +9,7 @@
 		android:layout_width="match_parent"
 		android:layout_height="0dp"
 		android:layout_weight="1"
-		android:clipToPadding="false" >
+		android:clipToPadding="false">
 		<!-- Server verification -->
 		<include
 			android:id="@+id/layout_serververification"
@@ -51,8 +51,8 @@
 				android:textAlignment="center"
 				android:textAllCaps="true"
 				android:textColor="@color/colorPrimary"
-				android:textSize="18sp"
-				android:textStyle="bold" />
+				android:textSize="18dp"
+				android:fontFamily="sans-serif-medium" />
 			
 			<ProgressBar
 				android:id="@+id/nextbuttonprogress"
@@ -97,8 +97,8 @@
 				android:textAlignment="center"
 				android:textAllCaps="true"
 				android:textColor="@color/colorPrimary"
-				android:textSize="18sp"
-				android:textStyle="bold" />
+				android:textSize="18dp"
+				android:fontFamily="sans-serif-medium" />
 		</LinearLayout>
 	</RelativeLayout>
 </LinearLayout>

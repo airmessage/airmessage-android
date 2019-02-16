@@ -23,8 +23,11 @@ import android.graphics.Outline;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.media.SoundPool;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -32,6 +35,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcelable;
+import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -736,8 +740,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				new QueueFileAsyncTask(this).execute(viewModel.targetFileRecording);
 		});
 		viewModel.recordingDuration.observe(this, value -> {
-			if(recordingTimeLabel != null)
-				recordingTimeLabel.setText(DateUtils.formatElapsedTime(value));
+			if(recordingTimeLabel != null) recordingTimeLabel.setText(DateUtils.formatElapsedTime(value));
 		});
 		viewModel.progressiveLoadInProgress.observe(this, value -> {
 			if(value) onProgressiveLoadStart();
@@ -1159,7 +1162,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Resolving the heights
 		int requestedPanelHeight = getResources().getDimensionPixelSize(R.dimen.contentpanel_height);
-		int windowThreshold = getWindow().getDecorView().getHeight() - Constants.dpToPx(contentPanelMinAllowanceDP);
+		int windowThreshold = Constants.getWindowHeight(this) - Constants.dpToPx(contentPanelMinAllowanceDP);
 		
 		//Limiting the panel height
 		int targetHeight = Math.min(requestedPanelHeight, windowThreshold);
@@ -1438,6 +1441,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the panel as open
 		viewModel.isDetailsPanelOpen = true;
 		
+		//Closing the keyboard
+		UIUtil.hideKeyboard(this);
+		
 		//Inflating the view
 		ViewStub viewStub = findViewById(R.id.viewstub_messaginginfo);
 		if(viewStub != null) {
@@ -1691,15 +1697,19 @@ public class Messaging extends AppCompatCompositeActivity {
 		MainApplication.getInstance().getUserCacheHelper().getUserInfo(this, member.getName(), new UserCacheHelper.UserFetchResult(memberEntry) {
 			@Override
 			void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
-				//Returning if the user info is invalid
-				if(userInfo == null) return;
-				
 				//Getting the view
 				View memberEntry = viewReference.get();
 				if(memberEntry == null) return;
 				
-				//Setting the tag
-				memberEntry.setTag(userInfo.getContactLookupUri());
+				//Checking if the user info is invalid
+				if(userInfo == null) {
+					//Setting the tag (for a new contact request)
+					memberEntry.setTag(new ContactAccessInfo(member.getName()));
+					return;
+				}
+				
+				//Setting the tag (for a contact view link)
+				memberEntry.setTag(new ContactAccessInfo(userInfo.getContactLookupUri()));
 				
 				//Setting the member's name
 				((TextView) memberEntry.findViewById(R.id.label_member)).setText(userInfo.getContactName());
@@ -1726,10 +1736,11 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(view.getTag() == null) return;
 			
 			//Opening the user's contact profile
-			Intent intent = new Intent(Intent.ACTION_VIEW);
+			/* Intent intent = new Intent(Intent.ACTION_VIEW);
 			intent.setData((Uri) view.getTag());
 			//intent.setData(Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(view.getTag())));
-			view.getContext().startActivity(intent);
+			view.getContext().startActivity(intent); */
+			((ContactAccessInfo) view.getTag()).openContact(view.getContext());
 		});
 		
 		//Adding the view
@@ -1749,6 +1760,41 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Closing the dialog
 		if(currentColorPickerDialog != null && currentColorPickerDialogMember == member)
 			currentColorPickerDialog.dismiss();
+	}
+	
+	private static class ContactAccessInfo {
+		private final Uri accessUri;
+		private final String address;
+		
+		ContactAccessInfo(Uri accessUri) {
+			this.accessUri = accessUri;
+			address = null;
+		}
+		
+		ContactAccessInfo(String address) {
+			accessUri = null;
+			this.address = address;
+		}
+		
+		boolean openContact(Context context) {
+			if(accessUri != null) {
+				Intent intent = new Intent(Intent.ACTION_VIEW);
+				intent.setData(accessUri);
+				context.startActivity(intent);
+				return true;
+			} else if(address != null) {
+				Intent intent = new Intent(Intent.ACTION_INSERT_OR_EDIT);
+				intent.setType(ContactsContract.Contacts.CONTENT_ITEM_TYPE);
+				
+				if(Constants.validateEmail(address)) intent.putExtra(ContactsContract.Intents.Insert.EMAIL, address);
+				else if(Constants.validatePhoneNumber(address)) intent.putExtra(ContactsContract.Intents.Insert.PHONE, address);
+				else return false;
+				
+				context.startActivity(intent);
+			}
+			
+			return false;
+		}
 	}
 	
 	@Override
@@ -2394,6 +2440,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	void startRecording(float touchX, float touchY) {
+		//Playing a sound
+		viewModel.playSound(ActivityViewModel.soundRecordingStart);
+		
 		//Telling the view model to start recording
 		boolean result = viewModel.startRecording(this);
 		if(!result) return;
@@ -2433,6 +2482,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		});
 		animator.start();
+		
+		//Resetting the time label
+		recordingTimeLabel.setText(DateUtils.formatElapsedTime(0));
 	}
 	
 	private void concealRecordingView() {
@@ -3971,6 +4023,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final byte attachmentsStateLoaded = 2;
 		static final byte attachmentsStateFailed = 3;
 		
+		static final byte soundMessageIncoming = 0;
+		static final byte soundMessageOutgoing = 1;
+		static final byte soundMessageError = 2;
+		static final byte soundRecordingStart = 3;
+		static final byte soundRecordingEnd = 4;
+		
 		static final int attachmentTypeGallery = 0;
 		//static final int attachmentTypeDocument = 1;
 		private static final int attachmentsTileCount = 24;
@@ -4003,9 +4061,22 @@ public class Messaging extends AppCompatCompositeActivity {
 		File targetFileIntent = null;
 		File targetFileRecording = null;
 		
+		//Creating the sound values
+		private static final float soundVolume = 0.15F;
+		private SoundPool soundPool = new SoundPool.Builder().setAudioAttributes(new AudioAttributes.Builder()
+				.setLegacyStreamType(AudioManager.STREAM_SYSTEM)
+				.build())
+				.setMaxStreams(2)
+				.build();
+		private int soundIDMessageIncoming = soundPool.load(getApplication(), R.raw.message_received, 1);
+		private int soundIDMessageOutgoing = soundPool.load(getApplication(), R.raw.message_sent, 1);
+		private int soundIDMessageError = soundPool.load(getApplication(), R.raw.message_error, 1);
+		private int soundIDRecordingStart = soundPool.load(getApplication(), R.raw.recording_start, 1);
+		private int soundIDRecordingEnd = soundPool.load(getApplication(), R.raw.recording_end, 1);
+		
 		final AudioPlaybackManager audioPlaybackManager = new AudioPlaybackManager();
 		
-		MediaRecorder mediaRecorder = null;
+		private MediaRecorder mediaRecorder = null;
 		private final MutableLiveData<Boolean> isRecording = new MutableLiveData<>();
 		private final MutableLiveData<Integer> recordingDuration = new MutableLiveData<>();
 		private final Handler recordingTimerHandler = new Handler(Looper.getMainLooper());
@@ -4018,6 +4089,14 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Scheduling the next run
 				recordingTimerHandler.postDelayed(this, 1000);
 			}
+		};
+		private final Handler mediaRecorderHandler = new Handler();
+		private final Runnable mediaRecorderRunnable = () -> {
+			//Starting the recording timer
+			startRecordingTimer();
+			
+			//Starting the media recorder
+			mediaRecorder.start();
 		};
 		
 		ActivityViewModel(Application application, long conversationID) {
@@ -4035,6 +4114,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		@Override
 		protected void onCleared() {
+			//Releasing the sounds
+			soundPool.release();
+			
 			//Cleaning up the media recorder
 			if(isRecording()) stopRecording(true, true);
 			if(mediaRecorder != null) mediaRecorder.release();
@@ -4226,6 +4308,28 @@ public class Messaging extends AppCompatCompositeActivity {
 			return value == null ? false : value;
 		}
 		
+		void playSound(byte id) {
+			switch(id) {
+				case soundMessageIncoming:
+					soundPool.play(soundIDMessageIncoming, soundVolume, soundVolume, 0, 0, 1);
+					break;
+				case soundMessageOutgoing:
+					soundPool.play(soundIDMessageOutgoing, soundVolume, soundVolume, 0, 0, 1);
+					break;
+				case soundMessageError:
+					soundPool.play(soundIDMessageError, soundVolume, soundVolume, 1, 0, 1);
+					break;
+				case soundRecordingStart:
+					soundPool.play(soundIDRecordingStart, soundVolume, soundVolume, 1, 0, 1);
+					break;
+				case soundRecordingEnd:
+					soundPool.play(soundIDRecordingEnd, soundVolume, soundVolume, 1, 0, 1);
+					break;
+				default:
+					throw new IllegalArgumentException("Unknown sound ID " + id);
+			}
+		}
+		
 		/* int getRecordingDuration() {
 			Integer value = recordingDuration.getValue();
 			if(value == null) return 0;
@@ -4270,14 +4374,11 @@ public class Messaging extends AppCompatCompositeActivity {
 				return false;
 			}
 			
-			//Starting the recording timer
-			startRecordingTimer();
-			
-			//Starting the media recorder
-			mediaRecorder.start();
-			
 			//Updating the state
 			isRecording.setValue(true);
+			
+			//Queueing a delay for the audio recorder
+			mediaRecorderHandler.postDelayed(mediaRecorderRunnable, 70);
 			
 			//Returning true
 			return true;
@@ -4293,6 +4394,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		private boolean stopRecording(boolean cleanup, boolean discard) {
 			//Returning if the input state is not recording
 			if(!isRecording()) return true;
+			
+			//Removing the timer callback
+			mediaRecorderHandler.removeCallbacks(mediaRecorderRunnable);
 			
 			try {
 				//Stopping the timer
@@ -4333,6 +4437,9 @@ public class Messaging extends AppCompatCompositeActivity {
 					return false;
 				}
 				
+				//Playing a sound
+				playSound(soundRecordingEnd);
+				
 				//Returning true
 				return true;
 			} finally {
@@ -4368,6 +4475,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			mediaRecorder.setOnInfoListener((recorder, what, extra) -> {
 				if(what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED ||
 				   what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
+					//Stopping recording
 					stopRecording(false, false);
 				}
 			});
@@ -4441,6 +4549,7 @@ public class Messaging extends AppCompatCompositeActivity {
 								//Getting the file information
 								File file = new File(cursor.getString(indexData));
 								String fileType = cursor.getString(indexType);
+								if(fileType == null) fileType = "application/octet-stream";
 								String fileName = file.getName();
 								long fileSize = cursor.getLong(indexSize);
 								long modificationDate = cursor.getLong(indexModificationDate);
@@ -4948,6 +5057,57 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		@Override
+		void itemsAdded(List<ConversationManager.ConversationItem> list) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Returning if the activity is not in the foreground
+			if(!activity.hasWindowFocus()) return;
+			
+			boolean messageIncoming = false;
+			boolean messageOutgoing = false;
+			
+			for(ConversationManager.ConversationItem item : list) {
+				//Ignoring items other than messages
+				if(!(item instanceof ConversationManager.MessageInfo)) continue;
+				
+				//Tracking the message types
+				ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) item;
+				if(messageInfo.isOutgoing()) messageOutgoing = true;
+				else messageIncoming = true;
+				if(messageIncoming && messageOutgoing) break;
+			}
+			
+			//Playing sounds
+			if(messageIncoming) activity.viewModel.playSound(ActivityViewModel.soundMessageIncoming);
+			if(messageOutgoing) activity.viewModel.playSound(ActivityViewModel.soundMessageOutgoing);
+		}
+		
+		@Override
+		void tapbackAdded(ConversationManager.TapbackInfo item) {
+		
+		}
+		
+		@Override
+		void stickerAdded(ConversationManager.StickerInfo item) {
+		
+		}
+		
+		@Override
+		void messageSendFailed(ConversationManager.MessageInfo message) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Returning if the activity is not in the foreground
+			if(!activity.hasWindowFocus()) return;
+			
+			//Playing a sound
+			activity.viewModel.playSound(ActivityViewModel.soundMessageError);
+		}
+		
+		@Override
 		AudioPlaybackManager getAudioPlaybackManager() {
 			//Getting the activity
 			Messaging activity = activityReference.get();
@@ -5060,8 +5220,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				colorView.setColorFilter(standardColor);
 				
 				final boolean isSelectedColor = selectedColor == standardColor;
-				if(isSelectedColor)
-					item.findViewById(R.id.colorpickeritem_selection).setVisibility(View.VISIBLE);
+				if(isSelectedColor) item.findViewById(R.id.colorpickeritem_selection).setVisibility(View.VISIBLE);
 				
 				//Setting the click listener
 				colorView.setOnClickListener(view -> {

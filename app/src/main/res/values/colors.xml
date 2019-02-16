@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#448BFF</color>
+    <color name="colorPrimary">#448AFF</color>
     <color name="colorPrimaryDark">#366FCC</color>
     <color name="colorPrimaryLight">#52A7FF</color>
     <color name="colorAccent">@color/colorPrimary</color>
@@ -31,8 +31,8 @@
 	
 	<color name="colorArchived">#607D8B</color>
 	<color name="colorArchivedDark">#455A64</color>
-	
-	<color name="colorError">#F44336</color>
+
+	<color name="colorError">#FF5252</color>
 	
 	<color name="colorContextualAppBar">#212121</color>
 	<color name="colorContextualAppBarDark">#000000</color>
@@ -66,12 +66,12 @@
 	<color name="drawColor_purple">#9C27B0</color>
 	<color name="imageDrawTextBarBG">#80000000</color>
 	
-	<color name="tapback_red">#F44336</color>
-	<color name="tapback_yellow">#FFEB3B</color>
-	<color name="tapback_orange">#FF9800</color>
-	<color name="tapback_pink">#E91E63</color>
-	<color name="tapback_blue">#2196F3</color>
-	<color name="tapback_purple">#9C27B0</color>
+	<color name="tapback_love">#F50057</color>
+	<color name="tapback_like">#FFEA00</color>
+	<color name="tapback_dislike">#FF9100</color>
+	<color name="tapback_laugh">#00E676</color>
+	<color name="tapback_exclamation">#2979FF</color>
+	<color name="tapback_question">#D500F9</color>
 	
 	<color name="tile_red_bg">#FFCDD2</color>
 	<color name="tile_red_fg">#D32F2F</color>

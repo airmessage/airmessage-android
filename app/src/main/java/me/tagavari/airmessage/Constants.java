@@ -2,6 +2,7 @@ package me.tagavari.airmessage;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -13,6 +14,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Parcel;
 import android.provider.OpenableColumns;
 import android.text.Spannable;
@@ -21,6 +23,7 @@ import android.text.format.DateUtils;
 import android.text.method.TransformationMethod;
 import android.text.style.URLSpan;
 import android.text.util.Linkify;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,6 +39,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -618,14 +622,15 @@ public class Constants {
 	}
 	
 	static boolean validateAddress(String address) {
-		//Returning true if the address is an E-Mail address
-		if(address.matches(emailRegEx)) return true;
-		
-		//Returning true if the address is a telephone number
-		if(address.replaceAll("[^\\d+]", "").length() >= 3 && address.matches("^\\+?[ \\d().-]+$")) return true;
-		
-		//Returning false
-		return false;
+		return validateEmail(address) || validatePhoneNumber(address);
+	}
+	
+	static boolean validateEmail(String address) {
+		return address.matches(emailRegEx);
+	}
+	
+	static boolean validatePhoneNumber(String address) {
+		return address.replaceAll("[^\\d+]", "").length() >= 3 && address.matches("^\\+?[ \\d().-]+$");
 	}
 	
 	static <K, V extends Comparable<? super V>> Map<K, V> sortMapByValueDesc(Map<K, V> map) {
@@ -891,6 +896,18 @@ public class Constants {
 		return String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? resources.getConfiguration().getLocales().get(0) : resources.getConfiguration().locale, "%d", value);
 	}
 	
+	/*
+	cal1 < cal2 -> <0
+	cal2 > cal1 -> >0
+	 */
+	static int compareCalendarDates(Calendar cal1, Calendar cal2) {
+		if(cal1.get(Calendar.ERA) < cal2.get(Calendar.ERA)) return -1;
+		if(cal1.get(Calendar.ERA) > cal2.get(Calendar.ERA)) return 1;
+		if(cal1.get(Calendar.YEAR) < cal2.get(Calendar.YEAR)) return -1;
+		if(cal1.get(Calendar.YEAR) > cal2.get(Calendar.YEAR)) return 1;
+		return Integer.compare(cal1.get(Calendar.DAY_OF_YEAR), cal2.get(Calendar.DAY_OF_YEAR));
+	}
+	
 	/* public static abstract class BindingViewHolder extends RecyclerView.ViewHolder {
 		public BindingViewHolder(View itemView) {
 			super(itemView);
@@ -913,6 +930,23 @@ public class Constants {
 		String[] twoComponents = two.split("/");
 		if(oneComponents[1].equals("*") || twoComponents[1].equals("*")) return oneComponents[0].equals(twoComponents[0]);
 		return one.equals(two);
+	}
+	
+	static int getWindowHeight(Activity activity) {
+		return activity.getWindow().getDecorView().getHeight();
+	}
+	
+	static void debugIntent(Intent intent, String tag) {
+		Log.v(tag, "action: " + intent.getAction());
+		Log.v(tag, "component: " + intent.getComponent());
+		Bundle extras = intent.getExtras();
+		if(extras != null) {
+			for(String key : extras.keySet()) {
+				Log.v(tag, "key [" + key + "]: " + extras.get(key));
+			}
+		} else {
+			Log.v(tag, "no extras");
+		}
 	}
 	
 	public static class WeakRunnable implements Runnable {

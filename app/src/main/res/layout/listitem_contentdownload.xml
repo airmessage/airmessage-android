@@ -17,15 +17,17 @@
 	<ProgressBar
 		android:id="@+id/download_progress"
 		style="?android:attr/progressBarStyleHorizontal"
+		android:progressDrawable="@drawable/progressbar_rounded"
+		android:indeterminateDrawable="@drawable/progressbar_rounded"
 		android:theme="@style/Theme.AppCompat.Light"
 		android:layout_width="80dp"
-		android:layout_height="wrap_content"
+		android:layout_height="5dp"
 		android:layout_marginEnd="8dp"
 		android:indeterminate="true"
 		android:indeterminateOnly="false"
 		android:indeterminateTint="@color/colorMessageOutgoingAccent"
-		android:max="100"
 		android:progressTint="@color/colorMessageOutgoingAccent"
+		android:max="100"
 		android:visibility="gone" />
 	
 	<TextView
@@ -35,6 +37,7 @@
 		android:gravity="center_vertical"
 		android:text="Size"
 		android:layout_marginEnd="4dp"
+		android:textSize="16sp"
 		android:textColor="?android:attr/textColorSecondary" />
 	
 	<TextView
@@ -45,12 +48,13 @@
 		android:gravity="center_vertical"
 		android:text="Type"
 		android:layout_marginEnd="4dp"
+		android:textSize="16sp"
 		android:textColor="?android:attr/textColorPrimary" />
 	
 	<ImageView
 		android:id="@+id/download_icon"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:src="@drawable/download"
+		android:src="@drawable/download_rounded"
 		android:tint="?android:attr/textColorPrimary" />
 </LinearLayout>

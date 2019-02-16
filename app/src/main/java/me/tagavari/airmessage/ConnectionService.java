@@ -12,6 +12,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -55,6 +56,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -96,7 +98,7 @@ public class ConnectionService extends Service {
 	 *  4 - Better stability and security, with sub-version support
 	 */
 	public static final int mmCommunicationsVersion = 4;
-	public static final int mmCommunicationsSubVersion = 4;
+	public static final int mmCommunicationsSubVersion = 5;
 	
 	public static final String featureAdvancedSync1 = "advanced_sync_1";
 	
@@ -198,13 +200,24 @@ public class ConnectionService extends Service {
 		}
 	};
 	private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
+		private long lastDisconnectionTime = -1;
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Returning if automatic reconnects are disabled
 			//if(!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_networkreconnect_key), false)) return;
 			
-			//Reconnecting if there is a connection available
-			if(!intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false)) reconnect();
+			//Getting the current active network
+			NetworkInfo activeNetwork = intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK_INFO);
+			//NetworkInfo activeNetwork = ((ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
+			//if(activeNetwork == null) return;
+			
+			if(activeNetwork.isConnected()) {
+				//Reconnecting if it is a network swap or the client is disconnected
+				if((lastDisconnectionTime != -1 && lastDisconnectionTime >= SystemClock.elapsedRealtime() - 100L) || getCurrentState() == stateDisconnected) reconnect();
+			} else {
+				//Marking the time (there is nothing we can do here - the network is disconnected)
+				lastDisconnectionTime = SystemClock.elapsedRealtime();
+			}
 		}
 	};
 	
@@ -359,6 +372,7 @@ public class ConnectionService extends Service {
 		//Unregistering the broadcast receivers
 		unregisterReceiver(networkStateChangeBroadcastReceiver);
 		unregisterReceiver(pingBroadcastReceiver);
+		unregisterReceiver(reconnectionBroadcastReceiver);
 		
 		//Removing the notification
 		clearNotification();
@@ -414,15 +428,15 @@ public class ConnectionService extends Service {
 		}
 		
 		//Checking if there is no hostname
-		if(hostname == null || hostname.isEmpty()) {
+		if(hostname == null) {
 			//Retrieving the data from the shared preferences
 			SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, "");
-			password = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, "");
+			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null);
+			password = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, null);
 		}
 		
 		//Checking if the hostname is invalid (nothing was found in memory or on disk)
-		if(hostname.isEmpty()) {
+		if(hostname == null) {
 			//Updating the notification
 			postDisconnectedNotification(true);
 			
@@ -1267,6 +1281,8 @@ public class ConnectionService extends Service {
 					return new ClientProtocol3();
 				case 4:
 					return new ClientProtocol4();
+				case 5:
+					return new ClientProtocol5();
 			}
 		}
 		
@@ -2120,7 +2136,7 @@ public class ConnectionService extends Service {
 			@Override
 			boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
 				//Ignoring advanced requests
-				if(params.isAdvanced) throw new UnsupportedOperationException();
+				//if(params.isAdvanced) throw new UnsupportedOperationException();
 				
 				//Returning false if there is no connection thread
 				if(connectionThread == null) return false;
@@ -2861,7 +2877,7 @@ public class ConnectionService extends Service {
 			@Override
 			boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
 				//Ignoring advanced requests
-				if(params.isAdvanced) throw new UnsupportedOperationException();
+				//if(params.isAdvanced) throw new UnsupportedOperationException();
 				
 				//Returning false if there is no connection thread
 				if(connectionThread == null) return false;
@@ -3160,24 +3176,22 @@ public class ConnectionService extends Service {
 				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt)) {
 					//Adding the data
 					out.writeShort(requestID); //Request ID
-					out.writeBoolean(params.isAdvanced); //Advanced retrieval
+					out.writeBoolean(true); //Advanced retrieval
 					
-					if(params.isAdvanced) {
-						out.writeBoolean(params.restrictMessages); //Whether or not to time-restrict messages
-						if(params.restrictMessages) out.writeLong(params.timeSinceMessages); //Messages time since
-						out.writeBoolean(params.downloadAttachments); //Whether or not to download attachments
-						if(params.downloadAttachments) {
-							out.writeBoolean(params.restrictAttachments); //Whether or not to time-restrict attachments
-							if(params.restrictAttachments) out.writeLong(params.timeSinceAttachments); //Attachments time since
-							out.writeBoolean(params.restrictAttachmentSizes); //Whether or not to size-restrict attachments
-							if(params.restrictAttachmentSizes) out.writeLong(params.attachmentSizeLimit); //Attachment size limit
-							
-							out.writeInt(params.attachmentFilterWhitelist.size()); //Attachment type whitelist
-							for(String filter : params.attachmentFilterWhitelist) out.writeUTF(filter);
-							out.writeInt(params.attachmentFilterBlacklist.size()); //Attachment type blacklist
-							for(String filter : params.attachmentFilterBlacklist) out.writeUTF(filter);
-							out.writeBoolean(params.attachmentFilterDLOutside); //Whether or not to download "other" items
-						}
+					out.writeBoolean(params.restrictMessages); //Whether or not to time-restrict messages
+					if(params.restrictMessages) out.writeLong(params.timeSinceMessages); //Messages time since
+					out.writeBoolean(params.downloadAttachments); //Whether or not to download attachments
+					if(params.downloadAttachments) {
+						out.writeBoolean(params.restrictAttachments); //Whether or not to time-restrict attachments
+						if(params.restrictAttachments) out.writeLong(params.timeSinceAttachments); //Attachments time since
+						out.writeBoolean(params.restrictAttachmentSizes); //Whether or not to size-restrict attachments
+						if(params.restrictAttachmentSizes) out.writeLong(params.attachmentSizeLimit); //Attachment size limit
+						
+						out.writeInt(params.attachmentFilterWhitelist.size()); //Attachment type whitelist
+						for(String filter : params.attachmentFilterWhitelist) out.writeUTF(filter);
+						out.writeInt(params.attachmentFilterBlacklist.size()); //Attachment type blacklist
+						for(String filter : params.attachmentFilterBlacklist) out.writeUTF(filter);
+						out.writeBoolean(params.attachmentFilterDLOutside); //Whether or not to download "other" items
 					}
 					
 					out.flush();
@@ -3206,6 +3220,54 @@ public class ConnectionService extends Service {
 				}
 				
 				return false;
+			}
+		}
+		
+		private class ClientProtocol5 extends ClientProtocol4 {
+			@Override
+			boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
+				//Returning false if there is no connection thread
+				if(connectionThread == null) return false;
+				
+				//Building the data
+				byte[] packetData;
+				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt)) {
+					//Adding the data
+					out.writeShort(requestID); //Request ID
+					//out.writeBoolean(params.isAdvanced); //Advanced retrieval
+					
+					out.writeBoolean(params.restrictMessages); //Whether or not to time-restrict messages
+					if(params.restrictMessages) out.writeLong(params.timeSinceMessages); //Messages time since
+					out.writeBoolean(params.downloadAttachments); //Whether or not to download attachments
+					if(params.downloadAttachments) {
+						out.writeBoolean(params.restrictAttachments); //Whether or not to time-restrict attachments
+						if(params.restrictAttachments) out.writeLong(params.timeSinceAttachments); //Attachments time since
+						out.writeBoolean(params.restrictAttachmentSizes); //Whether or not to size-restrict attachments
+						if(params.restrictAttachmentSizes) out.writeLong(params.attachmentSizeLimit); //Attachment size limit
+						
+						out.writeInt(params.attachmentFilterWhitelist.size()); //Attachment type whitelist
+						for(String filter : params.attachmentFilterWhitelist) out.writeUTF(filter);
+						out.writeInt(params.attachmentFilterBlacklist.size()); //Attachment type blacklist
+						for(String filter : params.attachmentFilterBlacklist) out.writeUTF(filter);
+						out.writeBoolean(params.attachmentFilterDLOutside); //Whether or not to download "other" items
+					}
+					
+					out.flush();
+					
+					packetData = trgt.toByteArray();
+				} catch(IOException exception) {
+					//Printing the stack trace
+					exception.printStackTrace();
+					
+					//Returning false
+					return false;
+				}
+				
+				//Queuing the packet
+				queuePacket(new PacketStruct(nhtMassRetrieval, packetData));
+				
+				//Returning true
+				return true;
 			}
 		}
 	}
@@ -6111,7 +6173,6 @@ public class ConnectionService extends Service {
 	}
 	
 	static class MassRetrievalParams {
-		final boolean isAdvanced;
 		final boolean restrictMessages;
 		final long timeSinceMessages;
 		final boolean downloadAttachments;
@@ -6124,21 +6185,19 @@ public class ConnectionService extends Service {
 		final boolean attachmentFilterDLOutside;
 		
 		MassRetrievalParams() {
-			isAdvanced = false;
-			restrictMessages = false;
-			timeSinceMessages = -1;
-			downloadAttachments = false;
+			restrictMessages = true;
+			timeSinceMessages = System.currentTimeMillis() - 4 * 7 * 24 * 60 * 60 * 1000L; //1 month
+			downloadAttachments = true;
 			restrictAttachments = false;
 			timeSinceAttachments = -1;
-			restrictAttachmentSizes = false;
-			attachmentSizeLimit = -1;
-			attachmentFilterWhitelist = null;
-			attachmentFilterBlacklist = null;
+			restrictAttachmentSizes = true;
+			attachmentSizeLimit = 16 * 1024 * 1024; //16 MiB
+			attachmentFilterWhitelist = Arrays.asList("image/*", "video/*", "audio/*");
+			attachmentFilterBlacklist = new ArrayList<>();
 			attachmentFilterDLOutside = false;
 		}
 		
 		MassRetrievalParams(boolean restrictMessages, long timeSinceMessages, boolean downloadAttachments, boolean restrictAttachments, long timeSinceAttachments, boolean restrictAttachmentSizes, long attachmentSizeLimit, List<String> attachmentFilterWhitelist, List<String> attachmentFilterBlacklist, boolean attachmentFilterDLOutside) {
-			isAdvanced = true;
 			this.restrictMessages = restrictMessages;
 			this.timeSinceMessages = timeSinceMessages;
 			this.downloadAttachments = downloadAttachments;

@@ -38,7 +38,7 @@
 	<string name="preference_storage_deleteattachments_desc">Les pièces jointes peuvent être téléchargées à tout moment</string>
 	<string name="preferencegroup_server_title">Serveur</string>
 	<string name="preference_server_serverdetails_title">Modifier les informations du serveur</string>
-	<string name="preference_server_downloadmessages_title">Synchroniser manuellement les messages</string>
+	<string name="preference_server_downloadmessages_title">Synchroniser les messages</string>
 	<string name="preference_server_downloadmessages_desc">Copier tous les messages du serveur à cet appareil</string>
 	<string name="preference_server_connectionboot_title">Connexion automatique au démarrage de l\'appareil</string>
 	<string name="preference_server_networkreconnect_title">Reconnexion de changement de réseau</string>
@@ -87,7 +87,7 @@
 	<string name="message_intenterror_camera">Aucune appli de caméra trouvée</string>
 	<string name="message_intenterror_browser">Aucune appli de navigateur web trouvée</string>
 	<string name="message_intenterror_email">Aucune appli de courriel trouvée</string>
-	<string name="message_eventtype_chatrename_change">%1$s a nommé la conversation \"%s\"</string>
+	<string name="message_eventtype_chatrename_change">%1$s a nommé la conversation \"%2$s\"</string>
 	<string name="message_eventtype_chatrename_change_you">Vous avez nommé la conversation \"%s\"</string>
 	<string name="message_eventtype_chatrename_remove">%s a enlevé le nom de la conversation</string>
 	<string name="message_eventtype_chatrename_remove_you">Vous avez enlevé le nom de la conversation</string>
@@ -106,23 +106,23 @@
 	<string name="message_setup_connect_connectionerror">La connexion a échoué</string>
 	<string name="message_setup_connect_password">Mot de passe</string>
 	
-	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages?</string>
-	<string name="message_setup_sync_download_description">Cette option remplacera tous les messages actuellement stockés sur l\'appareil. Si vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil.</string>
+	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages</string>
+	<string name="message_setup_sync_download_description">Copiez vos messages récents de votre ordinateur et reprenez là où vous l\'avez laissé.\n\nSi vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil.</string>
 	<string name="action_downloadmessages">Télécharger les messages</string>
-	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages</string>
+	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages de cet appareil</string>
 	<string name="action_deletemessages">Supprimer les messages</string>
 	<string name="message_setup_sync_warning_title">Passer la suppression des messages?</string>
-	<string name="message_setup_sync_description">Si vous vous connectez à un nouveau serveur ou compte Apple et vous n\'effacez pas vos messages, vos anciennes conversations peuvent être modifiées de manière incorrecte.</string>
+	<string name="message_setup_sync_description">Utilisez cet option uniquement si vous vous connectez au même ordinateur et au même compte Apple que celui utilisé auparavant.\n\nSi vous conservez vos anciennes conversations, elles risquent de mélanger avec vos nouvelles conversations ou de perdre des fonctionnalités.</string>
 	<string name="message_syncerror">Échec de téléchargement des messages</string>
 	
 	<string name="imperative_recording_cancel">Glissez pour annuler</string>
 	<string name="imperative_recording_instructions">Tapez et maintenez pour enregistrer</string>
 	<string name="message_confirm_deletemessages">Supprimer tous les messages?</string>
 	<string name="message_confirm_deleteattachments">Supprimer toutes les pièces jointes?</string>
-	<string name="message_confirm_resyncmessages">Synchroniser manuellement les messages?</string>
+	<string name="message_confirm_resyncmessages">Synchroniser les messages récents?</string>
 	<string name="message_confirm_resyncmessages_description">Cette action remplacera tous les messages actuellement stockés</string>
-	<string name="message_confirm_resyncmessages_started">Les nouveaux messages sont en cours de téléchargement</string>
-	<string name="message_confirm_resyncmessages_inprogress">Les nouveaux messages sont déjà en cours de téléchargement</string>
+	<string name="message_confirm_resyncmessages_started">Les messages récents sont en cours de téléchargement</string>
+	<string name="message_confirm_resyncmessages_inprogress">Les messages récents sont déjà en cours de téléchargement</string>
 	<string name="message_confirm_resyncmessages_advanced">Synchronisation avancée</string>
 	<string name="action_copytext">Copier le texte</string>
 	<string name="action_advanced">Avancé</string>
@@ -137,8 +137,8 @@
 	<string name="action_reconnect">Reconnecter</string>
 	<string name="action_quit">Quitter</string>
 	<string name="action_sharemessage">Partager le message</string>
-	<string name="message_shareable_text">Le %s à %s, %s a écrit: %s</string>
-	<string name="message_shareable_text_you">Le %s à %s, j\'ai écrit: %s</string>
+	<string name="message_shareable_text">Le %1$s à %2$s, %3$s a écrit: %4$s</string>
+	<string name="message_shareable_text_you">Le %1$s à %2$s, j\'ai écrit: %3$s</string>
 	<string name="imperative_userinput">Saisissez un nom, un adresse de courriel ou un numéro de téléphone</string>
 	<string name="action_addcontent">Ajouter une pièce jointe</string>
 	<string name="action_takephoto">Prendre une photo</string>
@@ -201,7 +201,7 @@
 	<string name="message_messageerror_desc_apple_unregistered_generic">Le destinataire n\'est pas enregistré avec iMessage</string>
 	<string name="imperative_selectdestination">Sélectionnez une destination</string>
 	<string name="action_sendto">Envoyer à %s</string>
-	<string name="message_eventtype_kick">%s a enlevé %s de la conversation</string>
+	<string name="message_eventtype_kick">%1$s a enlevé %2$s de la conversation</string>
 	<string name="message_eventtype_kick_you_agent">Vous avez retiré %s de la conversation</string>
 	<string name="message_eventtype_kick_you_object">%s vous a retiré de la conversation</string>
 	<string name="message_loaderror_blocked">Échec du chargement des adresses bloquées</string>

@@ -27,6 +27,6 @@
 	<item
 		android:id="@+id/action_details"
 		android:title="@string/action_details"
-		android:icon="@drawable/info_outlined"
+		android:icon="@drawable/overflow"
 		app:showAsAction="always" />
 </menu>

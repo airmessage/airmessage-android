@@ -1,5 +1,6 @@
 package me.tagavari.airmessage;
 
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -16,6 +17,7 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -87,29 +89,39 @@ public class ServerSetup extends AppCompatActivity {
 	private BroadcastReceiver serviceBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			//Ignoring the broadcast if the launch ID doesn't match or the result is connecting
-			int state;
-			if(intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) != viewModel.connectionLaunchID ||
-					(state = intent.getIntExtra(Constants.intentParamState, -1)) == ConnectionService.stateConnecting) return;
-			
-			//Unregistering the receiver
-			LocalBroadcastManager.getInstance(ServerSetup.this).unregisterReceiver(this);
-			
-			//Re-enabling the next button
-			setLoading(false);
-			
-			//Getting the result
-			if(state == ConnectionService.stateConnected) {
-				//Advancing the page
-				setPage(ActivityViewModel.pageSync, false);
-				hideSoftKeyboard();
-			} else {
-				//Showing the error dialog
-				showErrorDialog(intent.getIntExtra(Constants.intentParamCode, -1));
+			//Checking if the activity is waiting for a response
+			if(viewModel.page == ActivityViewModel.pageVerification && viewModel.isPageLoading) {
+				//Ignoring the broadcast if the launch ID doesn't match or the result is connecting
+				int state;
+				if(intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) != viewModel.connectionLaunchID || (state = intent.getIntExtra(Constants.intentParamState, -1)) == ConnectionService.stateConnecting) return;
 				
-				//Enabling the input fields
-				hostnameInputField.setEnabled(true);
-				passwordInputField.setEnabled(true);
+				//Unregistering the receiver
+				//LocalBroadcastManager.getInstance(ServerSetup.this).unregisterReceiver(this);
+				
+				//Re-enabling the next button
+				setLoading(false);
+				
+				//Getting the result
+				if(state == ConnectionService.stateConnected) {
+					//Advancing the page
+					setPage(ActivityViewModel.pageSync, false);
+					hideSoftKeyboard();
+				} else {
+					//Showing the error dialog
+					showErrorDialog(intent.getIntExtra(Constants.intentParamCode, -1));
+					
+					//Enabling the input fields
+					hostnameInputField.setEnabled(true);
+					passwordInputField.setEnabled(true);
+				}
+			}
+			//Otherwise checking if the response has already been verified
+			else if(viewModel.page > ActivityViewModel.pageVerification) {
+				System.out.println("Update: " + intent.getIntExtra(Constants.intentParamState, -1));
+				if(intent.getIntExtra(Constants.intentParamState, -1) == ConnectionService.stateDisconnected) {
+					//Returning to the verification page
+					setPage(ActivityViewModel.pageVerification, false);
+				}
 			}
 		}
 	};
@@ -172,8 +184,8 @@ public class ServerSetup extends AppCompatActivity {
 			setLoading(viewModel.isPageLoading);
 		});
 		
-		//Re-registering the receiver
-		if(viewModel.page == ActivityViewModel.pageVerification && viewModel.isPageLoading) LocalBroadcastManager.getInstance(this).registerReceiver(serviceBroadcastReceiver, new IntentFilter(ConnectionService.localBCStateUpdate));
+		//Registering the receiver
+		LocalBroadcastManager.getInstance(this).registerReceiver(serviceBroadcastReceiver, new IntentFilter(ConnectionService.localBCStateUpdate));
 	}
 	
 	@Override
@@ -185,6 +197,22 @@ public class ServerSetup extends AppCompatActivity {
 			ConnectionService.hostname = viewModel.newHostname;
 			ConnectionService.password = viewModel.newPassword;
 		}
+		
+		//Configuring the header images
+		getWindow().getDecorView().post(() -> {
+			float windowHeight = Constants.pxToDp(Constants.getWindowHeight(this));
+			ImageView imageHeader = findViewById(R.id.image_header);
+			if(windowHeight < 577) {
+				//Short banner
+				imageHeader.setImageResource(R.drawable.onboarding_download_short);
+			} else if(windowHeight < 772) {
+				//Medium banner
+				imageHeader.setImageResource(R.drawable.onboarding_download_medium);
+			} else {
+				//Tall banner
+				imageHeader.setImageResource(R.drawable.onboarding_download_tall);
+			}
+		});
 	}
 	
 	@Override
@@ -356,9 +384,6 @@ public class ServerSetup extends AppCompatActivity {
 		
 		//Telling the service to connect
 		startService(new Intent(this, ConnectionService.class).setAction(ConnectionService.selfIntentActionConnect).putExtra(Constants.intentParamLaunchID, viewModel.connectionLaunchID = ConnectionService.getNextLaunchID()));
-		
-		//Adding the broadcast listener
-		LocalBroadcastManager.getInstance(this).registerReceiver(serviceBroadcastReceiver, new IntentFilter(ConnectionService.localBCStateUpdate));
 	}
 	
 	public void onBackButtonClick(View view) {

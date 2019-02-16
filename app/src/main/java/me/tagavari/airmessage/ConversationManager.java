@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.PaintDrawable;
@@ -662,18 +663,18 @@ class ConversationManager {
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
-				if(thenCal.compareTo(compareCal) > 0) return DateFormat.format("EEE", thenCal).toString();
+				if(Constants.compareCalendarDates(thenCal, compareCal) > 0) return DateFormat.format("EEE", thenCal).toString();
 			}
 			
 			//Within the year (Dec 9)
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
-				if(thenCal.compareTo(compareCal) > 0) return DateFormat.format("MMM d", thenCal).toString();
+				if(Constants.compareCalendarDates(thenCal, compareCal) > 0) return DateFormat.format(context.getResources().getString(R.string.dateformat_withinyear), thenCal).toString();//return DateFormat.format("MMM d", thenCal).toString();
 			}
 			
 			//Anytime (Dec 2018)
-			return DateFormat.format("MMM yyyy", thenCal).toString();
+			return DateFormat.format(context.getString(R.string.dateformat_outsideyear_simple), thenCal).toString();
 		}
 		
 		void updateViewUser(Context context) {
@@ -897,7 +898,7 @@ class ConversationManager {
 			activityStateTargetReadReference = new WeakReference<>(activityStateTarget);
 		}
 		
-		MessageInfo getActivityStateTargetLatest() {
+		MessageInfo getActivityStateTargetDelivered() {
 			if(activityStateTargetDeliveredReference == null) return null;
 			return activityStateTargetDeliveredReference.get();
 		}
@@ -913,23 +914,23 @@ class ConversationManager {
 			//Checking if the item is delivered
 			if(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered) {
 				//Getting the current item
-				MessageInfo activeMessage = getActivityStateTargetLatest();
+				MessageInfo activeMessageDelivered = getActivityStateTargetDelivered();
 				
 				//Replacing the item if it is invalid
-				if(activeMessage == null) {
+				if(activeMessageDelivered == null) {
 					setActivityStateTargetDelivered(activityStateTarget);
 					
 					//Updating the view
 					if(update) activityStateTarget.updateActivityStateDisplay(context);
 				} else {
 					//Replacing the item if the new one is more recent
-					if(ConversationManager.compareConversationItems(activityStateTarget, activeMessage) >= 0) {
+					if(ConversationManager.compareConversationItems(activityStateTarget, activeMessageDelivered) >= 0) {
 						setActivityStateTargetDelivered(activityStateTarget);
 						
 						//Updating the views
 						if(update) {
 							activityStateTarget.updateActivityStateDisplay(context);
-							activeMessage.updateActivityStateDisplay(context);
+							activeMessageDelivered.updateActivityStateDisplay(context);
 						}
 					}
 				}
@@ -937,13 +938,13 @@ class ConversationManager {
 			//Otherwise checking if the item is read
 			else if(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead) {
 				//Getting the current item
+				MessageInfo activeMessageDelivered = getActivityStateTargetDelivered();
 				MessageInfo activeMessageRead = getActivityStateTargetRead();
-				//MessageInfo activeMessageLatest = getActivityStateTargetLatest();
 				
 				//Replacing the item if it is invalid
 				if(activeMessageRead == null) {
-					setActivityStateTargetRead(activityStateTarget);
 					setActivityStateTargetDelivered(activityStateTarget);
+					setActivityStateTargetRead(activityStateTarget);
 					
 					//Updating the view
 					if(update) {
@@ -954,40 +955,15 @@ class ConversationManager {
 					//Replacing the item if the new one is more recent
 					if(ConversationManager.compareConversationItems(activityStateTarget, activeMessageRead) >= 0 &&
 							(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
-						setActivityStateTargetRead(activityStateTarget);
 						setActivityStateTargetDelivered(activityStateTarget);
+						setActivityStateTargetRead(activityStateTarget);
 						
 						//Updating the views
 						if(update) {
 							activityStateTarget.updateActivityStateDisplay(context);
 							activeMessageRead.updateActivityStateDisplay(context);
+							if(activeMessageDelivered != null && activeMessageDelivered != activeMessageRead) activeMessageDelivered.updateActivityStateDisplay(context);
 						}
-					}
-				}
-			}
-		}
-		
-		void tryActivityStateTargetRead(MessageInfo activityStateTarget, boolean update, Context context) {
-			//Getting the current item
-			MessageInfo activeMessage = getActivityStateTargetRead();
-			
-			//Replacing the item if it is invalid
-			if(activeMessage == null) {
-				setActivityStateTargetRead(activityStateTarget);
-				
-				//Updating the view
-				if(update) activityStateTarget.updateActivityStateDisplay(context);
-			} else {
-				//Replacing the item if the new one is outgoing and more recent
-				if(activityStateTarget.isOutgoing() &&
-						ConversationManager.compareConversationItems(activityStateTarget, activeMessage) >= 0 &&
-						(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
-					setActivityStateTargetRead(activityStateTarget);
-					
-					//Updating the views
-					if(update) {
-						activityStateTarget.updateActivityStateDisplay(context);
-						activeMessage.updateActivityStateDisplay(context);
 					}
 				}
 			}
@@ -1093,7 +1069,7 @@ class ConversationManager {
 			List<ConversationItem> updateList = new ArrayList<>(list);
 			List<ConversationItem> sortQueue = new ArrayList<>();
 			List<ConversationItemMoveRecord> movedList = new ArrayList<>();
-			List<ConversationItem> newMessages = new ArrayList<>(); //New messages that aren't replacing ghost messages
+			List<ConversationItem> newItems = new ArrayList<>(); //New items that aren't replacing ghost messages
 			//ConversationItem latestNewMessage = null; //Most recent message that isn't replacing a ghost message
 			
 			//Iterating over the conversation items
@@ -1250,7 +1226,7 @@ class ConversationManager {
 				//Checking if a message could not be replaced
 				if(!messageReplaced) {
 					//Marking the item as a new item
-					newMessages.add(conversationItem);
+					newItems.add(conversationItem);
 					
 					//Inserting the item
 					//int index = insertConversationItem(conversationItem, context, false);
@@ -1283,7 +1259,7 @@ class ConversationManager {
 			}
 			
 			//Inserting the new items
-			for(ConversationItem item : newMessages) insertConversationItem(item, context, false);
+			for(ConversationItem item : newItems) insertConversationItem(item, context, false);
 			
 			//Updating the conversation items' relations
 			addConversationItemRelations(this, conversationItems, updateList, MainApplication.getInstance(), true);
@@ -1293,6 +1269,9 @@ class ConversationManager {
 			
 			//Updating the adapter
 			if(updater != null) {
+				//Telling the updater
+				updater.itemsAdded(newItems);
+				
 				//Updating the moved messages
 				for(ConversationItemMoveRecord record : movedList) {
 					int newIndex = conversationItems.indexOf(record.item);
@@ -1300,10 +1279,10 @@ class ConversationManager {
 				}
 				
 				//Updating the new messages
-				if(!newMessages.isEmpty()) {
-					int[] indices = new int[newMessages.size()];
+				if(!newItems.isEmpty()) {
+					int[] indices = new int[newItems.size()];
 					int incomingMessagesCount = 0;
-					for(ConversationItem newItem : newMessages) {
+					for(ConversationItem newItem : newItems) {
 						//Finding the item index
 						int itemIndex = conversationItems.indexOf(newItem);
 						
@@ -1432,9 +1411,10 @@ class ConversationManager {
 			//Updating the last item
 			trySetLastItemUpdate(context, message, false);
 			
-			//Updating the adapter
+			//Telling the updater
 			ActivityCallbacks updater = getActivityCallbacks();
 			if(updater != null) {
+				updater.itemsAdded(Collections.singletonList(message));
 				updater.listUpdateInserted(conversationItems.size() - 1);
 				updater.listScrollToBottom();
 			}
@@ -1501,6 +1481,11 @@ class ConversationManager {
 			abstract void chatUpdateUnreadCount();
 			abstract void chatUpdateMemberAdded(MemberInfo member, int index);
 			abstract void chatUpdateMemberRemoved(MemberInfo member, int index);
+			
+			abstract void itemsAdded(List<ConversationManager.ConversationItem> list);
+			abstract void tapbackAdded(TapbackInfo item);
+			abstract void stickerAdded(StickerInfo item);
+			abstract void messageSendFailed(MessageInfo message);
 			
 			abstract Messaging.AudioPlaybackManager getAudioPlaybackManager();
 			
@@ -1572,7 +1557,7 @@ class ConversationManager {
 			return array;
 		}
 		
-		static int getRandomColor() {
+		static int getRandomConversationColor() {
 			return standardUserColors[Constants.getRandom().nextInt(standardUserColors.length)];
 		}
 		
@@ -2239,7 +2224,7 @@ class ConversationManager {
 			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
 			
 			//Getting the requested state
-			isShowingMessageState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetLatest()) &&
+			isShowingMessageState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetDelivered()) &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
 					messageState != SharedValues.MessageInfo.stateCodeIdle &&
 					messageState != SharedValues.MessageInfo.stateCodeSent;
@@ -2258,7 +2243,7 @@ class ConversationManager {
 			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
 			
 			//Getting the requested state
-			boolean requestedState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetLatest()) &&
+			boolean requestedState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetDelivered()) &&
 					messageState != SharedValues.MessageInfo.stateCodeGhost &&
 					messageState != SharedValues.MessageInfo.stateCodeIdle &&
 					messageState != SharedValues.MessageInfo.stateCodeSent;
@@ -2416,18 +2401,18 @@ class ConversationManager {
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
-				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE", sentCal).toString();
+				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format("EEEE", sentCal).toString();
 			}
 			
 			//If the days are within the same year period (Dec 9)
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
-				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("MMM d", sentCal).toString();
+				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format(context.getString(R.string.dateformat_withinyear), sentCal).toString();
 			}
 			
 			//Different years (Dec 9, 2018)
-			return DateFormat.format("MMM d, yyyy", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+			return DateFormat.format(context.getString(R.string.dateformat_outsideyear), sentCal).toString();
 		}
 		
 		boolean sendMessage(Context context) {
@@ -2446,6 +2431,10 @@ class ConversationManager {
 					
 					//Updating the message's database entry
 					new UpdateErrorCodeTask(getLocalID(), errorCode).execute();
+					
+					//Updating the adapter
+					ConversationInfo.ActivityCallbacks updater = getConversationInfo().getActivityCallbacks();
+					if(updater != null) updater.messageSendFailed(MessageInfo.this);
 					
 					//Getting the context
 					//Context context = contextReference.get();
@@ -2698,18 +2687,18 @@ class ConversationManager {
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.DAY_OF_YEAR, -7); //Today (now) -> One week ago
-				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format("EEEE", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 			}
 			
 			//If the days are within the same year period (Sunday, Dec 9)
 			{
 				Calendar compareCal = (Calendar) nowCal.clone();
 				compareCal.add(Calendar.YEAR, -1); //Today (now) -> One year ago
-				if(sentCal.compareTo(compareCal) > 0) return DateFormat.format("EEEE, MMM d", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+				if(Constants.compareCalendarDates(sentCal, compareCal) > 0) return DateFormat.format(context.getString(R.string.dateformat_withinyear_weekday), sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 			}
 			
 			//Different years (Dec 9, 2018)
-			return DateFormat.format("MMM d, yyyy", sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
+			return DateFormat.format(context.getString(R.string.dateformat_outsideyear), sentCal) + Constants.bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate);
 		}
 		
 		void setHasTimeDivider(boolean hasTimeDivider) {
@@ -4037,8 +4026,10 @@ class ConversationManager {
 			} else {
 				if(Preferences.checkPreferenceAdvancedColor(context)) {
 					MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
-					backgroundColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-					textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+					int targetColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
+					//textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+					textColor = ColorHelper.modifyColorRaw(targetColor, Constants.isNightMode(context.getResources()) ? 1.3F : 0.75F);
+					backgroundColor = Color.argb(80, Color.red(targetColor), Color.green(targetColor), Color.blue(targetColor));
 				} else {
 					backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
 					textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
@@ -4540,9 +4531,10 @@ class ConversationManager {
 			viewHolder.labelDownloadSize.setTextColor(cslSecondaryText);
 			viewHolder.labelDownloadType.setTextColor(cslText);
 			viewHolder.imageDownload.setImageTintList(cslText);
-			viewHolder.progressDownload.setProgressTintList(cslAccent);
-			viewHolder.progressDownload.setIndeterminateTintList(cslAccent);
-			viewHolder.progressDownload.setProgressBackgroundTintList(cslAccent);
+			viewHolder.progressDownload.setProgressTintList(cslText);
+			//viewHolder.progressDownload.setSecondaryProgressTintList(cslAccent);
+			viewHolder.progressDownload.setIndeterminateTintList(ColorStateList.valueOf(ColorHelper.modifyColorRaw(cslBackground.getDefaultColor(), 0.9F)));
+			viewHolder.progressDownload.setProgressBackgroundTintList(ColorStateList.valueOf(ColorHelper.modifyColorRaw(cslBackground.getDefaultColor(), 0.9F)));
 			
 			viewHolder.groupProcessing.setBackgroundTintList(cslBackground);
 			viewHolder.labelProcessing.setTextColor(cslText);
@@ -5186,8 +5178,8 @@ class ConversationManager {
 		static final String MIME_PREFIX = "audio";
 		static final int RESOURCE_NAME = R.string.part_content_audio;
 		
-		private static final int resDrawablePlay = R.drawable.play;
-		private static final int resDrawablePause = R.drawable.pause;
+		private static final int resDrawablePlay = R.drawable.play_rounded;
+		private static final int resDrawablePause = R.drawable.pause_rounded;
 		
 		private static final byte fileStateIdle = 0;
 		private static final byte fileStateLoading = 1;
@@ -5253,8 +5245,9 @@ class ConversationManager {
 			viewHolder.groupContent.setBackgroundTintList(cslBackground);
 			viewHolder.contentIcon.setImageTintList(cslText);
 			viewHolder.contentLabel.setTextColor(cslText);
-			viewHolder.contentProgress.setBackgroundTintList(cslText); //cslBackground
 			viewHolder.contentProgress.setProgressTintList(cslText);
+			//viewHolder.contentProgress.setBackgroundTintList(cslText); //cslBackground
+			viewHolder.contentProgress.setProgressBackgroundTintList(ColorStateList.valueOf(ColorHelper.modifyColorRaw(cslBackground.getDefaultColor(), 0.9F))); //cslBackground //TODO possibly use less lazy and hacky method
 		}
 		
 		@Override
@@ -5854,25 +5847,25 @@ class ConversationManager {
 					return tapbackEmphasis;
 				case SharedValues.TapbackModifierInfo.tapbackBaseAdd + SharedValues.TapbackModifierInfo.tapbackQuestion:
 					return tapbackQuestion;
-					default:
-						return -1;
+				default:
+					return -1;
 			}
 		}
 		
 		static TapbackDisplay getTapbackDisplay(int code, Context context) {
 			switch(code) {
 				case tapbackLove:
-					return new TapbackDisplay(R.drawable.heart, context.getResources().getColor(R.color.tapback_red, null));
+					return new TapbackDisplay(R.drawable.love_rounded, context.getResources().getColor(R.color.tapback_love, null));
 				case tapbackLike:
-					return new TapbackDisplay(R.drawable.like, context.getResources().getColor(R.color.tapback_yellow, null));
+					return new TapbackDisplay(R.drawable.like_rounded, context.getResources().getColor(R.color.tapback_like, null));
 				case tapbackDislike:
-					return new TapbackDisplay(R.drawable.dislike, context.getResources().getColor(R.color.tapback_orange, null));
+					return new TapbackDisplay(R.drawable.dislike_rounded, context.getResources().getColor(R.color.tapback_dislike, null));
 				case tapbackLaugh:
-					return new TapbackDisplay(R.drawable.excited, context.getResources().getColor(R.color.tapback_pink, null));
+					return new TapbackDisplay(R.drawable.excited_rounded, context.getResources().getColor(R.color.tapback_laugh, null));
 				case tapbackEmphasis:
-					return new TapbackDisplay(R.drawable.exclamation, context.getResources().getColor(R.color.tapback_purple, null));
+					return new TapbackDisplay(R.drawable.exclamation_rounded, context.getResources().getColor(R.color.tapback_exclamation, null));
 				case tapbackQuestion:
-					return new TapbackDisplay(R.drawable.question, context.getResources().getColor(R.color.tapback_blue, null));
+					return new TapbackDisplay(R.drawable.question_rounded, context.getResources().getColor(R.color.tapback_question, null));
 				default:
 					return null;
 			}
@@ -6492,8 +6485,8 @@ class ConversationManager {
 		}
 		
 		//Finding the message to show the state on
-		boolean targetLatestSet = false;
-		boolean targetReadSet = false;
+		boolean targetDeliveredSet = false;
+		//boolean targetReadSet = false;
 		for(int i = conversationItems.size() - 1; i >= 0; i--) {
 			//Getting the item
 			ConversationManager.ConversationItem item = conversationItems.get(i);
@@ -6508,17 +6501,19 @@ class ConversationManager {
 			if(!messageItem.isOutgoing()) continue;
 			
 			//Setting the conversation's active message state list ID
-			if(!targetLatestSet && messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered) {
+			if(!targetDeliveredSet && messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered) {
 				conversationInfo.setActivityStateTargetDelivered(messageItem);
-				targetLatestSet = true;
+				targetDeliveredSet = true;
 			}
-			if(!targetReadSet && messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeRead) {
+			if(/*!targetReadSet && */messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeRead) {
+				if(!targetDeliveredSet) conversationInfo.setActivityStateTargetDelivered(messageItem); //The delivered and read message would be the same thing
 				conversationInfo.setActivityStateTargetRead(messageItem);
-				targetReadSet = true;
+				//targetReadSet = true;
+				break; //Break on the first instance of a read message; if no delivered message has been found, then this takes priority anyways (the delivered message will overlap with this one, or be someplace above due to an awkward update)
 			}
 			
 			//Breaking from the loop
-			if(targetLatestSet && targetReadSet) break;
+			//if(targetDeliveredSet && targetReadSet) break;
 		}
 	}
 	
