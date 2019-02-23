@@ -129,8 +129,8 @@ public class Constants {
 	static final int groupActionLeave = 1;
 	
 	static final Uri serverSetupAddress = Uri.parse("http://airmessage.org/guide");
-	static final Uri serverUpdateAddress = Uri.parse("https://plus.google.com/communities/106264748879310604272/stream/30250b2a-f7a4-4f6c-a140-fb4b33096f8b");
-	static final Uri googlePlusCommunityAddress = Uri.parse("https://plus.google.com/communities/106264748879310604272");
+	static final Uri serverUpdateAddress = Uri.parse("https://airmessage.org/serverupdate");
+	static final Uri communityAddress = Uri.parse("https://reddit.com/r/AirMessage");
 	static final String feedbackEmail = "hello@airmessage.org";
 	
 	static final int defaultPort = 1359;

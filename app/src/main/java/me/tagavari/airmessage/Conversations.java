@@ -523,9 +523,9 @@ public class Conversations extends AppCompatCompositeActivity {
 							if(intent.resolveActivity(getPackageManager()) != null) startActivity(intent);
 							else Toast.makeText(this, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
 						})
-						.setPositiveButton(R.string.dialog_feedback_googleplus, (dialog, which) -> {
+						.setPositiveButton(R.string.dialog_feedback_community, (dialog, which) -> {
 							//Creating the intent
-							Intent intent = new Intent(Intent.ACTION_VIEW, Constants.googlePlusCommunityAddress);
+							Intent intent = new Intent(Intent.ACTION_VIEW, Constants.communityAddress);
 							intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 							
 							//Launching the intent

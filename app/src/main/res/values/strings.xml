@@ -79,7 +79,7 @@
 
 	<string name="dialog_feedback_message">Have a bug to report, a feature to suggest, or anything else to say? Contact us or discuss with others using the links below.</string>
 	<string name="dialog_feedback_email">Send E-Mail</string>
-	<string name="dialog_feedback_googleplus">Open G+ Community</string>
+	<string name="dialog_feedback_community">Open community subreddit</string>
 
 	<string name="message_blankstate_conversations">Once you start a new conversation, you\'ll see it listed here</string>
 	<string name="message_blankstate_conversations_archived">Archived conversations appear here</string>
