@@ -58,7 +58,7 @@
 	<string name="title_conversation_members">会話のユーザー</string>
 	<string name="title_conversation_files">会話のファイル</string>
 	<string name="dialog_feedback_email">メールを送る</string>
-	<string name="dialog_feedback_googleplus">コミュ二ティページを開きます</string>
+	<string name="dialog_feedback_community">コミュ二ティページを開く</string>
 	<string name="message_blankstate_conversations">新しい会話を開始すると、ここに表示されます</string>
 	<string name="message_blankstate_conversations_archived">アーカイブされた会話がここに表示されます</string>
 	<string name="message_blankstate_conversations_basic">会話はありません</string>

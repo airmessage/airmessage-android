@@ -117,7 +117,6 @@ public class ServerSetup extends AppCompatActivity {
 			}
 			//Otherwise checking if the response has already been verified
 			else if(viewModel.page > ActivityViewModel.pageVerification) {
-				System.out.println("Update: " + intent.getIntExtra(Constants.intentParamState, -1));
 				if(intent.getIntExtra(Constants.intentParamState, -1) == ConnectionService.stateDisconnected) {
 					//Returning to the verification page
 					setPage(ActivityViewModel.pageVerification, false);
