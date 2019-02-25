@@ -629,7 +629,7 @@ public class ConnectionService extends Service {
 		
 		//Creating the connection values
 		private final Handler handler = new Handler();
-		private final Runnable pingExpiryRunnable = this::disconnect;
+		private final Runnable pingExpiryRunnable = this::disconnectReconnect;
 		
 		/**
 		 * Connects to the server
@@ -650,6 +650,11 @@ public class ConnectionService extends Service {
 			
 			return false;
 		}
+		
+		/**
+		 * Connects to the server with multiple attempts, (eg. after a network switch)
+		 */
+		abstract void disconnectReconnect();
 		
 		/**
 		 * Disconnects the connection manager from the server
@@ -1037,6 +1042,12 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
+		void disconnectReconnect() {
+			//Keeps the connection drop reconnect flag enabled
+			connectionThread.initiateClose(intentResultCodeConnection, false);
+		}
+		
+		@Override
 		void disconnect() {
 			super.disconnect();
 			connectionThread.initiateClose(intentResultCodeConnection, false);
@@ -1125,6 +1136,9 @@ public class ConnectionService extends Service {
 		}
 		
 		private void updateStateDisconnected(int reason, boolean forwardRequest) {
+			//Returning if the state is already disconnected
+			if(currentState == stateDisconnected) return;
+			
 			//Cleaning up from the base connection manager
 			super.handleDisconnection();
 			
@@ -1151,7 +1165,7 @@ public class ConnectionService extends Service {
 						//Setting the last connection result
 						lastConnectionResult = reason;
 						
-						//Checking if the service is not expected to shut down
+						//Checking if the service is expected to shut down
 						if(shutdownRequested) {
 							//Notifying the connection listeners
 							broadcastState(stateDisconnected, reason, launchID);
@@ -1455,6 +1469,9 @@ public class ConnectionService extends Service {
 			}
 			
 			void initiateClose(int resultCode, boolean forwardRequest) {
+				//Updating the state
+				updateStateDisconnected(resultCode, forwardRequest);
+				
 				//Sending a message and finishing the threads
 				if(writerThread == null) {
 					interrupt();
@@ -1464,9 +1481,6 @@ public class ConnectionService extends Service {
 						writerThread.interrupt();
 					}));
 				}
-				
-				//Updating the state
-				updateStateDisconnected(resultCode, forwardRequest);
 			}
 			
 			private void closeConnection(int reason, boolean forwardRequest) {
