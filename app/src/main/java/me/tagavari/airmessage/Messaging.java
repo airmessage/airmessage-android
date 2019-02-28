@@ -82,10 +82,6 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEvent;
-import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEventListener;
-import net.yslibrary.android.keyboardvisibilityevent.util.UIUtil;
-
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -167,7 +163,6 @@ public class Messaging extends AppCompatCompositeActivity {
 	private PluginMessageBar.InfoBar infoBarConnection;
 	
 	//Creating the state values
-	private boolean attachmentsWaitingForKeyboard = false;
 	private boolean currentScreenEffectPlaying = false;
 	
 	//Creating the listener values
@@ -636,18 +631,21 @@ public class Messaging extends AppCompatCompositeActivity {
 		buttonSendMessage.setOnClickListener(sendButtonClickListener);
 		buttonAddContent.setOnClickListener(view -> {
 			if(viewModel.isAttachmentsPanelOpen) {
-				if(KeyboardVisibilityEvent.isKeyboardVisible(Messaging.this)) UIUtil.showKeyboard(Messaging.this, messageInputField); //The attachment drawer is automatically hidden when the keyboard is opened
-				else closeAttachmentsPanel(true);
+				/* if(KeyboardVisibilityEvent.isKeyboardVisible(Messaging.this)) UIUtil.showKeyboard(Messaging.this, messageInputField); //The attachment drawer is automatically hidden when the keyboard is opened
+				else closeAttachmentsPanel(true); */
+				closeAttachmentsPanel(true);
 			} else {
 				/*InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
 				boolean result = inputMethodManager.hideSoftInputFromWindow(view.getWindowToken(), 0);
 				openAttachmentsPanel(false, !result); */
 				
-				if(KeyboardVisibilityEvent.isKeyboardVisible(Messaging.this)) {
+				/* if(KeyboardVisibilityEvent.isKeyboardVisible(Messaging.this)) {
 					//Waiting for the keyboard to close itself before opening the attachment drawer
 					attachmentsWaitingForKeyboard = true;
 					UIUtil.hideKeyboard(Messaging.this);
-				} else openAttachmentsPanel(false, true);
+				} else openAttachmentsPanel(false, true); */
+				
+				openAttachmentsPanel(false, true);
 			}
 		});
 		/* inputBar.findViewById(R.id.button_camera).setOnClickListener(view -> requestTakePicture());
@@ -759,17 +757,18 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		}); */
 		
-		inputBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+		/* inputBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
 			boolean movingUp = top < oldTop;
-			if(attachmentsWaitingForKeyboard && !movingUp) {
-				openAttachmentsPanel(false, false);
-				attachmentsWaitingForKeyboard = false;
-			} else if(movingUp) {
-				if(KeyboardVisibilityEvent.isKeyboardVisible(this)) {
-					closeAttachmentsPanel(false);
-					inputBar.post(() -> inputBar.requestLayout());
-				}
+			System.out.println("OLCL: " + top + " < " + oldTop);
+			if(top > oldTop) { //Layout is expanding downwards
+				closeAttachmentsPanel(false);
+				inputBar.post(() -> inputBar.requestLayout());
 			}
+		}); */
+		
+		messageInputField.setOnTouchListener((View view, MotionEvent event) -> {
+			closeAttachmentsPanel(true);
+			return false;
 		});
 	}
 	
@@ -1132,6 +1131,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the panel as open
 		viewModel.isAttachmentsPanelOpen = true;
 		
+		//Closing the keyboard
+		hideKeyboard();
+		
 		//Inflating the view
 		ViewStub viewStub = findViewById(R.id.viewstub_attachments);
 		if(viewStub != null) {
@@ -1442,7 +1444,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewModel.isDetailsPanelOpen = true;
 		
 		//Closing the keyboard
-		UIUtil.hideKeyboard(this);
+		hideKeyboard();
 		
 		//Inflating the view
 		ViewStub viewStub = findViewById(R.id.viewstub_messaginginfo);
@@ -1608,6 +1610,21 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		int duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
 		detailScrim.animate().alpha(0).withEndAction(() -> detailScrim.setVisibility(View.GONE)).setDuration(duration).start();
+	}
+	
+	private boolean checkInputVisibility() {
+		return messageInputField.isFocused();
+	}
+	
+	private void hideKeyboard() {
+		InputMethodManager imm = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
+		//Find the currently focused view, so we can grab the correct window token from it.
+		View view = getCurrentFocus();
+		//If no view currently has focus, create a new one, just so we can grab a window token from it
+		if (view == null) {
+			view = new View(this);
+		}
+		imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
 	}
 	
 	private void detailsBuildConversationMembers(List<ConversationManager.MemberInfo> members) {
@@ -1790,7 +1807,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				else if(Constants.validatePhoneNumber(address)) intent.putExtra(ContactsContract.Intents.Insert.PHONE, address);
 				else return false;
 				
-				context.startActivity(intent);
+				//Launching the intent
+				if(intent.resolveActivity(context.getPackageManager()) != null) context.startActivity(intent);
+				else Toast.makeText(context, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
 			}
 			
 			return false;

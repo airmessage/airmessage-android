@@ -71,9 +71,10 @@
 	<string name="message_loaderror_gallery">フォトを読み込めませんでした</string>
 	<string name="message_loaderror_documents">ドキュメントを読み込めませんでした</string>
 	<string name="message_intenterror_open">ファイルを開けません</string>
-	<string name="message_intenterror_camera">カメラアプリが見つかりません</string>
-	<string name="message_intenterror_browser">ウェブブラウザーが見つかりません</string>
-	<string name="message_intenterror_email">メールアプリが見つかりませんでした</string>
+	<string name="message_intenterror_camera">カメラアプリがありません</string>
+	<string name="message_intenterror_browser">ウェブブラウザーがありません</string>
+	<string name="message_intenterror_email">メールアプリがありません</string>
+	<string name="message_intenterror_contacts">連絡帳アプリがありません</string>
 	<string name="message_messageerror_title">メッセージを送信できませんでした</string>
 	<string name="message_messageerror_desc_air_invalidcontent">選択されたコンテンツは利用できませんでした</string>
 	<string name="message_messageerror_desc_air_filetoolarge">選択したコンテンツは大きすぎて送信できません</string>

@@ -327,4 +327,5 @@
 	<string name="imperative_permission_documents">Appuyez sur pour donner accès aux documents</string>
 	<string name="imperative_permission_location">Appuyez sur pour donner accès à l\'emplacement</string>
 	<string name="action_pinconversation">Épingler la conversation</string>
+	<string name="message_intenterror_contacts">Aucune application de contacts trouvée</string>
 </resources>

@@ -99,6 +99,7 @@
 	<string name="message_intenterror_camera">No camera app found</string>
 	<string name="message_intenterror_browser">No web browser app found</string>
 	<string name="message_intenterror_email">No E-Mail app found</string>
+	<string name="message_intenterror_contacts">No contacts app found</string>
 
 	<string name="message_messageerror_title">Your message could not be sent</string>
 	<string name="message_messageerror_desc_air_invalidcontent">The selected content is unavailable</string>

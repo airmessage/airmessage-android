@@ -35,14 +35,9 @@ public class ServerSetup extends AppCompatActivity {
 	static final String intentExtraRequired = "isRequired";
 	
 	//Creating the regular expression string
-	private static final Pattern regExValidAddress = Pattern.compile("^(((www\\.)?+[a-zA-Z0-9.\\-_]+(\\.[a-zA-Z]{2,3})+)|(\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b))(/[a-zA-Z0-9_\\-\\s./?%#&=]*)?(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))?$");
+	private static final Pattern regExValidAddress = Pattern.compile("^(((www\\.)?+[a-zA-Z0-9.\\-_]+(\\.[a-zA-Z]{2,})+)|(\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b))(/[a-zA-Z0-9_\\-\\s./?%#&=]*)?(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))?$");
 	//private static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
 	//private static final Pattern regExValidProtocol = Pattern.compile("^ws(s?)://");
-	private final InputFilter credentialInputFilter = (CharSequence source, int start, int end, Spanned dest, int dstart, int dend) -> {
-		//Denying the input if it contains a space
-		if(source.toString().contains(" ")) return "";
-		return null;
-	};
 	
 	//Creating the activity values
 	private ActivityViewModel viewModel;
@@ -140,7 +135,6 @@ public class ServerSetup extends AppCompatActivity {
 		layoutAddress = findViewById(R.id.layout_serververification);
 		layoutSync = findViewById(R.id.layout_serversync);
 		
-		passwordInputField.setFilters(new InputFilter[]{credentialInputFilter});
 		passwordInputField.setOnEditorActionListener((view, actionID, event) -> {
 			if(actionID == EditorInfo.IME_ACTION_GO) {
 				onNextButtonClick(null);
@@ -495,12 +489,10 @@ public class ServerSetup extends AppCompatActivity {
 	}
 	
 	public void onClickLaunchServerGuide(View view) {
-		Intent intent = new Intent(Intent.ACTION_VIEW);
-		intent.setData(Constants.serverSetupAddress);
+		Intent intent = new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress);
 		
 		if(intent.resolveActivity(getPackageManager()) != null) startActivity(intent);
 		else Toast.makeText(this, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
-		startActivity(intent);
 	}
 	
 	public static class ActivityViewModel extends ViewModel {

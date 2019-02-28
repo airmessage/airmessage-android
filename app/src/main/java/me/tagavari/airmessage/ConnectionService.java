@@ -4095,8 +4095,7 @@ public class ConnectionService extends Service {
 						if(pushRequest.sendUri != null) {
 							//Verifying the file size
 							try(Cursor cursor = context.getContentResolver().query(pushRequest.sendUri, null, null, null, null)) {
-								if(cursor != null) {
-									cursor.moveToFirst();
+								if(cursor != null && cursor.moveToFirst()) {
 									long fileSize = cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
 									
 									//Checking if the file size is too large to send
