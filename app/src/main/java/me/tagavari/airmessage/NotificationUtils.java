@@ -250,10 +250,10 @@ class NotificationUtils {
 		//Getting the existing notification
 		Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
 		
-		if(existingNotification != null) {
-			//Extracting the messaging style
-			NotificationCompat.MessagingStyle messagingStyle = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(existingNotification);
-			
+		NotificationCompat.MessagingStyle messagingStyle;
+		
+		//Getting the messaging style (and checking it)
+		if(existingNotification != null && (messagingStyle = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(existingNotification)) != null) {
 			//Adding the new message
 			messagingStyle.addMessage(message);
 			
@@ -264,7 +264,7 @@ class NotificationUtils {
 			//notification.setLargeIcon(Bitmap.createBitmap());
 		} else {
 			//Creating the messaging style
-			NotificationCompat.MessagingStyle messagingStyle = new NotificationCompat.MessagingStyle(new Person.Builder().setName(context.getResources().getString(R.string.you)).build()).addMessage(message);
+			messagingStyle = new NotificationCompat.MessagingStyle(new Person.Builder().setName(context.getResources().getString(R.string.you)).build()).addMessage(message);
 			
 			//Configuring the messaging style
 			if(conversationInfo.isGroupChat()) {

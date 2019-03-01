@@ -515,8 +515,8 @@ public class Conversations extends AppCompatCompositeActivity {
 									"Device model: " + Build.MODEL + "\r\n" +
 									"Android version: " + Build.VERSION.RELEASE + "\r\n" +
 									"Client version: " + BuildConfig.VERSION_NAME + "\r\n" +
-									"AM current communications version: " + (ConnectionService.getStaticActiveCommunicationsVersion() == -1 ? "(none)" : ConnectionService.getStaticActiveCommunicationsVersion() + '.' + ConnectionService.getStaticActiveCommunicationsSubVersion()) + "\r\n" +
-									"AM target communications version: " + ConnectionService.mmCommunicationsVersion + '.' + ConnectionService.mmCommunicationsSubVersion);
+									"AM current communications version: " + (ConnectionService.getStaticActiveCommunicationsVersion() == -1 ? "(none)" : (ConnectionService.getStaticActiveCommunicationsVersion() + "." + ConnectionService.getStaticActiveCommunicationsSubVersion())) + "\r\n" +
+									"AM target communications version: " + ConnectionService.mmCommunicationsVersion + "." + ConnectionService.mmCommunicationsSubVersion);
 							//intent.setType("message/rfc822");
 							
 							//Launching the intent
