@@ -12,7 +12,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
-import android.net.Network;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -1301,6 +1300,8 @@ public class ConnectionService extends Service {
 					return new ClientProtocol4();
 				case 5:
 					return new ClientProtocol5();
+				case 6:
+					return new ClientProtocol6();
 			}
 		}
 		
@@ -1584,6 +1585,7 @@ public class ConnectionService extends Service {
 			return protocolManager.checkSupportsFeature(feature);
 		}
 		
+		//Base version
 		private class ClientProtocol1 extends ProtocolManager {
 			final Packager protocolPackager = new PackagerComm3();
 			static final String hashAlgorithm = "MD5";
@@ -1609,6 +1611,7 @@ public class ConnectionService extends Service {
 			static final int nstAuthenticationOK = 0;
 			static final int nstAuthenticationUnauthorized = 1;
 			static final int nstAuthenticationBadRequest = 2;
+			
 			static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
 			
 			@Override
@@ -1636,7 +1639,7 @@ public class ConnectionService extends Service {
 						ByteBuffer dataBuffer = ByteBuffer.wrap(data);
 						int resultCode = dataBuffer.getInt();
 						
-						//Translating the result to the local value
+						//Translating the result to a local value
 						switch(resultCode) {
 							case nstAuthenticationOK:
 								resultCode = intentResultCodeSuccess;
@@ -1665,10 +1668,7 @@ public class ConnectionService extends Service {
 						//Reading the list
 						List<Blocks.ConversationItem> list;
 						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								int count = inSec.readInt();
 								list = new ArrayList<>(count);
 								for(int i = 0; i < count; i++) list.add(((SharedValues.ConversationItem) inSec.readObject()).toBlock());
@@ -1688,10 +1688,7 @@ public class ConnectionService extends Service {
 						List<Blocks.ConversationItem> listItems;
 						List<Blocks.ConversationInfo> listConversations;
 						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								int count = inSec.readInt();
 								listItems = new ArrayList<>(count);
 								for(int i = 0; i < count; i++) listItems.add(((SharedValues.ConversationItem) inSec.readObject()).toBlock());
@@ -1717,10 +1714,7 @@ public class ConnectionService extends Service {
 						//Reading the list
 						List<Blocks.ConversationInfo> list;
 						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								int count = inSec.readInt();
 								list = new ArrayList<>(count);
 								for(int c = 0; c < count; c++) {
@@ -1751,10 +1745,7 @@ public class ConnectionService extends Service {
 						//Reading the list
 						List<Blocks.ModifierInfo> list;
 						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								int count = inSec.readInt();
 								list = new ArrayList<>(count);
 								for(int i = 0; i < count; i++) list.add(((SharedValues.ModifierInfo) inSec.readObject()).toBlock());
@@ -1786,10 +1777,7 @@ public class ConnectionService extends Service {
 							else fileSize = -1;
 							isLast = in.readBoolean();
 							
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								fileGUID = inSec.readUTF();
 								int contentLen = inSec.readInt();
 								if(contentLen > maxPacketAllocation) {
@@ -1875,7 +1863,7 @@ public class ConnectionService extends Service {
 							new Handler(Looper.getMainLooper()).post(() -> {
 								//Telling the listener
 								if(result) messageResponseManager.onSuccess();
-								else messageResponseManager.onFail(messageSendExternalException);
+								else messageResponseManager.onFail(Constants.messageErrorCodeAirServerExternal, null);
 							});
 						}
 						
@@ -1891,7 +1879,7 @@ public class ConnectionService extends Service {
 				
 				byte[] packetData;
 				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt)) {
-					out.writeObject(new Blocks.EncryptableData(transmissionCheck.getBytes(stringCharset)).encrypt(password));
+					writeEncrypted(transmissionCheck.getBytes(stringCharset), out, password); //Encrypted data
 					out.flush();
 					
 					packetData = trgt.toByteArray();
@@ -1929,7 +1917,7 @@ public class ConnectionService extends Service {
 					outSec.writeUTF(message); //Message
 					outSec.flush();
 					
-					out.writeObject(new Blocks.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
 					
 					out.flush();
 					
@@ -1955,8 +1943,8 @@ public class ConnectionService extends Service {
 				if(connectionThread == null) return false;
 				
 				byte[] packetData;
-				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos);
-					ByteArrayOutputStream bosSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(bosSec)) {
+				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
+					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
 					//Adding the data
 					out.writeShort(requestID); //Request ID
 					
@@ -1964,13 +1952,14 @@ public class ConnectionService extends Service {
 					for(String item : chatMembers) outSec.writeUTF(item);
 					outSec.writeUTF(message); //Message
 					outSec.writeUTF(service); //Service
+					
 					outSec.flush();
 					
-					out.writeObject(new Blocks.EncryptableData(bosSec.toByteArray()).encrypt(password)); //Encrypted data
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
 					
 					out.flush();
 					
-					packetData = bos.toByteArray();
+					packetData = trgt.toByteArray();
 				} catch(IOException | GeneralSecurityException exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
@@ -1998,7 +1987,9 @@ public class ConnectionService extends Service {
 					outSec.writeUTF(attachmentGUID); //File GUID
 					outSec.flush();
 					
-					out.writeObject(new Blocks.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
+					
+					
 					out.flush();
 					
 					//Sending the message
@@ -2039,7 +2030,9 @@ public class ConnectionService extends Service {
 					for(String item : guidList) outSec.writeUTF(item);
 					outSec.flush();
 					
-					out.writeObject(new Blocks.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
+					
+					out.flush();
 					
 					//Sending the message
 					connectionThread.queuePacket(new PacketStruct(nhtConversationUpdate, trgt.toByteArray()));
@@ -2075,7 +2068,8 @@ public class ConnectionService extends Service {
 					if(requestIndex == 0) outSec.writeUTF(fileName); //File name
 					outSec.flush();
 					
-					out.writeObject(new Blocks.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
+					
 					out.flush();
 					
 					packetData = trgt.toByteArray();
@@ -2118,7 +2112,7 @@ public class ConnectionService extends Service {
 					}
 					outSec.flush();
 					
-					out.writeObject(new Blocks.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
 					
 					out.flush();
 					
@@ -2166,6 +2160,75 @@ public class ConnectionService extends Service {
 				return true;
 			}
 			
+			private static final int encryptionSaltLen = 8;
+			private static final int encryptionIvLen = 12; //12 bytes (instead of 16 because of GCM)
+			private static final String encryptionKeyFactoryAlgorithm = "PBKDF2WithHmacSHA256";
+			private static final String encryptionKeyAlgorithm = "AES";
+			private static final String encryptionCipherTransformation = "AES/GCM/NoPadding";
+			private static final int encryptionKeyIterationCount = 10000;
+			private static final int encryptionKeyLength = 128; //128 bits
+			
+			byte[] readEncrypted(ObjectInputStream stream, String password) throws IOException, GeneralSecurityException {
+				//Reading the data
+				byte[] salt = new byte[encryptionSaltLen];
+				stream.readFully(salt);
+				
+				byte[] iv = new byte[encryptionIvLen];
+				stream.readFully(iv);
+				
+				byte[] data = new byte[stream.readInt()];
+				stream.readFully(data);
+				
+				//Creating the key
+				SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(encryptionKeyFactoryAlgorithm, MainApplication.getSecurityProvider());
+				KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, encryptionKeyIterationCount, encryptionKeyLength);
+				SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
+				SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), encryptionKeyAlgorithm);
+				
+				//Creating the IV
+				GCMParameterSpec gcmSpec = new GCMParameterSpec(encryptionKeyLength, iv);
+				
+				//Creating the cipher
+				Cipher cipher = Cipher.getInstance(encryptionCipherTransformation, MainApplication.getSecurityProvider());
+				cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, gcmSpec);
+				
+				//Deciphering the data
+				byte[] block = cipher.doFinal(data);
+				return block;
+			}
+			
+			private void writeEncrypted(byte[] block, ObjectOutputStream stream, String password) throws IOException, GeneralSecurityException {
+				//Creating a secure random
+				SecureRandom random = new SecureRandom();
+				
+				//Generating a salt
+				byte[] salt = new byte[encryptionSaltLen];
+				random.nextBytes(salt);
+				
+				//Creating the key
+				SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(encryptionKeyFactoryAlgorithm, MainApplication.getSecurityProvider());
+				KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, encryptionKeyIterationCount, encryptionKeyLength);
+				SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
+				SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), encryptionKeyAlgorithm);
+				
+				//Generating the IV
+				byte[] iv = new byte[encryptionIvLen];
+				random.nextBytes(iv);
+				GCMParameterSpec gcmSpec = new GCMParameterSpec(encryptionKeyLength, iv);
+				
+				Cipher cipher = Cipher.getInstance(encryptionCipherTransformation, MainApplication.getSecurityProvider());
+				cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, gcmSpec);
+				
+				//Encrypting the data
+				byte[] data = cipher.doFinal(block);
+				
+				//Writing the data
+				stream.write(salt);
+				stream.write(iv);
+				stream.writeInt(data.length);
+				stream.write(data);
+			}
+			
 			@Override
 			Packager getPackager() {
 				return protocolPackager;
@@ -2192,6 +2255,7 @@ public class ConnectionService extends Service {
 			}
 		}
 		
+		//Serialization changes
 		private class ClientProtocol2 extends ProtocolManager {
 			final Packager protocolPackager = new PackagerComm3();
 			static final String hashAlgorithm = "MD5";
@@ -2460,7 +2524,7 @@ public class ConnectionService extends Service {
 							new Handler(Looper.getMainLooper()).post(() -> {
 								//Telling the listener
 								if(result) messageResponseManager.onSuccess();
-								else messageResponseManager.onFail(messageSendExternalException);
+								else messageResponseManager.onFail(Constants.messageErrorCodeAirServerExternal, null);
 							});
 						}
 						
@@ -2674,6 +2738,7 @@ public class ConnectionService extends Service {
 				} catch(IOException | GeneralSecurityException exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
+					Crashlytics.logException(exception);
 					
 					//Returning false
 					return false;
@@ -3150,10 +3215,7 @@ public class ConnectionService extends Service {
 							else fileName = null;
 							isLast = in.readBoolean();
 							
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								fileGUID = inSec.readUTF();
 								int contentLen = inSec.readInt();
 								if(contentLen > maxPacketAllocation) {
@@ -3241,6 +3303,7 @@ public class ConnectionService extends Service {
 			}
 		}
 		
+		//Basic sync support removal
 		private class ClientProtocol5 extends ClientProtocol4 {
 			@Override
 			boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
@@ -3286,6 +3349,84 @@ public class ConnectionService extends Service {
 				
 				//Returning true
 				return true;
+			}
+		}
+		
+		//Improved error messages
+		private class ClientProtocol6 extends ClientProtocol5 {
+			static final byte nstSendResultOK = 0; //Message sent successfully
+			static final byte nstSendResultScriptError = 1; //Some unknown AppleScript error
+			static final byte nstSendResultBadRequest = 2; //Invalid data received
+			static final byte nstSendResultUnauthorized = 3; //System rejected request to send message
+			static final byte nstSendResultNoConversation = 4; //A valid conversation wasn't found
+			static final byte nstSendResultRequestTimeout = 5; //File data blocks stopped being received
+			
+			@Override
+			void processData(int messageType, byte[] data) {
+				switch(messageType) {
+					case nhtSendResult: {
+						short requestID;
+						byte resultCode;
+						String details;
+						
+						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
+							requestID = in.readShort();
+							
+							//Reading the secure data
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+								resultCode = inSec.readByte();
+								details = inSec.readBoolean() ? inSec.readUTF() : null;
+							}
+						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
+							//Logging the exception
+							exception.printStackTrace();
+							
+							break;
+						}
+						
+						//Getting the message response manager
+						final MessageResponseManager messageResponseManager = messageSendRequests.get(requestID);
+						if(messageResponseManager != null) {
+							//Removing the request
+							messageSendRequests.remove(requestID);
+							messageResponseManager.stopTimer(false);
+							
+							//Mapping the result code
+							int localResultCode = nstSendCodeToErrorCode(resultCode);
+							
+							//Running on the UI thread
+							new Handler(Looper.getMainLooper()).post(() -> {
+								//Telling the listener
+								if(localResultCode == Constants.messageErrorCodeOK) messageResponseManager.onSuccess();
+								else messageResponseManager.onFail(localResultCode, details);
+							});
+						}
+						
+						break;
+					}
+					default:
+						super.processData(messageType, data);
+						break;
+				}
+			}
+			
+			int nstSendCodeToErrorCode(byte code) {
+				switch(code) {
+					case nstSendResultOK:
+						return Constants.messageErrorCodeOK;
+					case nstSendResultScriptError:
+						return Constants.messageErrorCodeAirServerExternal;
+					case nstSendResultBadRequest:
+						return Constants.messageErrorCodeAirServerBadRequest;
+					case nstSendResultUnauthorized:
+						return Constants.messageErrorCodeAirServerUnauthorized;
+					case nstSendResultNoConversation:
+						return Constants.messageErrorCodeAirServerNoConversation;
+					case nstSendResultRequestTimeout:
+						return Constants.messageErrorCodeAirServerRequestTimeout;
+					default:
+						return -code;
+				}
 			}
 		}
 	}
@@ -3472,17 +3613,6 @@ public class ConnectionService extends Service {
 		return massRetrievalThread.getProgressCount();
 	}
 	
-	//Creating the constants
-	static final byte messageSendSuccess = 0;
-	static final byte messageSendInvalidContent = 1;
-	static final byte messageSendFileTooLarge = 2;
-	static final byte messageSendIOException = 3;
-	static final byte messageSendNetworkException = 4;
-	static final byte messageSendExternalException = 5;
-	static final byte messageSendRequestExpired = 6;
-	static final byte messageSendReferencesLost = 7;
-	static final byte messageSendInternalException = 8;
-	
 	static final int largestFileSize = 1024 * 1024 * 100; //100 MB
 	
 	/* void queueUploadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
@@ -3575,7 +3705,7 @@ public class ConnectionService extends Service {
 		Consumer<Float> onUploadProgress = new ConsumerImpl<>();
 		Consumer<byte[]> onUploadFinished = new ConsumerImpl<>();
 		Runnable onUploadResponseReceived = new RunnableImpl();
-		Consumer<Byte> onFail = new ConsumerImpl<>();
+		BiConsumer<Integer, String> onFail = new BiConsumerImpl<>();
 		Runnable onRemovalFinish = new RunnableImpl();
 		
 		private static class RunnableImpl implements Runnable {
@@ -4079,7 +4209,7 @@ public class ConnectionService extends Service {
 					if(context == null) {
 						//Calling the fail method
 						pushRequest.isInProcessing = false;
-						handler.post(() -> finalCallbacks.onFail.accept(messageSendReferencesLost));
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirReferences, null));
 						
 						//Skipping the remainder of the iteration
 						continue;
@@ -4102,7 +4232,7 @@ public class ConnectionService extends Service {
 									if(fileSize > largestFileSize) {
 										//Calling the fail method
 										pushRequest.isInProcessing = false;
-										handler.post(() -> finalCallbacks.onFail.accept(messageSendFileTooLarge));
+										handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirFileTooLarge, null));
 										
 										//Skipping the remainder of the iteration
 										continue;
@@ -4128,7 +4258,7 @@ public class ConnectionService extends Service {
 								
 								//Calling the fail method
 								pushRequest.isInProcessing = false;
-								handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirIO, Constants.exceptionToString(exception)));
 								
 								//Skipping the remainder of the iteration
 								continue;
@@ -4148,7 +4278,7 @@ public class ConnectionService extends Service {
 								if(pushRequest.sendFile.length() > largestFileSize) {
 									//Calling the fail method
 									pushRequest.isInProcessing = false;
-									handler.post(() -> finalCallbacks.onFail.accept(messageSendFileTooLarge));
+									handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirFileTooLarge, null));
 									
 									//Skipping the remainder of the iteration
 									continue;
@@ -4160,7 +4290,7 @@ public class ConnectionService extends Service {
 						} else {
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendInternalException));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirInternal, Constants.exceptionToString(new IllegalArgumentException("No URI or file reference available to send"))));
 							
 							//Skipping the remainder of the iteration
 							continue;
@@ -4171,7 +4301,7 @@ public class ConnectionService extends Service {
 						
 						//Calling the fail method
 						pushRequest.isInProcessing = false;
-						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirIO, Constants.exceptionToString(exception)));
 						
 						//Closing the input stream
 						//Input stream is always null
@@ -4248,7 +4378,7 @@ public class ConnectionService extends Service {
 							
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirIO, Constants.exceptionToString(exception)));
 							
 							//Skipping the remainder of the iteration
 							continue;
@@ -4280,7 +4410,7 @@ public class ConnectionService extends Service {
 							
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirIO, null));
 							
 							//Skipping the remainder of the iteration
 							continue;
@@ -4308,7 +4438,7 @@ public class ConnectionService extends Service {
 						if(context == null) {
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendReferencesLost));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirReferences, null));
 							
 							//Skipping the remainder of the iteration
 							continue;
@@ -4320,7 +4450,7 @@ public class ConnectionService extends Service {
 						if(!result) {
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirIO, null));
 							
 							//Skipping the remainder of the iteration
 							continue;
@@ -4364,7 +4494,7 @@ public class ConnectionService extends Service {
 					if(connectionService == null || connectionService.getCurrentState() != stateConnected) {
 						//Calling the fail method
 						pushRequest.isInProcessing = false;
-						handler.post(() -> finalCallbacks.onFail.accept(messageSendNetworkException));
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirNetwork, null));
 						
 						//Skipping the remainder of the iteration
 						continue;
@@ -4387,7 +4517,7 @@ public class ConnectionService extends Service {
 						
 						//Calling the fail method
 						pushRequest.isInProcessing = false;
-						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirIO, Constants.exceptionToString(exception)));
 						
 						//Skipping the remainder of the iteration
 						continue;
@@ -4406,10 +4536,45 @@ public class ConnectionService extends Service {
 						if(totalLength > largestFileSize) {
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendFileTooLarge));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirFileTooLarge, null));
 							
 							//Skipping the remainder of the iteration
 							continue;
+						}
+						
+						//Creating the response manager
+						ConnectionService.MessageResponseManager responseManager = new ConnectionService.MessageResponseManager() {
+							//Forwarding the event to the callbacks
+							@Override
+							void onSuccess() {
+								finalCallbacks.onUploadResponseReceived.run();
+							}
+							
+							@Override
+							void onFail(int resultCode, String reason) {
+								finalCallbacks.onFail.accept(resultCode, reason);
+							}
+						};
+						
+						{
+							//Getting the connection service
+							connectionService = ConnectionService.getInstance();
+							
+							//Checking if the service isn't ready
+							if(connectionService == null || connectionService.getCurrentState() != stateConnected) {
+								//Calling the fail method
+								pushRequest.isInProcessing = false;
+								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirNetwork, null));
+								
+								//Skipping the remainder of the iteration
+								continue;
+							}
+							
+							//Adding the request and starting the timer
+							connectionService.messageSendRequests.put(requestID, responseManager);
+							
+							//Invalidating the connection service
+							connectionService = null;
 						}
 						
 						//Looping while there is data to read
@@ -4430,7 +4595,7 @@ public class ConnectionService extends Service {
 							if(connectionManager == null || connectionManager.getPackager() == null) {
 								//Failing the request
 								pushRequest.isInProcessing = false;
-								handler.post(() -> finalCallbacks.onFail.accept(messageSendNetworkException));
+								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirNetwork, null));
 								return;
 							}
 							
@@ -4441,7 +4606,7 @@ public class ConnectionService extends Service {
 							if(preparedData == null) {
 								//Failing the request
 								pushRequest.isInProcessing = false;
-								handler.post(() -> finalCallbacks.onFail.accept(messageSendInternalException));
+								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirInternal, null));
 								
 								//Breaking from the loop
 								continue requestLoop;
@@ -4459,7 +4624,7 @@ public class ConnectionService extends Service {
 							if(!uploadResult) {
 								//Failing the request
 								pushRequest.isInProcessing = false;
-								handler.post(() -> finalCallbacks.onFail.accept(messageSendInternalException));
+								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirInternal, null));
 								
 								//Breaking from the loop
 								continue requestLoop;
@@ -4489,32 +4654,17 @@ public class ConnectionService extends Service {
 						//Running on the main thread
 						pushRequest.isInProcessing = false;
 						handler.post(() -> {
-							//Getting the connection service
+							/* //Getting the connection service
 							ConnectionService newConnectionService = ConnectionService.getInstance();
 							if(newConnectionService == null) {
-								finalCallbacks.onFail.accept(messageSendNetworkException);
+								finalCallbacks.onFail.accept(Constants.messageErrorCodeAirNetwork, null);
 								return;
-							}
+							} */
 							
 							//Notifying the callback listener
 							finalCallbacks.onUploadFinished.accept(checksum);
 							
-							//Creating the response manager
-							ConnectionService.MessageResponseManager responseManager = new ConnectionService.MessageResponseManager() {
-								//Forwarding the event to the callbacks
-								@Override
-								void onSuccess() {
-									finalCallbacks.onUploadResponseReceived.run();
-								}
-								
-								@Override
-								void onFail(byte resultCode) {
-									finalCallbacks.onFail.accept(resultCode);
-								}
-							};
-							
-							//Adding the request and starting the timer
-							newConnectionService.messageSendRequests.put(requestID, responseManager);
+							//Starting the response timer
 							responseManager.startTimer();
 						});
 					} catch(IOException | OutOfMemoryError exception) {
@@ -4523,7 +4673,7 @@ public class ConnectionService extends Service {
 						
 						//Calling the fail method
 						pushRequest.isInProcessing = false;
-						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeAirIO, Constants.exceptionToString(exception)));
 						
 						//Skipping the remainder of the iteration
 						//continue;
@@ -5038,7 +5188,7 @@ public class ConnectionService extends Service {
 		//Checking if the client isn't ready
 		if(getCurrentState() != stateConnected) {
 			//Telling the response listener
-			responseListener.onFail(messageSendNetworkException);
+			responseListener.onFail(Constants.messageErrorCodeAirNetwork, null);
 			
 			//Returning false
 			return false;
@@ -5053,7 +5203,7 @@ public class ConnectionService extends Service {
 		//Validating the result
 		if(!result) {
 			//Telling the response listener
-			responseListener.onFail(messageSendIOException);
+			responseListener.onFail(Constants.messageErrorCodeAirIO, null);
 			
 			//Returning false
 			return false;
@@ -5073,7 +5223,7 @@ public class ConnectionService extends Service {
 		//Checking if the client isn't ready
 		if(getCurrentState() != stateConnected) {
 			//Telling the response listener
-			responseListener.onFail(messageSendNetworkException);
+			responseListener.onFail(Constants.messageErrorCodeAirNetwork, null);
 			
 			//Returning false
 			return false;
@@ -5082,19 +5232,13 @@ public class ConnectionService extends Service {
 		//Getting the request ID
 		short requestID = getNextRequestID();
 		
-		//Validating the connection
-		if(currentConnectionManager == null || currentConnectionManager.getState() != stateConnected) {
-			responseListener.onFail(messageSendNetworkException);
-			return false;
-		}
-		
 		//Sending the message
 		boolean result = currentConnectionManager.sendMessage(requestID, chatRecipients, message, service);
 		
 		//Validating the result
 		if(!result) {
 			//Telling the response listener
-			responseListener.onFail(messageSendIOException);
+			responseListener.onFail(Constants.messageErrorCodeAirIO, null);
 			
 			//Returning false
 			return false;
@@ -5314,13 +5458,13 @@ public class ConnectionService extends Service {
 	static abstract class MessageResponseManager {
 		abstract void onSuccess();
 		
-		abstract void onFail(byte resultCode);
+		abstract void onFail(int resultCode, String details);
 		
 		private static final long timeoutDelay = 20 * 1000; //20-second delay
 		private final Handler handler = new Handler(Looper.getMainLooper());
 		private final Runnable timeoutRunnable = () -> {
 			//Calling the fail method
-			onFail(messageSendRequestExpired);
+			onFail(Constants.messageErrorCodeAirExpired, null);
 			
 			//Getting the connection service
 			ConnectionService connectionService = getInstance();

@@ -315,4 +315,12 @@
 		<item>いつも光</item>
 		<item>いつも暗い</item>
 	</string-array>
+	<string name="action_copytoclipboard">コピー</string>
+	<string name="message_messageerror_desc_air_unauthorized">AirMessageサーバはメッセージを送信許可がありません</string>
+	<string name="message_messageerror_desc_air_badrequest">メッセージの処理中にエラーが発生しました</string>
+	<string name="message_messageerror_desc_air_noconversation">会話の入手可能ではありません</string>
+	<string name="message_messageerror_desc_air_serverexpired">メッセージは正しく配信できませんでした</string>
+	<string name="message_messageerror_details_title">エラー詳細</string>
+	<string name="message_messageerror_details_unavailable">エラー詳細がありません</string>
+	<string name="message_messageerror_details_loadfailed">エラー詳細を読み込めませんでした</string>
 </resources>

@@ -37,6 +37,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -112,18 +114,23 @@ public class Constants {
 	
 	static final int messageErrorCodeOK = 0; //No error
 	
+	//Apple-provided error codes (found in the Messages database)
 	static final int messageErrorCodeAppleNetwork = 3; //Network error
 	static final int messageErrorCodeAppleUnregistered = 22; //Not registered with iMessage
 	
+	//AirMessage-provided error codes (if the app fails a request, or Apple Messages cannot properly handle it)
 	static final int messageErrorCodeAirInvalidContent = -1; //Invalid content
 	static final int messageErrorCodeAirFileTooLarge = -2; //Attachment too large
 	static final int messageErrorCodeAirIO = -3; //IO exception
 	static final int messageErrorCodeAirNetwork = -4; //Network exception
-	static final int messageErrorCodeAirExternal = -5; //External exception
+	static final int messageErrorCodeAirServerExternal = -5; //External exception
 	static final int messageErrorCodeAirExpired = -6; //Request expired
 	static final int messageErrorCodeAirReferences = -7; //References lost
 	static final int messageErrorCodeAirInternal = -8; //Internal exception
-	//static final int messageErrorCodeLocalReferences = -4; //Unknown error
+	static final int messageErrorCodeAirServerBadRequest = -9; //The server couldn't process the request
+	static final int messageErrorCodeAirServerUnauthorized = -10; //The server doesn't have permission to send messages
+	static final int messageErrorCodeAirServerNoConversation = -11; //The server couldn't find the requested conversation
+	static final int messageErrorCodeAirServerRequestTimeout = -12; //The server couldn't find the requested conversation
 	
 	static final int groupActionInvite = 0;
 	static final int groupActionLeave = 1;
@@ -721,6 +728,13 @@ public class Constants {
 		return result;
 	} */
 	
+	static String exceptionToString(Throwable exception) {
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+		exception.printStackTrace(pw);
+		return exception.getMessage() + ":\n" + sw.toString();
+	}
+	
 	static TypedValue resolveThemeAttr(Context context, @AttrRes int attrRes) {
 		Resources.Theme theme = context.getTheme();
 		TypedValue typedValue = new TypedValue();
@@ -1025,6 +1039,28 @@ public class Constants {
 			outRect.bottom = spaceBottom;
 			outRect.left = spaceLeft;
 			outRect.right = spaceRight;
+		}
+	}
+	
+	static class Tuple2<A, B> {
+		final A item1;
+		final B item2;
+		
+		Tuple2(A item1, B item2) {
+			this.item1 = item1;
+			this.item2 = item2;
+		}
+	}
+	
+	static class Tuple3<A, B, C> {
+		final A item1;
+		final B item2;
+		final C item3;
+		
+		Tuple3(A item1, B item2, C item3) {
+			this.item1 = item1;
+			this.item2 = item2;
+			this.item3 = item3;
 		}
 	}
 }

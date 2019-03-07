@@ -345,7 +345,7 @@ class NotificationUtils {
 				}
 				
 				@Override
-				void onFail(byte responseCode) {
+				void onFail(int responseCode, String details) {
 					//Refreshing the notification
 					Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
 					if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);

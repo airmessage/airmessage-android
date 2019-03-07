@@ -382,7 +382,7 @@ public class Blocks {
 		}
 	}
 	
-	public static class EncryptableData implements Block {
+	/* public static class EncryptableData implements Block {
 		//Creating the reference values
 		private static final int saltLen = 8; //8 bytes
 		private static final int ivLen = 12; //12 bytes (instead of 16 because of GCM)
@@ -496,7 +496,7 @@ public class Blocks {
 			
 			data = new byte[stream.readInt()];
 			stream.readFully(data);
-		} */
+		}
 		
 		public static EncryptableData readObject(ObjectInputStream stream) throws IOException {
 			//Reading the data
@@ -516,5 +516,5 @@ public class Blocks {
 		public boolean isEncrypted() {
 			return dataEncrypted;
 		}
-	}
+	} */
 }

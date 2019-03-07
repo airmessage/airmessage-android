@@ -60,6 +60,7 @@
 	<string name="action_confirmparticipants">Confirm participants</string>
 	<string name="action_getnotifications">Get notifications</string>
 	<string name="action_pinconversation">Pin conversation</string>
+	<string name="action_copytoclipboard">Copy to clipboard</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -110,9 +111,17 @@
 	<string name="message_messageerror_desc_air_expired">Request timed out</string>
 	<string name="message_messageerror_desc_air_references">An internal error occurred (references lost)</string>
 	<string name="message_messageerror_desc_air_internal">An internal error occurred</string>
+	<string name="message_messageerror_desc_air_badrequest">An error occurred while processing this message</string>
+	<string name="message_messageerror_desc_air_unauthorized">AirMessage Server isn\'t allowed to send messages</string>
+	<string name="message_messageerror_desc_air_noconversation">This conversation isn\'t available</string>
+	<string name="message_messageerror_desc_air_serverexpired">This message couldn\'t be delivered properly</string>
 	<string name="message_messageerror_desc_apple_network">Couldn\'t connect to iMessage server</string>
 	<string name="message_messageerror_desc_apple_unregistered">%s is not registered with iMessage</string>
 	<string name="message_messageerror_desc_apple_unregistered_generic">The recipient is not registered with iMessage</string>
+
+	<string name="message_messageerror_details_title">Error details</string>
+	<string name="message_messageerror_details_unavailable">No error details available</string>
+	<string name="message_messageerror_details_loadfailed">Failed to load error details</string>
 
 	<string name="message_syncerror">Couldn\'t sync messages</string>
 
