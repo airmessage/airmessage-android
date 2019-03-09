@@ -33,6 +33,8 @@ import android.webkit.MimeTypeMap;
 import android.widget.TextView;
 import android.widget.Toolbar;
 
+import com.crashlytics.android.Crashlytics;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -131,6 +133,7 @@ public class Constants {
 	static final int messageErrorCodeAirServerUnauthorized = -10; //The server doesn't have permission to send messages
 	static final int messageErrorCodeAirServerNoConversation = -11; //The server couldn't find the requested conversation
 	static final int messageErrorCodeAirServerRequestTimeout = -12; //The server couldn't find the requested conversation
+	static final int messageErrorCodeAirServerUnknown = -100; //An unknown response code was received from the server
 	
 	static final int groupActionInvite = 0;
 	static final int groupActionLeave = 1;
@@ -940,6 +943,10 @@ public class Constants {
 	
 	static boolean compareMimeTypes(String one, String two) {
 		if(one.equals("*/*") || two.equals("*/*")) return true;
+		if(!one.contains("/") || !two.contains("/")) {
+			Crashlytics.logException(new IllegalArgumentException("Couldn't compare MIME types. Attempting to compare " + one + " and " + two));
+			return false;
+		}
 		String[] oneComponents = one.split("/");
 		String[] twoComponents = two.split("/");
 		if(oneComponents[1].equals("*") || twoComponents[1].equals("*")) return oneComponents[0].equals(twoComponents[0]);

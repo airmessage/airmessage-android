@@ -394,7 +394,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				database.execSQL("DELETE FROM messages WHERE server_id IS NULL");
 				
 				//Updating the sort columns
-				database.execSQL("UPDATE messages SET sort_id = server_id");
+				database.execSQL("UPDATE messages SET sort_id_linked = server_id");
 		}
 	}
 	

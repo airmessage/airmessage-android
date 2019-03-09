@@ -97,7 +97,7 @@ public class ConnectionService extends Service {
 	 *  4 - Better stability and security, with sub-version support
 	 */
 	public static final int mmCommunicationsVersion = 4;
-	public static final int mmCommunicationsSubVersion = 5;
+	public static final int mmCommunicationsSubVersion = 6;
 	
 	public static final String featureAdvancedSync1 = "advanced_sync_1";
 	
@@ -558,7 +558,7 @@ public class ConnectionService extends Service {
 	void cancelCurrentTasks() {
 		//Cancelling the file requests
 		List<FileDownloadRequest> requestList = (List<FileDownloadRequest>) fileDownloadRequests.clone();
-		for(FileDownloadRequest request : requestList) request.failDownload();
+		for(FileDownloadRequest request : requestList) request.failDownload(FileDownloadRequestCallbacks.errorCodeCancelled);
 		
 		//Interrupting the file processing request thread and clearing its contents
 		if(fileProcessingThreadRunning.get()) fileProcessingThread.interrupt();
@@ -1836,7 +1836,7 @@ public class ConnectionService extends Service {
 							//Searching for a matching request
 							for(FileDownloadRequest request : fileDownloadRequests) {
 								if(request.requestID != requestID/* || !request.attachmentGUID.equals(fileGUID)*/) continue;
-								request.failDownload();
+								request.failDownload(FileDownloadRequestCallbacks.errorCodeUnknown);
 								break;
 							}
 						});
@@ -2497,7 +2497,7 @@ public class ConnectionService extends Service {
 							//Searching for a matching request
 							for(FileDownloadRequest request : fileDownloadRequests) {
 								if(request.requestID != requestID/* || !request.attachmentGUID.equals(fileGUID)*/) continue;
-								request.failDownload();
+								request.failDownload(FileDownloadRequestCallbacks.errorCodeUnknown);
 								break;
 							}
 						});
@@ -3361,6 +3361,11 @@ public class ConnectionService extends Service {
 			static final byte nstSendResultNoConversation = 4; //A valid conversation wasn't found
 			static final byte nstSendResultRequestTimeout = 5; //File data blocks stopped being received
 			
+			static final byte nstAttachmentReqNotFound = 0; //File GUID not found
+			static final byte nstAttachmentReqNotSaved = 1; //File (on disk) not found
+			static final byte nstAttachmentReqUnreadable = 2; //No access to file
+			static final byte nstAttachmentReqIO = 3; //IO error
+			
 			@Override
 			void processData(int messageType, byte[] data) {
 				switch(messageType) {
@@ -3404,6 +3409,24 @@ public class ConnectionService extends Service {
 						
 						break;
 					}
+					case nhtAttachmentReqFail: {
+						//Reading the data
+						ByteBuffer byteBuffer = ByteBuffer.wrap(data);
+						final short requestID = byteBuffer.getShort();
+						final byte errorCode = byteBuffer.get();
+						
+						//Running on the UI thread
+						mainHandler.post(() -> {
+							//Searching for a matching request
+							for(FileDownloadRequest request : fileDownloadRequests) {
+								if(request.requestID != requestID/* || !request.attachmentGUID.equals(fileGUID)*/) continue;
+								request.failDownload(nstAttachmentReqCodeToLocalCode(errorCode));
+								break;
+							}
+						});
+						
+						break;
+					}
 					default:
 						super.processData(messageType, data);
 						break;
@@ -3425,7 +3448,22 @@ public class ConnectionService extends Service {
 					case nstSendResultRequestTimeout:
 						return Constants.messageErrorCodeAirServerRequestTimeout;
 					default:
-						return -code;
+						return Constants.messageErrorCodeAirServerUnknown;
+				}
+			}
+			
+			byte nstAttachmentReqCodeToLocalCode(byte code) {
+				switch(code) {
+					case nstAttachmentReqNotFound:
+						return FileDownloadRequestCallbacks.errorCodeServerNotFound;
+					case nstAttachmentReqNotSaved:
+						return FileDownloadRequestCallbacks.errorCodeServerNotSaved;
+					case nstAttachmentReqUnreadable:
+						return FileDownloadRequestCallbacks.errorCodeServerUnreadable;
+					case nstAttachmentReqIO:
+						return FileDownloadRequestCallbacks.errorCodeServerIO;
+					default:
+						return FileDownloadRequestCallbacks.errorCodeUnknown;
 				}
 			}
 		}
@@ -3725,6 +3763,17 @@ public class ConnectionService extends Service {
 	}
 	
 	interface FileDownloadRequestCallbacks {
+		byte errorCodeUnknown = -1;
+		byte errorCodeCancelled = 0; //Request cancelled
+		byte errorCodeTimeout = 1; //Request timed out
+		byte errorCodeBadResponse = 2; //Bad response (packets out of order)
+		byte errorCodeReferencesLost = 3; //Reference to context lost
+		byte errorCodeIO = 4; //IO error
+		byte errorCodeServerNotFound = 5; //Server file GUID not found
+		byte errorCodeServerNotSaved = 6; //Server file (on disk) not found
+		byte errorCodeServerUnreadable = 7; //Server no access to file
+		byte errorCodeServerIO = 8; //Server IO error
+		
 		void onResponseReceived();
 		
 		void onStart();
@@ -3733,7 +3782,7 @@ public class ConnectionService extends Service {
 		
 		void onFinish(File file);
 		
-		void onFail();
+		void onFail(byte errorCode);
 	}
 	
 	static abstract class FileProcessingRequest {
@@ -3891,11 +3940,17 @@ public class ConnectionService extends Service {
 			if(restart) handler.postDelayed(timeoutRunnable, timeoutDelay);
 		}
 		
-		void failDownload() {
+		void failDownload(byte errorCode) {
+			//Stopping the timer
 			stopTimer(false);
-			if(attachmentWriterThread != null) attachmentWriterThread.stopThread();
-			callbacks.onFail();
 			
+			//Stopping the thread
+			if(attachmentWriterThread != null) attachmentWriterThread.stopThread();
+			
+			//Telling the callback listeners
+			callbacks.onFail(errorCode);
+			
+			//Deregistering the request
 			removeRequestFromList();
 		}
 		
@@ -3930,7 +3985,7 @@ public class ConnectionService extends Service {
 		}
 		
 		AttachmentWriter attachmentWriterThread = null;
-		private final Runnable timeoutRunnable = this::failDownload;
+		private final Runnable timeoutRunnable = () -> failDownload(FileDownloadRequestCallbacks.errorCodeTimeout);
 		boolean isWaiting = true;
 		int lastIndex = -1;
 		float lastProgress = 0;
@@ -3945,7 +4000,7 @@ public class ConnectionService extends Service {
 			//Checking if the index doesn't line up
 			if(lastIndex + 1 != index) {
 				//Failing the download
-				failDownload();
+				failDownload(FileDownloadRequestCallbacks.errorCodeBadResponse);
 				
 				//Returning
 				return;
@@ -4017,7 +4072,7 @@ public class ConnectionService extends Service {
 					//Getting the context
 					Context context = contextReference.get();
 					if(context == null) {
-						new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+						new Handler(Looper.getMainLooper()).post(() -> failDownload(FileDownloadRequestCallbacks.errorCodeReferencesLost));
 						return;
 					}
 					
@@ -4098,7 +4153,7 @@ public class ConnectionService extends Service {
 					Crashlytics.logException(exception);
 					
 					//Failing the download
-					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+					new Handler(Looper.getMainLooper()).post(() -> failDownload(FileDownloadRequestCallbacks.errorCodeIO));
 					
 					//Setting the thread as not running
 					isRunning = false;
@@ -4107,7 +4162,7 @@ public class ConnectionService extends Service {
 					exception.printStackTrace();
 					
 					//Failing the download
-					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+					new Handler(Looper.getMainLooper()).post(() -> failDownload(FileDownloadRequestCallbacks.errorCodeCancelled));
 					
 					//Setting the thread as not running
 					isRunning = false;
@@ -4226,7 +4281,7 @@ public class ConnectionService extends Service {
 							//Verifying the file size
 							try(Cursor cursor = context.getContentResolver().query(pushRequest.sendUri, null, null, null, null)) {
 								if(cursor != null && cursor.moveToFirst()) {
-									long fileSize = cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
+									long fileSize = cursor.getLong(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE));
 									
 									//Checking if the file size is too large to send
 									if(fileSize > largestFileSize) {
@@ -4238,7 +4293,7 @@ public class ConnectionService extends Service {
 										continue;
 									}
 								}
-							} catch(SecurityException exception) {
+							} catch(SecurityException | IllegalArgumentException exception) {
 								exception.printStackTrace();
 							}
 							

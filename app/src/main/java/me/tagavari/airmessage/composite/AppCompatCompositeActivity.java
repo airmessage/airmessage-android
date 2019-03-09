@@ -45,7 +45,7 @@ public class AppCompatCompositeActivity extends AppCompatActivity {
 	@Override
 	protected void onStop() {
 		super.onStop();
-		for(AppCompatActivityPlugin plugin : pluginList) plugin.onStart();
+		for(AppCompatActivityPlugin plugin : pluginList) plugin.onStop();
 	}
 	
 	@Override

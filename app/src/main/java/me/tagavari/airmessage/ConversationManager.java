@@ -3114,6 +3114,14 @@ class ConversationManager {
 						showRetryButton = true;
 						
 						break;
+					case Constants.messageErrorCodeAirServerUnknown:
+						//Setting the message
+						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_externalunknown);
+						
+						//Disabling the retry button
+						showRetryButton = true;
+						
+						break;
 					case Constants.messageErrorCodeAppleNetwork:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_messageerror_desc_apple_network);
@@ -4376,7 +4384,7 @@ class ConversationManager {
 			}
 			
 			@Override
-			public void onFail() {
+			public void onFail(byte errorCode) {
 				//Setting the attachment as not fetching
 				isFetching = false;
 				isFetchWaiting = false;
@@ -4385,8 +4393,44 @@ class ConversationManager {
 				VH viewHolder = getViewHolder();
 				if(viewHolder == null) return;
 				
+				Context context = viewHolder.itemView.getContext();
+				
 				//Rebuilding the view
-				buildView(viewHolder, viewHolder.itemView.getContext());
+				buildView(viewHolder, context);
+				
+				//Displaying a toast
+				String text;
+				
+				switch(errorCode) {
+					case errorCodeTimeout:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_timeout);
+						break;
+					case errorCodeBadResponse:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_badresponse);
+						break;
+					case errorCodeReferencesLost:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_referenceslost);
+						break;
+					case errorCodeIO:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_io);
+						break;
+					case errorCodeServerNotFound:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_server_notfound);
+						break;
+					case errorCodeServerNotSaved:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_server_notsaved);
+						break;
+					case errorCodeServerUnreadable:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_server_unreadable);
+						break;
+					case errorCodeServerIO:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_server_io);
+						break;
+					default:
+						text = null;
+				}
+				
+				if(text != null) Toast.makeText(context, context.getResources().getString(R.string.message_attachmentreqerror_desc, text), Toast.LENGTH_SHORT).show();
 			}
 		};
 		
