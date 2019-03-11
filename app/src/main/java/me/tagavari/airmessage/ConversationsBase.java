@@ -39,12 +39,12 @@ class ConversationsBase extends AppCompatActivityPlugin {
 	TextView noConversationsLabel;
 	
 	//Creating the state values
-	static final byte stateIdle = 0;
-	static final byte stateLoading = 1;
-	static final byte stateSyncing = 2;
-	static final byte stateReady = 3;
-	static final byte stateLoadError = 4;
-	byte currentState = stateIdle;
+	static final int stateIdle = 0;
+	static final int stateLoading = 1;
+	static final int stateSyncing = 2;
+	static final int stateReady = 3;
+	static final int stateLoadError = 4;
+	int currentState = stateIdle;
 	boolean conversationsAvailable = false;
 	
 	//Creating the listener values
@@ -223,7 +223,7 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		}
 	}
 	
-	private void setState(byte state) {
+	private void setState(int state) {
 		//Disabling the old state
 		if(currentState != state) {
 			switch(currentState) {

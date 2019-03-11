@@ -80,12 +80,6 @@ public class SharedValues {
 	public static class MessageInfo extends ConversationItem {
 		private static final long serialVersionUID = 102;
 		
-		public static final int stateCodeGhost = 0;
-		public static final int stateCodeIdle = 1;
-		public static final int stateCodeSent = 2;
-		public static final int stateCodeDelivered = 3;
-		public static final int stateCodeRead = 4;
-		
 		public String text;
 		public String sendEffect;
 		public String sender;

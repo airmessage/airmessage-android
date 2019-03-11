@@ -17,65 +17,96 @@
 			android:layout_height="?android:attr/actionBarSize"
 			android:theme="@style/SolidActionBarClear"
 			android:background="?android:attr/colorBackgroundFloating"
-			app:titleTextAppearance="@style/LightToolbarText" />
+			app:titleTextAppearance="@style/LightToolbarText">
+		</androidx.appcompat.widget.Toolbar>
+
 		<!-- Recipient input -->
-		<LinearLayout
-			android:id="@+id/user_input"
+		<androidx.constraintlayout.widget.ConstraintLayout
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:background="?android:attr/colorBackgroundFloating"
-			android:orientation="horizontal" >
-			
-			<TextView
-				android:layout_width="72dp"
-				android:layout_height="45dp"
-				android:text="@string/to"
-				android:gravity="center"
-				android:textColor="?android:attr/textColorSecondary"
-				android:textSize="14sp" />
-			
-			<com.google.android.flexbox.FlexboxLayout
-				android:id="@+id/viewgroup_recipients"
-				android:layout_width="0dp"
+			android:background="?android:attr/colorBackgroundFloating">
+			<LinearLayout
+				android:id="@+id/user_input"
+				android:layout_width="0px"
 				android:layout_height="wrap_content"
-				android:layout_weight="1"
-				android:paddingTop="6.5dp"
-				android:paddingBottom="6.5dp"
-				android:minHeight="45dp"
-				app:alignContent="flex_start"
-				app:alignItems="flex_start"
-				app:dividerDrawable="@drawable/user_divider"
-				app:showDivider="middle"
-				app:flexWrap="wrap" >
-				
-				<EditText
-					android:id="@+id/recipients_input"
+				app:layout_constraintLeft_toLeftOf="parent"
+				app:layout_constraintRight_toRightOf="parent"
+				app:layout_constraintTop_toTopOf="parent"
+				android:orientation="horizontal">
+				<TextView
+					android:layout_width="72dp"
+					android:layout_height="45dp"
+					android:text="@string/to"
+					android:gravity="center"
+					android:textColor="?android:attr/textColorSecondary"
+					android:textSize="14sp" />
+
+				<com.google.android.flexbox.FlexboxLayout
+					android:id="@+id/viewgroup_recipients"
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:layout_weight="1"
+					android:paddingTop="6.5dp"
+					android:paddingBottom="6.5dp"
+					android:minHeight="45dp"
+					app:alignContent="flex_start"
+					app:alignItems="flex_start"
+					app:dividerDrawable="@drawable/user_divider"
+					app:showDivider="middle"
+					app:flexWrap="wrap" >
+
+					<EditText
+						android:id="@+id/recipients_input"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:background="@null"
+						android:hint="@string/imperative_userinput"
+						android:imeOptions="actionDone|flagNoExtractUi"
+						android:inputType="textEmailAddress"
+						android:maxLines="1"
+						android:minHeight="32dp"
+						android:minWidth="50dp"
+						app:layout_flexGrow="1"
+						android:textSize="14sp" />
+				</com.google.android.flexbox.FlexboxLayout>
+
+				<ImageButton
+					android:id="@+id/recipients_inputtoggle"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:background="@null"
-					android:hint="@string/imperative_userinput"
-					android:imeOptions="actionDone|flagNoExtractUi"
-					android:inputType="textEmailAddress"
-					android:maxLines="1"
-					android:minHeight="32dp"
-					android:minWidth="50dp"
-					app:layout_flexGrow="1"
-					android:textSize="14sp" />
-			</com.google.android.flexbox.FlexboxLayout>
-			
-			<ImageButton
-				android:id="@+id/recipients_inputtoggle"
-				android:layout_width="wrap_content"
+					android:layout_alignParentEnd="true"
+					android:padding="10dp"
+					android:background="?android:attr/selectableItemBackgroundBorderless"
+					android:onClick="toggleInputType"
+					android:src="@drawable/dialpad"
+					android:tint="?android:attr/textColorSecondary" />
+			</LinearLayout>
+
+			<Space
+				android:id="@+id/space_progressbaroffset"
+				android:layout_width="0px"
+				android:layout_height="0px"
+				app:layout_constraintLeft_toLeftOf="parent"
+				app:layout_constraintBottom_toBottomOf="parent"
+				android:layout_marginBottom="9dp" />
+
+			<ProgressBar
+				android:id="@+id/progressbar_content"
+				style="@style/Base.Widget.AppCompat.ProgressBar.Horizontal"
+				android:layout_width="0px"
 				android:layout_height="wrap_content"
-				android:layout_alignParentEnd="true"
-				android:padding="10dp"
-				android:background="?android:attr/selectableItemBackgroundBorderless"
-				android:onClick="toggleInputType"
-				android:src="@drawable/dialpad"
-				android:tint="?android:attr/textColorSecondary" />
-		</LinearLayout>
+				app:layout_constraintLeft_toLeftOf="parent"
+				app:layout_constraintRight_toRightOf="parent"
+				app:layout_constraintTop_toBottomOf="@id/space_progressbaroffset"
+				android:layout_alignParentBottom="true"
+				android:layout_marginTop="-7dp"
+				android:layout_marginBottom="-7dp"
+				android:indeterminate="true"
+				android:alpha="0"
+				android:visibility="gone" />
+		</androidx.constraintlayout.widget.ConstraintLayout>
 	</com.google.android.material.appbar.AppBarLayout>
-	
+
 	<!-- Contact list -->
 	<RelativeLayout
 		android:layout_width="match_parent"
@@ -166,5 +197,30 @@
 			android:layout_height="3dp"
 			android:background="@drawable/appear_bottomshadow"
 			android:layout_alignParentBottom="true" />
+
+		<!-- Content scrim -->
+		<View
+			android:id="@+id/scrim_content"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:background="@color/colorCleanScrim"
+			android:clickable="true"
+			android:soundEffectsEnabled="false"
+			android:alpha="0"
+			android:visibility="gone" />
+
+		<!-- Loading progress bar -->
+		<!-- <ProgressBar
+			android:id="@+id/progressbar_content"
+			style="@style/Base.Widget.AppCompat.ProgressBar.Horizontal"
+			android:layout_alignParentTop="true"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:indeterminate="true"
+			android:layout_marginTop="-7dp"
+			android:layout_marginBottom="-7dp"
+			android:elevation="16dp"
+			android:alpha="0"
+			android:visibility="gone" /> -->
 	</RelativeLayout>
 </LinearLayout>

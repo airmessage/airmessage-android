@@ -14,6 +14,7 @@ import android.util.LongSparseArray;
 
 import com.crashlytics.android.Crashlytics;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.common.SharedValues;
@@ -76,25 +78,25 @@ class DatabaseManager extends SQLiteOpenHelper {
 	
 	//Creating the messages table creation statements
 	private static final String SQL_CREATE_TABLE_MESSAGES = "CREATE TABLE " + Contract.MessageEntry.TABLE_NAME + " (" +
-															Contract.MessageEntry._ID + " INTEGER PRIMARY KEY UNIQUE, " +
-															Contract.MessageEntry.COLUMN_NAME_SERVERID + " INTEGER, " +
-															Contract.MessageEntry.COLUMN_NAME_GUID + " TEXT UNIQUE, " +
-															Contract.MessageEntry.COLUMN_NAME_SENDER + " TEXT, " +
-															Contract.MessageEntry.COLUMN_NAME_OTHER + " TEXT, " +
-															Contract.MessageEntry.COLUMN_NAME_DATE + " INTEGER NOT NULL, " +
-															Contract.MessageEntry.COLUMN_NAME_ITEMTYPE + " INTEGER NOT NULL, " +
-															Contract.MessageEntry.COLUMN_NAME_ITEMSUBTYPE + " INTEGER, " +
-															Contract.MessageEntry.COLUMN_NAME_STATE + " INTEGER, " +
-															Contract.MessageEntry.COLUMN_NAME_ERROR + " INTEGER, " +
-															Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS + " TEXT, " +
-															Contract.MessageEntry.COLUMN_NAME_DATEREAD + " INTEGER, " +
-															Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " TEXT, " +
-															Contract.MessageEntry.COLUMN_NAME_SENDSTYLE + " TEXT, " +
-															Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED + " INTEGER NOT NULL DEFAULT 0, " +
-															Contract.MessageEntry.COLUMN_NAME_CHAT + " INTEGER NOT NULL," +
-															Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " INTEGER NOT NULL," +
-															Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " INTEGER NOT NULL" +
-															");";
+			Contract.MessageEntry._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+			Contract.MessageEntry.COLUMN_NAME_SERVERID + " INTEGER, " +
+			Contract.MessageEntry.COLUMN_NAME_GUID + " TEXT UNIQUE, " +
+			Contract.MessageEntry.COLUMN_NAME_SENDER + " TEXT, " +
+			Contract.MessageEntry.COLUMN_NAME_OTHER + " TEXT, " +
+			Contract.MessageEntry.COLUMN_NAME_DATE + " INTEGER NOT NULL, " +
+			Contract.MessageEntry.COLUMN_NAME_ITEMTYPE + " INTEGER NOT NULL, " +
+			Contract.MessageEntry.COLUMN_NAME_ITEMSUBTYPE + " INTEGER, " +
+			Contract.MessageEntry.COLUMN_NAME_STATE + " INTEGER, " +
+			Contract.MessageEntry.COLUMN_NAME_ERROR + " INTEGER, " +
+			Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS + " TEXT, " +
+			Contract.MessageEntry.COLUMN_NAME_DATEREAD + " INTEGER, " +
+			Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " TEXT, " +
+			Contract.MessageEntry.COLUMN_NAME_SENDSTYLE + " TEXT, " +
+			Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED + " INTEGER NOT NULL DEFAULT 0, " +
+			Contract.MessageEntry.COLUMN_NAME_CHAT + " INTEGER NOT NULL," +
+			Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " INTEGER NOT NULL," +
+			Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " INTEGER NOT NULL" +
+			");";
 	private static final String SQL_CREATE_TABLE_CONVERSATIONS = "CREATE TABLE " + Contract.ConversationEntry.TABLE_NAME + " (" +
 			Contract.ConversationEntry._ID + " INTEGER PRIMARY KEY UNIQUE, " +
 			Contract.ConversationEntry.COLUMN_NAME_GUID + " TEXT UNIQUE, " +
@@ -230,7 +232,18 @@ class DatabaseManager extends SQLiteOpenHelper {
 					while(cursor.moveToNext()) {
 						contentValues = new ContentValues();
 						try {
-							contentValues.put("data", SharedValues.decompressLegacyV2(cursor.getBlob(indexData)));
+							byte[] data = cursor.getBlob(indexData);
+							Inflater inflater = new Inflater();
+							inflater.setInput(data);
+							ByteArrayOutputStream outputStream = new ByteArrayOutputStream(data.length);
+							byte[] buffer = new byte[1024];
+							while (!inflater.finished()) {
+								int count = inflater.inflate(buffer);
+								outputStream.write(buffer, 0, count);
+							}
+							outputStream.close();
+							
+							contentValues.put("data", outputStream.toByteArray());
 						} catch(IOException | DataFormatException exception) {
 							exception.printStackTrace();
 							continue;
@@ -395,6 +408,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				//Updating the sort columns
 				database.execSQL("UPDATE messages SET sort_id_linked = server_id");
+				
+				//Updating the group action subtype columns (0 is now UNKNOWN, JOIN and LEAVE have been shifted up by 1)
+				database.execSQL("UPDATE messages SET item_subtype = item_subtype + 1 WHERE item_type = 1");
 		}
 	}
 	
@@ -1588,6 +1604,70 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return null; */
 	}
 	
+	ConversationManager.ConversationInfo addRetrieveClientCreatedConversationInfo(Context context, List<String> members, String service) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
+		//Returning an existing conversation if it exists
+		ConversationManager.ConversationInfo existingConversation = findConversationInfoWithMembers(context, members, service, false);
+		if(existingConversation != null) return existingConversation;
+		
+		//Picking a conversation color
+		int conversationColor = ConversationManager.ConversationInfo.getRandomConversationColor();
+		
+		//Setting the content values
+		ContentValues contentValues = new ContentValues();
+		//contentValues.put(Contract.ConversationEntry.COLUMN_NAME_GUID, message); //Conversation not serverlinked, so no GUID can be provided
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_STATE, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_CLIENT.getIdentifier());
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, service);
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationColor);
+		
+		long localID;
+		//Inserting the conversation into the database
+		try {
+			localID = database.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
+		} catch(SQLiteConstraintException exception) {
+			//Printing the exception's stack trace
+			exception.printStackTrace();
+			
+			//Returning null
+			return null;
+		}
+		
+		//Creating and configuring the conversation info
+		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_CLIENT);
+		conversationInfo.setConversationMembersCreateColors(members.toArray(new String[0]));
+		conversationInfo.setConversationColor(conversationColor);
+		conversationInfo.setService(service);
+		
+		//Adding the conversation members
+		for(ConversationManager.MemberInfo member : conversationInfo.getConversationMembers()) {
+			//Setting the content values
+			contentValues = new ContentValues();
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_CHAT, localID);
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_MEMBER, member.getName());
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
+			
+			//Inserting the data
+			database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
+		}
+		
+		//Adding the conversation created message
+		ConversationManager.ConversationItem createdMessage = new ConversationManager.ChatCreationMessage(localID, System.currentTimeMillis(), conversationInfo);
+		conversationInfo.trySetLastItem(createdMessage.toLightConversationItemSync(context), false);
+		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
+		
+		contentValues = new ContentValues();
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
+		
+		database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+		
+		//Returning the conversation info
+		return conversationInfo;
+	}
+	
 	ConversationManager.ConversationInfo addRetrieveServerCreatedConversationInfo(Context context, String guid) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
@@ -1619,6 +1699,75 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Returning the conversation info
 		return new ConversationManager.ConversationInfo(localID, guid, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_SERVER);
+	}
+	
+	//Mixed source conversation (when starting a new conversation from the app). GUID comes from the server, members come from the client
+	ConversationManager.ConversationInfo addRetrieveMixedConversationInfo(Context context, String guid, String[] members, String service) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
+		//Returning the existing conversation if one already exists
+		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, null, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{guid}, null, null, null, "1");
+		if(cursor.getCount() > 0) {
+			cursor.close();
+			return fetchConversationInfo(context, guid);
+		}
+		cursor.close();
+		
+		//Picking a color
+		int conversationColor = ConversationManager.ConversationInfo.getDefaultConversationColor(guid);
+		
+		//Setting the content values
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_GUID, guid);
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_STATE, ConversationManager.ConversationInfo.ConversationState.READY.getIdentifier());
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, service);
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationColor);
+		
+		//Inserting the conversation into the database
+		long localID;
+		try {
+			localID = database.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
+		} catch(SQLiteConstraintException exception) {
+			//Printing the exception's stack trace
+			exception.printStackTrace();
+			
+			//Returning null
+			return null;
+		}
+		
+		//Creating and configuring the conversation info
+		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, guid, ConversationManager.ConversationInfo.ConversationState.READY);
+		conversationInfo.setConversationColor(conversationColor);
+		conversationInfo.setConversationMembersCreateColors(members);
+		conversationInfo.setService(service);
+		
+		//Adding the conversation members
+		for(ConversationManager.MemberInfo member : conversationInfo.getConversationMembers()) {
+			//Setting the content values
+			contentValues = new ContentValues();
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_CHAT, localID);
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_MEMBER, member.getName());
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
+			
+			//Inserting the data
+			database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
+		}
+		
+		//Adding the conversation created message
+		ConversationManager.ConversationItem createdMessage = new ConversationManager.ChatCreationMessage(localID, System.currentTimeMillis(), conversationInfo);
+		conversationInfo.trySetLastItem(createdMessage.toLightConversationItemSync(context), false);
+		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
+		
+		contentValues = new ContentValues();
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
+		
+		database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+		
+		//Returning the conversation info
+		return conversationInfo;
 	}
 	
 	ConversationManager.ConversationInfo addReadyConversationInfo(Context context, Blocks.ConversationInfo structConversationInfo) {
@@ -1674,72 +1823,6 @@ class DatabaseManager extends SQLiteOpenHelper {
 			
 			database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
 		}
-		
-		//Returning the conversation info
-		return conversationInfo;
-	}
-	
-	ConversationManager.ConversationInfo addRetrieveClientCreatedConversationInfo(Context context, List<String> members, String service) {
-		//Getting the database
-		SQLiteDatabase database = getWritableDatabase();
-		
-		//Returning an existing conversation if it exists
-		ConversationManager.ConversationInfo existingConversation = findConversationInfoWithMembers(context, members, service, false);
-		if(existingConversation != null) return existingConversation;
-		
-		//Picking a conversation color
-		int conversationColor = ConversationManager.ConversationInfo.getRandomConversationColor();
-		
-		//Setting the content values
-		ContentValues contentValues = new ContentValues();
-		//contentValues.put(Contract.ConversationEntry.COLUMN_NAME_GUID, message); //Conversation not serverlinked, so no GUID can be provided
-		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_STATE, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_CLIENT.getIdentifier());
-		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationColor);
-		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, service);
-		
-		long localID;
-		//Inserting the conversation into the database
-		try {
-			localID = database.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
-		} catch(SQLiteConstraintException exception) {
-			//Printing the exception's stack trace
-			exception.printStackTrace();
-			
-			//Returning null
-			return null;
-		}
-		
-		//Creating the conversation info
-		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_CLIENT);
-		conversationInfo.setConversationColor(conversationColor);
-		conversationInfo.setService(service);
-		
-		//Adding the members
-		conversationInfo.setConversationMembersCreateColors(members.toArray(new String[0]));
-		
-		//Adding the conversation members
-		for(ConversationManager.MemberInfo member : conversationInfo.getConversationMembers()) {
-			//Setting the content values
-			contentValues = new ContentValues();
-			contentValues.put(Contract.MemberEntry.COLUMN_NAME_CHAT, localID);
-			contentValues.put(Contract.MemberEntry.COLUMN_NAME_MEMBER, member.getName());
-			contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
-			
-			//Inserting the data
-			database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
-		}
-		
-		//Adding the conversation created message
-		ConversationManager.ConversationItem createdMessage = new ConversationManager.ChatCreationMessage(localID, System.currentTimeMillis(), conversationInfo);
-		conversationInfo.trySetLastItem(createdMessage.toLightConversationItemSync(context), false);
-		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
-		
-		contentValues = new ContentValues();
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
-		
-		database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
 		
 		//Returning the conversation info
 		return conversationInfo;
