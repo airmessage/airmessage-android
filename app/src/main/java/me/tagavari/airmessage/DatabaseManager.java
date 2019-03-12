@@ -1661,6 +1661,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
 		
 		database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
 		
@@ -1763,6 +1765,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
 		
 		database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
 		
@@ -2215,11 +2219,11 @@ class DatabaseManager extends SQLiteOpenHelper {
 					try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET}, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " = (SELECT MAX(" + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + ") FROM " + Contract.MessageEntry.TABLE_NAME + ")", null, null, null, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " DESC", "1")) {
 						if(cursor.moveToNext()) {
 							//Same message, +1 offset
-							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED)));
-							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET)) + 1);
+							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED)));
+							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET)) + 1);
 						} else {
-							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, -1);
-							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, 0);
+							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
+							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
 						}
 					}
 				} else {
@@ -2424,11 +2428,11 @@ class DatabaseManager extends SQLiteOpenHelper {
 			try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET}, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " = (SELECT MAX(" + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + ") FROM " + Contract.MessageEntry.TABLE_NAME + ")", null, null, null, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " DESC", "1")) {
 				if(cursor.moveToNext()) {
 					//Same message, +1 offset
-					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED)));
-					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET)) + 1);
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED)));
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET)) + 1);
 				} else {
-					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, -1);
-					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, 0);
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
 				}
 			}
 		} else {
