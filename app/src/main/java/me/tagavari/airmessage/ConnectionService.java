@@ -1500,6 +1500,7 @@ public class ConnectionService extends Service {
 			static final int nsMessageDelivered = 3;
 			static final int nsMessageRead = 4;
 			
+			static final int nsAppleErrorOK = 0;
 			static final int nsAppleErrorNetwork = 3; //Network error
 			static final int nsAppleErrorUnregistered = 22; //Not registered with iMessage
 			
@@ -1875,7 +1876,7 @@ public class ConnectionService extends Service {
 						default:
 							throw new IOException("Invalid modifier type: " + type);
 						case modifierTypeActivity: {
-							int state = in.readInt();
+							int state = convertCodeMessageState(in.readInt());
 							long dateRead = in.readLong();
 							
 							list.add(new Blocks.ActivityStatusModifierInfo(message, state, dateRead));
@@ -2294,6 +2295,8 @@ public class ConnectionService extends Service {
 			
 			int convertCodeAppleError(int code) {
 				switch(code) {
+					case nsAppleErrorOK:
+						return Constants.messageErrorCodeOK;
 					case nsAppleErrorNetwork:
 						return Constants.messageErrorCodeAppleNetwork;
 					case nsAppleErrorUnregistered:
@@ -2305,12 +2308,12 @@ public class ConnectionService extends Service {
 			
 			int convertCodeGroupActionSubtype(int code) {
 				switch(code) {
+					default:
+						return Constants.groupActionUnknown;
 					case nsGroupActionSubtypeJoin:
 						return Constants.groupActionJoin;
 					case nsGroupActionSubtypeLeave:
 						return Constants.groupActionLeave;
-					default:
-						return Constants.groupActionUnknown;
 				}
 			}
 			
@@ -2631,9 +2634,10 @@ public class ConnectionService extends Service {
 			static final int nsMessageDelivered = 2;
 			static final int nsMessageRead = 3;
 			
-			static final int nsAppleErrorUnknown = 0; //Unknown error code
-			static final int nsAppleErrorNetwork = 1; //Network error
-			static final int nsAppleErrorUnregistered = 2; //Not registered with iMessage
+			static final int nsAppleErrorOK = 0;
+			static final int nsAppleErrorUnknown = 1; //Unknown error code
+			static final int nsAppleErrorNetwork = 2; //Network error
+			static final int nsAppleErrorUnregistered = 3; //Not registered with iMessage
 			
 			static final int nsGroupActionSubtypeUnknown = 0;
 			static final int nsGroupActionSubtypeJoin = 1;
@@ -2832,6 +2836,8 @@ public class ConnectionService extends Service {
 			@Override
 			int convertCodeAppleError(int code) {
 				switch(code) {
+					case nsAppleErrorOK:
+						return Constants.messageErrorCodeOK;
 					case nsAppleErrorUnknown:
 					default:
 						return Constants.messageErrorCodeAppleUnknown;

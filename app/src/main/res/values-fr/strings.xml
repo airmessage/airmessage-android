@@ -336,4 +336,14 @@
 	<string name="message_messageerror_details_title">Détails de l\'erreur</string>
 	<string name="message_messageerror_details_unavailable">Aucun détail d\'erreur disponible</string>
 	<string name="message_messageerror_details_loadfailed">Échec du chargement des détails d\'erreur</string>
+	<string name="message_messageerror_desc_air_externalunknown">Une erreur externe inconnue a eu lieu</string>
+	<string name="message_attachmentreqerror_desc">N\'a pas pu télécharger la pièce jointe: %s</string>
+	<string name="message_attachmentreqerror_timeout">Demande expirée</string>
+	<string name="message_attachmentreqerror_badresponse">Mauvaise réponse</string>
+	<string name="message_attachmentreqerror_referenceslost">Erreur interne (références perdues)</string>
+	<string name="message_attachmentreqerror_io">Erreur interne (I/O)</string>
+	<string name="message_attachmentreqerror_server_notfound">Message non trouvé</string>
+	<string name="message_attachmentreqerror_server_notsaved">Pièce jointe non trouvée</string>
+	<string name="message_attachmentreqerror_server_unreadable">Pièce jointe illisible</string>
+	<string name="message_attachmentreqerror_server_io">Erreur externe (I/O)</string>
 </resources>
