@@ -318,7 +318,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(message.isEmpty()) return;
 			
 			//Creating a message
-			messageList.add(new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1));
+			messageList.add(new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
 			
 			//Clearing the message box
 			messageInputField.setText("");
@@ -329,7 +329,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Iterating over the drafts
 		for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
 			//Creating the message
-			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), SharedValues.MessageInfo.stateCodeGhost, Constants.messageErrorCodeOK, -1);
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 			
 			//Creating the attachment
 			SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
@@ -392,7 +392,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			return false;
 		}
 	}; */
-	private final Observer<Byte> messagesStateObserver = state -> {
+	private final Observer<Integer> messagesStateObserver = state -> {
 		switch(state) {
 			case ActivityViewModel.messagesStateLoadingConversation:
 				labelLoading.setVisibility(View.VISIBLE);
@@ -1884,7 +1884,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	public void onClickRetryLoad(View view) {
-		byte state = viewModel.messagesState.getValue();
+		int state = viewModel.messagesState.getValue();
 		if(state == ActivityViewModel.messagesStateFailedConversation) viewModel.loadConversation();
 		else if(state == ActivityViewModel.messagesStateFailedMessages) viewModel.loadMessages();
 	}
@@ -2973,7 +2973,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		ConnectionService.FilePushRequest request = item.getFile() != null ?
 													new ConnectionService.FilePushRequest(item.getFile(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false) :
 													new ConnectionService.FilePushRequest(item.getUri(), item.getFileType(), item.getFileName(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false);
-		request.getCallbacks().onFail = result -> {
+		request.getCallbacks().onFail = (result, details) -> {
 			//Dequeuing the attachment
 			dequeueAttachment(item, true, false);
 			
@@ -4030,45 +4030,48 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private static class ActivityViewModel extends AndroidViewModel {
-		static final byte messagesStateIdle = 0;
-		static final byte messagesStateLoadingConversation = 1;
-		static final byte messagesStateLoadingMessages = 2;
-		static final byte messagesStateFailedConversation = 3;
-		static final byte messagesStateFailedMessages = 4;
-		static final byte messagesStateReady = 5;
+		static final int messagesStateIdle = 0;
+		static final int messagesStateLoadingConversation = 1;
+		static final int messagesStateLoadingMessages = 2;
+		static final int messagesStateFailedConversation = 3;
+		static final int messagesStateFailedMessages = 4;
+		static final int messagesStateReady = 5;
 		
-		static final byte attachmentsStateIdle = 0;
-		static final byte attachmentsStateLoading = 1;
-		static final byte attachmentsStateLoaded = 2;
-		static final byte attachmentsStateFailed = 3;
+		static final int attachmentsStateIdle = 0;
+		static final int attachmentsStateLoading = 1;
+		static final int attachmentsStateLoaded = 2;
+		static final int attachmentsStateFailed = 3;
 		
-		static final byte soundMessageIncoming = 0;
-		static final byte soundMessageOutgoing = 1;
-		static final byte soundMessageError = 2;
-		static final byte soundRecordingStart = 3;
-		static final byte soundRecordingEnd = 4;
+		static final int soundMessageIncoming = 0;
+		static final int soundMessageOutgoing = 1;
+		static final int soundMessageError = 2;
+		static final int soundRecordingStart = 3;
+		static final int soundRecordingEnd = 4;
 		
 		static final int attachmentTypeGallery = 0;
 		//static final int attachmentTypeDocument = 1;
 		private static final int attachmentsTileCount = 24;
 		
 		//Creating the state values
-		private final MutableLiveData<Byte> messagesState = new MutableLiveData<>();
+		private final MutableLiveData<Integer> messagesState = new MutableLiveData<>();
 		
-		final List<QueuedFileInfo> draftQueueList = new ArrayList<>(3);
+		private final List<QueuedFileInfo> draftQueueList = new ArrayList<>(3);
 		private static final int attachmentTypesCount = 2;
-		private final byte[] attachmentStates = new byte[attachmentTypesCount];
+		private final int[] attachmentStates = new int[attachmentTypesCount];
 		private final ArrayList<SimpleAttachmentInfo>[] attachmentLists = new ArrayList[attachmentTypesCount];
 		private final WeakReference<AttachmentsLoadCallbacks>[] attachmentCallbacks = new WeakReference[attachmentTypesCount];
 		
-		boolean isAttachmentsPanelOpen = false;
-		boolean isDetailsPanelOpen = false;
+		private boolean isAttachmentsPanelOpen = false;
+		private boolean isDetailsPanelOpen = false;
 		
 		private final MutableLiveData<Boolean> progressiveLoadInProgress = new MutableLiveData<>();
-		boolean progressiveLoadReachedLimit = false;
-		int lastProgressiveLoadCount = -1;
+		private boolean progressiveLoadReachedLimit = false;
+		private int lastProgressiveLoadCount = -1;
 		
-		int lastUnreadCount = 0;
+		private long firstSortID = -1;
+		private int firstSortIDOffset = -1;
+		
+		private int lastUnreadCount = 0;
 		
 		//Creating the conversation values
 		private long conversationID;
@@ -4150,7 +4153,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Updating the conversation's unread message count
 				conversationInfo.updateUnreadStatus(MainApplication.getInstance());
-				new UpdateUnreadMessageCount(MainApplication.getInstance(), conversationID, conversationInfo.getUnreadMessageCount()).execute();
+				//new UpdateUnreadMessageCount(MainApplication.getInstance(), conversationID, conversationInfo.getUnreadMessageCount()).execute();
+				DatabaseManager.getInstance().setUnreadMessageCount(conversationID, conversationInfo.getUnreadMessageCount()); //Maybe the task gets killed before it is completed?
 			}
 		}
 		
@@ -4203,23 +4207,23 @@ public class Messaging extends AppCompatCompositeActivity {
 				messagesState.setValue(messagesStateReady);
 			} else {
 				//Loading the messages
-				new AsyncTask<Void, Void, List<ConversationManager.ConversationItem>>() {
+				new AsyncTask<Void, Void, Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer>>() {
 					@Override
-					protected List<ConversationManager.ConversationItem> doInBackground(Void... params) {
+					protected Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> doInBackground(Void... params) {
 						//Loading the conversation items
-						List<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, 0, 0);
+						Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> result = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, -1, -1);
 						
 						//Setting up the conversation item relations
-						ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
+						ConversationManager.setupConversationItemRelations(result.item1, conversationInfo);
 						
 						//Returning the conversation items
-						return conversationItems;
+						return result;
 					}
 					
 					@Override
-					protected void onPostExecute(List<ConversationManager.ConversationItem> messages) {
-						//Checking if the messages are invalid
-						if(messages == null) {
+					protected void onPostExecute(Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> result) {
+						//Checking if the result is invalid
+						if(result == null) {
 							//Setting the state
 							messagesState.setValue(messagesStateFailedMessages);
 							
@@ -4235,10 +4239,14 @@ public class Messaging extends AppCompatCompositeActivity {
 						conversationInfo.setConversationLists(conversationItemList, conversationGhostList);
 						
 						//Replacing the conversation items
-						conversationInfo.replaceConversationItems(MainApplication.getInstance(), messages);
+						conversationInfo.replaceConversationItems(MainApplication.getInstance(), result.item1);
 						
 						//Marking all messages as read (list will always be scrolled to the bottom)
 						conversationInfo.setUnreadMessageCount(0);
+						
+						//Updating the sort IDs
+						firstSortID = result.item2;
+						firstSortIDOffset = result.item3;
 						
 						//Setting the state
 						messagesState.setValue(messagesStateReady);
@@ -4256,19 +4264,22 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Setting the flags
 			progressiveLoadInProgress.setValue(true);
 			
-			//Loading a chunk
-			ConversationManager.ConversationItem lastItem = conversationInfo.getConversationItems().get(0);
-			long lastItemServerID = lastItem.getServerID();
-			long lastItemLocalID = lastItem.getLocalID();
-			new AsyncTask<Void, Void, List<ConversationManager.ConversationItem>>() {
+			//Getting the sort IDs
+			final long firstSortIDFinal = firstSortID;
+			final int firstSortIDOffsetFinal = firstSortIDOffset;
+			
+			new AsyncTask<Void, Void, Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer>>() {
 				@Override
-				protected List<ConversationManager.ConversationItem> doInBackground(Void... params) {
+				protected Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> doInBackground(Void... params) {
 					//Loading the conversation items
-					return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, lastItemServerID, lastItemLocalID);
+					return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, firstSortIDFinal, firstSortIDOffsetFinal);
 				}
 				
 				@Override
-				protected void onPostExecute(List<ConversationManager.ConversationItem> conversationItems) {
+				protected void onPostExecute(Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> result) {
+					//Getting the conversation items
+					List<ConversationManager.ConversationItem> conversationItems = result.item1;
+					
 					//Setting the progressive load count
 					lastProgressiveLoadCount = conversationItems.size();
 					
@@ -4286,6 +4297,10 @@ public class Messaging extends AppCompatCompositeActivity {
 						
 						//Updating the items' relations
 						ConversationManager.addConversationItemRelations(conversationInfo, allItems, conversationItems, MainApplication.getInstance(), true);
+						
+						//Updating the sort IDs
+						firstSortID = result.item2;
+						firstSortIDOffset = result.item3;
 					}
 					
 					//Finishing the progressive load
@@ -4327,7 +4342,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			return value == null ? false : value;
 		}
 		
-		void playSound(byte id) {
+		void playSound(int id) {
 			switch(id) {
 				case soundMessageIncoming:
 					soundPool.play(soundIDMessageIncoming, soundVolume, soundVolume, 0, 0, 1);
@@ -4521,7 +4536,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			indexAttachmentsFromMediaStore(listener, attachmentTypeGallery, MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO, adapter);
 		}
 		
-		byte getAttachmentState(int itemType) {
+		int getAttachmentState(int itemType) {
 			return attachmentStates[itemType];
 		}
 		
@@ -4936,8 +4951,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		@Override
 		protected void onProgressUpdate(ConversationManager.MessageInfo... messages) {
-			for(ConversationManager.MessageInfo message : messages)
-				onFinishListener.accept(message);
+			for(ConversationManager.MessageInfo message : messages) onFinishListener.accept(message);
 		}
 	}
 	

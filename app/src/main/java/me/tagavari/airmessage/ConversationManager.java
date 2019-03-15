@@ -912,7 +912,7 @@ class ConversationManager {
 			if(!activityStateTarget.isOutgoing()) return;
 			
 			//Checking if the item is delivered
-			if(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered) {
+			if(activityStateTarget.getMessageState() == Constants.messageStateCodeDelivered) {
 				//Getting the current item
 				MessageInfo activeMessageDelivered = getActivityStateTargetDelivered();
 				
@@ -936,7 +936,7 @@ class ConversationManager {
 				}
 			}
 			//Otherwise checking if the item is read
-			else if(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead) {
+			else if(activityStateTarget.getMessageState() == Constants.messageStateCodeRead) {
 				//Getting the current item
 				MessageInfo activeMessageDelivered = getActivityStateTargetDelivered();
 				MessageInfo activeMessageRead = getActivityStateTargetRead();
@@ -954,7 +954,7 @@ class ConversationManager {
 				} else {
 					//Replacing the item if the new one is more recent
 					if(ConversationManager.compareConversationItems(activityStateTarget, activeMessageRead) >= 0 &&
-							(activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || activityStateTarget.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
+							(activityStateTarget.getMessageState() == Constants.messageStateCodeDelivered || activityStateTarget.getMessageState() == Constants.messageStateCodeRead)) {
 						setActivityStateTargetDelivered(activityStateTarget);
 						setActivityStateTargetRead(activityStateTarget);
 						
@@ -988,7 +988,7 @@ class ConversationManager {
 			for(ConversationItem conversationItem : sortedList) {
 				if(!(conversationItem instanceof MessageInfo)) continue;
 				MessageInfo messageInfo = (MessageInfo) conversationItem;
-				if(messageInfo.getMessageState() != SharedValues.MessageInfo.stateCodeGhost) continue;
+				if(messageInfo.getMessageState() != Constants.messageStateCodeGhost) continue;
 				ghostMessages.add(messageInfo);
 			}
 			
@@ -1082,7 +1082,7 @@ class ConversationManager {
 				if(conversationItem instanceof MessageInfo) {
 					MessageInfo messageInfo = (MessageInfo) conversationItem;
 					
-					if(messageInfo.isOutgoing() && messageInfo.getMessageState() != SharedValues.MessageInfo.stateCodeGhost) {
+					if(messageInfo.isOutgoing() && messageInfo.getMessageState() != Constants.messageStateCodeGhost) {
 						//Scanning the ghost items
 						if(messageInfo.getMessageText() != null && messageInfo.getAttachments().isEmpty()) {
 							for(ListIterator<MessageInfo> listIterator = ghostMessages.listIterator(); listIterator.hasNext();) {
@@ -2056,6 +2056,8 @@ class ConversationManager {
 		private boolean sendStyleViewed;
 		private int messageState;
 		private int errorCode;
+		private boolean errorDetailsAvailable;
+		private String errorDetails = null;
 		private long dateRead;
 		private boolean isSending = false;
 		private float sendProgress = -1;
@@ -2069,7 +2071,7 @@ class ConversationManager {
 		//Creating the other values
 		private transient boolean playEffectRequested = false;
 		
-		MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, ArrayList<AttachmentInfo> attachments, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, long dateRead) {
+		MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, ArrayList<AttachmentInfo> attachments, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, boolean errorDetailsAvailable, long dateRead) {
 			//Calling the super constructor
 			super(localID, serverID, guid, date, conversationInfo);
 			
@@ -2087,7 +2089,7 @@ class ConversationManager {
 			this.dateRead = dateRead;
 		}
 		
-		MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, long dateRead) {
+		MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, boolean errorDetailsAvailable, long dateRead) {
 			//Calling the super constructor
 			super(localID, serverID, guid, date, conversationInfo);
 			
@@ -2141,6 +2143,15 @@ class ConversationManager {
 		
 		void setErrorCode(int errorCode) {
 			this.errorCode = errorCode;
+		}
+		
+		String getErrorDetails() {
+			return errorDetails;
+		}
+		
+		void setErrorDetails(String errorDetails) {
+			this.errorDetails = errorDetails;
+			errorDetailsAvailable = errorDetails != null;
 		}
 		
 		long getDateRead() {
@@ -2225,9 +2236,9 @@ class ConversationManager {
 			
 			//Getting the requested state
 			isShowingMessageState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetDelivered()) &&
-					messageState != SharedValues.MessageInfo.stateCodeGhost &&
-					messageState != SharedValues.MessageInfo.stateCodeIdle &&
-					messageState != SharedValues.MessageInfo.stateCodeSent;
+					messageState != Constants.messageStateCodeGhost &&
+					messageState != Constants.messageStateCodeIdle &&
+					messageState != Constants.messageStateCodeSent;
 			
 			//Setting up the label
 			if(isShowingMessageState) {
@@ -2244,9 +2255,9 @@ class ConversationManager {
 			
 			//Getting the requested state
 			boolean requestedState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetDelivered()) &&
-					messageState != SharedValues.MessageInfo.stateCodeGhost &&
-					messageState != SharedValues.MessageInfo.stateCodeIdle &&
-					messageState != SharedValues.MessageInfo.stateCodeSent;
+					messageState != Constants.messageStateCodeGhost &&
+					messageState != Constants.messageStateCodeIdle &&
+					messageState != Constants.messageStateCodeSent;
 			
 			//Calling the overload method
 			ViewHolder viewHolder = getViewHolder();
@@ -2367,9 +2378,9 @@ class ConversationManager {
 			switch(messageState) {
 				default:
 					return null;
-				case SharedValues.MessageInfo.stateCodeDelivered:
+				case Constants.messageStateCodeDelivered:
 					return context.getResources().getString(R.string.state_delivered);
-				case SharedValues.MessageInfo.stateCodeRead: {
+				case Constants.messageStateCodeRead: {
 					//Creating the calendars
 					Calendar sentCal = Calendar.getInstance();
 					sentCal.setTimeInMillis(dateRead);
@@ -2425,12 +2436,13 @@ class ConversationManager {
 				void onSuccess() {}
 				
 				@Override
-				void onFail(byte resultCode) {
+				void onFail(int errorCode, String errorDetails) {
 					//Setting the error code
-					errorCode = uploadToMessageErrorCode(resultCode);
+					setErrorCode(errorCode);
+					setErrorDetails(errorDetails);
 					
 					//Updating the message's database entry
-					new UpdateErrorCodeTask(getLocalID(), errorCode).execute();
+					new UpdateErrorCodeTask(getLocalID(), errorCode, errorDetails).execute();
 					
 					//Updating the adapter
 					ConversationInfo.ActivityCallbacks updater = getConversationInfo().getActivityCallbacks();
@@ -2456,7 +2468,7 @@ class ConversationManager {
 				//context.startService(new Intent(context, ConnectionService.class));
 				
 				//Telling the response manager
-				messageResponseManager.onFail(ConnectionService.messageSendNetworkException);
+				messageResponseManager.onFail(Constants.messageErrorCodeLocalNetwork, null);
 				
 				//Returning false
 				return false;
@@ -2553,9 +2565,9 @@ class ConversationManager {
 					TransitionManager.beginDelayedTransition((ViewGroup) newViewHolder.itemView);
 					newViewHolder.progressSend.setVisibility(View.GONE);
 				};
-				request.getCallbacks().onFail = resultCode -> {
+				request.getCallbacks().onFail = (resultCode, details) -> {
 					//Forwarding the event to the response manager
-					messageResponseManager.onFail(resultCode);
+					messageResponseManager.onFail(resultCode, details);
 					
 					//Setting the message as not sending
 					isSending = false;
@@ -2603,42 +2615,21 @@ class ConversationManager {
 			}
 		}
 		
-		private static byte uploadToMessageErrorCode(byte code) {
-			switch(code) {
-				case ConnectionService.messageSendInvalidContent:
-					return Constants.messageErrorCodeAirInvalidContent;
-				case ConnectionService.messageSendFileTooLarge:
-					return Constants.messageErrorCodeAirFileTooLarge;
-				case ConnectionService.messageSendIOException:
-					return Constants.messageErrorCodeAirIO;
-				case ConnectionService.messageSendNetworkException:
-					return Constants.messageErrorCodeAirNetwork;
-				case ConnectionService.messageSendExternalException:
-					return Constants.messageErrorCodeAirExternal;
-				case ConnectionService.messageSendRequestExpired:
-					return Constants.messageErrorCodeAirExpired;
-				case ConnectionService.messageSendReferencesLost:
-					return Constants.messageErrorCodeAirReferences;
-				case ConnectionService.messageSendInternalException:
-					return Constants.messageErrorCodeAirInternal;
-				default:
-					throw new UnsupportedOperationException("Received upload request error code (" + code + ") which is out of range");
-			}
-		}
-		
 		private static class UpdateErrorCodeTask extends AsyncTask<Void, Void, Void> {
 			private final long messageID;
 			private final int errorCode;
+			private final String details;
 			
-			UpdateErrorCodeTask(long messageID, int errorCode) {
+			UpdateErrorCodeTask(long messageID, int errorCode, String details) {
 				this.messageID = messageID;
 				this.errorCode = errorCode;
+				this.details = details;
 			}
 			
 			@Override
 			protected Void doInBackground(Void... parameters) {
 				//Updating the entry in the database
-				DatabaseManager.getInstance().updateMessageErrorCode(messageID, errorCode);
+				DatabaseManager.getInstance().updateMessageErrorCode(messageID, errorCode, details);
 				
 				//Returning
 				return null;
@@ -2986,7 +2977,7 @@ class ConversationManager {
 		private static final float ghostAlpha = 0.50F;
 		private void updateViewProgressState(ViewHolder viewHolder) {
 			//Setting the message part container's alpha
-			if(messageState == SharedValues.MessageInfo.stateCodeGhost) viewHolder.containerMessagePart.setAlpha(ghostAlpha);
+			if(messageState == Constants.messageStateCodeGhost) viewHolder.containerMessagePart.setAlpha(ghostAlpha);
 			else viewHolder.containerMessagePart.setAlpha(1);
 			
 			//Hiding the error and returning if there wasn't any problem
@@ -3018,6 +3009,7 @@ class ConversationManager {
 				boolean showRetryButton;
 				
 				switch(errorCode) {
+					case Constants.messageErrorCodeLocalUnknown:
 					default:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_unknownerror);
@@ -3027,7 +3019,7 @@ class ConversationManager {
 						
 						break;
 					
-					case Constants.messageErrorCodeAirInvalidContent:
+					case Constants.messageErrorCodeLocalInvalidContent:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_invalidcontent);
 						
@@ -3035,7 +3027,7 @@ class ConversationManager {
 						showRetryButton = false;
 						
 						break;
-					case Constants.messageErrorCodeAirFileTooLarge:
+					case Constants.messageErrorCodeLocalFileTooLarge:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_filetoolarge);
 						
@@ -3043,7 +3035,7 @@ class ConversationManager {
 						showRetryButton = false;
 						
 						break;
-					case Constants.messageErrorCodeAirIO:
+					case Constants.messageErrorCodeLocalIO:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_io);
 						
@@ -3051,7 +3043,7 @@ class ConversationManager {
 						showRetryButton = true;
 						
 						break;
-					case Constants.messageErrorCodeAirNetwork:
+					case Constants.messageErrorCodeLocalNetwork:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_network);
 						
@@ -3059,7 +3051,7 @@ class ConversationManager {
 						showRetryButton = true;
 						
 						break;
-					case Constants.messageErrorCodeAirExternal:
+					case Constants.messageErrorCodeServerExternal:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_external);
 						
@@ -3067,7 +3059,7 @@ class ConversationManager {
 						showRetryButton = true;
 						
 						break;
-					case Constants.messageErrorCodeAirExpired:
+					case Constants.messageErrorCodeLocalExpired:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_expired);
 						
@@ -3075,7 +3067,7 @@ class ConversationManager {
 						showRetryButton = true;
 						
 						break;
-					case Constants.messageErrorCodeAirReferences:
+					case Constants.messageErrorCodeLocalReferences:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_references);
 						
@@ -3083,11 +3075,51 @@ class ConversationManager {
 						showRetryButton = true;
 						
 						break;
-					case Constants.messageErrorCodeAirInternal:
+					case Constants.messageErrorCodeLocalInternal:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_internal);
 						
 						//Enabling the retry button
+						showRetryButton = true;
+						
+						break;
+					case Constants.messageErrorCodeServerBadRequest:
+						//Setting the message
+						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_badrequest);
+						
+						//Enabling the retry button
+						showRetryButton = true;
+						
+						break;
+					case Constants.messageErrorCodeServerUnauthorized:
+						//Setting the message
+						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_unauthorized);
+						
+						//Enabling the retry button
+						showRetryButton = true;
+						
+						break;
+					case Constants.messageErrorCodeServerNoConversation:
+						//Setting the message
+						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_noconversation);
+						
+						//Disabling the retry button
+						showRetryButton = false;
+						
+						break;
+					case Constants.messageErrorCodeServerRequestTimeout:
+						//Setting the message
+						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_serverexpired);
+						
+						//Disabling the retry button
+						showRetryButton = true;
+						
+						break;
+					case Constants.messageErrorCodeServerUnknown:
+						//Setting the message
+						dialogBuilder.setMessage(R.string.message_messageerror_desc_air_externalunknown);
+						
+						//Disabling the retry button
 						showRetryButton = true;
 						
 						break;
@@ -3122,6 +3154,45 @@ class ConversationManager {
 				//Showing the dialog
 				dialogBuilder.create().show();
 			});
+			
+			viewHolder.buttonSendError.setOnLongClickListener(view -> {
+				//Getting the context
+				Context context = view.getContext();
+				if(context == null) return false;
+				
+				if(errorDetailsAvailable) {
+					if(errorDetails == null) {
+						//Fetching the error details
+						new ReadErrorMessageTask(this).execute();
+					} else displayErrorDialog(context, errorDetails);
+				} else {
+					//Notifying the user via a toast
+					Toast.makeText(context, R.string.message_messageerror_details_unavailable, Toast.LENGTH_SHORT).show();
+				}
+				
+				return true;
+			});
+		}
+		
+		private static void displayErrorDialog(Context context, String details) {
+			//Creating the view
+			View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_simplescroll, null);
+			TextView textView = dialogView.findViewById(R.id.text);
+			textView.setTypeface(Typeface.MONOSPACE);
+			textView.setText(details);
+			
+			//Showing the dialog
+			new AlertDialog.Builder(context)
+					.setTitle(R.string.message_messageerror_details_title)
+					.setView(dialogView)
+					.setNeutralButton(R.string.action_copytoclipboard, (dialog, which) -> {
+						ClipboardManager clipboard = (ClipboardManager) MainApplication.getInstance().getSystemService(Context.CLIPBOARD_SERVICE);
+						clipboard.setPrimaryClip(ClipData.newPlainText("Error details", details));
+						Toast.makeText(MainApplication.getInstance(), R.string.message_textcopied, Toast.LENGTH_SHORT).show();
+						dialog.dismiss();
+					})
+					.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
+					.create().show();
 		}
 		
 		void animateGhostStateChanges() {
@@ -3493,6 +3564,40 @@ class ConversationManager {
 			
 			void resume() {
 				for(MessageComponent.ViewHolder holder : messageComponents) holder.resume();
+			}
+		}
+		
+		private static class ReadErrorMessageTask extends AsyncTask<Void, Void, String> {
+			private final long messageID;
+			private final WeakReference<MessageInfo> messageReference;
+			
+			private ReadErrorMessageTask(MessageInfo message) {
+				//Getting the message ID
+				messageID = message.getLocalID();
+				
+				//Setting the reference
+				messageReference = new WeakReference<>(message);
+			}
+			
+			@Override
+			protected String doInBackground(Void... voids) {
+				//Fetching the error message
+				return DatabaseManager.getInstance().getMessageErrorDetails(messageID);
+			}
+			
+			@Override
+			protected void onPostExecute(String errorDetail) {
+				if(errorDetail == null) {
+					//Notifying the user via a toast
+					Toast.makeText(MainApplication.getInstance(), R.string.message_messageerror_details_loadfailed, Toast.LENGTH_SHORT).show();
+				} else {
+					//Updating the message
+					MessageInfo message = messageReference.get();
+					if(message != null) {
+						message.setErrorDetails(errorDetail);
+						MessageInfo.displayErrorDialog(MainApplication.getInstance(), errorDetail);
+					}
+				}
 			}
 		}
 	}
@@ -4280,7 +4385,7 @@ class ConversationManager {
 			}
 			
 			@Override
-			public void onFail() {
+			public void onFail(int errorCode) {
 				//Setting the attachment as not fetching
 				isFetching = false;
 				isFetchWaiting = false;
@@ -4289,8 +4394,44 @@ class ConversationManager {
 				VH viewHolder = getViewHolder();
 				if(viewHolder == null) return;
 				
+				Context context = viewHolder.itemView.getContext();
+				
 				//Rebuilding the view
-				buildView(viewHolder, viewHolder.itemView.getContext());
+				buildView(viewHolder, context);
+				
+				//Displaying a toast
+				String text;
+				
+				switch(errorCode) {
+					case errorCodeTimeout:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_timeout);
+						break;
+					case errorCodeBadResponse:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_badresponse);
+						break;
+					case errorCodeReferencesLost:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_referenceslost);
+						break;
+					case errorCodeIO:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_io);
+						break;
+					case errorCodeServerNotFound:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_server_notfound);
+						break;
+					case errorCodeServerNotSaved:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_server_notsaved);
+						break;
+					case errorCodeServerUnreadable:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_server_unreadable);
+						break;
+					case errorCodeServerIO:
+						text = context.getResources().getString(R.string.message_attachmentreqerror_server_io);
+						break;
+					default:
+						text = null;
+				}
+				
+				if(text != null) Toast.makeText(context, context.getResources().getString(R.string.message_attachmentreqerror_desc, text), Toast.LENGTH_SHORT).show();
 			}
 		};
 		
@@ -4421,7 +4562,7 @@ class ConversationManager {
 					viewHolder.progressDownload.setVisibility(View.VISIBLE);
 				}
 				//Otherwise checking if the attachment is being uploaded
-				else if(messageInfo.getMessageState() == SharedValues.MessageInfo.stateCodeGhost || messageInfo.isSending) {
+				else if(messageInfo.getMessageState() == Constants.messageStateCodeGhost || messageInfo.isSending) {
 					//Showing the processing view
 					viewHolder.groupDownload.setVisibility(View.GONE);
 					viewHolder.groupContent.setVisibility(View.GONE);
@@ -4554,7 +4695,7 @@ class ConversationManager {
 		
 		void downloadContent(Context context) {
 			//Returning if the content has already been fetched is being fetched, or the message is in a ghost state
-			if(file != null || isFetching || messageInfo.getMessageState() == SharedValues.MessageInfo.stateCodeGhost) return;
+			if(file != null || isFetching || messageInfo.getMessageState() == Constants.messageStateCodeGhost) return;
 			
 			//Checking if the service isn't running
 			ConnectionService connectionService = ConnectionService.getInstance();
@@ -5181,15 +5322,15 @@ class ConversationManager {
 		private static final int resDrawablePlay = R.drawable.play_rounded;
 		private static final int resDrawablePause = R.drawable.pause_rounded;
 		
-		private static final byte fileStateIdle = 0;
-		private static final byte fileStateLoading = 1;
-		private static final byte fileStateLoaded = 2;
-		private static final byte fileStateFailed = 3;
+		private static final int fileStateIdle = 0;
+		private static final int fileStateLoading = 1;
+		private static final int fileStateLoaded = 2;
+		private static final int fileStateFailed = 3;
 		
 		//Creating the media values
 		private long duration = 0;
 		private long mediaProgress = 0;
-		private byte fileState = fileStateIdle;
+		private int fileState = fileStateIdle;
 		private boolean isPlaying = false;
 		
 		AudioAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
@@ -5973,7 +6114,7 @@ class ConversationManager {
 		
 		static String getDirectSummary(Context context, String agent, String other, int actionType) {
 			//Returning the message based on the action type
-			if(actionType == Constants.groupActionInvite) {
+			if(actionType == Constants.groupActionJoin) {
 				if(Objects.equals(agent, other)) {
 					if(agent == null) return context.getString(R.string.message_eventtype_join_you);
 					else return context.getString(R.string.message_eventtype_join, agent);
@@ -6501,11 +6642,11 @@ class ConversationManager {
 			if(!messageItem.isOutgoing()) continue;
 			
 			//Setting the conversation's active message state list ID
-			if(!targetDeliveredSet && messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered) {
+			if(!targetDeliveredSet && messageItem.getMessageState() == Constants.messageStateCodeDelivered) {
 				conversationInfo.setActivityStateTargetDelivered(messageItem);
 				targetDeliveredSet = true;
 			}
-			if(/*!targetReadSet && */messageItem.getMessageState() == SharedValues.MessageInfo.stateCodeRead) {
+			if(/*!targetReadSet && */messageItem.getMessageState() == Constants.messageStateCodeRead) {
 				if(!targetDeliveredSet) conversationInfo.setActivityStateTargetDelivered(messageItem); //The delivered and read message would be the same thing
 				conversationInfo.setActivityStateTargetRead(messageItem);
 				//targetReadSet = true;
@@ -6593,7 +6734,7 @@ class ConversationManager {
 				//Replacing the item if the new one is outgoing and more recent
 				if(messageInfo.isOutgoing() &&
 						messageInfo.getDate() >= activeMessage.getDate() &&
-						(messageInfo.getMessageState() == SharedValues.MessageInfo.stateCodeDelivered || messageInfo.getMessageState() == SharedValues.MessageInfo.stateCodeRead)) {
+						(messageInfo.getMessageState() == Constants.messageStateCodeDelivered || messageInfo.getMessageState() == Constants.messageStateCodeRead)) {
 					conversation.setActivityStateTarget(messageInfo);
 					
 					//Updating the views

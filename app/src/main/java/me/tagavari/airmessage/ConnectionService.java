@@ -12,7 +12,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
-import android.net.Network;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -72,7 +71,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
-import java.util.zip.DataFormatException;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -98,7 +96,7 @@ public class ConnectionService extends Service {
 	 *  4 - Better stability and security, with sub-version support
 	 */
 	public static final int mmCommunicationsVersion = 4;
-	public static final int mmCommunicationsSubVersion = 5;
+	public static final int mmCommunicationsSubVersion = 6;
 	
 	public static final String featureAdvancedSync1 = "advanced_sync_1";
 	
@@ -223,6 +221,7 @@ public class ConnectionService extends Service {
 	
 	//Creating the other values
 	private final SparseArray<MessageResponseManager> messageSendRequests = new SparseArray<>();
+	private final SparseArray<ChatCreationResponseManager> chatCreationRequests = new SparseArray<>();
 	private MassRetrievalParams currentMassRetrievalParams = null;
 	//private final LongSparseArray<MessageResponseManager> fileSendRequests = new LongSparseArray<>();
 	//private short currentRequestID = (short) (new Random(System.currentTimeMillis()).nextInt((int) Short.MAX_VALUE - (int) Short.MIN_VALUE + 1) + Short.MIN_VALUE);
@@ -559,7 +558,7 @@ public class ConnectionService extends Service {
 	void cancelCurrentTasks() {
 		//Cancelling the file requests
 		List<FileDownloadRequest> requestList = (List<FileDownloadRequest>) fileDownloadRequests.clone();
-		for(FileDownloadRequest request : requestList) request.failDownload();
+		for(FileDownloadRequest request : requestList) request.failDownload(FileDownloadRequestCallbacks.errorCodeCancelled);
 		
 		//Interrupting the file processing request thread and clearing its contents
 		if(fileProcessingThreadRunning.get()) fileProcessingThread.interrupt();
@@ -814,6 +813,15 @@ public class ConnectionService extends Service {
 		abstract boolean requestRetrievalAll(short requestID, MassRetrievalParams params);
 		
 		/**
+		 * Requests the creation of a new conversation on the server
+		 * @param requestID the ID used to validate conflicting requests
+		 * @param members the participating members' contact addresses for this conversation
+		 * @param service the service that this conversation will use
+		 * @return whether or not the request was successfully sent
+		 */
+		abstract boolean requestChatCreation(short requestID, String[] members, String service);
+		
+		/**
 		 * Checks if the specified communications version is applicable
 		 *
 		 * @param version the major communications version to check
@@ -845,148 +853,6 @@ public class ConnectionService extends Service {
 		 * @return whether or not this protocol manager can handle the specified feature
 		 */
 		abstract boolean checkSupportsFeature(String feature);
-		
-		abstract class ProtocolManager {
-			/**
-			 * Sends a ping packet to the server
-			 *
-			 * @return whether or not the message was successfully sent
-			 */
-			abstract boolean sendPing();
-			
-			/**
-			 * Handles incoming data received from the server
-			 *
-			 * @param messageType header data representing the message type
-			 * @param data the raw data received from the network
-			 */
-			abstract void processData(int messageType, byte[] data);
-			
-			/**
-			 * Sends an authentication request to the server
-			 *
-			 * @return whether or not the message was successfully sent
-			 */
-			abstract boolean sendAuthenticationRequest();
-			
-			/**
-			 * Requests a message to be sent to the specified conversation
-			 *
-			 * @param requestID the ID of the request
-			 * @param chatGUID the GUID of the target conversation
-			 * @param message the message to send
-			 * @return whether or not the request was successfully sent
-			 */
-			abstract boolean sendMessage(short requestID, String chatGUID, String message);
-			
-			/**
-			 * Requests a message to be send to the specified conversation members via the service
-			 *
-			 * @param requestID the ID of the request
-			 * @param chatMembers the members to send the message to
-			 * @param message the message to send
-			 * @param service the service to send the message across
-			 * @return whether or not the request was successfully sent
-			 */
-			abstract boolean sendMessage(short requestID, String[] chatMembers, String message, String service);
-			
-			/**
-			 * Requests the download of a remote attachment
-			 *
-			 * @param requestID the ID of the request
-			 * @return whether or not the request was successful
-			 */
-			abstract boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable);
-			
-			/**
-			 * Uploads a file chunk to be sent to the specified conversation
-			 *
-			 * @param requestID the ID of the request
-			 * @param requestIndex the index of the request
-			 * @param conversationGUID the conversation to send the file to
-			 * @param data the transmission-ready bytes of the file chunk
-			 * @param fileName the name of the file to send
-			 * @param isLast whether or not this is the last file packet
-			 * @return whether or not the action was successful
-			 */
-			abstract boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast);
-			
-			/**
-			 * Uploads a file chunk to be sent to the specified conversation members
-			 *
-			 * @param requestID the ID of the request
-			 * @param requestIndex the index of the request
-			 * @param conversationMembers the members of the conversation to send the file to
-			 * @param data the transmission-ready bytes of the file chunk
-			 * @param fileName the name of the file to send
-			 * @param service the service to send the file across
-			 * @param isLast whether or not this is the last file packet
-			 * @return whether or not the action was successful
-			 */
-			abstract boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast);
-			
-			/**
-			 * Sends a request to fetch conversation information
-			 *
-			 * @param list the list of conversation requests
-			 * @return whether or not the request was successfully sent
-			 */
-			abstract boolean sendConversationInfoRequest(List<ConversationInfoRequest> list);
-			
-			/**
-			 * Requests a time range-based message retrieval
-			 *
-			 * @param timeLower the lower time range limit
-			 * @param timeUpper the upper time range limit
-			 * @return whether or not the request was successfully sent
-			 */
-			abstract boolean requestRetrievalTime(long timeLower, long timeUpper);
-			
-			/**
-			 * Requests a mass message retrieval
-			 *
-			 * @param requestID the ID used to validate conflicting requests
-			 * @param params the mass retrieval parameters to use
-			 * @return whether or not the request was successfully sent
-			 */
-			abstract boolean requestRetrievalAll(short requestID, MassRetrievalParams params);
-			
-			/**
-			 * Gets a packager for processing transferable data via this protocol version
-			 *
-			 * @return the packager
-			 */
-			abstract Packager getPackager();
-			
-			/**
-			 * Returns the hash algorithm to use with this protocol
-			 *
-			 * @return the hash algorithm
-			 */
-			abstract String getHashAlgorithm();
-			
-			/**
-			 * Returns the charset used when serializing strings
-			 *
-			 * @return the charset
-			 */
-			abstract String getCharset();
-			
-			/**
-			 * Checks if the specified sub-communications version is applicable
-			 *
-			 * @param version the minor communications version to check
-			 * @return whether or not this protocol manager can handle the specified version
-			 */
-			abstract boolean checkSubVerApplicability(int version);
-			
-			/**
-			 * Checks if the specified feature is supported by the current protocol
-			 * @param feature the feature to check
-			 * @return whether or not this protocol manager can handle the specified feature
-			 */
-			abstract boolean checkSupportsFeature(String feature);
-		}
 	}
 	
 	private class ClientCommCaladium extends ConnectionManager {
@@ -1131,6 +997,12 @@ public class ConnectionService extends Service {
 		}
 		
 		@Override
+		boolean requestChatCreation(short requestID, String[] members, String service) {
+			if(protocolManager == null) return false;
+			return protocolManager.requestChatCreation(requestID, members, service);
+		}
+		
+		@Override
 		int checkCommVerApplicability(int version) {
 			return Integer.compare(version, 4);
 		}
@@ -1270,6 +1142,13 @@ public class ConnectionService extends Service {
 					connectionThread.closeConnection(verApplicability < 0 ? intentResultCodeServerOutdated : intentResultCodeClientOutdated, verApplicability < 0);
 					return;
 				}
+				
+				//Communications subversion 1 is no longer supported
+				if(communicationsSubVersion <= 1) {
+					connectionThread.closeConnection(intentResultCodeServerOutdated, false);
+					return;
+				}
+				
 				protocolManager = findProtocolManager(communicationsSubVersion);
 				if(protocolManager == null) {
 					connectionThread.closeConnection(intentResultCodeClientOutdated, false);
@@ -1292,7 +1171,7 @@ public class ConnectionService extends Service {
 				default:
 					return null;
 				case 1:
-					return new ClientProtocol1();
+					return null;
 				case 2:
 					return new ClientProtocol2();
 				case 3:
@@ -1301,6 +1180,8 @@ public class ConnectionService extends Service {
 					return new ClientProtocol4();
 				case 5:
 					return new ClientProtocol5();
+				case 6:
+					return new ClientProtocol6();
 			}
 		}
 		
@@ -1584,616 +1465,9 @@ public class ConnectionService extends Service {
 			return protocolManager.checkSupportsFeature(feature);
 		}
 		
-		private class ClientProtocol1 extends ProtocolManager {
-			final Packager protocolPackager = new PackagerComm3();
-			static final String hashAlgorithm = "MD5";
-			static final String stringCharset = "UTF-8";
-			
-			//Top-level net header type values
-			static final int nhtAuthentication = 1;
-			static final int nhtMessageUpdate = 2;
-			static final int nhtTimeRetrieval = 3;
-			static final int nhtMassRetrieval = 4;
-			static final int nhtConversationUpdate = 5;
-			static final int nhtModifierUpdate = 6;
-			static final int nhtAttachmentReq = 7;
-			static final int nhtAttachmentReqConfirm = 8;
-			static final int nhtAttachmentReqFail = 9;
-			static final int nhtSendResult = 100;
-			static final int nhtSendTextExisting = 101;
-			static final int nhtSendTextNew = 102;
-			static final int nhtSendFileExisting = 103;
-			static final int nhtSendFileNew = 104;
-			
-			//Net subtype values
-			static final int nstAuthenticationOK = 0;
-			static final int nstAuthenticationUnauthorized = 1;
-			static final int nstAuthenticationBadRequest = 2;
-			static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
-			
-			@Override
-			boolean sendPing() {
-				return queuePacket(new PacketStruct(nhtPing, new byte[0]));
-			}
-			
-			@Override
-			void processData(int messageType, byte[] data) {
-				//Notifying the super connection manager of a message
-				onMessage();
-				
-				switch(messageType) {
-					case nhtClose:
-						connectionThread.closeConnection(intentResultCodeConnection, false);
-						break;
-					case nhtPing:
-						queuePacket(new PacketStruct(nhtPong, new byte[0]));
-						break;
-					case nhtAuthentication: {
-						//Stopping the authentication timer
-						handler.removeCallbacks(handshakeExpiryRunnable);
-						
-						//Reading the result code
-						ByteBuffer dataBuffer = ByteBuffer.wrap(data);
-						int resultCode = dataBuffer.getInt();
-						
-						//Translating the result to the local value
-						switch(resultCode) {
-							case nstAuthenticationOK:
-								resultCode = intentResultCodeSuccess;
-								break;
-							case nstAuthenticationUnauthorized:
-								resultCode = intentResultCodeUnauthorized;
-								break;
-							case nstAuthenticationBadRequest:
-								resultCode = intentResultCodeBadRequest;
-								break;
-									/* case nhtAuthenticationVersionMismatch:
-										if(SharedValues.mmCommunicationsVersion > communicationsVersion) result = intentResultCodeServerOutdated;
-										else result = intentResultCodeClientOutdated;
-										break; */
-						}
-						
-						//Finishing the connection establishment if the handshake was successful
-						if(resultCode == intentResultCodeSuccess) updateStateConnected();
-							//Otherwise terminating the connection
-						else connectionThread.closeConnection(resultCode, resultCode == intentResultCodeBadRequest); //Only forward the request if the request couldn't be processed (an unauthorized response means that the server could understand the request)
-						
-						break;
-					}
-					case nhtMessageUpdate:
-					case nhtTimeRetrieval: {
-						//Reading the list
-						List<Blocks.ConversationItem> list;
-						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
-								int count = inSec.readInt();
-								list = new ArrayList<>(count);
-								for(int i = 0; i < count; i++) list.add(((SharedValues.ConversationItem) inSec.readObject()).toBlock());
-							}
-						} catch(IOException | RuntimeException | ClassNotFoundException | GeneralSecurityException exception) {
-							exception.printStackTrace();
-							break;
-						}
-						
-						//Processing the messages
-						processMessageUpdate(list, true);
-						
-						break;
-					}
-					case nhtMassRetrieval: {
-						//Reading the lists
-						List<Blocks.ConversationItem> listItems;
-						List<Blocks.ConversationInfo> listConversations;
-						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
-								int count = inSec.readInt();
-								listItems = new ArrayList<>(count);
-								for(int i = 0; i < count; i++) listItems.add(((SharedValues.ConversationItem) inSec.readObject()).toBlock());
-								
-								count = inSec.readInt();
-								listConversations = new ArrayList<>(count);
-								for(int i = 0; i < count; i++) listConversations.add(((SharedValues.ConversationInfo) inSec.readObject()).toBlock());
-							}
-						} catch(IOException | RuntimeException | ClassNotFoundException | GeneralSecurityException exception) {
-							exception.printStackTrace();
-							break;
-						}
-						
-						//Processing the messages (done all in one shot, since this communications version does not support streaming)
-						if(massRetrievalThread == null) return;
-						massRetrievalThread.registerInfo(ConnectionService.this, (short) 0, listConversations, listItems.size(), getPackager());
-						massRetrievalThread.addPacket(ConnectionService.this, (short) 0, 1, listItems);
-						massRetrievalThread.finish();
-						
-						break;
-					}
-					case nhtConversationUpdate: {
-						//Reading the list
-						List<Blocks.ConversationInfo> list;
-						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
-								int count = inSec.readInt();
-								list = new ArrayList<>(count);
-								for(int c = 0; c < count; c++) {
-									String guid = inSec.readUTF();
-									boolean available = inSec.readBoolean();
-									if(available) {
-										String service = in.readUTF();
-										String name = in.readBoolean() ? in.readUTF() : null;
-										String[] members = new String[in.readInt()];
-										for(int i = 0; i < members.length; i++) members[i] = in.readUTF();
-										list.add(new Blocks.ConversationInfo(guid, service, name, members));
-									} else {
-										list.add(new Blocks.ConversationInfo(guid));
-									}
-								}
-							}
-						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
-							exception.printStackTrace();
-							break;
-						}
-						
-						//Processing the conversations
-						processChatInfoResponse(list);
-						
-						break;
-					}
-					case nhtModifierUpdate: {
-						//Reading the list
-						List<Blocks.ModifierInfo> list;
-						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
-								int count = inSec.readInt();
-								list = new ArrayList<>(count);
-								for(int i = 0; i < count; i++) list.add(((SharedValues.ModifierInfo) inSec.readObject()).toBlock());
-							}
-						} catch(IOException | RuntimeException | ClassNotFoundException | GeneralSecurityException exception) {
-							exception.printStackTrace();
-							break;
-						}
-						
-						//Processing the conversations
-						processModifierUpdate(list, getPackager());
-						
-						break;
-					}
-					case nhtAttachmentReq: {
-						//Reading the data
-						final short requestID;
-						final int requestIndex;
-						final long fileSize;
-						final boolean isLast;
-						
-						final String fileGUID;
-						final byte[] compressedBytes;
-						
-						try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
-							requestID = in.readShort();
-							requestIndex = in.readInt();
-							if(requestIndex == 0) fileSize = in.readLong();
-							else fileSize = -1;
-							isLast = in.readBoolean();
-							
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
-								fileGUID = inSec.readUTF();
-								int contentLen = inSec.readInt();
-								if(contentLen > maxPacketAllocation) {
-									//Logging the error
-									Logger.getGlobal().log(Level.WARNING, "Rejecting large byte chunk (type: " + messageType + " - size: " + contentLen + ")");
-									
-									//Closing the connection
-									connectionThread.closeConnection(intentResultCodeConnection, false);
-									break;
-								}
-								compressedBytes = new byte[contentLen];
-								inSec.readFully(compressedBytes);
-							}
-						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
-							exception.printStackTrace();
-							break;
-						}
-						
-						//Running on the UI thread
-						mainHandler.post(() -> {
-							//Searching for a matching request
-							for(FileDownloadRequest request : fileDownloadRequests) {
-								if(request.requestID != requestID || !request.attachmentGUID.equals(fileGUID)) continue;
-								if(requestIndex == 0) request.setFileSize(fileSize);
-								request.processFileFragment(ConnectionService.this, compressedBytes, requestIndex, isLast, getPackager());
-								if(isLast) fileDownloadRequests.remove(request);
-								break;
-							}
-						});
-						
-						break;
-					}
-					case nhtAttachmentReqConfirm: {
-						//Reading the data
-						final short requestID = ByteBuffer.wrap(data).getShort();
-						
-						//Running on the UI thread
-						mainHandler.post(() -> {
-							//Searching for a matching request
-							for(FileDownloadRequest request : fileDownloadRequests) {
-								if(request.requestID != requestID/* || !request.attachmentGUID.equals(fileGUID)*/) continue;
-								request.stopTimer(true);
-								request.onResponseReceived();
-								break;
-							}
-						});
-						
-						break;
-					}
-					case nhtAttachmentReqFail: {
-						//Reading the data
-						final short requestID = ByteBuffer.wrap(data).getShort();
-						
-						//Running on the UI thread
-						mainHandler.post(() -> {
-							//Searching for a matching request
-							for(FileDownloadRequest request : fileDownloadRequests) {
-								if(request.requestID != requestID/* || !request.attachmentGUID.equals(fileGUID)*/) continue;
-								request.failDownload();
-								break;
-							}
-						});
-						
-						break;
-					}
-					case nhtSendResult: {
-						//Reading the data
-						final short requestID;
-						final boolean result;
-						
-						ByteBuffer byteBuffer = ByteBuffer.wrap(data);
-						requestID = byteBuffer.getShort();
-						result = byteBuffer.get() == 1;
-						
-						//Getting the message response manager
-						final MessageResponseManager messageResponseManager = messageSendRequests.get(requestID);
-						if(messageResponseManager != null) {
-							//Removing the request
-							messageSendRequests.remove(requestID);
-							messageResponseManager.stopTimer(false);
-							
-							//Running on the UI thread
-							new Handler(Looper.getMainLooper()).post(() -> {
-								//Telling the listener
-								if(result) messageResponseManager.onSuccess();
-								else messageResponseManager.onFail(messageSendExternalException);
-							});
-						}
-						
-						break;
-					}
-				}
-			}
-			
-			@Override
-			boolean sendAuthenticationRequest() {
-				//Returning false if there is no connection thread
-				if(connectionThread == null) return false;
-				
-				byte[] packetData;
-				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt)) {
-					out.writeObject(new Blocks.EncryptableData(transmissionCheck.getBytes(stringCharset)).encrypt(password));
-					out.flush();
-					
-					packetData = trgt.toByteArray();
-				} catch(IOException | GeneralSecurityException exception) {
-					//Logging the error
-					exception.printStackTrace();
-					Crashlytics.logException(exception);
-					
-					//Closing the connection
-					connectionThread.closeConnection(intentResultCodeInternalException, false);
-					
-					//Returning false
-					return false;
-				}
-				
-				//Sending the message
-				connectionThread.queuePacket(new PacketStruct(nhtAuthentication, packetData));
-				
-				//Returning true
-				return true;
-			}
-			
-			@Override
-			boolean sendMessage(short requestID, String chatGUID, String message) {
-				//Returning false if there is no connection thread
-				if(connectionThread == null) return false;
-				
-				byte[] packetData;
-				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
-					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
-					//Adding the data
-					out.writeShort(requestID); //Request ID
-					
-					outSec.writeUTF(chatGUID); //Chat GUID
-					outSec.writeUTF(message); //Message
-					outSec.flush();
-					
-					out.writeObject(new Blocks.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
-					
-					out.flush();
-					
-					packetData = trgt.toByteArray();
-				} catch(IOException | GeneralSecurityException exception) {
-					//Printing the stack trace
-					exception.printStackTrace();
-					
-					//Returning false
-					return false;
-				}
-				
-				//Sending the message
-				connectionThread.queuePacket(new PacketStruct(nhtSendTextExisting, packetData));
-				
-				//Returning true
-				return true;
-			}
-			
-			@Override
-			boolean sendMessage(short requestID, String[] chatMembers, String message, String service) {
-				//Returning false if there is no connection thread
-				if(connectionThread == null) return false;
-				
-				byte[] packetData;
-				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos);
-					ByteArrayOutputStream bosSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(bosSec)) {
-					//Adding the data
-					out.writeShort(requestID); //Request ID
-					
-					outSec.writeInt(chatMembers.length); //Members
-					for(String item : chatMembers) outSec.writeUTF(item);
-					outSec.writeUTF(message); //Message
-					outSec.writeUTF(service); //Service
-					outSec.flush();
-					
-					out.writeObject(new Blocks.EncryptableData(bosSec.toByteArray()).encrypt(password)); //Encrypted data
-					
-					out.flush();
-					
-					packetData = bos.toByteArray();
-				} catch(IOException | GeneralSecurityException exception) {
-					//Printing the stack trace
-					exception.printStackTrace();
-					
-					//Returning false
-					return false;
-				}
-				
-				//Sending the message
-				connectionThread.queuePacket(new PacketStruct(nhtSendTextNew, packetData));
-				
-				//Returning true
-				return true;
-			}
-			
-			@Override
-			boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable) {
-				//Preparing to serialize the request
-				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
-					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
-					//Adding the data
-					out.writeShort(requestID); //Request ID
-					out.writeInt(attachmentChunkSize); //Chunk size
-					
-					outSec.writeUTF(attachmentGUID); //File GUID
-					outSec.flush();
-					
-					out.writeObject(new Blocks.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
-					out.flush();
-					
-					//Sending the message
-					return queuePacket(new PacketStruct(nhtAttachmentReq, trgt.toByteArray(), sentRunnable));
-				} catch(IOException | GeneralSecurityException exception) {
-					//Printing the stack trace
-					exception.printStackTrace();
-					Crashlytics.logException(exception);
-					
-					//Returning false
-					return false;
-				}
-			}
-			
-			@Override
-			boolean sendConversationInfoRequest(List<ConversationInfoRequest> list) {
-				//Returning false if there is no connection thread
-				if(connectionThread == null) return false;
-				
-				//Creating the guid list
-				ArrayList<String> guidList;
-				
-				//Locking the pending conversations
-				synchronized(list) {
-					//Returning false if there are no pending conversations
-					if(list.isEmpty()) return false;
-					
-					//Converting the conversation info list to a string list
-					guidList = new ArrayList<>();
-					for(ConversationInfoRequest conversationInfoRequest : list)
-						guidList.add(conversationInfoRequest.conversationInfo.getGuid());
-				}
-				
-				//Requesting information on new conversations
-				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
-					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
-					outSec.writeInt(guidList.size());
-					for(String item : guidList) outSec.writeUTF(item);
-					outSec.flush();
-					
-					out.writeObject(new Blocks.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
-					
-					//Sending the message
-					connectionThread.queuePacket(new PacketStruct(nhtConversationUpdate, trgt.toByteArray()));
-				} catch(IOException | GeneralSecurityException exception) {
-					//Logging the exception
-					exception.printStackTrace();
-					Crashlytics.logException(exception);
-					
-					//Returning false
-					return false;
-				}
-				
-				//Returning true
-				return true;
-			}
-			
-			@Override
-			boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast) {
-				//Returning false if there is no connection thread
-				if(connectionThread == null) return false;
-				
-				//Adding the data
-				byte[] packetData;
-				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
-					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
-					out.writeShort(requestID); //Request identifier
-					out.writeInt(requestIndex); //Request index
-					out.writeBoolean(isLast); //Is last message
-					
-					outSec.writeUTF(conversationGUID); //Chat GUID
-					outSec.writeInt(data.length); //File bytes
-					outSec.write(data);
-					if(requestIndex == 0) outSec.writeUTF(fileName); //File name
-					outSec.flush();
-					
-					out.writeObject(new Blocks.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
-					out.flush();
-					
-					packetData = trgt.toByteArray();
-				} catch(IOException | GeneralSecurityException exception) {
-					//Logging the exception
-					exception.printStackTrace();
-					Crashlytics.logException(exception);
-					
-					//Returning false
-					return false;
-				}
-				
-				//Sending the message
-				connectionThread.sendDataSync(nhtSendFileExisting, packetData, true);
-				
-				//Returning true
-				return true;
-			}
-			
-			@Override
-			boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast) {
-				//Returning false if there is no connection thread
-				if(connectionThread == null) return false;
-				
-				//Adding the data
-				byte[] packetData;
-				try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos);
-					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
-					out.writeShort(requestID); //Request identifier
-					out.writeInt(requestIndex); //Request index
-					out.writeBoolean(isLast); //Is last message
-					
-					outSec.writeInt(conversationMembers.length); //Chat members
-					for(String item : conversationMembers) outSec.writeUTF(item);
-					outSec.writeInt(data.length); //File bytes
-					outSec.write(data);
-					if(requestIndex == 0) {
-						outSec.writeUTF(fileName); //File name
-						outSec.writeUTF(service); //Service
-					}
-					outSec.flush();
-					
-					out.writeObject(new Blocks.EncryptableData(trgtSec.toByteArray()).encrypt(password)); //Encrypted data
-					
-					out.flush();
-					
-					packetData = bos.toByteArray();
-				} catch(IOException | GeneralSecurityException exception) {
-					//Logging the exception
-					exception.printStackTrace();
-					Crashlytics.logException(exception);
-					
-					//Returning false
-					return false;
-				}
-				
-				//Sending the message
-				connectionThread.sendDataSync(nhtSendFileNew, packetData, true);
-				
-				//Returning true
-				return true;
-			}
-			
-			@Override
-			boolean requestRetrievalTime(long timeLower, long timeUpper) {
-				//Returning false if there is no connection thread
-				if(connectionThread == null) return false;
-				
-				//Sending the message
-				connectionThread.queuePacket(new PacketStruct(nhtTimeRetrieval, ByteBuffer.allocate(Long.SIZE / 8 * 2).putLong(timeLower).putLong(timeUpper).array()));
-				
-				//Returning true
-				return true;
-			}
-			
-			@Override
-			boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
-				//Ignoring advanced requests
-				//if(params.isAdvanced) throw new UnsupportedOperationException();
-				
-				//Returning false if there is no connection thread
-				if(connectionThread == null) return false;
-				
-				//Queuing the packet
-				queuePacket(new PacketStruct(nhtMassRetrieval, new byte[0]));
-				
-				//Returning true
-				return true;
-			}
-			
-			@Override
-			Packager getPackager() {
-				return protocolPackager;
-			}
-			
-			@Override
-			String getHashAlgorithm() {
-				return hashAlgorithm;
-			}
-			
-			@Override
-			String getCharset() {
-				return stringCharset;
-			}
-			
-			@Override
-			boolean checkSubVerApplicability(int version) {
-				return version == 1;
-			}
-			
-			@Override
-			boolean checkSupportsFeature(String feature) {
-				return false;
-			}
-		}
-		
+		//Serialization changes
 		private class ClientProtocol2 extends ProtocolManager {
-			final Packager protocolPackager = new PackagerComm3();
+			final Packager protocolPackager = new PackagerGZIP();
 			static final String hashAlgorithm = "MD5";
 			static final String stringCharset = "UTF-8";
 			
@@ -2219,6 +1493,19 @@ public class ConnectionService extends Service {
 			static final int nstAuthenticationUnauthorized = 1;
 			static final int nstAuthenticationBadRequest = 2;
 			static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
+			
+			//Net state values
+			static final int nsMessageIdle = 1;
+			static final int nsMessageSent = 2;
+			static final int nsMessageDelivered = 3;
+			static final int nsMessageRead = 4;
+			
+			static final int nsAppleErrorOK = 0;
+			static final int nsAppleErrorNetwork = 3; //Network error
+			static final int nsAppleErrorUnregistered = 22; //Not registered with iMessage
+			
+			static final int nsGroupActionSubtypeJoin = 0;
+			static final int nsGroupActionSubtypeLeave = 1;
 			
 			@Override
 			boolean sendPing() {
@@ -2433,7 +1720,7 @@ public class ConnectionService extends Service {
 							//Searching for a matching request
 							for(FileDownloadRequest request : fileDownloadRequests) {
 								if(request.requestID != requestID/* || !request.attachmentGUID.equals(fileGUID)*/) continue;
-								request.failDownload();
+								request.failDownload(FileDownloadRequestCallbacks.errorCodeUnknown);
 								break;
 							}
 						});
@@ -2460,7 +1747,7 @@ public class ConnectionService extends Service {
 							new Handler(Looper.getMainLooper()).post(() -> {
 								//Telling the listener
 								if(result) messageResponseManager.onSuccess();
-								else messageResponseManager.onFail(messageSendExternalException);
+								else messageResponseManager.onFail(Constants.messageErrorCodeServerUnknown, null);
 							});
 						}
 						
@@ -2518,8 +1805,8 @@ public class ConnectionService extends Service {
 							List<Blocks.StickerModifierInfo> stickers = (List<Blocks.StickerModifierInfo>) (List<?>) deserializeModifiers(in, in.readInt());
 							List<Blocks.TapbackModifierInfo> tapbacks = (List<Blocks.TapbackModifierInfo>) (List<?>) deserializeModifiers(in, in.readInt());
 							String sendEffect = in.readBoolean() ? in.readUTF() : null;
-							int stateCode = in.readInt();
-							int errorCode = in.readInt();
+							int stateCode = convertCodeMessageState(in.readInt());
+							int errorCode = convertCodeAppleError(in.readInt());
 							long dateRead = in.readLong();
 							
 							list.add(new Blocks.MessageInfo(-1, guid, chatGuid, date, text, sender, attachments, stickers, tapbacks, sendEffect, stateCode, errorCode, dateRead));
@@ -2528,7 +1815,7 @@ public class ConnectionService extends Service {
 						case conversationItemTypeGroupAction: {
 							String agent = in.readBoolean() ? in.readUTF() : null;
 							String other = in.readBoolean() ? in.readUTF() : null;
-							int groupActionType = in.readInt();
+							int groupActionType = convertCodeGroupActionSubtype(in.readInt());
 							
 							list.add(new Blocks.GroupActionInfo(-1, guid, chatGuid, date, agent, other, groupActionType));
 							break;
@@ -2589,7 +1876,7 @@ public class ConnectionService extends Service {
 						default:
 							throw new IOException("Invalid modifier type: " + type);
 						case modifierTypeActivity: {
-							int state = in.readInt();
+							int state = convertCodeMessageState(in.readInt());
 							long dateRead = in.readLong();
 							
 							list.add(new Blocks.ActivityStatusModifierInfo(message, state, dateRead));
@@ -2674,6 +1961,7 @@ public class ConnectionService extends Service {
 				} catch(IOException | GeneralSecurityException exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
+					Crashlytics.logException(exception);
 					
 					//Returning false
 					return false;
@@ -2907,6 +2195,11 @@ public class ConnectionService extends Service {
 				return true;
 			}
 			
+			@Override
+			boolean requestChatCreation(short requestID, String[] members, String service) {
+				return false;
+			}
+			
 			private static final int encryptionSaltLen = 8;
 			private static final int encryptionIvLen = 12; //12 bytes (instead of 16 because of GCM)
 			private static final String encryptionKeyFactoryAlgorithm = "PBKDF2WithHmacSHA256";
@@ -2944,7 +2237,7 @@ public class ConnectionService extends Service {
 				return block;
 			}
 			
-			private void writeEncrypted(byte[] block, ObjectOutputStream stream, String password) throws IOException, GeneralSecurityException {
+			void writeEncrypted(byte[] block, ObjectOutputStream stream, String password) throws IOException, GeneralSecurityException {
 				//Creating a secure random
 				SecureRandom random = new SecureRandom();
 				
@@ -2986,14 +2279,42 @@ public class ConnectionService extends Service {
 				return hashAlgorithm;
 			}
 			
-			@Override
-			String getCharset() {
-				return stringCharset;
+			int convertCodeMessageState(int code) {
+				switch(code) {
+					default:
+					case nsMessageIdle:
+						return Constants.messageStateCodeIdle;
+					case nsMessageSent:
+						return Constants.messageStateCodeSent;
+					case nsMessageDelivered:
+						return Constants.messageStateCodeDelivered;
+					case nsMessageRead:
+						return Constants.messageStateCodeRead;
+				}
 			}
 			
-			@Override
-			boolean checkSubVerApplicability(int version) {
-				return version == 1;
+			int convertCodeAppleError(int code) {
+				switch(code) {
+					case nsAppleErrorOK:
+						return Constants.messageErrorCodeOK;
+					case nsAppleErrorNetwork:
+						return Constants.messageErrorCodeAppleNetwork;
+					case nsAppleErrorUnregistered:
+						return Constants.messageErrorCodeAppleUnregistered;
+					default:
+						return Constants.messageErrorCodeAppleUnknown;
+				}
+			}
+			
+			int convertCodeGroupActionSubtype(int code) {
+				switch(code) {
+					default:
+						return Constants.groupActionUnknown;
+					case nsGroupActionSubtypeJoin:
+						return Constants.groupActionJoin;
+					case nsGroupActionSubtypeLeave:
+						return Constants.groupActionLeave;
+				}
 			}
 			
 			@Override
@@ -3028,8 +2349,8 @@ public class ConnectionService extends Service {
 							List<Blocks.StickerModifierInfo> stickers = (List<Blocks.StickerModifierInfo>) (List<?>) deserializeModifiers(in, in.readInt());
 							List<Blocks.TapbackModifierInfo> tapbacks = (List<Blocks.TapbackModifierInfo>) (List<?>) deserializeModifiers(in, in.readInt());
 							String sendEffect = in.readBoolean() ? in.readUTF() : null;
-							int stateCode = in.readInt();
-							int errorCode = in.readInt();
+							int stateCode = convertCodeMessageState(in.readInt());
+							int errorCode = convertCodeAppleError(in.readInt());
 							long dateRead = in.readLong();
 							
 							list.add(new Blocks.MessageInfo(serverID, guid, chatGuid, date, text, sender, attachments, stickers, tapbacks, sendEffect, stateCode, errorCode, dateRead));
@@ -3038,7 +2359,7 @@ public class ConnectionService extends Service {
 						case conversationItemTypeGroupAction: {
 							String agent = in.readBoolean() ? in.readUTF() : null;
 							String other = in.readBoolean() ? in.readUTF() : null;
-							int groupActionType = in.readInt();
+							int groupActionType = convertCodeGroupActionSubtype(in.readInt());
 							
 							list.add(new Blocks.GroupActionInfo(serverID, guid, chatGuid, date, agent, other, groupActionType));
 							break;
@@ -3150,10 +2471,7 @@ public class ConnectionService extends Service {
 							else fileName = null;
 							isLast = in.readBoolean();
 							
-							Blocks.EncryptableData dataSec = Blocks.EncryptableData.readObject(in);
-							dataSec.decrypt(password);
-							
-							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(dataSec.data); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 								fileGUID = inSec.readUTF();
 								int contentLen = inSec.readInt();
 								if(contentLen > maxPacketAllocation) {
@@ -3241,6 +2559,7 @@ public class ConnectionService extends Service {
 			}
 		}
 		
+		//Basic sync support removal
 		private class ClientProtocol5 extends ClientProtocol4 {
 			@Override
 			boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
@@ -3288,9 +2607,399 @@ public class ConnectionService extends Service {
 				return true;
 			}
 		}
+		
+		//Improved error messages, chat creation requests
+		private class ClientProtocol6 extends ClientProtocol5 {
+			static final int nhtCreateChat = 12;
+			
+			static final int nstSendResultOK = 0; //Message sent successfully
+			static final int nstSendResultScriptError = 1; //Some unknown AppleScript error
+			static final int nstSendResultBadRequest = 2; //Invalid data received
+			static final int nstSendResultUnauthorized = 3; //System rejected request to send message
+			static final int nstSendResultNoConversation = 4; //A valid conversation wasn't found
+			static final int nstSendResultRequestTimeout = 5; //File data blocks stopped being received
+			
+			static final int nstAttachmentReqNotFound = 1; //File GUID not found
+			static final int nstAttachmentReqNotSaved = 2; //File (on disk) not found
+			static final int nstAttachmentReqUnreadable = 3; //No access to file
+			static final int nstAttachmentReqIO = 4; //IO error
+			
+			static final int nstCreateChatOK = 0;
+			static final int nstCreateChatScriptError = 1; //Some unknown AppleScript error
+			static final int nstCreateChatBadRequest = 2; //Invalid data received
+			static final int nstCreateChatUnauthorized = 3; //System rejected request to send message
+			
+			static final int nsMessageIdle = 0;
+			static final int nsMessageSent = 1;
+			static final int nsMessageDelivered = 2;
+			static final int nsMessageRead = 3;
+			
+			static final int nsAppleErrorOK = 0;
+			static final int nsAppleErrorUnknown = 1; //Unknown error code
+			static final int nsAppleErrorNetwork = 2; //Network error
+			static final int nsAppleErrorUnregistered = 3; //Not registered with iMessage
+			
+			static final int nsGroupActionSubtypeUnknown = 0;
+			static final int nsGroupActionSubtypeJoin = 1;
+			static final int nsGroupActionSubtypeLeave = 2;
+			
+			@Override
+			void processData(int messageType, byte[] data) {
+				switch(messageType) {
+					case nhtSendResult: {
+						short requestID;
+						int resultCode;
+						String details;
+						
+						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
+							requestID = in.readShort();
+							
+							//Reading the secure data
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+								resultCode = inSec.readInt();
+								details = inSec.readBoolean() ? inSec.readUTF() : null;
+							}
+						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
+							//Logging the exception
+							exception.printStackTrace();
+							
+							break;
+						}
+						
+						//Getting the message response manager
+						final MessageResponseManager messageResponseManager = messageSendRequests.get(requestID);
+						if(messageResponseManager != null) {
+							//Removing the request
+							messageSendRequests.remove(requestID);
+							messageResponseManager.stopTimer(false);
+							
+							//Mapping the result code
+							int localResultCode = nstSendCodeToErrorCode(resultCode);
+							
+							//Running on the UI thread
+							new Handler(Looper.getMainLooper()).post(() -> {
+								//Telling the listener
+								if(localResultCode == Constants.messageErrorCodeOK) messageResponseManager.onSuccess();
+								else messageResponseManager.onFail(localResultCode, details);
+							});
+						}
+						
+						break;
+					}
+					case nhtAttachmentReqFail: {
+						//Reading the data
+						ByteBuffer byteBuffer = ByteBuffer.wrap(data);
+						final short requestID = byteBuffer.getShort();
+						final int errorCode = byteBuffer.getInt();
+						
+						//Running on the UI thread
+						mainHandler.post(() -> {
+							//Searching for a matching request
+							for(FileDownloadRequest request : fileDownloadRequests) {
+								if(request.requestID != requestID/* || !request.attachmentGUID.equals(fileGUID)*/) continue;
+								request.failDownload(nstAttachmentReqCodeToLocalCode(errorCode));
+								break;
+							}
+						});
+						
+						break;
+					}
+					case nhtCreateChat: {
+						short requestID;
+						int resultCode;
+						String details;
+						boolean resultOK;
+						
+						try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
+							requestID = in.readShort();
+							
+							//Reading the secure data
+							try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+								resultCode = inSec.readInt();
+								details = (resultOK = resultCode == nstCreateChatOK) || inSec.readBoolean() ? inSec.readUTF() : null;
+							}
+						} catch(IOException | RuntimeException | GeneralSecurityException exception) {
+							//Logging the exception
+							exception.printStackTrace();
+							
+							break;
+						}
+						
+						//Getting the message response manager
+						final ChatCreationResponseManager responseManager = chatCreationRequests.get(requestID);
+						if(responseManager != null) {
+							//Removing the request
+							chatCreationRequests.remove(requestID);
+							responseManager.stopTimer();
+							
+							//Running on the UI thread
+							new Handler(Looper.getMainLooper()).post(() -> {
+								//Telling the listener
+								if(resultOK) responseManager.onSuccess(details);
+								else responseManager.onFail();
+							});
+						}
+						
+						break;
+					}
+					default:
+						super.processData(messageType, data);
+						break;
+				}
+			}
+			
+			@Override
+			boolean requestChatCreation(short requestID, String[] chatMembers, String service) {
+				//Returning false if there is no connection thread
+				if(connectionThread == null) return false;
+				
+				byte[] packetData;
+				try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
+					ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
+					//Adding the data
+					out.writeShort(requestID); //Request ID
+					
+					outSec.writeInt(chatMembers.length); //Members
+					for(String item : chatMembers) outSec.writeUTF(item);
+					outSec.writeUTF(service); //Service
+					outSec.flush();
+					
+					writeEncrypted(trgtSec.toByteArray(), out, password); //Encrypted data
+					
+					out.flush();
+					
+					packetData = trgt.toByteArray();
+				} catch(IOException | GeneralSecurityException exception) {
+					//Printing the stack trace
+					exception.printStackTrace();
+					
+					//Returning false
+					return false;
+				}
+				
+				//Sending the message
+				connectionThread.queuePacket(new PacketStruct(nhtCreateChat, packetData));
+				
+				//Returning true
+				return true;
+			}
+			
+			int nstSendCodeToErrorCode(int code) {
+				switch(code) {
+					case nstSendResultOK:
+						return Constants.messageErrorCodeOK;
+					case nstSendResultScriptError:
+						return Constants.messageErrorCodeServerExternal;
+					case nstSendResultBadRequest:
+						return Constants.messageErrorCodeServerBadRequest;
+					case nstSendResultUnauthorized:
+						return Constants.messageErrorCodeServerUnauthorized;
+					case nstSendResultNoConversation:
+						return Constants.messageErrorCodeServerNoConversation;
+					case nstSendResultRequestTimeout:
+						return Constants.messageErrorCodeServerRequestTimeout;
+					default:
+						return Constants.messageErrorCodeServerUnknown;
+				}
+			}
+			
+			int nstAttachmentReqCodeToLocalCode(int code) {
+				switch(code) {
+					case nstAttachmentReqNotFound:
+						return FileDownloadRequestCallbacks.errorCodeServerNotFound;
+					case nstAttachmentReqNotSaved:
+						return FileDownloadRequestCallbacks.errorCodeServerNotSaved;
+					case nstAttachmentReqUnreadable:
+						return FileDownloadRequestCallbacks.errorCodeServerUnreadable;
+					case nstAttachmentReqIO:
+						return FileDownloadRequestCallbacks.errorCodeServerIO;
+					default:
+						return FileDownloadRequestCallbacks.errorCodeUnknown;
+				}
+			}
+			
+			@Override
+			int convertCodeMessageState(int code) {
+				switch(code) {
+					default:
+					case nsMessageIdle:
+						return Constants.messageStateCodeIdle;
+					case nsMessageSent:
+						return Constants.messageStateCodeSent;
+					case nsMessageDelivered:
+						return Constants.messageStateCodeDelivered;
+					case nsMessageRead:
+						return Constants.messageStateCodeRead;
+				}
+			}
+			
+			@Override
+			int convertCodeAppleError(int code) {
+				switch(code) {
+					case nsAppleErrorOK:
+						return Constants.messageErrorCodeOK;
+					case nsAppleErrorUnknown:
+					default:
+						return Constants.messageErrorCodeAppleUnknown;
+					case nsAppleErrorNetwork:
+						return Constants.messageErrorCodeAppleNetwork;
+					case nsAppleErrorUnregistered:
+						return Constants.messageErrorCodeAppleUnregistered;
+				}
+			}
+			
+			@Override
+			int convertCodeGroupActionSubtype(int code) {
+				switch(code) {
+					case nsGroupActionSubtypeUnknown:
+					default:
+						return Constants.groupActionUnknown;
+					case nsGroupActionSubtypeJoin:
+						return Constants.groupActionJoin;
+					case nsGroupActionSubtypeLeave:
+						return Constants.groupActionLeave;
+				}
+			}
+		}
+		
+		abstract class ProtocolManager {
+			/**
+			 * Sends a ping packet to the server
+			 *
+			 * @return whether or not the message was successfully sent
+			 */
+			abstract boolean sendPing();
+			
+			/**
+			 * Handles incoming data received from the server
+			 *
+			 * @param messageType header data representing the message type
+			 * @param data the raw data received from the network
+			 */
+			abstract void processData(int messageType, byte[] data);
+			
+			/**
+			 * Sends an authentication request to the server
+			 *
+			 * @return whether or not the message was successfully sent
+			 */
+			abstract boolean sendAuthenticationRequest();
+			
+			/**
+			 * Requests a message to be sent to the specified conversation
+			 *
+			 * @param requestID the ID of the request
+			 * @param chatGUID the GUID of the target conversation
+			 * @param message the message to send
+			 * @return whether or not the request was successfully sent
+			 */
+			abstract boolean sendMessage(short requestID, String chatGUID, String message);
+			
+			/**
+			 * Requests a message to be send to the specified conversation members via the service
+			 *
+			 * @param requestID the ID of the request
+			 * @param chatMembers the members to send the message to
+			 * @param message the message to send
+			 * @param service the service to send the message across
+			 * @return whether or not the request was successfully sent
+			 */
+			abstract boolean sendMessage(short requestID, String[] chatMembers, String message, String service);
+			
+			/**
+			 * Requests the download of a remote attachment
+			 *
+			 * @param requestID the ID of the request
+			 * @return whether or not the request was successful
+			 */
+			abstract boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable);
+			
+			/**
+			 * Uploads a file chunk to be sent to the specified conversation
+			 *
+			 * @param requestID the ID of the request
+			 * @param requestIndex the index of the request
+			 * @param conversationGUID the conversation to send the file to
+			 * @param data the transmission-ready bytes of the file chunk
+			 * @param fileName the name of the file to send
+			 * @param isLast whether or not this is the last file packet
+			 * @return whether or not the action was successful
+			 */
+			abstract boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast);
+			
+			/**
+			 * Uploads a file chunk to be sent to the specified conversation members
+			 *
+			 * @param requestID the ID of the request
+			 * @param requestIndex the index of the request
+			 * @param conversationMembers the members of the conversation to send the file to
+			 * @param data the transmission-ready bytes of the file chunk
+			 * @param fileName the name of the file to send
+			 * @param service the service to send the file across
+			 * @param isLast whether or not this is the last file packet
+			 * @return whether or not the action was successful
+			 */
+			abstract boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast);
+			
+			/**
+			 * Sends a request to fetch conversation information
+			 *
+			 * @param list the list of conversation requests
+			 * @return whether or not the request was successfully sent
+			 */
+			abstract boolean sendConversationInfoRequest(List<ConversationInfoRequest> list);
+			
+			/**
+			 * Requests a time range-based message retrieval
+			 *
+			 * @param timeLower the lower time range limit
+			 * @param timeUpper the upper time range limit
+			 * @return whether or not the request was successfully sent
+			 */
+			abstract boolean requestRetrievalTime(long timeLower, long timeUpper);
+			
+			/**
+			 * Requests a mass message retrieval
+			 *
+			 * @param requestID the ID used to validate conflicting requests
+			 * @param params the mass retrieval parameters to use
+			 * @return whether or not the request was successfully sent
+			 */
+			abstract boolean requestRetrievalAll(short requestID, MassRetrievalParams params);
+			
+			/**
+			 * Requests the creation of a new conversation on the server
+			 * @param requestID the ID used to validate conflicting requests
+			 * @param members the participating members' contact addresses for this conversation
+			 * @param service the service that this conversation will use
+			 * @return whether or not the request was successfully sent
+			 */
+			abstract boolean requestChatCreation(short requestID, String[] members, String service);
+			
+			/**
+			 * Gets a packager for processing transferable data via this protocol version
+			 *
+			 * @return the packager
+			 */
+			abstract Packager getPackager();
+			
+			/**
+			 * Returns the hash algorithm to use with this protocol
+			 *
+			 * @return the hash algorithm
+			 */
+			abstract String getHashAlgorithm();
+			
+			/**
+			 * Checks if the specified feature is supported by the current protocol
+			 * @param feature the feature to check
+			 * @return whether or not this protocol manager can handle the specified feature
+			 */
+			abstract boolean checkSupportsFeature(String feature);
+		}
 	}
 	
-	private static class PackagerComm3 extends Packager {
+	private static class PackagerGZIP extends Packager {
 		@Override
 		byte[] packageData(byte[] data, int length) {
 			try {
@@ -3308,31 +3017,6 @@ public class ConnectionService extends Service {
 			try {
 				return Constants.decompressGZIP(data);
 			} catch(IOException exception) {
-				exception.printStackTrace();
-				
-				return null;
-			}
-		}
-	}
-	
-	private static class PackagerComm2 extends Packager {
-		@Override
-		byte[] packageData(byte[] data, int length) {
-			try {
-				return SharedValues.compressLegacyV2(data, length);
-			} catch(IOException exception) {
-				exception.printStackTrace();
-				Crashlytics.logException(exception);
-				
-				return null;
-			}
-		}
-		
-		@Override
-		byte[] unpackageData(byte[] data) {
-			try {
-				return SharedValues.decompressLegacyV2(data);
-			} catch(IOException | DataFormatException exception) {
 				exception.printStackTrace();
 				
 				return null;
@@ -3472,17 +3156,6 @@ public class ConnectionService extends Service {
 		return massRetrievalThread.getProgressCount();
 	}
 	
-	//Creating the constants
-	static final byte messageSendSuccess = 0;
-	static final byte messageSendInvalidContent = 1;
-	static final byte messageSendFileTooLarge = 2;
-	static final byte messageSendIOException = 3;
-	static final byte messageSendNetworkException = 4;
-	static final byte messageSendExternalException = 5;
-	static final byte messageSendRequestExpired = 6;
-	static final byte messageSendReferencesLost = 7;
-	static final byte messageSendInternalException = 8;
-	
 	static final int largestFileSize = 1024 * 1024 * 100; //100 MB
 	
 	/* void queueUploadRequest(FileUploadRequestCallbacks callbacks, Uri uri, ConversationManager.ConversationInfo conversationInfo, long attachmentID) {
@@ -3575,7 +3248,7 @@ public class ConnectionService extends Service {
 		Consumer<Float> onUploadProgress = new ConsumerImpl<>();
 		Consumer<byte[]> onUploadFinished = new ConsumerImpl<>();
 		Runnable onUploadResponseReceived = new RunnableImpl();
-		Consumer<Byte> onFail = new ConsumerImpl<>();
+		BiConsumer<Integer, String> onFail = new BiConsumerImpl<>();
 		Runnable onRemovalFinish = new RunnableImpl();
 		
 		private static class RunnableImpl implements Runnable {
@@ -3595,6 +3268,17 @@ public class ConnectionService extends Service {
 	}
 	
 	interface FileDownloadRequestCallbacks {
+		int errorCodeUnknown = -1;
+		int errorCodeCancelled = 0; //Request cancelled
+		int errorCodeTimeout = 1; //Request timed out
+		int errorCodeBadResponse = 2; //Bad response (packets out of order)
+		int errorCodeReferencesLost = 3; //Reference to context lost
+		int errorCodeIO = 4; //IO error
+		int errorCodeServerNotFound = 5; //Server file GUID not found
+		int errorCodeServerNotSaved = 6; //Server file (on disk) not found
+		int errorCodeServerUnreadable = 7; //Server no access to file
+		int errorCodeServerIO = 8; //Server IO error
+		
 		void onResponseReceived();
 		
 		void onStart();
@@ -3603,7 +3287,7 @@ public class ConnectionService extends Service {
 		
 		void onFinish(File file);
 		
-		void onFail();
+		void onFail(int errorCode);
 	}
 	
 	static abstract class FileProcessingRequest {
@@ -3761,11 +3445,17 @@ public class ConnectionService extends Service {
 			if(restart) handler.postDelayed(timeoutRunnable, timeoutDelay);
 		}
 		
-		void failDownload() {
+		void failDownload(int errorCode) {
+			//Stopping the timer
 			stopTimer(false);
-			if(attachmentWriterThread != null) attachmentWriterThread.stopThread();
-			callbacks.onFail();
 			
+			//Stopping the thread
+			if(attachmentWriterThread != null) attachmentWriterThread.stopThread();
+			
+			//Telling the callback listeners
+			callbacks.onFail(errorCode);
+			
+			//Deregistering the request
 			removeRequestFromList();
 		}
 		
@@ -3800,7 +3490,7 @@ public class ConnectionService extends Service {
 		}
 		
 		AttachmentWriter attachmentWriterThread = null;
-		private final Runnable timeoutRunnable = this::failDownload;
+		private final Runnable timeoutRunnable = () -> failDownload(FileDownloadRequestCallbacks.errorCodeTimeout);
 		boolean isWaiting = true;
 		int lastIndex = -1;
 		float lastProgress = 0;
@@ -3815,7 +3505,7 @@ public class ConnectionService extends Service {
 			//Checking if the index doesn't line up
 			if(lastIndex + 1 != index) {
 				//Failing the download
-				failDownload();
+				failDownload(FileDownloadRequestCallbacks.errorCodeBadResponse);
 				
 				//Returning
 				return;
@@ -3887,7 +3577,7 @@ public class ConnectionService extends Service {
 					//Getting the context
 					Context context = contextReference.get();
 					if(context == null) {
-						new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+						new Handler(Looper.getMainLooper()).post(() -> failDownload(FileDownloadRequestCallbacks.errorCodeReferencesLost));
 						return;
 					}
 					
@@ -3968,7 +3658,7 @@ public class ConnectionService extends Service {
 					Crashlytics.logException(exception);
 					
 					//Failing the download
-					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+					new Handler(Looper.getMainLooper()).post(() -> failDownload(FileDownloadRequestCallbacks.errorCodeIO));
 					
 					//Setting the thread as not running
 					isRunning = false;
@@ -3977,7 +3667,7 @@ public class ConnectionService extends Service {
 					exception.printStackTrace();
 					
 					//Failing the download
-					new Handler(Looper.getMainLooper()).post(FileDownloadRequest.this::failDownload);
+					new Handler(Looper.getMainLooper()).post(() -> failDownload(FileDownloadRequestCallbacks.errorCodeCancelled));
 					
 					//Setting the thread as not running
 					isRunning = false;
@@ -4079,7 +3769,7 @@ public class ConnectionService extends Service {
 					if(context == null) {
 						//Calling the fail method
 						pushRequest.isInProcessing = false;
-						handler.post(() -> finalCallbacks.onFail.accept(messageSendReferencesLost));
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalReferences, null));
 						
 						//Skipping the remainder of the iteration
 						continue;
@@ -4096,19 +3786,19 @@ public class ConnectionService extends Service {
 							//Verifying the file size
 							try(Cursor cursor = context.getContentResolver().query(pushRequest.sendUri, null, null, null, null)) {
 								if(cursor != null && cursor.moveToFirst()) {
-									long fileSize = cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
+									long fileSize = cursor.getLong(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE));
 									
 									//Checking if the file size is too large to send
 									if(fileSize > largestFileSize) {
 										//Calling the fail method
 										pushRequest.isInProcessing = false;
-										handler.post(() -> finalCallbacks.onFail.accept(messageSendFileTooLarge));
+										handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
 										
 										//Skipping the remainder of the iteration
 										continue;
 									}
 								}
-							} catch(SecurityException exception) {
+							} catch(SecurityException | IllegalArgumentException exception) {
 								exception.printStackTrace();
 							}
 							
@@ -4128,7 +3818,7 @@ public class ConnectionService extends Service {
 								
 								//Calling the fail method
 								pushRequest.isInProcessing = false;
-								handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalIO, Constants.exceptionToString(exception)));
 								
 								//Skipping the remainder of the iteration
 								continue;
@@ -4148,7 +3838,7 @@ public class ConnectionService extends Service {
 								if(pushRequest.sendFile.length() > largestFileSize) {
 									//Calling the fail method
 									pushRequest.isInProcessing = false;
-									handler.post(() -> finalCallbacks.onFail.accept(messageSendFileTooLarge));
+									handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
 									
 									//Skipping the remainder of the iteration
 									continue;
@@ -4160,7 +3850,7 @@ public class ConnectionService extends Service {
 						} else {
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendInternalException));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalInternal, Constants.exceptionToString(new IllegalArgumentException("No URI or file reference available to send"))));
 							
 							//Skipping the remainder of the iteration
 							continue;
@@ -4171,7 +3861,7 @@ public class ConnectionService extends Service {
 						
 						//Calling the fail method
 						pushRequest.isInProcessing = false;
-						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalIO, Constants.exceptionToString(exception)));
 						
 						//Closing the input stream
 						//Input stream is always null
@@ -4248,7 +3938,7 @@ public class ConnectionService extends Service {
 							
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalIO, Constants.exceptionToString(exception)));
 							
 							//Skipping the remainder of the iteration
 							continue;
@@ -4280,7 +3970,7 @@ public class ConnectionService extends Service {
 							
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalIO, null));
 							
 							//Skipping the remainder of the iteration
 							continue;
@@ -4308,7 +3998,7 @@ public class ConnectionService extends Service {
 						if(context == null) {
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendReferencesLost));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalReferences, null));
 							
 							//Skipping the remainder of the iteration
 							continue;
@@ -4320,7 +4010,7 @@ public class ConnectionService extends Service {
 						if(!result) {
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalIO, null));
 							
 							//Skipping the remainder of the iteration
 							continue;
@@ -4364,7 +4054,7 @@ public class ConnectionService extends Service {
 					if(connectionService == null || connectionService.getCurrentState() != stateConnected) {
 						//Calling the fail method
 						pushRequest.isInProcessing = false;
-						handler.post(() -> finalCallbacks.onFail.accept(messageSendNetworkException));
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalNetwork, null));
 						
 						//Skipping the remainder of the iteration
 						continue;
@@ -4387,7 +4077,7 @@ public class ConnectionService extends Service {
 						
 						//Calling the fail method
 						pushRequest.isInProcessing = false;
-						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalIO, Constants.exceptionToString(exception)));
 						
 						//Skipping the remainder of the iteration
 						continue;
@@ -4406,10 +4096,45 @@ public class ConnectionService extends Service {
 						if(totalLength > largestFileSize) {
 							//Calling the fail method
 							pushRequest.isInProcessing = false;
-							handler.post(() -> finalCallbacks.onFail.accept(messageSendFileTooLarge));
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
 							
 							//Skipping the remainder of the iteration
 							continue;
+						}
+						
+						//Creating the response manager
+						ConnectionService.MessageResponseManager responseManager = new ConnectionService.MessageResponseManager() {
+							//Forwarding the event to the callbacks
+							@Override
+							void onSuccess() {
+								finalCallbacks.onUploadResponseReceived.run();
+							}
+							
+							@Override
+							void onFail(int resultCode, String reason) {
+								finalCallbacks.onFail.accept(resultCode, reason);
+							}
+						};
+						
+						{
+							//Getting the connection service
+							connectionService = ConnectionService.getInstance();
+							
+							//Checking if the service isn't ready
+							if(connectionService == null || connectionService.getCurrentState() != stateConnected) {
+								//Calling the fail method
+								pushRequest.isInProcessing = false;
+								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalNetwork, null));
+								
+								//Skipping the remainder of the iteration
+								continue;
+							}
+							
+							//Adding the request and starting the timer
+							connectionService.messageSendRequests.put(requestID, responseManager);
+							
+							//Invalidating the connection service
+							connectionService = null;
 						}
 						
 						//Looping while there is data to read
@@ -4430,7 +4155,7 @@ public class ConnectionService extends Service {
 							if(connectionManager == null || connectionManager.getPackager() == null) {
 								//Failing the request
 								pushRequest.isInProcessing = false;
-								handler.post(() -> finalCallbacks.onFail.accept(messageSendNetworkException));
+								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalNetwork, null));
 								return;
 							}
 							
@@ -4441,7 +4166,7 @@ public class ConnectionService extends Service {
 							if(preparedData == null) {
 								//Failing the request
 								pushRequest.isInProcessing = false;
-								handler.post(() -> finalCallbacks.onFail.accept(messageSendInternalException));
+								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalInternal, null));
 								
 								//Breaking from the loop
 								continue requestLoop;
@@ -4459,7 +4184,7 @@ public class ConnectionService extends Service {
 							if(!uploadResult) {
 								//Failing the request
 								pushRequest.isInProcessing = false;
-								handler.post(() -> finalCallbacks.onFail.accept(messageSendInternalException));
+								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalInternal, null));
 								
 								//Breaking from the loop
 								continue requestLoop;
@@ -4489,32 +4214,17 @@ public class ConnectionService extends Service {
 						//Running on the main thread
 						pushRequest.isInProcessing = false;
 						handler.post(() -> {
-							//Getting the connection service
+							/* //Getting the connection service
 							ConnectionService newConnectionService = ConnectionService.getInstance();
 							if(newConnectionService == null) {
-								finalCallbacks.onFail.accept(messageSendNetworkException);
+								finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalNetwork, null);
 								return;
-							}
+							} */
 							
 							//Notifying the callback listener
 							finalCallbacks.onUploadFinished.accept(checksum);
 							
-							//Creating the response manager
-							ConnectionService.MessageResponseManager responseManager = new ConnectionService.MessageResponseManager() {
-								//Forwarding the event to the callbacks
-								@Override
-								void onSuccess() {
-									finalCallbacks.onUploadResponseReceived.run();
-								}
-								
-								@Override
-								void onFail(byte resultCode) {
-									finalCallbacks.onFail.accept(resultCode);
-								}
-							};
-							
-							//Adding the request and starting the timer
-							newConnectionService.messageSendRequests.put(requestID, responseManager);
+							//Starting the response timer
 							responseManager.startTimer();
 						});
 					} catch(IOException | OutOfMemoryError exception) {
@@ -4523,7 +4233,7 @@ public class ConnectionService extends Service {
 						
 						//Calling the fail method
 						pushRequest.isInProcessing = false;
-						handler.post(() -> finalCallbacks.onFail.accept(messageSendIOException));
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalIO, Constants.exceptionToString(exception)));
 						
 						//Skipping the remainder of the iteration
 						//continue;
@@ -5038,7 +4748,7 @@ public class ConnectionService extends Service {
 		//Checking if the client isn't ready
 		if(getCurrentState() != stateConnected) {
 			//Telling the response listener
-			responseListener.onFail(messageSendNetworkException);
+			responseListener.onFail(Constants.messageErrorCodeLocalNetwork, null);
 			
 			//Returning false
 			return false;
@@ -5053,7 +4763,7 @@ public class ConnectionService extends Service {
 		//Validating the result
 		if(!result) {
 			//Telling the response listener
-			responseListener.onFail(messageSendIOException);
+			responseListener.onFail(Constants.messageErrorCodeLocalIO, null);
 			
 			//Returning false
 			return false;
@@ -5073,7 +4783,7 @@ public class ConnectionService extends Service {
 		//Checking if the client isn't ready
 		if(getCurrentState() != stateConnected) {
 			//Telling the response listener
-			responseListener.onFail(messageSendNetworkException);
+			responseListener.onFail(Constants.messageErrorCodeLocalNetwork, null);
 			
 			//Returning false
 			return false;
@@ -5082,19 +4792,13 @@ public class ConnectionService extends Service {
 		//Getting the request ID
 		short requestID = getNextRequestID();
 		
-		//Validating the connection
-		if(currentConnectionManager == null || currentConnectionManager.getState() != stateConnected) {
-			responseListener.onFail(messageSendNetworkException);
-			return false;
-		}
-		
 		//Sending the message
 		boolean result = currentConnectionManager.sendMessage(requestID, chatRecipients, message, service);
 		
 		//Validating the result
 		if(!result) {
 			//Telling the response listener
-			responseListener.onFail(messageSendIOException);
+			responseListener.onFail(Constants.messageErrorCodeLocalIO, null);
 			
 			//Returning false
 			return false;
@@ -5290,21 +4994,49 @@ public class ConnectionService extends Service {
 				reconnectPendingIntent);
 	}
 	
-	//TODO use when API 23 is obsolete
-	/* private static class ScheduledPingAlarm extends AlarmManager.OnAlarmListener {
-		
-		@Override
-		public void onAlarm() {
-		
-		}
-	} */
-	
 	private boolean retrieveMessagesSince(long timeLower, long timeUpper) {
 		//Returning false if the connection isn't ready
 		if(getCurrentState() != stateConnected) return false;
 		
 		//Sending the request
 		return currentConnectionManager.requestRetrievalTime(timeLower, timeUpper);
+	}
+	
+	boolean createChat(String[] members, String service, ChatCreationResponseManager responseListener) {
+		//Checking if the client isn't ready
+		if(getCurrentState() != stateConnected) {
+			//Telling the response listener
+			//responseListener.onFail(Constants.messageErrorCodeLocalNetwork, null);
+			responseListener.onFail();
+			
+			//Returning false
+			return false;
+		}
+		
+		//Getting the request ID
+		short requestID = getNextRequestID();
+		
+		//Sending the request
+		boolean result = currentConnectionManager.requestChatCreation(requestID, members, service);
+		
+		//Validating the result
+		if(!result) {
+			//Telling the response listener
+			//responseListener.onFail(Constants.messageErrorCodeLocalIO, null);
+			responseListener.onFail();
+			
+			//Returning false
+			return false;
+		}
+		
+		//Adding the request
+		chatCreationRequests.put(requestID, responseListener);
+		
+		//Starting the timer
+		responseListener.startTimer();
+		
+		//Returning true
+		return true;
 	}
 	
 	short getNextRequestID() {
@@ -5314,13 +5046,13 @@ public class ConnectionService extends Service {
 	static abstract class MessageResponseManager {
 		abstract void onSuccess();
 		
-		abstract void onFail(byte resultCode);
+		abstract void onFail(int resultCode, String details);
 		
 		private static final long timeoutDelay = 20 * 1000; //20-second delay
 		private final Handler handler = new Handler(Looper.getMainLooper());
 		private final Runnable timeoutRunnable = () -> {
 			//Calling the fail method
-			onFail(messageSendRequestExpired);
+			onFail(Constants.messageErrorCodeLocalExpired, null);
 			
 			//Getting the connection service
 			ConnectionService connectionService = getInstance();
@@ -5328,8 +5060,7 @@ public class ConnectionService extends Service {
 			
 			//Removing the item
 			for(int i = 0; i < connectionService.messageSendRequests.size(); i++) {
-				if(!connectionService.messageSendRequests.valueAt(i).equals(MessageResponseManager.this))
-					continue;
+				if(!connectionService.messageSendRequests.valueAt(i).equals(MessageResponseManager.this)) continue;
 				connectionService.messageSendRequests.removeAt(i);
 				break;
 			}
@@ -5342,6 +5073,40 @@ public class ConnectionService extends Service {
 		void stopTimer(boolean restart) {
 			handler.removeCallbacks(timeoutRunnable);
 			if(restart) handler.postDelayed(timeoutRunnable, timeoutDelay);
+		}
+	}
+	
+	static abstract class ChatCreationResponseManager {
+		abstract void onSuccess(String chatGUID);
+		
+		//abstract void onFail(int resultCode, String details);
+		abstract void onFail();
+		
+		private static final long timeoutDelay = 10 * 1000; //10-second delay
+		private final Handler handler = new Handler(Looper.getMainLooper());
+		private final Runnable timeoutRunnable = () -> {
+			//Calling the fail method
+			//onFail(Constants.messageErrorCodeLocalExpired, null);
+			onFail();
+			
+			//Getting the connection service
+			ConnectionService connectionService = getInstance();
+			if(connectionService == null) return;
+			
+			//Removing the item
+			for(int i = 0; i < connectionService.chatCreationRequests.size(); i++) {
+				if(!connectionService.chatCreationRequests.valueAt(i).equals(ChatCreationResponseManager.this)) continue;
+				connectionService.chatCreationRequests.removeAt(i);
+				break;
+			}
+		};
+		
+		void startTimer() {
+			handler.postDelayed(timeoutRunnable, timeoutDelay);
+		}
+		
+		void stopTimer() {
+			handler.removeCallbacks(timeoutRunnable);
 		}
 	}
 	
@@ -5570,7 +5335,7 @@ public class ConnectionService extends Service {
 					
 					//Adding or removing the member on disk
 					if(groupActionInfo.other != null) {
-						if(groupActionInfo.actionType == Constants.groupActionInvite) {
+						if(groupActionInfo.actionType == Constants.groupActionJoin) {
 							DatabaseManager.getInstance().addConversationMember(parentConversation.getLocalID(), groupActionInfo.other, groupActionInfo.color = parentConversation.getNextUserColor());
 						} else if(groupActionInfo.actionType == Constants.groupActionLeave) DatabaseManager.getInstance().removeConversationMember(parentConversation.getLocalID(), groupActionInfo.other);
 					}
@@ -5679,7 +5444,7 @@ public class ConnectionService extends Service {
 							//Finding the conversation member
 							ConversationManager.MemberInfo member = parentConversation.findConversationMember(groupActionInfo.other);
 							
-							if(groupActionInfo.actionType == Constants.groupActionInvite) {
+							if(groupActionInfo.actionType == Constants.groupActionJoin) {
 								//Adding the member in memory
 								if(member == null) {
 									member = new ConversationManager.MemberInfo(groupActionInfo.other, groupActionInfo.color);

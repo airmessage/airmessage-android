@@ -21,6 +21,8 @@
 	<color name="navbarBackgroundProtected">#F5F5F5</color>
 	<color name="colorBackgroundSurface">#F5F5F5</color>
 	<color name="colorBackgroundClean">#FFF</color>
+
+	<color name="colorCleanScrim">#66FFFFFF</color>
 	
 	<color name="colorBGChip">#F5F5F5</color>
 

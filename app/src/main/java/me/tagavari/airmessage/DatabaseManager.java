@@ -14,6 +14,7 @@ import android.util.LongSparseArray;
 
 import com.crashlytics.android.Crashlytics;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.common.SharedValues;
@@ -30,7 +32,7 @@ import me.tagavari.airmessage.common.SharedValues;
 class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
 	private static final String DATABASE_NAME = "messages.db";
-	private static final int DATABASE_VERSION = 8;
+	private static final int DATABASE_VERSION = 9;
 	
 	//Creating the fetch statements
 	/* private static final String SQL_FETCH_CONVERSATIONS = "SELECT * FROM (" +
@@ -67,7 +69,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE,
 			Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME
 	};
-	private static final String messageSortOrder = "COALESCE(" + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + ',' + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + ')';
+	//private static final String messageSortOrder = "COALESCE(" + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + ',' + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + ')';
+	//private static final String messageSortOrder = "CASE WHEN " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " IS NULL THEN " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + " ELSE " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " END";
+	private static final String messageSortOrderDesc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " DESC, " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " DESC";
+	private static final String messageSortOrderAsc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " ASC, " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " ASC";
 	
 	//private static final String SQL_FETCH_CONVERSATION_MESSAGES = "SELECT * FROM " + Contract.MessageEntry.TABLE_NAME + " WHERE " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? ORDER BY " + Contract.MessageEntry.COLUMN_NAME_DATE + " ASC;";
 	
@@ -83,11 +88,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.MessageEntry.COLUMN_NAME_ITEMSUBTYPE + " INTEGER, " +
 			Contract.MessageEntry.COLUMN_NAME_STATE + " INTEGER, " +
 			Contract.MessageEntry.COLUMN_NAME_ERROR + " INTEGER, " +
+			Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS + " TEXT, " +
 			Contract.MessageEntry.COLUMN_NAME_DATEREAD + " INTEGER, " +
 			Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " TEXT, " +
 			Contract.MessageEntry.COLUMN_NAME_SENDSTYLE + " TEXT, " +
 			Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED + " INTEGER NOT NULL DEFAULT 0, " +
-			Contract.MessageEntry.COLUMN_NAME_CHAT + " INTEGER NOT NULL" +
+			Contract.MessageEntry.COLUMN_NAME_CHAT + " INTEGER NOT NULL," +
+			Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " INTEGER NOT NULL," +
+			Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " INTEGER NOT NULL" +
 			");";
 	private static final String SQL_CREATE_TABLE_CONVERSATIONS = "CREATE TABLE " + Contract.ConversationEntry.TABLE_NAME + " (" +
 			Contract.ConversationEntry._ID + " INTEGER PRIMARY KEY UNIQUE, " +
@@ -224,7 +232,18 @@ class DatabaseManager extends SQLiteOpenHelper {
 					while(cursor.moveToNext()) {
 						contentValues = new ContentValues();
 						try {
-							contentValues.put("data", SharedValues.decompressLegacyV2(cursor.getBlob(indexData)));
+							byte[] data = cursor.getBlob(indexData);
+							Inflater inflater = new Inflater();
+							inflater.setInput(data);
+							ByteArrayOutputStream outputStream = new ByteArrayOutputStream(data.length);
+							byte[] buffer = new byte[1024];
+							while (!inflater.finished()) {
+								int count = inflater.inflate(buffer);
+								outputStream.write(buffer, 0, count);
+							}
+							outputStream.close();
+							
+							contentValues.put("data", outputStream.toByteArray());
 						} catch(IOException | DataFormatException exception) {
 							exception.printStackTrace();
 							continue;
@@ -376,6 +395,25 @@ class DatabaseManager extends SQLiteOpenHelper {
 				contentValues.putNull("server_id");
 				database.update("messages", contentValues, "server_id = -1", null);
 			}
+			case 8:
+				//Deleting non-linked messages
+				database.execSQL("DELETE FROM messages WHERE server_id IS NULL");
+				
+				//Adding the error details column
+				database.execSQL("ALTER TABLE messages ADD error_details TEXT;");
+				
+				//Adding the sort columns
+				database.execSQL("ALTER TABLE messages ADD sort_id_linked INTEGER NOT NULL DEFAULT 0;");
+				database.execSQL("ALTER TABLE messages ADD sort_id_linked_offset INTEGER NOT NULL DEFAULT 0;");
+				
+				//Replacing all error codes
+				database.execSQL("UPDATE messages SET error = 100 WHERE error IS NOT 0");
+				
+				//Updating the sort columns
+				database.execSQL("UPDATE messages SET sort_id_linked = server_id");
+				
+				//Updating the group action subtype columns (0 is now UNKNOWN, JOIN and LEAVE have been shifted up by 1)
+				database.execSQL("UPDATE messages SET item_subtype = item_subtype + 1 WHERE item_type = 1");
 		}
 	}
 	
@@ -407,11 +445,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 			static final String COLUMN_NAME_ITEMSUBTYPE = "item_subtype";
 			static final String COLUMN_NAME_STATE = "state";
 			static final String COLUMN_NAME_ERROR = "error";
+			static final String COLUMN_NAME_ERRORDETAILS = "error_details";
 			static final String COLUMN_NAME_DATEREAD = "date_read";
 			static final String COLUMN_NAME_MESSAGETEXT = "message_text";
 			static final String COLUMN_NAME_SENDSTYLE = "send_style";
 			static final String COLUMN_NAME_SENDSTYLEVIEWED = "send_style_viewed";
 			static final String COLUMN_NAME_CHAT = "chat";
+			static final String COLUMN_NAME_SORTID_LINKED = "sort_id_linked"; //The last serverlinked (server_id is not null) item above this item
+			static final String COLUMN_NAME_SORTID_LINKEDOFFSET = "sort_id_linked_offset"; //How many items away this item is from the last serverlinked item
 		}
 		
 		static class ConversationEntry implements BaseColumns {
@@ -825,7 +866,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		List<ConversationManager.ConversationItem> conversationItems = new ArrayList<>();
 		
 		//Querying the database
-		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, messageSortOrder + " ASC", null);
+		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, messageSortOrderAsc, null);
 		//Cursor cursor = database.rawQuery(SQL_FETCH_CONVERSATION_MESSAGES, new String[]{Long.toString(conversationInfo.getLocalID())});
 		
 		//Getting the indexes
@@ -837,6 +878,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		int iDate = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATE);
 		int iState = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_STATE);
 		int iError = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ERROR);
+		int iErrorDetails = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS);
 		int iDateRead = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATEREAD);
 		int iSendStyle = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
 		int iSendStyleViewed = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED);
@@ -858,13 +900,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Getting the general message info
 				int stateCode = cursor.getInt(iState);
 				int errorCode = cursor.getInt(iError);
+				boolean errorDetailsAvailable = !cursor.isNull(iErrorDetails);
 				long dateRead = cursor.getLong(iDateRead);
 				String sendStyle = cursor.getString(iSendStyle);
 				boolean sendStyleViewed = cursor.getInt(iSendStyleViewed) != 0;
 				String message = cursor.getString(iMessageText);
 				
 				//Creating the conversation item
-				ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(localID, serverID, guid, conversationInfo, sender, message, sendStyle, sendStyleViewed, date, stateCode, errorCode, dateRead);
+				ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(localID, serverID, guid, conversationInfo, sender, message, sendStyle, sendStyleViewed, date, stateCode, errorCode, errorDetailsAvailable, dateRead);
 				
 				{
 					//Querying the database for attachments
@@ -996,7 +1039,15 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return conversationItems;
 	}
 	
-	List<ConversationManager.ConversationItem> loadConversationChunk(ConversationManager.ConversationInfo conversationInfo, boolean filtered, long firstMessageServerID, long firstMessageLocalID) {
+	/**
+	 * Loads a select number of messages from a conversation
+	 * @param conversationInfo the conversation to load messages from
+	 * @param filtered whether or not to filter the results (used for offsetting the request, like in lazy loading)
+	 * @param firstSortID the first sort ID to start searching from
+	 * @param firstSortIDOffset the first sort ID offset to start searching from
+	 * @return the list of loaded conversation items, the last sort ID, and the last sort ID offset
+	 */
+	Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> loadConversationChunk(ConversationManager.ConversationInfo conversationInfo, boolean filtered, long firstSortID, int firstSortIDOffset) {
 		//Getting the database
 		SQLiteDatabase database = getReadableDatabase();
 		
@@ -1005,20 +1056,16 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Querying the database
 		String selection;
-		String[] selectionArgs;
 		if(filtered) {
-			if(firstMessageServerID == -1) {
-				selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + " < ?";
-				selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID()), Long.toString(firstMessageLocalID)};
-			} else {
-				selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? AND ((" + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " IS NOT NULL AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " < ?) OR (" + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " IS NULL AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + " < ?))";
-				selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID()), Long.toString(firstMessageServerID), Long.toString(firstMessageLocalID)};
-			}
+			//Line 1 - filters for matching conversation
+			//Line 2 - filters for same sort ID,
+			selection = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID() + " AND "
+						+ "((" + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " = " + firstSortID + " AND " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " < " + firstSortIDOffset + ")"
+						+ " OR (" +  Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " < " + firstSortID + "))";
 		} else {
-			selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?";
-			selectionArgs = new String[]{Long.toString(conversationInfo.getLocalID())};
+			selection = Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID();
 		}
-		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, selection, selectionArgs, null, null, messageSortOrder + " DESC", Integer.toString(Messaging.messageChunkSize));
+		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, selection, null, null, null, messageSortOrderDesc, Integer.toString(Messaging.messageChunkSize));
 		//Cursor cursor = database.rawQuery(SQL_FETCH_CONVERSATION_MESSAGES, new String[]{Long.toString(conversationInfo.getLocalID())});
 		
 		//Getting the indexes
@@ -1030,6 +1077,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		int iDate = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATE);
 		int iState = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_STATE);
 		int iError = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ERROR);
+		int iErrorDetails = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS);
 		int iDateRead = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATEREAD);
 		int iSendStyle = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
 		int iSendStyleViewed = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED);
@@ -1051,13 +1099,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Getting the general message info
 				int stateCode = cursor.getInt(iState);
 				int errorCode = cursor.getInt(iError);
+				boolean errorDetailsAvailable = !cursor.isNull(iErrorDetails);
 				long dateRead = cursor.getLong(iDateRead);
 				String sendStyle = cursor.getString(iSendStyle);
 				boolean sendStyleViewed = cursor.getInt(iSendStyleViewed) != 0;
 				String message = cursor.getString(iMessageText);
 				
 				//Creating the conversation item
-				ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(localID, serverID, guid, conversationInfo, sender, message, sendStyle, sendStyleViewed, date, stateCode, errorCode, dateRead);
+				ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(localID, serverID, guid, conversationInfo, sender, message, sendStyle, sendStyleViewed, date, stateCode, errorCode, errorDetailsAvailable, dateRead);
 				
 				{
 					//Querying the database for attachments
@@ -1185,8 +1234,21 @@ class DatabaseManager extends SQLiteOpenHelper {
 		//Closing the cursor
 		cursor.close();
 		
+		long lastSortID = -1;
+		int lastSortIDOffset = -1;
+		
+		//Fetching the last item information
+		if(!conversationItems.isEmpty()) {
+			try(Cursor sortIDCursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET}, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(conversationItems.get(0).getLocalID())}, null, null, null, "1")) {
+				if(sortIDCursor.moveToNext()) {
+					lastSortID = sortIDCursor.getLong(sortIDCursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED));
+					lastSortIDOffset = sortIDCursor.getInt(sortIDCursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET));
+				}
+			}
+		}
+		
 		//Returning the conversation items
-		return conversationItems;
+		return new Constants.Tuple3<>(conversationItems, lastSortID, lastSortIDOffset);
 	}
 	
 	void invalidateAttachment(long localID) {
@@ -1349,7 +1411,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				new String[]{Contract.MessageEntry._ID, Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, Contract.MessageEntry.COLUMN_NAME_DATE},
 				Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(chatID)},
 				null, null,
-				messageSortOrder + " DESC ",
+				messageSortOrderDesc,
 				"1");
 		
 		//Closing the cursor and returning if there are no results
@@ -1545,6 +1607,72 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return null; */
 	}
 	
+	ConversationManager.ConversationInfo addRetrieveClientCreatedConversationInfo(Context context, List<String> members, String service) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
+		//Returning an existing conversation if it exists
+		ConversationManager.ConversationInfo existingConversation = findConversationInfoWithMembers(context, members, service, false);
+		if(existingConversation != null) return existingConversation;
+		
+		//Picking a conversation color
+		int conversationColor = ConversationManager.ConversationInfo.getRandomConversationColor();
+		
+		//Setting the content values
+		ContentValues contentValues = new ContentValues();
+		//contentValues.put(Contract.ConversationEntry.COLUMN_NAME_GUID, message); //Conversation not serverlinked, so no GUID can be provided
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_STATE, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_CLIENT.getIdentifier());
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, service);
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationColor);
+		
+		long localID;
+		//Inserting the conversation into the database
+		try {
+			localID = database.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
+		} catch(SQLiteConstraintException exception) {
+			//Printing the exception's stack trace
+			exception.printStackTrace();
+			
+			//Returning null
+			return null;
+		}
+		
+		//Creating and configuring the conversation info
+		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_CLIENT);
+		conversationInfo.setConversationMembersCreateColors(members.toArray(new String[0]));
+		conversationInfo.setConversationColor(conversationColor);
+		conversationInfo.setService(service);
+		
+		//Adding the conversation members
+		for(ConversationManager.MemberInfo member : conversationInfo.getConversationMembers()) {
+			//Setting the content values
+			contentValues = new ContentValues();
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_CHAT, localID);
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_MEMBER, member.getName());
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
+			
+			//Inserting the data
+			database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
+		}
+		
+		//Adding the conversation created message
+		ConversationManager.ConversationItem createdMessage = new ConversationManager.ChatCreationMessage(localID, System.currentTimeMillis(), conversationInfo);
+		conversationInfo.trySetLastItem(createdMessage.toLightConversationItemSync(context), false);
+		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
+		
+		contentValues = new ContentValues();
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
+		
+		database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+		
+		//Returning the conversation info
+		return conversationInfo;
+	}
+	
 	ConversationManager.ConversationInfo addRetrieveServerCreatedConversationInfo(Context context, String guid) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
@@ -1576,6 +1704,77 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Returning the conversation info
 		return new ConversationManager.ConversationInfo(localID, guid, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_SERVER);
+	}
+	
+	//Mixed source conversation (when starting a new conversation from the app). GUID comes from the server, members come from the client
+	ConversationManager.ConversationInfo addRetrieveMixedConversationInfo(Context context, String guid, String[] members, String service) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
+		//Returning the existing conversation if one already exists
+		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, null, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{guid}, null, null, null, "1");
+		if(cursor.getCount() > 0) {
+			cursor.close();
+			return fetchConversationInfo(context, guid);
+		}
+		cursor.close();
+		
+		//Picking a color
+		int conversationColor = ConversationManager.ConversationInfo.getDefaultConversationColor(guid);
+		
+		//Setting the content values
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_GUID, guid);
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_STATE, ConversationManager.ConversationInfo.ConversationState.READY.getIdentifier());
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, service);
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationColor);
+		
+		//Inserting the conversation into the database
+		long localID;
+		try {
+			localID = database.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
+		} catch(SQLiteConstraintException exception) {
+			//Printing the exception's stack trace
+			exception.printStackTrace();
+			
+			//Returning null
+			return null;
+		}
+		
+		//Creating and configuring the conversation info
+		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, guid, ConversationManager.ConversationInfo.ConversationState.READY);
+		conversationInfo.setConversationColor(conversationColor);
+		conversationInfo.setConversationMembersCreateColors(members);
+		conversationInfo.setService(service);
+		
+		//Adding the conversation members
+		for(ConversationManager.MemberInfo member : conversationInfo.getConversationMembers()) {
+			//Setting the content values
+			contentValues = new ContentValues();
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_CHAT, localID);
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_MEMBER, member.getName());
+			contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
+			
+			//Inserting the data
+			database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
+		}
+		
+		//Adding the conversation created message
+		ConversationManager.ConversationItem createdMessage = new ConversationManager.ChatCreationMessage(localID, System.currentTimeMillis(), conversationInfo);
+		conversationInfo.trySetLastItem(createdMessage.toLightConversationItemSync(context), false);
+		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
+		
+		contentValues = new ContentValues();
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
+		
+		database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+		
+		//Returning the conversation info
+		return conversationInfo;
 	}
 	
 	ConversationManager.ConversationInfo addReadyConversationInfo(Context context, Blocks.ConversationInfo structConversationInfo) {
@@ -1631,72 +1830,6 @@ class DatabaseManager extends SQLiteOpenHelper {
 			
 			database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
 		}
-		
-		//Returning the conversation info
-		return conversationInfo;
-	}
-	
-	ConversationManager.ConversationInfo addRetrieveClientCreatedConversationInfo(Context context, List<String> members, String service) {
-		//Getting the database
-		SQLiteDatabase database = getWritableDatabase();
-		
-		//Returning an existing conversation if it exists
-		ConversationManager.ConversationInfo existingConversation = findConversationInfoWithMembers(context, members, service, false);
-		if(existingConversation != null) return existingConversation;
-		
-		//Picking a conversation color
-		int conversationColor = ConversationManager.ConversationInfo.getRandomConversationColor();
-		
-		//Setting the content values
-		ContentValues contentValues = new ContentValues();
-		//contentValues.put(Contract.ConversationEntry.COLUMN_NAME_GUID, message); //Conversation not serverlinked, so no GUID can be provided
-		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_STATE, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_CLIENT.getIdentifier());
-		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationColor);
-		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, service);
-		
-		long localID;
-		//Inserting the conversation into the database
-		try {
-			localID = database.insertOrThrow(Contract.ConversationEntry.TABLE_NAME, null, contentValues);
-		} catch(SQLiteConstraintException exception) {
-			//Printing the exception's stack trace
-			exception.printStackTrace();
-			
-			//Returning null
-			return null;
-		}
-		
-		//Creating the conversation info
-		ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(localID, ConversationManager.ConversationInfo.ConversationState.INCOMPLETE_CLIENT);
-		conversationInfo.setConversationColor(conversationColor);
-		conversationInfo.setService(service);
-		
-		//Adding the members
-		conversationInfo.setConversationMembersCreateColors(members.toArray(new String[0]));
-		
-		//Adding the conversation members
-		for(ConversationManager.MemberInfo member : conversationInfo.getConversationMembers()) {
-			//Setting the content values
-			contentValues = new ContentValues();
-			contentValues.put(Contract.MemberEntry.COLUMN_NAME_CHAT, localID);
-			contentValues.put(Contract.MemberEntry.COLUMN_NAME_MEMBER, member.getName());
-			contentValues.put(Contract.MemberEntry.COLUMN_NAME_COLOR, member.getColor());
-			
-			//Inserting the data
-			database.insert(Contract.MemberEntry.TABLE_NAME, null, contentValues);
-		}
-		
-		//Adding the conversation created message
-		ConversationManager.ConversationItem createdMessage = new ConversationManager.ChatCreationMessage(localID, System.currentTimeMillis(), conversationInfo);
-		conversationInfo.trySetLastItem(createdMessage.toLightConversationItemSync(context), false);
-		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
-		
-		contentValues = new ContentValues();
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
-		
-		database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
 		
 		//Returning the conversation info
 		return conversationInfo;
@@ -1886,7 +2019,11 @@ class DatabaseManager extends SQLiteOpenHelper {
 			if(messageStruct.sender == null) {
 				//Creating the content values
 				ContentValues messageContentValues = new ContentValues();
-				if(messageStruct.serverID != -1) messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, messageStruct.serverID);
+				if(messageStruct.serverID != -1) {
+					messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, messageStruct.serverID);
+					messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, messageStruct.serverID);
+					messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
+				}
 				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, messageStruct.date);
 				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, messageStruct.guid);
 				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, messageStruct.stateCode);
@@ -1900,7 +2037,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID, Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED},
 							Contract.MessageEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?",
 							new String[]{Integer.toString(Blocks.MessageInfo.stateCodeGhost), messageStruct.text, Long.toString(conversationInfo.getLocalID())},
-							null, null, messageSortOrder + " DESC", "1")) {
+							null, null, messageSortOrderDesc, "1")) {
 						//Checking if there are any results
 						if(cursor.moveToFirst()) {
 							//Getting the message identifier
@@ -1925,7 +2062,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 							boolean sendStyleViewed = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED)) != 0;
 							
 							//Creating and returning the message
-							ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.serverID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, messageStruct.dateRead);
+							ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.serverID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, false, messageStruct.dateRead);
 							for(ConversationManager.StickerInfo sticker : stickers) messageInfo.addSticker(sticker);
 							for(ConversationManager.TapbackInfo tapback : tapbacks) messageInfo.addTapback(tapback);
 							return messageInfo;
@@ -1955,7 +2092,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 						try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
 										" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID +
 										" WHERE " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + Blocks.MessageInfo.stateCodeGhost + " AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(attachment.checksum, Base64.NO_WRAP) + "' AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID() + " AND " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + " NOT IN (" + Constants.listToString(replacedAttachmentIDList, ",") + ") " +
-										" ORDER BY " + messageSortOrder + " DESC" +
+										" ORDER BY " + messageSortOrderDesc +
 										" LIMIT 1;",
 								null)) {
 							//Checking if there are no results
@@ -1997,7 +2134,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 								}
 								
 								//Creating the message
-								sharedMessageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.serverID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, messageStruct.dateRead);
+								sharedMessageInfo = new ConversationManager.MessageInfo(messageID, messageStruct.serverID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, false, messageStruct.dateRead);
 								
 								//Adding the unmatched attachments
 								for(Blocks.AttachmentInfo unmatchedAttachment : unmatchedAttachments) {
@@ -2080,12 +2217,28 @@ class DatabaseManager extends SQLiteOpenHelper {
 			if(message.getSender() == null) {
 				//Creating the content values
 				ContentValues messageContentValues = new ContentValues();
-				if(message.getServerID() == -1) messageContentValues.putNull(Contract.MessageEntry.COLUMN_NAME_SERVERID);
-				else messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, message.getServerID());
+				if(conversationItem.getServerID() == -1) {
+					messageContentValues.putNull(Contract.MessageEntry.COLUMN_NAME_SERVERID);
+					try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET}, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " = (SELECT MAX(" + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + ") FROM " + Contract.MessageEntry.TABLE_NAME + ")", null, null, null, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " DESC", "1")) {
+						if(cursor.moveToNext()) {
+							//Same message, +1 offset
+							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED)));
+							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET)) + 1);
+						} else {
+							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
+							messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
+						}
+					}
+				} else {
+					messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, message.getServerID());
+					messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, message.getServerID());
+					messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
+				}
 				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, message.getGuid());
 				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, message.getDate());
 				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, message.getMessageState());
 				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, message.getErrorCode());
+				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS, message.getErrorDetails());
 				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, message.getDateRead());
 				messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, conversationInfo.getLocalID());
 				
@@ -2095,7 +2248,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID},
 							Contract.MessageEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?",
 							new String[]{Integer.toString(Blocks.MessageInfo.stateCodeGhost), message.getMessageText(), Long.toString(conversationInfo.getLocalID())},
-							null, null, messageSortOrder + " DESC", "1")) {
+							null, null, messageSortOrderDesc, "1")) {
 						//Checking if there are any results
 						if(cursor.moveToFirst()) {
 							//Getting the message identifier
@@ -2155,7 +2308,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 						try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + ',' + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
 										" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID +
 										" WHERE " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + Blocks.MessageInfo.stateCodeGhost + " AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL AND " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(attachment.getFileChecksum(), Base64.NO_WRAP) + "' AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationInfo.getLocalID() + " AND " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry._ID + " NOT IN (" + Constants.listToString(replacedAttachmentIDList, ",") + ") " +
-										" ORDER BY " + messageSortOrder + " DESC" +
+										" ORDER BY " + messageSortOrderDesc +
 										" LIMIT 1;",
 								null)) {
 							//Checking if there are no results
@@ -2273,7 +2426,23 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Creating the content values and adding the common data
 		ContentValues contentValues = new ContentValues();
-		if(conversationItem.serverID != -1) contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, conversationItem.serverID);
+		if(conversationItem.serverID == -1) {
+			contentValues.putNull(Contract.MessageEntry.COLUMN_NAME_SERVERID);
+			try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET}, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " = (SELECT MAX(" + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + ") FROM " + Contract.MessageEntry.TABLE_NAME + ")", null, null, null, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " DESC", "1")) {
+				if(cursor.moveToNext()) {
+					//Same message, +1 offset
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED)));
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET)) + 1);
+				} else {
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
+				}
+			}
+		} else {
+			contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, conversationItem.serverID);
+			contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, conversationItem.serverID);
+			contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
+		}
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, conversationItem.guid);
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, conversationItem.date);
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, conversationInfo.getLocalID());
@@ -2309,7 +2478,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			List<ConversationManager.TapbackInfo> tapbacks = addMessageTapbacks(messageLocalID, messageInfoStruct.tapbacks);
 			
 			//Creating the message info
-			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageLocalID, messageInfoStruct.serverID, messageInfoStruct.guid, conversationInfo, messageInfoStruct.sender, messageInfoStruct.text, new ArrayList<>(), messageInfoStruct.sendEffect, false, messageInfoStruct.date, messageInfoStruct.stateCode, messageInfoStruct.errorCode, messageInfoStruct.dateRead);
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(messageLocalID, messageInfoStruct.serverID, messageInfoStruct.guid, conversationInfo, messageInfoStruct.sender, messageInfoStruct.text, new ArrayList<>(), messageInfoStruct.sendEffect, false, messageInfoStruct.date, messageInfoStruct.stateCode, messageInfoStruct.errorCode, false, messageInfoStruct.dateRead);
 			for(ConversationManager.StickerInfo sticker : stickers) messageInfo.addSticker(sticker);
 			for(ConversationManager.TapbackInfo tapback : tapbacks) messageInfo.addTapback(tapback);
 			
@@ -2384,8 +2553,23 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Creating the content values and adding the common data
 		ContentValues contentValues = new ContentValues();
-		if(conversationItem.getServerID() == -1) contentValues.putNull(Contract.MessageEntry.COLUMN_NAME_SERVERID);
-		else contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, conversationItem.getServerID());
+		if(conversationItem.getServerID() == -1) {
+			contentValues.putNull(Contract.MessageEntry.COLUMN_NAME_SERVERID);
+			try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET}, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " = (SELECT MAX(" + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + ") FROM " + Contract.MessageEntry.TABLE_NAME + ")", null, null, null, Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " DESC", "1")) {
+				if(cursor.moveToNext()) {
+					//Same message, +1 offset
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED)));
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET)) + 1);
+				} else {
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
+					contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
+				}
+			}
+		} else {
+			contentValues.put(Contract.MessageEntry.COLUMN_NAME_SERVERID, conversationItem.getServerID());
+			contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, conversationItem.getServerID());
+			contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
+		}
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_GUID, conversationItem.getGuid());
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, conversationItem.getDate());
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, conversationItem.getConversationInfo().getLocalID());
@@ -2403,6 +2587,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT, messageInfo.getMessageText());
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, messageInfo.getMessageState());
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, messageInfo.getErrorCode());
+			contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS, messageInfo.getErrorDetails());
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, messageInfo.getDateRead());
 			if(messageInfo.getSendStyle() != null) contentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE, messageInfo.getSendStyle());
 			
@@ -2904,13 +3089,21 @@ class DatabaseManager extends SQLiteOpenHelper {
 		database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	} */
 	
-	void updateMessageErrorCode(long messageID, int errorCode) {
+	void updateMessageErrorCode(long messageID, int errorCode, String details) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, errorCode);
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS, details);
 		
 		//Updating the database
 		getWritableDatabase().update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+	}
+	
+	String getMessageErrorDetails(long messageID) {
+		try(Cursor cursor = getReadableDatabase().query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS}, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(messageID)}, null, null, null, "1")) {
+			if(cursor.moveToNext()) return cursor.getString(0);
+			return null;
+		}
 	}
 	
 	void updateMessageState(String guid, int state, long dateRead) {

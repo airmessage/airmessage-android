@@ -1,12 +1,12 @@
 package me.tagavari.airmessage;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.Application;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -18,6 +18,7 @@ import android.text.InputType;
 import android.text.TextWatcher;
 import android.transition.ChangeBounds;
 import android.transition.Fade;
+import android.transition.TransitionManager;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -30,9 +31,11 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.PopupWindow;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.common.util.BiConsumer;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.lang.ref.WeakReference;
@@ -64,6 +67,7 @@ public class NewMessage extends AppCompatActivity {
 	private ViewGroup recipientViewGroup;
 	private MenuItem confirmMenuItem;
 	private EditText recipientInput;
+	private ImageButton recipientInputToggle;
 	private RecyclerView contactListView;
 	private RecyclerAdapter contactsListAdapter;
 	
@@ -72,7 +76,7 @@ public class NewMessage extends AppCompatActivity {
 	//private ListView contactListView;
 	//private ListAdapter contactsListAdapter;
 	
-	private final Observer<Byte> contactStateObserver = state -> {
+	private final Observer<Integer> contactStateObserver = state -> {
 		switch(state) {
 			case ActivityViewModel.contactStateReady:
 				contactListView.setVisibility(View.VISIBLE);
@@ -209,6 +213,7 @@ public class NewMessage extends AppCompatActivity {
 		//Getting the views
 		recipientViewGroup = findViewById(R.id.viewgroup_recipients);
 		recipientInput = findViewById(R.id.recipients_input);
+		recipientInputToggle = findViewById(R.id.recipients_inputtoggle);
 		contactListView = findViewById(R.id.list_contacts);
 		
 		groupMessagePermission = findViewById(R.id.group_permission);
@@ -222,9 +227,11 @@ public class NewMessage extends AppCompatActivity {
 		
 		//Getting the view model
 		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
+		viewModel.setActivityReference(this);
 		
 		//Registering the observers
 		viewModel.contactState.observe(this, contactStateObserver);
+		viewModel.loadingState.observe(this, value -> setActivityState(!value, true));
 		viewModel.contactListLD.observe(this, value -> contactsListAdapter.onListUpdated());
 		
 		//Restoring the input bar
@@ -239,10 +246,10 @@ public class NewMessage extends AppCompatActivity {
 		//Restoring the input type
 		if(viewModel.recipientInputAlphabetical) {
 			recipientInput.setInputType(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
-			((ImageButton) findViewById(R.id.recipients_inputtoggle)).setImageResource(R.drawable.dialpad);
+			recipientInputToggle.setImageResource(R.drawable.dialpad);
 		} else {
 			recipientInput.setInputType(InputType.TYPE_CLASS_PHONE);
-			((ImageButton) findViewById(R.id.recipients_inputtoggle)).setImageResource(R.drawable.keyboard_outlined);
+			recipientInputToggle.setImageResource(R.drawable.keyboard_outlined);
 		}
 		
 		//Restoring the chips
@@ -273,6 +280,7 @@ public class NewMessage extends AppCompatActivity {
 		
 		//Hiding the menu button
 		confirmMenuItem.setVisible(!viewModel.userChips.isEmpty());
+		if(viewModel.loadingState.getValue() == Boolean.TRUE) confirmMenuItem.setEnabled(false);
 		
 		//Returning true
 		return true;
@@ -374,66 +382,10 @@ public class NewMessage extends AppCompatActivity {
 	
 	private void confirmParticipants() {
 		//Disabling the UI
-		getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+		//getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 		
-		//Getting the recipients
-		List<String> recipients = getRecipientList();
-		
-		//Checking if the conversations are available
-		List<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-		if(conversations != null) {
-			//Scanning the loaded conversations for a matching one
-			for(ConversationManager.ConversationInfo conversationInfo : conversations) {
-				//Getting the conversation members
-				List<String> members = Constants.normalizeAddresses(conversationInfo.getConversationMembersAsCollection());
-				
-				//Returning if the conversation members are not the same
-				if(recipients.size() != members.size() || !recipients.containsAll(members)) continue;
-				
-				//Launching the activity
-				launchConversation(conversationInfo.getLocalID());
-				
-				//Returning
-				return;
-			}
-		}
-		
-		//Confirming the participants
-		new ConfirmParticipantsTask(getApplicationContext(), this, recipients, viewModel.service).execute();
-		
-		//Creating a new asynchronous task
-		/* new AsyncTask<Object, Void, ConversationManager.ConversationInfo>() {
-			@Override
-			protected ConversationManager.ConversationInfo doInBackground(Object... args) {
-				//Adding the conversation
-				return DatabaseManager.addRetrieveClientCreatedConversationInfo(DatabaseManager.getWritableDatabase(NewMessage.this), NewMessage.this, (ArrayList<String>) args[0], retainedFragment.service);
-			}
-			
-			@Override
-			protected void onPostExecute(ConversationManager.ConversationInfo result) {
-				//Checking if the result is a failure
-				if(result == null) {
-					//Enabling the UI
-					getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-					
-					//Showing an error toast
-					Toast.makeText(NewMessage.this, R.string.internal_error, Toast.LENGTH_SHORT).show();
-				} else {
-					if(!ConversationManager.getConversations().contains(result)) {
-						//Adding the conversation in memory
-						ConversationManager.addConversation(result);
-						
-						//Updating the conversation activity list
-						LocalBroadcastManager.getInstance(NewMessage.this).sendBroadcast(new Intent(Conversations.localBCConversationUpdate));
-						//for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
-						//	callbacks.updateList(true);
-					}
-					
-					//Launching the activity
-					launchConversation(result.getLocalID());
-				}
-			}
-		}.execute(recipients); */
+		//Passing the event to the view model
+		viewModel.confirmParticipants(getRecipientList());
 	}
 	
 	public void onClickRequestContacts(View view) {
@@ -443,76 +395,6 @@ public class NewMessage extends AppCompatActivity {
 	
 	public void onClickRetryLoad(View view) {
 		if(viewModel.contactState.getValue() == ActivityViewModel.contactStateFailed) viewModel.loadContacts();
-	}
-	
-	private static class ConfirmParticipantsTask extends AsyncTask<Void, Void, ConversationManager.ConversationInfo> {
-		//Creating the references
-		private final WeakReference<Context> contextReference;
-		private final WeakReference<NewMessage> activityReference;
-		
-		//Creating the values
-		private final List<String> members;
-		private final String service;
-		
-		ConfirmParticipantsTask(Context context, NewMessage activity, List<String> members, String service) {
-			//Setting the references
-			contextReference = new WeakReference<>(context);
-			activityReference = new WeakReference<>(activity);
-			
-			//Setting the values
-			this.members = members;
-			this.service = service;
-		}
-		
-		@Override
-		protected void onPreExecute() {
-			super.onPreExecute();
-		}
-		
-		@Override
-		protected ConversationManager.ConversationInfo doInBackground(Void... parameters) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return null;
-			
-			//Cloning and normalizing the members' addresses
-			List<String> normalizedMembers = new ArrayList<>(members);
-			for(ListIterator<String> iterator = normalizedMembers.listIterator(); iterator.hasNext();) iterator.set(Constants.normalizeAddress(iterator.next()));
-			
-			//Adding the conversation
-			return DatabaseManager.getInstance().addRetrieveClientCreatedConversationInfo(context, members, service);
-		}
-		
-		@Override
-		protected void onPostExecute(ConversationManager.ConversationInfo result) {
-			//Getting the activity
-			NewMessage activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Checking if the result is a failure
-			if(result == null) {
-				//Enabling the UI
-				activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-				
-				//Showing an error toast
-				Toast.makeText(activity, R.string.message_serverstatus_internalexception, Toast.LENGTH_SHORT).show();
-			} else {
-				//Checking if the conversations exist
-				ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-				if(conversations != null && ConversationManager.findConversationInfo(result.getLocalID()) == null) {
-					//Adding the conversation in memory
-					ConversationManager.addConversation(result);
-					
-					//Updating the conversation activity list
-					LocalBroadcastManager.getInstance(activity).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-						/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
-							callbacks.updateList(true); */
-				}
-				
-				//Launching the activity
-				activity.launchConversation(result.getLocalID());
-			}
-		}
 	}
 	
 	private ArrayList<String> getRecipientList() {
@@ -530,13 +412,38 @@ public class NewMessage extends AppCompatActivity {
 		return recipients;
 	}
 	
-	private void launchConversation(long identifier) {
-		//Launching the activity
-		startActivity(new Intent(this, Messaging.class)
-				.putExtra(Constants.intentParamTargetID, identifier));
+	private void setActivityState(boolean enabled, boolean animate) {
+		//Disabling the button
+		if(confirmMenuItem != null) confirmMenuItem.setEnabled(enabled);
 		
-		//Finishing this activity
-		finish();
+		//Disabling the inputs
+		recipientInput.setEnabled(enabled);
+		recipientInputToggle.setEnabled(enabled);
+		
+		//Disabling the list
+		contactListView.setEnabled(enabled);
+		
+		View scrim = findViewById(R.id.scrim_content);
+		ProgressBar progressBar  = findViewById(R.id.progressbar_content);
+		if(animate) {
+			if(enabled) {
+				scrim.animate().alpha(0).withEndAction(() -> scrim.setVisibility(View.GONE)).start();
+				progressBar.animate().alpha(0).withEndAction(() -> progressBar.setVisibility(View.GONE)).start();
+			} else {
+				scrim.animate().alpha(1).withStartAction(() -> scrim.setVisibility(View.VISIBLE)).start();
+				progressBar.animate().alpha(1).withStartAction(() -> progressBar.setVisibility(View.VISIBLE)).setStartDelay(1500).start();
+			}
+		} else {
+			if(enabled) {
+				scrim.setVisibility(View.GONE);
+				scrim.setAlpha(0);
+				progressBar.setVisibility(View.GONE);
+			} else {
+				scrim.setVisibility(View.VISIBLE);
+				scrim.setAlpha(1);
+				progressBar.setVisibility(View.VISIBLE);
+			}
+		}
 	}
 	
 	private void addChip(Chip chip) {
@@ -596,7 +503,7 @@ public class NewMessage extends AppCompatActivity {
 				//Setting the default information
 				TextView labelView = popupView.findViewById(R.id.label_member);
 				labelView.setText(name);
-				((ImageView) popupView.findViewById(R.id.profile_default)).setColorFilter(getResources().getColor(R.color.colorPrimary), android.graphics.PorterDuff.Mode.MULTIPLY);
+				((ImageView) popupView.findViewById(R.id.profile_default)).setColorFilter(getResources().getColor(R.color.colorPrimary, null), android.graphics.PorterDuff.Mode.MULTIPLY);
 				
 				//Filling in the information
 				MainApplication.getInstance().getUserCacheHelper().getUserInfo(NewMessage.this, name, new UserCacheHelper.UserFetchResult() {
@@ -617,10 +524,7 @@ public class NewMessage extends AppCompatActivity {
 				MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(getApplicationContext(), name, (View) popupView.findViewById(R.id.profile_image));
 				
 				//Creating the window
-				final PopupWindow popupWindow = new PopupWindow(
-						popupView,
-						Constants.dpToPx(300),
-						Constants.dpToPx(56));
+				final PopupWindow popupWindow = new PopupWindow(popupView, Constants.dpToPx(300), Constants.dpToPx(56));
 				
 				//popupWindow.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.colorForegroundLight, null)));
 				popupWindow.setOutsideTouchable(true);
@@ -629,13 +533,17 @@ public class NewMessage extends AppCompatActivity {
 				popupWindow.setExitTransition(new Fade());
 				
 				//Setting the remove listener
-				popupView.findViewById(R.id.button_remove).setOnClickListener(view -> {
-					//Removing this chip
-					removeChip(Chip.this);
-					
-					//Dismissing the popup
-					popupWindow.dismiss();
-				});
+				if(viewModel.loadingState.getValue() == Boolean.TRUE) {
+					popupView.findViewById(R.id.button_remove).setEnabled(false);
+				} else {
+					popupView.findViewById(R.id.button_remove).setOnClickListener(view -> {
+						//Removing this chip
+						removeChip(Chip.this);
+						
+						//Dismissing the popup
+						popupWindow.dismiss();
+					});
+				}
 				
 				//Showing the popup
 				popupWindow.showAsDropDown(view);
@@ -895,17 +803,20 @@ public class NewMessage extends AppCompatActivity {
 		private static final int TYPE_ITEM = 1;
 		
 		//Creating the list values
-		private List<ContactInfo> originalItems;
+		private ArrayList<ContactInfo> originalItems;
 		private final ArrayList<ContactInfo> filteredItems = new ArrayList<>();
 		
 		//Creating the recycler values
 		private RecyclerView recyclerView;
 		
+		//Creating the task values
+		private ContactsSearchTask contactsSearchTask = null;
+		
 		//Creating the other values
 		private boolean directAddHeaderVisible = false;
 		private String lastFilterText = "";
 		
-		RecyclerAdapter(List<ContactInfo> items, RecyclerView recyclerView) {
+		RecyclerAdapter(ArrayList<ContactInfo> items, RecyclerView recyclerView) {
 			//Setting the items
 			originalItems = items;
 			filteredItems.addAll(items);
@@ -1140,46 +1051,38 @@ public class NewMessage extends AppCompatActivity {
 			//Cleaning the filter
 			filter = filter.trim();
 			
-			//Copying the original items
-			filteredItems.clear();
+			//Cancelling the current task
+			if(contactsSearchTask != null) contactsSearchTask.cancel(true);
 			
-			//Checking if the filter isn't empty
-			if(!filter.isEmpty()) {
-				//Normalizing the filter
-				String normalizedFilter = Constants.normalizeAddress(filter);
-				
-				//Filtering the list
-				contactLoop:
-				for(ContactInfo contactInfo : originalItems) {
-					//Adding the item if the name matches the filter
-					if(contactInfo.name != null && contactInfo.name.toLowerCase().contains(filter.toLowerCase())) {
-						filteredItems.add(contactInfo);
-						continue contactLoop;
-					}
-					
-					//Adding the item if any of the contact's addresses match the filter
-					for(String address : contactInfo.normalizedAddresses)
-						if(address.startsWith(normalizedFilter)) {
-							filteredItems.add(contactInfo);
-							continue contactLoop;
-						}
-				}
-				
-				//Checking if the filter text is a valid label
-				if(Constants.validateAddress(filter)) {
-					//Showing the header view
-					setHeaderState(true);
-				} else {
-					//Hiding the header view
-					setHeaderState(false);
-				}
-			} else {
+			//Checking if the filter is empty
+			if(filter.isEmpty()) {
 				//Adding all of the items
+				filteredItems.clear();
 				filteredItems.addAll(originalItems);
 				
 				//Removing the header view
 				setHeaderState(false);
+				
+				//Notifying the adapter
+				notifyDataSetChanged();
+				
+				//Invalidating the task
+				contactsSearchTask = null;
+			} else {
+				//Starting the task
+				contactsSearchTask = new ContactsSearchTask(new ArrayList<>(originalItems), filter, new ContactsSearchTaskListener(this));
+				contactsSearchTask.execute();
 			}
+		}
+		
+		void handleFilterResult(String query, List<ContactInfo> newFilteredItems, boolean queryValidAddress) {
+			//Returning if the queries no longer match
+			if(!lastFilterText.equals(query)) return;
+			
+			//Updating the list
+			filteredItems.clear();
+			filteredItems.addAll(newFilteredItems);
+			setHeaderState(queryValidAddress);
 			
 			//Notifying the adapter
 			notifyDataSetChanged();
@@ -1207,49 +1110,156 @@ public class NewMessage extends AppCompatActivity {
 		}
 	}
 	
+	private static class ContactsSearchTask extends AsyncTask<Void, Void, Constants.Tuple2<List<ContactInfo>, Boolean>> {
+		private final List<ContactInfo> contactList;
+		private final String query;
+		private final Constants.TriConsumer<String, List<ContactInfo>, Boolean> resultListener;
+		
+		ContactsSearchTask(List<ContactInfo> contactList, String query, Constants.TriConsumer<String, List<ContactInfo>, Boolean> resultListener) {
+			this.contactList = contactList;
+			this.query = query;
+			this.resultListener = resultListener;
+		}
+		
+		//Returns list of filtered contacts and the validity of the filter query (as a contact address, to decide whether or not to show the "new address" header)
+		@Override
+		protected Constants.Tuple2<List<ContactInfo>, Boolean> doInBackground(Void... voids) {
+			//Returning if the request has been cancelled
+			if(isCancelled()) return null;
+			
+			//Normalizing the filter
+			String normalizedFilter = Constants.normalizeAddress(query);
+			
+			//Creating the list
+			List<ContactInfo> filteredItems = new ArrayList<>();
+			
+			//Filtering the list
+			contactLoop:
+			for(ContactInfo contactInfo : contactList) {
+				//Returning if the request has been cancelled
+				if(isCancelled()) return null;
+				
+				//Adding the item if the name matches the filter
+				if(contactInfo.name != null && contactInfo.name.toLowerCase().contains(query.toLowerCase())) {
+					filteredItems.add(contactInfo);
+					continue contactLoop;
+				}
+				
+				//Adding the item if any of the contact's addresses match the filter
+				for(String address : contactInfo.normalizedAddresses)
+					if(address.startsWith(normalizedFilter)) {
+						filteredItems.add(contactInfo);
+						continue contactLoop;
+					}
+			}
+			
+			/* //Checking if the filter text is a valid label
+			if(Constants.validateAddress(query)) {
+				//Showing the header view
+				setHeaderState(true);
+			} else {
+				//Hiding the header view
+				setHeaderState(false);
+			} */
+			
+			//Returning if the request has been cancelled
+			if(isCancelled()) return null;
+			
+			//Checking the validity of the query as a contact address
+			boolean queryAddressValid = Constants.validateAddress(query);
+			
+			//Returning the data
+			return new Constants.Tuple2<>(filteredItems, queryAddressValid);
+		}
+		
+		@Override
+		protected void onPostExecute(Constants.Tuple2<List<ContactInfo>, Boolean> result) {
+			//Ignoring cancelled requests
+			if(result == null) return;
+			
+			//Telling the listener
+			resultListener.accept(query, result.item1, result.item2);
+		}
+	}
+	
+	private static class ContactsSearchTaskListener implements Constants.TriConsumer<String, List<ContactInfo>, Boolean> {
+		private final WeakReference<RecyclerAdapter> adapterReference;
+		
+		ContactsSearchTaskListener(RecyclerAdapter adapter) {
+			adapterReference = new WeakReference<>(adapter);
+		}
+		
+		@Override
+		public void accept(String query, List<ContactInfo> filteredItems, Boolean queryValidAddress) {
+			//Getting the adapter
+			RecyclerAdapter adapter = adapterReference.get();
+			if(adapter != null) adapter.handleFilterResult(query, filteredItems, queryValidAddress);
+		}
+	}
+	
 	private static class ContactInfo {
 		private final long identifier;
 		private final String name;
 		private final ArrayList<String> addresses;
-		private final ArrayList<String> normalizedAddresses = new ArrayList<>();
+		private final ArrayList<String> normalizedAddresses;
 		
 		ContactInfo(long identifier, String name, ArrayList<String> addresses) {
 			this.identifier = identifier;
 			this.name = name;
 			this.addresses = addresses;
+			normalizedAddresses = new ArrayList<>();
 			for(String address : addresses) normalizedAddresses.add(Constants.normalizeAddress(address));
+		}
+		
+		private ContactInfo(long identifier, String name, ArrayList<String> addresses, ArrayList<String> normalizedAddresses) {
+			this.identifier = identifier;
+			this.name = name;
+			this.addresses = addresses;
+			this.normalizedAddresses = normalizedAddresses;
 		}
 		
 		void addAddress(String address) {
 			addresses.add(address);
 			normalizedAddresses.add(Constants.normalizeAddress(address));
 		}
+		
+		@Override
+		protected ContactInfo clone() {
+			return new ContactInfo(identifier, name, new ArrayList<>(addresses), new ArrayList<>(normalizedAddresses));
+		}
 	}
 	
 	public static class ActivityViewModel extends AndroidViewModel {
 		//Creating the reference values
-		static final byte contactStateIdle = 0;
-		static final byte contactStateReady = 1;
-		static final byte contactStateNoAccess = 2;
-		static final byte contactStateFailed = 3;
+		static final int contactStateIdle = 0;
+		static final int contactStateReady = 1;
+		static final int contactStateNoAccess = 2;
+		static final int contactStateFailed = 3;
 		
 		//Creating the state values
-		final MutableLiveData<Byte> contactState = new MutableLiveData<>();
+		final MutableLiveData<Integer> contactState = new MutableLiveData<>();
+		final MutableLiveData<Boolean> loadingState = new MutableLiveData<>();
 		boolean recipientInputAlphabetical = true;
+		
+		//Creating the input values
+		private ArrayList<Chip> userChips = new ArrayList<>();
 		
 		//Creating the other values
 		String service = Constants.serviceIDAppleMessage;
 		final MutableLiveData<Object> contactListLD = new MutableLiveData<>();
-		final List<ContactInfo> contactList = new ArrayList<>();
+		final ArrayList<ContactInfo> contactList = new ArrayList<>();
 		
-		//Creating the input values
-		private ArrayList<Chip> userChips = new ArrayList<>();
+		private WeakReference<NewMessage> activityReference = null;
 		
 		public ActivityViewModel(@NonNull Application application) {
 			super(application);
 			
 			//Loading the data
 			loadContacts();
+		}
+		
+		void setActivityReference(NewMessage activity) {
+			activityReference = new WeakReference<>(activity);
 		}
 		
 		@SuppressLint("StaticFieldLeak")
@@ -1300,7 +1310,7 @@ public class NewMessage extends AppCompatActivity {
 						
 						//Checking if there is a user with a matching contact ID
 						String normalizedAddress = Constants.normalizeAddress(address);
-						for(ContactInfo contactInfo : contactList)
+						for(ContactInfo contactInfo : contactList) {
 							if(contactInfo.identifier == contactID) {
 								for(String contactAddresses : contactInfo.normalizedAddresses)
 									if(contactAddresses.equals(normalizedAddress))
@@ -1308,6 +1318,7 @@ public class NewMessage extends AppCompatActivity {
 								contactInfo.addAddress(address);
 								continue userIterator;
 							}
+						}
 						
 						//Adding the user to the list
 						ArrayList<String> contactAddresses = new ArrayList<>();
@@ -1316,7 +1327,7 @@ public class NewMessage extends AppCompatActivity {
 						contactList.add(contactInfo);
 						
 						//Calling the progress update
-						publishProgress(contactInfo);
+						publishProgress(contactInfo.clone()); //Cloning for thread safety (alternate addresses won't get updated, though)
 					}
 					
 					//Closing the cursor
@@ -1351,6 +1362,170 @@ public class NewMessage extends AppCompatActivity {
 					contactListLD.setValue(null);
 				}
 			}.execute();
+		}
+		
+		void confirmParticipants(ArrayList<String> participants) {
+			//Setting the state
+			loadingState.setValue(true);
+			
+			//Creating the response listener
+			ChatCreationResponseListener listener = new ChatCreationResponseListener(participants);
+			
+			//Checking if the service is running
+			ConnectionService connectionService = ConnectionService.getInstance();
+			if(connectionService == null) {
+				//Assuming a fail
+				listener.onFail();
+			} else {
+				//Asking the server to create a chat
+				connectionService.createChat(participants.toArray(new String[0]), service, listener);
+			}
+		}
+		
+		private class ChatCreationResponseListener extends ConnectionService.ChatCreationResponseManager {
+			private final ArrayList<String> participants;
+			
+			ChatCreationResponseListener(ArrayList<String> participants) {
+				this.participants = participants;
+			}
+			
+			@SuppressLint("StaticFieldLeak")
+			@Override
+			void onSuccess(String chatGUID) {
+				//Checking if the conversations are available in memory
+				List<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+				if(conversations != null) {
+					//Scanning the loaded conversations for a matching one
+					for(ConversationManager.ConversationInfo conversationInfo : conversations) {
+						//Skipping the conversation if its members do not match
+						if(!chatGUID.equals(conversationInfo.getGuid())) continue;
+						
+						//Launching the activity
+						launchConversation(conversationInfo.getLocalID());
+						
+						//Returning
+						return;
+					}
+				}
+				
+				//Creating the conversation
+				new AsyncTask<Void, Void, ConversationManager.ConversationInfo>() {
+					@Override
+					protected ConversationManager.ConversationInfo doInBackground(Void... parameters) {
+						/* //Cloning and normalizing the members' addresses
+						List<String> normalizedMembers = new ArrayList<>(participants);
+						for(ListIterator<String> iterator = normalizedMembers.listIterator(); iterator.hasNext();) iterator.set(Constants.normalizeAddress(iterator.next())); */
+						
+						//Adding the conversation
+						return DatabaseManager.getInstance().addRetrieveMixedConversationInfo(getApplication(), chatGUID, participants.toArray(new String[0]), service);
+					}
+					
+					@Override
+					protected void onPostExecute(ConversationManager.ConversationInfo result) {
+						//Checking if the result is a failure
+						if(result == null) {
+							//Enabling the UI
+							//activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+							loadingState.setValue(false);
+							
+							//Showing an error toast
+							Toast.makeText(getApplication(), R.string.message_serverstatus_internalexception, Toast.LENGTH_SHORT).show();
+						} else {
+							//Checking if the conversations exist
+							ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+							if(conversations != null && ConversationManager.findConversationInfo(result.getLocalID()) == null) {
+								//Adding the conversation in memory
+								ConversationManager.addConversation(result);
+								
+								//Updating the conversation activity list
+								LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+						/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
+							callbacks.updateList(true); */
+							}
+							
+							//Launching the activity
+							launchConversation(result.getLocalID());
+						}
+					}
+				}.execute();
+			}
+			
+			@SuppressLint("StaticFieldLeak")
+			@Override
+			void onFail() {
+				//Checking if the conversations are available in memory
+				List<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+				if(conversations != null) {
+					//Scanning the loaded conversations for a matching one
+					for(ConversationManager.ConversationInfo conversationInfo : conversations) {
+						//Getting the conversation members
+						List<String> members = Constants.normalizeAddresses(conversationInfo.getConversationMembersAsCollection());
+						
+						//Skipping the conversation if its members do not match
+						if(participants.size() != members.size() || !participants.containsAll(members)) continue;
+						
+						//Launching the activity
+						launchConversation(conversationInfo.getLocalID());
+						
+						//Returning
+						return;
+					}
+				}
+				
+				new AsyncTask<Void, Void, ConversationManager.ConversationInfo>() {
+					@Override
+					protected ConversationManager.ConversationInfo doInBackground(Void... parameters) {
+						/* //Cloning and normalizing the members' addresses
+						List<String> normalizedMembers = new ArrayList<>(participants);
+						for(ListIterator<String> iterator = normalizedMembers.listIterator(); iterator.hasNext();) iterator.set(Constants.normalizeAddress(iterator.next())); */
+						
+						//Adding the conversation
+						return DatabaseManager.getInstance().addRetrieveClientCreatedConversationInfo(getApplication(), participants, service);
+					}
+					
+					@Override
+					protected void onPostExecute(ConversationManager.ConversationInfo result) {
+						//Checking if the result is a failure
+						if(result == null) {
+							//Enabling the UI
+							//activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+							loadingState.setValue(false);
+							
+							//Showing an error toast
+							Toast.makeText(getApplication(), R.string.message_serverstatus_internalexception, Toast.LENGTH_SHORT).show();
+						} else {
+							//Checking if the conversations exist
+							ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+							if(conversations != null && ConversationManager.findConversationInfo(result.getLocalID()) == null) {
+								//Adding the conversation in memory
+								ConversationManager.addConversation(result);
+								
+								//Updating the conversation activity list
+								LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+						/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
+							callbacks.updateList(true); */
+							}
+							
+							//Launching the activity
+							launchConversation(result.getLocalID());
+						}
+					}
+				}.execute();
+			}
+		}
+		
+		private boolean launchConversation(long identifier) {
+			//Getting the activity
+			Activity activity = activityReference.get();
+			if(activity == null) return false;
+			
+			//Launching the activity
+			activity.startActivity(new Intent(activity, Messaging.class).putExtra(Constants.intentParamTargetID, identifier));
+			
+			//Finishing this activity
+			activity.finish();
+			
+			return true;
 		}
 	}
 }

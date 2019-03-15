@@ -329,11 +329,8 @@ class BitmapCacheHelper {
 			//Querying for the user icon
 			Uri photoUri = Uri.withAppendedPath(ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, contactID), ContactsContract.Contacts.Photo.CONTENT_DIRECTORY);
 			try(Cursor cursor = contentResolver.query(photoUri, new String[]{ContactsContract.Contacts.Photo.PHOTO}, null, null, null)) {
-				//Returning if the cursor couldn't be created
-				if(cursor == null) return null;
-				
-				//Returning if there is no data
-				if(!cursor.moveToFirst()) return null;
+				//Returning if the cursor couldn't be created or there isn't any data
+				if(cursor == null || !cursor.moveToFirst()) return null;
 				
 				//Getting the data
 				byte[] data = cursor.getBlob(0);

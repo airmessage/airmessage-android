@@ -9,6 +9,8 @@
 	<color name="navbarBackgroundProtected">#303030</color>
 	<color name="colorBackgroundSurface">#212121</color>
 
+	<color name="colorCleanScrim">#52000000</color>
+
 	<color name="colorBackgroundClean">#303030</color>
 	
 	<color name="colorBGChip">#212121</color>

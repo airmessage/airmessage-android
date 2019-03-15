@@ -33,10 +33,14 @@ import android.webkit.MimeTypeMap;
 import android.widget.TextView;
 import android.widget.Toolbar;
 
+import com.crashlytics.android.Crashlytics;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -110,23 +114,42 @@ public class Constants {
 	
 	static final String defaultNotificationSound = "content://settings/system/notification_sound";
 	
+	//Message state codes
+	static final int messageStateCodeGhost = 0;
+	static final int messageStateCodeIdle = 1;
+	static final int messageStateCodeSent = 2;
+	static final int messageStateCodeDelivered = 3;
+	static final int messageStateCodeRead = 4;
+	
+	//Message error codes
 	static final int messageErrorCodeOK = 0; //No error
 	
-	static final int messageErrorCodeAppleNetwork = 3; //Network error
-	static final int messageErrorCodeAppleUnregistered = 22; //Not registered with iMessage
+	//AirMessage app-provided error codes (if the app fails a request)
+	static final int messageErrorCodeLocalUnknown = 100; //Unknown error (for example, a version upgrade where error codes change)
+	static final int messageErrorCodeLocalInvalidContent = 101; //Invalid content
+	static final int messageErrorCodeLocalFileTooLarge = 102; //Attachment too large
+	static final int messageErrorCodeLocalIO = 103; //IO exception
+	static final int messageErrorCodeLocalNetwork = 104; //Network exception
+	static final int messageErrorCodeLocalExpired = 106; //Request expired
+	static final int messageErrorCodeLocalReferences = 107; //References lost
+	static final int messageErrorCodeLocalInternal = 108; //Internal exception
 	
-	static final int messageErrorCodeAirInvalidContent = -1; //Invalid content
-	static final int messageErrorCodeAirFileTooLarge = -2; //Attachment too large
-	static final int messageErrorCodeAirIO = -3; //IO exception
-	static final int messageErrorCodeAirNetwork = -4; //Network exception
-	static final int messageErrorCodeAirExternal = -5; //External exception
-	static final int messageErrorCodeAirExpired = -6; //Request expired
-	static final int messageErrorCodeAirReferences = -7; //References lost
-	static final int messageErrorCodeAirInternal = -8; //Internal exception
-	//static final int messageErrorCodeLocalReferences = -4; //Unknown error
+	//AirMessage server-provided error codes (if the server fails a request, or Apple Messages cannot properly handle it)
+	static final int messageErrorCodeServerUnknown = 200; //An unknown response code was received from the server
+	static final int messageErrorCodeServerExternal = 201; //The server received an external error
+	static final int messageErrorCodeServerBadRequest = 202; //The server couldn't process the request
+	static final int messageErrorCodeServerUnauthorized = 203; //The server doesn't have permission to send messages
+	static final int messageErrorCodeServerNoConversation = 204; //The server couldn't find the requested conversation
+	static final int messageErrorCodeServerRequestTimeout = 205; //The server timed out the client's request
 	
-	static final int groupActionInvite = 0;
-	static final int groupActionLeave = 1;
+	//Apple-provided error codes (converted, from the Messages database)
+	static final int messageErrorCodeAppleUnknown = 300; //An unknown error code
+	static final int messageErrorCodeAppleNetwork = 301; //Network error
+	static final int messageErrorCodeAppleUnregistered = 302; //Not registered with iMessage
+	
+	static final int groupActionUnknown = 0;
+	static final int groupActionJoin = 1;
+	static final int groupActionLeave = 2;
 	
 	static final Uri serverSetupAddress = Uri.parse("http://airmessage.org/guide");
 	static final Uri serverUpdateAddress = Uri.parse("https://airmessage.org/serverupdate");
@@ -721,6 +744,13 @@ public class Constants {
 		return result;
 	} */
 	
+	static String exceptionToString(Throwable exception) {
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+		exception.printStackTrace(pw);
+		return exception.getMessage() + ":\n" + sw.toString();
+	}
+	
 	static TypedValue resolveThemeAttr(Context context, @AttrRes int attrRes) {
 		Resources.Theme theme = context.getTheme();
 		TypedValue typedValue = new TypedValue();
@@ -809,6 +839,10 @@ public class Constants {
 	/* interface BiConsumer<A1, A2> {
 		void accept(A1 a1, A2 a2);
 	} */
+	
+	interface TriConsumer<A1, A2, A3> {
+		void accept(A1 a1, A2 a2, A3 a3);
+	}
 	
 	static boolean validateContext(Context context) {
 		if(context instanceof Activity) {
@@ -926,6 +960,10 @@ public class Constants {
 	
 	static boolean compareMimeTypes(String one, String two) {
 		if(one.equals("*/*") || two.equals("*/*")) return true;
+		if(!one.contains("/") || !two.contains("/")) {
+			Crashlytics.logException(new IllegalArgumentException("Couldn't compare MIME types. Attempting to compare " + one + " and " + two));
+			return false;
+		}
 		String[] oneComponents = one.split("/");
 		String[] twoComponents = two.split("/");
 		if(oneComponents[1].equals("*") || twoComponents[1].equals("*")) return oneComponents[0].equals(twoComponents[0]);
@@ -1025,6 +1063,28 @@ public class Constants {
 			outRect.bottom = spaceBottom;
 			outRect.left = spaceLeft;
 			outRect.right = spaceRight;
+		}
+	}
+	
+	static class Tuple2<A, B> {
+		final A item1;
+		final B item2;
+		
+		Tuple2(A item1, B item2) {
+			this.item1 = item1;
+			this.item2 = item2;
+		}
+	}
+	
+	static class Tuple3<A, B, C> {
+		final A item1;
+		final B item2;
+		final C item3;
+		
+		Tuple3(A item1, B item2, C item3) {
+			this.item1 = item1;
+			this.item2 = item2;
+			this.item3 = item3;
 		}
 	}
 }

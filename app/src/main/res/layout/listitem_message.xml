@@ -34,7 +34,7 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		app:barrierDirection="start"
-		app:constraint_referenced_ids="send_progress,send_error"/>
+		app:constraint_referenced_ids="send_progress,send_error" />
 	
 	<!-- User icon -->
 	<FrameLayout
@@ -79,6 +79,7 @@
 		app:layout_constraintStart_toStartOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/sender"
 		android:clipToPadding="false" />
+
 	<!-- Send progress -->
 	<com.pnikosis.materialishprogress.ProgressWheel
 		android:id="@+id/send_progress"
@@ -92,6 +93,7 @@
 		app:matProg_barColor="@color/colorMessageOutgoingAccent"
 		app:matProg_barWidth="2dp"
 		app:matProg_progressIndeterminate="true" />
+
 	<!-- Send warning -->
 	<ImageButton
 		android:id="@+id/send_error"

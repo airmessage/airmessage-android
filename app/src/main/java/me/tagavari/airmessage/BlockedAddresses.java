@@ -56,7 +56,7 @@ public class BlockedAddresses extends AppCompatActivity {
 		}
 	}
 	
-	void updateBlockedState(byte oldState, byte newState) {
+	void updateBlockedState(int oldState, int newState) {
 		switch(oldState) {
 			case -1:
 				break;
@@ -156,11 +156,11 @@ public class BlockedAddresses extends AppCompatActivity {
 		private BlockedAddresses parentActivity;
 		
 		//Creating the state values
-		private static final byte blockedStateIdle = 0;
-		private static final byte blockedStateLoading = 1;
-		private static final byte blockedStateLoaded = 2;
-		private static final byte blockedStateFailed = 3;
-		private byte blockedState = blockedStateIdle;
+		private static final int blockedStateIdle = 0;
+		private static final int blockedStateLoading = 1;
+		private static final int blockedStateLoaded = 2;
+		private static final int blockedStateFailed = 3;
+		private int blockedState = blockedStateIdle;
 		
 		//Creating the other values
 		private ArrayList<BlockedAddress> originalBlockedList = new ArrayList<>();
@@ -204,7 +204,7 @@ public class BlockedAddresses extends AppCompatActivity {
 			parentActivity = null;
 		}
 		
-		void updateState(byte state) {
+		void updateState(int state) {
 			//Returning if the requested state matches the existing state
 			if(blockedState == state) return;
 			

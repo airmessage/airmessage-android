@@ -21,6 +21,8 @@ import android.os.DeadSystemException;
 import android.preference.PreferenceManager;
 import android.service.notification.StatusBarNotification;
 
+import com.crashlytics.android.Crashlytics;
+
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.Person;
 import androidx.core.app.RemoteInput;
@@ -250,10 +252,16 @@ class NotificationUtils {
 		//Getting the existing notification
 		Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
 		
-		NotificationCompat.MessagingStyle messagingStyle;
+		NotificationCompat.MessagingStyle messagingStyle = null;
+		try {
+			messagingStyle = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(existingNotification);
+		} catch(RuntimeException exception) {
+			exception.printStackTrace();
+			Crashlytics.logException(exception);
+		}
 		
 		//Getting the messaging style (and checking it)
-		if(existingNotification != null && (messagingStyle = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(existingNotification)) != null) {
+		if(existingNotification != null && messagingStyle != null) {
 			//Adding the new message
 			messagingStyle.addMessage(message);
 			
@@ -345,7 +353,7 @@ class NotificationUtils {
 				}
 				
 				@Override
-				void onFail(byte responseCode) {
+				void onFail(int responseCode, String details) {
 					//Refreshing the notification
 					Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
 					if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
