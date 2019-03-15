@@ -407,7 +407,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				database.execSQL("ALTER TABLE messages ADD sort_id_linked_offset INTEGER NOT NULL DEFAULT 0;");
 				
 				//Replacing all error codes
-				database.execSQL("UPDATE messages SET error = 100");
+				database.execSQL("UPDATE messages SET error = 100 WHERE error IS NOT 0");
 				
 				//Updating the sort columns
 				database.execSQL("UPDATE messages SET sort_id_linked = server_id");
