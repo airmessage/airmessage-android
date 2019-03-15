@@ -125,6 +125,7 @@ public class Constants {
 	static final int messageErrorCodeOK = 0; //No error
 	
 	//AirMessage app-provided error codes (if the app fails a request)
+	static final int messageErrorCodeLocalUnknown = 100; //Unknown error (for example, a version upgrade where error codes change)
 	static final int messageErrorCodeLocalInvalidContent = 101; //Invalid content
 	static final int messageErrorCodeLocalFileTooLarge = 102; //Attachment too large
 	static final int messageErrorCodeLocalIO = 103; //IO exception

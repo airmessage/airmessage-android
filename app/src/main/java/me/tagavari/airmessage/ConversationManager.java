@@ -3009,6 +3009,7 @@ class ConversationManager {
 				boolean showRetryButton;
 				
 				switch(errorCode) {
+					case Constants.messageErrorCodeLocalUnknown:
 					default:
 						//Setting the message
 						dialogBuilder.setMessage(R.string.message_unknownerror);

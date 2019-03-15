@@ -396,6 +396,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 				database.update("messages", contentValues, "server_id = -1", null);
 			}
 			case 8:
+				//Deleting non-linked messages
+				database.execSQL("DELETE FROM messages WHERE server_id IS NULL");
+				
 				//Adding the error details column
 				database.execSQL("ALTER TABLE messages ADD error_details TEXT;");
 				
@@ -403,8 +406,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 				database.execSQL("ALTER TABLE messages ADD sort_id_linked INTEGER NOT NULL DEFAULT 0;");
 				database.execSQL("ALTER TABLE messages ADD sort_id_linked_offset INTEGER NOT NULL DEFAULT 0;");
 				
-				//Deleting non-linked messages
-				database.execSQL("DELETE FROM messages WHERE server_id IS NULL");
+				//Replacing all error codes
+				database.execSQL("UPDATE messages SET error = 100");
 				
 				//Updating the sort columns
 				database.execSQL("UPDATE messages SET sort_id_linked = server_id");
