@@ -43,7 +43,7 @@
 	<string name="preference_server_connectionboot_title">Connexion automatique au démarrage de l\'appareil</string>
 	<string name="preference_server_networkreconnect_title">Reconnexion de changement de réseau</string>
 	<string name="preference_server_networkreconnect_description">Essayer de vous reconnecter lorsque l\'appareil se connecte à un nouveau réseau (par exemple: Wi-Fi à cellulaire)</string>
-	<string name="preference_server_help_title">Ouvrir le manuel d\'installation</string>
+	<string name="preference_server_help_title">Visiter le site de support</string>
 	<string name="message_serverstatus_limitedfunctionality">%s. La fonctionnalité sera limitée.</string>
 	<string name="message_serverstatus_internalexception">Une erreur interne a eu lieu</string>
 	<string name="message_serverstatus_badrequest">Une erreur de compatibilité de connexion a eu lieu</string>

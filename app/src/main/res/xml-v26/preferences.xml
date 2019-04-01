@@ -5,7 +5,8 @@
 		android:title="@string/preference_messagenotifications_title" />
 	<androidx.preference.PreferenceCategory
 		android:key="@string/preferencegroup_appearance_key"
-		android:title="@string/preferencegroup_appearance_title">
+		android:title="@string/preferencegroup_appearance_title"
+		android:paddingLeft="0px">
 		<androidx.preference.ListPreference
 			android:defaultValue="follow_system"
 			android:entries="@array/preference_appearance_theme_entries"
@@ -59,6 +60,13 @@
 				android:targetClass="me.tagavari.airmessage.ServerSetup"
 				android:targetPackage="me.tagavari.airmessage" />
 		</androidx.preference.Preference>
+
+		<me.tagavari.airmessage.view.HostnameEditTextPreference
+			android:key="@string/preference_server_serverfallback_key"
+			android:title="@string/preference_server_serverfallback_title"
+			android:summary="@string/preference_server_serverfallback_description"
+			android:defaultValue="10.0.2.2" />
+
 		<!-- <androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_server_foregroundservice_key"
 			android:title="@string/preference_server_foregroundservice_title"

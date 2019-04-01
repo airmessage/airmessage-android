@@ -227,7 +227,7 @@
 	<string name="preference_server_connectionboot_title">起動時に自動的に接続</string>
 	<string name="preference_server_networkreconnect_title">ネットワークを切り替える時に再接続</string>
 	<string name="preference_server_networkreconnect_description">デバイスが新しいネットワークに接続した時に再接続を試みます（例えば：Wi-FiからCellularへ）</string>
-	<string name="preference_server_help_title">インストールガイドを見る</string>
+	<string name="preference_server_help_title">サポートサイトにアクセス</string>
 	<string name="message_messageerror_desc_apple_unregistered_generic">受信者がiMessageに登録されていません</string>
 	<string name="preference_server_dropreconnect_description">接続を切断された直後に再接続を試みます</string>
 	<string name="preference_server_dropreconnect_title">接続を切断の時に再接続</string>

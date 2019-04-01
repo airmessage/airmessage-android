@@ -35,7 +35,7 @@ public class ServerSetup extends AppCompatActivity {
 	static final String intentExtraRequired = "isRequired";
 	
 	//Creating the regular expression string
-	private static final Pattern regExValidAddress = Pattern.compile("^(((www\\.)?+[a-zA-Z0-9.\\-_]+(\\.[a-zA-Z]{2,})+)|(\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b))(/[a-zA-Z0-9_\\-\\s./?%#&=]*)?(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))?$");
+	//private static final Pattern regExValidAddress = Pattern.compile("^(((www\\.)?+[a-zA-Z0-9.\\-_]+(\\.[a-zA-Z]{2,})+)|(\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b))(/[a-zA-Z0-9_\\-\\s./?%#&=]*)?(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))?$");
 	//private static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
 	//private static final Pattern regExValidProtocol = Pattern.compile("^ws(s?)://");
 	
@@ -235,7 +235,7 @@ public class ServerSetup extends AppCompatActivity {
 		//Checking if the page is the verification page
 		if(viewModel.page == ActivityViewModel.pageVerification) {
 			//Checking if the server parameters are valid
-			if(regExValidAddress.matcher(hostnameInputField.getText()).find() && passwordInputField.getText().length() > 0) {
+			if(Constants.regExValidAddress.matcher(hostnameInputField.getText()).find() && passwordInputField.getText().length() > 0) {
 				//Starting the connection
 				startConnection();
 				
@@ -477,7 +477,7 @@ public class ServerSetup extends AppCompatActivity {
 	
 	private void updateNextButtonState(String hostnameInput, String passwordInput) {
 		//Comparing the string to the regular expression
-		if(regExValidAddress.matcher(hostnameInput).find() && !passwordInput.isEmpty()) {
+		if(Constants.regExValidAddress.matcher(hostnameInput).find() && !passwordInput.isEmpty()) {
 			//Enabling the button
 			nextButton.setAlpha(1);
 			nextButton.setClickable(true);

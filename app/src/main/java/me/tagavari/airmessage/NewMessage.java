@@ -406,7 +406,7 @@ public class NewMessage extends AppCompatActivity {
 		Collections.sort(recipients);
 		
 		//Normalizing the list
-		Constants.normalizeAddresses(recipients);
+		//Constants.normalizeAddresses(recipients);
 		
 		//Returning the recipient list
 		return recipients;
@@ -1459,7 +1459,8 @@ public class NewMessage extends AppCompatActivity {
 					//Scanning the loaded conversations for a matching one
 					for(ConversationManager.ConversationInfo conversationInfo : conversations) {
 						//Getting the conversation members
-						List<String> members = Constants.normalizeAddresses(conversationInfo.getConversationMembersAsCollection());
+						//List<String> members = Constants.normalizeAddresses(conversationInfo.getConversationMembersAsCollection());
+						List<String> members = conversationInfo.getConversationMembersAsCollection();
 						
 						//Skipping the conversation if its members do not match
 						if(participants.size() != members.size() || !participants.containsAll(members)) continue;

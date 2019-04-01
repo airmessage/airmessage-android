@@ -3350,7 +3350,7 @@ public class ConnectionService extends Service {
 			} else {
 				conversationExists = false;
 				conversationGUID = null;
-				conversationMembers = conversationInfo.getNormalizedConversationMembersAsArray();
+				conversationMembers = conversationInfo.getConversationMembersAsArray();
 				conversationService = conversationInfo.getService();
 			}
 			conversationID = conversationInfo.getLocalID();
@@ -5636,7 +5636,7 @@ public class ConnectionService extends Service {
 					List<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationItems(availableConversation);
 					
 					//Searching for a matching conversation in the database
-					ConversationManager.ConversationInfo clientConversation = DatabaseManager.getInstance().findConversationInfoWithMembers(context, Constants.normalizeAddresses(availableConversation.getConversationMembersAsCollection()), availableConversation.getService(), true);
+					ConversationManager.ConversationInfo clientConversation = DatabaseManager.getInstance().findConversationInfoWithMembers(context, availableConversation.getConversationMembersAsCollection(), availableConversation.getService(), true);
 					
 					//Checking if a client conversation has not been found (the conversation is a new conversation from the server)
 					if(clientConversation == null) {
