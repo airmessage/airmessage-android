@@ -54,6 +54,7 @@ import androidx.preference.PreferenceScreen;
 import androidx.preference.PreferenceViewHolder;
 import androidx.preference.SwitchPreferenceCompat;
 import androidx.recyclerview.widget.RecyclerView;
+import me.tagavari.airmessage.view.HostnameEditTextPreference;
 
 public class Preferences extends AppCompatActivity {
 	//Creating the reference values
@@ -499,6 +500,8 @@ public class Preferences extends AppCompatActivity {
 				// Create a new instance of TimePreferenceDialogFragment with the key of the related
 				// Preference
 				dialogFragment = RingtonePreferenceDialogFragmentCompat.newInstance(preference.getKey());
+			} else if(preference instanceof HostnameEditTextPreference) {
+				dialogFragment = HostnameEditTextPreference.HostnameEditTextPreferenceDialog.newInstance(preference.getKey());
 			}
 			
 			// If it was one of our custom Preferences, show its dialog
@@ -970,7 +973,6 @@ public class Preferences extends AppCompatActivity {
 				super.onViewCreated(view, savedInstanceState);
 				
 				view.setBackgroundColor(Constants.resolveColorAttr(getContext(), android.R.attr.colorBackground));
-				
 			}
 		}
 	}

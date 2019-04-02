@@ -1096,4 +1096,16 @@ public class Constants {
 			this.item3 = item3;
 		}
 	}
+	
+	public static void printViewHierarchy(ViewGroup vg, String prefix) {
+		for (int i = 0; i < vg.getChildCount(); i++) {
+			View v = vg.getChildAt(i);
+			String desc = prefix + " | " + "[" + i + "/" + (vg.getChildCount()-1) + "] "+ v.getClass().getSimpleName() + " " + v.getId();
+			Log.v("x", desc);
+			
+			if (v instanceof ViewGroup) {
+				printViewHierarchy((ViewGroup)v, desc);
+			}
+		}
+	}
 }
