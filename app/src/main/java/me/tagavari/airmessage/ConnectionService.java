@@ -149,6 +149,7 @@ public class ConnectionService extends Service {
 	
 	//Creating the connection values
 	static String hostname = null;
+	static String hostnameFallback = null;
 	static String password = null;
 	private ConnectionManager currentConnectionManager = null;
 	static int lastConnectionResult = -1;
@@ -431,6 +432,7 @@ public class ConnectionService extends Service {
 			//Retrieving the data from the shared preferences
 			SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
 			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null);
+			hostnameFallback = Preferences.getPreferenceFallbackServer(this);
 			password = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, null);
 		}
 		

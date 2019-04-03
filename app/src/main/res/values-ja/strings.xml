@@ -333,4 +333,6 @@
 	<string name="message_attachmentreqerror_server_notsaved">添付ファイルが見つかりません</string>
 	<string name="message_attachmentreqerror_server_unreadable">添付ファイルが読められませんでした</string>
 	<string name="message_attachmentreqerror_server_io">外部エラー（I/O）</string>
+	<string name="preference_server_serverfallback_title">フォールバックサーバ</string>
+	<string name="preference_server_serverfallback_description">NATループバックをサポートしていないルーターを使用している場合は、このオプションを使用してください。</string>
 </resources>

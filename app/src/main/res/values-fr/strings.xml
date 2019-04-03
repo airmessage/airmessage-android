@@ -346,4 +346,6 @@
 	<string name="message_attachmentreqerror_server_notsaved">Pièce jointe non trouvée</string>
 	<string name="message_attachmentreqerror_server_unreadable">Pièce jointe illisible</string>
 	<string name="message_attachmentreqerror_server_io">Erreur externe (I/O)</string>
+	<string name="preference_server_serverfallback_title">Serveur alternatif</string>
+	<string name="preference_server_serverfallback_description">Si vous utilisez un routeur qui ne supporte pas le hairpinning, vous pouvez utiliser cette option.</string>
 </resources>

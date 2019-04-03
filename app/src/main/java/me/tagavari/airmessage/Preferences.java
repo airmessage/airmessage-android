@@ -984,4 +984,8 @@ public class Preferences extends AppCompatActivity {
 	static boolean checkPreferenceShowReadReceipts(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_showreadreceipts_key), true);
 	}
+	
+	static String getPreferenceFallbackServer(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_server_serverfallback_key), null);
+	}
 }
