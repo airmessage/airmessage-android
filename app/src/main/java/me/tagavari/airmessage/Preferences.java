@@ -275,6 +275,20 @@ public class Preferences extends AppCompatActivity {
 			//Accepting the change
 			return true;
 		};
+		Preference.OnPreferenceChangeListener fallbackServerChangeListener = (preference, newValue) -> {
+			//Setting the value
+			String newValueString = (String) newValue;
+			if(newValueString.isEmpty()) {
+				ConnectionService.hostnameFallback = null;
+				preference.setSummary(R.string.preference_server_serverfallback_description);
+			} else {
+				ConnectionService.hostnameFallback = newValueString;
+				preference.setSummary(newValueString);
+			}
+			
+			//Accepting the change
+			return true;
+		};
 		
 		void removePreferencePadding(Preference preference) {
 			preference.setIconSpaceReserved(false);
@@ -375,6 +389,12 @@ public class Preferences extends AppCompatActivity {
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
 			findPreference(getResources().getString(R.string.preference_server_downloadmessages_key)).setOnPreferenceClickListener(syncMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener(themeChangeListener);
+			{
+				EditTextPreference fallbackServerPref = (EditTextPreference) findPreference(getResources().getString(R.string.preference_server_serverfallback_key));
+				fallbackServerPref.setOnPreferenceChangeListener(fallbackServerChangeListener);
+				String text = fallbackServerPref.getText();
+				fallbackServerPref.setSummary(text.isEmpty() ? getResources().getString(R.string.preference_server_serverfallback_description) : text);
+			}
 		}
 		
 		@Override
@@ -986,6 +1006,7 @@ public class Preferences extends AppCompatActivity {
 	}
 	
 	static String getPreferenceFallbackServer(Context context) {
-		return PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_server_serverfallback_key), null);
+		String value = PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_server_serverfallback_key), null);
+		return value != null && value.isEmpty() ? null : value;
 	}
 }

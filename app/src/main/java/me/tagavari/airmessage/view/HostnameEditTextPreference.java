@@ -52,7 +52,7 @@ public class HostnameEditTextPreference extends EditTextPreference {
 		@NonNull
 		@Override
 		public Dialog onCreateDialog(Bundle savedInstanceState) {
-			Dialog dialog =super.onCreateDialog(savedInstanceState);
+			Dialog dialog = super.onCreateDialog(savedInstanceState);
 			dialog.setOnShowListener(dialog1 -> positiveButton = ((AlertDialog) dialog1).getButton(AlertDialog.BUTTON_POSITIVE));
 			return dialog;
 		}
@@ -72,7 +72,7 @@ public class HostnameEditTextPreference extends EditTextPreference {
 				
 				@Override
 				public void onTextChanged(CharSequence s, int start, int before, int count) {
-					positiveButton.setEnabled(Constants.regExValidAddress.matcher(s).find());
+					positiveButton.setEnabled(s.length() == 0 || Constants.regExValidAddress.matcher(s).find());
 				}
 				
 				@Override

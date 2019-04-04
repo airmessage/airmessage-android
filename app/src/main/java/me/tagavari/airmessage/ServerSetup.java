@@ -188,6 +188,7 @@ public class ServerSetup extends AppCompatActivity {
 		//Setting the connection values
 		if(viewModel.newHostname != null && viewModel.newPassword != null) {
 			ConnectionService.hostname = viewModel.newHostname;
+			ConnectionService.hostnameFallback = null;
 			ConnectionService.password = viewModel.newPassword;
 		}
 		
@@ -215,6 +216,7 @@ public class ServerSetup extends AppCompatActivity {
 		if(!isComplete && viewModel.originalHostname != null && viewModel.originalPassword != null) {
 			//Restoring the connection values
 			ConnectionService.hostname = viewModel.originalHostname;
+			ConnectionService.hostnameFallback = viewModel.originalHostnameFallback;
 			ConnectionService.password = viewModel.originalPassword;
 			
 			//Starting the connection
@@ -267,6 +269,9 @@ public class ServerSetup extends AppCompatActivity {
 	}
 	
 	private void finishSetup() {
+		//Restoring the fallback hostname
+		ConnectionService.hostnameFallback = viewModel.originalHostnameFallback;
+		
 		//Saving the connection data in the shared preferences
 		SharedPreferences.Editor editor = ((MainApplication) getApplication()).getConnectivitySharedPrefs().edit();
 		editor.putString(MainApplication.sharedPreferencesConnectivityKeyHostname, viewModel.newHostname); //The raw, unprocessed hostname (No protocol or port)
@@ -373,6 +378,7 @@ public class ServerSetup extends AppCompatActivity {
 		
 		//Setting the values in the service class
 		ConnectionService.hostname = viewModel.newHostname;
+		ConnectionService.hostnameFallback = null;
 		ConnectionService.password = viewModel.newPassword;
 		
 		//Telling the service to connect
@@ -497,11 +503,13 @@ public class ServerSetup extends AppCompatActivity {
 	
 	public static class ActivityViewModel extends ViewModel {
 		private final String originalHostname;
+		private final String originalHostnameFallback;
 		private final String originalPassword;
 		
 		public ActivityViewModel() {
 			//Recording the original connection information
 			originalHostname = ConnectionService.hostname;
+			originalHostnameFallback = ConnectionService.hostnameFallback;
 			originalPassword = ConnectionService.password;
 		}
 		

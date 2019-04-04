@@ -167,6 +167,7 @@
 	<string name="notificationchannelimportance_4">Importance urgente</string>
 	<string name="progress_connectingtoserver">Connexion au serveur&#8230;</string>
 	<string name="message_connection_connected">Connecté au serveur</string>
+	<string name="message_connection_connectedfallback">Connecté au serveur alternatif</string>
 	<string name="message_connection_disconnected">La connexion est perdue</string>
 	<string name="imperative_tapopenapp">Appuyez pour ouvrir l\'appli</string>
 	<string name="part_unknown">Inconnu</string>
