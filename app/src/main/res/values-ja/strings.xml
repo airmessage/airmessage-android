@@ -103,7 +103,7 @@
 	<string name="message_serverstatus_unknown">不明なエラーが発生しました</string>
 	<string name="message_serverupdate">サーバーのアップデートが入手可能です</string>
 	<string name="message_searchnoresults">結果がありません</string>
-	<string name="message_eventtype_chatrename_change">%1$さんは会話に「%2$s」という名前を付けました</string>
+	<string name="message_eventtype_chatrename_change">%1$sさんは会話に「%2$s」という名前を付けました</string>
 	<string name="message_eventtype_chatrename_change_you">あなたは会話に「%s」という名前を付けました</string>
 	<string name="message_eventtype_chatrename_remove">%sさんは会話の名前を削除しました</string>
 	<string name="message_eventtype_chatrename_remove_you">あなたは会話の名前を削除しました</string>

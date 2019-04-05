@@ -393,7 +393,7 @@ public class Preferences extends AppCompatActivity {
 				EditTextPreference fallbackServerPref = (EditTextPreference) findPreference(getResources().getString(R.string.preference_server_serverfallback_key));
 				fallbackServerPref.setOnPreferenceChangeListener(fallbackServerChangeListener);
 				String text = fallbackServerPref.getText();
-				fallbackServerPref.setSummary(text.isEmpty() ? getResources().getString(R.string.preference_server_serverfallback_description) : text);
+				fallbackServerPref.setSummary(text == null || text.isEmpty() ? getResources().getString(R.string.preference_server_serverfallback_description) : text);
 			}
 		}
 		
