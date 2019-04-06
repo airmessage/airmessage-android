@@ -636,7 +636,7 @@ public class Constants {
 		//Returning the stripped phone number if the address is one
 		//if(address.matches("^\\+?[ \\d().-]+$")) return address.replaceAll("[^\\d+]", "");
 		if(PhoneNumberUtils.isWellFormedSmsAddress(address)) {
-			String formattedNumber = PhoneNumberUtils.formatNumberToE164(address, null);
+			String formattedNumber = PhoneNumberUtils.formatNumberToE164(address, "US");
 			if(formattedNumber != null) return formattedNumber;
 		}
 		

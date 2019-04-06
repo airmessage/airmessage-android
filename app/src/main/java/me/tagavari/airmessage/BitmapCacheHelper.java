@@ -228,6 +228,9 @@ class BitmapCacheHelper {
 				callbackList.put(id, resultList);
 			}
 			
+			//Normalizing the name
+			contactName = Constants.normalizeAddress(contactName);
+			
 			//Starting the task
 			new DecodeContactThumbnailTask(id, this, context.getContentResolver(), contactName).execute();
 		}
@@ -648,7 +651,7 @@ class BitmapCacheHelper {
 		
 		abstract void onImageMeasured(int width, int height);
 		
-		void onImageDecoded(Bitmap result, boolean wasTasked) {};
+		void onImageDecoded(Bitmap result, boolean wasTasked) {}
 	}
 	
 	private static int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
