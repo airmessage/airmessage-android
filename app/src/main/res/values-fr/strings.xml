@@ -167,7 +167,7 @@
 	<string name="notificationchannelimportance_4">Importance urgente</string>
 	<string name="progress_connectingtoserver">Connexion au serveur&#8230;</string>
 	<string name="message_connection_connected">Connecté au serveur</string>
-	<string name="message_connection_connectedfallback">Connecté au serveur alternatif</string>
+	<string name="message_connection_connectedfallback">Connecté au serveur par addresse alternative</string>
 	<string name="message_connection_disconnected">La connexion est perdue</string>
 	<string name="imperative_tapopenapp">Appuyez pour ouvrir l\'appli</string>
 	<string name="part_unknown">Inconnu</string>
@@ -347,6 +347,6 @@
 	<string name="message_attachmentreqerror_server_notsaved">Pièce jointe non trouvée</string>
 	<string name="message_attachmentreqerror_server_unreadable">Pièce jointe illisible</string>
 	<string name="message_attachmentreqerror_server_io">Erreur externe (I/O)</string>
-	<string name="preference_server_serverfallback_title">Serveur alternatif</string>
-	<string name="preference_server_serverfallback_description">Si vous utilisez un routeur qui ne supporte pas le hairpinning, vous pouvez utiliser cette option.</string>
+	<string name="preference_server_serverfallback_title">Addresse alternative</string>
+	<string name="preference_server_serverfallback_description">Si vous utilisez un routeur qui ne supporte pas le hairpinning, vous pouvez utiliser cette option</string>
 </resources>

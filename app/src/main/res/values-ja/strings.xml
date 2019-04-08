@@ -141,7 +141,7 @@
 	<string name="message_shareable_text">%1$sの%2$s、%3$sは「%4$s」と送信しました</string>
 	<string name="message_shareable_text_you">%1$sの%2$s、私は「%3$s」と送信しますた</string>
 	<string name="message_connection_connected">サーバーに接続しています</string>
-	<string name="message_connection_connectedfallback">フォールバックサーバーに接続しています</string>
+	<string name="message_connection_connectedfallback">代替経由でサーバーに接続しています</string>
 	<string name="message_connection_disconnected">サーバーから切断されています</string>
 	<string name="message_conversation_archived">会話をアーカイブしました</string>
 	<string name="message_conversation_unarchived">会話のアーカイブを解除しました</string>
@@ -180,7 +180,7 @@
 	<string name="imperative_selectfile">ファイルの選択</string>
 	<string name="imperative_userinput">名前、電話番号、メールのいずれかを入力</string>
 	<string name="imperative_recording_instructions">長押しして録音</string>
-	<string name="imperative_tapopenapp">タップしてアプリを開く</string>
+	<string name="imperative_tapopenapp">タップしてアプリを開きます</string>
 	<string name="imperative_selectdestination">相手の連絡先の選択</string>
 	<string name="imperative_selectconversation">会話の選択</string>
 	<string name="imperative_mainsearch">メッセージを検索</string>
@@ -334,6 +334,6 @@
 	<string name="message_attachmentreqerror_server_notsaved">添付ファイルが見つかりません</string>
 	<string name="message_attachmentreqerror_server_unreadable">添付ファイルが読められませんでした</string>
 	<string name="message_attachmentreqerror_server_io">外部エラー（I/O）</string>
-	<string name="preference_server_serverfallback_title">フォールバックサーバー</string>
-	<string name="preference_server_serverfallback_description">NATループバックをサポートしていないルーターを使用している場合は、このオプションを使用してください。</string>
+	<string name="preference_server_serverfallback_title">代替アドレス</string>
+	<string name="preference_server_serverfallback_description">NATループバックをサポートしていないルーターがある場合は、代替アドレスを入力してください</string>
 </resources>

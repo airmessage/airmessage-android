@@ -55,7 +55,7 @@
     <string name="preference_server_serverdetails_key" translatable="false">pref_key_server_address</string>
     <string name="preference_server_serverdetails_title">Edit server information</string>
 	<string name="preference_server_serverfallback_key" translatable="false">pref_key_server_fallbackaddress</string>
-	<string name="preference_server_serverfallback_title">Fallback server</string>
+	<string name="preference_server_serverfallback_title">Fallback address</string>
 	<string name="preference_server_serverfallback_description">If you are using a router that does not support hairpinning, this can be used as an alternative</string>
 	<string name="preference_server_foregroundservice_key" translatable="false">pref_key_server_foregroundservice</string>
 	<string name="preference_server_foregroundservice_title">Run service in foreground</string>

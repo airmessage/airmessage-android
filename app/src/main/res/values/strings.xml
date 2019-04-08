@@ -220,7 +220,7 @@
 	<string name="message_shareable_text_you">On %1$s at %2$s, I wrote: %3$s</string>
 
 	<string name="message_connection_connected">Connected to server</string>
-	<string name="message_connection_connectedfallback">Connected to fallback server</string>
+	<string name="message_connection_connectedfallback">Connected to server via fallback</string>
 	<string name="message_connection_disconnected">Connection lost</string>
 
 	<string name="message_conversation_archived">Conversation archived</string>
