@@ -2490,7 +2490,7 @@ class ConversationManager {
 				//Sending the message and returning the result
 				return getConversationInfo().getState() == ConversationManager.ConversationInfo.ConversationState.READY ?
 						connectionService.sendMessage(getConversationInfo().getGuid(), getMessageText(), messageResponseManager) :
-						connectionService.sendMessage(getConversationInfo().getNormalizedConversationMembersAsArray(), getMessageText(), getConversationInfo().getService(), messageResponseManager);
+						connectionService.sendMessage(getConversationInfo().getConversationMembersAsArray(), getMessageText(), getConversationInfo().getService(), messageResponseManager);
 			} else {
 				//Returning false if there are no attachments
 				if(attachments.isEmpty()) return false;

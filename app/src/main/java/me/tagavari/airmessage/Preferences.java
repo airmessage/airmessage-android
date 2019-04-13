@@ -41,11 +41,20 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.util.Consumer;
 import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
+import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceGroup;
+import androidx.preference.PreferenceGroupAdapter;
+import androidx.preference.PreferenceScreen;
+import androidx.preference.PreferenceViewHolder;
 import androidx.preference.SwitchPreferenceCompat;
+import androidx.recyclerview.widget.RecyclerView;
+import me.tagavari.airmessage.view.HostnameEditTextPreference;
 
 public class Preferences extends AppCompatActivity {
 	//Creating the reference values
@@ -89,7 +98,7 @@ public class Preferences extends AppCompatActivity {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 	} */
 	
-	public static class SettingsFragment extends PreferenceFragmentCompat {
+	public static class SettingsFragment extends PreferenceFragmentCompat implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
 		/* Preference.OnPreferenceClickListener ringtoneClickListener = preference -> {
 			//Returning true
 			return true;
@@ -266,11 +275,66 @@ public class Preferences extends AppCompatActivity {
 			//Accepting the change
 			return true;
 		};
+		Preference.OnPreferenceChangeListener fallbackServerChangeListener = (preference, newValue) -> {
+			//Setting the value
+			String newValueString = (String) newValue;
+			if(newValueString.isEmpty()) {
+				ConnectionService.hostnameFallback = null;
+				preference.setSummary(R.string.preference_server_serverfallback_description);
+			} else {
+				ConnectionService.hostnameFallback = newValueString;
+				preference.setSummary(newValueString);
+			}
+			
+			//Accepting the change
+			return true;
+		};
+		
+		void removePreferencePadding(Preference preference) {
+			preference.setIconSpaceReserved(false);
+			if(preference instanceof PreferenceGroup) {
+				PreferenceGroup preferenceGroup = (PreferenceGroup) preference;
+				int prefCount = preferenceGroup.getPreferenceCount();
+				for(int i = 0; i < prefCount; i++) removePreferencePadding(preferenceGroup.getPreference(i));
+			}
+		}
+		
+		//TODO remove with release of next AndroidX update
+		@Override
+		protected RecyclerView.Adapter onCreateAdapter(PreferenceScreen preferenceScreen) {
+			return new PreferenceGroupAdapter(preferenceScreen) {
+				@SuppressLint("RestrictedApi")
+				@Override
+				public void onBindViewHolder(PreferenceViewHolder holder, int position) {
+					super.onBindViewHolder(holder, position);
+					Preference preference = getItem(position);
+					if(preference instanceof PreferenceCategory) setZeroPaddingToLayoutChildren(holder.itemView);
+				}
+			};
+		}
+		
+		private void setZeroPaddingToLayoutChildren(View view) {
+			if(!(view instanceof ViewGroup)) return;
+			ViewGroup viewGroup = (ViewGroup) view;
+			int childCount = viewGroup.getChildCount();
+			for(int i = 0; i < childCount; i++) {
+				setZeroPaddingToLayoutChildren(viewGroup.getChildAt(i));
+				viewGroup.setPaddingRelative(0, viewGroup.getPaddingTop(), viewGroup.getPaddingEnd(), viewGroup.getPaddingBottom());
+			}
+		}
 		
 		@Override
 		public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
 			//Adding the preferences
 			addPreferencesFromResource(R.xml.preferences);
+			
+			//Removing padding
+			{
+				PreferenceScreen prefScreen = getPreferenceScreen();
+				int prefCount = getPreferenceScreen().getPreferenceCount();
+				
+				for(int i = 0; i < prefCount; i++) removePreferencePadding(prefScreen.getPreference(i));
+			}
 			
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 				//Creating the notification channel intent
@@ -313,7 +377,7 @@ public class Preferences extends AppCompatActivity {
 			}
 			
 			//Setting the intents
-			findPreference(getResources().getString(R.string.preference_server_help_key)).setIntent(new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress));
+			findPreference(getResources().getString(R.string.preference_server_help_key)).setIntent(new Intent(Intent.ACTION_VIEW, Constants.helpAddress));
 			
 			//Setting the listeners
 			//findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key)).setOnPreferenceClickListener(ringtoneClickListener);
@@ -325,6 +389,12 @@ public class Preferences extends AppCompatActivity {
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
 			findPreference(getResources().getString(R.string.preference_server_downloadmessages_key)).setOnPreferenceClickListener(syncMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener(themeChangeListener);
+			{
+				EditTextPreference fallbackServerPref = (EditTextPreference) findPreference(getResources().getString(R.string.preference_server_serverfallback_key));
+				fallbackServerPref.setOnPreferenceChangeListener(fallbackServerChangeListener);
+				String text = fallbackServerPref.getText();
+				fallbackServerPref.setSummary(text == null || text.isEmpty() ? getResources().getString(R.string.preference_server_serverfallback_description) : text);
+			}
 		}
 		
 		@Override
@@ -450,6 +520,8 @@ public class Preferences extends AppCompatActivity {
 				// Create a new instance of TimePreferenceDialogFragment with the key of the related
 				// Preference
 				dialogFragment = RingtonePreferenceDialogFragmentCompat.newInstance(preference.getKey());
+			} else if(preference instanceof HostnameEditTextPreference) {
+				dialogFragment = HostnameEditTextPreference.HostnameEditTextPreferenceDialog.newInstance(preference.getKey());
 			}
 			
 			// If it was one of our custom Preferences, show its dialog
@@ -889,6 +961,40 @@ public class Preferences extends AppCompatActivity {
 				}
 			}
 		}
+		
+		@Override
+		public Fragment getCallbackFragment() {
+			return this;
+		}
+		
+		@Override
+		public boolean onPreferenceStartScreen(PreferenceFragmentCompat preferenceFragmentCompat, PreferenceScreen preferenceScreen) {
+			FragmentTransaction ft = getActivity().getSupportFragmentManager().beginTransaction();
+			MyPreferenceFragment fragment = new MyPreferenceFragment();
+			Bundle args = new Bundle();
+			args.putString(PreferenceFragmentCompat.ARG_PREFERENCE_ROOT, preferenceScreen.getKey());
+			fragment.setArguments(args);
+			ft.add(R.id.container, fragment, preferenceScreen.getKey());
+			ft.addToBackStack(preferenceScreen.getKey());
+			ft.commit();
+			return true;
+		}
+		
+		public static class MyPreferenceFragment extends AppPreferenceFragment {
+			@Override
+			public void onCreatePreferences(Bundle bundle, String rootKey) {
+				setPreferencesFromResource(R.xml.preferences, rootKey);
+			}
+		}
+		
+		public static abstract class AppPreferenceFragment extends PreferenceFragmentCompat {
+			@Override
+			public void onViewCreated(View view, Bundle savedInstanceState) {
+				super.onViewCreated(view, savedInstanceState);
+				
+				view.setBackgroundColor(Constants.resolveColorAttr(getContext(), android.R.attr.colorBackground));
+			}
+		}
 	}
 	
 	static boolean checkPreferenceAdvancedColor(Context context) {
@@ -897,5 +1003,10 @@ public class Preferences extends AppCompatActivity {
 	
 	static boolean checkPreferenceShowReadReceipts(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_showreadreceipts_key), true);
+	}
+	
+	static String getPreferenceFallbackServer(Context context) {
+		String value = PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_server_serverfallback_key), null);
+		return value != null && value.isEmpty() ? null : value;
 	}
 }

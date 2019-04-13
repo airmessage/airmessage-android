@@ -149,6 +149,7 @@ public class ConnectionService extends Service {
 	
 	//Creating the connection values
 	static String hostname = null;
+	static String hostnameFallback = null;
 	static String password = null;
 	private ConnectionManager currentConnectionManager = null;
 	static int lastConnectionResult = -1;
@@ -314,7 +315,7 @@ public class ConnectionService extends Service {
 		reconnectPendingIntent = PendingIntent.getBroadcast(this, 1, new Intent(BCReconnectTimer), PendingIntent.FLAG_UPDATE_CURRENT);
 		
 		//Starting the service as a foreground service (if enabled in the preferences)
-		if(foregroundServiceRequested()) startForeground(-1, getBackgroundNotification(false));
+		if(foregroundServiceRequested()) startForeground(-1, getBackgroundNotification(false, false));
 	}
 	
 	@Override
@@ -431,6 +432,7 @@ public class ConnectionService extends Service {
 			//Retrieving the data from the shared preferences
 			SharedPreferences sharedPrefs = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
 			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null);
+			hostnameFallback = Preferences.getPreferenceFallbackServer(this);
 			password = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, null);
 		}
 		
@@ -450,7 +452,7 @@ public class ConnectionService extends Service {
 		
 		if(result) {
 			//Updating the notification
-			postConnectedNotification(false);
+			postConnectedNotification(false, false);
 			
 			//Notifying the connection listeners
 			broadcastState(stateConnecting, 0, launchID);
@@ -474,11 +476,11 @@ public class ConnectionService extends Service {
 		connect(getNextLaunchID());
 	}
 	
-	private void postConnectedNotification(boolean isConnected) {
+	private void postConnectedNotification(boolean isConnected, boolean isFallback) {
 		if(isConnected && !foregroundServiceRequested()) return;
 		
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(notificationID, getBackgroundNotification(isConnected));
+		notificationManager.notify(notificationID, getBackgroundNotification(isConnected, isFallback));
 	}
 	
 	private void postDisconnectedNotification(boolean silent) {
@@ -513,11 +515,11 @@ public class ConnectionService extends Service {
 		}, 1);
 	} */
 	
-	private Notification getBackgroundNotification(boolean isConnected) {
+	private Notification getBackgroundNotification(boolean isConnected, boolean isFallback) {
 		//Building the notification
 		NotificationCompat.Builder builder = new NotificationCompat.Builder(this, MainApplication.notificationChannelStatus)
 				.setSmallIcon(R.drawable.push)
-				.setContentTitle(isConnected ? getResources().getString(R.string.message_connection_connected) : getResources().getString(R.string.progress_connectingtoserver))
+				.setContentTitle(getResources().getString(isConnected ? (isFallback ? R.string.message_connection_connectedfallback : R.string.message_connection_connected) : R.string.progress_connectingtoserver))
 				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
 				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT));
 		
@@ -861,6 +863,7 @@ public class ConnectionService extends Service {
 		private ConnectionThread connectionThread = null;
 		private int currentState = stateDisconnected;
 		
+		private static final int socketTimeout = 1000 * 10; //10 seconds
 		private static final long handshakeExpiryTime = 1000 * 10; //10 seconds
 		private final Handler handler = new Handler();
 		
@@ -896,11 +899,25 @@ public class ConnectionService extends Service {
 				port = Integer.parseInt(targetDetails[1]);
 			}
 			
+			String cleanHostnameFallback = null;
+			int portFallback = -1;
+			
+			if(hostnameFallback != null) {
+				cleanHostnameFallback = hostnameFallback;
+				portFallback = Constants.defaultPort;
+				
+				if(regExValidPort.matcher(cleanHostnameFallback).find()) {
+					String[] targetDetails = hostnameFallback.split(":");
+					cleanHostnameFallback = targetDetails[0];
+					portFallback = Integer.parseInt(targetDetails[1]);
+				}
+			}
+			
 			//Setting the state as connecting
 			currentState = stateConnecting;
 			
 			//Starting the connection
-			connectionThread = new ConnectionThread(cleanHostname, port, reconnectionRequest);
+			connectionThread = new ConnectionThread(cleanHostname, port, cleanHostnameFallback, portFallback, reconnectionRequest);
 			connectionThread.start();
 			
 			//Returning true
@@ -1045,7 +1062,7 @@ public class ConnectionService extends Service {
 							//Checking if a connection existed for reconnection and the preference is enabled
 							if(flagDropReconnect/* && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)*/) {
 								//Updating the notification
-								postConnectedNotification(false);
+								postConnectedNotification(false, false);
 								
 								//Notifying the connection listeners
 								broadcastState(stateConnecting, 0, launchID);
@@ -1114,7 +1131,7 @@ public class ConnectionService extends Service {
 			broadcastState(stateConnected, -1, launchID);
 			
 			//Updating the notification
-			if(foregroundServiceRequested()) postConnectedNotification(true);
+			if(foregroundServiceRequested()) postConnectedNotification(true, connectionThread.isUsingFallback());
 			else clearNotification();
 			
 			//Scheduling the ping
@@ -1189,6 +1206,8 @@ public class ConnectionService extends Service {
 			//Creating the reference connection values
 			private final String hostname;
 			private final int port;
+			private final String hostnameFallback;
+			private final int portFallback;
 			private final boolean reconnectionRequest;
 			
 			private Socket socket;
@@ -1196,9 +1215,13 @@ public class ConnectionService extends Service {
 			private DataOutputStream outputStream;
 			private WriterThread writerThread = null;
 			
-			ConnectionThread(String hostname, int port, boolean reconnectionRequest) {
+			private boolean usingFallback;
+			
+			ConnectionThread(String hostname, int port, String hostnameFallback, int portFallback, boolean reconnectionRequest) {
 				this.hostname = hostname;
 				this.port = port;
+				this.hostnameFallback = hostnameFallback;
+				this.portFallback = portFallback;
 				this.reconnectionRequest = reconnectionRequest;
 			}
 			
@@ -1224,8 +1247,27 @@ public class ConnectionService extends Service {
 							//Attempting another connection
 							success = true;
 							try {
-								socket = new Socket();
-								socket.connect(new InetSocketAddress(hostname, port), 10 * 1000);
+								if(hostnameFallback != null) {
+									try {
+										//Connecting to the primary server
+										socket = new Socket();
+										socket.connect(new InetSocketAddress(hostname, port), socketTimeout);
+										usingFallback = false;
+									} catch(IOException exception) {
+										//Printing the stack trace
+										exception.printStackTrace();
+										
+										//Connecting to the fallback server
+										socket = new Socket();
+										socket.connect(new InetSocketAddress(hostnameFallback, portFallback), socketTimeout);
+										usingFallback = true;
+									}
+								} else {
+									//Connecting to the primary server
+									socket = new Socket();
+									socket.connect(new InetSocketAddress(hostname, port), socketTimeout);
+									usingFallback = false;
+								}
 							} catch(SocketException | SocketTimeoutException exception) {
 								//Printing the stack trace
 								exception.printStackTrace();
@@ -1237,9 +1279,27 @@ public class ConnectionService extends Service {
 							}
 						}
 					} else {
-						//Starting a regular connection
-						socket = new Socket();
-						socket.connect(new InetSocketAddress(hostname, port), 10 * 1000);
+						if(hostnameFallback != null) {
+							try {
+								//Connecting to the primary server
+								socket = new Socket();
+								socket.connect(new InetSocketAddress(hostname, port), socketTimeout);
+								usingFallback = false;
+							} catch(IOException exception) {
+								//Printing the stack trace
+								exception.printStackTrace();
+								
+								//Connecting to the fallback server
+								socket = new Socket();
+								socket.connect(new InetSocketAddress(hostnameFallback, portFallback), socketTimeout);
+								usingFallback = true;
+							}
+						} else {
+							//Connecting to the primary server
+							socket = new Socket();
+							socket.connect(new InetSocketAddress(hostname, port), socketTimeout);
+							usingFallback = false;
+						}
 					}
 					
 					//Returning if the thread is interrupted
@@ -1397,6 +1457,10 @@ public class ConnectionService extends Service {
 					//Returning false
 					return false;
 				}
+			}
+			
+			boolean isUsingFallback() {
+				return usingFallback;
 			}
 			
 			private class WriterThread extends Thread {
@@ -3350,7 +3414,7 @@ public class ConnectionService extends Service {
 			} else {
 				conversationExists = false;
 				conversationGUID = null;
-				conversationMembers = conversationInfo.getNormalizedConversationMembersAsArray();
+				conversationMembers = conversationInfo.getConversationMembersAsArray();
 				conversationService = conversationInfo.getService();
 			}
 			conversationID = conversationInfo.getLocalID();
@@ -5636,7 +5700,7 @@ public class ConnectionService extends Service {
 					List<ConversationManager.ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationItems(availableConversation);
 					
 					//Searching for a matching conversation in the database
-					ConversationManager.ConversationInfo clientConversation = DatabaseManager.getInstance().findConversationInfoWithMembers(context, Constants.normalizeAddresses(availableConversation.getConversationMembersAsCollection()), availableConversation.getService(), true);
+					ConversationManager.ConversationInfo clientConversation = DatabaseManager.getInstance().findConversationInfoWithMembers(context, availableConversation.getConversationMembersAsCollection(), availableConversation.getService(), true);
 					
 					//Checking if a client conversation has not been found (the conversation is a new conversation from the server)
 					if(clientConversation == null) {

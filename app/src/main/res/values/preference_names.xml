@@ -54,6 +54,9 @@
     <string name="preferencegroup_server_title">Server</string>
     <string name="preference_server_serverdetails_key" translatable="false">pref_key_server_address</string>
     <string name="preference_server_serverdetails_title">Edit server information</string>
+	<string name="preference_server_serverfallback_key" translatable="false">pref_key_server_fallbackaddress</string>
+	<string name="preference_server_serverfallback_title">Fallback address</string>
+	<string name="preference_server_serverfallback_description">If you are using a router that does not support hairpinning, this can be used as an alternative</string>
 	<string name="preference_server_foregroundservice_key" translatable="false">pref_key_server_foregroundservice</string>
 	<string name="preference_server_foregroundservice_title">Run service in foreground</string>
 	<string name="preference_server_foregroundservice_description">Shows a notification and allows connecting on startup</string>
@@ -69,5 +72,5 @@
 	<string name="preference_server_networkreconnect_title">Network switch reconnect</string>
 	<string name="preference_server_networkreconnect_description">Attempt to reconnect when the device connects to a new network (ex. Wi-Fi to Cellular)</string>
     <string name="preference_server_help_key" translatable="false">pref_key_server_help</string>
-    <string name="preference_server_help_title">View install guide</string>
+    <string name="preference_server_help_title">Visit support site</string>
 </resources>

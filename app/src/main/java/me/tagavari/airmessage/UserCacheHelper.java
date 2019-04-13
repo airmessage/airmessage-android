@@ -76,6 +76,9 @@ class UserCacheHelper {
 			return;
 		}
 		
+		//Normalizing the name
+		name = Constants.normalizeAddress(name);
+		
 		//Checking if there is an entry in the cache
 		UserInfo userInfo = userCache.get(name);
 		
@@ -99,6 +102,9 @@ class UserCacheHelper {
 	UserInfo getUserInfoSync(Context context, String name) {
 		//Returning null if contacts cannot be used
 		if(!MainApplication.canUseContacts(context)) return null;
+		
+		//Normalizing the name
+		name = Constants.normalizeAddress(name);
 		
 		//Checking if there is an entry in the cache
 		UserInfo userInfo = userCache.get(name);
@@ -153,7 +159,7 @@ class UserCacheHelper {
 			//Querying the database
 			Cursor cursor = contentResolver.query(ContactsContract.Data.CONTENT_URI,
 					new String[]{ContactsContract.Contacts.LOOKUP_KEY, ContactsContract.Contacts.DISPLAY_NAME},
-					ContactsContract.CommonDataKinds.Email.ADDRESS + " = ? OR " + ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER + " = ?", new String[]{name, PhoneNumberUtils.normalizeNumber(name)},
+					ContactsContract.CommonDataKinds.Email.ADDRESS + " = ? OR " + ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER + " = ?", new String[]{name, name},
 					null);
 			
 			//Checking if the cursor is invalid

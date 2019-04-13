@@ -4756,6 +4756,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		boolean compareRequestID(String requestID) {
+			if(this.requestID == null) return false;
 			return this.requestID.equals(requestID);
 		}
 		

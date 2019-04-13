@@ -406,7 +406,7 @@ public class NewMessage extends AppCompatActivity {
 		Collections.sort(recipients);
 		
 		//Normalizing the list
-		Constants.normalizeAddresses(recipients);
+		//Constants.normalizeAddresses(recipients);
 		
 		//Returning the recipient list
 		return recipients;
@@ -1023,13 +1023,15 @@ public class NewMessage extends AppCompatActivity {
 		}
 		
 		private char getNameHeader(String name) {
-			if(name.isEmpty()) return '?';
-			return name.charAt(0);
+			if(name == null || name.isEmpty()) return '?';
+			char firstChar = name.charAt(0);
+			if(Character.isDigit(firstChar) || firstChar == '(') return '#';
+			return firstChar;
 		}
 		
 		private boolean stringsHeaderEqual(String string1, String string2) {
-			if(string1.isEmpty()) return string2.isEmpty();
-			return string1.charAt(0) == string2.charAt(0);
+			if(string1 == null || string1.isEmpty()) return string2 == null || string2.isEmpty();
+			return getNameHeader(string1) == getNameHeader(string2);
 		}
 		
 		void onListUpdated() {
@@ -1459,7 +1461,8 @@ public class NewMessage extends AppCompatActivity {
 					//Scanning the loaded conversations for a matching one
 					for(ConversationManager.ConversationInfo conversationInfo : conversations) {
 						//Getting the conversation members
-						List<String> members = Constants.normalizeAddresses(conversationInfo.getConversationMembersAsCollection());
+						//List<String> members = Constants.normalizeAddresses(conversationInfo.getConversationMembersAsCollection());
+						List<String> members = conversationInfo.getConversationMembersAsCollection();
 						
 						//Skipping the conversation if its members do not match
 						if(participants.size() != members.size() || !participants.containsAll(members)) continue;

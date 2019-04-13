@@ -17,6 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.provider.OpenableColumns;
+import android.telephony.PhoneNumberUtils;
 import android.text.Spannable;
 import android.text.Spanned;
 import android.text.format.DateUtils;
@@ -52,6 +53,7 @@ import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -76,6 +78,8 @@ public class Constants {
 	//static final int intentDisconnectService = 6;
 	
 	public static final String defaultMIMEType = "application/octet-stream";
+	
+	public static final Pattern regExValidAddress = Pattern.compile("^(((www\\.)?+[a-zA-Z0-9.\\-_]+(\\.[a-zA-Z]{2,})+)|(\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b))(/[a-zA-Z0-9_\\-\\s./?%#&=]*)?(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))?$");
 	
 	static final String intentParamTargetID = "targetID";
 	static final String intentParamGuid = "guid";
@@ -151,7 +155,8 @@ public class Constants {
 	static final int groupActionJoin = 1;
 	static final int groupActionLeave = 2;
 	
-	static final Uri serverSetupAddress = Uri.parse("http://airmessage.org/guide");
+	static final Uri serverSetupAddress = Uri.parse("https://airmessage.org/guide");
+	static final Uri helpAddress = Uri.parse("https://airmessage.org/help");
 	static final Uri serverUpdateAddress = Uri.parse("https://airmessage.org/serverupdate");
 	static final Uri communityAddress = Uri.parse("https://reddit.com/r/AirMessage");
 	static final String feedbackEmail = "hello@airmessage.org";
@@ -628,10 +633,14 @@ public class Constants {
 		//Returning the E-Mail if the address is one (can't be normalized)
 		if(address.contains("@")) return address;
 		
-		//Returning the stripped phone number the address it is one
-		if(address.matches("^\\+?[ \\d().-]+$")) return address.replaceAll("[^\\d+]", "");
+		//Returning the stripped phone number if the address is one
+		//if(address.matches("^\\+?[ \\d().-]+$")) return address.replaceAll("[^\\d+]", "");
+		if(PhoneNumberUtils.isWellFormedSmsAddress(address)) {
+			String formattedNumber = PhoneNumberUtils.formatNumberToE164(address, "US");
+			if(formattedNumber != null) return formattedNumber;
+		}
 		
-		//Returning the address (unknown type)
+		//Returning the address directly (unknown type)
 		return address;
 	}
 	
@@ -1085,6 +1094,18 @@ public class Constants {
 			this.item1 = item1;
 			this.item2 = item2;
 			this.item3 = item3;
+		}
+	}
+	
+	public static void printViewHierarchy(ViewGroup vg, String prefix) {
+		for (int i = 0; i < vg.getChildCount(); i++) {
+			View v = vg.getChildAt(i);
+			String desc = prefix + " | " + "[" + i + "/" + (vg.getChildCount()-1) + "] "+ v.getClass().getSimpleName() + " " + v.getId();
+			Log.v("x", desc);
+			
+			if (v instanceof ViewGroup) {
+				printViewHierarchy((ViewGroup)v, desc);
+			}
 		}
 	}
 }

@@ -79,15 +79,15 @@
 	<string name="message_messageerror_desc_air_invalidcontent">選択されたコンテンツは利用できませんでした</string>
 	<string name="message_messageerror_desc_air_filetoolarge">選択したコンテンツは大きすぎて送信できません</string>
 	<string name="message_messageerror_desc_air_io">洗濯したコンテンツを読み込めませんでした</string>
-	<string name="message_messageerror_desc_air_network">AirMessageサーバに接続できませんでした</string>
+	<string name="message_messageerror_desc_air_network">AirMessageサーバーに接続できませんでした</string>
 	<string name="message_messageerror_desc_air_external">外部エラーが発生しました</string>
 	<string name="message_messageerror_desc_air_expired">要求がタイムアウトしました</string>
 	<string name="message_messageerror_desc_air_references">内部エラーが発生しました（参照が失われました）</string>
 	<string name="message_messageerror_desc_air_internal">内部エラーが発生しました</string>
-	<string name="message_messageerror_desc_apple_network">iMessageサーバに接続できませんでした</string>
+	<string name="message_messageerror_desc_apple_network">iMessageサーバーに接続できませんでした</string>
 	<string name="message_messageerror_desc_apple_unregistered">%sがiMessageに登録されていません。</string>
 	<string name="message_syncerror">同期できませんでした</string>
-	<string name="message_connectionerrror">サーバに接続できません</string>
+	<string name="message_connectionerrror">サーバーに接続できません</string>
 	<string name="message_permissionrejected">許可要求が拒否されました</string>
 	<string name="message_permissiondetails_contacts_suggestions">暗示を表示のために連絡先へのアクセスを許可してください</string>
 	<string name="message_permissiondetails_contacts_listing">名前と写真を表示のために連絡先へのアクセスを許可してください</string>
@@ -96,14 +96,14 @@
 	<string name="message_serverstatus_limitedfunctionality">%s。機能が制限されています。</string>
 	<string name="message_serverstatus_internalexception">内部エラーが発生しました</string>
 	<string name="message_serverstatus_badrequest">接続互換性エラーが発生しました</string>
-	<string name="message_serverstatus_noconnection">サーバから切断されています</string>
+	<string name="message_serverstatus_noconnection">サーバーから切断されています</string>
 	<string name="message_serverstatus_clientoutdated">アプリが古くなっています</string>
-	<string name="message_serverstatus_serveroutdated">サーバが古くなっています</string>
-	<string name="message_serverstatus_authfail">サーバにログインできませんでした</string>
+	<string name="message_serverstatus_serveroutdated">サーバーが古くなっています</string>
+	<string name="message_serverstatus_authfail">サーバーにログインできませんでした</string>
 	<string name="message_serverstatus_unknown">不明なエラーが発生しました</string>
-	<string name="message_serverupdate">サーバのアップデートが入手可能です</string>
+	<string name="message_serverupdate">サーバーのアップデートが入手可能です</string>
 	<string name="message_searchnoresults">結果がありません</string>
-	<string name="message_eventtype_chatrename_change">%1$さんは会話に「%2$s」という名前を付けました</string>
+	<string name="message_eventtype_chatrename_change">%1$sさんは会話に「%2$s」という名前を付けました</string>
 	<string name="message_eventtype_chatrename_change_you">あなたは会話に「%s」という名前を付けました</string>
 	<string name="message_eventtype_chatrename_remove">%sさんは会話の名前を削除しました</string>
 	<string name="message_eventtype_chatrename_remove_you">あなたは会話の名前を削除しました</string>
@@ -118,7 +118,7 @@
 	<string name="message_eventtype_kick_you_agent">あなたは%sさんを会話から外しました</string>
 	<string name="message_eventtype_kick_you_object">%sさんは会話からあなたを外しました</string>
 	<string name="message_eventtype_unknown">未知の出来事</string>
-	<string name="message_setup_connect_address">サーバアドレス</string>
+	<string name="message_setup_connect_address">サーバーアドレス</string>
 	<string name="message_setup_connect_noserver">サーバーありませんか？</string>
 	<string name="message_setup_connect_serverguidelink">インストールガイドを見てください</string>
 	<string name="message_setup_connect_connectionerror">接続できませんでした</string>
@@ -140,8 +140,9 @@
 	<string name="message_confirm_unblock">%sのブロックを解除しますか？</string>
 	<string name="message_shareable_text">%1$sの%2$s、%3$sは「%4$s」と送信しました</string>
 	<string name="message_shareable_text_you">%1$sの%2$s、私は「%3$s」と送信しますた</string>
-	<string name="message_connection_connected">サーバに接続しています</string>
-	<string name="message_connection_disconnected">サーバから切断されています</string>
+	<string name="message_connection_connected">サーバーに接続しています</string>
+	<string name="message_connection_connectedfallback">代替経由でサーバーに接続しています</string>
+	<string name="message_connection_disconnected">サーバーから切断されています</string>
 	<string name="message_conversation_archived">会話をアーカイブしました</string>
 	<string name="message_conversation_unarchived">会話のアーカイブを解除しました</string>
 	<string name="message_conversation_deleted">会話を削除しました</string>
@@ -170,7 +171,7 @@
 	<string name="progress_loadingmessages">メッセージをロード中</string>
 	<string name="progress_loading">ロード中</string>
 	<string name="progress_sync">メッセージを取得中</string>
-	<string name="progress_connectingtoserver">サーバに接続中</string>
+	<string name="progress_connectingtoserver">サーバーに接続中</string>
 	<string name="time_now">たった今</string>
 	<string name="time_minutes">%d分前</string>
 	<string name="time_today">今日</string>
@@ -179,7 +180,7 @@
 	<string name="imperative_selectfile">ファイルの選択</string>
 	<string name="imperative_userinput">名前、電話番号、メールのいずれかを入力</string>
 	<string name="imperative_recording_instructions">長押しして録音</string>
-	<string name="imperative_tapopenapp">タップしてアプリを開く</string>
+	<string name="imperative_tapopenapp">タップしてアプリを開きます</string>
 	<string name="imperative_selectdestination">相手の連絡先の選択</string>
 	<string name="imperative_selectconversation">会話の選択</string>
 	<string name="imperative_mainsearch">メッセージを検索</string>
@@ -220,14 +221,14 @@
 	<string name="preference_storage_autodownload_desc">添付ファイルが到着したら自動的にダウンロードします</string>
 	<string name="preference_storage_deleteattachments_title">ダウンロードした添付ファイルを削除</string>
 	<string name="preference_storage_deleteattachments_desc">添付ファイルはいつでも再度ダウンロードできます</string>
-	<string name="preferencegroup_server_title">サーバ</string>
-	<string name="preference_server_serverdetails_title">サーバの接続の設定を変更</string>
+	<string name="preferencegroup_server_title">サーバー</string>
+	<string name="preference_server_serverdetails_title">サーバーの接続の設定を変更</string>
 	<string name="preference_server_downloadmessages_title">メッセージを同期</string>
-	<string name="preference_server_downloadmessages_desc">サーバからこのデバイスにすべてのメッセージをダウロード</string>
+	<string name="preference_server_downloadmessages_desc">サーバーからこのデバイスにすべてのメッセージをダウロード</string>
 	<string name="preference_server_connectionboot_title">起動時に自動的に接続</string>
 	<string name="preference_server_networkreconnect_title">ネットワークを切り替える時に再接続</string>
 	<string name="preference_server_networkreconnect_description">デバイスが新しいネットワークに接続した時に再接続を試みます（例えば：Wi-FiからCellularへ）</string>
-	<string name="preference_server_help_title">インストールガイドを見る</string>
+	<string name="preference_server_help_title">サポートサイトにアクセス</string>
 	<string name="message_messageerror_desc_apple_unregistered_generic">受信者がiMessageに登録されていません</string>
 	<string name="preference_server_dropreconnect_description">接続を切断された直後に再接続を試みます</string>
 	<string name="preference_server_dropreconnect_title">接続を切断の時に再接続</string>
@@ -256,13 +257,13 @@
 	<string name="message_draft_limitreached">下書きファイルの制限です</string>
 	<string name="imperative_recording_cancel">スライドしてキャンセル</string>
 	<string name="notificationchannel_message_desc">着信のメッセージの通知</string>
-	<string name="notificationchannel_status_desc">サーバ接続などの状態通知</string>
+	<string name="notificationchannel_status_desc">サーバー接続などの状態通知</string>
 	<string name="notificationchannelimportance_1">重要度の低い</string>
 	<string name="notificationchannelimportance_2">重要度中</string>
 	<string name="notificationchannelimportance_3">最重要度</string>
 	<string name="notificationchannelimportance_4">緊急の重要度</string>
 	<string name="preference_appearance_location_description">現在地を使用して日の出と入りの時間を検出してもっと正確ナイトモードを提供</string>
-	<string name="servicedesc_connectionservice">AirMessageサーバの接続を作成し維持してメッセージを送受信します</string>
+	<string name="servicedesc_connectionservice">AirMessageサーバーの接続を作成し維持してメッセージを送受信します</string>
 	<string name="message_messageeffect_invisibleink">見えないインクのメッセージ</string>
 	<string name="message_setup_sync_description">同じコンピューとAppleアカウントに接続の以外、スキップしないでください。\n\n古い会話を保持すると、新しい会話と結合したり機能が失われたりする可能性があります。</string>
 	<string name="dialog_feedback_message">報告するべきバグし、提案したい機能し、何か言いたい事がありますか？下記のリンクを使用して私達に連絡するか他の人と話し合ってください。</string>
@@ -316,7 +317,7 @@
 		<item>いつも暗い</item>
 	</string-array>
 	<string name="action_copytoclipboard">コピー</string>
-	<string name="message_messageerror_desc_air_unauthorized">AirMessageサーバはメッセージを送信許可がありません</string>
+	<string name="message_messageerror_desc_air_unauthorized">AirMessageサーバーはメッセージを送信許可がありません</string>
 	<string name="message_messageerror_desc_air_badrequest">メッセージの処理中にエラーが発生しました</string>
 	<string name="message_messageerror_desc_air_noconversation">会話の入手可能ではありません</string>
 	<string name="message_messageerror_desc_air_serverexpired">メッセージは正しく配信できませんでした</string>
@@ -333,4 +334,6 @@
 	<string name="message_attachmentreqerror_server_notsaved">添付ファイルが見つかりません</string>
 	<string name="message_attachmentreqerror_server_unreadable">添付ファイルが読められませんでした</string>
 	<string name="message_attachmentreqerror_server_io">外部エラー（I/O）</string>
+	<string name="preference_server_serverfallback_title">代替アドレス</string>
+	<string name="preference_server_serverfallback_description">NATループバックをサポートしていないルーターがある場合は、代替アドレスを入力してください</string>
 </resources>

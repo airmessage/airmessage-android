@@ -1855,7 +1855,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Cursor memberCursor = database.query(Contract.MemberEntry.TABLE_NAME, new String[]{Contract.MemberEntry.COLUMN_NAME_MEMBER}, Contract.MemberEntry.COLUMN_NAME_CHAT + "=?", new String[]{Long.toString(conversationID)}, null, null, null);
 			while(memberCursor.moveToNext()) conversationMembers.add(memberCursor.getString(memberCursor.getColumnIndexOrThrow(Contract.MemberEntry.COLUMN_NAME_MEMBER)));
 			memberCursor.close();
-			Constants.normalizeAddresses(conversationMembers);
+			//Constants.normalizeAddresses(conversationMembers);
 			
 			//Checking if the members match
 			if(members.size() == conversationMembers.size() && members.containsAll(conversationMembers)) {
