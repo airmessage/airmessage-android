@@ -6,7 +6,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.ActivityManager;
 import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -65,8 +64,10 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
@@ -81,6 +82,8 @@ import com.crashlytics.android.Crashlytics;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
+import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
 
 import java.io.File;
 import java.io.IOException;
@@ -118,8 +121,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView;
-import java9.util.function.Consumer;
-import me.tagavari.airmessage.common.SharedValues;
+import androidx.core.util.Consumer;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.VisualizerView;
@@ -425,7 +427,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//updateSendButton();
 				
 				break;
-			case ActivityViewModel.messagesStateReady:
+			case ActivityViewModel.messagesStateReady: {
 				labelLoading.setVisibility(View.GONE);
 				groupLoadFail.setVisibility(View.GONE);
 				
@@ -483,8 +485,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 				
 				//Restoring the draft message
-				if(messageInputField.getText().length() == 0)
-					messageInputField.setText(viewModel.conversationInfo.getDraftMessage());
+				if(messageInputField.getText().length() == 0) messageInputField.setText(viewModel.conversationInfo.getDraftMessage());
 				
 				/* //Finding the latest send effect
 				for(int i = viewModel.conversationItemList.size() - 1; i >= 0 && i >= viewModel.conversationItemList.size() - viewModel.conversationInfo.getUnreadMessageCount(); i--) {
@@ -512,19 +513,22 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Setting the last message count
 				viewModel.lastUnreadCount = viewModel.conversationInfo.getUnreadMessageCount();
-			
-			{
-				//Getting the layout manager
-				LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
-				int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
 				
-				//Showing the FAB if the user has scrolled more than 3 items
-				if(itemsScrolledFromBottom > quickScrollFABThreshold) {
-					bottomFAB.show();
-					restoreUnreadIndicator();
+				{
+					//Getting the layout manager
+					LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
+					int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
+					
+					//Showing the FAB if the user has scrolled more than 3 items
+					if(itemsScrolledFromBottom > quickScrollFABThreshold) {
+						bottomFAB.show();
+						restoreUnreadIndicator();
+					}
 				}
+				
+				//Updating the reply suggestions
+				viewModel.updateSmartReply();
 			}
-			
 			break;
 			case ActivityViewModel.messagesStateFailedConversation:
 				labelLoading.setVisibility(View.GONE);
@@ -743,6 +747,24 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewModel.progressiveLoadInProgress.observe(this, value -> {
 			if(value) onProgressiveLoadStart();
 			else onProgressiveLoadFinish(viewModel.lastProgressiveLoadCount);
+		});
+		viewModel.smartReplyAvailable.observe(this, value -> {
+			//Updating the recycler adapter (to show the reply suggestions)
+			if(value) {
+				if(messageListAdapter.replySuggestionsAvailable) {
+					messageListAdapter.notifyItemChanged(messageListAdapter.getItemCount() - 1);
+				} else {
+					messageListAdapter.replySuggestionsAvailable = true;
+					messageListAdapter.notifyItemInserted(messageListAdapter.getItemCount());
+					getWindow().getDecorView().post(messageListAdapter::scrollToBottom);
+				}
+			}
+			else {
+				if(messageListAdapter.replySuggestionsAvailable) {
+					messageListAdapter.replySuggestionsAvailable = false;
+					messageListAdapter.notifyItemRemoved(messageListAdapter.getItemCount() - 1);
+				}
+			}
 		});
 		
 		/* KeyboardVisibilityEvent.setEventListener(this, isOpen -> {
@@ -2521,6 +2543,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	class MessageListRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 		//Creating the reference values
 		private static final int itemTypeLoadingBar = -1;
+		private static final int itemTypeReplySuggestions = -2;
 		
 		//Creating the values
 		private ArrayList<ConversationManager.ConversationItem> conversationItems = null;
@@ -2529,6 +2552,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the pools
 		private final SparseArray<Pools.SimplePool<? extends RecyclerView.ViewHolder>> componentPoolList = new SparseArray<>();
 		private final PoolSource poolSource = new PoolSource();
+		
+		//Creating the states
+		private boolean replySuggestionsAvailable;
 		
 		MessageListRecyclerAdapter() {
 			//Enabling stable IDs
@@ -2549,6 +2575,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			super.onAttachedToRecyclerView(recyclerView);
 			
 			this.recyclerView = recyclerView;
+			
+			//Getting the reply suggestions available state
+			replySuggestionsAvailable = viewModel.isSmartReplyAvailable();
 		}
 		
 		@Override
@@ -2565,6 +2594,8 @@ public class Messaging extends AppCompatCompositeActivity {
 					((ProgressBar) loadingView.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(getConversationUIColor()));
 					return new LoadingViewHolder(loadingView);
 				}
+				case itemTypeReplySuggestions:
+					return new ReplySuggestionsViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_replysuggestions, parent, false));
 				default:
 					throw new IllegalArgumentException("Invalid view type received: " + viewType);
 			}
@@ -2582,37 +2613,44 @@ public class Messaging extends AppCompatCompositeActivity {
 		@Override
 		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
 			//Returning if there are no items or the item is the loading spinner
-			if(conversationItems == null || getItemViewType(position) == itemTypeLoadingBar) return;
+			int itemType = getItemViewType(position);
+			if(conversationItems == null || itemType == itemTypeLoadingBar) return;
 			
-			//Getting the item
-			ConversationManager.ConversationItem conversationItem;
-			if(viewModel.isProgressiveLoadInProgress())
-				conversationItem = conversationItems.get(position - 1);
-			else conversationItem = conversationItems.get(position);
-			
-			//Checking if the item is a message
-			boolean isMessage = false;
-			if(conversationItem instanceof ConversationManager.MessageInfo) {
-				((ConversationManager.MessageInfo.ViewHolder) holder).setPoolSource(poolSource);
-				isMessage = true;
-			}
-			
-			//Creating the view
-			conversationItem.bindView(holder, Messaging.this);
-			
-			//Setting the view source
-			conversationItem.setViewHolderSource(new Constants.ViewHolderSourceImpl<RecyclerView.ViewHolder>(recyclerView, conversationItem.getLocalID()));
-			
-			//Checking if the item is a message
-			if(isMessage) {
-				ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
-				//Playing the message's effect if it hasn't been viewed yet
-				if(messageInfo.getSendStyle() != null && !messageInfo.getSendStyleViewed()) {
-					messageInfo.setSendStyleViewed(true);
-					messageInfo.playEffect((ConversationManager.MessageInfo.ViewHolder) holder);
+			//Checking if the item is the suggestions
+			if(itemType == itemTypeReplySuggestions) {
+				ReplySuggestionsViewHolder viewHolder = (ReplySuggestionsViewHolder) holder;
+				viewHolder.setSuggestions(Messaging.this, viewModel, viewModel.lastSmartReplyResult);
+				viewHolder.resetScroll();
+			} else {
+				//Getting the item
+				ConversationManager.ConversationItem conversationItem;
+				if(viewModel.isProgressiveLoadInProgress()) conversationItem = conversationItems.get(position - 1);
+				else conversationItem = conversationItems.get(position);
+				
+				//Checking if the item is a message
+				boolean isMessage = false;
+				if(conversationItem instanceof ConversationManager.MessageInfo) {
+					((ConversationManager.MessageInfo.ViewHolder) holder).setPoolSource(poolSource);
+					isMessage = true;
+				}
+				
+				//Creating the view
+				conversationItem.bindView(holder, Messaging.this);
+				
+				//Setting the view source
+				conversationItem.setViewHolderSource(new Constants.ViewHolderSourceImpl<RecyclerView.ViewHolder>(recyclerView, conversationItem.getLocalID()));
+				
+				//Checking if the item is a message
+				if(isMessage) {
+					ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
+					//Playing the message's effect if it hasn't been viewed yet
+					if(messageInfo.getSendStyle() != null && !messageInfo.getSendStyleViewed()) {
+						messageInfo.setSendStyleViewed(true);
+						messageInfo.playEffect((ConversationManager.MessageInfo.ViewHolder) holder);
 					/* if(Constants.validateScreenEffect(messageInfo.getSendStyle())) playScreenEffect(messageInfo.getSendStyle());
 					else messageInfo.playEffect(); */
-					new TaskMarkMessageSendStyleViewed().execute(messageInfo);
+						new TaskMarkMessageSendStyleViewed().execute(messageInfo);
+					}
 				}
 			}
 		}
@@ -2628,6 +2666,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(conversationItems == null) return 0;
 			int size = conversationItems.size();
 			if(viewModel.isProgressiveLoadInProgress()) size += 1;
+			if(viewModel.isSmartReplyAvailable()) size += 1;
 			return size;
 		}
 		
@@ -2635,18 +2674,24 @@ public class Messaging extends AppCompatCompositeActivity {
 		public int getItemViewType(int position) {
 			if(conversationItems == null) return 0;
 			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
+			if(isViewReplySuggestions(position)) return itemTypeReplySuggestions;
 			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getItemViewType();
 		}
 		
 		@Override
 		public long getItemId(int position) {
 			if(conversationItems == null) return 0;
-			if(isViewLoadingSpinner(position)) return -1;
+			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
+			if(isViewReplySuggestions(position)) return itemTypeReplySuggestions;
 			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getLocalID();
 		}
 		
 		private boolean isViewLoadingSpinner(int position) {
 			return viewModel.isProgressiveLoadInProgress() && position == 0;
+		}
+		
+		private boolean isViewReplySuggestions(int position) {
+			return viewModel.isSmartReplyAvailable() && position + 1 == getItemCount();
 		}
 		
 		final class PoolSource {
@@ -3985,6 +4030,66 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
+	static class ReplySuggestionsViewHolder extends RecyclerView.ViewHolder {
+		HorizontalScrollView scrollView;
+		LinearLayout container;
+		
+		ReplySuggestionsViewHolder(View itemView) {
+			super(itemView);
+			scrollView = (HorizontalScrollView) itemView;
+			container = itemView.findViewById(R.id.container);
+		}
+		
+		void resetScroll() {
+			scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_RIGHT));
+		}
+		
+		void setSuggestions(Context context, ActivityViewModel viewModel, String[] suggestions) {
+			//Gathering active views
+			List<TextView> childViewList = new ArrayList<>(suggestions.length);
+			for(int i = 0; i < container.getChildCount(); i++) {
+				TextView childView = (TextView) container.getChildAt(i);
+				if(i < suggestions.length) {
+					childView.setVisibility(View.VISIBLE);
+					childViewList.add(childView);
+				} else childView.setVisibility(View.GONE);
+			}
+			
+			//Adding more views if necessary
+			while(childViewList.size() < suggestions.length) {
+				TextView item = (TextView) LayoutInflater.from(context).inflate(R.layout.listitem_replysuggestions_item, container, false);
+				if(Preferences.checkPreferenceAdvancedColor(context)) item.setTextColor(viewModel.conversationInfo.getConversationColor());
+				container.addView(item);
+				childViewList.add(item);
+			}
+			
+			//Creating a reference to the view model
+			WeakReference<ActivityViewModel> viewModelReference = new WeakReference<>(viewModel);
+			
+			//Setting the text
+			for(int i = 0; i < suggestions.length; i++) {
+				TextView childView = childViewList.get(i);
+				String suggestionText = suggestions[i];
+				
+				childView.setText(suggestionText);
+				childView.setOnClickListener(view -> {
+					//Getting the view model
+					ActivityViewModel newViewModel = viewModelReference.get();
+					if(newViewModel == null) return;
+					
+					//Clearing the suggestions
+					//newViewModel.smartReplyAvailable.setValue(false);
+					
+					//Creating a message
+					ConversationManager.MessageInfo message = new ConversationManager.MessageInfo(-1, -1, null, newViewModel.conversationInfo, null, suggestionText, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+					
+					//Writing the messages to the database
+					new AddGhostMessageTask(newViewModel.getApplication(), new GhostMessageFinishHandler()).execute(message);
+				});
+			}
+		}
+	}
+	
 	public static class SpeedyLinearLayoutManager extends LinearLayoutManager {
 		public SpeedyLinearLayoutManager(Context context) {
 			super(context);
@@ -4037,6 +4142,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final int messagesStateFailedMessages = 4;
 		static final int messagesStateReady = 5;
 		
+		static final int smartReplyStateDisabled = 0;
+		static final int smartReplyStateLoading = 1;
+		static final int smartReplyStateAvailable = 2;
+		
 		static final int attachmentsStateIdle = 0;
 		static final int attachmentsStateLoading = 1;
 		static final int attachmentsStateLoaded = 2;
@@ -4067,6 +4176,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		private final MutableLiveData<Boolean> progressiveLoadInProgress = new MutableLiveData<>();
 		private boolean progressiveLoadReachedLimit = false;
 		private int lastProgressiveLoadCount = -1;
+		
+		private final MutableLiveData<Boolean> smartReplyAvailable = new MutableLiveData<>();
+		private byte smartReplyRequestID = -1;
+		private boolean smartReplyAwaiting = false;
+		private String[] lastSmartReplyResult = null;
 		
 		private long firstSortID = -1;
 		private int firstSortIDOffset = -1;
@@ -4342,6 +4456,11 @@ public class Messaging extends AppCompatCompositeActivity {
 			return value == null ? false : value;
 		}
 		
+		boolean isSmartReplyAvailable() {
+			Boolean value = smartReplyAvailable.getValue();
+			return value == null ? false : value;
+		}
+		
 		void playSound(int id) {
 			switch(id) {
 				case soundMessageIncoming:
@@ -4530,6 +4649,73 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		private void stopRecordingTimer() {
 			recordingTimerHandler.removeCallbacks(recordingTimerHandlerRunnable);
+		}
+		
+		private void updateSmartReply() {
+			//Returning if the conversation has no messages
+			if(conversationItemList == null || conversationItemList.isEmpty()) return;
+			
+			//Finding the last message
+			ConversationManager.MessageInfo lastMessage = null;
+			for(int i  = conversationItemList.size() - 1; i >= 0; i--) {
+				ConversationManager.ConversationItem item = conversationItemList.get(i);
+				if(!(item instanceof ConversationManager.MessageInfo)) continue;
+				lastMessage = (ConversationManager.MessageInfo) item;
+				break;
+			}
+			
+			//Checking if the last message isn't valid
+			if(lastMessage == null || lastMessage.isOutgoing()) {
+				//Cancelling the smart reply
+				smartReplyAvailable.setValue(false);
+				smartReplyAwaiting = false;
+				
+				return;
+			}
+			
+			//Collecting the last 10 messages
+			List<ConversationManager.MessageInfo> messageHistory = new ArrayList<>(Constants.smartReplyHistoryLength);
+			for(int i  = conversationItemList.size() - 1; i >= 0; i--) {
+				ConversationManager.ConversationItem item = conversationItemList.get(i);
+				if(!(item instanceof ConversationManager.MessageInfo)) continue;
+				messageHistory.add((ConversationManager.MessageInfo) item);
+				
+				if(messageHistory.size() == Constants.smartReplyHistoryLength) break;
+			}
+			
+			//Sorting the list by date
+			Collections.sort(messageHistory, (item1, item2) -> Long.compare(item1.getDate(), item2.getDate()));
+			
+			//Starting the smart reply request
+			smartReplyAwaiting = true;
+			short requestID = ++smartReplyRequestID;
+			FirebaseNaturalLanguage.getInstance().getSmartReply().suggestReplies(Constants.messageToFirebaseMessageList(messageHistory)).addOnSuccessListener(result -> {
+				//Ignoring if the request ID doesn't line up
+				if(smartReplyRequestID != requestID) return;
+				
+				if(result.getStatus() != SmartReplySuggestionResult.STATUS_SUCCESS) {
+					//Cancelling the smart reply request
+					smartReplyAvailable.setValue(false);
+					smartReplyAwaiting = false;
+				} else {
+					//Mapping the suggestions to a string array and returning the result
+					String[] suggestions = new String[result.getSuggestions().size()];
+					for(int i = 0; i < suggestions.length; i++) suggestions[i] = result.getSuggestions().get(i).getText();
+					
+					//Cancelling the smart reply
+					lastSmartReplyResult = suggestions;
+					smartReplyAvailable.setValue(true);
+					smartReplyAwaiting = false;
+				}
+				
+			}).addOnFailureListener(exception -> {
+				//Ignoring if the request ID doesn't line up
+				if(smartReplyRequestID != requestID) return;
+				
+				//Cancelling the smart reply request
+				smartReplyAvailable.setValue(false);
+				smartReplyAwaiting = false;
+			});
 		}
 		
 		void indexAttachmentsGallery(AttachmentsLoadCallbacks listener, AttachmentsRecyclerAdapter<?> adapter) {
@@ -5116,6 +5302,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Playing sounds
 			if(messageIncoming) activity.viewModel.playSound(ActivityViewModel.soundMessageIncoming);
 			if(messageOutgoing) activity.viewModel.playSound(ActivityViewModel.soundMessageOutgoing);
+			
+			//Updating the reply suggestions
+			activity.viewModel.updateSmartReply();
 		}
 		
 		@Override

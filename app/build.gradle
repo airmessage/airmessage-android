@@ -49,6 +49,9 @@ android {
 	lintOptions {
 		abortOnError false
 	}
+	aaptOptions {
+		noCompress "tflite"
+	}
 	productFlavors {
 	}
 	packagingOptions {
@@ -83,7 +86,6 @@ dependencies {
 	implementation "androidx.lifecycle:lifecycle-extensions:2.0.0"
 
 	//Backports
-	implementation "net.sourceforge.streamsupport:android-retrostreams:1.7.0"
 	implementation "org.lukhnos:nnio:0.2"
 
 	//Layouts and views
@@ -96,6 +98,8 @@ dependencies {
 
 	//Services
 	implementation "com.google.firebase:firebase-core:16.0.8"
+	implementation "com.google.firebase:firebase-ml-natural-language:18.2.0"
+	implementation "com.google.firebase:firebase-ml-natural-language-smart-reply-model:18.0.0"
 	implementation "com.crashlytics.sdk.android:crashlytics:2.9.9"
 
 	//Helper

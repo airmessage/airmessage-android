@@ -35,6 +35,8 @@ import android.widget.TextView;
 import android.widget.Toolbar;
 
 import com.crashlytics.android.Crashlytics;
+import com.google.android.gms.common.util.BiConsumer;
+import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -64,8 +66,7 @@ import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
-import java9.util.function.BiConsumer;
-import java9.util.function.Consumer;
+import androidx.core.util.Consumer;
 
 public class Constants {
 	//Creating the constants
@@ -165,6 +166,7 @@ public class Constants {
 	static final String recordingName = "recording.amr";
 	static final String pictureName = "image.jpg";
 	static final String defaultFileName = "file";
+	static final int smartReplyHistoryLength = 10;
 	
 	static final String serviceIDAppleMessage = "iMessage";
 	static final String serviceIDSMS = "SMS";
@@ -1095,6 +1097,17 @@ public class Constants {
 			this.item2 = item2;
 			this.item3 = item3;
 		}
+	}
+	
+	static List<FirebaseTextMessage> messageToFirebaseMessageList(List<ConversationManager.MessageInfo> messageList) {
+		List<FirebaseTextMessage> list = new ArrayList<>();
+		
+		for(ConversationManager.MessageInfo message : messageList) {
+			if(message.getMessageText() == null) continue;
+			list.add(message.getSender() == null ? FirebaseTextMessage.createForLocalUser(message.getMessageText(), message.getDate()) : FirebaseTextMessage.createForRemoteUser(message.getMessageText(), message.getDate(), message.getSender()));
+		}
+		
+		return list;
 	}
 	
 	public static void printViewHierarchy(ViewGroup vg, String prefix) {

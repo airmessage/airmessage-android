@@ -84,7 +84,7 @@ import androidx.core.content.FileProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.TransitionManager;
-import java9.util.function.Consumer;
+import androidx.core.util.Consumer;
 import jp.wasabeef.glide.transformations.BlurTransformation;
 import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.view.InvisibleInkView;
