@@ -26,6 +26,7 @@ import android.util.LongSparseArray;
 import android.util.SparseArray;
 
 import com.crashlytics.android.Crashlytics;
+import com.google.android.gms.common.util.BiConsumer;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
@@ -83,8 +84,7 @@ import javax.net.ssl.SSLHandshakeException;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import java9.util.function.BiConsumer;
-import java9.util.function.Consumer;
+import androidx.core.util.Consumer;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.common.SharedValues;
 
