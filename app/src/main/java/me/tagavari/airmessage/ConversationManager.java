@@ -2603,6 +2603,12 @@ class ConversationManager {
 			//Removing the item from the conversation in memory
 			getConversationInfo().removeConversationItem(context, this);
 			
+			//Updating the last item
+			getConversationInfo().updateLastItem(context);
+			
+			//Updating the view
+			getConversationInfo().updateView(context);
+			
 			//Deleting the message on disk
 			new DeleteMessagesTask().execute(getLocalID());
 		}
@@ -5227,6 +5233,7 @@ class ConversationManager {
 				viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 				backgroundDrawable.setCornerRadii(new float[]{radiusTop, radiusTop, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, radiusBottom, radiusBottom});
 			}
+			viewHolder.imageContent.invalidate();
 			viewHolder.backgroundView.setBackground(backgroundDrawable);
 		}
 		

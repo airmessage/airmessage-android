@@ -895,12 +895,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		}
 		
-		
-		//Checking if the activity is finishing
-		if(isFinishing()) {
-			//Saving the draft message
-			viewModel.applyDraftMessage(messageInputField.getText().toString());
-		}
+		//Saving the draft message
+		viewModel.applyDraftMessage(messageInputField.getText().toString());
 	}
 	
 	@Override
@@ -1525,8 +1521,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
 							//Removing the conversation from memory
 							ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-							if(conversations != null)
-								conversations.remove(viewModel.conversationInfo);
+							if(conversations != null) conversations.remove(viewModel.conversationInfo);
 							
 							//Deleting the conversation from the database
 							DatabaseManager.getInstance().deleteConversation(viewModel.conversationInfo);
