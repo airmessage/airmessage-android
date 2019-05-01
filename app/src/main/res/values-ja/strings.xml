@@ -238,7 +238,7 @@
 	<string name="preference_appearance_advancedcolor_title">虹色のチャット</string>
 	<string name="preference_appearance_advancedcolor_description">ユーザーごとチャットごとに色付け</string>
 	<string name="preference_appearance_showreadreceipts_title">既読通知を表示</string>
-	<string name="preference_appearance_showreadreceipts_description">相手はメッセージを読んだ時、インジケータを表示。すべての会話に適用</string>
+	<string name="preference_appearance_showreadreceipts_description">相手はメッセージを読んだ時、インジケータを表示。すべての会話に適用。</string>
 	<string name="preference_server_foregroundservice_title">フォアグラウンドでサービスを実行</string>
 	<string name="preference_server_foregroundservice_description">通知を表示し、起動時に接続を許可します</string>
 	<string name="preference_server_disconnectionnotification_title">切断の通知</string>
@@ -336,4 +336,7 @@
 	<string name="message_attachmentreqerror_server_io">外部エラー（I/O）</string>
 	<string name="preference_server_serverfallback_title">代替アドレス</string>
 	<string name="preference_server_serverfallback_description">NATループバックをサポートしていないルーターがある場合は、代替アドレスを入力してください</string>
+	<string name="preference_appearance_amoled_title">真っ黒のテーマ</string>
+	<string name="preference_appearance_amoled_description">AMOLED互換の黒テーマの利用</string>
+	<string name="action_markallread">すべて既読にする</string>
 </resources>

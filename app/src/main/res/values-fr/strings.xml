@@ -349,4 +349,7 @@
 	<string name="message_attachmentreqerror_server_io">Erreur externe (I/O)</string>
 	<string name="preference_server_serverfallback_title">Addresse alternative</string>
 	<string name="preference_server_serverfallback_description">Si vous utilisez un routeur qui ne supporte pas le hairpinning, vous pouvez utiliser cette option</string>
+	<string name="preference_appearance_amoled_title">Thème noir</string>
+	<string name="preference_appearance_amoled_description">Activer un thème noir compatible avec AMOLED</string>
+	<string name="action_markallread">Tout marquer comme lu</string>
 </resources>

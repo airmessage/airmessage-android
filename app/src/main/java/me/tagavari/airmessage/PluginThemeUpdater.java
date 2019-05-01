@@ -12,25 +12,28 @@ import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
 
 public class PluginThemeUpdater extends AppCompatActivityPlugin {
 	private int currentNightMode;
+	private boolean currentAMOLEDState;
 	
 	@Override
 	public void onCreate(@Nullable Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		
-		//Recording the current night mode
+		//Recording the state
 		currentNightMode = getCurrentNightMode();
+		currentAMOLEDState = Preferences.getPreferenceAMOLED(getActivity());
 	}
 	
 	@Override
 	public void onResume() {
 		super.onResume();
 		
-		//Recreating the activity if night mode has changed
-		if(currentNightMode != getCurrentNightMode()) {
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+		//Recreating the activity if the theme has changed
+		if(currentNightMode != getCurrentNightMode() || currentAMOLEDState != Preferences.getPreferenceAMOLED(getActivity())) {
+			getActivity().recreate();
+			/* if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 				((AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE)).set(AlarmManager.RTC, System.currentTimeMillis() + 100, PendingIntent.getActivity(getActivity(), 123456, getActivity().getIntent(), PendingIntent.FLAG_CANCEL_CURRENT));
 				System.exit(0);
-			} else getActivity().recreate();
+			} else getActivity().recreate(); */
 		}
 	}
 	

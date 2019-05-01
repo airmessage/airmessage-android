@@ -8,23 +8,23 @@
 	tools:context=".NewMessage">
 	<!-- App bar -->
 	<com.google.android.material.appbar.AppBarLayout
+		android:id="@+id/appbar"
 		android:layout_width="match_parent"
-		android:layout_height="wrap_content">
+		android:layout_height="wrap_content"
+		android:background="?android:attr/colorBackgroundFloating">
 		<!-- Toolbar -->
 		<androidx.appcompat.widget.Toolbar
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
 			android:layout_height="?android:attr/actionBarSize"
 			android:theme="@style/SolidActionBarClear"
-			android:background="?android:attr/colorBackgroundFloating"
 			app:titleTextAppearance="@style/LightToolbarText">
 		</androidx.appcompat.widget.Toolbar>
 
 		<!-- Recipient input -->
 		<androidx.constraintlayout.widget.ConstraintLayout
 			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:background="?android:attr/colorBackgroundFloating">
+			android:layout_height="wrap_content">
 			<LinearLayout
 				android:id="@+id/user_input"
 				android:layout_width="0px"
@@ -79,7 +79,8 @@
 					android:background="?android:attr/selectableItemBackgroundBorderless"
 					android:onClick="toggleInputType"
 					android:src="@drawable/dialpad"
-					android:tint="?android:attr/textColorSecondary" />
+					android:tintMode="src_in"
+					android:tint="?android:attr/colorControlNormal" />
 			</LinearLayout>
 
 			<Space
@@ -105,6 +106,12 @@
 				android:alpha="0"
 				android:visibility="gone" />
 		</androidx.constraintlayout.widget.ConstraintLayout>
+
+		<!-- AMOLED divider -->
+		<View
+			android:tag="@string/tag_amoleddivider"
+			style="@style/Divider"
+			android:visibility="gone" />
 	</com.google.android.material.appbar.AppBarLayout>
 
 	<!-- Contact list -->
@@ -196,6 +203,13 @@
 			android:layout_width="match_parent"
 			android:layout_height="3dp"
 			android:background="@drawable/appear_bottomshadow"
+			android:layout_alignParentBottom="true" />
+
+		<!-- Bottom divider -->
+		<View
+			android:tag="@string/tag_amoleddivider"
+			style="@style/Divider"
+			android:visibility="gone"
 			android:layout_alignParentBottom="true" />
 
 		<!-- Content scrim -->

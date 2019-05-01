@@ -219,6 +219,9 @@ public class NewMessage extends AppCompatActivity {
 		groupMessagePermission = findViewById(R.id.group_permission);
 		groupMessageError = findViewById(R.id.group_error);
 		
+		//Configuring the AMOLED theme
+		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
+		
 		//Adding the input listeners
 		recipientInput.addTextChangedListener(recipientInputTextWatcher);
 		recipientInput.setOnKeyListener(recipientInputOnKeyListener);
@@ -240,6 +243,20 @@ public class NewMessage extends AppCompatActivity {
 		//Configuring the list
 		contactsListAdapter = new RecyclerAdapter(viewModel.contactList, contactListView);
 		contactListView.setAdapter(contactsListAdapter);
+	}
+	
+	void setDarkAMOLED() {
+		Constants.setActivityAMOLEDBase(this);
+		findViewById(R.id.appbar).setBackgroundColor(Constants.colorAMOLED);
+	}
+	
+	void setDarkAMOLEDSamsung() {
+		Constants.setActivityAMOLEDBase(this);
+		findViewById(R.id.appbar).setBackgroundColor(Constants.colorAMOLED);
+		
+		contactListView.setBackgroundResource(R.drawable.background_amoledsamsung);
+		contactListView.setClipToOutline(true);
+		contactListView.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
 	}
 	
 	private void restoreInputBar() {

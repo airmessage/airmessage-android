@@ -574,7 +574,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		labelLoadFail = findViewById(R.id.group_error_label);
 		messageList = findViewById(R.id.list_messages);
 		inputBar = findViewById(R.id.inputbar);
-		inputBarShadow = findViewById(R.id.bottomshadow);
+		inputBarShadow = Constants.shouldUseAMOLED(this) ? findViewById(R.id.bottomshadow_amoled) : findViewById(R.id.bottomshadow);
+		inputBarShadow.setVisibility(View.VISIBLE);
 		buttonSendMessage = inputBar.findViewById(R.id.button_send);
 		buttonAddContent = inputBar.findViewById(R.id.button_addcontent);
 		messageInputField = inputBar.findViewById(R.id.messagebox);
@@ -592,6 +593,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), messageList);
+		
+		//Configuring the AMOLED theme
+		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
 		
 		//Getting the conversation ID
 		long conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
@@ -1016,6 +1020,20 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
+	void setDarkAMOLED() {
+		Constants.setActivityAMOLEDBase(this);
+		findViewById(R.id.appbar).setBackgroundColor(Constants.colorAMOLED);
+		
+		//Setting the input bar background color
+		inputBar.setBackgroundColor(Constants.colorAMOLED);
+		
+		//Setting the attachments view
+		View attachmentsView = findViewById(R.id.pane_attachments);
+		if(attachmentsView != null) {
+			attachmentsView.setBackgroundColor(Constants.colorAMOLED);
+		}
+	}
+	
 	private static class QueueFileAsyncTask extends AsyncTask<File, Void, ArrayList<SimpleAttachmentInfo>> {
 		private final WeakReference<Messaging> activityReference;
 		
@@ -1165,6 +1183,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Coloring the UI
 			colorUI(inflated);
+			if(Constants.shouldUseAMOLED(this)) findViewById(R.id.pane_attachments).setBackgroundColor(Constants.colorAMOLED);
 			
 			//Setting up the sections
 			setupAttachmentsGallerySection();
@@ -1492,7 +1511,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			});
 			//inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
 			Button buttonChangeColor = inflated.findViewById(R.id.button_changecolor);
-			if(Preferences.checkPreferenceAdvancedColor(this)) buttonChangeColor.setOnClickListener(view -> showColorDialog(null, viewModel.conversationInfo.getConversationColor()));
+			if(Preferences.getPreferenceAdvancedColor(this)) buttonChangeColor.setOnClickListener(view -> showColorDialog(null, viewModel.conversationInfo.getConversationColor()));
 			else buttonChangeColor.setVisibility(View.GONE);
 			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
 			
@@ -1756,7 +1775,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Configuring the color editor
 		ImageView changeColorButton = memberEntry.findViewById(R.id.button_change_color);
-		if(showColor && Preferences.checkPreferenceAdvancedColor(this)) {
+		if(showColor && Preferences.getPreferenceAdvancedColor(this)) {
 			changeColorButton.setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
 			changeColorButton.setOnClickListener(view -> showColorDialog(member, member.getColor()));
 			changeColorButton.setVisibility(View.VISIBLE);
@@ -1854,7 +1873,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void colorUI(ViewGroup root) {
 		//Returning if the conversation is invalid or "rainbow chats" is not enabled
-		if(!Preferences.checkPreferenceAdvancedColor(this) || viewModel.conversationInfo == null) return;
+		if(!Preferences.getPreferenceAdvancedColor(this) || viewModel.conversationInfo == null) return;
 		
 		//Getting the color
 		int color = viewModel.conversationInfo.getConversationColor();
@@ -1890,7 +1909,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	int getConversationUIColor() {
-		return Preferences.checkPreferenceAdvancedColor(this) ? viewModel.conversationInfo.getConversationColor() : getResources().getColor(R.color.colorPrimary, null);
+		return Preferences.getPreferenceAdvancedColor(this) ? viewModel.conversationInfo.getConversationColor() : getResources().getColor(R.color.colorPrimary, null);
 	}
 	
 	private void setActionBarTitle(String title) {
@@ -4053,7 +4072,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Adding more views if necessary
 			while(childViewList.size() < suggestions.length) {
 				TextView item = (TextView) LayoutInflater.from(context).inflate(R.layout.listitem_replysuggestions_item, container, false);
-				if(Preferences.checkPreferenceAdvancedColor(context)) item.setTextColor(viewModel.conversationInfo.getConversationColor());
+				if(Preferences.getPreferenceAdvancedColor(context)) item.setTextColor(viewModel.conversationInfo.getConversationColor());
 				container.addView(item);
 				childViewList.add(item);
 			}

@@ -2895,6 +2895,15 @@ class DatabaseManager extends SQLiteOpenHelper {
 		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	}
 	
+	void setAllUnreadClear() {
+		//Creating the content values
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT, 0);
+		
+		//Updating the database
+		getWritableDatabase().update(Contract.ConversationEntry.TABLE_NAME, contentValues, null, null);
+	}
+	
 	void incrementUnreadMessageCount(long conversationID) {
 		getWritableDatabase().execSQL("UPDATE " + Contract.ConversationEntry.TABLE_NAME + " SET " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " = " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " + 1 WHERE " + Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	}

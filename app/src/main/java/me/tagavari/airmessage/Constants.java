@@ -9,6 +9,7 @@ import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.database.Cursor;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.media.MediaMetadataRetriever;
@@ -62,6 +63,7 @@ import java.util.zip.GZIPOutputStream;
 import androidx.annotation.AttrRes;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -187,6 +189,7 @@ public class Constants {
 			0x42A5F5, //Blue
 			0x7986CB //Indigo
 	};
+	static final int colorAMOLED = 0xFF000000;
 	
 	//Creating the regular expression constants
 	private static final String emailRegEx = "(?i)(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)])";
@@ -1120,5 +1123,20 @@ public class Constants {
 				printViewHierarchy((ViewGroup)v, desc);
 			}
 		}
+	}
+	
+	static void setActivityAMOLEDBase(AppCompatActivity activity) {
+		activity.findViewById(android.R.id.content).getRootView().setBackgroundColor(Constants.colorAMOLED);
+		activity.getWindow().setNavigationBarColor(Constants.colorAMOLED);
+		activity.getWindow().setStatusBarColor(Constants.colorAMOLED);
+		activity.getSupportActionBar().setBackgroundDrawable(new ColorDrawable(Constants.colorAMOLED));
+		
+		for(View view : Constants.getViewsByTag(activity.findViewById(android.R.id.content), activity.getResources().getString(R.string.tag_amoleddivider))) {
+			view.setVisibility(View.VISIBLE);
+		}
+	}
+	
+	static boolean shouldUseAMOLED(Context context) {
+		return isNightMode(context.getResources()) && Preferences.getPreferenceAMOLED(context);
 	}
 }

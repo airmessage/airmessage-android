@@ -2232,7 +2232,7 @@ class ConversationManager {
 		
 		private void prepareActivityStateDisplay(ViewHolder viewHolder, Context context) {
 			//Returning if read receipt showing is disabled
-			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			if(!Preferences.getPreferenceShowReadReceipts(context)) return;
 			
 			//Getting the requested state
 			isShowingMessageState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetDelivered()) &&
@@ -2251,7 +2251,7 @@ class ConversationManager {
 		
 		void updateActivityStateDisplay(Context context) {
 			//Returning if read receipt showing is disabled
-			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			if(!Preferences.getPreferenceShowReadReceipts(context)) return;
 			
 			//Getting the requested state
 			boolean requestedState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetDelivered()) &&
@@ -2269,7 +2269,7 @@ class ConversationManager {
 		
 		private void updateActivityStateDisplay(ViewHolder viewHolder, Context context, boolean currentState, boolean requestedState) {
 			//Returning if read receipt showing is disabled
-			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			if(!Preferences.getPreferenceShowReadReceipts(context)) return;
 			
 			//Checking if the requested state matches the current state
 			if(requestedState == currentState) {
@@ -2959,7 +2959,7 @@ class ConversationManager {
 			}
 			
 			//Setting the upload spinner tint
-			viewHolder.progressSend.setBarColor(Preferences.checkPreferenceAdvancedColor(context) ? getConversationInfo().getConversationColor() : context.getResources().getColor(R.color.colorPrimary, null));
+			viewHolder.progressSend.setBarColor(Preferences.getPreferenceAdvancedColor(context) ? getConversationInfo().getConversationColor() : context.getResources().getColor(R.color.colorPrimary, null));
 			
 			//Updating the message colors
 			if(updateComponents && messageText != null) {
@@ -4127,7 +4127,7 @@ class ConversationManager {
 			int textColor;
 			
 			if(getMessageInfo().isOutgoing()) {
-				if(Preferences.checkPreferenceAdvancedColor(context)) {
+				if(Preferences.getPreferenceAdvancedColor(context)) {
 					backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
 					textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
 				} else {
@@ -4135,7 +4135,7 @@ class ConversationManager {
 					textColor = context.getResources().getColor(R.color.colorTextWhite, null);
 				}
 			} else {
-				if(Preferences.checkPreferenceAdvancedColor(context)) {
+				if(Preferences.getPreferenceAdvancedColor(context)) {
 					MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
 					int targetColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 					//textColor = context.getResources().getColor(R.color.colorTextWhite, null);
@@ -4644,7 +4644,7 @@ class ConversationManager {
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				if(Preferences.checkPreferenceAdvancedColor(context)) {
+				if(Preferences.getPreferenceAdvancedColor(context)) {
 					cslText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
 					cslSecondaryText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
 					cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
@@ -4656,7 +4656,7 @@ class ConversationManager {
 					cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorPrimaryLight, null));
 				}
 			} else {
-				if(Preferences.checkPreferenceAdvancedColor(context)) {
+				if(Preferences.getPreferenceAdvancedColor(context)) {
 					MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 					int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 					
