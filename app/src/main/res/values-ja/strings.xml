@@ -26,6 +26,7 @@
 	<string name="action_reconfigure">変更</string>
 	<string name="action_copytext">テキストをコピー</string>
 	<string name="action_share">共有</string>
+	<string name="action_save">保存</string>
 	<string name="action_deletedata">添付を削除</string>
 	<string name="action_archive">アーカイブ</string>
 	<string name="action_unarchive">アーカイブ解除</string>
@@ -339,4 +340,7 @@
 	<string name="preference_appearance_amoled_title">真っ黒のテーマ</string>
 	<string name="preference_appearance_amoled_description">AMOLED互換の黒テーマの利用</string>
 	<string name="action_markallread">すべて既読にする</string>
+	<string name="message_fileexport_fail">ファイルを保存できませんでした</string>
+	<string name="message_fileexport_success">ファイルをストレージに保存しました</string>
+	<string name="servicedesc_fileexportservice">ユーザーの要求に従って、送受信したファイルをローカルストレージにコピーします</string>
 </resources>

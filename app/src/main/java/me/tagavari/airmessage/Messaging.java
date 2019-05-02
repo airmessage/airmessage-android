@@ -79,6 +79,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 import com.crashlytics.android.Crashlytics;
+import com.google.android.gms.common.util.BiConsumer;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -149,6 +150,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final int permissionRequestStorage = 0;
 	private static final int permissionRequestAudio = 1;
 	private static final int permissionRequestAudioDirect = 2; //Used when requesting microphone usage directly form the input bar
+	private static final int permissionRequestMessageCustomOffset = 100; //Used to offset custom message permission requests, to prevent collisions with activity requests
 	
 	private static final int intentPickFile = 1;
 	private static final int intentTakePicture = 2;
@@ -2336,6 +2338,8 @@ public class Messaging extends AppCompatCompositeActivity {
 					setupAttachmentsAudioSection();
 				}
 			}
+			default:
+				viewModel.callPermissionsRequestListener(requestCode - permissionRequestMessageCustomOffset, grantResults[0] == PackageManager.PERMISSION_GRANTED);
 		}
 	}
 	
@@ -4248,6 +4252,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Starting the media recorder
 			mediaRecorder.start();
 		};
+		private final SparseArray<BiConsumer<Context, Boolean>> permissionRequestResultListenerList = new SparseArray<>();
 		
 		ActivityViewModel(Application application, long conversationID) {
 			super(application);
@@ -4835,6 +4840,17 @@ public class Messaging extends AppCompatCompositeActivity {
 		interface AttachmentsLoadCallbacks {
 			void onLoadFinished(boolean successful);
 		}
+		
+		void addPermissionsRequestListener(int requestCode, BiConsumer<Context, Boolean> callback) {
+			permissionRequestResultListenerList.put(requestCode, callback);
+		}
+		
+		void callPermissionsRequestListener(int requestCode, boolean result) {
+			BiConsumer<Context, Boolean> listener = permissionRequestResultListenerList.get(requestCode);
+			if(listener == null) return;
+			listener.accept(getApplication(), result);
+			permissionRequestResultListenerList.remove(requestCode);
+		}
 	}
 	
 	static class AudioPlaybackManager {
@@ -5358,6 +5374,17 @@ public class Messaging extends AppCompatCompositeActivity {
 		void playScreenEffect(String screenEffect, View target) {
 			Messaging activity = activityReference.get();
 			if(activity != null) activity.playScreenEffect(screenEffect, target);
+		}
+		
+		@Override
+		void requestPermission(String permission, int requestCode, BiConsumer<Context, Boolean> resultListener) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Requesting the permission
+			activity.requestPermissions(new String[]{permission}, requestCode + permissionRequestMessageCustomOffset);
+			activity.viewModel.addPermissionsRequestListener(requestCode, resultListener);
 		}
 	}
 	

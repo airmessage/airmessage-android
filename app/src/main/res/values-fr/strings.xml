@@ -73,6 +73,7 @@
 	<string name="action_resync">Resynchroniser</string>
 	<string name="action_sync">Synchroniser</string>
 	<string name="action_enable">Activer</string>
+	<string name="action_save">Enregistrer</string>
 	<string name="to">À</string>
 	<string name="you">"Vous"</string>
 	<string name="prefix_you">"Vous: %s"</string>
@@ -352,4 +353,7 @@
 	<string name="preference_appearance_amoled_title">Thème noir</string>
 	<string name="preference_appearance_amoled_description">Activer un thème noir compatible avec AMOLED</string>
 	<string name="action_markallread">Tout marquer comme lu</string>
+	<string name="message_fileexport_fail">Échec d\'enregistrement du fichier</string>
+	<string name="message_fileexport_success">Fichier enregistré sur l\'appareil</string>
+	<string name="servicedesc_fileexportservice">Copie les fichiers envoyés et reçus sur le stockage local, à la demande de l\'utilisateur</string>
 </resources>

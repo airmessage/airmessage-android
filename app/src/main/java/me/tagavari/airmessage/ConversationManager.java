@@ -1,12 +1,15 @@
 package me.tagavari.airmessage;
 
+import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -56,6 +59,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
+import com.google.android.gms.common.util.BiConsumer;
 import com.pnikosis.materialishprogress.ProgressWheel;
 
 import org.lukhnos.nnio.file.Paths;
@@ -80,6 +84,7 @@ import java.util.Random;
 import androidx.annotation.DrawableRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -92,11 +97,11 @@ import me.tagavari.airmessage.view.RoundedImageView;
 
 class ConversationManager {
 	//Message burst - Sending single messages one after the other
-	static final long conversationBurstTimeMillis = 30 * 1000; //30 seconds
+	private static final long conversationBurstTimeMillis = 30 * 1000; //30 seconds
 	//Message session - A conversation session, where conversation participants are active
-	static final long conversationSessionTimeMillis = 5 * 60 * 1000; //5 minutes
+	private static final long conversationSessionTimeMillis = 5 * 60 * 1000; //5 minutes
 	//Just now - A message sent just now
-	static final long conversationJustNowTimeMillis = 60 * 1000; //1 minute
+	private static final long conversationJustNowTimeMillis = 60 * 1000; //1 minute
 	
 	static final Comparator<ConversationInfo> conversationComparator = (conversation1, conversation2) -> {
 		//Getting the last conversation item times
@@ -117,6 +122,8 @@ class ConversationManager {
 	
 	private static final int invisibleInkBlurRadius = 2;
 	private static final int invisibleInkBlurSampling = 80;
+	
+	private static final int permissionRequestWriteStorageDownload = 0;
 	
 	//Creating the conversation list
 	//private final ArrayList<ConversationInfo> conversations = new ArrayList<>();
@@ -1490,6 +1497,8 @@ class ConversationManager {
 			abstract Messaging.AudioPlaybackManager getAudioPlaybackManager();
 			
 			abstract void playScreenEffect(String effect, View target);
+			
+			abstract void requestPermission(String permission, int requestCode, BiConsumer<Context, Boolean> resultListener);
 		}
 		
 		int getNextUserColor() {
@@ -4182,8 +4191,9 @@ class ConversationManager {
 			//Inflating the menu
 			popupMenu.inflate(R.menu.menu_conversationitem_contextual);
 			
-			//Removing the delete file option
+			//Removing attachment-specfic options
 			Menu menu = popupMenu.getMenu();
+			menu.removeItem(R.id.action_save);
 			menu.removeItem(R.id.action_deletedata);
 			
 			//Creating the context reference
@@ -4812,6 +4822,7 @@ class ConversationManager {
 			//Disabling the share and delete option if there is no data
 			if(file == null) {
 				menu.findItem(R.id.action_share).setEnabled(false);
+				menu.findItem(R.id.action_save).setEnabled(false);
 				menu.findItem(R.id.action_deletedata).setEnabled(false);
 			}
 			
@@ -4878,6 +4889,17 @@ class ConversationManager {
 						//Returning true
 						return true;
 					}
+					case R.id.action_save: {
+						if(ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) exportFile(context, file);
+						//Otherwise requesting the permission
+						else {
+							ConversationInfo.ActivityCallbacks updater = getMessageInfo().getConversationInfo().getActivityCallbacks();
+							if(updater != null) updater.requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, permissionRequestWriteStorageDownload, new LocationPermissionRequest(file));
+						}
+						
+						//Returning true
+						return true;
+					}
 					case R.id.action_deletedata: {
 						//Deleting the attachment
 						new AttachmentDeleter(newContext, file, localID).execute();
@@ -4908,6 +4930,25 @@ class ConversationManager {
 			
 			//Hiding the stickers
 			updateStickerVisibility();
+		}
+		
+		private static void exportFile(Context context, File file) {
+			Intent intent = new Intent(context, FileExportService.class);
+			intent.putExtra(Constants.intentParamData, file.getPath());
+			context.startService(intent);
+		}
+		
+		private static class LocationPermissionRequest implements BiConsumer<Context, Boolean> {
+			private final File sendFile;
+			
+			LocationPermissionRequest(File sendFile) {
+				this.sendFile = sendFile;
+			}
+			
+			@Override
+			public void accept(Context context, Boolean result) {
+				if(result) exportFile(context, sendFile);
+			}
 		}
 		
 		private static class AttachmentDeleter extends AsyncTask<Void, Void, Void> {
