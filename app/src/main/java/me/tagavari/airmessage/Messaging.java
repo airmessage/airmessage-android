@@ -44,6 +44,7 @@ import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -75,6 +76,32 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.AppCompatEditText;
+import androidx.cardview.widget.CardView;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+import androidx.core.util.Consumer;
+import androidx.core.util.Pools;
+import androidx.core.view.inputmethod.EditorInfoCompat;
+import androidx.core.view.inputmethod.InputConnectionCompat;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.LinearSmoothScroller;
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
@@ -98,31 +125,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.widget.AppCompatEditText;
-import androidx.cardview.widget.CardView;
-import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
-import androidx.core.util.Pools;
-import androidx.core.view.inputmethod.EditorInfoCompat;
-import androidx.core.view.inputmethod.InputConnectionCompat;
-import androidx.fragment.app.DialogFragment;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
-import androidx.lifecycle.AndroidViewModel;
-import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModel;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelProviders;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.LinearSmoothScroller;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.core.util.Consumer;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.VisualizerView;
@@ -306,62 +308,27 @@ public class Messaging extends AppCompatCompositeActivity {
 		public void afterTextChanged(Editable s) {
 		}
 	};
+	private final View.OnKeyListener inputFieldKeyListener = new View.OnKeyListener() {
+		@Override
+		public boolean onKey(View v, int keyCode, KeyEvent event) {
+			//Returning if the event is not a key down
+			if(event.getAction() != KeyEvent.ACTION_DOWN) return false;
+			
+			//Checking if the key is the enter key
+			if(keyCode == KeyEvent.KEYCODE_ENTER && !event.isShiftPressed()) {
+				//Sending the message
+				sendMessage();
+				
+				//Returning true
+				return true;
+			}
+			
+			//Returning false
+			return false;
+		}
+	};
 	private final View.OnClickListener sendButtonClickListener = view -> {
-		//Creating the message list
-		ArrayList<ConversationManager.MessageInfo> messageList = new ArrayList<>();
-		
-		//Checking if the message box has text
-		if(messageInputField.getText().length() > 0) {
-			//Getting the message text
-			String message = messageInputField.getText().toString();
-			
-			//Trimming the message
-			message = message.trim();
-			
-			//Returning if the message is empty
-			if(message.isEmpty()) return;
-			
-			//Creating a message
-			messageList.add(new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
-			
-			//Clearing the message box
-			messageInputField.setText("");
-			messageInputField.requestLayout(); //Height of input field doesn't update otherwise
-			//messageBoxHasText = false;
-		}
-		
-		//Iterating over the drafts
-		for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
-			//Creating the message
-			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
-			
-			//Creating the attachment
-			SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
-			ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType(), attachmentFile.getFileSize());
-			attachment.setDraftingPushRequest(queuedFile.getFilePushRequest());
-			
-			//Adding the attachment to the message
-			messageInfo.addAttachment(attachment);
-			
-			//Adding the message to the queue list
-			messageList.add(messageInfo);
-			
-			//Dequeuing the item
-			dequeueAttachment(queuedFile.getItem(), true, false);
-			viewModel.conversationInfo.removeDraftFileUpdate(this, queuedFile.getDraftFile(), -1);
-		}
-		
-		//Returning if there are no items to send
-		if(messageList.isEmpty()) return;
-		
-		//Clearing the conversation's drafts
-		viewModel.conversationInfo.clearDraftsUpdate(this);
-		
-		//Writing the messages to the database
-		new AddGhostMessageTask(getApplicationContext(), new GhostMessageFinishHandler()).execute(messageList.toArray(new ConversationManager.MessageInfo[0]));
-		
-		//Scrolling to the bottom of the chat
-		messageListAdapter.scrollToBottom();
+		sendMessage();
 	};
 	
 	private static class GhostMessageFinishHandler implements Consumer<ConversationManager.MessageInfo> {
@@ -637,6 +604,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the listeners
 		rootView.getViewTreeObserver().addOnGlobalLayoutListener(rootLayoutListener);
 		messageInputField.addTextChangedListener(inputFieldTextWatcher);
+		messageInputField.setOnKeyListener(inputFieldKeyListener);
 		//messageInputField.setOnClickListener(view -> closeAttachmentsPanel(false));
 		buttonSendMessage.setOnClickListener(sendButtonClickListener);
 		buttonAddContent.setOnClickListener(view -> {
@@ -1160,6 +1128,64 @@ public class Messaging extends AppCompatCompositeActivity {
 		else if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel(true);
 			//Otherwise passing the event to the superclass
 		else super.onBackPressed();
+	}
+	
+	private void sendMessage() {
+		//Creating the message list
+		ArrayList<ConversationManager.MessageInfo> messageList = new ArrayList<>();
+		
+		//Checking if the message box has text
+		if(messageInputField.getText().length() > 0) {
+			//Getting the message text
+			String message = messageInputField.getText().toString();
+			
+			//Trimming the message
+			message = message.trim();
+			
+			//Returning if the message is empty
+			if(message.isEmpty()) return;
+			
+			//Creating a message
+			messageList.add(new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
+			
+			//Clearing the message box
+			messageInputField.setText("");
+			messageInputField.requestLayout(); //Height of input field doesn't update otherwise
+			//messageBoxHasText = false;
+		}
+		
+		//Iterating over the drafts
+		for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
+			//Creating the message
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+			
+			//Creating the attachment
+			SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
+			ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType(), attachmentFile.getFileSize());
+			attachment.setDraftingPushRequest(queuedFile.getFilePushRequest());
+			
+			//Adding the attachment to the message
+			messageInfo.addAttachment(attachment);
+			
+			//Adding the message to the queue list
+			messageList.add(messageInfo);
+			
+			//Dequeuing the item
+			dequeueAttachment(queuedFile.getItem(), true, false);
+			viewModel.conversationInfo.removeDraftFileUpdate(this, queuedFile.getDraftFile(), -1);
+		}
+		
+		//Returning if there are no items to send
+		if(messageList.isEmpty()) return;
+		
+		//Clearing the conversation's drafts
+		viewModel.conversationInfo.clearDraftsUpdate(this);
+		
+		//Writing the messages to the database
+		new AddGhostMessageTask(getApplicationContext(), new GhostMessageFinishHandler()).execute(messageList.toArray(new ConversationManager.MessageInfo[0]));
+		
+		//Scrolling to the bottom of the chat
+		messageListAdapter.scrollToBottom();
 	}
 	
 	private void openAttachmentsPanel(boolean restore, boolean animate) {
