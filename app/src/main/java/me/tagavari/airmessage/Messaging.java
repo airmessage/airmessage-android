@@ -4710,7 +4710,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 			
 			//Checking if the last message isn't valid
-			if(lastMessage == null || lastMessage.isOutgoing()) {
+			if(lastMessage == null || lastMessage.getMessageText() == null || lastMessage.isOutgoing()) {
 				//Cancelling the smart reply
 				smartReplyAvailable.setValue(false);
 				smartReplyAwaiting = false;
@@ -4723,7 +4723,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			for(int i  = conversationItemList.size() - 1; i >= 0; i--) {
 				ConversationManager.ConversationItem item = conversationItemList.get(i);
 				if(!(item instanceof ConversationManager.MessageInfo)) continue;
-				messageHistory.add((ConversationManager.MessageInfo) item);
+				ConversationManager.MessageInfo message = (ConversationManager.MessageInfo) item;
+				if(message.getMessageText() == null) continue;
+				messageHistory.add(message);
 				
 				if(messageHistory.size() == Constants.smartReplyHistoryLength) break;
 			}

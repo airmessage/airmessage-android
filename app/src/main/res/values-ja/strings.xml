@@ -343,4 +343,5 @@
 	<string name="message_fileexport_fail">ファイルを保存できませんでした</string>
 	<string name="message_fileexport_success">ファイルをストレージに保存しました</string>
 	<string name="servicedesc_fileexportservice">ユーザーの要求に従って、送受信したファイルをローカルストレージにコピーします</string>
+	<string name="action_newconversation">新しい会話</string>
 </resources>
