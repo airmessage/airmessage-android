@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/conversationicon"
+	android:layout_width="@dimen/profile_size"
+	android:layout_height="@dimen/profile_size">
+	<!-- 1 user -->
+	<ViewStub
+		android:layout_width="@dimen/profile_size"
+		android:layout_height="@dimen/profile_size"
+		android:layout="@layout/listitem_conversation_icon1" />
+	<!-- 2 users -->
+	<ViewStub
+		android:layout_width="@dimen/profile_size"
+		android:layout_height="@dimen/profile_size"
+		android:layout="@layout/listitem_conversation_icon2" />
+	<!-- 3 users -->
+	<ViewStub
+		android:layout_width="@dimen/profile_size"
+		android:layout_height="@dimen/profile_size"
+		android:layout="@layout/listitem_conversation_icon3" />
+	<!-- 4 users -->
+	<ViewStub
+		android:layout_width="@dimen/profile_size"
+		android:layout_height="@dimen/profile_size"
+		android:layout="@layout/listitem_conversation_icon4" />
+</RelativeLayout>

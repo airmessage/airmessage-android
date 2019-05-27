@@ -10,12 +10,15 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ShortcutInfo;
+import android.content.pm.ShortcutManager;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.Icon;
 import android.graphics.drawable.PaintDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -82,7 +85,9 @@ import java.util.Objects;
 import java.util.Random;
 
 import androidx.annotation.DrawableRes;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
+import androidx.collection.LongSparseArray;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
@@ -124,6 +129,8 @@ class ConversationManager {
 	private static final int invisibleInkBlurSampling = 80;
 	
 	private static final int permissionRequestWriteStorageDownload = 0;
+	
+	private static final String shortcutPrefixConversation = "conversation-";
 	
 	//Creating the conversation list
 	//private final ArrayList<ConversationInfo> conversations = new ArrayList<>();
@@ -550,6 +557,73 @@ class ConversationManager {
 			
 			//Updating the users
 			updateViewUser(context, viewHolder);
+		}
+		
+		void generateShortcutIcon(Context context, Constants.TaskedResultCallback<Icon> callback) {
+			//Returning if the conversation has no members
+			if(conversationMembers.isEmpty()) {
+				callback.onResult(null, false);
+				return;
+			}
+			
+			//Getting the view
+			ViewGroup iconGroup = (ViewGroup) LayoutInflater.from(context).inflate(R.layout.generation_conversationicon, null);
+			
+			//Getting the view data
+			int currentUserViewIndex = Math.min(conversationMembers.size() - 1, maxUsersToDisplay - 1);
+			View viewAtIndex = iconGroup.getChildAt(currentUserViewIndex);
+			ViewGroup iconView = (ViewGroup) ((ViewStub) viewAtIndex).inflate();
+			
+			//Hiding the other views
+			//for(int i = 0; i < maxUsersToDisplay; i++) iconGroup.getChildAt(i).setVisibility(i == currentUserViewIndex ? View.VISIBLE : View.GONE);
+			
+			//Setting the icons
+			int displayMemberCount = iconView.getChildCount();
+			Constants.ValueWrapper<Integer> completionCount = new Constants.ValueWrapper<>(0);
+			
+			for(int i = 0; i < displayMemberCount; i++) {
+				//Getting the member info
+				MemberInfo member = getConversationMembers().get(i);
+				//Getting the child view
+				View child = iconView.getChildAt(i);
+				
+				//Resetting the contact image
+				ImageView imageProfile = child.findViewById(R.id.profile_image);
+				imageProfile.setImageBitmap(null);
+				
+				//Setting the default profile tint
+				ImageView defaultProfile = child.findViewById(R.id.profile_default);
+				defaultProfile.setVisibility(View.VISIBLE);
+				defaultProfile.setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
+				
+				//Assigning the user info
+				String contactName = member.getName();
+				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context.getApplicationContext(), contactName, contactName, new BitmapCacheHelper.ImageDecodeResult() {
+					@Override
+					void onImageMeasured(int width, int height) {}
+					
+					@Override
+					void onImageDecoded(Bitmap result, boolean wasTasked) {
+						//Checking if the result is valid
+						if(result != null) {
+							//Hiding the default view
+							defaultProfile.setVisibility(View.INVISIBLE);
+							
+							//Setting the bitmap
+							imageProfile.setImageBitmap(result);
+						}
+						
+						//Adding to the count
+						completionCount.value++;
+						
+						//Checking if all images have been processed
+						if(completionCount.value == displayMemberCount) {
+							//Rendering the image and returning the result
+							callback.onResult(Icon.createWithBitmap(Constants.loadBitmapFromView(iconGroup)), wasTasked);
+						}
+					}
+				});
+			}
 		}
 		
 		void setViewHolderSource(Constants.ViewHolderSource<ItemViewHolder> viewHolderSource) {
@@ -1438,6 +1512,9 @@ class ConversationManager {
 			
 			//Removing the conversation from the database
 			new DeleteConversationTask(context, this).execute();
+			
+			//Removing the conversation shortcut
+			ConversationManager.enableShortcuts(context, Collections.singletonList(this));
 		}
 		
 		private static class DeleteConversationTask extends AsyncTask<Void, Void, Void> {
@@ -6937,6 +7014,135 @@ class ConversationManager {
 		else if(mimeType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return VideoAttachmentInfo.RESOURCE_NAME;
 		else if(mimeType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return AudioAttachmentInfo.RESOURCE_NAME;
 		else return OtherAttachmentInfo.RESOURCE_NAME;
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.N_MR1)
+	private static void generateShortcutInfo(Context context, List<ConversationInfo> conversationList, Constants.ResultCallback<List<ShortcutInfo>> result) {
+		//Creating the shortcuts
+		List<ShortcutInfo> shortcutList = new ArrayList<>(conversationList.size());
+		LongSparseArray<String> titleMap = new LongSparseArray<>();
+		LongSparseArray<Icon> iconMap = new LongSparseArray<>();
+		Constants.ValueWrapper<Integer> titleRequestsCompleted = new Constants.ValueWrapper<>(0);
+		
+		for(ConversationManager.ConversationInfo conversationBuild : conversationList) {
+			conversationBuild.buildTitle(context, (titleResult, titleWasTasked) -> {
+				//Recording the title
+				titleMap.put(conversationBuild.getLocalID(), titleResult);
+				
+				conversationBuild.generateShortcutIcon(context, (iconResult, iconWasTasked) -> {
+					//Recording the icon
+					iconMap.put(conversationBuild.getLocalID(), iconResult);
+					
+					//Adding to the completion count
+					titleRequestsCompleted.value++;
+					
+					//Checking if all requests have been completed
+					if(titleRequestsCompleted.value == conversationList.size()) {
+						//Building the shortcuts
+						for(ConversationManager.ConversationInfo conversationShortcut : conversationList) {
+							//Creating the intents
+							Intent intentConversations = new Intent(context, Conversations.class);
+							intentConversations.setAction(Intent.ACTION_VIEW);
+							intentConversations.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+							
+							Intent intentMessaging = new Intent(context, Messaging.class);
+							intentMessaging.setAction(Intent.ACTION_VIEW);
+							intentMessaging.putExtra(Constants.intentParamTargetID, conversationShortcut.getLocalID());
+							
+							//Building and adding the shortcuts
+							ShortcutInfo shortcut = new ShortcutInfo.Builder(context, shortcutPrefixConversation + conversationShortcut.getGuid())
+									.setShortLabel(titleMap.get(conversationShortcut.getLocalID()))
+									.setIcon(iconMap.get(conversationShortcut.getLocalID()))
+									.setIntents(new Intent[]{intentConversations, intentMessaging})
+									.build();
+							shortcutList.add(shortcut);
+						}
+						
+						//Returning the list
+						result.onResult(iconWasTasked || titleWasTasked, shortcutList);
+					}
+				});
+			});
+		}
+	}
+	
+	static void rebuildDynamicShortcuts(Context context) {
+		//Shortcuts require Android 7.1 Nougat or above
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+		
+		//Getting the top 3 conversations
+		MainApplication.LoadFlagArrayList<ConversationInfo> conversations = getConversations();
+		if(conversations == null || !conversations.isLoaded()) return;
+		List<ConversationManager.ConversationInfo> topConversations = conversations.subList(0, Math.min(conversations.size(), 3));
+		
+		//Creating the shortcuts
+		generateShortcutInfo(context, topConversations, (wasTasked, shortcutList) -> {
+			//Setting the shortcuts
+			ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+			shortcutManager.setDynamicShortcuts(shortcutList);
+		});
+	}
+	
+	private static boolean isShortcutActive(ShortcutManager shortcutManager, String shortcutID) {
+		for(ShortcutInfo shortcut : shortcutManager.getDynamicShortcuts()) if(shortcut.getId().equals(shortcutID)) return true;
+		for(ShortcutInfo shortcut : shortcutManager.getPinnedShortcuts()) if(shortcut.getId().equals(shortcutID)) return true;
+		return false;
+	}
+	
+	static void updateShortcuts(Context context, List<ConversationInfo> conversationList) {
+		//Shortcuts require Android 7.1 Nougat or above
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+		
+		//Getting the shortcut manager
+		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+		
+		//Filtering out conversations that aren't in any shortcuts
+		List<ConversationInfo> filteredList = new ArrayList<>();
+		for(ConversationInfo conversation : conversationList) {
+			if(!isShortcutActive(shortcutManager, shortcutPrefixConversation + conversation.getGuid())) continue;
+			filteredList.add(conversation);
+		}
+		
+		//Creating the shortcuts
+		generateShortcutInfo(context, filteredList, (wasTasked, shortcutList) -> {
+			//Setting the shortcuts
+			shortcutManager.updateShortcuts(shortcutList);
+		});
+	}
+	
+	static void disableShortcuts(Context context, List<ConversationInfo> conversationList) {
+		//Shortcuts require Android 7.1 Nougat or above
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+		
+		//Mapping the conversations to IDs
+		List<String> idList = new ArrayList<>(conversationList.size());
+		for(ConversationInfo conversation : conversationList) idList.add(shortcutPrefixConversation + conversation.getGuid());
+		
+		//Disabling the shortcuts
+		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+		shortcutManager.disableShortcuts(idList);
+	}
+	
+	static void enableShortcuts(Context context, List<ConversationInfo> conversationList) {
+		//Shortcuts require Android 7.1 Nougat or above
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+		
+		//Mapping the conversations to GUIDs
+		List<String> idList = new ArrayList<>(conversationList.size());
+		for(ConversationInfo conversation : conversationList) idList.add(shortcutPrefixConversation + conversation.getGuid());
+		
+		//Disabling the shortcuts
+		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+		shortcutManager.disableShortcuts(idList);
+	}
+	
+	static void clearDynamicShortcuts(Context context) {
+		//Shortcuts require Android 7.1 Nougat or above
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+		
+		//Clearing the shortcuts
+		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+		shortcutManager.removeAllDynamicShortcuts();
 	}
 	
 	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, long fileSize) {

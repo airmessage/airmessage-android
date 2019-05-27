@@ -1456,6 +1456,11 @@ public class NewMessage extends AppCompatActivity {
 								//Adding the conversation in memory
 								ConversationManager.addConversation(result);
 								
+								//Updating the shortcut
+								List<ConversationManager.ConversationInfo> shortcutUpdateList = Collections.singletonList(result);
+								ConversationManager.updateShortcuts(getApplication(), shortcutUpdateList);
+								ConversationManager.enableShortcuts(getApplication(), shortcutUpdateList);
+								
 								//Updating the conversation activity list
 								LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 						/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
@@ -1522,8 +1527,6 @@ public class NewMessage extends AppCompatActivity {
 								
 								//Updating the conversation activity list
 								LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-						/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
-							callbacks.updateList(true); */
 							}
 							
 							//Launching the activity

@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.pm.ShortcutManager;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -469,6 +470,10 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
+		
+		//Updating app shortcuts
+		ConversationManager.rebuildDynamicShortcuts(this);
+		if(conversationsBasePlugin.conversations.isLoaded()) ConversationManager.updateShortcuts(this, conversationsBasePlugin.conversations);
 	}
 	
 	@Override

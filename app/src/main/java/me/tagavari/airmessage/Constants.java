@@ -8,6 +8,8 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -1138,5 +1140,15 @@ public class Constants {
 	
 	static boolean shouldUseAMOLED(Context context) {
 		return isNightMode(context.getResources()) && Preferences.getPreferenceAMOLED(context);
+	}
+	
+	static Bitmap loadBitmapFromView(View view) {
+		int measureSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+		view.measure(measureSpec, measureSpec);
+		Bitmap bitmap = Bitmap.createBitmap(view.getMeasuredWidth(), view.getMeasuredHeight(), Bitmap.Config.ARGB_8888);
+		Canvas canvas = new Canvas(bitmap);
+		view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+		view.draw(canvas);
+		return bitmap;
 	}
 }
