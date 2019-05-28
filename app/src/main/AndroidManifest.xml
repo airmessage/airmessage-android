@@ -40,6 +40,7 @@
 			</intent-filter>
 			
 			<meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
 		<!-- Messaging screen -->
@@ -48,7 +49,9 @@
 			android:name=".Messaging"
 			android:parentActivityName=".Conversations"
 			android:theme="@style/DayNight.NoActionbar.Unprotected"
-			android:windowSoftInputMode="adjustResize" />
+			android:windowSoftInputMode="adjustResize">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
 
 		<!-- New message -->
 		<activity
@@ -57,7 +60,9 @@
 			android:name=".NewMessage"
 			android:parentActivityName=".Conversations"
 			android:theme="@style/DayNight.NoActionbar.Unprotected"
-			android:windowSoftInputMode="adjustResize|stateVisible" />
+			android:windowSoftInputMode="adjustResize|stateVisible">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+	</activity>
 
 		<!-- Preferences -->
 		<activity
@@ -70,6 +75,8 @@
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.NOTIFICATION_PREFERENCES" />
 			</intent-filter>
+			
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
 		<!-- Image draw -->
@@ -88,6 +95,8 @@
 				<category android:name="android.intent.category.DEFAULT" />
 			</intent-filter>
             -->
+			
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
 		<!-- Blocked addresses -->

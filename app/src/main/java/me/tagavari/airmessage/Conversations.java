@@ -187,6 +187,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Configuring the AMOLED theme
 		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
 		
+		//Setting the statusbar color
+		Constants.updateChromeOSStatusbar(this);
+		
 		//Configuring the list
 		//conversationsBasePlugin.listView.setOnItemClickListener(onListItemClickListener);
 		//conversationsBasePlugin.listView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE_MODAL);

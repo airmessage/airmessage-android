@@ -1142,6 +1142,14 @@ public class Constants {
 		return isNightMode(context.getResources()) && Preferences.getPreferenceAMOLED(context);
 	}
 	
+	static void updateChromeOSStatusbar(AppCompatActivity activity) {
+		//Ignoring if not running on a Chrome OS device
+		if(!activity.getPackageManager().hasSystemFeature("org.chromium.arc.device_management")) return;
+		
+		//Setting the statusbar color
+		activity.getWindow().setStatusBarColor(activity.getResources().getColor(R.color.colorSubBackground, null));
+	}
+	
 	static Bitmap loadBitmapFromView(View view) {
 		int measureSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
 		view.measure(measureSpec, measureSpec);

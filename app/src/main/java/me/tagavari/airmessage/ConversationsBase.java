@@ -172,9 +172,6 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		//Calling the super method
 		super.onStart();
 		
-		//Starting the time updater
-		timeUpdateHandler.postDelayed(timeUpdateHandlerRunnable, timeUpdateHandlerDelay);
-		
 		//Advancing the conversation state (doing it in onStart so that the composite activity has time to handle its views)
 		if(isFirstOnStart) {
 			advanceConversationState();
@@ -187,17 +184,27 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		//Calling the super method
 		super.onResume();
 		
+		//Starting the time updater
+		timeUpdateHandlerRunnable.run();
+		timeUpdateHandler.postDelayed(timeUpdateHandlerRunnable, timeUpdateHandlerDelay);
+		
 		//Refreshing the list
 		//updateList(false);
+	}
+	
+	@Override
+	protected void onPause() {
+		//Calling the super method
+		super.onPause();
+		
+		//Stopping the time updater
+		timeUpdateHandler.removeCallbacks(timeUpdateHandlerRunnable);
 	}
 	
 	@Override
 	public void onStop() {
 		//Calling the super method
 		super.onStop();
-		
-		//Stopping the time updater
-		timeUpdateHandler.removeCallbacks(timeUpdateHandlerRunnable);
 	}
 	
 	@Override

@@ -7083,6 +7083,7 @@ class ConversationManager {
 		});
 	}
 	
+	@RequiresApi(api = Build.VERSION_CODES.N_MR1)
 	private static boolean isShortcutActive(ShortcutManager shortcutManager, String shortcutID) {
 		for(ShortcutInfo shortcut : shortcutManager.getDynamicShortcuts()) if(shortcut.getId().equals(shortcutID)) return true;
 		for(ShortcutInfo shortcut : shortcutManager.getPinnedShortcuts()) if(shortcut.getId().equals(shortcutID)) return true;
