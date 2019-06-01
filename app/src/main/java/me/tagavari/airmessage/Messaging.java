@@ -77,7 +77,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.cardview.widget.CardView;
@@ -109,7 +108,6 @@ import com.bumptech.glide.request.RequestOptions;
 import com.crashlytics.android.Crashlytics;
 import com.google.android.gms.common.util.BiConsumer;
 import com.google.android.material.appbar.AppBarLayout;
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
@@ -1501,193 +1499,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			view.requestLayout();
 		});
 		valueAnimator.start();
-	}
-	
-	class ConversationDetailsDialog extends BottomSheetDialogFragment {
-		private ConversationManager.ConversationInfo conversationInfo;
-		
-		@Nullable
-		@Override
-		public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-			//Getting the conversation details
-			long conversationID = getArguments().getLong(Constants.intentParamTargetID);
-			conversationInfo = ConversationManager.findConversationInfo(conversationID);
-			if(conversationInfo == null) throw new IllegalArgumentException("Invalid conversation provided");
-			
-			//Creating the view
-			View rootView = inflater.inflate(R.layout.pane_messaginginfo, container, false);
-			
-			//Getting the views
-			Switch notificationsSwitch = rootView.findViewById(R.id.switch_getnotifications);
-			//Switch pinnedSwitch = inflated.findViewById(R.id.switch_pinconversation);
-			
-			//Restoring the elements' states
-			notificationsSwitch.setChecked(!viewModel.conversationInfo.isMuted());
-			//pinnedSwitch.setChecked(viewModel.conversationInfo.isPinned());
-			
-			//Setting the listeners
-			rootView.findViewById(R.id.group_getnotifications).setOnClickListener(view -> notificationsSwitch.setChecked(!notificationsSwitch.isChecked()));
-			notificationsSwitch.setOnCheckedChangeListener((view, isChecked) -> {
-				//Updating the conversation
-				boolean isMuted = !isChecked;
-				viewModel.conversationInfo.setMuted(isMuted);
-				DatabaseManager.getInstance().updateConversationMuted(viewModel.conversationInfo.getLocalID(), isMuted);
-			});
-			//inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
-			Button buttonChangeColor = rootView.findViewById(R.id.button_changecolor);
-			if(Preferences.getPreferenceAdvancedColor(getContext())) buttonChangeColor.setOnClickListener(view -> showColorDialog(null, viewModel.conversationInfo.getConversationColor()));
-			else buttonChangeColor.setVisibility(View.GONE);
-			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
-			
-			findViewById(R.id.button_archive).setOnClickListener(view -> {
-				//Toggling the archive state
-				boolean newState = !viewModel.conversationInfo.isArchived();
-				viewModel.conversationInfo.setArchived(newState);
-				
-				//Sending an update
-				LocalBroadcastManager.getInstance(getContext()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-				
-				//Updating the conversation's database entry
-				DatabaseManager.getInstance().updateConversationArchived(viewModel.conversationInfo.getLocalID(), newState);
-				
-				//Updating the button
-				MaterialButton buttonView = (MaterialButton) view;
-				buttonView.setText(newState ? R.string.action_unarchive : R.string.action_archive);
-				buttonView.setIconResource(newState ? R.drawable.unarchive_outlined : R.drawable.archive_outlined);
-			});
-			
-			findViewById(R.id.button_delete).setOnClickListener(view -> {
-				//Creating a dialog
-				AlertDialog dialog = new AlertDialog.Builder(getContext())
-						.setMessage(R.string.message_confirm_deleteconversation_current)
-						.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
-						.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
-							//Removing the conversation from memory
-							ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-							if(conversations != null) conversations.remove(viewModel.conversationInfo);
-							
-							//Deleting the conversation from the database
-							DatabaseManager.getInstance().deleteConversation(viewModel.conversationInfo);
-							
-							//Sending an update
-							LocalBroadcastManager.getInstance(getContext()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-							
-							//Finishing the activity
-							finish();
-						})
-						.create();
-				
-				//Configuring the dialog's listener
-				dialog.setOnShowListener(dialogInterface -> {
-					//Setting the button's colors
-					int color = getResources().getColor(R.color.colorActionDelete, null);
-					dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
-					dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
-				});
-				
-				//Showing the dialog
-				dialog.show();
-			});
-			
-			//Adding the conversation members
-			detailsBuildConversationMembers(new ArrayList<>(viewModel.conversationInfo.getConversationMembers()));
-			
-			//Returning the view
-			return rootView;
-		}
-		
-		private void buildConversationMembers(View rootView, List<ConversationManager.MemberInfo> members) {
-			//Getting the members layout
-			//ViewGroup membersLayout = findViewById(R.id.list_conversationmembers);
-			
-			//Sorting the members
-			Collections.sort(members, ConversationManager.memberInfoComparator);
-			
-			//Adding the member views
-			boolean showMemberColors = members.size() > 1;
-			for(int i = 0; i < members.size(); i++) addMemberView(rootView, members.get(i), i, showMemberColors);
-		}
-		
-		private void addMemberView(View rootView, ConversationManager.MemberInfo member, int index, boolean showColor) {
-			//Getting the members layout
-			ViewGroup membersLayout = rootView.findViewById(R.id.list_conversationmembers);
-			if(membersLayout == null) return;
-			
-			//Creating the view
-			LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-			View memberEntry = inflater.inflate(R.layout.listitem_member, membersLayout, false);
-			
-			//Setting the default information
-			((TextView) memberEntry.findViewById(R.id.label_member)).setText(member.getName());
-			((ImageView) memberEntry.findViewById(R.id.profile_default)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
-			
-			//Filling in the information
-			MainApplication.getInstance().getUserCacheHelper().getUserInfo(getContext(), member.getName(), new UserCacheHelper.UserFetchResult(memberEntry) {
-				@Override
-				void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
-					//Getting the view
-					View memberEntry = viewReference.get();
-					if(memberEntry == null) return;
-					
-					//Checking if the user info is invalid
-					if(userInfo == null) {
-						//Setting the tag (for a new contact request)
-						memberEntry.setTag(new ContactAccessInfo(member.getName()));
-						return;
-					}
-					
-					//Setting the tag (for a contact view link)
-					memberEntry.setTag(new ContactAccessInfo(userInfo.getContactLookupUri()));
-					
-					//Setting the member's name
-					((TextView) memberEntry.findViewById(R.id.label_member)).setText(userInfo.getContactName());
-					TextView addressView = memberEntry.findViewById(R.id.label_address);
-					addressView.setText(member.getName());
-					addressView.setVisibility(View.VISIBLE);
-				}
-			});
-			MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(getApplicationContext(), member.getName(), (View) memberEntry.findViewById(R.id.profile_image));
-			
-			//Configuring the color editor
-			ImageView changeColorButton = memberEntry.findViewById(R.id.button_change_color);
-			if(showColor && Preferences.getPreferenceAdvancedColor(getContext())) {
-				changeColorButton.setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
-				changeColorButton.setOnClickListener(view -> showColorDialog(member, member.getColor()));
-				changeColorButton.setVisibility(View.VISIBLE);
-			} else {
-				changeColorButton.setVisibility(View.GONE);
-			}
-			
-			//Setting the click listener
-			memberEntry.setOnClickListener(view -> {
-				//Returning if the view has no tag
-				if(view.getTag() == null) return;
-				
-				//Opening the user's contact profile
-			/* Intent intent = new Intent(Intent.ACTION_VIEW);
-			intent.setData((Uri) view.getTag());
-			//intent.setData(Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(view.getTag())));
-			view.getContext().startActivity(intent); */
-				((ContactAccessInfo) view.getTag()).openContact(view.getContext());
-			});
-			
-			//Adding the view
-			membersLayout.addView(memberEntry, index);
-			memberListViews.put(member, memberEntry);
-		}
-		
-		private void removeMemberView(View rootView, ConversationManager.MemberInfo member) {
-			//Getting the members layout
-			ViewGroup membersLayout = rootView.findViewById(R.id.list_conversationmembers);
-			if(membersLayout == null) return;
-			
-			//Removing the view
-			membersLayout.removeView(memberListViews.get(member));
-			memberListViews.remove(member);
-			
-			//Closing the dialog
-			if(currentColorPickerDialog != null && currentColorPickerDialogMember == member) currentColorPickerDialog.dismiss();
-		}
 	}
 	
 	private void openDetailsPanel(boolean restore) {
