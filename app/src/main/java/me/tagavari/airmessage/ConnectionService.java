@@ -26,6 +26,7 @@ import android.util.LongSparseArray;
 import android.util.SparseArray;
 
 import com.crashlytics.android.Crashlytics;
+import com.google.android.gms.common.util.BiConsumer;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
@@ -83,8 +84,7 @@ import javax.net.ssl.SSLHandshakeException;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import java9.util.function.BiConsumer;
-import java9.util.function.Consumer;
+import androidx.core.util.Consumer;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.common.SharedValues;
 
@@ -550,7 +550,7 @@ public class ConnectionService extends Service {
 				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT))
 				.addAction(R.drawable.wifi, getResources().getString(R.string.action_reconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.addAction(R.drawable.close_circle, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
-				.setShowWhen(true)
+				.setShowWhen(false)
 				.setOnlyAlertOnce(silent)
 				.build();
 	}
@@ -4564,6 +4564,10 @@ public class ConnectionService extends Service {
 							if(sharedConversations != null) {
 								sharedConversations.clear();
 								sharedConversations.addAll(conversationInfoList);
+								
+								//Updating shortcuts
+								ConversationManager.updateShortcuts(context, conversationInfoList);
+								ConversationManager.enableShortcuts(context, conversationInfoList);
 							}
 							
 							//Sending the mass retrieval broadcast
@@ -5771,6 +5775,7 @@ public class ConnectionService extends Service {
 				}
 				
 				//Iterating over the available conversations
+				List<ConversationManager.ConversationInfo> availableConversationInfoList = new ArrayList<>();
 				for(ConversationInfoRequest conversationInfoRequest : availableConversations) {
 					//Adding the available conversations in memory
 					ConversationManager.addConversation(conversationInfoRequest.conversationInfo);
@@ -5779,7 +5784,14 @@ public class ConnectionService extends Service {
 					conversationInfoRequest.conversationInfo.setUnreadMessageCount(countUnreadMessages(availableConversationItems.get(conversationInfoRequest.conversationInfo.getLocalID())));
 					conversationInfoRequest.conversationInfo.updateUnreadStatus(context);
 					//availableConversation.updateView(ConnectionService.this);
+					
+					//Mapping the items
+					availableConversationInfoList.add(conversationInfoRequest.conversationInfo);
 				}
+				
+				//Updating shortcuts
+				ConversationManager.updateShortcuts(context, availableConversationInfoList);
+				ConversationManager.enableShortcuts(context, availableConversationInfoList);
 				
 				//Updating the transferred conversations
 				if(context != null) {

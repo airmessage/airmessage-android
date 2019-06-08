@@ -5,8 +5,7 @@
 		android:title="@string/preference_messagenotifications_title" />
 	<androidx.preference.PreferenceCategory
 		android:key="@string/preferencegroup_appearance_key"
-		android:title="@string/preferencegroup_appearance_title"
-		android:paddingLeft="0px">
+		android:title="@string/preferencegroup_appearance_title">
 		<androidx.preference.ListPreference
 			android:defaultValue="follow_system"
 			android:entries="@array/preference_appearance_theme_entries"
@@ -20,16 +19,32 @@
 			android:title="@string/preference_appearance_location_title"
 			android:summary="@string/preference_appearance_location_description" />
 		<androidx.preference.SwitchPreferenceCompat
+			android:key="@string/preference_appearance_amoled_key"
+			android:title="@string/preference_appearance_amoled_title"
+			android:summary="@string/preference_appearance_amoled_description"
+			android:defaultValue="false" />
+		<androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_appearance_advancedcolor_key"
 			android:title="@string/preference_appearance_advancedcolor_title"
 			android:summary="@string/preference_appearance_advancedcolor_description"
 			android:defaultValue="false" />
+	</androidx.preference.PreferenceCategory>
+
+	<androidx.preference.PreferenceCategory
+		android:key="@string/preferencegroup_features_key"
+		android:title="@string/preferencegroup_features_title">
 		<androidx.preference.SwitchPreferenceCompat
 			android:key="@string/preference_appearance_showreadreceipts_key"
 			android:title="@string/preference_appearance_showreadreceipts_title"
 			android:summary="@string/preference_appearance_showreadreceipts_description"
 			android:defaultValue="true" />
+		<androidx.preference.SwitchPreferenceCompat
+			android:key="@string/preference_features_replysuggestions_key"
+			android:title="@string/preference_features_replysuggestions_title"
+			android:summary="@string/preference_features_replysuggestions_description"
+			android:defaultValue="true" />
 	</androidx.preference.PreferenceCategory>
+
 	<androidx.preference.PreferenceCategory
 		android:key="@string/preferencegroup_storage_key"
 		android:title="@string/preferencegroup_storage_title">
@@ -57,8 +72,8 @@
 			android:title="@string/preference_server_serverdetails_title">
 			<intent
 				android:action="android.intent.action.VIEW"
-				android:targetClass="me.tagavari.airmessage.ServerSetup"
-				android:targetPackage="me.tagavari.airmessage" />
+				android:targetPackage="me.tagavari.airmessage"
+				android:targetClass="me.tagavari.airmessage.ServerSetup" />
 		</androidx.preference.Preference>
 
 		<me.tagavari.airmessage.view.HostnameEditTextPreference

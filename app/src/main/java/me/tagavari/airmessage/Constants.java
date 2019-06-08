@@ -8,7 +8,10 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.media.MediaMetadataRetriever;
@@ -35,6 +38,8 @@ import android.widget.TextView;
 import android.widget.Toolbar;
 
 import com.crashlytics.android.Crashlytics;
+import com.google.android.gms.common.util.BiConsumer;
+import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -60,12 +65,12 @@ import java.util.zip.GZIPOutputStream;
 import androidx.annotation.AttrRes;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
-import java9.util.function.BiConsumer;
-import java9.util.function.Consumer;
+import androidx.core.util.Consumer;
 
 public class Constants {
 	//Creating the constants
@@ -165,6 +170,7 @@ public class Constants {
 	static final String recordingName = "recording.amr";
 	static final String pictureName = "image.jpg";
 	static final String defaultFileName = "file";
+	static final int smartReplyHistoryLength = 10;
 	
 	static final String serviceIDAppleMessage = "iMessage";
 	static final String serviceIDSMS = "SMS";
@@ -185,6 +191,7 @@ public class Constants {
 			0x42A5F5, //Blue
 			0x7986CB //Indigo
 	};
+	static final int colorAMOLED = 0xFF000000;
 	
 	//Creating the regular expression constants
 	private static final String emailRegEx = "(?i)(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)])";
@@ -857,7 +864,7 @@ public class Constants {
 		if(context instanceof Activity) {
 			Activity activity = (Activity) context;
 			return !activity.isDestroyed() && !activity.isFinishing();
-		};
+		}
 		
 		return true;
 	}
@@ -1097,6 +1104,17 @@ public class Constants {
 		}
 	}
 	
+	static List<FirebaseTextMessage> messageToFirebaseMessageList(List<ConversationManager.MessageInfo> messageList) {
+		List<FirebaseTextMessage> list = new ArrayList<>();
+		
+		for(ConversationManager.MessageInfo message : messageList) {
+			if(message.getMessageText() == null) continue;
+			list.add(message.getSender() == null ? FirebaseTextMessage.createForLocalUser(message.getMessageText(), message.getDate()) : FirebaseTextMessage.createForRemoteUser(message.getMessageText(), message.getDate(), message.getSender()));
+		}
+		
+		return list;
+	}
+	
 	public static void printViewHierarchy(ViewGroup vg, String prefix) {
 		for (int i = 0; i < vg.getChildCount(); i++) {
 			View v = vg.getChildAt(i);
@@ -1107,5 +1125,38 @@ public class Constants {
 				printViewHierarchy((ViewGroup)v, desc);
 			}
 		}
+	}
+	
+	static void setActivityAMOLEDBase(AppCompatActivity activity) {
+		activity.findViewById(android.R.id.content).getRootView().setBackgroundColor(Constants.colorAMOLED);
+		activity.getWindow().setNavigationBarColor(Constants.colorAMOLED);
+		activity.getWindow().setStatusBarColor(Constants.colorAMOLED);
+		activity.getSupportActionBar().setBackgroundDrawable(new ColorDrawable(Constants.colorAMOLED));
+		
+		for(View view : Constants.getViewsByTag(activity.findViewById(android.R.id.content), activity.getResources().getString(R.string.tag_amoleddivider))) {
+			view.setVisibility(View.VISIBLE);
+		}
+	}
+	
+	static boolean shouldUseAMOLED(Context context) {
+		return isNightMode(context.getResources()) && Preferences.getPreferenceAMOLED(context);
+	}
+	
+	static void updateChromeOSStatusbar(AppCompatActivity activity) {
+		//Ignoring if not running on a Chrome OS device
+		if(!activity.getPackageManager().hasSystemFeature("org.chromium.arc.device_management")) return;
+		
+		//Setting the statusbar color
+		activity.getWindow().setStatusBarColor(activity.getResources().getColor(R.color.colorSubBackground, null));
+	}
+	
+	static Bitmap loadBitmapFromView(View view) {
+		int measureSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+		view.measure(measureSpec, measureSpec);
+		Bitmap bitmap = Bitmap.createBitmap(view.getMeasuredWidth(), view.getMeasuredHeight(), Bitmap.Config.ARGB_8888);
+		Canvas canvas = new Canvas(bitmap);
+		view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+		view.draw(canvas);
+		return bitmap;
 	}
 }

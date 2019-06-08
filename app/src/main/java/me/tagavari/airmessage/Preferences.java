@@ -76,6 +76,9 @@ public class Preferences extends AppCompatActivity {
 		//Enabling the toolbar and up navigation
 		setSupportActionBar(findViewById(R.id.toolbar));
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		
+		//Configuring the AMOLED theme
+		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
 	}
 	
 	@Override
@@ -91,6 +94,11 @@ public class Preferences extends AppCompatActivity {
 		
 		//Returning false
 		return false;
+	}
+	
+	void setDarkAMOLED() {
+		Constants.setActivityAMOLEDBase(this);
+		findViewById(R.id.appbar).setBackgroundColor(Constants.colorAMOLED);
 	}
 	
 	/* @Override
@@ -361,13 +369,22 @@ public class Preferences extends AppCompatActivity {
 				SwitchPreferenceCompat locationSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_location_key));
 				locationSwitch.setChecked(ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED);
 				
+				SwitchPreferenceCompat amoledSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_amoled_key));
+				amoledSwitch.setOnPreferenceChangeListener((preference, newValue) -> {
+					//Recreating the activity
+					getActivity().recreate();
+					
+					return true;
+				});
+				
 				ListPreference darkModePreference = (ListPreference) findPreference(getResources().getString(R.string.preference_appearance_theme_key));
 				locationSwitch.setEnabled(darkModePreference.getValue().equals(MainApplication.darkModeAutomatic));
+				amoledSwitch.setEnabled(!darkModePreference.getValue().equals(MainApplication.darkModeAlwaysLight));
 				
 				locationSwitch.setOnPreferenceChangeListener((preference, value) -> {
 					//Opening the application settings if the permission has been granted
 					if(ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
-						//Otherwise requesting the permission
+					//Otherwise requesting the permission
 					else requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION}, permissionRequestLocation);
 					//else Constants.requestPermission(getActivity(), new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, Constants.permissionAccessCoarseLocation);
 					
@@ -400,8 +417,20 @@ public class Preferences extends AppCompatActivity {
 		@Override
 		public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
 			super.onViewCreated(view, savedInstanceState);
+			
 			//Enforcing the maximum content width
 			Constants.enforceContentWidth(getResources(), getListView());
+			
+			//if(Preferences.getPreferenceAMOLED(getContext())) setDarkAMOLED();
+		}
+		
+		void setDarkAMOLEDSamsung() {
+			//Configuring the list
+			RecyclerView list = getListView();
+			
+			list.setBackgroundResource(R.drawable.background_amoledsamsung);
+			list.setClipToOutline(true);
+			list.invalidate();
 		}
 		
 		/* @Override
@@ -997,11 +1026,19 @@ public class Preferences extends AppCompatActivity {
 		}
 	}
 	
-	static boolean checkPreferenceAdvancedColor(Context context) {
+	static boolean getPreferenceAMOLED(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_amoled_key), false);
+	}
+	
+	static boolean getPreferenceReplySuggestions(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_features_replysuggestions_key), false);
+	}
+	
+	static boolean getPreferenceAdvancedColor(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_advancedcolor_key), false);
 	}
 	
-	static boolean checkPreferenceShowReadReceipts(Context context) {
+	static boolean getPreferenceShowReadReceipts(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_showreadreceipts_key), true);
 	}
 	

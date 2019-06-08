@@ -21,6 +21,7 @@
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent" />
+
 	<!-- Profile picture guideline -->
 	<!-- <android.support.constraint.Guideline
 		android:id="@+id/guideline_start"
@@ -28,6 +29,7 @@
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
 		app:layout_constraintGuide_begin="56dp" /> -->
+
 	<!-- End barrier -->
 	<androidx.constraintlayout.widget.Barrier
 		android:id="@+id/barrier_alert"
@@ -51,6 +53,7 @@
 			android:layout_height="@dimen/profile_size"
 			android:layout="@layout/reference_user" />
 	</FrameLayout>
+
 	<!-- Sender -->
 	<TextView
 		android:id="@+id/sender"
@@ -106,6 +109,7 @@
 		android:tint="@color/colorError"
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintTop_toTopOf="@id/messagepart_container" />
+
 	<!-- Activity status -->
 	<TextSwitcher
 		android:id="@+id/activitystatus"

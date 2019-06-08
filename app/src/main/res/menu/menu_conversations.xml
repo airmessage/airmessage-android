@@ -9,6 +9,11 @@
         android:title="@string/screen_archived"
         app:showAsAction="never" />
 
+	<item android:id="@+id/action_markallread"
+		android:title="@string/action_markallread"
+		app:showAsAction="never"
+		android:visible="false" />
+
     <!-- <item android:id="@+id/action_blocked"
         android:title="@string/blocked_contacts"
         android:enabled="false"
@@ -18,6 +23,7 @@
 	<item android:id="@+id/action_settings"
 		android:title="@string/screen_settings"
 		app:showAsAction="never" />
+
 	<item android:id="@+id/action_feedback"
 		android:title="@string/action_sendfeedback"
 		app:showAsAction="never" />

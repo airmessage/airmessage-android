@@ -78,11 +78,8 @@
 				android:focusable="false"
 				android:clickable="false" />
 		</LinearLayout> -->
-		
-		<View
-			android:layout_width="match_parent"
-			android:layout_height="1dp"
-			android:background="@color/colorDivider" />
+
+		<View style="@style/Divider" />
 		
 		<!-- Conversation members -->
 		<TextView
@@ -116,11 +113,8 @@
 			app:iconPadding="24dp"
 			app:iconTintMode="multiply"
 			android:tag="@string/tag_primarytint" />
-		
-		<View
-			android:layout_width="match_parent"
-			android:layout_height="1dp"
-			android:background="@color/colorDivider"
+
+		<View style="@style/Divider"
 			android:layout_marginTop="8dp"
 			android:layout_marginBottom="8dp" />
 		

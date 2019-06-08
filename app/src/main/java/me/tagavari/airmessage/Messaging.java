@@ -6,7 +6,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.ActivityManager;
 import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -17,6 +16,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 import android.graphics.Outline;
@@ -41,10 +41,13 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
+import android.text.method.ScrollingMovementMethod;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
+import android.view.InputDevice;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -65,34 +68,17 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
+import android.widget.Scroller;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
-import com.bumptech.glide.request.RequestOptions;
-import com.crashlytics.android.Crashlytics;
-import com.google.android.material.appbar.AppBarLayout;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-
-import java.io.File;
-import java.io.IOException;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -101,6 +87,7 @@ import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.util.Consumer;
 import androidx.core.util.Pools;
 import androidx.core.view.inputmethod.EditorInfoCompat;
 import androidx.core.view.inputmethod.InputConnectionCompat;
@@ -118,8 +105,30 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView;
-import java9.util.function.Consumer;
-import me.tagavari.airmessage.common.SharedValues;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.bumptech.glide.request.RequestOptions;
+import com.crashlytics.android.Crashlytics;
+import com.google.android.gms.common.util.BiConsumer;
+import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
+import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Objects;
+
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.VisualizerView;
@@ -147,6 +156,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final int permissionRequestStorage = 0;
 	private static final int permissionRequestAudio = 1;
 	private static final int permissionRequestAudioDirect = 2; //Used when requesting microphone usage directly form the input bar
+	private static final int permissionRequestMessageCustomOffset = 100; //Used to offset custom message permission requests, to prevent collisions with activity requests
 	
 	private static final int intentPickFile = 1;
 	private static final int intentTakePicture = 2;
@@ -244,6 +254,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private RecyclerView messageList;
 	private View inputBar;
 	private View inputBarShadow;
+	private View attachmentsPanel;
 	private ImageButton buttonSendMessage;
 	private FrameLayout buttonAddContent;
 	private InsertionEditText messageInputField;
@@ -270,17 +281,25 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	//Creating the listeners
 	private final ViewTreeObserver.OnGlobalLayoutListener rootLayoutListener = () -> {
-		//Getting the height
-		int height = messageList.getHeight();
-		if(appBar.getVisibility() == View.VISIBLE) height += appBar.getHeight();
+		{
+			//Getting the height
+			int height = messageList.getHeight();
+			if(appBar.getVisibility() == View.VISIBLE) height += appBar.getHeight();
+			
+			//Checking if the window is smaller than the minimum height, the window isn't in multi-window mode
+			if(height < getResources().getDimensionPixelSize(R.dimen.conversationwindow_minheight) && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode())) {
+				//Hiding the app bar
+				hideToolbar();
+			} else {
+				//Showing the app bar
+				showToolbar();
+			}
+		}
 		
-		//Checking if the window is smaller than the minimum height, the window isn't in multi-window mode
-		if(height < getResources().getDimensionPixelSize(R.dimen.conversationwindow_minheight) && !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode())) {
-			//Hiding the app bar
-			hideToolbar();
-		} else {
-			//Showing the app bar
-			showToolbar();
+		{
+			//Setting a height limit on the message input field
+			//int height = rootView.getHeight() - attachmentsPanel.getHeight();
+			//messageInputField.setMaxHeight(height - Constants.dpToPx(200));
 		}
 	};
 	private final TextWatcher inputFieldTextWatcher = new TextWatcher() {
@@ -302,63 +321,23 @@ public class Messaging extends AppCompatCompositeActivity {
 		public void afterTextChanged(Editable s) {
 		}
 	};
-	private final View.OnClickListener sendButtonClickListener = view -> {
-		//Creating the message list
-		ArrayList<ConversationManager.MessageInfo> messageList = new ArrayList<>();
+	private final View.OnKeyListener inputFieldKeyListener = (view, keyCode, event) -> {
+		//Returning if the event is not a key down
+		if(event.getAction() != KeyEvent.ACTION_DOWN) return false;
 		
-		//Checking if the message box has text
-		if(messageInputField.getText().length() > 0) {
-			//Getting the message text
-			String message = messageInputField.getText().toString();
+		//Checking if the key is the enter key
+		if(keyCode == KeyEvent.KEYCODE_ENTER && !event.isShiftPressed() && event.getSource() != InputDevice.SOURCE_UNKNOWN) {
+			//Sending the message
+			sendMessage();
 			
-			//Trimming the message
-			message = message.trim();
-			
-			//Returning if the message is empty
-			if(message.isEmpty()) return;
-			
-			//Creating a message
-			messageList.add(new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
-			
-			//Clearing the message box
-			messageInputField.setText("");
-			messageInputField.requestLayout(); //Height of input field doesn't update otherwise
-			//messageBoxHasText = false;
+			//Returning true
+			return true;
 		}
 		
-		//Iterating over the drafts
-		for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
-			//Creating the message
-			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
-			
-			//Creating the attachment
-			SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
-			ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType(), attachmentFile.getFileSize());
-			attachment.setDraftingPushRequest(queuedFile.getFilePushRequest());
-			
-			//Adding the attachment to the message
-			messageInfo.addAttachment(attachment);
-			
-			//Adding the message to the queue list
-			messageList.add(messageInfo);
-			
-			//Dequeuing the item
-			dequeueAttachment(queuedFile.getItem(), true, false);
-			viewModel.conversationInfo.removeDraftFileUpdate(this, queuedFile.getDraftFile(), -1);
-		}
-		
-		//Returning if there are no items to send
-		if(messageList.isEmpty()) return;
-		
-		//Clearing the conversation's drafts
-		viewModel.conversationInfo.clearDraftsUpdate(this);
-		
-		//Writing the messages to the database
-		new AddGhostMessageTask(getApplicationContext(), new GhostMessageFinishHandler()).execute(messageList.toArray(new ConversationManager.MessageInfo[0]));
-		
-		//Scrolling to the bottom of the chat
-		messageListAdapter.scrollToBottom();
+		//Returning false
+		return false;
 	};
+	private final View.OnClickListener sendButtonClickListener = view -> sendMessage();
 	
 	private static class GhostMessageFinishHandler implements Consumer<ConversationManager.MessageInfo> {
 		@Override
@@ -425,7 +404,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//updateSendButton();
 				
 				break;
-			case ActivityViewModel.messagesStateReady:
+			case ActivityViewModel.messagesStateReady: {
 				labelLoading.setVisibility(View.GONE);
 				groupLoadFail.setVisibility(View.GONE);
 				
@@ -483,8 +462,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 				
 				//Restoring the draft message
-				if(messageInputField.getText().length() == 0)
-					messageInputField.setText(viewModel.conversationInfo.getDraftMessage());
+				if(messageInputField.getText().length() == 0) messageInputField.setText(viewModel.conversationInfo.getDraftMessage());
 				
 				/* //Finding the latest send effect
 				for(int i = viewModel.conversationItemList.size() - 1; i >= 0 && i >= viewModel.conversationItemList.size() - viewModel.conversationInfo.getUnreadMessageCount(); i--) {
@@ -512,19 +490,22 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Setting the last message count
 				viewModel.lastUnreadCount = viewModel.conversationInfo.getUnreadMessageCount();
-			
-			{
-				//Getting the layout manager
-				LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
-				int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
 				
-				//Showing the FAB if the user has scrolled more than 3 items
-				if(itemsScrolledFromBottom > quickScrollFABThreshold) {
-					bottomFAB.show();
-					restoreUnreadIndicator();
+				{
+					//Getting the layout manager
+					LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
+					int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
+					
+					//Showing the FAB if the user has scrolled more than 3 items
+					if(itemsScrolledFromBottom > quickScrollFABThreshold) {
+						bottomFAB.show();
+						restoreUnreadIndicator();
+					}
 				}
+				
+				//Updating the reply suggestions
+				viewModel.updateSmartReply();
 			}
-			
 			break;
 			case ActivityViewModel.messagesStateFailedConversation:
 				labelLoading.setVisibility(View.GONE);
@@ -570,7 +551,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		labelLoadFail = findViewById(R.id.group_error_label);
 		messageList = findViewById(R.id.list_messages);
 		inputBar = findViewById(R.id.inputbar);
-		inputBarShadow = findViewById(R.id.bottomshadow);
+		inputBarShadow = Constants.shouldUseAMOLED(this) ? findViewById(R.id.bottomshadow_amoled) : findViewById(R.id.bottomshadow);
+		attachmentsPanel = findViewById(R.id.panel_attachments);
+		inputBarShadow.setVisibility(View.VISIBLE);
 		buttonSendMessage = inputBar.findViewById(R.id.button_send);
 		buttonAddContent = inputBar.findViewById(R.id.button_addcontent);
 		messageInputField = inputBar.findViewById(R.id.messagebox);
@@ -588,6 +571,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), messageList);
+		
+		//Configuring the AMOLED theme
+		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
 		
 		//Getting the conversation ID
 		long conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
@@ -624,9 +610,19 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		});
 		
+		rootView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+			@Override
+			public void onGlobalLayout() {
+				rootView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+				int height = rootView.getHeight() - attachmentsPanel.getHeight();
+				messageInputField.setMaxHeight(height - Constants.dpToPx(400));
+			}
+		});
+		
 		//Setting the listeners
 		rootView.getViewTreeObserver().addOnGlobalLayoutListener(rootLayoutListener);
 		messageInputField.addTextChangedListener(inputFieldTextWatcher);
+		messageInputField.setOnKeyListener(inputFieldKeyListener);
 		//messageInputField.setOnClickListener(view -> closeAttachmentsPanel(false));
 		buttonSendMessage.setOnClickListener(sendButtonClickListener);
 		buttonAddContent.setOnClickListener(view -> {
@@ -715,8 +711,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
 		
-		//Restoring the panels
 		getWindow().getDecorView().post(() -> {
+			//Restoring the panels
 			openDetailsPanel(true);
 			openAttachmentsPanel(true, false);
 		});
@@ -734,8 +730,10 @@ public class Messaging extends AppCompatCompositeActivity {
 			concealRecordingView();
 			
 			//Queuing the target file (if it is available)
-			if(viewModel.targetFileRecording != null)
+			if(viewModel.targetFileRecording != null) {
 				new QueueFileAsyncTask(this).execute(viewModel.targetFileRecording);
+				viewModel.targetFileRecording = null;
+			}
 		});
 		viewModel.recordingDuration.observe(this, value -> {
 			if(recordingTimeLabel != null) recordingTimeLabel.setText(DateUtils.formatElapsedTime(value));
@@ -743,6 +741,24 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewModel.progressiveLoadInProgress.observe(this, value -> {
 			if(value) onProgressiveLoadStart();
 			else onProgressiveLoadFinish(viewModel.lastProgressiveLoadCount);
+		});
+		viewModel.smartReplyAvailable.observe(this, value -> {
+			//Updating the recycler adapter (to show the reply suggestions)
+			if(value) {
+				if(messageListAdapter.replySuggestionsAvailable) {
+					messageListAdapter.notifyItemChanged(messageListAdapter.getItemCount() - 1);
+				} else {
+					messageListAdapter.replySuggestionsAvailable = true;
+					messageListAdapter.notifyItemInserted(messageListAdapter.getItemCount());
+					getWindow().getDecorView().post(messageListAdapter::scrollToBottom);
+				}
+			}
+			else {
+				if(messageListAdapter.replySuggestionsAvailable) {
+					messageListAdapter.replySuggestionsAvailable = false;
+					messageListAdapter.notifyItemRemoved(messageListAdapter.getItemCount() - 1);
+				}
+			}
 		});
 		
 		/* KeyboardVisibilityEvent.setEventListener(this, isOpen -> {
@@ -873,12 +889,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		}
 		
-		
-		//Checking if the activity is finishing
-		if(isFinishing()) {
-			//Saving the draft message
-			viewModel.applyDraftMessage(messageInputField.getText().toString());
-		}
+		//Saving the draft message
+		viewModel.applyDraftMessage(messageInputField.getText().toString());
 	}
 	
 	@Override
@@ -995,6 +1007,20 @@ public class Messaging extends AppCompatCompositeActivity {
 					new QueueUriAsyncTask(this).execute(list);
 				}
 			}
+		}
+	}
+	
+	void setDarkAMOLED() {
+		Constants.setActivityAMOLEDBase(this);
+		findViewById(R.id.appbar).setBackgroundColor(Constants.colorAMOLED);
+		
+		//Setting the input bar background color
+		inputBar.setBackgroundColor(Constants.colorAMOLED);
+		
+		//Setting the attachments view
+		View attachmentsView = findViewById(R.id.pane_attachments);
+		if(attachmentsView != null) {
+			attachmentsView.setBackgroundColor(Constants.colorAMOLED);
 		}
 	}
 	
@@ -1124,6 +1150,64 @@ public class Messaging extends AppCompatCompositeActivity {
 		else super.onBackPressed();
 	}
 	
+	private void sendMessage() {
+		//Creating the message list
+		ArrayList<ConversationManager.MessageInfo> messageList = new ArrayList<>();
+		
+		//Checking if the message box has text
+		if(messageInputField.getText().length() > 0) {
+			//Getting the message text
+			String message = messageInputField.getText().toString();
+			
+			//Trimming the message
+			message = message.trim();
+			
+			//Returning if the message is empty
+			if(message.isEmpty()) return;
+			
+			//Creating a message
+			messageList.add(new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
+			
+			//Clearing the message box
+			messageInputField.setText("");
+			messageInputField.requestLayout(); //Height of input field doesn't update otherwise
+			//messageBoxHasText = false;
+		}
+		
+		//Iterating over the drafts
+		for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
+			//Creating the message
+			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+			
+			//Creating the attachment
+			SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
+			ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType(), attachmentFile.getFileSize());
+			attachment.setDraftingPushRequest(queuedFile.getFilePushRequest());
+			
+			//Adding the attachment to the message
+			messageInfo.addAttachment(attachment);
+			
+			//Adding the message to the queue list
+			messageList.add(messageInfo);
+			
+			//Dequeuing the item
+			dequeueAttachment(queuedFile.getItem(), true, false);
+			viewModel.conversationInfo.removeDraftFileUpdate(this, queuedFile.getDraftFile(), -1);
+		}
+		
+		//Returning if there are no items to send
+		if(messageList.isEmpty()) return;
+		
+		//Clearing the conversation's drafts
+		viewModel.conversationInfo.clearDraftsUpdate(this);
+		
+		//Writing the messages to the database
+		new AddGhostMessageTask(getApplicationContext(), new GhostMessageFinishHandler()).execute(messageList.toArray(new ConversationManager.MessageInfo[0]));
+		
+		//Scrolling to the bottom of the chat
+		messageListAdapter.scrollToBottom();
+	}
+	
 	private void openAttachmentsPanel(boolean restore, boolean animate) {
 		//Returning if the conversation is not ready or the panel is already open
 		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || restore != viewModel.isAttachmentsPanelOpen) return;
@@ -1147,6 +1231,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Coloring the UI
 			colorUI(inflated);
+			if(Constants.shouldUseAMOLED(this)) findViewById(R.id.pane_attachments).setBackgroundColor(Constants.colorAMOLED);
 			
 			//Setting up the sections
 			setupAttachmentsGallerySection();
@@ -1169,9 +1254,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Limiting the panel height
 		int targetHeight = Math.min(requestedPanelHeight, windowThreshold);
 		
-		//Getting the panel
-		View panel = findViewById(R.id.panel_attachments);
-		
 		if(animate) {
 			//Animating in the panel
 			ValueAnimator animator = ValueAnimator.ofInt(0, targetHeight);
@@ -1179,28 +1261,28 @@ public class Messaging extends AppCompatCompositeActivity {
 			animator.setInterpolator(new AccelerateDecelerateInterpolator());
 			animator.addUpdateListener(animation -> {
 				int value = (int) animation.getAnimatedValue();
-				panel.getLayoutParams().height = value;
-				panel.requestLayout();
+				attachmentsPanel.getLayoutParams().height = value;
+				attachmentsPanel.requestLayout();
 			});
 			animator.addListener(new AnimatorListenerAdapter() {
 				@Override
 				public void onAnimationStart(Animator animation) {
-					panel.setVisibility(View.VISIBLE);
+					attachmentsPanel.setVisibility(View.VISIBLE);
 				}
 				
 				@Override
 				public void onAnimationEnd(Animator animation) {
-					panel.getLayoutParams().height = targetHeight;
-					panel.requestLayout();
+					attachmentsPanel.getLayoutParams().height = targetHeight;
+					attachmentsPanel.requestLayout();
 				}
 			});
 			animator.start();
 		} else {
 			//Setting the panel height
-			panel.getLayoutParams().height = targetHeight;
+			attachmentsPanel.getLayoutParams().height = targetHeight;
 			
 			//Showing the panel
-			findViewById(R.id.panel_attachments).setVisibility(View.VISIBLE);
+			attachmentsPanel.setVisibility(View.VISIBLE);
 		}
 	}
 	
@@ -1211,30 +1293,27 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the panel as closed
 		viewModel.isAttachmentsPanelOpen = false;
 		
-		//Getting the panel
-		View panel = findViewById(R.id.panel_attachments);
-		
 		//Closing the panel
 		if(animate) {
-			ValueAnimator animator = ValueAnimator.ofInt(panel.getHeight(), 0);
+			ValueAnimator animator = ValueAnimator.ofInt(attachmentsPanel.getHeight(), 0);
 			animator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
 			animator.setInterpolator(new AccelerateDecelerateInterpolator());
 			animator.addUpdateListener(animation -> {
 				int value = (int) animation.getAnimatedValue();
-				panel.getLayoutParams().height = value;
-				panel.requestLayout();
+				attachmentsPanel.getLayoutParams().height = value;
+				attachmentsPanel.requestLayout();
 			});
 			animator.addListener(new AnimatorListenerAdapter() {
 				@Override
 				public void onAnimationEnd(Animator animation) {
-					panel.getLayoutParams().height = 0;
-					panel.setVisibility(View.GONE);
+					attachmentsPanel.getLayoutParams().height = 0;
+					attachmentsPanel.setVisibility(View.GONE);
 				}
 			});
 			animator.start();
 		} else {
-			panel.getLayoutParams().height = 0;
-			panel.setVisibility(View.GONE);
+			attachmentsPanel.getLayoutParams().height = 0;
+			attachmentsPanel.setVisibility(View.GONE);
 		}
 	}
 	
@@ -1470,11 +1549,10 @@ public class Messaging extends AppCompatCompositeActivity {
 				boolean isMuted = !isChecked;
 				viewModel.conversationInfo.setMuted(isMuted);
 				DatabaseManager.getInstance().updateConversationMuted(viewModel.conversationInfo.getLocalID(), isMuted);
-				
 			});
 			//inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
 			Button buttonChangeColor = inflated.findViewById(R.id.button_changecolor);
-			if(Preferences.checkPreferenceAdvancedColor(this)) buttonChangeColor.setOnClickListener(view -> showColorDialog(null, viewModel.conversationInfo.getConversationColor()));
+			if(Preferences.getPreferenceAdvancedColor(this)) buttonChangeColor.setOnClickListener(view -> showColorDialog(null, viewModel.conversationInfo.getConversationColor()));
 			else buttonChangeColor.setVisibility(View.GONE);
 			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
 			
@@ -1503,8 +1581,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
 							//Removing the conversation from memory
 							ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-							if(conversations != null)
-								conversations.remove(viewModel.conversationInfo);
+							if(conversations != null) conversations.remove(viewModel.conversationInfo);
 							
 							//Deleting the conversation from the database
 							DatabaseManager.getInstance().deleteConversation(viewModel.conversationInfo);
@@ -1739,7 +1816,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Configuring the color editor
 		ImageView changeColorButton = memberEntry.findViewById(R.id.button_change_color);
-		if(showColor && Preferences.checkPreferenceAdvancedColor(this)) {
+		if(showColor && Preferences.getPreferenceAdvancedColor(this)) {
 			changeColorButton.setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
 			changeColorButton.setOnClickListener(view -> showColorDialog(member, member.getColor()));
 			changeColorButton.setVisibility(View.VISIBLE);
@@ -1837,7 +1914,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void colorUI(ViewGroup root) {
 		//Returning if the conversation is invalid or "rainbow chats" is not enabled
-		if(!Preferences.checkPreferenceAdvancedColor(this) || viewModel.conversationInfo == null) return;
+		if(!Preferences.getPreferenceAdvancedColor(this) || viewModel.conversationInfo == null) return;
 		
 		//Getting the color
 		int color = viewModel.conversationInfo.getConversationColor();
@@ -1873,7 +1950,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	int getConversationUIColor() {
-		return Preferences.checkPreferenceAdvancedColor(this) ? viewModel.conversationInfo.getConversationColor() : getResources().getColor(R.color.colorPrimary, null);
+		return Preferences.getPreferenceAdvancedColor(this) ? viewModel.conversationInfo.getConversationColor() : getResources().getColor(R.color.colorPrimary, null);
 	}
 	
 	private void setActionBarTitle(String title) {
@@ -1908,7 +1985,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void updateSendButton(boolean restore) {
 		//Getting the send button state
-		boolean state = messageInputField.getText().length() > 0 || !viewModel.draftQueueList.isEmpty();
+		boolean state = !messageInputField.getText().toString().trim().isEmpty() || !viewModel.draftQueueList.isEmpty();
 		if(currentSendButtonState == state && !restore) return;
 		currentSendButtonState = state;
 		
@@ -2300,6 +2377,8 @@ public class Messaging extends AppCompatCompositeActivity {
 					setupAttachmentsAudioSection();
 				}
 			}
+			default:
+				viewModel.callPermissionsRequestListener(requestCode - permissionRequestMessageCustomOffset, grantResults[0] == PackageManager.PERMISSION_GRANTED);
 		}
 	}
 	
@@ -2521,6 +2600,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	class MessageListRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 		//Creating the reference values
 		private static final int itemTypeLoadingBar = -1;
+		private static final int itemTypeReplySuggestions = -2;
 		
 		//Creating the values
 		private ArrayList<ConversationManager.ConversationItem> conversationItems = null;
@@ -2529,6 +2609,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the pools
 		private final SparseArray<Pools.SimplePool<? extends RecyclerView.ViewHolder>> componentPoolList = new SparseArray<>();
 		private final PoolSource poolSource = new PoolSource();
+		
+		//Creating the states
+		private boolean replySuggestionsAvailable;
 		
 		MessageListRecyclerAdapter() {
 			//Enabling stable IDs
@@ -2549,6 +2632,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			super.onAttachedToRecyclerView(recyclerView);
 			
 			this.recyclerView = recyclerView;
+			
+			//Getting the reply suggestions available state
+			replySuggestionsAvailable = viewModel.isSmartReplyAvailable();
 		}
 		
 		@Override
@@ -2565,6 +2651,8 @@ public class Messaging extends AppCompatCompositeActivity {
 					((ProgressBar) loadingView.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(getConversationUIColor()));
 					return new LoadingViewHolder(loadingView);
 				}
+				case itemTypeReplySuggestions:
+					return new ReplySuggestionsViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_replysuggestions, parent, false));
 				default:
 					throw new IllegalArgumentException("Invalid view type received: " + viewType);
 			}
@@ -2582,37 +2670,44 @@ public class Messaging extends AppCompatCompositeActivity {
 		@Override
 		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
 			//Returning if there are no items or the item is the loading spinner
-			if(conversationItems == null || getItemViewType(position) == itemTypeLoadingBar) return;
+			int itemType = getItemViewType(position);
+			if(conversationItems == null || itemType == itemTypeLoadingBar) return;
 			
-			//Getting the item
-			ConversationManager.ConversationItem conversationItem;
-			if(viewModel.isProgressiveLoadInProgress())
-				conversationItem = conversationItems.get(position - 1);
-			else conversationItem = conversationItems.get(position);
-			
-			//Checking if the item is a message
-			boolean isMessage = false;
-			if(conversationItem instanceof ConversationManager.MessageInfo) {
-				((ConversationManager.MessageInfo.ViewHolder) holder).setPoolSource(poolSource);
-				isMessage = true;
-			}
-			
-			//Creating the view
-			conversationItem.bindView(holder, Messaging.this);
-			
-			//Setting the view source
-			conversationItem.setViewHolderSource(new Constants.ViewHolderSourceImpl<RecyclerView.ViewHolder>(recyclerView, conversationItem.getLocalID()));
-			
-			//Checking if the item is a message
-			if(isMessage) {
-				ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
-				//Playing the message's effect if it hasn't been viewed yet
-				if(messageInfo.getSendStyle() != null && !messageInfo.getSendStyleViewed()) {
-					messageInfo.setSendStyleViewed(true);
-					messageInfo.playEffect((ConversationManager.MessageInfo.ViewHolder) holder);
+			//Checking if the item is the suggestions
+			if(itemType == itemTypeReplySuggestions) {
+				ReplySuggestionsViewHolder viewHolder = (ReplySuggestionsViewHolder) holder;
+				viewHolder.setSuggestions(Messaging.this, viewModel, viewModel.lastSmartReplyResult);
+				viewHolder.resetScroll();
+			} else {
+				//Getting the item
+				ConversationManager.ConversationItem conversationItem;
+				if(viewModel.isProgressiveLoadInProgress()) conversationItem = conversationItems.get(position - 1);
+				else conversationItem = conversationItems.get(position);
+				
+				//Checking if the item is a message
+				boolean isMessage = false;
+				if(conversationItem instanceof ConversationManager.MessageInfo) {
+					((ConversationManager.MessageInfo.ViewHolder) holder).setPoolSource(poolSource);
+					isMessage = true;
+				}
+				
+				//Creating the view
+				conversationItem.bindView(holder, Messaging.this);
+				
+				//Setting the view source
+				conversationItem.setViewHolderSource(new Constants.ViewHolderSourceImpl<RecyclerView.ViewHolder>(recyclerView, conversationItem.getLocalID()));
+				
+				//Checking if the item is a message
+				if(isMessage) {
+					ConversationManager.MessageInfo messageInfo = (ConversationManager.MessageInfo) conversationItem;
+					//Playing the message's effect if it hasn't been viewed yet
+					if(messageInfo.getSendStyle() != null && !messageInfo.getSendStyleViewed()) {
+						messageInfo.setSendStyleViewed(true);
+						messageInfo.playEffect((ConversationManager.MessageInfo.ViewHolder) holder);
 					/* if(Constants.validateScreenEffect(messageInfo.getSendStyle())) playScreenEffect(messageInfo.getSendStyle());
 					else messageInfo.playEffect(); */
-					new TaskMarkMessageSendStyleViewed().execute(messageInfo);
+						new TaskMarkMessageSendStyleViewed().execute(messageInfo);
+					}
 				}
 			}
 		}
@@ -2628,6 +2723,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(conversationItems == null) return 0;
 			int size = conversationItems.size();
 			if(viewModel.isProgressiveLoadInProgress()) size += 1;
+			if(viewModel.isSmartReplyAvailable()) size += 1;
 			return size;
 		}
 		
@@ -2635,18 +2731,24 @@ public class Messaging extends AppCompatCompositeActivity {
 		public int getItemViewType(int position) {
 			if(conversationItems == null) return 0;
 			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
+			if(isViewReplySuggestions(position)) return itemTypeReplySuggestions;
 			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getItemViewType();
 		}
 		
 		@Override
 		public long getItemId(int position) {
 			if(conversationItems == null) return 0;
-			if(isViewLoadingSpinner(position)) return -1;
+			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
+			if(isViewReplySuggestions(position)) return itemTypeReplySuggestions;
 			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getLocalID();
 		}
 		
 		private boolean isViewLoadingSpinner(int position) {
 			return viewModel.isProgressiveLoadInProgress() && position == 0;
+		}
+		
+		private boolean isViewReplySuggestions(int position) {
+			return viewModel.isSmartReplyAvailable() && position + 1 == getItemCount();
 		}
 		
 		final class PoolSource {
@@ -2848,8 +2950,8 @@ public class Messaging extends AppCompatCompositeActivity {
 						
 						//Setting the selection
 						int draftIndex = getDraftItemIndex(item);
-						if(draftIndex != -1) tileHolder.setSelected(true, draftIndex + 1);
-						else tileHolder.setDeselected(true);
+						if(draftIndex != -1) tileHolder.setSelected(getResources(), true, draftIndex + 1);
+						else tileHolder.setDeselected(getResources(), true);
 						
 						//Updating the click listener
 						assignItemClickListener((AttachmentTileViewHolder) holder, item, draftIndex);
@@ -2879,14 +2981,14 @@ public class Messaging extends AppCompatCompositeActivity {
 						if(newDraftIndex == -1) return;
 						
 						//Showing the item's selection indicator
-						viewHolder.setSelected(true, newDraftIndex + 1);
+						viewHolder.setSelected(getResources(), true, newDraftIndex + 1);
 					} else {
 						//Removing the item
 						dequeueAttachment(item, false, true);
 						newDraftIndex = -1;
 						
 						//Setting the selection
-						viewHolder.setDeselected(true);
+						viewHolder.setDeselected(getResources(), true);
 						
 						//Updating the items
 						recalculateIndices();
@@ -3167,7 +3269,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		public void onBindViewHolder(@NonNull QueueTileViewHolder holder, int position) {
 			//Binding the tile view
 			QueuedFileInfo fileInfo = itemList.get(position);
-			fileInfo.getTileHelper().bindView(holder.contentViewHolder, fileInfo.item);
+			fileInfo.getTileHelper().bindView(Messaging.this, holder.contentViewHolder, fileInfo.item);
 			
 			//Hooking up the remove button
 			holder.buttonRemove.setOnClickListener(view -> dequeueAttachment(fileInfo.item, true, true));
@@ -3289,7 +3391,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private abstract class AttachmentTileHelper<VH extends RecyclerView.ViewHolder> {
+	private static abstract class AttachmentTileHelper<VH extends RecyclerView.ViewHolder> {
 		//Creating the reference values
 		static final int viewTypeMedia = 0;
 		static final int viewTypeDocument = 1;
@@ -3297,7 +3399,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		abstract VH createViewHolder(ViewGroup parent);
 		
-		abstract void bindView(VH viewHolder, SimpleAttachmentInfo item);
+		abstract void bindView(Context context, VH viewHolder, SimpleAttachmentInfo item);
 		
 		abstract int getViewType();
 	}
@@ -3306,15 +3408,14 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(mimeType == null) return attachmentsDocumentTileHelper;
 		
 		{
-			if(Constants.compareMimeTypes(mimeType, mimeTypeImage) || Constants.compareMimeTypes(mimeType, mimeTypeVideo))
-				return attachmentsMediaTileHelper;
+			if(Constants.compareMimeTypes(mimeType, mimeTypeImage) || Constants.compareMimeTypes(mimeType, mimeTypeVideo)) return attachmentsMediaTileHelper;
 			else if(Constants.compareMimeTypes(mimeType, mimeTypeAudio)) return attachmentsAudioTileHelper;
 		}
 		
 		return attachmentsDocumentTileHelper;
 	}
 	
-	private abstract class AttachmentTileViewHolder extends RecyclerView.ViewHolder {
+	private static abstract class AttachmentTileViewHolder extends RecyclerView.ViewHolder {
 		//Creating the reference values
 		private static final float selectedScale = 0.85F;
 		
@@ -3326,7 +3427,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			super(itemView);
 		}
 		
-		void setSelected(boolean animate, int index) {
+		void setSelected(Resources resources, boolean animate, int index) {
 			//Returning if the view state is already selected
 			if(groupSelection != null && groupSelection.getVisibility() == View.VISIBLE) return;
 			
@@ -3338,7 +3439,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Showing the view
 			if(animate) {
-				int duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
+				int duration = resources.getInteger(android.R.integer.config_shortAnimTime);
 				groupSelection.animate().withStartAction(() -> groupSelection.setVisibility(View.VISIBLE)).alpha(1).setDuration(duration).start();
 				{
 					ValueAnimator animator = ValueAnimator.ofFloat(itemView.getScaleX(), selectedScale);
@@ -3381,16 +3482,16 @@ public class Messaging extends AppCompatCompositeActivity {
 				itemView.setScaleY(selectedScale);
 			}
 			
-			labelSelection.setText(Constants.intToFormattedString(getResources(), index));
+			labelSelection.setText(Constants.intToFormattedString(resources, index));
 		}
 		
-		void setDeselected(boolean animate) {
+		void setDeselected(Resources resources, boolean animate) {
 			//Returning if the view state is already deselected
 			if(groupSelection == null || groupSelection.getVisibility() == View.GONE) return;
 			
 			//Hiding the view
 			if(animate) {
-				int duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
+				int duration = resources.getInteger(android.R.integer.config_shortAnimTime);
 				groupSelection.animate().withEndAction(() -> groupSelection.setVisibility(View.GONE)).alpha(0).setDuration(duration).start();
 				{
 					ValueAnimator animator = ValueAnimator.ofFloat(itemView.getScaleX(), 1);
@@ -3477,11 +3578,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		@Override
 		void bindContentViewHolder(AttachmentsMediaTileViewHolder viewHolder, SimpleAttachmentInfo file, int draftIndex) {
 			//Binding the view through the tile helper
-			tileHelper.bindView(viewHolder, file);
+			tileHelper.bindView(Messaging.this, viewHolder, file);
 			
 			//Setting the selection state
-			if(draftIndex == -1) viewHolder.setDeselected(false);
-			else viewHolder.setSelected(false, draftIndex + 1);
+			if(draftIndex == -1) viewHolder.setDeselected(getResources(), false);
+			else viewHolder.setSelected(getResources(), false, draftIndex + 1);
 		}
 		
 		@Override
@@ -3503,7 +3604,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		return -1;
 	}
 	
-	private class AttachmentsMediaTileViewHolder extends AttachmentTileViewHolder {
+	private static class AttachmentsMediaTileViewHolder extends AttachmentTileViewHolder {
 		//Creating the view values
 		private final ImageView imageThumbnail;
 		private final ImageView imageFlagGIF;
@@ -3520,23 +3621,23 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private final AttachmentTileHelper<AttachmentsMediaTileViewHolder> attachmentsMediaTileHelper = new AttachmentTileHelper<AttachmentsMediaTileViewHolder>() {
+	private static AttachmentTileHelper<AttachmentsMediaTileViewHolder> attachmentsMediaTileHelper = new AttachmentTileHelper<AttachmentsMediaTileViewHolder>() {
 		@Override
 		AttachmentsMediaTileViewHolder createViewHolder(ViewGroup parent) {
-			return new AttachmentsMediaTileViewHolder(getLayoutInflater().inflate(R.layout.listitem_attachment_mediatile, parent, false));
+			return new AttachmentsMediaTileViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_attachment_mediatile, parent, false));
 		}
 		
 		@Override
-		void bindView(AttachmentsMediaTileViewHolder viewHolder, SimpleAttachmentInfo item) {
+		void bindView(Context context, AttachmentsMediaTileViewHolder viewHolder, SimpleAttachmentInfo item) {
 			//Returning if the item is invalid
 			if(item == null) return;
 			
 			//Returning if the context is invalid
 			//if(isFinishing() || isDestroyed()) return;
-			if(!Constants.validateContext(Messaging.this)) return;
+			if(!Constants.validateContext(context)) return;
 			
 			//Setting the image thumbnail
-			Glide.with(Messaging.this)
+			Glide.with(context)
 					.load(item.getFile() != null ? item.getFile() : item.getUri())
 					.apply(RequestOptions.centerCropTransform())
 					.transition(DrawableTransitionOptions.withCrossFade())
@@ -3549,7 +3650,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			} else if(Constants.compareMimeTypes(item.getFileType(), mimeTypeVideo)) {
 				viewHolder.imageFlagGIF.setVisibility(View.GONE);
 				viewHolder.groupVideo.setVisibility(View.VISIBLE);
-				viewHolder.labelVideo.setText(DateUtils.formatElapsedTime((int) Math.floor(((SimpleAttachmentInfo.VideoExtension) item.getExtension()).mediaDuration / 1000L)));
+				viewHolder.labelVideo.setText(DateUtils.formatElapsedTime(((SimpleAttachmentInfo.VideoExtension) item.getExtension()).mediaDuration / 1000));
 			} else {
 				viewHolder.imageFlagGIF.setVisibility(View.GONE);
 				viewHolder.groupVideo.setVisibility(View.GONE);
@@ -3562,7 +3663,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	};
 	
-	private class AttachmentsDocumentTileViewHolder extends AttachmentTileViewHolder {
+	private static class AttachmentsDocumentTileViewHolder extends AttachmentTileViewHolder {
 		//Creating the view values
 		private TextView documentName;
 		private ImageView documentIcon;
@@ -3576,14 +3677,14 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private final AttachmentTileHelper<AttachmentsDocumentTileViewHolder> attachmentsDocumentTileHelper = new AttachmentTileHelper<AttachmentsDocumentTileViewHolder>() {
+	private static final AttachmentTileHelper<AttachmentsDocumentTileViewHolder> attachmentsDocumentTileHelper = new AttachmentTileHelper<AttachmentsDocumentTileViewHolder>() {
 		@Override
 		AttachmentsDocumentTileViewHolder createViewHolder(ViewGroup parent) {
-			return new AttachmentsDocumentTileViewHolder(getLayoutInflater().inflate(R.layout.listitem_attachment_documenttile, parent, false));
+			return new AttachmentsDocumentTileViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_attachment_documenttile, parent, false));
 		}
 		
 		@Override
-		void bindView(AttachmentsDocumentTileViewHolder viewHolder, SimpleAttachmentInfo item) {
+		void bindView(Context context, AttachmentsDocumentTileViewHolder viewHolder, SimpleAttachmentInfo item) {
 			//Returning if the file is invalid
 			if(item == null) return;
 			
@@ -3663,9 +3764,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 			
 			//Resolving the color resources
-			viewColorBG = getResources().getColor(viewColorBG, null);
-			viewColorFG = getResources().getColor(viewColorFG, null);
-			if(Constants.isNightMode(getResources())) {
+			viewColorBG = context.getResources().getColor(viewColorBG, null);
+			viewColorFG = context.getResources().getColor(viewColorFG, null);
+			if(Constants.isNightMode(context.getResources())) {
 				int temp = viewColorBG;
 				viewColorBG = viewColorFG;
 				viewColorFG = temp;
@@ -3678,7 +3779,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			viewHolder.documentIcon.setImageResource(iconResource);
 			viewHolder.documentIcon.setImageTintList(ColorStateList.valueOf(viewColorFG));
 			
-			viewHolder.documentSize.setText(Formatter.formatFileSize(Messaging.this, item.getFileSize()));
+			viewHolder.documentSize.setText(Formatter.formatFileSize(context, item.getFileSize()));
 			viewHolder.documentSize.setTextColor(viewColorFG);
 			
 			viewHolder.itemView.setBackgroundTintList(ColorStateList.valueOf(viewColorBG));
@@ -3690,7 +3791,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	};
 	
-	private class AttachmentsAudioTileViewHolder extends AttachmentTileViewHolder {
+	private static class AttachmentsAudioTileViewHolder extends AttachmentTileViewHolder {
 		//Creating the reference values
 		static final int resourceDrawablePlay = R.drawable.play;
 		static final int resourceDrawablePause = R.drawable.pause;
@@ -3708,16 +3809,18 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private final AttachmentTileHelper<AttachmentsAudioTileViewHolder> attachmentsAudioTileHelper = new AttachmentTileHelper<AttachmentsAudioTileViewHolder>() {
+	private static final AttachmentTileHelper<AttachmentsAudioTileViewHolder> attachmentsAudioTileHelper = new AttachmentTileHelper<AttachmentsAudioTileViewHolder>() {
 		@Override
 		AttachmentsAudioTileViewHolder createViewHolder(ViewGroup parent) {
-			return new AttachmentsAudioTileViewHolder(getLayoutInflater().inflate(R.layout.listitem_attachment_audiotile, parent, false));
+			return new AttachmentsAudioTileViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_attachment_audiotile, parent, false));
 		}
 		
 		@Override
-		void bindView(AttachmentsAudioTileViewHolder viewHolder, SimpleAttachmentInfo item) {
+		void bindView(Context context, AttachmentsAudioTileViewHolder viewHolder, SimpleAttachmentInfo item) {
 			//Returning if the item is invalid
 			if(item == null) return;
+			
+			Messaging activity = (Messaging) context;
 			
 			//Getting the extension
 			SimpleAttachmentInfo.AudioExtension extension = (SimpleAttachmentInfo.AudioExtension) item.getExtension();
@@ -3728,15 +3831,15 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Creating the view holder source
 			Constants.ViewHolderSource<AttachmentsAudioTileViewHolder> viewHolderSource = () -> {
-				if(listAttachmentQueue == null) return null;
-				int itemIndex = findAttachmentInQueue(item);
+				if(activity.listAttachmentQueue == null) return null;
+				int itemIndex = findAttachmentInQueue(activity, item);
 				if(itemIndex == -1) return null;
-				return (AttachmentsAudioTileViewHolder) ((AttachmentsQueueRecyclerAdapter.QueueTileViewHolder) listAttachmentQueue.findViewHolderForAdapterPosition(itemIndex)).contentViewHolder;
+				return (AttachmentsAudioTileViewHolder) ((AttachmentsQueueRecyclerAdapter.QueueTileViewHolder) activity.listAttachmentQueue.findViewHolderForAdapterPosition(itemIndex)).contentViewHolder;
 			};
 			
 			//Finding the queued file info
 			QueuedFileInfo queuedInfo = null;
-			for(QueuedFileInfo allQueued : viewModel.draftQueueList) {
+			for(QueuedFileInfo allQueued : activity.viewModel.draftQueueList) {
 				if(allQueued.getItem() != item) continue;
 				queuedInfo = allQueued;
 				break;
@@ -3745,13 +3848,13 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Setting the click listener
 			final QueuedFileInfo finalQueuedFileInfo = queuedInfo;
-			viewHolder.itemView.setOnClickListener(view -> extension.play(viewModel.audioPlaybackManager, finalQueuedFileInfo, viewHolderSource));
+			viewHolder.itemView.setOnClickListener(view -> extension.play(activity.viewModel.audioPlaybackManager, finalQueuedFileInfo, viewHolderSource));
 		}
 		
-		private int findAttachmentInQueue(SimpleAttachmentInfo item) {
+		private int findAttachmentInQueue(Messaging activity, SimpleAttachmentInfo item) {
 			int queuedIndex;
 			QueuedFileInfo queuedItem;
-			for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext(); ) {
+			for(ListIterator<QueuedFileInfo> iterator = activity.viewModel.draftQueueList.listIterator(); iterator.hasNext(); ) {
 				queuedIndex = iterator.nextIndex();
 				queuedItem = iterator.next();
 				if(queuedItem.getItem() == item) return queuedIndex;
@@ -3985,6 +4088,66 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
+	static class ReplySuggestionsViewHolder extends RecyclerView.ViewHolder {
+		HorizontalScrollView scrollView;
+		LinearLayout container;
+		
+		ReplySuggestionsViewHolder(View itemView) {
+			super(itemView);
+			scrollView = (HorizontalScrollView) itemView;
+			container = itemView.findViewById(R.id.container);
+		}
+		
+		void resetScroll() {
+			scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_RIGHT));
+		}
+		
+		void setSuggestions(Context context, ActivityViewModel viewModel, String[] suggestions) {
+			//Gathering active views
+			List<TextView> childViewList = new ArrayList<>(suggestions.length);
+			for(int i = 0; i < container.getChildCount(); i++) {
+				TextView childView = (TextView) container.getChildAt(i);
+				if(i < suggestions.length) {
+					childView.setVisibility(View.VISIBLE);
+					childViewList.add(childView);
+				} else childView.setVisibility(View.GONE);
+			}
+			
+			//Adding more views if necessary
+			while(childViewList.size() < suggestions.length) {
+				TextView item = (TextView) LayoutInflater.from(context).inflate(R.layout.listitem_replysuggestions_item, container, false);
+				if(Preferences.getPreferenceAdvancedColor(context)) item.setTextColor(viewModel.conversationInfo.getConversationColor());
+				container.addView(item);
+				childViewList.add(item);
+			}
+			
+			//Creating a reference to the view model
+			WeakReference<ActivityViewModel> viewModelReference = new WeakReference<>(viewModel);
+			
+			//Setting the text
+			for(int i = 0; i < suggestions.length; i++) {
+				TextView childView = childViewList.get(i);
+				String suggestionText = suggestions[i];
+				
+				childView.setText(suggestionText);
+				childView.setOnClickListener(view -> {
+					//Getting the view model
+					ActivityViewModel newViewModel = viewModelReference.get();
+					if(newViewModel == null) return;
+					
+					//Clearing the suggestions
+					//newViewModel.smartReplyAvailable.setValue(false);
+					
+					//Creating a message
+					ConversationManager.MessageInfo message = new ConversationManager.MessageInfo(-1, -1, null, newViewModel.conversationInfo, null, suggestionText, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+					
+					//Writing the messages to the database
+					new AddGhostMessageTask(newViewModel.getApplication(), new GhostMessageFinishHandler()).execute(message);
+				});
+			}
+		}
+	}
+	
 	public static class SpeedyLinearLayoutManager extends LinearLayoutManager {
 		public SpeedyLinearLayoutManager(Context context) {
 			super(context);
@@ -4037,6 +4200,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final int messagesStateFailedMessages = 4;
 		static final int messagesStateReady = 5;
 		
+		static final int smartReplyStateDisabled = 0;
+		static final int smartReplyStateLoading = 1;
+		static final int smartReplyStateAvailable = 2;
+		
 		static final int attachmentsStateIdle = 0;
 		static final int attachmentsStateLoading = 1;
 		static final int attachmentsStateLoaded = 2;
@@ -4067,6 +4234,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		private final MutableLiveData<Boolean> progressiveLoadInProgress = new MutableLiveData<>();
 		private boolean progressiveLoadReachedLimit = false;
 		private int lastProgressiveLoadCount = -1;
+		
+		private final MutableLiveData<Boolean> smartReplyAvailable = new MutableLiveData<>();
+		private byte smartReplyRequestID = -1;
+		private boolean smartReplyAwaiting = false;
+		private String[] lastSmartReplyResult = null;
 		
 		private long firstSortID = -1;
 		private int firstSortIDOffset = -1;
@@ -4120,6 +4292,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Starting the media recorder
 			mediaRecorder.start();
 		};
+		private final SparseArray<BiConsumer<Context, Boolean>> permissionRequestResultListenerList = new SparseArray<>();
 		
 		ActivityViewModel(Application application, long conversationID) {
 			super(application);
@@ -4342,6 +4515,11 @@ public class Messaging extends AppCompatCompositeActivity {
 			return value == null ? false : value;
 		}
 		
+		boolean isSmartReplyAvailable() {
+			Boolean value = smartReplyAvailable.getValue();
+			return value == null ? false : value;
+		}
+		
 		void playSound(int id) {
 			switch(id) {
 				case soundMessageIncoming:
@@ -4532,6 +4710,75 @@ public class Messaging extends AppCompatCompositeActivity {
 			recordingTimerHandler.removeCallbacks(recordingTimerHandlerRunnable);
 		}
 		
+		private void updateSmartReply() {
+			//Returning if smart reply is disabled or the conversation has no messages
+			if(!Preferences.getPreferenceReplySuggestions(getApplication()) || conversationItemList == null || conversationItemList.isEmpty()) return;
+			
+			//Finding the last message
+			ConversationManager.MessageInfo lastMessage = null;
+			for(int i  = conversationItemList.size() - 1; i >= 0; i--) {
+				ConversationManager.ConversationItem item = conversationItemList.get(i);
+				if(!(item instanceof ConversationManager.MessageInfo)) continue;
+				lastMessage = (ConversationManager.MessageInfo) item;
+				break;
+			}
+			
+			//Checking if the last message isn't valid
+			if(lastMessage == null || lastMessage.getMessageText() == null || lastMessage.isOutgoing()) {
+				//Cancelling the smart reply
+				smartReplyAvailable.setValue(false);
+				smartReplyAwaiting = false;
+				
+				return;
+			}
+			
+			//Collecting the last 10 messages
+			List<ConversationManager.MessageInfo> messageHistory = new ArrayList<>(Constants.smartReplyHistoryLength);
+			for(int i  = conversationItemList.size() - 1; i >= 0; i--) {
+				ConversationManager.ConversationItem item = conversationItemList.get(i);
+				if(!(item instanceof ConversationManager.MessageInfo)) continue;
+				ConversationManager.MessageInfo message = (ConversationManager.MessageInfo) item;
+				if(message.getMessageText() == null) continue;
+				messageHistory.add(message);
+				
+				if(messageHistory.size() == Constants.smartReplyHistoryLength) break;
+			}
+			
+			//Sorting the list by date
+			Collections.sort(messageHistory, (item1, item2) -> Long.compare(item1.getDate(), item2.getDate()));
+			
+			//Starting the smart reply request
+			smartReplyAwaiting = true;
+			short requestID = ++smartReplyRequestID;
+			FirebaseNaturalLanguage.getInstance().getSmartReply().suggestReplies(Constants.messageToFirebaseMessageList(messageHistory)).addOnSuccessListener(result -> {
+				//Ignoring if the request ID doesn't line up
+				if(smartReplyRequestID != requestID) return;
+				
+				if(result.getStatus() != SmartReplySuggestionResult.STATUS_SUCCESS) {
+					//Cancelling the smart reply request
+					smartReplyAvailable.setValue(false);
+					smartReplyAwaiting = false;
+				} else {
+					//Mapping the suggestions to a string array and returning the result
+					String[] suggestions = new String[result.getSuggestions().size()];
+					for(int i = 0; i < suggestions.length; i++) suggestions[i] = result.getSuggestions().get(i).getText();
+					
+					//Cancelling the smart reply
+					lastSmartReplyResult = suggestions;
+					smartReplyAvailable.setValue(true);
+					smartReplyAwaiting = false;
+				}
+				
+			}).addOnFailureListener(exception -> {
+				//Ignoring if the request ID doesn't line up
+				if(smartReplyRequestID != requestID) return;
+				
+				//Cancelling the smart reply request
+				smartReplyAvailable.setValue(false);
+				smartReplyAwaiting = false;
+			});
+		}
+		
 		void indexAttachmentsGallery(AttachmentsLoadCallbacks listener, AttachmentsRecyclerAdapter<?> adapter) {
 			indexAttachmentsFromMediaStore(listener, attachmentTypeGallery, MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO, adapter);
 		}
@@ -4634,6 +4881,17 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		interface AttachmentsLoadCallbacks {
 			void onLoadFinished(boolean successful);
+		}
+		
+		void addPermissionsRequestListener(int requestCode, BiConsumer<Context, Boolean> callback) {
+			permissionRequestResultListenerList.put(requestCode, callback);
+		}
+		
+		void callPermissionsRequestListener(int requestCode, boolean result) {
+			BiConsumer<Context, Boolean> listener = permissionRequestResultListenerList.get(requestCode);
+			if(listener == null) return;
+			listener.accept(getApplication(), result);
+			permissionRequestResultListenerList.remove(requestCode);
 		}
 	}
 	
@@ -5116,6 +5374,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Playing sounds
 			if(messageIncoming) activity.viewModel.playSound(ActivityViewModel.soundMessageIncoming);
 			if(messageOutgoing) activity.viewModel.playSound(ActivityViewModel.soundMessageOutgoing);
+			
+			//Updating the reply suggestions
+			activity.viewModel.updateSmartReply();
 		}
 		
 		@Override
@@ -5155,6 +5416,17 @@ public class Messaging extends AppCompatCompositeActivity {
 		void playScreenEffect(String screenEffect, View target) {
 			Messaging activity = activityReference.get();
 			if(activity != null) activity.playScreenEffect(screenEffect, target);
+		}
+		
+		@Override
+		void requestPermission(String permission, int requestCode, BiConsumer<Context, Boolean> resultListener) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Requesting the permission
+			activity.requestPermissions(new String[]{permission}, requestCode + permissionRequestMessageCustomOffset);
+			activity.viewModel.addPermissionsRequestListener(requestCode, resultListener);
 		}
 	}
 	

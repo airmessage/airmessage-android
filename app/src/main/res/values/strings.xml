@@ -18,6 +18,7 @@
 	<string name="action_markread">Mark as read</string>
 	<string name="action_retry">Retry</string>
 	<string name="action_search">Search</string>
+	<string name="action_markallread">Mark all as read</string>
 	<string name="action_update">Update</string>
 	<string name="action_dismiss">Dismiss</string>
 	<string name="action_close">Close</string>
@@ -33,6 +34,7 @@
 	<string name="action_reconfigure">Reconfigure</string>
 	<string name="action_copytext">Copy text</string>
 	<string name="action_share">Share</string>
+	<string name="action_save">Save</string>
 	<string name="action_deletedata">Delete file</string>
 	<string name="action_archive">Archive</string>
 	<string name="action_unarchive">Unarchive</string>
@@ -61,6 +63,7 @@
 	<string name="action_getnotifications">Get notifications</string>
 	<string name="action_pinconversation">Pin conversation</string>
 	<string name="action_copytoclipboard">Copy to clipboard</string>
+	<string name="action_newconversation">New conversation</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -86,6 +89,9 @@
 	<string name="message_blankstate_conversations_archived">Archived conversations appear here</string>
 	<string name="message_blankstate_conversations_basic">No conversations</string>
 	<string name="message_blankstate_blocked">No blocked addresses</string>
+
+	<string name="message_fileexport_success">File saved to device</string>
+	<string name="message_fileexport_fail">Failed to save file</string>
 
 	<string name="message_unknownerror">An unknown error occurred</string>
 	<string name="message_loaderror_conversation">Failed to load conversation</string>
@@ -347,6 +353,7 @@
 		<item quantity="other">Archive selected conversations?</item>
 	</plurals> -->
 	<string name="servicedesc_connectionservice">Creates and maintains a connection to the AirMessage server to send and receive messages</string>
+	<string name="servicedesc_fileexportservice">Copies sent and received files to local storage, as per the user\'s request</string>
 	<string name="notificationchannel_message">Messages</string>
 	<string name="notificationchannel_message_desc">Concerns notifications about incoming messages</string>
 	<string name="notificationchannel_status">Status</string>

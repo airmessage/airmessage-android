@@ -1,18 +1,24 @@
 package me.tagavari.airmessage;
 
+import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ShortcutInfo;
+import android.content.pm.ShortcutManager;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.Icon;
 import android.graphics.drawable.PaintDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -56,6 +62,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
+import com.google.android.gms.common.util.BiConsumer;
 import com.pnikosis.materialishprogress.ProgressWheel;
 
 import org.lukhnos.nnio.file.Paths;
@@ -78,13 +85,16 @@ import java.util.Objects;
 import java.util.Random;
 
 import androidx.annotation.DrawableRes;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
+import androidx.collection.LongSparseArray;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.TransitionManager;
-import java9.util.function.Consumer;
+import androidx.core.util.Consumer;
 import jp.wasabeef.glide.transformations.BlurTransformation;
 import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.view.InvisibleInkView;
@@ -92,11 +102,11 @@ import me.tagavari.airmessage.view.RoundedImageView;
 
 class ConversationManager {
 	//Message burst - Sending single messages one after the other
-	static final long conversationBurstTimeMillis = 30 * 1000; //30 seconds
+	private static final long conversationBurstTimeMillis = 30 * 1000; //30 seconds
 	//Message session - A conversation session, where conversation participants are active
-	static final long conversationSessionTimeMillis = 5 * 60 * 1000; //5 minutes
+	private static final long conversationSessionTimeMillis = 5 * 60 * 1000; //5 minutes
 	//Just now - A message sent just now
-	static final long conversationJustNowTimeMillis = 60 * 1000; //1 minute
+	private static final long conversationJustNowTimeMillis = 60 * 1000; //1 minute
 	
 	static final Comparator<ConversationInfo> conversationComparator = (conversation1, conversation2) -> {
 		//Getting the last conversation item times
@@ -117,6 +127,10 @@ class ConversationManager {
 	
 	private static final int invisibleInkBlurRadius = 2;
 	private static final int invisibleInkBlurSampling = 80;
+	
+	private static final int permissionRequestWriteStorageDownload = 0;
+	
+	private static final String shortcutPrefixConversation = "conversation-";
 	
 	//Creating the conversation list
 	//private final ArrayList<ConversationInfo> conversations = new ArrayList<>();
@@ -543,6 +557,73 @@ class ConversationManager {
 			
 			//Updating the users
 			updateViewUser(context, viewHolder);
+		}
+		
+		void generateShortcutIcon(Context context, Constants.TaskedResultCallback<Icon> callback) {
+			//Returning if the conversation has no members
+			if(conversationMembers.isEmpty()) {
+				callback.onResult(null, false);
+				return;
+			}
+			
+			//Getting the view
+			ViewGroup iconGroup = (ViewGroup) LayoutInflater.from(context).inflate(R.layout.generation_conversationicon, null);
+			
+			//Getting the view data
+			int currentUserViewIndex = Math.min(conversationMembers.size() - 1, maxUsersToDisplay - 1);
+			View viewAtIndex = iconGroup.getChildAt(currentUserViewIndex);
+			ViewGroup iconView = (ViewGroup) ((ViewStub) viewAtIndex).inflate();
+			
+			//Hiding the other views
+			//for(int i = 0; i < maxUsersToDisplay; i++) iconGroup.getChildAt(i).setVisibility(i == currentUserViewIndex ? View.VISIBLE : View.GONE);
+			
+			//Setting the icons
+			int displayMemberCount = iconView.getChildCount();
+			Constants.ValueWrapper<Integer> completionCount = new Constants.ValueWrapper<>(0);
+			
+			for(int i = 0; i < displayMemberCount; i++) {
+				//Getting the member info
+				MemberInfo member = getConversationMembers().get(i);
+				//Getting the child view
+				View child = iconView.getChildAt(i);
+				
+				//Resetting the contact image
+				ImageView imageProfile = child.findViewById(R.id.profile_image);
+				imageProfile.setImageBitmap(null);
+				
+				//Setting the default profile tint
+				ImageView defaultProfile = child.findViewById(R.id.profile_default);
+				defaultProfile.setVisibility(View.VISIBLE);
+				defaultProfile.setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
+				
+				//Assigning the user info
+				String contactName = member.getName();
+				MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context.getApplicationContext(), contactName, contactName, new BitmapCacheHelper.ImageDecodeResult() {
+					@Override
+					void onImageMeasured(int width, int height) {}
+					
+					@Override
+					void onImageDecoded(Bitmap result, boolean wasTasked) {
+						//Checking if the result is valid
+						if(result != null) {
+							//Hiding the default view
+							defaultProfile.setVisibility(View.INVISIBLE);
+							
+							//Setting the bitmap
+							imageProfile.setImageBitmap(result);
+						}
+						
+						//Adding to the count
+						completionCount.value++;
+						
+						//Checking if all images have been processed
+						if(completionCount.value == displayMemberCount) {
+							//Rendering the image and returning the result
+							callback.onResult(Icon.createWithBitmap(Constants.loadBitmapFromView(iconGroup)), wasTasked);
+						}
+					}
+				});
+			}
 		}
 		
 		void setViewHolderSource(Constants.ViewHolderSource<ItemViewHolder> viewHolderSource) {
@@ -1431,6 +1512,9 @@ class ConversationManager {
 			
 			//Removing the conversation from the database
 			new DeleteConversationTask(context, this).execute();
+			
+			//Removing the conversation shortcut
+			ConversationManager.enableShortcuts(context, Collections.singletonList(this));
 		}
 		
 		private static class DeleteConversationTask extends AsyncTask<Void, Void, Void> {
@@ -1490,6 +1574,8 @@ class ConversationManager {
 			abstract Messaging.AudioPlaybackManager getAudioPlaybackManager();
 			
 			abstract void playScreenEffect(String effect, View target);
+			
+			abstract void requestPermission(String permission, int requestCode, BiConsumer<Context, Boolean> resultListener);
 		}
 		
 		int getNextUserColor() {
@@ -2232,7 +2318,7 @@ class ConversationManager {
 		
 		private void prepareActivityStateDisplay(ViewHolder viewHolder, Context context) {
 			//Returning if read receipt showing is disabled
-			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			if(!Preferences.getPreferenceShowReadReceipts(context)) return;
 			
 			//Getting the requested state
 			isShowingMessageState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetDelivered()) &&
@@ -2251,7 +2337,7 @@ class ConversationManager {
 		
 		void updateActivityStateDisplay(Context context) {
 			//Returning if read receipt showing is disabled
-			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			if(!Preferences.getPreferenceShowReadReceipts(context)) return;
 			
 			//Getting the requested state
 			boolean requestedState = (this == getConversationInfo().getActivityStateTargetRead() || this == getConversationInfo().getActivityStateTargetDelivered()) &&
@@ -2269,7 +2355,7 @@ class ConversationManager {
 		
 		private void updateActivityStateDisplay(ViewHolder viewHolder, Context context, boolean currentState, boolean requestedState) {
 			//Returning if read receipt showing is disabled
-			if(!Preferences.checkPreferenceShowReadReceipts(context)) return;
+			if(!Preferences.getPreferenceShowReadReceipts(context)) return;
 			
 			//Checking if the requested state matches the current state
 			if(requestedState == currentState) {
@@ -2602,6 +2688,12 @@ class ConversationManager {
 		void deleteMessage(Context context) {
 			//Removing the item from the conversation in memory
 			getConversationInfo().removeConversationItem(context, this);
+			
+			//Updating the last item
+			getConversationInfo().updateLastItem(context);
+			
+			//Updating the view
+			getConversationInfo().updateView(context);
 			
 			//Deleting the message on disk
 			new DeleteMessagesTask().execute(getLocalID());
@@ -2953,7 +3045,7 @@ class ConversationManager {
 			}
 			
 			//Setting the upload spinner tint
-			viewHolder.progressSend.setBarColor(Preferences.checkPreferenceAdvancedColor(context) ? getConversationInfo().getConversationColor() : context.getResources().getColor(R.color.colorPrimary, null));
+			viewHolder.progressSend.setBarColor(Preferences.getPreferenceAdvancedColor(context) ? getConversationInfo().getConversationColor() : context.getResources().getColor(R.color.colorPrimary, null));
 			
 			//Updating the message colors
 			if(updateComponents && messageText != null) {
@@ -4121,7 +4213,7 @@ class ConversationManager {
 			int textColor;
 			
 			if(getMessageInfo().isOutgoing()) {
-				if(Preferences.checkPreferenceAdvancedColor(context)) {
+				if(Preferences.getPreferenceAdvancedColor(context)) {
 					backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
 					textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
 				} else {
@@ -4129,7 +4221,7 @@ class ConversationManager {
 					textColor = context.getResources().getColor(R.color.colorTextWhite, null);
 				}
 			} else {
-				if(Preferences.checkPreferenceAdvancedColor(context)) {
+				if(Preferences.getPreferenceAdvancedColor(context)) {
 					MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
 					int targetColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 					//textColor = context.getResources().getColor(R.color.colorTextWhite, null);
@@ -4176,8 +4268,9 @@ class ConversationManager {
 			//Inflating the menu
 			popupMenu.inflate(R.menu.menu_conversationitem_contextual);
 			
-			//Removing the delete file option
+			//Removing attachment-specfic options
 			Menu menu = popupMenu.getMenu();
+			menu.removeItem(R.id.action_save);
 			menu.removeItem(R.id.action_deletedata);
 			
 			//Creating the context reference
@@ -4638,7 +4731,7 @@ class ConversationManager {
 			
 			//Getting the colors
 			if(messageInfo.isOutgoing()) {
-				if(Preferences.checkPreferenceAdvancedColor(context)) {
+				if(Preferences.getPreferenceAdvancedColor(context)) {
 					cslText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
 					cslSecondaryText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
 					cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
@@ -4650,7 +4743,7 @@ class ConversationManager {
 					cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorPrimaryLight, null));
 				}
 			} else {
-				if(Preferences.checkPreferenceAdvancedColor(context)) {
+				if(Preferences.getPreferenceAdvancedColor(context)) {
 					MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
 					int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 					
@@ -4806,6 +4899,7 @@ class ConversationManager {
 			//Disabling the share and delete option if there is no data
 			if(file == null) {
 				menu.findItem(R.id.action_share).setEnabled(false);
+				menu.findItem(R.id.action_save).setEnabled(false);
 				menu.findItem(R.id.action_deletedata).setEnabled(false);
 			}
 			
@@ -4872,6 +4966,17 @@ class ConversationManager {
 						//Returning true
 						return true;
 					}
+					case R.id.action_save: {
+						if(ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) exportFile(context, file);
+						//Otherwise requesting the permission
+						else {
+							ConversationInfo.ActivityCallbacks updater = getMessageInfo().getConversationInfo().getActivityCallbacks();
+							if(updater != null) updater.requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, permissionRequestWriteStorageDownload, new LocationPermissionRequest(file));
+						}
+						
+						//Returning true
+						return true;
+					}
 					case R.id.action_deletedata: {
 						//Deleting the attachment
 						new AttachmentDeleter(newContext, file, localID).execute();
@@ -4902,6 +5007,25 @@ class ConversationManager {
 			
 			//Hiding the stickers
 			updateStickerVisibility();
+		}
+		
+		private static void exportFile(Context context, File file) {
+			Intent intent = new Intent(context, FileExportService.class);
+			intent.putExtra(Constants.intentParamData, file.getPath());
+			context.startService(intent);
+		}
+		
+		private static class LocationPermissionRequest implements BiConsumer<Context, Boolean> {
+			private final File sendFile;
+			
+			LocationPermissionRequest(File sendFile) {
+				this.sendFile = sendFile;
+			}
+			
+			@Override
+			public void accept(Context context, Boolean result) {
+				if(result) exportFile(context, sendFile);
+			}
 		}
 		
 		private static class AttachmentDeleter extends AsyncTask<Void, Void, Void> {
@@ -5227,6 +5351,7 @@ class ConversationManager {
 				viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 				backgroundDrawable.setCornerRadii(new float[]{radiusTop, radiusTop, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, pxCornerUnanchored, radiusBottom, radiusBottom});
 			}
+			viewHolder.imageContent.invalidate();
 			viewHolder.backgroundView.setBackground(backgroundDrawable);
 		}
 		
@@ -6889,6 +7014,136 @@ class ConversationManager {
 		else if(mimeType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return VideoAttachmentInfo.RESOURCE_NAME;
 		else if(mimeType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return AudioAttachmentInfo.RESOURCE_NAME;
 		else return OtherAttachmentInfo.RESOURCE_NAME;
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.N_MR1)
+	private static void generateShortcutInfo(Context context, List<ConversationInfo> conversationList, Constants.ResultCallback<List<ShortcutInfo>> result) {
+		//Creating the shortcuts
+		List<ShortcutInfo> shortcutList = new ArrayList<>(conversationList.size());
+		LongSparseArray<String> titleMap = new LongSparseArray<>();
+		LongSparseArray<Icon> iconMap = new LongSparseArray<>();
+		Constants.ValueWrapper<Integer> titleRequestsCompleted = new Constants.ValueWrapper<>(0);
+		
+		for(ConversationManager.ConversationInfo conversationBuild : conversationList) {
+			conversationBuild.buildTitle(context, (titleResult, titleWasTasked) -> {
+				//Recording the title
+				titleMap.put(conversationBuild.getLocalID(), titleResult);
+				
+				conversationBuild.generateShortcutIcon(context, (iconResult, iconWasTasked) -> {
+					//Recording the icon
+					iconMap.put(conversationBuild.getLocalID(), iconResult);
+					
+					//Adding to the completion count
+					titleRequestsCompleted.value++;
+					
+					//Checking if all requests have been completed
+					if(titleRequestsCompleted.value == conversationList.size()) {
+						//Building the shortcuts
+						for(ConversationManager.ConversationInfo conversationShortcut : conversationList) {
+							//Creating the intents
+							Intent intentConversations = new Intent(context, Conversations.class);
+							intentConversations.setAction(Intent.ACTION_VIEW);
+							intentConversations.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+							
+							Intent intentMessaging = new Intent(context, Messaging.class);
+							intentMessaging.setAction(Intent.ACTION_VIEW);
+							intentMessaging.putExtra(Constants.intentParamTargetID, conversationShortcut.getLocalID());
+							
+							//Building and adding the shortcuts
+							ShortcutInfo shortcut = new ShortcutInfo.Builder(context, shortcutPrefixConversation + conversationShortcut.getGuid())
+									.setShortLabel(titleMap.get(conversationShortcut.getLocalID()))
+									.setIcon(iconMap.get(conversationShortcut.getLocalID()))
+									.setIntents(new Intent[]{intentConversations, intentMessaging})
+									.build();
+							shortcutList.add(shortcut);
+						}
+						
+						//Returning the list
+						result.onResult(iconWasTasked || titleWasTasked, shortcutList);
+					}
+				});
+			});
+		}
+	}
+	
+	static void rebuildDynamicShortcuts(Context context) {
+		//Shortcuts require Android 7.1 Nougat or above
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+		
+		//Getting the top 3 conversations
+		MainApplication.LoadFlagArrayList<ConversationInfo> conversations = getConversations();
+		if(conversations == null || !conversations.isLoaded()) return;
+		List<ConversationManager.ConversationInfo> topConversations = conversations.subList(0, Math.min(conversations.size(), 3));
+		
+		//Creating the shortcuts
+		generateShortcutInfo(context, topConversations, (wasTasked, shortcutList) -> {
+			//Setting the shortcuts
+			ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+			shortcutManager.setDynamicShortcuts(shortcutList);
+		});
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.N_MR1)
+	private static boolean isShortcutActive(ShortcutManager shortcutManager, String shortcutID) {
+		for(ShortcutInfo shortcut : shortcutManager.getDynamicShortcuts()) if(shortcut.getId().equals(shortcutID)) return true;
+		for(ShortcutInfo shortcut : shortcutManager.getPinnedShortcuts()) if(shortcut.getId().equals(shortcutID)) return true;
+		return false;
+	}
+	
+	static void updateShortcuts(Context context, List<ConversationInfo> conversationList) {
+		//Shortcuts require Android 7.1 Nougat or above
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+		
+		//Getting the shortcut manager
+		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+		
+		//Filtering out conversations that aren't in any shortcuts
+		List<ConversationInfo> filteredList = new ArrayList<>();
+		for(ConversationInfo conversation : conversationList) {
+			if(!isShortcutActive(shortcutManager, shortcutPrefixConversation + conversation.getGuid())) continue;
+			filteredList.add(conversation);
+		}
+		
+		//Creating the shortcuts
+		generateShortcutInfo(context, filteredList, (wasTasked, shortcutList) -> {
+			//Setting the shortcuts
+			shortcutManager.updateShortcuts(shortcutList);
+		});
+	}
+	
+	static void disableShortcuts(Context context, List<ConversationInfo> conversationList) {
+		//Shortcuts require Android 7.1 Nougat or above
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+		
+		//Mapping the conversations to IDs
+		List<String> idList = new ArrayList<>(conversationList.size());
+		for(ConversationInfo conversation : conversationList) idList.add(shortcutPrefixConversation + conversation.getGuid());
+		
+		//Disabling the shortcuts
+		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+		shortcutManager.disableShortcuts(idList);
+	}
+	
+	static void enableShortcuts(Context context, List<ConversationInfo> conversationList) {
+		//Shortcuts require Android 7.1 Nougat or above
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+		
+		//Mapping the conversations to GUIDs
+		List<String> idList = new ArrayList<>(conversationList.size());
+		for(ConversationInfo conversation : conversationList) idList.add(shortcutPrefixConversation + conversation.getGuid());
+		
+		//Disabling the shortcuts
+		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+		shortcutManager.disableShortcuts(idList);
+	}
+	
+	static void clearDynamicShortcuts(Context context) {
+		//Shortcuts require Android 7.1 Nougat or above
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+		
+		//Clearing the shortcuts
+		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+		shortcutManager.removeAllDynamicShortcuts();
 	}
 	
 	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, long fileSize) {

@@ -5,7 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.pm.ShortcutManager;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
@@ -31,6 +34,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -39,6 +43,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.view.ActionMode;
+import androidx.appcompat.view.StandaloneActionMode;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProviders;
@@ -61,6 +66,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	//Creating the menu values
 	private MenuItem menuItemSearch = null;
+	private MenuItem menuItemMarkAllRead = null;
 	
 	//Creating the view values
 	private AppBarLayout appBarLayout;
@@ -178,6 +184,12 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), conversationsBasePlugin.recyclerView);
 		
+		//Configuring the AMOLED theme
+		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
+		
+		//Setting the statusbar color
+		Constants.updateChromeOSStatusbar(this);
+		
 		//Configuring the list
 		//conversationsBasePlugin.listView.setOnItemClickListener(onListItemClickListener);
 		//conversationsBasePlugin.listView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE_MODAL);
@@ -205,6 +217,9 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Updating the search list adapter
 			if(viewModel.isSearching && searchRecyclerAdapter != null) searchRecyclerAdapter.updateAndFilter();
+			
+			//Updating the "mark as read" control
+			updateMarkAllRead();
 		});
 		editTextBarSearch.addTextChangedListener(searchTextWatcher);
 		buttonBarSearchClear.setOnClickListener(view -> editTextBarSearch.setText(""));
@@ -250,6 +265,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Hiding the search view if the state is syncing
 		if(conversationsBasePlugin.currentState != ConversationsBase.stateReady) setSearchState(false, true);
+		
+		//Updating the "mark as read" control
+		updateMarkAllRead();
 	}
 	
 	@Override
@@ -273,6 +291,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Configuring the search widget
 		menuItemSearch = menu.findItem(R.id.action_search);
 		menuItemSearch.setVisible(!viewModel.listingArchived);
+		
+		menuItemMarkAllRead = menu.findItem(R.id.action_markallread);
+		updateMarkAllRead();
 		
 		//Returning true
 		return true;
@@ -455,6 +476,10 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
+		
+		//Updating app shortcuts
+		ConversationManager.rebuildDynamicShortcuts(this);
+		if(conversationsBasePlugin.conversations.isLoaded()) ConversationManager.updateShortcuts(this, conversationsBasePlugin.conversations);
 	}
 	
 	@Override
@@ -490,6 +515,18 @@ public class Conversations extends AppCompatCompositeActivity {
 				setArchivedListingState(!viewModel.listingArchived);
 				
 				return true;
+			case R.id.action_markallread: //Mark all as read
+				//Marking all items as read
+				for(ConversationManager.ConversationInfo conversation : ConversationManager.getConversations()) {
+					conversation.setUnreadMessageCount(0);
+					conversation.updateUnreadStatus(this);
+				}
+				new MarkAllReadAsyncTask().execute();
+				
+				//Hiding the menu item
+				menuItemMarkAllRead.setVisible(false);
+				
+				break;
 			/* case R.id.action_blocked: //Blocked contacts
 				return true; */
 			case R.id.action_settings: //Settings
@@ -739,6 +776,24 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Hiding the FAB
 		floatingActionButton.hide();
+	}
+	
+	void updateMarkAllRead() {
+		if(menuItemMarkAllRead == null) return;
+		
+		//Getting the conversations
+		List<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
+		if(conversations == null) return;
+		
+		//Calculating the amount of unread conversations
+		boolean unreadConversationFound = false;
+		for(ConversationManager.ConversationInfo conversation : conversations) {
+			if(conversation.getUnreadMessageCount() == 0) continue;
+			unreadConversationFound = true;
+			break;
+		}
+		
+		menuItemMarkAllRead.setVisible(unreadConversationFound);
 	}
 	
 	public void onCloseSearchClicked(View view) {
@@ -1034,6 +1089,27 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Hiding the FAB
 		floatingActionButton.hide();
+	}
+	
+	void setDarkAMOLED() {
+		Constants.setActivityAMOLEDBase(this);
+		findViewById(R.id.appbar).setBackgroundColor(Constants.colorAMOLED);
+		findViewById(R.id.viewgroup_search).setBackgroundColor(Constants.colorAMOLED);
+	}
+	
+	void setDarkAMOLEDSamsung() {
+		Constants.setActivityAMOLEDBase(this);
+		findViewById(R.id.appbar).setBackgroundColor(Constants.colorAMOLED);
+		
+		RecyclerView listMessages = findViewById(R.id.list);
+		RecyclerView listSearch = findViewById(R.id.list_search);
+		listMessages.setBackgroundResource(R.drawable.background_amoledsamsung);
+		listMessages.setClipToOutline(true);
+		listMessages.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+		findViewById(R.id.viewgroup_search).setBackgroundColor(Constants.colorAMOLED);
+		listSearch.setBackgroundResource(R.drawable.background_amoledsamsung);
+		listSearch.setClipToOutline(true);
+		listSearch.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
 	}
 	
 	/**
@@ -1372,6 +1448,14 @@ public class Conversations extends AppCompatCompositeActivity {
 			else actionMode.getMenu().findItem(R.id.action_unarchive).setVisible(false);
 			if(nonArchivedConversations > 0) actionMode.getMenu().findItem(R.id.action_archive).setVisible(true);
 			else actionMode.getMenu().findItem(R.id.action_archive).setVisible(false);
+		}
+	}
+	
+	private static class MarkAllReadAsyncTask extends AsyncTask<Void, Void, Void> {
+		@Override
+		protected Void doInBackground(Void... parameters) {
+			DatabaseManager.getInstance().setAllUnreadClear();
+			return null;
 		}
 	}
 }

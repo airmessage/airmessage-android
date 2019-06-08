@@ -1,14 +1,21 @@
 package me.tagavari.airmessage;
 
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ShortcutInfo;
+import android.content.pm.ShortcutManager;
+import android.graphics.drawable.Icon;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.LongSparseArray;
+import android.util.SparseArray;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -18,7 +25,9 @@ import com.google.android.material.snackbar.Snackbar;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import androidx.core.app.TaskStackBuilder;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
@@ -163,9 +172,6 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		//Calling the super method
 		super.onStart();
 		
-		//Starting the time updater
-		timeUpdateHandler.postDelayed(timeUpdateHandlerRunnable, timeUpdateHandlerDelay);
-		
 		//Advancing the conversation state (doing it in onStart so that the composite activity has time to handle its views)
 		if(isFirstOnStart) {
 			advanceConversationState();
@@ -178,17 +184,27 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		//Calling the super method
 		super.onResume();
 		
+		//Starting the time updater
+		timeUpdateHandlerRunnable.run();
+		timeUpdateHandler.postDelayed(timeUpdateHandlerRunnable, timeUpdateHandlerDelay);
+		
 		//Refreshing the list
 		//updateList(false);
+	}
+	
+	@Override
+	protected void onPause() {
+		//Calling the super method
+		super.onPause();
+		
+		//Stopping the time updater
+		timeUpdateHandler.removeCallbacks(timeUpdateHandlerRunnable);
 	}
 	
 	@Override
 	public void onStop() {
 		//Calling the super method
 		super.onStop();
-		
-		//Stopping the time updater
-		timeUpdateHandler.removeCallbacks(timeUpdateHandlerRunnable);
 	}
 	
 	@Override
@@ -575,12 +591,23 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		
 		@Override
 		protected void onPreExecute() {
-			//Clearing all conversations
+			//Getting context
+			Context context = contextReference.get();
+			
+			//Clearing dynamic shortcuts
+			if(context != null) ConversationManager.clearDynamicShortcuts(context);
+			
+			//Getting the conversations
 			ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-			if(conversations != null) conversations.clear();
+			if(conversations != null) {
+				//Disabling other shortcuts
+				if(context != null) ConversationManager.disableShortcuts(context, conversations);
+				
+				//Clearing the conversations in memory
+				conversations.clear();
+			}
 			
 			//Updating the conversation activity list
-			Context context = contextReference.get();
 			if(context != null) LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCConversationUpdate));
 		}
 		
@@ -616,15 +643,24 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		
 		@Override
 		protected void onPreExecute() {
-			//Clearing the conversations in memory
+			//Getting context
+			Context context = contextReference.get();
+			
+			//Clearing dynamic shortcuts
+			if(context != null) ConversationManager.clearDynamicShortcuts(context);
+			
+			//Getting the conversations
 			ArrayList<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
-			if(conversations != null) conversations.clear();
+			if(conversations != null) {
+				//Disabling other shortcuts
+				if(context != null) ConversationManager.disableShortcuts(context, conversations);
+				
+				//Clearing the conversations in memory
+				conversations.clear();
+			}
 			
 			//Updating the conversation activity list
-			Context context = contextReference.get();
 			if(context != null) LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCConversationUpdate));
-			/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
-				callbacks.updateList(false); */
 			
 			//Cancelling all running tasks
 			ConnectionService service = ConnectionService.getInstance();

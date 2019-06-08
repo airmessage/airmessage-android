@@ -17,16 +17,25 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.DeadSystemException;
 import android.preference.PreferenceManager;
 import android.service.notification.StatusBarNotification;
 
 import com.crashlytics.android.Crashlytics;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
+import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestion;
+import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
 
+import java.util.Collections;
+import java.util.List;
+
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.Person;
 import androidx.core.app.RemoteInput;
 import androidx.core.graphics.drawable.IconCompat;
+import androidx.core.util.Consumer;
 
 class NotificationUtils {
 	static void sendNotification(Context context, ConversationManager.MessageInfo messageInfo) {
@@ -85,7 +94,7 @@ class NotificationUtils {
 		return output;
 	}
 	
-	private static NotificationCompat.Builder getBaseMessageNotification(Context context, ConversationManager.ConversationInfo conversationInfo, String userUri, Bitmap userIcon, boolean isOutgoing) {
+	private static NotificationCompat.Builder getBaseMessageNotification(Context context, ConversationManager.ConversationInfo conversationInfo, String userUri, Bitmap userIcon, boolean isOutgoing, String[] replySuggestions) {
 		//Creating the click intent
 		Intent clickIntent = new Intent(context, Messaging.class);
 		clickIntent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
@@ -159,6 +168,7 @@ class NotificationUtils {
 			//Creating the remote input
 			RemoteInput remoteInput = new RemoteInput.Builder(Constants.notificationReplyKey)
 					.setLabel(context.getResources().getString(R.string.action_reply))
+					.setChoices(replySuggestions)
 					.build();
 			
 			//Creating the reply intent
@@ -198,7 +208,7 @@ class NotificationUtils {
 						@Override
 						void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
 							//Sending the notification without user information if the user is invalid
-							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp);
+							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp, null);
 								//Otherwise fetching the user's icon
 							else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, otherUser, otherUser, new BitmapCacheHelper.ImageDecodeResult() {
 								@Override
@@ -207,41 +217,96 @@ class NotificationUtils {
 								@Override
 								void onImageDecoded(Bitmap result, boolean wasTasked) {
 									//Sending the notification
-									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), null, timestamp);
+									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), null, timestamp, null);
 								}
 							});
 						}
 					});
 				} else {
 					//Sending the notification without an icon
-					addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp);
+					addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp, null);
 				}
-			}
-			//Otherwise getting the user info
-			else MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, sender, new UserCacheHelper.UserFetchResult() {
-				@Override
-				void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
-					//Sending the notification without user information if the user is invalid
-					if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, sender, timestamp);
-					//Otherwise fetching the user's icon
-					else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, sender, sender, new BitmapCacheHelper.ImageDecodeResult() {
+			} else {
+				Consumer<String[]> suggestionResultListener = (String[] suggestions) -> {
+					//Getting the user info
+					MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, sender, new UserCacheHelper.UserFetchResult() {
 						@Override
-						void onImageMeasured(int width, int height) {}
-						
-						@Override
-						void onImageDecoded(Bitmap result, boolean wasTasked) {
-							//Sending the notification
-							addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp);
+						void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
+							//Sending the notification without user information if the user is invalid
+							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, sender, timestamp, suggestions);
+								//Otherwise fetching the user's icon
+							else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, sender, sender, new BitmapCacheHelper.ImageDecodeResult() {
+								@Override
+								void onImageMeasured(int width, int height) {}
+								
+								@Override
+								void onImageDecoded(Bitmap result, boolean wasTasked) {
+									//Sending the notification
+									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp, suggestions);
+								}
+							});
 						}
 					});
-				}
-			});
+				};
+				
+				//Requesting smart reply
+				if(Preferences.getPreferenceReplySuggestions(context)) new SuggestionAsyncTask(conversationInfo, suggestionResultListener).execute();
+				else suggestionResultListener.accept(null);
+			}
 		});
 	}
 	
-	private static void addMessageToNotificationPrepared(Context context, ConversationManager.ConversationInfo conversationInfo, String conversationTitle, String messageText, Bitmap chatUserIcon, String chatUserUri, String senderName, long timestamp) {
+	private static class SuggestionAsyncTask extends AsyncTask<Void, Void, List<ConversationManager.MessageInfo>> {
+		private final ConversationManager.ConversationInfo conversationInfo;
+		private final Consumer<String[]> resultListener;
+		
+		SuggestionAsyncTask(ConversationManager.ConversationInfo conversationInfo, Consumer<String[]> resultListener) {
+			this.conversationInfo = conversationInfo;
+			this.resultListener = resultListener;
+		}
+		
+		@Override
+		protected List<ConversationManager.MessageInfo> doInBackground(Void... params) {
+			//Fetching the items
+			List<ConversationManager.MessageInfo> list = DatabaseManager.getInstance().loadConversationHistoryBit(conversationInfo);
+			if(list == null) return null;
+			
+			//Returning a reversed list (since items should be added in chronological order, and the database loads latest items first)
+			//Collections.reverse(list);
+			
+			//Sorting the list by date
+			Collections.sort(list, (item1, item2) -> Long.compare(item1.getDate(), item2.getDate()));
+			
+			return list;
+		}
+		
+		@Override
+		protected void onPostExecute(List<ConversationManager.MessageInfo> list) {
+			//Returning a failed result if the items couldn't be loaded or there were none of them
+			if(list == null || list.isEmpty()) {
+				resultListener.accept(null);
+				return;
+			}
+			
+			FirebaseNaturalLanguage.getInstance().getSmartReply().suggestReplies(Constants.messageToFirebaseMessageList(list))
+					.addOnSuccessListener(result -> {
+						if(result.getStatus() != SmartReplySuggestionResult.STATUS_SUCCESS) {
+							//Returning a failed result
+							resultListener.accept(null);
+						} else {
+							//Mapping the suggestions to a string array and returning the result
+							String[] suggestions = new String[result.getSuggestions().size()];
+							for(int i = 0; i < suggestions.length; i++) suggestions[i] = result.getSuggestions().get(i).getText();
+							resultListener.accept(suggestions);
+						}
+					})
+					.addOnFailureListener(exception -> resultListener.accept(null));
+		}
+	}
+	
+	private static void addMessageToNotificationPrepared(Context context, ConversationManager.ConversationInfo conversationInfo, String conversationTitle, String messageText, Bitmap chatUserIcon, String chatUserUri, String senderName, long timestamp, String[] replySuggestions) {
 		//Creating the base notification
-		NotificationCompat.Builder notification = getBaseMessageNotification(context, conversationInfo, chatUserUri, chatUserIcon, senderName == null);
+		NotificationCompat.Builder notification = getBaseMessageNotification(context, conversationInfo, chatUserUri, chatUserIcon, senderName == null, replySuggestions);
 		
 		//Creating the message
 		NotificationCompat.MessagingStyle.Message message = new NotificationCompat.MessagingStyle.Message(messageText, timestamp, senderName == null ? null : new Person.Builder().setName(senderName).setIcon(senderName == null || chatUserIcon == null ? null : IconCompat.createWithBitmap(chatUserIcon)).setUri(chatUserUri).build());
@@ -251,13 +316,15 @@ class NotificationUtils {
 		
 		//Getting the existing notification
 		Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
-		
 		NotificationCompat.MessagingStyle messagingStyle = null;
-		try {
-			messagingStyle = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(existingNotification);
-		} catch(RuntimeException exception) {
-			exception.printStackTrace();
-			Crashlytics.logException(exception);
+		
+		if(existingNotification != null) {
+			try {
+				messagingStyle = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(existingNotification);
+			} catch(RuntimeException exception) {
+				exception.printStackTrace();
+				Crashlytics.logException(exception);
+			}
 		}
 		
 		//Getting the messaging style (and checking it)

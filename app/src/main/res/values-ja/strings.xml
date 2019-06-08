@@ -26,6 +26,7 @@
 	<string name="action_reconfigure">変更</string>
 	<string name="action_copytext">テキストをコピー</string>
 	<string name="action_share">共有</string>
+	<string name="action_save">保存</string>
 	<string name="action_deletedata">添付を削除</string>
 	<string name="action_archive">アーカイブ</string>
 	<string name="action_unarchive">アーカイブ解除</string>
@@ -237,8 +238,8 @@
 	<string name="preference_appearance_location_title">夜間検出の強化</string>
 	<string name="preference_appearance_advancedcolor_title">虹色のチャット</string>
 	<string name="preference_appearance_advancedcolor_description">ユーザーごとチャットごとに色付け</string>
-	<string name="preference_appearance_showreadreceipts_title">既読通知を表示</string>
-	<string name="preference_appearance_showreadreceipts_description">相手はメッセージを読んだ時、インジケータを表示。すべての会話に適用</string>
+	<string name="preference_appearance_showreadreceipts_title">既読通知の表示</string>
+	<string name="preference_appearance_showreadreceipts_description">相手はメッセージを読んだ時、インジケータを表示。すべての会話に適用。</string>
 	<string name="preference_server_foregroundservice_title">フォアグラウンドでサービスを実行</string>
 	<string name="preference_server_foregroundservice_description">通知を表示し、起動時に接続を許可します</string>
 	<string name="preference_server_disconnectionnotification_title">切断の通知</string>
@@ -336,4 +337,14 @@
 	<string name="message_attachmentreqerror_server_io">外部エラー（I/O）</string>
 	<string name="preference_server_serverfallback_title">代替アドレス</string>
 	<string name="preference_server_serverfallback_description">NATループバックをサポートしていないルーターがある場合は、代替アドレスを入力してください</string>
+	<string name="preference_appearance_amoled_title">真っ黒のテーマ</string>
+	<string name="preference_appearance_amoled_description">AMOLED互換の黒テーマの利用</string>
+	<string name="action_markallread">すべて既読にする</string>
+	<string name="message_fileexport_fail">ファイルを保存できませんでした</string>
+	<string name="message_fileexport_success">ファイルをストレージに保存しました</string>
+	<string name="servicedesc_fileexportservice">ユーザーの要求に従って、送受信したファイルをローカルストレージにコピーします</string>
+	<string name="action_newconversation">新しい会話</string>
+	<string name="preferencegroup_features_title">メッセージング</string>
+	<string name="preference_features_replysuggestions_title">スマート返信</string>
+	<string name="preference_features_replysuggestions_description">可能であれば会話やメッセージ通知に返信候補を表示</string>
 </resources>

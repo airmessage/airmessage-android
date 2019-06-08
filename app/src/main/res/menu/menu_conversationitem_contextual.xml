@@ -5,6 +5,8 @@
 		android:title="@string/action_copytext" />
 	<item android:id="@+id/action_share"
 		android:title="@string/action_share" />
+	<item android:id="@+id/action_save"
+		android:title="@string/action_save" />
 	<item android:id="@+id/action_deletedata"
 		android:title="@string/action_deletedata" />
 </menu>

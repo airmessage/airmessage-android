@@ -14,14 +14,14 @@
 		android:layout_height="wrap_content"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toTopOf="parent">
+		app:layout_constraintTop_toTopOf="parent"
+		android:background="?android:attr/colorBackgroundFloating">
 		<!-- Toolbar -->
 		<androidx.appcompat.widget.Toolbar
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
 			android:layout_height="?android:attr/actionBarSize"
 			android:theme="@style/SolidActionBarClear"
-			android:background="?android:attr/colorBackgroundFloating"
 			app:titleTextAppearance="@style/LightToolbarText" />
 		<!-- app:titleTextAppearance="@style/LightToolbarText" -->
 
@@ -31,9 +31,23 @@
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:animateLayoutChanges="true"
-			android:background="?android:attr/colorBackgroundFloating"
 			android:orientation="vertical" />
+		<View
+			android:tag="@string/tag_amoleddivider"
+			style="@style/Divider"
+			android:visibility="gone" />
 	</com.google.android.material.appbar.AppBarLayout>
+
+	<!-- Collapsed app bar shadow -->
+	<View
+		android:layout_width="0px"
+		android:layout_height="3dp"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent"
+		android:background="@drawable/appear_topshadow"
+		android:visibility="visible" />
+
 	<!-- Search result bar -->
 	<!-- <LinearLayout
 		android:id="@+id/searchresults"
@@ -44,7 +58,7 @@
 		android:minHeight="48dp"
 		android:orientation="horizontal"
 		android:visibility="gone">
-		
+
 		<TextView
 			android:id="@+id/searchresults_message"
 			android:layout_width="0dp"
@@ -58,7 +72,7 @@
 			android:paddingTop="12dp"
 			android:text="@string/message_searchresults"
 			android:textColor="?android:attr/textColorSecondary" />
-		
+
 		<ImageButton
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
@@ -69,7 +83,7 @@
 			android:padding="5dp"
 			android:src="@drawable/chevron_left"
 			android:tint="?android:attr/textColorSecondary" />
-		
+
 		<ImageButton
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
@@ -178,7 +192,7 @@
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		android:background="?android:attr/colorBackground">
-		
+
 		<!-- Text input -->
 		<LinearLayout
 			android:id="@+id/inputbar_text"
@@ -256,9 +270,9 @@
 					android:inputType="text|textMultiLine|textAutoCorrect|textCapSentences"
 					android:textColor="?android:attr/textColorPrimary"
 					android:textSize="16sp"
-					android:maxHeight="100dp"
 					android:maxLength="1000"
 					android:minHeight="40dp"
+					android:maxHeight="100dp"
 					android:paddingTop="8dp"
 					android:paddingBottom="8dp"
 					android:paddingLeft="12dp"
@@ -278,7 +292,7 @@
 					android:tooltipText="@string/action_send" />
 			</androidx.constraintlayout.widget.ConstraintLayout>
 		</LinearLayout>
-		
+
 		<!-- Attachments section -->
 		<LinearLayout
 			android:id="@+id/panel_attachments"
@@ -286,20 +300,14 @@
 			android:layout_height="@dimen/contentpanel_height"
 			android:visibility="gone"
 			android:orientation="vertical">
-			<View
-				android:layout_width="match_parent"
-				android:layout_height="1dp"
-				android:background="@color/colorDivider" />
+			<View style="@style/Divider" />
 			<ViewStub
 				android:id="@+id/viewstub_attachments"
 				android:layout_width="match_parent"
 				android:layout_height="0px"
 				android:layout="@layout/pane_attachments"
 				android:layout_weight="1" />
-			<View
-				android:layout_width="match_parent"
-				android:layout_height="1dp"
-				android:background="@color/colorDivider" />
+			<View style="@style/Divider" />
 		</LinearLayout>
 	</LinearLayout>
 
@@ -312,8 +320,27 @@
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintBottom_toTopOf="@id/inputbar"
 		android:background="@drawable/appear_bottomshadow"
-		android:alpha="0" />
-	
+		android:alpha="0"
+		android:visibility="gone" />
+	<FrameLayout
+		android:id="@+id/bottomshadow_amoled"
+		android:layout_width="match_parent"
+		android:layout_height="1dp"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		android:alpha="0"
+		android:visibility="gone">
+		<View
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:background="#000" />
+		<View
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:background="@color/colorDivider" />
+	</FrameLayout>
+
 	<!-- Floating action button -->
 	<com.google.android.material.floatingactionbutton.FloatingActionButton
 		android:id="@+id/fab_bottom"

@@ -73,6 +73,7 @@
 	<string name="action_resync">Resynchroniser</string>
 	<string name="action_sync">Synchroniser</string>
 	<string name="action_enable">Activer</string>
+	<string name="action_save">Enregistrer</string>
 	<string name="to">À</string>
 	<string name="you">"Vous"</string>
 	<string name="prefix_you">"Vous: %s"</string>
@@ -303,7 +304,7 @@
 	<string name="preference_appearance_advancedcolor_title">Chats arc-en-ciel</string>
 	<string name="preference_appearance_advancedcolor_description">Colorier les conversations et messages séparément</string>
 	<string name="preference_appearance_showreadreceipts_title">Afficher les accusés de lecture</string>
-	<string name="preference_appearance_showreadreceipts_description">Affiche un indicateur lorsque vos messages ont été lus. S\'applique à toutes les conversations.</string>
+	<string name="preference_appearance_showreadreceipts_description">Afficher un indicateur lorsque vos messages ont été lus. S\'applique à toutes les conversations.</string>
 	<string name="preference_server_foregroundservice_title">Exécuter le service au premier plan</string>
 	<string name="preference_server_foregroundservice_description">Affiche une notification et permet de connecter au démarrage</string>
 	<string name="preference_server_disconnectionnotification_title">Notification de déconnexion</string>
@@ -349,4 +350,14 @@
 	<string name="message_attachmentreqerror_server_io">Erreur externe (I/O)</string>
 	<string name="preference_server_serverfallback_title">Addresse alternative</string>
 	<string name="preference_server_serverfallback_description">Si vous utilisez un routeur qui ne supporte pas le hairpinning, vous pouvez utiliser cette option</string>
+	<string name="preference_appearance_amoled_title">Thème noir</string>
+	<string name="preference_appearance_amoled_description">Activer un thème noir compatible avec AMOLED</string>
+	<string name="action_markallread">Tout marquer comme lu</string>
+	<string name="message_fileexport_fail">Échec d\'enregistrement du fichier</string>
+	<string name="message_fileexport_success">Fichier enregistré sur l\'appareil</string>
+	<string name="servicedesc_fileexportservice">Copie les fichiers envoyés et reçus sur le stockage local, à la demande de l\'utilisateur</string>
+	<string name="action_newconversation">Nouvelle conversation</string>
+	<string name="preferencegroup_features_title">Messagerie</string>
+	<string name="preference_features_replysuggestions_title">Réponses intelligentes</string>
+	<string name="preference_features_replysuggestions_description">Afficher les suggestions de réponse lorsqu\'elles sont disponibles</string>
 </resources>
