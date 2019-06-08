@@ -226,9 +226,8 @@ class NotificationUtils {
 					//Sending the notification without an icon
 					addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp, null);
 				}
-			}
-			else {
-				new SuggestionAsyncTask(conversationInfo, (String[] suggestions) -> {
+			} else {
+				Consumer<String[]> suggestionResultListener = (String[] suggestions) -> {
 					//Getting the user info
 					MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, sender, new UserCacheHelper.UserFetchResult() {
 						@Override
@@ -248,7 +247,11 @@ class NotificationUtils {
 							});
 						}
 					});
-				}).execute();
+				};
+				
+				//Requesting smart reply
+				if(Preferences.getPreferenceReplySuggestions(context)) new SuggestionAsyncTask(conversationInfo, suggestionResultListener).execute();
+				else suggestionResultListener.accept(null);
 			}
 		});
 	}

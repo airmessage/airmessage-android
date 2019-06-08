@@ -864,7 +864,7 @@ public class Constants {
 		if(context instanceof Activity) {
 			Activity activity = (Activity) context;
 			return !activity.isDestroyed() && !activity.isFinishing();
-		};
+		}
 		
 		return true;
 	}

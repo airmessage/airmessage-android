@@ -265,6 +265,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Hiding the search view if the state is syncing
 		if(conversationsBasePlugin.currentState != ConversationsBase.stateReady) setSearchState(false, true);
+		
+		//Updating the "mark as read" control
+		updateMarkAllRead();
 	}
 	
 	@Override

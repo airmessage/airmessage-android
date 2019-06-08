@@ -1030,6 +1030,10 @@ public class Preferences extends AppCompatActivity {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_amoled_key), false);
 	}
 	
+	static boolean getPreferenceReplySuggestions(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_features_replysuggestions_key), false);
+	}
+	
 	static boolean getPreferenceAdvancedColor(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_advancedcolor_key), false);
 	}

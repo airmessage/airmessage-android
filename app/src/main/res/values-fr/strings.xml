@@ -304,7 +304,7 @@
 	<string name="preference_appearance_advancedcolor_title">Chats arc-en-ciel</string>
 	<string name="preference_appearance_advancedcolor_description">Colorier les conversations et messages séparément</string>
 	<string name="preference_appearance_showreadreceipts_title">Afficher les accusés de lecture</string>
-	<string name="preference_appearance_showreadreceipts_description">Affiche un indicateur lorsque vos messages ont été lus. S\'applique à toutes les conversations.</string>
+	<string name="preference_appearance_showreadreceipts_description">Afficher un indicateur lorsque vos messages ont été lus. S\'applique à toutes les conversations.</string>
 	<string name="preference_server_foregroundservice_title">Exécuter le service au premier plan</string>
 	<string name="preference_server_foregroundservice_description">Affiche une notification et permet de connecter au démarrage</string>
 	<string name="preference_server_disconnectionnotification_title">Notification de déconnexion</string>
@@ -357,4 +357,7 @@
 	<string name="message_fileexport_success">Fichier enregistré sur l\'appareil</string>
 	<string name="servicedesc_fileexportservice">Copie les fichiers envoyés et reçus sur le stockage local, à la demande de l\'utilisateur</string>
 	<string name="action_newconversation">Nouvelle conversation</string>
+	<string name="preferencegroup_features_title">Messagerie</string>
+	<string name="preference_features_replysuggestions_title">Réponses intelligentes</string>
+	<string name="preference_features_replysuggestions_description">Afficher les suggestions de réponse lorsqu\'elles sont disponibles</string>
 </resources>

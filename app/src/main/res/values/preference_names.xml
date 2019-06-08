@@ -28,9 +28,15 @@
 	<string name="preference_appearance_advancedcolor_key" translatable="false">pref_key_appearance_advancedcolor</string>
 	<string name="preference_appearance_advancedcolor_title">Rainbow chats</string>
 	<string name="preference_appearance_advancedcolor_description">Enable color theming on a per-contact per-chat basis</string>
+
+	<string name="preferencegroup_features_key" translatable="false">pref_group_features</string>
+	<string name="preferencegroup_features_title">Messaging</string>
 	<string name="preference_appearance_showreadreceipts_key" translatable="false">pref_key_appearance_showreadreceipts</string>
 	<string name="preference_appearance_showreadreceipts_title">Show read receipts</string>
 	<string name="preference_appearance_showreadreceipts_description">Display an indicator when people have read your messages. Applies to all conversations.</string>
+	<string name="preference_features_replysuggestions_key" translatable="false">pref_key_features_replysuggestions</string>
+	<string name="preference_features_replysuggestions_title">Smart reply</string>
+	<string name="preference_features_replysuggestions_description">Show reply suggestions in conversations and message notifications when available</string>
 
     <string name="preferencegroup_messagenotifications_key" translatable="false">pref_group_notifications</string>
     <string name="preferencegroup_messagenotifications_title">Notifications</string>

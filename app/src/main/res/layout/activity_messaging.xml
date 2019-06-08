@@ -47,7 +47,7 @@
 		android:minHeight="48dp"
 		android:orientation="horizontal"
 		android:visibility="gone">
-		
+
 		<TextView
 			android:id="@+id/searchresults_message"
 			android:layout_width="0dp"
@@ -61,7 +61,7 @@
 			android:paddingTop="12dp"
 			android:text="@string/message_searchresults"
 			android:textColor="?android:attr/textColorSecondary" />
-		
+
 		<ImageButton
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
@@ -72,7 +72,7 @@
 			android:padding="5dp"
 			android:src="@drawable/chevron_left"
 			android:tint="?android:attr/textColorSecondary" />
-		
+
 		<ImageButton
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
@@ -259,9 +259,9 @@
 					android:inputType="text|textMultiLine|textAutoCorrect|textCapSentences"
 					android:textColor="?android:attr/textColorPrimary"
 					android:textSize="16sp"
-					android:maxHeight="100dp"
 					android:maxLength="1000"
 					android:minHeight="40dp"
+					android:maxHeight="100dp"
 					android:paddingTop="8dp"
 					android:paddingBottom="8dp"
 					android:paddingLeft="12dp"
@@ -281,7 +281,7 @@
 					android:tooltipText="@string/action_send" />
 			</androidx.constraintlayout.widget.ConstraintLayout>
 		</LinearLayout>
-		
+
 		<!-- Attachments section -->
 		<LinearLayout
 			android:id="@+id/panel_attachments"
@@ -311,7 +311,6 @@
 		android:background="@drawable/appear_bottomshadow"
 		android:alpha="0"
 		android:visibility="gone" />
-
 	<FrameLayout
 		android:id="@+id/bottomshadow_amoled"
 		android:layout_width="match_parent"
@@ -330,7 +329,7 @@
 			android:layout_height="match_parent"
 			android:background="@color/colorDivider" />
 	</FrameLayout>
-	
+
 	<!-- Floating action button -->
 	<com.google.android.material.floatingactionbutton.FloatingActionButton
 		android:id="@+id/fab_bottom"
