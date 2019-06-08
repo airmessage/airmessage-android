@@ -37,6 +37,17 @@
 			style="@style/Divider"
 			android:visibility="gone" />
 	</com.google.android.material.appbar.AppBarLayout>
+
+	<!-- Collapsed app bar shadow -->
+	<View
+		android:layout_width="0px"
+		android:layout_height="3dp"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent"
+		android:background="@drawable/appear_topshadow"
+		android:visibility="visible" />
+
 	<!-- Search result bar -->
 	<!-- <LinearLayout
 		android:id="@+id/searchresults"

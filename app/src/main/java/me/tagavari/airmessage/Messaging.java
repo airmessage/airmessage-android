@@ -1985,7 +1985,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void updateSendButton(boolean restore) {
 		//Getting the send button state
-		boolean state = messageInputField.getText().length() > 0 || !viewModel.draftQueueList.isEmpty();
+		boolean state = !messageInputField.getText().toString().trim().isEmpty() || !viewModel.draftQueueList.isEmpty();
 		if(currentSendButtonState == state && !restore) return;
 		currentSendButtonState = state;
 		
