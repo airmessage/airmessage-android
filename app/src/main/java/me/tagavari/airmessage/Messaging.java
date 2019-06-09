@@ -16,6 +16,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
@@ -37,6 +38,7 @@ import android.os.Looper;
 import android.os.Parcelable;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
@@ -325,8 +327,15 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Returning if the event is not a key down
 		if(event.getAction() != KeyEvent.ACTION_DOWN) return false;
 		
-		//Checking if the key is the enter key
-		if(keyCode == KeyEvent.KEYCODE_ENTER && !event.isShiftPressed() && event.getSource() != InputDevice.SOURCE_UNKNOWN) {
+		/*
+		Google default keyboards are the only keyboards that seem to behave properly here.
+		Third-party keyboards like SwiftKey and Samsung Keyboard will trigger this key event when pressing the enter key, even though they're still software keyboards.
+		If a software keyboard provided the event, the event source is UNKNOWN. If it's a physical bluetooth keyboard, it is assigned a source.
+		On Chrome OS, since the keyboard is attached to the device, it provides the same event data as a soft keyboard.
+		However, on Chrome OS, the default keyboard does not trigger this. (Let's just hope the user doesn't install a third-party keyboard!)
+		 */
+		if(keyCode == KeyEvent.KEYCODE_ENTER && !event.isShiftPressed() &&
+				(event.getSource() != InputDevice.SOURCE_UNKNOWN || Constants.isChromeOS(Messaging.this))) {
 			//Sending the message
 			sendMessage();
 			
