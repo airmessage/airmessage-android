@@ -3,6 +3,7 @@
 	<androidx.preference.Preference
 		android:key="@string/preference_messagenotifications_key"
 		android:title="@string/preference_messagenotifications_title" />
+
 	<androidx.preference.PreferenceCategory
 		android:key="@string/preferencegroup_appearance_key"
 		android:title="@string/preferencegroup_appearance_title">
