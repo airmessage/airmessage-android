@@ -24,6 +24,7 @@ import com.crashlytics.android.Crashlytics;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
+import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestion;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
 
@@ -250,45 +251,36 @@ class NotificationUtils {
 				};
 				
 				//Requesting smart reply
-				if(Preferences.getPreferenceReplySuggestions(context)) new SuggestionAsyncTask(conversationInfo, suggestionResultListener).execute();
+				if(Preferences.getPreferenceReplySuggestions(context)) new SuggestionAsyncTask(conversationInfo.getLocalID(), suggestionResultListener).execute();
 				else suggestionResultListener.accept(null);
 			}
 		});
 	}
 	
-	private static class SuggestionAsyncTask extends AsyncTask<Void, Void, List<ConversationManager.MessageInfo>> {
-		private final ConversationManager.ConversationInfo conversationInfo;
+	private static class SuggestionAsyncTask extends AsyncTask<Void, Void, List<FirebaseTextMessage>> {
+		private final long conversationID;
 		private final Consumer<String[]> resultListener;
 		
-		SuggestionAsyncTask(ConversationManager.ConversationInfo conversationInfo, Consumer<String[]> resultListener) {
-			this.conversationInfo = conversationInfo;
+		SuggestionAsyncTask(long conversationID, Consumer<String[]> resultListener) {
+			this.conversationID = conversationID;
 			this.resultListener = resultListener;
 		}
 		
 		@Override
-		protected List<ConversationManager.MessageInfo> doInBackground(Void... params) {
+		protected List<FirebaseTextMessage> doInBackground(Void... params) {
 			//Fetching the items
-			List<ConversationManager.MessageInfo> list = DatabaseManager.getInstance().loadConversationHistoryBit(conversationInfo);
-			if(list == null) return null;
-			
-			//Returning a reversed list (since items should be added in chronological order, and the database loads latest items first)
-			//Collections.reverse(list);
-			
-			//Sorting the list by date
-			Collections.sort(list, (item1, item2) -> Long.compare(item1.getDate(), item2.getDate()));
-			
-			return list;
+			return DatabaseManager.getInstance().loadConversationForFirebase(conversationID);
 		}
 		
 		@Override
-		protected void onPostExecute(List<ConversationManager.MessageInfo> list) {
+		protected void onPostExecute(List<FirebaseTextMessage> list) {
 			//Returning a failed result if the items couldn't be loaded or there were none of them
 			if(list == null || list.isEmpty()) {
 				resultListener.accept(null);
 				return;
 			}
 			
-			FirebaseNaturalLanguage.getInstance().getSmartReply().suggestReplies(Constants.messageToFirebaseMessageList(list))
+			FirebaseNaturalLanguage.getInstance().getSmartReply().suggestReplies(list)
 					.addOnSuccessListener(result -> {
 						if(result.getStatus() != SmartReplySuggestionResult.STATUS_SUCCESS) {
 							//Returning a failed result
