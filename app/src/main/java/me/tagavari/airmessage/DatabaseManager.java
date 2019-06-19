@@ -13,6 +13,7 @@ import android.util.Base64;
 import android.util.LongSparseArray;
 
 import com.crashlytics.android.Crashlytics;
+import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -871,7 +872,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Getting the indexes
 		int iLocalID = cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID);
-		int iServerID = cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID);
+		int iServerID = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SERVERID);
 		int iGuid = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_GUID);
 		int iSender = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDER);
 		int iItemType = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE);
@@ -1252,7 +1253,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 	}
 	
 	/**
-	 * Returns the last 10 message items of a conversation for quick reply or notification history
+	 * Returns the last 10 items of a conversation for quick reply or notification history
 	 * @param conversationInfo the conversation to load form
 	 * @return the last 10 message items of the conversation
 	 */
@@ -1269,7 +1270,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Getting the indexes
 		int iLocalID = cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID);
-		int iServerID = cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID);
+		int iServerID = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SERVERID);
 		int iGuid = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_GUID);
 		int iSender = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDER);
 		int iItemType = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE);
@@ -1281,7 +1282,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		int iSendStyle = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
 		int iSendStyleViewed = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED);
 		int iMessageText = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
-		int iOther = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER);
+		//int iOther = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER);
 		
 		//Looping while there are items
 		while(cursor.moveToNext()) {
@@ -1398,6 +1399,48 @@ class DatabaseManager extends SQLiteOpenHelper {
 			
 			//Adding the conversation item
 			messageList.add(messageInfo);
+		}
+		
+		//Closing the cursor
+		cursor.close();
+		
+		//Returning the conversation items
+		return messageList;
+	}
+	
+	/**
+	 * Returns the last 10 text-based messages of a conversation for quick reply
+	 * @param conversationID the ID of the conversation to load form
+	 * @return the last 10 text-based message items of the conversation
+	 */
+	List<FirebaseTextMessage> loadConversationForFirebase(long conversationID) {
+		//Getting the database
+		SQLiteDatabase database = getReadableDatabase();
+		
+		//Creating the message list
+		List<FirebaseTextMessage> messageList = new ArrayList<>();
+		
+		//Querying the database
+		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_SENDER, Contract.MessageEntry.COLUMN_NAME_DATE, Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT},
+				Contract.MessageEntry.COLUMN_NAME_ITEMTYPE + " = " + ConversationManager.MessageInfo.itemType + " AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " IS NOT NULL", new String[]{Long.toString(conversationID)},
+				null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " DESC", Integer.toString(Constants.smartReplyHistoryLength));
+		//Cursor cursor = database.rawQuery(SQL_FETCH_CONVERSATION_MESSAGES, new String[]{Long.toString(conversationInfo.getLocalID())});
+		
+		//Getting the indexes
+		int iSender = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDER);
+		int iDate = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATE);
+		int iMessageText = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
+		//int iOther = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER);
+		
+		//Looping while there are items (in reverse order, because Firebase wants newer messages at the start of the list)
+		for(cursor.moveToLast(); !cursor.isBeforeFirst(); cursor.moveToPrevious()) {
+			//Getting the message info
+			String sender = cursor.isNull(iSender) ? null : cursor.getString(iSender);
+			long date = cursor.getLong(iDate);
+			String message = cursor.getString(iMessageText);
+			
+			//Adding the message to the list
+			messageList.add(sender == null ? FirebaseTextMessage.createForLocalUser(message, date) : FirebaseTextMessage.createForRemoteUser(message, date, sender));
 		}
 		
 		//Closing the cursor
