@@ -332,11 +332,13 @@ class ConversationManager {
 		if(item1 == null || item2 == null) return 0;
 		
 		//Returning the comparison
-		if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
+		/* if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
 		if(item1.getLocalID() != -1 && item2.getLocalID() != -1) return Long.compare(item1.getLocalID(), item2.getLocalID());
 		if(item1.getLocalID() == -1 && item2.getLocalID() == -1) return Long.compare(item1.getDate(), item2.getDate());
 		if(item1.getLocalID() == -1) return 1;
-		return -1; //Item 2's local ID is -1
+		return -1; //Item 2's local ID is -1 */
+		
+		return Long.compare(item1.getDate(), item2.getDate());
 	}
 	
 	static int compareConversationItems(LightConversationItem item1, ConversationItem item2) {
@@ -344,23 +346,27 @@ class ConversationManager {
 		if(item1 == null || item2 == null) return 0;
 		
 		//Returning the comparison
-		if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
+		/* if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
 		if(item1.getLocalID() != -1 && item2.getLocalID() != -1) return Long.compare(item1.getLocalID(), item2.getLocalID());
 		if(item1.getLocalID() == -1 && item2.getLocalID() == -1) return Long.compare(item1.getDate(), item2.getDate());
 		if(item1.getLocalID() == -1) return 1;
-		return -1; //Item 2's local ID is -1
+		return -1; //Item 2's local ID is -1 */
+		
+		return Long.compare(item1.getDate(), item2.getDate());
 	}
 	
 	static int compareConversationItems(LightConversationItem item1, LightConversationItem item2) {
 		//Returning 0 if either of the values are invalid
 		if(item1 == null || item2 == null) return 0;
 		
-		//Returning the comparison
+		/* //Returning the comparison
 		if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
 		if(item1.getLocalID() != -1 && item2.getLocalID() != -1) return Long.compare(item1.getLocalID(), item2.getLocalID());
 		if(item1.getLocalID() == -1 && item2.getLocalID() == -1) return Long.compare(item1.getDate(), item2.getDate());
 		if(item1.getLocalID() == -1) return 1;
-		return -1; //Item 2's local ID is -1
+		return -1; //Item 2's local ID is -1 */
+		
+		return Long.compare(item1.getDate(), item2.getDate());
 	}
 	
 	static class ConversationInfo implements Serializable {
