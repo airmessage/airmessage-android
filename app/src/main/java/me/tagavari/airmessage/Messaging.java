@@ -4248,9 +4248,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		private boolean smartReplyAwaiting = false;
 		private String[] lastSmartReplyResult = null;
 		
-		private long firstSortID = -1;
-		private int firstSortIDOffset = -1;
-		
 		private int lastUnreadCount = 0;
 		
 		//Creating the conversation values
@@ -4258,6 +4255,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private ConversationManager.ConversationInfo conversationInfo;
 		private ArrayList<ConversationManager.ConversationItem> conversationItemList;
 		private ArrayList<ConversationManager.MessageInfo> conversationGhostList;
+		private DatabaseManager.ConversationLazyLoader conversationLazyLoader;
 		
 		//Creating the attachment values
 		File targetFileIntent = null;
@@ -4349,19 +4347,45 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Loading the conversation
 			conversationInfo = ConversationManager.findConversationInfo(conversationID);
-			if(conversationInfo != null) loadMessages();
-			else new AsyncTask<Void, Void, ConversationManager.ConversationInfo>() {
+			if(conversationInfo != null) new AsyncTask<Void, Void, DatabaseManager.ConversationLazyLoader>() {
 				@Override
-				protected ConversationManager.ConversationInfo doInBackground(Void... args) {
-					return DatabaseManager.getInstance().fetchConversationInfo(getApplication(), conversationID);
+				protected DatabaseManager.ConversationLazyLoader doInBackground(Void... voids) {
+					return new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
 				}
 				
 				@Override
-				protected void onPostExecute(ConversationManager.ConversationInfo result) {
+				protected void onPostExecute(DatabaseManager.ConversationLazyLoader result) {
+					//Setting the lazy loader
+					conversationLazyLoader = result;
+					
+					//Loading the conversation's messages
+					loadMessages();
+				}
+			}.execute();
+			else new AsyncTask<Void, Void, Constants.Tuple2<ConversationManager.ConversationInfo, DatabaseManager.ConversationLazyLoader>>() {
+				@Override
+				protected Constants.Tuple2<ConversationManager.ConversationInfo, DatabaseManager.ConversationLazyLoader> doInBackground(Void... args) {
+					//Getting the conversation
+					ConversationManager.ConversationInfo conversation = DatabaseManager.getInstance().fetchConversationInfo(getApplication(), conversationID);
+					if(conversation == null) return null;
+					
+					//Creating the lazy loader
+					DatabaseManager.ConversationLazyLoader lazyLoader = new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
+					
+					//Returning the data
+					return new Constants.Tuple2<>(conversation, lazyLoader);
+				}
+				
+				@Override
+				protected void onPostExecute(Constants.Tuple2<ConversationManager.ConversationInfo, DatabaseManager.ConversationLazyLoader> result) {
 					//Setting the state to failed if the conversation info couldn't be fetched
 					if(result == null) messagesState.setValue(messagesStateFailedConversation);
 					else {
-						conversationInfo = result;
+						//Setting the conversation details
+						conversationInfo = result.item1;
+						conversationLazyLoader = result.item2;
+						
+						//Loading the conversation's messages
 						loadMessages();
 					}
 				}
@@ -4384,25 +4408,29 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Marking all messages as read (list will always be scrolled to the bottom)
 				conversationInfo.setUnreadMessageCount(0);
 				
+				//Updating the lazy loader position
+				conversationLazyLoader.setCursorPosition(existingConversationItems.size());
+				
 				//Setting the state
 				messagesState.setValue(messagesStateReady);
 			} else {
 				//Loading the messages
-				new AsyncTask<Void, Void, Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer>>() {
+				new AsyncTask<Void, Void, List<ConversationManager.ConversationItem>>() {
 					@Override
-					protected Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> doInBackground(Void... params) {
+					protected List<ConversationManager.ConversationItem> doInBackground(Void... params) {
 						//Loading the conversation items
-						Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> result = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, -1, -1);
+						//Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> result = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, -1, -1);
+						List<ConversationManager.ConversationItem> conversationItems = conversationLazyLoader.loadNextChunk();
 						
 						//Setting up the conversation item relations
-						ConversationManager.setupConversationItemRelations(result.item1, conversationInfo);
+						ConversationManager.setupConversationItemRelations(conversationItems, conversationInfo);
 						
 						//Returning the conversation items
-						return result;
+						return conversationItems;
 					}
 					
 					@Override
-					protected void onPostExecute(Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> result) {
+					protected void onPostExecute(List<ConversationManager.ConversationItem> result) {
 						//Checking if the result is invalid
 						if(result == null) {
 							//Setting the state
@@ -4420,14 +4448,10 @@ public class Messaging extends AppCompatCompositeActivity {
 						conversationInfo.setConversationLists(conversationItemList, conversationGhostList);
 						
 						//Replacing the conversation items
-						conversationInfo.replaceConversationItems(MainApplication.getInstance(), result.item1);
+						conversationInfo.replaceConversationItems(MainApplication.getInstance(), result);
 						
 						//Marking all messages as read (list will always be scrolled to the bottom)
 						conversationInfo.setUnreadMessageCount(0);
-						
-						//Updating the sort IDs
-						firstSortID = result.item2;
-						firstSortIDOffset = result.item3;
 						
 						//Setting the state
 						messagesState.setValue(messagesStateReady);
@@ -4445,27 +4469,21 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Setting the flags
 			progressiveLoadInProgress.setValue(true);
 			
-			//Getting the sort IDs
-			final long firstSortIDFinal = firstSortID;
-			final int firstSortIDOffsetFinal = firstSortIDOffset;
-			
-			new AsyncTask<Void, Void, Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer>>() {
+			new AsyncTask<Void, Void, List<ConversationManager.ConversationItem>>() {
 				@Override
-				protected Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> doInBackground(Void... params) {
+				protected List<ConversationManager.ConversationItem> doInBackground(Void... params) {
 					//Loading the conversation items
-					return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, firstSortIDFinal, firstSortIDOffsetFinal);
+					//return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, firstSortIDFinal, firstSortIDOffsetFinal);
+					return conversationLazyLoader.loadNextChunk();
 				}
 				
 				@Override
-				protected void onPostExecute(Constants.Tuple3<List<ConversationManager.ConversationItem>, Long, Integer> result) {
-					//Getting the conversation items
-					List<ConversationManager.ConversationItem> conversationItems = result.item1;
-					
+				protected void onPostExecute(List<ConversationManager.ConversationItem> result) {
 					//Setting the progressive load count
-					lastProgressiveLoadCount = conversationItems.size();
+					lastProgressiveLoadCount = result.size();
 					
 					//Checking if there are no new conversation items
-					if(conversationItems.isEmpty()) {
+					if(result.isEmpty()) {
 						//Disabling the progressive load (there are no more items to load)
 						progressiveLoadReachedLimit = true;
 					} else {
@@ -4474,14 +4492,10 @@ public class Messaging extends AppCompatCompositeActivity {
 						if(allItems == null) return;
 						
 						//Adding the items
-						conversationInfo.addChunk(conversationItems);
+						conversationInfo.addChunk(result);
 						
 						//Updating the items' relations
-						ConversationManager.addConversationItemRelations(conversationInfo, allItems, conversationItems, MainApplication.getInstance(), true);
-						
-						//Updating the sort IDs
-						firstSortID = result.item2;
-						firstSortIDOffset = result.item3;
+						ConversationManager.addConversationItemRelations(conversationInfo, allItems, result, MainApplication.getInstance(), true);
 					}
 					
 					//Finishing the progressive load

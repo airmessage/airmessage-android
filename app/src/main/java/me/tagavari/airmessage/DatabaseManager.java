@@ -72,8 +72,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 	};
 	//private static final String messageSortOrder = "COALESCE(" + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + ',' + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + ')';
 	//private static final String messageSortOrder = "CASE WHEN " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " IS NULL THEN " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + " ELSE " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " END";
-	private static final String messageSortOrderDesc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " DESC, " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " DESC";
-	private static final String messageSortOrderAsc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " ASC, " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " ASC";
+	//private static final String messageSortOrderDesc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " DESC, " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " DESC";
+	//private static final String messageSortOrderAsc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " ASC, " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " ASC";
+	private static final String messageSortOrderDesc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_DATE + " DESC";
+	private static final String messageSortOrderAsc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_DATE + " ASC";
 	
 	//private static final String SQL_FETCH_CONVERSATION_MESSAGES = "SELECT * FROM " + Contract.MessageEntry.TABLE_NAME + " WHERE " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? ORDER BY " + Contract.MessageEntry.COLUMN_NAME_DATE + " ASC;";
 	
@@ -1038,6 +1040,203 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Returning the conversation items
 		return conversationItems;
+	}
+	
+	static class ConversationLazyLoader {
+		private ConversationManager.ConversationInfo conversationInfo;
+		private SQLiteDatabase database;
+		private Cursor cursor;
+		private int iLocalID, iServerID, iGuid, iSender, iItemType, iDate, iState, iError, iErrorDetails, iDateRead, iSendStyle, iSendStyleViewed, iMessageText, iOther;
+		
+		ConversationLazyLoader(DatabaseManager databaseManager, ConversationManager.ConversationInfo conversationInfo) {
+			//Setting the conversation info
+			this.conversationInfo = conversationInfo;
+			
+			//Getting the database
+			database = databaseManager.getReadableDatabase();
+			
+			//Querying the database
+			cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, messageSortOrderDesc, null);
+			
+			//Getting the indexes
+			iLocalID = cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID);
+			iServerID = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SERVERID);
+			iGuid = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_GUID);
+			iSender = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDER);
+			iItemType = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE);
+			iDate = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATE);
+			iState = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_STATE);
+			iError = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ERROR);
+			iErrorDetails = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS);
+			iDateRead = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATEREAD);
+			iSendStyle = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
+			iSendStyleViewed = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED);
+			iMessageText = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
+			iOther = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER);
+		}
+		
+		void setCursorPosition(int cursorPosition) {
+			cursor.moveToPosition(cursorPosition);
+		}
+		
+		List<ConversationManager.ConversationItem> loadNextChunk() {
+			//Creating the message list
+			List<ConversationManager.ConversationItem> conversationItems = new ArrayList<>();
+			
+			for(int i = 0; i < Messaging.messageChunkSize; i++) {
+				if(!cursor.moveToNext()) break;
+				
+				//Getting the general message info
+				long localID = cursor.getLong(iLocalID);
+				long serverID = cursor.isNull(iServerID) ? -1 : cursor.getLong(iServerID);
+				String guid = cursor.getString(iGuid);
+				String sender = cursor.isNull(iSender) ? null : cursor.getString(iSender);
+				int itemType = cursor.getInt(iItemType);
+				long date = cursor.getLong(iDate);
+				
+				//Checking if the item is a message
+				if(itemType == ConversationManager.MessageInfo.itemType) {
+					//Getting the general message info
+					int stateCode = cursor.getInt(iState);
+					int errorCode = cursor.getInt(iError);
+					boolean errorDetailsAvailable = !cursor.isNull(iErrorDetails);
+					long dateRead = cursor.getLong(iDateRead);
+					String sendStyle = cursor.getString(iSendStyle);
+					boolean sendStyleViewed = cursor.getInt(iSendStyleViewed) != 0;
+					String message = cursor.getString(iMessageText);
+					
+					//Creating the conversation item
+					ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(localID, serverID, guid, conversationInfo, sender, message, sendStyle, sendStyleViewed, date, stateCode, errorCode, errorDetailsAvailable, dateRead);
+					
+					{
+						//Querying the database for attachments
+						Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry._ID, Contract.AttachmentEntry.COLUMN_NAME_GUID, Contract.AttachmentEntry.COLUMN_NAME_FILENAME, Contract.AttachmentEntry.COLUMN_NAME_FILETYPE, Contract.AttachmentEntry.COLUMN_NAME_FILESIZE, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM},
+								Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(localID)}, null, null, null);
+						
+						//Getting the indexes
+						int aLocalID = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry._ID);
+						int aGuid = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_GUID);
+						int aFileName = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILENAME);
+						int aFileType = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE);
+						int aFileSize = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILESIZE);
+						int aFilePath = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
+						int aChecksum = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM);
+						
+						//Iterating over the results
+						while(attachmentCursor.moveToNext()) {
+							//Getting the attachment data
+							File file = attachmentCursor.isNull(aFilePath) ? null : ConversationManager.AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), attachmentCursor.getString(aFilePath));
+							String fileName = attachmentCursor.getString(aFileName);
+							String fileType = attachmentCursor.getString(aFileType);
+							long fileSize = attachmentCursor.isNull(aFileSize) ? -1 : attachmentCursor.getLong(aFileSize);
+							String stringChecksum = attachmentCursor.getString(aChecksum);
+							byte[] fileChecksum = stringChecksum == null ? null : Base64.decode(stringChecksum, Base64.NO_WRAP);
+							
+							//Getting the identifiers
+							long fileID = attachmentCursor.getLong(aLocalID);
+							String fileGuid = attachmentCursor.getString(aGuid);
+							
+							//Checking if the attachment has data
+							if(file != null && file.exists() && file.isFile()) {
+								//Adding the attachment to the message
+								messageInfo.addAttachment(ConversationManager.createAttachmentInfoFromType(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file));
+							} else {
+								//Deleting the file if it is a directory
+								if(file != null && file.exists() && file.isDirectory())
+									Constants.recursiveDelete(file);
+								
+								//Creating the attachment
+								ConversationManager.AttachmentInfo attachment = ConversationManager.createAttachmentInfoFromType(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
+								if(fileChecksum != null) attachment.setFileChecksum(fileChecksum);
+								
+								//Adding the attachment to the message
+								attachment.setLocalID(fileID);
+								messageInfo.addAttachment(attachment);
+							}
+						}
+						
+						//Closing the attachment cursor
+						attachmentCursor.close();
+					}
+					
+					{
+						//Querying the database for stickers
+						Cursor stickerCursor = database.query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry._ID, Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX, Contract.StickerEntry.COLUMN_NAME_GUID, Contract.StickerEntry.COLUMN_NAME_SENDER, Contract.StickerEntry.COLUMN_NAME_DATE},
+								Contract.StickerEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(localID)}, null, null, null);
+						
+						//Getting the indexes
+						int sIdentifierIndex = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry._ID);
+						int sIdentifierMessageIndex = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX);
+						int sIdentifierGuid = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_GUID);
+						int sIdentifierSender = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_SENDER);
+						int sIdentifierDate = stickerCursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_DATE);
+						
+						//Adding the results to the message
+						while(stickerCursor.moveToNext()) messageInfo.addSticker(new ConversationManager.StickerInfo(stickerCursor.getLong(sIdentifierIndex), stickerCursor.getString(sIdentifierGuid), localID, stickerCursor.getInt(sIdentifierMessageIndex), stickerCursor.getString(sIdentifierSender), stickerCursor.getLong(sIdentifierDate)));
+						
+						//Closing the sticker cursor
+						stickerCursor.close();
+					}
+					
+					{
+						//Querying the database for tapbacks
+						Cursor tapbackCursor = database.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID, Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX, Contract.TapbackEntry.COLUMN_NAME_SENDER, Contract.TapbackEntry.COLUMN_NAME_CODE},
+								Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(localID)}, null, null, null);
+						
+						//Getting the indexes
+						int tIdentifierIndex = tapbackCursor.getColumnIndexOrThrow(Contract.TapbackEntry._ID);
+						int tIdentifierMessageIndex = tapbackCursor.getColumnIndexOrThrow(Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX);
+						int tIdentifierSender = tapbackCursor.getColumnIndexOrThrow(Contract.TapbackEntry.COLUMN_NAME_SENDER);
+						int tIdentifierCode = tapbackCursor.getColumnIndexOrThrow(Contract.TapbackEntry.COLUMN_NAME_CODE);
+						
+						//Adding the results to the message
+						while(tapbackCursor.moveToNext()) messageInfo.addTapback(new ConversationManager.TapbackInfo(tapbackCursor.getLong(tIdentifierIndex), localID, tapbackCursor.getInt(tIdentifierMessageIndex), tapbackCursor.getString(tIdentifierSender), tapbackCursor.getInt(tIdentifierCode)));
+						
+						//Closing the tapback cursor
+						tapbackCursor.close();
+					}
+					
+					//Adding the conversation item
+					conversationItems.add(messageInfo);
+				}
+				//Otherwise checking if the item is a group action
+				else if(itemType == ConversationManager.GroupActionInfo.itemType) {
+					//Getting the other
+					String other = cursor.getString(iOther);
+					
+					//Getting the action type
+					int subtype = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ITEMSUBTYPE));
+					
+					//Creating the conversation item
+					ConversationManager.GroupActionInfo conversationItem = new ConversationManager.GroupActionInfo(localID, serverID, guid, conversationInfo, subtype, sender, other, date);
+					
+					//Adding the conversation item
+					conversationItems.add(conversationItem);
+				}
+				//Otherwise checking if the item is a chat rename
+				else if(itemType == ConversationManager.ChatRenameActionInfo.itemType) {
+					//Getting the name
+					String title = cursor.getString(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER));
+					
+					//Creating the conversation item
+					ConversationManager.ChatRenameActionInfo conversationItem = new ConversationManager.ChatRenameActionInfo(localID, serverID, guid, conversationInfo, sender, title, date);
+					
+					//Adding the conversation item
+					conversationItems.add(conversationItem);
+				}
+				//Otherwise checking if the item is a chat creation message
+				else if(itemType == ConversationManager.ChatCreationMessage.itemType) {
+					//Adding the conversation item
+					conversationItems.add(new ConversationManager.ChatCreationMessage(localID, date, conversationInfo));
+				}
+			}
+			
+			//Reversing the list
+			Collections.reverse(conversationItems);
+			
+			//Returning the list
+			return conversationItems;
+		}
 	}
 	
 	/**
