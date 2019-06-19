@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -48,20 +49,27 @@ public class ShareHandler extends AppCompatCompositeActivity {
 			return;
 		}
 		
+		boolean dataValid = false;
+		
 		//Checking if the intent is a single object
 		if(Intent.ACTION_SEND.equals(intentAction)) {
 			//Checking if the content type is text
 			if("text/plain".equals(intentType)) {
 				//Setting the target text
 				targetText = getIntent().getStringExtra(Intent.EXTRA_TEXT);
+				dataValid = targetText != null;
 			} else {
 				//Getting the target URI
-				targetUris = new Uri[]{getIntent().getParcelableExtra(Intent.EXTRA_STREAM)};
+				Uri uri = getIntent().getParcelableExtra(Intent.EXTRA_STREAM);
+				if(dataValid = uri != null) targetUris = new Uri[]{uri};
 			}
 		} else if(Intent.ACTION_SEND_MULTIPLE.equals(intentAction)) {
 			//Getting the target URI array
-			targetUris = getIntent().getParcelableArrayListExtra(Intent.EXTRA_STREAM).toArray(new Uri[0]);
-		} else {
+			ArrayList<Parcelable> uriList = getIntent().getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+			if(dataValid = uriList != null && !uriList.isEmpty()) targetUris = uriList.toArray(new Uri[0]);
+		}
+		
+		if(!dataValid) {
 			//Finishing the activity
 			finish();
 			return;

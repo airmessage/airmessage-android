@@ -47,7 +47,7 @@ class NotificationUtils {
 		if((Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_getnotifications_key), false)) || messageInfo.getConversationInfo().isMuted()) return;
 		
 		//Adding the message
-		addMessageToNotification(context, messageInfo.getConversationInfo(), messageInfo.getSummary(context), messageInfo.getSender(), messageInfo.getDate());
+		addMessageToNotification(context, messageInfo.getConversationInfo(), messageInfo.getSummary(context), messageInfo.getSender(), messageInfo.getDate(), messageInfo.getSendStyle());
 	}
 	
 	/* private static Notification getSummaryNotification(Context context) {
@@ -196,7 +196,12 @@ class NotificationUtils {
 		return notificationBuilder;
 	}
 	
-	private static void addMessageToNotification(Context context, ConversationManager.ConversationInfo conversationInfo, String message, String sender, long timestamp) {
+	private static void addMessageToNotification(Context context, ConversationManager.ConversationInfo conversationInfo, String message, String sender, long timestamp, String sendStyle) {
+		//Updating the message based on the effect
+		String displayMessage;
+		if(Constants.appleSendStyleBubbleInvisibleInk.equals(sendStyle)) displayMessage = context.getResources().getString(R.string.message_messageeffect_invisibleink);
+		else displayMessage = message;
+		
 		//Getting the conversation title
 		conversationInfo.buildTitle(context, (conversationTitle, wasTasked) -> {
 			//Checking if the sender is the user
@@ -209,7 +214,7 @@ class NotificationUtils {
 						@Override
 						void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
 							//Sending the notification without user information if the user is invalid
-							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp, null);
+							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, displayMessage, null, null, null, timestamp, null);
 								//Otherwise fetching the user's icon
 							else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, otherUser, otherUser, new BitmapCacheHelper.ImageDecodeResult() {
 								@Override
@@ -218,14 +223,14 @@ class NotificationUtils {
 								@Override
 								void onImageDecoded(Bitmap result, boolean wasTasked) {
 									//Sending the notification
-									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), null, timestamp, null);
+									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, displayMessage, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), null, timestamp, null);
 								}
 							});
 						}
 					});
 				} else {
 					//Sending the notification without an icon
-					addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, null, timestamp, null);
+					addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, displayMessage, null, null, null, timestamp, null);
 				}
 			} else {
 				Consumer<String[]> suggestionResultListener = (String[] suggestions) -> {
@@ -234,7 +239,7 @@ class NotificationUtils {
 						@Override
 						void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
 							//Sending the notification without user information if the user is invalid
-							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, null, null, sender, timestamp, suggestions);
+							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, displayMessage, null, null, sender, timestamp, suggestions);
 								//Otherwise fetching the user's icon
 							else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, sender, sender, new BitmapCacheHelper.ImageDecodeResult() {
 								@Override
@@ -243,7 +248,7 @@ class NotificationUtils {
 								@Override
 								void onImageDecoded(Bitmap result, boolean wasTasked) {
 									//Sending the notification
-									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, message, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp, suggestions);
+									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, displayMessage, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp, suggestions);
 								}
 							});
 						}
@@ -251,7 +256,7 @@ class NotificationUtils {
 				};
 				
 				//Requesting smart reply
-				if(Preferences.getPreferenceReplySuggestions(context)) new SuggestionAsyncTask(conversationInfo.getLocalID(), suggestionResultListener).execute();
+				if(Preferences.getPreferenceReplySuggestions(context) && message != null && !Constants.appleSendStyleBubbleInvisibleInk.equals(sendStyle)) new SuggestionAsyncTask(conversationInfo.getLocalID(), suggestionResultListener).execute();
 				else suggestionResultListener.accept(null);
 			}
 		});
@@ -408,7 +413,7 @@ class NotificationUtils {
 				@Override
 				void onSuccess() {
 					//Adding the message
-					addMessageToNotification(context, conversationInfo, responseMessage.toString(), null, System.currentTimeMillis() / 1000L);
+					addMessageToNotification(context, conversationInfo, responseMessage.toString(), null, System.currentTimeMillis() / 1000L, null);
 				}
 				
 				@Override

@@ -1050,8 +1050,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(context == null) return null;
 			
 			//Adding the files
-			for(File file : files)
-				list.add(new SimpleAttachmentInfo(file, Constants.getMimeType(file), file.getName(), file.length(), -1));
+			for(File file : files) list.add(new SimpleAttachmentInfo(file, Constants.getMimeType(file), file.getName(), file.length(), -1));
 			
 			//Returning
 			return list;
@@ -4733,7 +4732,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 			
 			//Checking if the last message isn't valid
-			if(lastMessage == null || lastMessage.getMessageText() == null || lastMessage.isOutgoing()) {
+			if(lastMessage == null || lastMessage.getMessageText() == null ||
+			   lastMessage.isOutgoing() || Constants.appleSendStyleBubbleInvisibleInk.equals(lastMessage.getSendStyle())) {
 				//Cancelling the smart reply
 				smartReplyAvailable.setValue(false);
 				smartReplyAwaiting = false;

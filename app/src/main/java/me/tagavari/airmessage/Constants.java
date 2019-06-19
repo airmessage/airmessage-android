@@ -531,8 +531,11 @@ public class Constants {
 	
 	static String getMimeType(File file) {
 		String extension = MimeTypeMap.getFileExtensionFromUrl(file.getPath());
-		if(extension != null) return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
-		return null;
+		if(extension != null) {
+			String type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+			return type == null ? defaultMIMEType : type;
+		}
+		return defaultMIMEType;
 	}
 	
 	interface ResultCallback<T> {
