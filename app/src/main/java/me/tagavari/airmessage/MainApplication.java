@@ -8,11 +8,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.ContentObserver;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.provider.Contacts;
+import android.provider.ContactsContract;
 
 import com.crashlytics.android.Crashlytics;
 import com.crashlytics.android.core.CrashlyticsCore;
@@ -48,6 +52,22 @@ public class MainApplication extends Application {
 	static final String sharedPreferencesConnectivityKeyLastConnectionHostname = "last_connection_hostname";
 	
 	static final String fileAuthority = "me.tagavari.airmessage.fileprovider";
+	
+	private final ContentObserver contentObserver = new ContentObserver(null) {
+		@Override
+		public void onChange(boolean selfChange) {
+			super.onChange(selfChange);
+			new Handler(getMainLooper()).post(() -> {
+				userCacheHelper.clearCache();
+				bitmapCacheHelper.clearUserCache();
+			});
+		}
+		
+		@Override
+		public boolean deliverSelfNotifications() {
+			return true;
+		}
+	};
 	
 	//Creating the cache helpers
 	private BitmapCacheHelper bitmapCacheHelper;
@@ -127,6 +147,8 @@ public class MainApplication extends Application {
 		getPackageManager().setComponentEnabledSetting(new ComponentName(this, ConnectionService.ServiceStartBoot.class),
 				PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_connectionboot_key), true) ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
 				PackageManager.DONT_KILL_APP);
+		
+		getContentResolver().registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contentObserver);
 	}
 	
 	public static MainApplication getInstance() {
@@ -300,18 +322,20 @@ public class MainApplication extends Application {
 	public void onTrimMemory(int level) {
 		super.onTrimMemory(level);
 		
-		if(level >= TRIM_MEMORY_BACKGROUND) {
+		if(level >= TRIM_MEMORY_MODERATE) {
 			//Clearing the messages
 			if(conversationReference != null) conversationReference.clear();
 			
 		}
 		
-		if(level >= TRIM_MEMORY_MODERATE) {
+		if(level >= TRIM_MEMORY_BACKGROUND) {
 			//Clearing the caches
 			bitmapCacheHelper.clearCache();
 			userCacheHelper.clearCache();
 		}
 	}
+	
+	
 	
 	static final String darkModeFollowSystem = "follow_system";
 	static final String darkModeAutomatic = "auto";

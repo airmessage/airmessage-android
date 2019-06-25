@@ -24,7 +24,9 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 
 class BitmapCacheHelper {
@@ -675,5 +677,14 @@ class BitmapCacheHelper {
 	void clearCache() {
 		bitmapCache.evictAll();
 		failedBitmapCache.clear();
+	}
+	
+	void clearUserCache() {
+		for(String key : bitmapCache.snapshot().keySet()) {
+			if(cachePrefixContact.equals(key.substring(0, 2))) bitmapCache.remove(key);
+		}
+		for(ListIterator<String> iterator = failedBitmapCache.listIterator(); iterator.hasNext();) {
+			if(cachePrefixContact.equals(iterator.next().substring(0, 2))) iterator.remove();
+		}
 	}
 }
