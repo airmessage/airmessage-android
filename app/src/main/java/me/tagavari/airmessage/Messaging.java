@@ -878,6 +878,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 			}
 		}
+		
+		//Saving the draft message
+		viewModel.applyDraftMessage(messageInputField.getText().toString());
 	}
 	
 	@Override
@@ -897,9 +900,6 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 			}
 		}
-		
-		//Saving the draft message
-		viewModel.applyDraftMessage(messageInputField.getText().toString());
 	}
 	
 	@Override
@@ -1180,6 +1180,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			messageInputField.setText("");
 			messageInputField.requestLayout(); //Height of input field doesn't update otherwise
 			//messageBoxHasText = false;
+			
+			//Saving the draft message
+			//viewModel.applyDraftMessage("");
 		}
 		
 		//Iterating over the drafts
