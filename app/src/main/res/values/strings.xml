@@ -288,6 +288,9 @@
 		<item quantity="other">%d years</item>
 	</plurals>
 
+	<string name="message_generalloading">Please wait&#8230;</string>
+	<string name="message_notsupported">This feature is unavailable</string>
+
 	<string name="progress_loadingmessages">Loading messages&#8230;</string>
 	<string name="progress_loading">Loading&#8230;</string>
 	<string name="progress_sync">Getting your messages&#8230;</string>
@@ -313,6 +316,8 @@
 	<string name="imperative_permission_microphone">Tap to give access to microphone</string>
 	<string name="imperative_permission_documents">Tap to give access to documents</string>
 	<string name="imperative_permission_location">Tap to give access to location</string>
+
+	<string name="imperative_enablelocationservices">Tap to enable location services</string>
 
 	<string name="proper_imessage" translatable="false">iMessage</string>
 	<string name="proper_sms" translatable="false">SMS</string>

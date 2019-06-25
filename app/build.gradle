@@ -102,6 +102,8 @@ dependencies {
 	implementation "com.google.firebase:firebase-ml-natural-language:20.0.2"
 	implementation "com.google.firebase:firebase-ml-natural-language-smart-reply-model:20.0.2"
 	implementation "com.crashlytics.sdk.android:crashlytics:2.10.1"
+	implementation "com.google.android.gms:play-services-maps:17.0.0"
+	implementation "com.google.android.gms:play-services-location:17.0.0"
 
 	//Helper
 	implementation "com.takisoft.preferencex:preferencex-ringtone:1.0.0"

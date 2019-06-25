@@ -15,6 +15,7 @@ import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
@@ -25,6 +26,8 @@ import android.graphics.Outline;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
+import android.location.Location;
+import android.location.LocationManager;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -115,7 +118,27 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 import com.crashlytics.android.Crashlytics;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.common.util.BiConsumer;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResponse;
+import com.google.android.gms.location.LocationSettingsStatusCodes;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MapStyleOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -143,7 +166,7 @@ import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
 
-public class Messaging extends AppCompatCompositeActivity {
+public class Messaging extends AppCompatCompositeActivity implements OnMapReadyCallback {
 	//Creating the reference values
 	private static final int quickScrollFABThreshold = 3;
 	private static final float bottomSheetFillThreshold = 0.8F;
@@ -163,10 +186,13 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final int permissionRequestStorage = 0;
 	private static final int permissionRequestAudio = 1;
 	private static final int permissionRequestAudioDirect = 2; //Used when requesting microphone usage directly form the input bar
+	private static final int permissionRequestLocation = 3;
 	private static final int permissionRequestMessageCustomOffset = 100; //Used to offset custom message permission requests, to prevent collisions with activity requests
 	
-	private static final int intentPickFile = 1;
-	private static final int intentTakePicture = 2;
+	private static final int intentPickFile = 0;
+	private static final int intentTakePicture = 1;
+	private static final int intentLocationResolution = 2;
+	private static final int intentPickLocation = 3;
 	
 	//Creating the static values
 	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
@@ -1088,12 +1114,22 @@ public class Messaging extends AppCompatCompositeActivity {
 					//Queuing the content
 					new QueueUriAsyncTask(this).execute(intent.getData());
 				} else if(intent.getClipData() != null) {
+					//Getting the content
 					Uri[] list = new Uri[intent.getClipData().getItemCount()];
-					for(int i = 0; i < intent.getClipData().getItemCount(); i++)
-						list[i] = intent.getClipData().getItemAt(i).getUri();
+					for(int i = 0; i < intent.getClipData().getItemCount(); i++) list[i] = intent.getClipData().getItemAt(i).getUri();
+					
+					//Queuing the content
 					new QueueUriAsyncTask(this).execute(list);
 				}
-			}
+				break;
+			case intentTakePicture:
+				//Queuing the file
+				if(resultCode == RESULT_OK && viewModel.targetFileIntent != null) new QueueFileAsyncTask(this).execute(viewModel.targetFileIntent);
+				break;
+			case intentLocationResolution:
+				//Updating the attachment section
+				if(resultCode == RESULT_OK) viewModel.updateAttachmentsLocationState();
+				break;
 		}
 	}
 	
@@ -1326,6 +1362,15 @@ public class Messaging extends AppCompatCompositeActivity {
 			setupAttachmentsGallerySection();
 			setupAttachmentsAudioSection();
 			
+			viewModel.attachmentsLocationLoading.observe(this, value -> {
+				if(value) setupAttachmentsLocationSection();
+			});
+			viewModel.attachmentsLocationState.observe(this, value -> {
+				if(!viewModel.isAttachmentsLocationLoading()) setupAttachmentsLocationSection();
+			});
+			viewModel.updateAttachmentsLocationState();
+			//setupAttachmentsLocationSection();
+			
 			//Setting the listeners
 			//inflated.findViewById(R.id.pane_attachments).setOnTouchListener(attachmentListTouchListener);
 			
@@ -1486,30 +1531,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private class AttachmentsDoubleSpacingDecoration extends RecyclerView.ItemDecoration {
-		@Override
-		public void getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
-			//Getting the item count
-			List<SimpleAttachmentInfo> items = viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery);
-			int itemCount = items == null ? ActivityViewModel.attachmentsTileCount : items.size();
-			
-			//Adding top margin for items on the bottom row
-			int position = parent.getChildLayoutPosition(view);
-			if(position != 0 && position != itemCount + 1 && parent.getChildLayoutPosition(view) % 2 == 0) {
-				outRect.top = getResources().getDimensionPixelSize(R.dimen.contenttile_margin) / 2;
-			}
-		}
-	}
-	
-	/**
-	 * Gets the available window height: the height of the window, without the app bar
-	 *
-	 * @return the available window height
-	 */
-	private int getAvailableWindowHeight() {
-		return getWindow().getDecorView().getHeight() - getSupportActionBar().getHeight();
-	}
-	
 	private void setupAttachmentsAudioSection() {
 		//Getting the view
 		ViewGroup viewGroup = findViewById(R.id.viewgroup_attachment_audio);
@@ -1541,6 +1562,99 @@ public class Messaging extends AppCompatCompositeActivity {
 			viewGroup.findViewById(R.id.frame_attachment_audio_gate).setOnTouchListener(recordingTouchListener);
 			//recordingTouchListener
 		}
+	}
+	
+	private void setupAttachmentsLocationSection() {
+		//Getting the views
+		ViewGroup viewGroup = findViewById(R.id.viewgroup_attachment_location);
+		if(viewGroup == null) return;
+		ViewGroup groupAction = viewGroup.findViewById(R.id.button_attachment_location_action);
+		ViewGroup groupContent = viewGroup.findViewById(R.id.frame_attachment_location_content);
+		
+		//Checking if the process is loading
+		if(viewModel.isAttachmentsLocationLoading()) {
+			//Switching to the loading view
+			groupAction.setVisibility(View.VISIBLE);
+			groupContent.setVisibility(View.GONE);
+			
+			((TextView) groupAction.findViewById(R.id.button_attachment_location_action_label)).setText(R.string.message_generalloading);
+			groupAction.setOnClickListener(null);
+			
+			return;
+		}
+		
+		int state = viewModel.getAttachmentsLocationState();
+		if(state == ActivityViewModel.attachmentsLocationStateOK) {
+			//Swapping to the content view
+			groupAction.setVisibility(View.GONE);
+			groupContent.setVisibility(View.VISIBLE);
+			
+			//Configuring the map
+			groupContent.findViewById(R.id.frame_attachment_location_map).setClickable(false);
+			MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.frame_attachment_location_map);
+			mapFragment.getMapAsync(this);
+			
+			groupContent.setOnClickListener(view -> {
+				startActivityForResult(new Intent(Messaging.this, LocationPicker.class).putExtra(Constants.intentParamData, viewModel.attachmentsLocationResult), intentPickLocation);
+			});
+			
+			return;
+		}
+		
+		//Swapping to the action view
+		groupAction.setVisibility(View.VISIBLE);
+		groupContent.setVisibility(View.GONE);
+		
+		String buttonText;
+		View.OnClickListener buttonClickListener;
+		switch(state) {
+			case ActivityViewModel.attachmentsLocationStatePermission:
+				buttonText = getResources().getString(R.string.imperative_permission_location);
+				buttonClickListener = view -> Constants.requestPermission(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, permissionRequestLocation);
+				break;
+			case ActivityViewModel.attachmentsLocationStatePrompt:
+				buttonText = getResources().getString(R.string.imperative_enablelocationservices);
+				buttonClickListener = view -> viewModel.attachmentsLocationLaunchPrompt(this, intentLocationResolution);
+				break;
+			case ActivityViewModel.attachmentsLocationStateUnavailable:
+				buttonText = getResources().getString(R.string.message_notsupported);
+				buttonClickListener = null;
+				break;
+			case ActivityViewModel.attachmentsLocationStateFetching:
+				buttonText = getResources().getString(R.string.message_generalloading);
+				buttonClickListener = null;
+				break;
+			default:
+				throw new IllegalArgumentException("Invalid attachment location state " + state + " provided");
+		}
+		
+		//Setting the details
+		((TextView) groupAction.findViewById(R.id.button_attachment_location_action_label)).setText(buttonText);
+		groupAction.setOnClickListener(buttonClickListener);
+	}
+	
+	private class AttachmentsDoubleSpacingDecoration extends RecyclerView.ItemDecoration {
+		@Override
+		public void getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+			//Getting the item count
+			List<SimpleAttachmentInfo> items = viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery);
+			int itemCount = items == null ? ActivityViewModel.attachmentsTileCount : items.size();
+			
+			//Adding top margin for items on the bottom row
+			int position = parent.getChildLayoutPosition(view);
+			if(position != 0 && position != itemCount + 1 && parent.getChildLayoutPosition(view) % 2 == 0) {
+				outRect.top = getResources().getDimensionPixelSize(R.dimen.contenttile_margin) / 2;
+			}
+		}
+	}
+	
+	/**
+	 * Gets the available window height: the height of the window, without the app bar
+	 *
+	 * @return the available window height
+	 */
+	private int getAvailableWindowHeight() {
+		return getWindow().getDecorView().getHeight() - getSupportActionBar().getHeight();
 	}
 	
 	private class AttachmentListScrollListener extends RecyclerView.OnScrollListener {
@@ -2567,6 +2681,14 @@ public class Messaging extends AppCompatCompositeActivity {
 				} else {
 					//Updating the attachment sections
 					setupAttachmentsAudioSection();
+				}
+			}
+			case permissionRequestLocation: {
+				//Checking if the request was granted
+				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+					//Updating the attachment section
+					viewModel.updateAttachmentsLocationState();
+					//setupAttachmentsLocationSection();
 				}
 			}
 			default:
@@ -4391,9 +4513,15 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final int messagesStateFailedMessages = 4;
 		static final int messagesStateReady = 5;
 		
-		static final int smartReplyStateDisabled = 0;
+		/* static final int smartReplyStateDisabled = 0;
 		static final int smartReplyStateLoading = 1;
-		static final int smartReplyStateAvailable = 2;
+		static final int smartReplyStateAvailable = 2; */
+		
+		static final int attachmentsLocationStatePermission = 0; //Permission not granted
+		static final int attachmentsLocationStatePrompt = 1; //User action required
+		static final int attachmentsLocationStateUnavailable = 2; //Functionality not available
+		static final int attachmentsLocationStateFetching = 3; //Fetching the current location
+		static final int attachmentsLocationStateOK = 4; //Location loaded
 		
 		static final int attachmentsStateIdle = 0;
 		static final int attachmentsStateLoading = 1;
@@ -4430,6 +4558,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		private byte smartReplyRequestID = -1;
 		private boolean smartReplyAwaiting = false;
 		private String[] lastSmartReplyResult = null;
+		
+		private final MutableLiveData<Boolean> attachmentsLocationLoading = new MutableLiveData<>();
+		private final MutableLiveData<Integer> attachmentsLocationState = new MutableLiveData<>();
+		private Location attachmentsLocationResult = null;
+		private ResolvableApiException attachmentsLocationResolvable = null;
 		
 		private int lastUnreadCount = 0;
 		
@@ -4494,6 +4627,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Filling the attachment lists
 			Arrays.fill(attachmentStates, attachmentsStateIdle);
+			
+			//Initializing the states
+			attachmentsLocationLoading.setValue(false);
 		}
 		
 		@Override
@@ -5109,6 +5245,86 @@ public class Messaging extends AppCompatCompositeActivity {
 			listener.accept(getApplication(), result);
 			permissionRequestResultListenerList.remove(requestCode);
 		}
+		
+		void updateAttachmentsLocationState() {
+			//Checking if the permission has not been granted
+			if(ContextCompat.checkSelfPermission(getApplication(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+				attachmentsLocationState.setValue(attachmentsLocationStatePermission);
+				return;
+			}
+			
+			//Setting the state as loading
+			attachmentsLocationLoading.setValue(true);
+			
+			FusedLocationProviderClient locationProvider = LocationServices.getFusedLocationProviderClient(getApplication());
+			LocationRequest locationRequest = LocationRequest.create();
+			//Requesting location services status
+			LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(locationRequest);
+			Task<LocationSettingsResponse> task = LocationServices.getSettingsClient(getApplication()).checkLocationSettings(builder.build());
+			task.addOnCompleteListener(taskResult -> {
+				//Restoring the loading state
+				attachmentsLocationLoading.setValue(false);
+				try {
+					//Getting the result
+					taskResult.getResult(ApiException.class); //Forces exception to be thrown if needed
+					
+					//Updating the state
+					attachmentsLocationState.setValue(attachmentsLocationStateFetching);
+					
+					//Getting user's location
+					locationProvider.getLastLocation().addOnSuccessListener(location -> {
+						if(location == null) {
+							//Pulling an update from location services
+							locationProvider.requestLocationUpdates(locationRequest, new LocationCallback() {
+								@Override
+								public void onLocationResult(LocationResult locationResult) {
+									//Returning if there is no result (and waiting for another update)
+									if(locationResult == null) return;
+									
+									//Removing the updater
+									locationProvider.removeLocationUpdates(this);
+									
+									//Setting the location
+									attachmentsLocationResult = locationResult.getLastLocation();
+									attachmentsLocationState.setValue(attachmentsLocationStateOK);
+								}
+							}, null);
+						} else {
+							//Setting the location
+							attachmentsLocationResult = location;
+							attachmentsLocationState.setValue(attachmentsLocationStateOK);
+						}
+					});
+				} catch (ApiException exception) {
+					switch (exception.getStatusCode()) {
+						case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+							//Setting the resolvable
+							attachmentsLocationResolvable = (ResolvableApiException) exception;
+							attachmentsLocationState.setValue(attachmentsLocationStatePrompt);
+							break;
+						case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+							attachmentsLocationState.setValue(attachmentsLocationStateUnavailable);
+							break;
+					}
+				}
+			});
+		}
+		
+		boolean isAttachmentsLocationLoading() {
+			return attachmentsLocationLoading.getValue();
+		}
+		
+		int getAttachmentsLocationState() {
+			return attachmentsLocationState.getValue();
+		}
+		
+		void attachmentsLocationLaunchPrompt(Activity activity, int requestCode) {
+			try {
+				attachmentsLocationResolvable.startResolutionForResult(activity, requestCode);
+			} catch(IntentSender.SendIntentException exception) {
+				exception.printStackTrace();
+			}
+		}
 	}
 	
 	static class AudioPlaybackManager {
@@ -5656,6 +5872,15 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(activity == null) return;
 			activity.setActionBarTitle(result);
 		}
+	}
+	
+	@Override
+	public void onMapReady(GoogleMap googleMap) {
+		googleMap.setBuildingsEnabled(true);
+		googleMap.getUiSettings().setMapToolbarEnabled(false);
+		googleMap.getUiSettings().setAllGesturesEnabled(false);
+		googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(viewModel.attachmentsLocationResult.getLatitude(), viewModel.attachmentsLocationResult.getLongitude()), 15));
+		googleMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this, Constants.isNightMode(getResources()) ? R.raw.map_plaindark : R.raw.map_plainlight));
 	}
 	
 	void detailSwitchConversationColor(int newColor) {

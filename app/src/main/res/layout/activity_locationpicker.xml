@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:orientation="vertical"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent">
+	<com.google.android.gms.maps.MapView
+		android:id="@+id/mapview"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent" />
+	<androidx.constraintlayout.widget.ConstraintLayout
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:fitsSystemWindows="true">
+		<!-- Close button -->
+		<com.google.android.material.floatingactionbutton.FloatingActionButton
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			app:layout_constraintTop_toTopOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			android:layout_marginTop="16dp"
+			android:layout_marginStart="16dp"
+			app:backgroundTint="?android:attr/colorBackgroundFloating"
+			app:fabSize="mini"
+			app:srcCompat="@drawable/close"
+			android:onClick="onCloseClicked" />
+
+		<androidx.cardview.widget.CardView
+			android:id="@+id/container_selection"
+			android:layout_width="0px"
+			android:layout_height="wrap_content"
+			app:layout_constraintLeft_toLeftOf="parent"
+			app:layout_constraintRight_toRightOf="parent"
+			app:layout_constraintBottom_toBottomOf="parent"
+			android:layout_margin="8dp"
+			app:cardCornerRadius="4dp">
+			<LinearLayout
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:orientation="horizontal"
+				android:padding="16dp"
+				android:clipChildren="false"
+				android:clipToPadding="false">
+				<LinearLayout
+					android:layout_width="0px"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:layout_gravity="center"
+					android:layout_weight="1"
+					android:clipChildren="false"
+					android:clipToPadding="false">
+					<TextSwitcher
+						android:id="@+id/label_location"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:textSize="18sp"
+						android:textColor="@color/colorPrimary"
+						android:clipChildren="false"
+						android:clipToPadding="false">
+						<TextView
+							android:layout_width="match_parent"
+							android:layout_height="wrap_content"
+							android:textSize="18sp"
+							android:textColor="@color/colorPrimary" />
+						<TextView
+							android:layout_width="match_parent"
+							android:layout_height="wrap_content"
+							android:textSize="18sp"
+							android:textColor="@color/colorPrimary" />
+					</TextSwitcher>
+					<TextSwitcher
+						android:id="@+id/label_coordinates"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content">
+						<TextView
+							android:layout_width="match_parent"
+							android:layout_height="wrap_content" />
+						<TextView
+							android:layout_width="match_parent"
+							android:layout_height="wrap_content" />
+					</TextSwitcher>
+					<!-- <TextView
+						android:id="@+id/label_coordinates"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="Coordinates" /> -->
+				</LinearLayout>
+				<ImageButton
+					android:layout_width="36dp"
+					android:layout_height="36dp"
+					android:src="@drawable/check_circle_outline"
+					android:tint="@color/colorPrimary"
+					android:background="?android:attr/selectableItemBackgroundBorderless"
+					android:layout_gravity="center"
+					android:layout_marginStart="16dp" />
+			</LinearLayout>
+		</androidx.cardview.widget.CardView>
+	</androidx.constraintlayout.widget.ConstraintLayout>
+</FrameLayout>

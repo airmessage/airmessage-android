@@ -14,7 +14,7 @@
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.READ_CONTACTS" />
-	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 	
 	<application
 		android:allowBackup="true"
@@ -98,6 +98,16 @@
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
+		<!-- Location picker -->
+		<activity
+			android:exported="false"
+			android:name=".LocationPicker"
+			android:parentActivityName=".Messaging"
+			android:theme="@style/DayNight.Translucent"
+			android:windowSoftInputMode="adjustResize">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
 		<!-- Blocked addresses -->
 		<!--
         <activity android:name=".BlockedAddresses">
@@ -166,6 +176,11 @@
 		<meta-data
 			android:name="firebase_crashlytics_collection_enabled"
 			android:value="false" />
+
+		<!-- Google Maps API -->
+		<meta-data
+			android:name="com.google.android.geo.API_KEY"
+			android:value="AIzaSyCuqxy6XwkYtc1H3s-vealUkfyUBxSb45w" />
 
 		<meta-data
 			android:name="com.google.android.gms.car.application"

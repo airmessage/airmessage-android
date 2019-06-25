@@ -106,6 +106,8 @@
 	<string name="message_setup_connect_serverguidelink">Lisez le manuel d\'installation</string>
 	<string name="message_setup_connect_connectionerror">La connexion a échoué</string>
 	<string name="message_setup_connect_password">Mot de passe</string>
+
+	<string name="message_generalloading">Veuillez patienter&#8230;</string>
 	
 	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages</string>
 	<string name="message_setup_sync_download_description">Copiez vos messages récents de votre ordinateur et reprenez là où vous l\'avez laissé.\n\nSi vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil.</string>

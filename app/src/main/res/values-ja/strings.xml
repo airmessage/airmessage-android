@@ -169,6 +169,7 @@
 	<string name="message_advancedsync_type_audio">オーディオ</string>
 	<string name="message_advancedsync_type_document">ドキュメント</string>
 	<string name="message_advancedsync_type_other">他のファイル</string>
+	<string name="message_generalloading">お待ちください&#8230;</string>
 	<string name="progress_loadingmessages">メッセージをロード中</string>
 	<string name="progress_loading">ロード中</string>
 	<string name="progress_sync">メッセージを取得中</string>

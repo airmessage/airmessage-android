@@ -26,6 +26,15 @@
 		
 		<!--<item name="dialogTheme">@style/ThemeOverlay.MaterialComponents.Dialog</item>-->
 	</style>
+
+	<style name="DayNight.Translucent" parent="@style/Pass.DayNight.NoActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorPrimary</item>
+
+		<item name="android:windowTranslucentStatus">true</item>
+		<item name="android:windowTranslucentNavigation">true</item>
+	</style>
 	
 	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>

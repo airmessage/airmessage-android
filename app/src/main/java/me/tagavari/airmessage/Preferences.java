@@ -1,5 +1,6 @@
 package me.tagavari.airmessage;
 
+import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -429,10 +430,10 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				
 				/* locationSwitch.setOnPreferenceChangeListener((preference, value) -> {
 					//Opening the application settings if the permission has been granted
-					if(ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
+					if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
 					//Otherwise requesting the permission
-					else requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION}, permissionRequestLocation);
-					//else Constants.requestPermission(getActivity(), new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, Constants.permissionAccessCoarseLocation);
+					else requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, permissionRequestLocation);
+					//else Constants.requestPermission(getActivity(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, Constants.permissionAccessCoarseLocation);
 					
 					//Returning false (to prevent the system from changing the option)
 					return false;
@@ -491,67 +492,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			list.setClipToOutline(true);
 			list.invalidate();
 		}
-		
-		/* @Override
-		public void onCreate(@Nullable Bundle savedInstanceState) {
-			super.onCreate(savedInstanceState);
-			
-			//Adding the preferences
-			addPreferencesFromResource(R.xml.preferences);
-			
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-				//Creating the notification channel intent
-				Intent intent = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS);
-				intent.putExtra(Settings.EXTRA_CHANNEL_ID, MainApplication.notificationChannelMessage);
-				intent.putExtra(Settings.EXTRA_APP_PACKAGE, getActivity().getPackageName());
-				
-				//Setting the listener
-				findPreference(getResources().getString(R.string.preference_messagenotifications_key)).setIntent(intent);
-			} else {
-				//Updating the notification information
-				String ringtonePreferenceKey = getResources().getString(R.string.preference_messagenotifications_sound_key);
-				updateRingtonePreference(ringtonePreferenceKey, (RingtonePreference) findPreference(ringtonePreferenceKey));
-			}
-			
-			//Setting the listeners
-			findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setOnPreferenceChangeListener(startOnBootChangeListener);
-			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
-			findPreference(getResources().getString(R.string.preference_storage_deleteall_key)).setOnPreferenceClickListener(deleteMessagesClickListener);
-			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
-			findPreference(getResources().getString(R.string.preference_server_resync_key)).setOnPreferenceClickListener(syncMessagesClickListener);
-			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener((preference, newValue) -> {
-				//Applying the dark mode
-				((MainApplication) getActivity().getApplication()).applyDarkMode((String) newValue);
-				
-				//Recreating the activity
-				getActivity().recreate();
-				
-				//Accepting the change
-				return true;
-			});
-			
-			{
-				SwitchPreference locationSwitch = (SwitchPreference) findPreference(getResources().getString(R.string.preference_appearance_location_key));
-				locationSwitch.setChecked(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED);
-				
-				ListPreference darkModePreference = (ListPreference) findPreference(getResources().getString(R.string.preference_appearance_theme_key));
-				locationSwitch.setEnabled(darkModePreference.getValue().equals(MainApplication.darkModeAutomatic));
-				
-				locationSwitch.setOnPreferenceChangeListener((preference, value) -> {
-					//Opening the application settings if the permission has been granted
-					if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
-					//Otherwise requesting the permission
-					else requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, Constants.permissionAccessCoarseLocation);
-					//else Constants.requestPermission(getActivity(), new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, Constants.permissionAccessCoarseLocation);
-					
-					//Returning false (to prevent the system from changing the option)
-					return false;
-				});
-			}
-			
-			//Setting the intents
-			findPreference(getResources().getString(R.string.preference_server_help_key)).setIntent(new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress));
-		} */
 		
 		@Override
 		public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
