@@ -72,10 +72,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 	};
 	//private static final String messageSortOrder = "COALESCE(" + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + ',' + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + ')';
 	//private static final String messageSortOrder = "CASE WHEN " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " IS NULL THEN " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + " ELSE " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SERVERID + " END";
-	//private static final String messageSortOrderDesc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " DESC, " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " DESC";
-	//private static final String messageSortOrderAsc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " ASC, " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " ASC";
-	private static final String messageSortOrderDesc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_DATE + " DESC";
-	private static final String messageSortOrderAsc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_DATE + " ASC";
+	private static final String messageSortOrderDesc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " DESC, " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " DESC";
+	private static final String messageSortOrderAsc = Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " ASC, " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " ASC";
 	
 	//private static final String SQL_FETCH_CONVERSATION_MESSAGES = "SELECT * FROM " + Contract.MessageEntry.TABLE_NAME + " WHERE " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? ORDER BY " + Contract.MessageEntry.COLUMN_NAME_DATE + " ASC;";
 	
