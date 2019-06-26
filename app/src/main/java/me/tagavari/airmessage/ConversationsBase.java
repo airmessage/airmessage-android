@@ -121,16 +121,10 @@ class ConversationsBase extends AppCompatActivityPlugin {
 			updateList(false);
 		}
 	};
-	private final ContentObserver contentObserver = new ContentObserver(null) {
+	private final BroadcastReceiver contactsUpdateBroadcastReceiver = new BroadcastReceiver() {
 		@Override
-		public void onChange(boolean selfChange) {
-			super.onChange(selfChange);
-			new Handler(getActivity().getMainLooper()).post(ConversationsBase.this::rebuildConversationViews);
-		}
-		
-		@Override
-		public boolean deliverSelfNotifications() {
-			return true;
+		public void onReceive(Context context, Intent intent) {
+			rebuildConversationViews();
 		}
 	};
 	
@@ -169,8 +163,7 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
 		localBroadcastManager.registerReceiver(massRetrievalStateBroadcastReceiver, new IntentFilter(ConnectionService.localBCMassRetrieval));
 		localBroadcastManager.registerReceiver(updateConversationsBroadcastReceiver, new IntentFilter(localBCConversationUpdate));
-		
-		getActivity().getContentResolver().registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contentObserver);
+		localBroadcastManager.registerReceiver(contactsUpdateBroadcastReceiver, new IntentFilter(MainApplication.localBCContactUpdate));
 		
 		//Getting the conversations
 		conversations = ConversationManager.getConversations();
@@ -229,8 +222,7 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
 		localBroadcastManager.unregisterReceiver(massRetrievalStateBroadcastReceiver);
 		localBroadcastManager.unregisterReceiver(updateConversationsBroadcastReceiver);
-		
-		getActivity().getContentResolver().unregisterContentObserver(contentObserver);
+		localBroadcastManager.unregisterReceiver(contactsUpdateBroadcastReceiver);
 	}
 	
 	void setViews(RecyclerView recyclerView, ProgressBar massRetrievalProgressBar, TextView noConversationsLabel) {

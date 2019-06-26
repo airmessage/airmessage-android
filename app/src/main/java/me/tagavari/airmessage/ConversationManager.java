@@ -7066,6 +7066,14 @@ class ConversationManager {
 		}
 	}
 	
+	static void reportShortcutUsed(Context context, String conversationGUID) {
+		//Shortcuts require Android 7.1 Nougat or above
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+		
+		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+		shortcutManager.reportShortcutUsed(shortcutPrefixConversation + conversationGUID);
+	}
+	
 	static void rebuildDynamicShortcuts(Context context) {
 		//Shortcuts require Android 7.1 Nougat or above
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;

@@ -15,9 +15,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.pm.ShortcutManager;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 import android.graphics.Outline;
@@ -246,6 +248,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		return false;
 	};
 	private final ActivityViewModel.AttachmentsLoadCallbacks[] attachmentsLoadCallbacks = new ActivityViewModel.AttachmentsLoadCallbacks[2];
+	private final BroadcastReceiver contactsUpdateBroadcastReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			rebuildContactViews();
+		}
+	};
 	
 	//Creating the view values
 	private View rootView;
@@ -396,9 +404,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				setMessageBarState(false);
 				
 				//Setting the conversation title
-				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
-					setActionBarTitle(result);
-				});
+				viewModel.conversationInfo.buildTitle(this, new ConversationTitleResultCallback(this));
 				
 				//Coloring the UI
 				colorUI(findViewById(android.R.id.content));
@@ -420,9 +426,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				setMessageBarState(true);
 				
 				//Setting the conversation title
-				viewModel.conversationInfo.buildTitle(Messaging.this, (result, wasTasked) -> {
-					setActionBarTitle(result);
-				});
+				viewModel.conversationInfo.buildTitle(this, new ConversationTitleResultCallback(this));
 				
 				//Setting the activity callbacks
 				viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
@@ -660,6 +664,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		bottomFAB.setOnClickListener(view -> messageListAdapter.scrollToBottom());
 		appleEffectView.setFinishListener(() -> currentScreenEffectPlaying = false);
 		detailScrim.setOnClickListener(view -> closeDetailsPanel());
+		
+		LocalBroadcastManager.getInstance(this).registerReceiver(contactsUpdateBroadcastReceiver, new IntentFilter(MainApplication.localBCContactUpdate));
 		
 		//Configuring the input field
 		messageInputField.setContentProcessor((uri, type, name, size) -> queueAttachment(new SimpleAttachmentInfo(uri, type, name, size, -1), findAppropriateTileHelper(type), true));
@@ -935,6 +941,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 			}
 		}
+		
+		//Unregistering the broadcast listeners
+		LocalBroadcastManager.getInstance(this).unregisterReceiver(contactsUpdateBroadcastReceiver);
 	}
 	
 	long getConversationID() {
@@ -1717,7 +1726,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void detailsBuildConversationMembers(List<ConversationManager.MemberInfo> members) {
 		//Getting the members layout
-		//ViewGroup membersLayout = findViewById(R.id.list_conversationmembers);
+		ViewGroup membersLayout = findViewById(R.id.list_conversationmembers);
+		if(membersLayout == null) return;
+		membersLayout.removeAllViews();
 		
 		//Sorting the members
 		Collections.sort(members, ConversationManager.memberInfoComparator);
@@ -2017,6 +2028,20 @@ public class Messaging extends AppCompatCompositeActivity {
 		//buttonSendMessage.setImageTintList(ColorStateList.valueOf(state ? getResources().getColor(R.color.colorPrimary, null) : Constants.resolveColorAttr(this, android.R.attr.colorControlNormal)));
 		//if(restore) buttonSendMessage.setAlpha(targetAlpha);
 		//else buttonSendMessage.animate().setDuration(100).alpha(targetAlpha);
+	}
+	
+	private void rebuildContactViews() {
+		//Returning if the messages are not ready
+		if(viewModel.conversationItemList == null) return;
+		
+		//Updating the title
+		viewModel.conversationInfo.buildTitle(this, new ConversationTitleResultCallback(this));
+		
+		//Rebuilding the conversation members
+		detailsBuildConversationMembers(new ArrayList<>(viewModel.conversationInfo.getConversationMembers()));
+		
+		//Updating the views
+		messageListAdapter.notifyDataSetChanged();
 	}
 	
 	/* private boolean startRecording() {
@@ -4416,6 +4441,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Setting the state
 				messagesState.setValue(messagesStateReady);
+				
+				//Updating the conversation's shortcut usage
+				ConversationManager.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
 			} else {
 				//Loading the messages
 				new AsyncTask<Void, Void, List<ConversationManager.ConversationItem>>() {
@@ -4458,6 +4486,9 @@ public class Messaging extends AppCompatCompositeActivity {
 						
 						//Setting the state
 						messagesState.setValue(messagesStateReady);
+						
+						//Updating the conversation's shortcut usage
+						ConversationManager.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
 					}
 				}.execute();
 			}
@@ -5338,10 +5369,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(activity == null) return;
 			
 			//Building the conversation title
-			activity.viewModel.conversationInfo.buildTitle(activity, (result, wasTasked) -> {
-				//Setting the title in the app bar
-				activity.setActionBarTitle(result);
-			});
+			activity.viewModel.conversationInfo.buildTitle(activity, new ConversationTitleResultCallback(activity));
 		}
 		
 		@Override
@@ -5453,6 +5481,21 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Requesting the permission
 			activity.requestPermissions(new String[]{permission}, requestCode + permissionRequestMessageCustomOffset);
 			activity.viewModel.addPermissionsRequestListener(requestCode, resultListener);
+		}
+	}
+	
+	private static class ConversationTitleResultCallback implements Constants.TaskedResultCallback<String> {
+		private final WeakReference<Messaging> activityReference;
+		
+		public ConversationTitleResultCallback(Messaging activity) {
+			activityReference = new WeakReference<>(activity);
+		}
+		
+		@Override
+		public void onResult(String result, boolean wasTasked) {
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			activity.setActionBarTitle(result);
 		}
 	}
 	

@@ -32,6 +32,8 @@ import java.util.Collection;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import io.fabric.sdk.android.Fabric;
 
 public class MainApplication extends Application {
@@ -51,6 +53,8 @@ public class MainApplication extends Application {
 	static final String sharedPreferencesConnectivityKeyLastConnectionTime = "last_connection_time";
 	static final String sharedPreferencesConnectivityKeyLastConnectionHostname = "last_connection_hostname";
 	
+	static final String localBCContactUpdate = "LocalMSG-Main-ContactUpdate";
+	
 	static final String fileAuthority = "me.tagavari.airmessage.fileprovider";
 	
 	private final ContentObserver contentObserver = new ContentObserver(null) {
@@ -60,6 +64,7 @@ public class MainApplication extends Application {
 			new Handler(getMainLooper()).post(() -> {
 				userCacheHelper.clearCache();
 				bitmapCacheHelper.clearUserCache();
+				LocalBroadcastManager.getInstance(MainApplication.this).sendBroadcast(new Intent(localBCContactUpdate));
 			});
 		}
 		
