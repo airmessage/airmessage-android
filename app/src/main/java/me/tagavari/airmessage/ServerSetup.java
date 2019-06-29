@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
@@ -30,6 +31,8 @@ import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.google.android.material.snackbar.Snackbar;
+
 public class ServerSetup extends AppCompatActivity {
 	//Creating the reference values
 	static final String intentExtraRequired = "isRequired";
@@ -47,6 +50,8 @@ public class ServerSetup extends AppCompatActivity {
 	private EditText hostnameInputField;
 	private EditText passwordInputField;
 	private View nextButton;
+	
+	private Snackbar connectionSnackbar = null;
 	
 	//Creating the listener values
 	private final TextWatcher hostnameInputWatcher = new TextWatcher() {
@@ -101,13 +106,32 @@ public class ServerSetup extends AppCompatActivity {
 					//Advancing the page
 					setPage(ActivityViewModel.pageSync, false);
 					hideSoftKeyboard();
+					
+					//Hiding the snackbar
+					if(connectionSnackbar != null && connectionSnackbar.isShownOrQueued()) connectionSnackbar.dismiss();
 				} else {
 					//Showing the error dialog
-					showErrorDialog(intent.getIntExtra(Constants.intentParamCode, -1));
+					int errorCode = intent.getIntExtra(Constants.intentParamCode, -1);
+					showErrorDialog(errorCode);
 					
 					//Enabling the input fields
 					hostnameInputField.setEnabled(true);
 					passwordInputField.setEnabled(true);
+					
+					//Showing a snackbar
+					if(errorCode == ConnectionService.intentResultCodeConnection) {
+						//Showing the snackbar
+						if(connectionSnackbar == null || !connectionSnackbar.isShownOrQueued()) {
+							Snackbar snackbar = connectionSnackbar = Snackbar.make(findViewById(R.id.coordinator_snackbar), R.string.message_setup_connectionhelp, Snackbar.LENGTH_INDEFINITE);
+							snackbar.setAction(R.string.action_connectiontroubleshootingguide, view -> Constants.launchUri(ServerSetup.this, Constants.helpTopicConnectionTroubleshootingAddress));
+							snackbar.getView().setBackgroundTintList(ColorStateList.valueOf(Constants.resolveColorAttr(ServerSetup.this, android.R.attr.colorBackgroundFloating)));
+							((TextView) snackbar.getView().findViewById(com.google.android.material.R.id.snackbar_text)).setTextColor(Constants.resolveColorAttr(ServerSetup.this, android.R.attr.textColorPrimary));
+							snackbar.show();
+						}
+					} else {
+						//Hiding the snackbar
+						if(connectionSnackbar != null && connectionSnackbar.isShownOrQueued()) connectionSnackbar.dismiss();
+					}
 				}
 			}
 			//Otherwise checking if the response has already been verified
@@ -495,10 +519,7 @@ public class ServerSetup extends AppCompatActivity {
 	}
 	
 	public void onClickLaunchServerGuide(View view) {
-		Intent intent = new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress);
-		
-		if(intent.resolveActivity(getPackageManager()) != null) startActivity(intent);
-		else Toast.makeText(this, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
+		Constants.launchUri(this, Constants.serverSetupAddress);
 	}
 	
 	public static class ActivityViewModel extends ViewModel {

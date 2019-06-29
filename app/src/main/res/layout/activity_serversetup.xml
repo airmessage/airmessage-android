@@ -20,6 +20,11 @@
 			android:id="@+id/layout_serversync"
 			layout="@layout/layout_serversync"
 			android:visibility="invisible" />
+		<!-- Snackbar helper -->
+		<androidx.coordinatorlayout.widget.CoordinatorLayout
+			android:id="@+id/coordinator_snackbar"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent" />
 	</FrameLayout>
 	<!-- Bottom Bar -->
 	<RelativeLayout

@@ -360,4 +360,6 @@
 	<string name="preferencegroup_features_title">Messagerie</string>
 	<string name="preference_features_replysuggestions_title">Réponses intelligentes</string>
 	<string name="preference_features_replysuggestions_description">Afficher les suggestions de réponse lorsqu\'elles sont disponibles</string>
+	<string name="action_connectiontroubleshootingguide">Consulter l\'aide</string>
+	<string name="message_setup_connectionhelp">Problème de connection?</string>
 </resources>

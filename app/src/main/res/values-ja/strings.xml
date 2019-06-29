@@ -347,4 +347,6 @@
 	<string name="preferencegroup_features_title">メッセージング</string>
 	<string name="preference_features_replysuggestions_title">スマート返信</string>
 	<string name="preference_features_replysuggestions_description">可能であれば会話やメッセージ通知に返信候補を表示</string>
+	<string name="action_connectiontroubleshootingguide">ヘルプ</string>
+	<string name="message_setup_connectionhelp">接続問題ですか？</string>
 </resources>
