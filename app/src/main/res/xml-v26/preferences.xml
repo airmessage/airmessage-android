@@ -43,7 +43,7 @@
 			android:key="@string/preference_features_replysuggestions_key"
 			android:title="@string/preference_features_replysuggestions_title"
 			android:summary="@string/preference_features_replysuggestions_description"
-			android:defaultValue="true" />
+			android:defaultValue="false" />
 	</androidx.preference.PreferenceCategory>
 
 	<androidx.preference.PreferenceCategory

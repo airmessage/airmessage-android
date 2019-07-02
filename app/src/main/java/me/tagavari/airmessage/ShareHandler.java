@@ -1,5 +1,6 @@
 package me.tagavari.airmessage;
 
+import android.app.TaskStackBuilder;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.net.Uri;
@@ -105,8 +106,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 	}
 	
 	public void createNewConversation(View view) {
-		//Launching the new message activity
-		startActivity(new Intent(this, NewMessage.class));
+		startActivity(new Intent(this, NewMessage.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
 	}
 	
 	private class RecyclerAdapter extends ConversationsBase.RecyclerAdapter<ConversationManager.ConversationInfo.SimpleItemViewHolder> {
@@ -157,6 +157,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 			holder.itemView.setOnClickListener(view -> {
 				//Creating the intent
 				Intent launchMessaging = new Intent(ShareHandler.this, Messaging.class);
+				launchMessaging.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 				
 				//Setting the target conversation
 				launchMessaging.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
