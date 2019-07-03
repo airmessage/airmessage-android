@@ -522,6 +522,7 @@ class ConversationManager {
 		void bindView(ItemViewHolder viewHolder, Context context) {
 			//Setting the flags
 			viewHolder.flagMuted.setVisibility(isMuted ? View.VISIBLE : View.GONE);
+			viewHolder.flagDraft.setVisibility(draftMessage != null || !draftFiles.isEmpty() ? View.VISIBLE : View.GONE);
 			
 			//Setting the profile
 			currentUserViewIndex = updateViewUser(context, viewHolder);
@@ -537,6 +538,7 @@ class ConversationManager {
 		void bindViewOnce(ItemViewHolder viewHolder, Context context) {
 			//Setting the flags
 			viewHolder.flagMuted.setVisibility(isMuted ? View.VISIBLE : View.GONE);
+			viewHolder.flagDraft.setVisibility(draftMessage != null || !draftFiles.isEmpty() ? View.VISIBLE : View.GONE);
 			
 			//Building the profile view
 			updateViewUser(context, viewHolder);
@@ -966,8 +968,7 @@ class ConversationManager {
 			if(itemView == null) return;
 			
 			//Updating the view
-			if(isMuted) itemView.flagMuted.setVisibility(View.VISIBLE);
-			else itemView.flagMuted.setVisibility(View.GONE);
+			itemView.flagMuted.setVisibility(isMuted ? View.VISIBLE : View.GONE);
 		}
 		
 		MessageInfo getActivityStateTargetRead() {
@@ -1105,26 +1106,19 @@ class ConversationManager {
 		}
 		
 		void updateLastItem(Context context) {
-			//Checking if there is a draft message
-			if(draftMessage != null) {
-				lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime, true);
-			} else if(!draftFiles.isEmpty()) {
-				//Converting the draft list to a string resource list
-				ArrayList<Integer> draftStringRes = new ArrayList<>();
-				for(DraftFile draft : draftFiles) draftStringRes.add(getNameFromContentType(draft.getFileType()));
-				
-				String summary;
-				if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
-				else summary = context.getResources().getQuantityString(R.plurals.message_multipleattachments, draftStringRes.size(), draftStringRes.size());
-				lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime, true);
-			} else {
-				//Getting the list
-				ArrayList<ConversationItem> conversationItems = getConversationItems();
-				if(conversationItems == null || conversationItems.isEmpty()) return;
-				
-				//Getting the last conversation item
-				ConversationItem lastConversationItem = conversationItems.get(conversationItems.size() - 1);
-				
+			//Getting the last conversation item
+			ConversationItem lastConversationItem = null;
+			ArrayList<ConversationItem> conversationItems = getConversationItems();
+			if(conversationItems != null && !conversationItems.isEmpty()) lastConversationItem = conversationItems.get(conversationItems.size() - 1);
+			
+			//Getting if there is a draft message available
+			boolean draftAvailable = draftMessage != null || !draftFiles.isEmpty();
+			
+			//Returning if there are no items in the conversation
+			if(lastConversationItem == null && !draftAvailable) return;
+			
+			//If there is no draft message available, or the last conversation item is later than the draft update time
+			if(!draftAvailable || lastConversationItem.getDate() > draftUpdateTime) {
 				//Setting the last item
 				lastItem = new LightConversationItem("", lastConversationItem.getDate(), lastConversationItem.getLocalID(), lastConversationItem.getServerID());
 				lastConversationItem.getSummary(context, new Constants.ResultCallback<String>() {
@@ -1133,6 +1127,20 @@ class ConversationManager {
 						lastItem.setMessage(result);
 					}
 				});
+			} else {
+				//Checking if there is a draft message
+				if(draftMessage != null) {
+					lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime, true);
+				} else if(!draftFiles.isEmpty()) {
+					//Converting the draft list to a string resource list
+					ArrayList<Integer> draftStringRes = new ArrayList<>();
+					for(DraftFile draft : draftFiles) draftStringRes.add(getNameFromContentType(draft.getFileType()));
+					
+					String summary;
+					if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
+					else summary = context.getResources().getQuantityString(R.plurals.message_multipleattachments, draftStringRes.size(), draftStringRes.size());
+					lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime, true);
+				}
 			}
 		}
 		
@@ -2008,6 +2016,7 @@ class ConversationManager {
 			final TextView conversationUnread;
 			
 			final View flagMuted;
+			final View flagDraft;
 			
 			ItemViewHolder(View view) {
 				super(view);
@@ -2022,6 +2031,7 @@ class ConversationManager {
 				conversationUnread = view.findViewById(R.id.unread);
 				
 				flagMuted = view.findViewById(R.id.flag_muted);
+				flagDraft = view.findViewById(R.id.flag_draft);
 			}
 		}
 		

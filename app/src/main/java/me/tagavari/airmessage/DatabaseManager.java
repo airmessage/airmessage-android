@@ -28,7 +28,6 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.common.SharedValues;
 
 class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
@@ -738,7 +737,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			boolean chatArchived = cursor.getInt(indexChatArchived) != 0;
 			boolean chatMuted = cursor.getInt(indexChatMuted) != 0;
 			int chatColor = cursor.getInt(indexChatColor);
-			ConversationManager.LightConversationItem lightItem = getLightItem(context, chatID);
+			ConversationManager.LightConversationItem lightItem = getLastLightItem(context, chatID);
 			String draftMessage = cursor.getString(indexDraftMessage);
 			long draftUpdateTime = cursor.getLong(indexDraftUpdateTime);
 			
@@ -805,26 +804,38 @@ class DatabaseManager extends SQLiteOpenHelper {
 			ArrayList<ConversationManager.MemberInfo> conversationMembers = loadConversationMembers(database, chatID);
 			ArrayList<ConversationManager.DraftFile> draftFiles = loadDraftFiles(database, context, chatID);
 			
-			//Getting the light item
-			ConversationManager.LightConversationItem lightItem;
-			if(draftMessage != null) {
-				lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime, true);
-			} else if(!draftFiles.isEmpty()) {
-				//Converting the draft list to a string resource list
-				ArrayList<Integer> draftStringRes = new ArrayList<>();
-				for(ConversationManager.DraftFile draft : draftFiles) draftStringRes.add(ConversationManager.getNameFromContentType(draft.getFileType()));
-				
-				String summary;
-				if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
-				else summary = context.getResources().getQuantityString(R.plurals.message_multipleattachments, draftStringRes.size(), draftStringRes.size());
-				lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime, true);
-			} else lightItem = getLightItem(context, chatID);
+			//Getting the last item
+			ConversationManager.LightConversationItem lastItem = getLastLightItem(context, chatID);
+			
+			//Getting if a draft message is available
+			boolean draftAvailable = draftMessage != null || !draftFiles.isEmpty();
+			
+			ConversationManager.LightConversationItem lightItem = null;
+			//Checking if there is any content in the conversation
+			if(lastItem != null || draftAvailable) {
+				//If there is no draft message available, or the last conversation item is later than the draft update time
+				if(!draftAvailable || lastItem.getDate() > draftUpdateTime) lightItem = lastItem;
+				else {
+					if(draftMessage != null) {
+						lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime, true);
+					} else if(!draftFiles.isEmpty()) {
+						//Converting the draft list to a string resource list
+						ArrayList<Integer> draftStringRes = new ArrayList<>();
+						for(ConversationManager.DraftFile draft : draftFiles) draftStringRes.add(ConversationManager.getNameFromContentType(draft.getFileType()));
+						
+						String summary;
+						if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
+						else summary = context.getResources().getQuantityString(R.plurals.message_multipleattachments, draftStringRes.size(), draftStringRes.size());
+						lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime, true);
+					}
+				}
+			}
 			
 			//Creating and adding the conversation info
 			ConversationManager.ConversationInfo conversationInfo = new ConversationManager.ConversationInfo(chatID, chatGUID, conversationState, service, conversationMembers, chatName, chatUnreadMessages, chatColor, draftMessage, draftFiles, draftUpdateTime);
 			conversationInfo.setArchived(chatArchived);
 			conversationInfo.setMuted(chatMuted);
-			conversationInfo.trySetLastItem(lightItem, false);
+			if(lightItem != null) conversationInfo.trySetLastItem(lightItem, false);
 			
 			//Adding the conversation to the list
 			conversationList.add(conversationInfo);
@@ -1798,7 +1809,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
-	private ConversationManager.LightConversationItem getLightItem(Context context, long chatID) {
+	private ConversationManager.LightConversationItem getLastLightItem(Context context, long chatID) {
 		//Getting the database
 		SQLiteDatabase database = getReadableDatabase();
 		
@@ -2290,7 +2301,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		boolean chatArchived = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED)) != 0;
 		boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) != 0;
 		int chatColor = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR));
-		ConversationManager.LightConversationItem lightItem = getLightItem(context, localID);
+		ConversationManager.LightConversationItem lightItem = getLastLightItem(context, localID);
 		String draftMessage = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE));
 		long draftUpdateTime = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME));
 		
@@ -2342,7 +2353,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			boolean chatArchived = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_ARCHIVED)) != 0;
 			boolean chatMuted = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_MUTED)) != 0;
 			int chatColor = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_COLOR));
-			ConversationManager.LightConversationItem lightItem = getLightItem(context, localID);
+			ConversationManager.LightConversationItem lightItem = getLastLightItem(context, localID);
 			String draftMessage = cursor.getString(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTMESSAGE));
 			long draftUpdateTime = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_DRAFTUPDATETIME));
 			
