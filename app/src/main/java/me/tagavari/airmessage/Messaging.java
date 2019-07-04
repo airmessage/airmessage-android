@@ -4398,7 +4398,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					if(conversation == null) return null;
 					
 					//Creating the lazy loader
-					DatabaseManager.ConversationLazyLoader lazyLoader = new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
+					DatabaseManager.ConversationLazyLoader lazyLoader = new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversation);
 					
 					//Returning the data
 					return new Constants.Tuple2<>(conversation, lazyLoader);
