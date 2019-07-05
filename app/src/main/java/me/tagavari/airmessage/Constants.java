@@ -35,6 +35,7 @@ import android.view.animation.Animation;
 import android.view.animation.Transformation;
 import android.webkit.MimeTypeMap;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.Toolbar;
 
 import com.crashlytics.android.Crashlytics;
@@ -162,6 +163,7 @@ public class Constants {
 	
 	static final Uri serverSetupAddress = Uri.parse("https://airmessage.org/guide");
 	static final Uri helpAddress = Uri.parse("https://airmessage.org/help");
+	static final Uri helpTopicConnectionTroubleshootingAddress = Uri.parse("https://airmessage.org/help/topic/connection_troubleshooting");
 	static final Uri serverUpdateAddress = Uri.parse("https://airmessage.org/serverupdate");
 	static final Uri communityAddress = Uri.parse("https://reddit.com/r/AirMessage");
 	static final String feedbackEmail = "hello@airmessage.org";
@@ -1165,5 +1167,12 @@ public class Constants {
 		view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
 		view.draw(canvas);
 		return bitmap;
+	}
+	
+	static void launchUri(Context context, Uri uri) {
+		Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+		
+		if(intent.resolveActivity(context.getPackageManager()) != null) context.startActivity(intent);
+		else Toast.makeText(context, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
 	}
 }

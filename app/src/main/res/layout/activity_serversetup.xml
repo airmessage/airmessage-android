@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:orientation="vertical">
 	<!-- Root layout -->
 	<FrameLayout
@@ -20,6 +21,11 @@
 			android:id="@+id/layout_serversync"
 			layout="@layout/layout_serversync"
 			android:visibility="invisible" />
+		<!-- Snackbar helper -->
+		<androidx.coordinatorlayout.widget.CoordinatorLayout
+			android:id="@+id/coordinator_snackbar"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent" />
 	</FrameLayout>
 	<!-- Bottom Bar -->
 	<RelativeLayout
@@ -32,11 +38,12 @@
 		
 		<LinearLayout
 			android:id="@+id/nextbutton"
+			android:theme="@style/SelectableItemPrimary"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_alignParentEnd="true"
 			android:alpha="0.38"
-			android:background="?attr/selectableItemBackground"
+			android:background="@drawable/rounded_button_highlight_ripple"
 			android:focusable="true"
 			android:clickable="false"
 			android:gravity="center"
@@ -73,10 +80,11 @@
 		
 		<LinearLayout
 			android:id="@+id/backbutton"
+			android:theme="@style/SelectableItemPrimary"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_alignParentStart="true"
-			android:background="?attr/selectableItemBackground"
+			android:background="@drawable/rounded_button_highlight_ripple"
 			android:gravity="center"
 			android:focusable="true"
 			android:clickable="true"

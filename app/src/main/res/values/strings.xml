@@ -64,6 +64,7 @@
 	<string name="action_pinconversation">Pin conversation</string>
 	<string name="action_copytoclipboard">Copy to clipboard</string>
 	<string name="action_newconversation">New conversation</string>
+	<string name="action_connectiontroubleshootingguide">View help</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -377,4 +378,5 @@
 	<string name="dateformat_withinyear_weekday">EEEE, MMM d</string>
 	<string name="dateformat_outsideyear_simple">MMM yyyy</string>
 	<string name="dateformat_outsideyear">MMM d, yyyy</string>
+	<string name="message_setup_connectionhelp">Having trouble connecting?</string>
 </resources>

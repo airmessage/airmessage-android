@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
+import android.database.ContentObserver;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -14,6 +15,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.ContactsContract;
 import android.util.LongSparseArray;
 import android.util.SparseArray;
 import android.view.View;
@@ -119,6 +121,12 @@ class ConversationsBase extends AppCompatActivityPlugin {
 			updateList(false);
 		}
 	};
+	private final BroadcastReceiver contactsUpdateBroadcastReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			rebuildConversationViews();
+		}
+	};
 	
 	//Creating the receiver values
 	private final List<Runnable> updateListListener = new ArrayList<>();
@@ -155,6 +163,7 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
 		localBroadcastManager.registerReceiver(massRetrievalStateBroadcastReceiver, new IntentFilter(ConnectionService.localBCMassRetrieval));
 		localBroadcastManager.registerReceiver(updateConversationsBroadcastReceiver, new IntentFilter(localBCConversationUpdate));
+		localBroadcastManager.registerReceiver(contactsUpdateBroadcastReceiver, new IntentFilter(MainApplication.localBCContactUpdate));
 		
 		//Getting the conversations
 		conversations = ConversationManager.getConversations();
@@ -213,6 +222,7 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
 		localBroadcastManager.unregisterReceiver(massRetrievalStateBroadcastReceiver);
 		localBroadcastManager.unregisterReceiver(updateConversationsBroadcastReceiver);
+		localBroadcastManager.unregisterReceiver(contactsUpdateBroadcastReceiver);
 	}
 	
 	void setViews(RecyclerView recyclerView, ProgressBar massRetrievalProgressBar, TextView noConversationsLabel) {
@@ -505,6 +515,16 @@ class ConversationsBase extends AppCompatActivityPlugin {
 		
 		//Calling the listeners
 		for(Runnable listener : updateListListener) listener.run();
+	}
+	
+	void rebuildConversationViews() {
+		//Returning if the conversations aren't ready
+		if(conversations == null || !conversations.isLoaded()) return;
+		
+		for(ConversationManager.ConversationInfo conversation : conversations) {
+			conversation.updateView(getActivity());
+			conversation.updateViewUser(getActivity());
+		}
 	}
 	
 	void addUpdateListListener(Runnable listener) {

@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
@@ -30,6 +31,8 @@ import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.google.android.material.snackbar.Snackbar;
+
 public class ServerSetup extends AppCompatActivity {
 	//Creating the reference values
 	static final String intentExtraRequired = "isRequired";
@@ -47,6 +50,8 @@ public class ServerSetup extends AppCompatActivity {
 	private EditText hostnameInputField;
 	private EditText passwordInputField;
 	private View nextButton;
+	
+	private Snackbar connectionSnackbar = null;
 	
 	//Creating the listener values
 	private final TextWatcher hostnameInputWatcher = new TextWatcher() {
@@ -101,13 +106,32 @@ public class ServerSetup extends AppCompatActivity {
 					//Advancing the page
 					setPage(ActivityViewModel.pageSync, false);
 					hideSoftKeyboard();
+					
+					//Hiding the snackbar
+					if(connectionSnackbar != null && connectionSnackbar.isShownOrQueued()) connectionSnackbar.dismiss();
 				} else {
 					//Showing the error dialog
-					showErrorDialog(intent.getIntExtra(Constants.intentParamCode, -1));
+					int errorCode = intent.getIntExtra(Constants.intentParamCode, -1);
+					showErrorDialog(errorCode);
 					
 					//Enabling the input fields
 					hostnameInputField.setEnabled(true);
 					passwordInputField.setEnabled(true);
+					
+					//Showing a snackbar
+					if(errorCode == ConnectionService.intentResultCodeConnection) {
+						//Showing the snackbar
+						if(connectionSnackbar == null || !connectionSnackbar.isShownOrQueued()) {
+							Snackbar snackbar = connectionSnackbar = Snackbar.make(findViewById(R.id.coordinator_snackbar), R.string.message_setup_connectionhelp, Snackbar.LENGTH_INDEFINITE);
+							snackbar.setAction(R.string.action_connectiontroubleshootingguide, view -> Constants.launchUri(ServerSetup.this, Constants.helpTopicConnectionTroubleshootingAddress));
+							snackbar.getView().setBackgroundTintList(ColorStateList.valueOf(Constants.resolveColorAttr(ServerSetup.this, android.R.attr.colorBackgroundFloating)));
+							((TextView) snackbar.getView().findViewById(com.google.android.material.R.id.snackbar_text)).setTextColor(Constants.resolveColorAttr(ServerSetup.this, android.R.attr.textColorPrimary));
+							snackbar.show();
+						}
+					} else {
+						//Hiding the snackbar
+						if(connectionSnackbar != null && connectionSnackbar.isShownOrQueued()) connectionSnackbar.dismiss();
+					}
 				}
 			}
 			//Otherwise checking if the response has already been verified
@@ -163,13 +187,13 @@ public class ServerSetup extends AppCompatActivity {
 		//Enabling the back button if the change is not required
 		if(!isRequired) findViewById(R.id.backbutton).setVisibility(View.VISIBLE);
 		
-		//Disabling the next button (because for some reason the XML isn't enough)
-		nextButton.setClickable(false);
-		
 		//Filling in the input fields with previous information
 		SharedPreferences sharedPreferences = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-		hostnameInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, ""));
-		passwordInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, ""));
+		hostnameInputField.setText(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, ""));
+		passwordInputField.setText(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, ""));
+		
+		//Updating the next button
+		//updateNextButtonState(hostnameInputField.getText().toString(), passwordInputField.getText().toString());
 		
 		//Restoring the current page
 		getWindow().getDecorView().post(() -> {
@@ -360,8 +384,12 @@ public class ServerSetup extends AppCompatActivity {
 		//Switching the next button for a loading button
 		findViewById(R.id.nextbuttonarrow).setVisibility(loading ? View.GONE : View.VISIBLE);
 		findViewById(R.id.nextbuttonprogress).setVisibility(loading ? View.VISIBLE : View.GONE);
-		nextButton.setAlpha(loading ? 0.38F : 1);
-		nextButton.setClickable(!loading);
+		if(loading) {
+			nextButton.setAlpha(0.38F);
+			nextButton.setClickable(false);
+		} else {
+			updateNextButtonState(hostnameInputField.getText().toString(), passwordInputField.getText().toString());
+		}
 		
 		//Setting the input fields' state
 		hostnameInputField.setEnabled(!loading);
@@ -495,10 +523,7 @@ public class ServerSetup extends AppCompatActivity {
 	}
 	
 	public void onClickLaunchServerGuide(View view) {
-		Intent intent = new Intent(Intent.ACTION_VIEW, Constants.serverSetupAddress);
-		
-		if(intent.resolveActivity(getPackageManager()) != null) startActivity(intent);
-		else Toast.makeText(this, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
+		Constants.launchUri(this, Constants.serverSetupAddress);
 	}
 	
 	public static class ActivityViewModel extends ViewModel {

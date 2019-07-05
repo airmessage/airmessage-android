@@ -8,11 +8,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.ContentObserver;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.provider.Contacts;
+import android.provider.ContactsContract;
 
 import com.crashlytics.android.Crashlytics;
 import com.crashlytics.android.core.CrashlyticsCore;
@@ -28,6 +32,8 @@ import java.util.Collection;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import io.fabric.sdk.android.Fabric;
 
 public class MainApplication extends Application {
@@ -47,7 +53,26 @@ public class MainApplication extends Application {
 	static final String sharedPreferencesConnectivityKeyLastConnectionTime = "last_connection_time";
 	static final String sharedPreferencesConnectivityKeyLastConnectionHostname = "last_connection_hostname";
 	
+	static final String localBCContactUpdate = "LocalMSG-Main-ContactUpdate";
+	
 	static final String fileAuthority = "me.tagavari.airmessage.fileprovider";
+	
+	private final ContentObserver contentObserver = new ContentObserver(null) {
+		@Override
+		public void onChange(boolean selfChange) {
+			super.onChange(selfChange);
+			new Handler(getMainLooper()).post(() -> {
+				userCacheHelper.clearCache();
+				bitmapCacheHelper.clearUserCache();
+				LocalBroadcastManager.getInstance(MainApplication.this).sendBroadcast(new Intent(localBCContactUpdate));
+			});
+		}
+		
+		@Override
+		public boolean deliverSelfNotifications() {
+			return true;
+		}
+	};
 	
 	//Creating the cache helpers
 	private BitmapCacheHelper bitmapCacheHelper;
@@ -127,6 +152,9 @@ public class MainApplication extends Application {
 		getPackageManager().setComponentEnabledSetting(new ComponentName(this, ConnectionService.ServiceStartBoot.class),
 				PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_connectionboot_key), true) ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
 				PackageManager.DONT_KILL_APP);
+		
+		//Registering the content observer
+		if(canUseContacts(this)) registerContactsListener();
 	}
 	
 	public static MainApplication getInstance() {
@@ -240,6 +268,10 @@ public class MainApplication extends Application {
 		return userCacheHelper;
 	}
 	
+	void registerContactsListener() {
+		getContentResolver().registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contentObserver);
+	}
+	
 	static boolean canUseContacts(Context context) {
 		//Returning if the permission has been granted
 		return ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
@@ -300,18 +332,20 @@ public class MainApplication extends Application {
 	public void onTrimMemory(int level) {
 		super.onTrimMemory(level);
 		
-		if(level >= TRIM_MEMORY_BACKGROUND) {
+		if(level >= TRIM_MEMORY_MODERATE) {
 			//Clearing the messages
 			if(conversationReference != null) conversationReference.clear();
 			
 		}
 		
-		if(level >= TRIM_MEMORY_MODERATE) {
+		if(level >= TRIM_MEMORY_BACKGROUND) {
 			//Clearing the caches
 			bitmapCacheHelper.clearCache();
 			userCacheHelper.clearCache();
 		}
 	}
+	
+	
 	
 	static final String darkModeFollowSystem = "follow_system";
 	static final String darkModeAutomatic = "auto";
