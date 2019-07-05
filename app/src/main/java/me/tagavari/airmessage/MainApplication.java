@@ -153,7 +153,8 @@ public class MainApplication extends Application {
 				PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_connectionboot_key), true) ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
 				PackageManager.DONT_KILL_APP);
 		
-		getContentResolver().registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contentObserver);
+		//Registering the content observer
+		if(canUseContacts(this)) registerContactsListener();
 	}
 	
 	public static MainApplication getInstance() {
@@ -265,6 +266,10 @@ public class MainApplication extends Application {
 	
 	UserCacheHelper getUserCacheHelper() {
 		return userCacheHelper;
+	}
+	
+	void registerContactsListener() {
+		getContentResolver().registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contentObserver);
 	}
 	
 	static boolean canUseContacts(Context context) {

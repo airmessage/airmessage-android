@@ -455,6 +455,9 @@ public class Conversations extends AppCompatCompositeActivity {
 				
 				//Updating the display
 				conversationsBasePlugin.rebuildConversationViews();
+				
+				//Starting the update listener
+				MainApplication.getInstance().registerContactsListener();
 			}
 			//Otherwise checking if the result is a denial
 			else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {

@@ -335,6 +335,9 @@ public class NewMessage extends AppCompatActivity {
 			if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 				//Loading the contacts
 				viewModel.loadContacts();
+				
+				//Starting the update listener
+				MainApplication.getInstance().registerContactsListener();
 			}
 			//Otherwise checking if the result is a denial
 			else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
@@ -347,20 +350,6 @@ public class NewMessage extends AppCompatActivity {
 							startActivity(intent);
 						})
 						.show();
-				/* //Showing a dialog
-				new AlertDialog.Builder(this)
-						.setMessage(R.string.permission_rejected)
-						.setNegativeButton(R.string.button_dismiss, (dialog, which) -> {
-							dialog.dismiss();
-						})
-						.setPositiveButton(R.string.settings, (dialog, which) -> {
-							//Opening the application settings
-							Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-							intent.setData(Uri.parse("package:" + getPackageName()));
-							startActivity(intent);
-						})
-						.create()
-						.show(); */
 			}
 		}
 	}

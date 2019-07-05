@@ -187,13 +187,13 @@ public class ServerSetup extends AppCompatActivity {
 		//Enabling the back button if the change is not required
 		if(!isRequired) findViewById(R.id.backbutton).setVisibility(View.VISIBLE);
 		
-		//Disabling the next button (because for some reason the XML isn't enough)
-		nextButton.setClickable(false);
-		
 		//Filling in the input fields with previous information
 		SharedPreferences sharedPreferences = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
-		hostnameInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, ""));
-		passwordInputField.append(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, ""));
+		hostnameInputField.setText(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, ""));
+		passwordInputField.setText(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, ""));
+		
+		//Updating the next button
+		//updateNextButtonState(hostnameInputField.getText().toString(), passwordInputField.getText().toString());
 		
 		//Restoring the current page
 		getWindow().getDecorView().post(() -> {
@@ -384,8 +384,12 @@ public class ServerSetup extends AppCompatActivity {
 		//Switching the next button for a loading button
 		findViewById(R.id.nextbuttonarrow).setVisibility(loading ? View.GONE : View.VISIBLE);
 		findViewById(R.id.nextbuttonprogress).setVisibility(loading ? View.VISIBLE : View.GONE);
-		nextButton.setAlpha(loading ? 0.38F : 1);
-		nextButton.setClickable(!loading);
+		if(loading) {
+			nextButton.setAlpha(0.38F);
+			nextButton.setClickable(false);
+		} else {
+			updateNextButtonState(hostnameInputField.getText().toString(), passwordInputField.getText().toString());
+		}
 		
 		//Setting the input fields' state
 		hostnameInputField.setEnabled(!loading);
