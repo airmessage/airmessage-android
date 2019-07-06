@@ -668,7 +668,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		LocalBroadcastManager.getInstance(this).registerReceiver(contactsUpdateBroadcastReceiver, new IntentFilter(MainApplication.localBCContactUpdate));
 		
 		//Configuring the input field
-		messageInputField.setContentProcessor((uri, type, name, size) -> queueAttachment(new SimpleAttachmentInfo(uri, type, name, size, -1), findAppropriateTileHelper(type), true));
+		messageInputField.setContentProcessor((uri, type, name, size) -> queueAttachment(new SimpleAttachmentInfo(uri, type, Constants.cleanFileName(name), size, -1), findAppropriateTileHelper(type), true));
 		
 		//Setting up the attachments
 		{
@@ -790,7 +790,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		/* inputBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
 			boolean movingUp = top < oldTop;
-			System.out.println("OLCL: " + top + " < " + oldTop);
 			if(top > oldTop) { //Layout is expanding downwards
 				closeAttachmentsPanel(false);
 				inputBar.post(() -> inputBar.requestLayout());
