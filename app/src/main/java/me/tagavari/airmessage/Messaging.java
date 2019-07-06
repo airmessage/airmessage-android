@@ -4000,8 +4000,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		public boolean compare(SimpleAttachmentInfo item) {
 			return this.getModificationDate() == item.getModificationDate() &&
-				   ((this.getUri() != null && Objects.equals(this.getUri(), item.getUri())) ||
-					(this.getFile() != null && Objects.equals(this.getFile(), item.getFile())));
+				   ((this.getUri() != null && this.getUri().equals(item.getUri())) ||
+					(this.getFile() != null && this.getFile().equals(item.getFile())));
 		}
 		
 		abstract class Extension {
