@@ -3178,7 +3178,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Removing the item
 		QueuedFileInfo queuedItem = null;
-		for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext(); ) {
+		for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext();) {
 			draftIndex = iterator.nextIndex();
 			queuedItem = iterator.next();
 			if(queuedItem.getItem().compare(item)) {
@@ -3999,7 +3999,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		public boolean compare(SimpleAttachmentInfo item) {
-			return this.getModificationDate() == item.getModificationDate() && Objects.equals(this.getFile(), item.getFile());
+			return this.getModificationDate() == item.getModificationDate() &&
+				   ((this.getUri() != null && Objects.equals(this.getUri(), item.getUri())) ||
+					(this.getFile() != null && Objects.equals(this.getFile(), item.getFile())));
 		}
 		
 		abstract class Extension {
