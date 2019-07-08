@@ -813,12 +813,14 @@ class DatabaseManager extends SQLiteOpenHelper {
 			ConversationManager.LightConversationItem lightItem = null;
 			//Checking if there is any content in the conversation
 			if(lastItem != null || draftAvailable) {
-				//If there is no draft message available, or the last conversation item is later than the draft update time
-				if(!draftAvailable || lastItem.getDate() > draftUpdateTime) lightItem = lastItem;
-				else {
+				//Checking if there is a draft message available, and it was updated more recently than the last item in the conversation
+				if(draftAvailable && (lastItem == null || draftUpdateTime > lastItem.getDate())) {
+					//Setting the draft text message
 					if(draftMessage != null) {
 						lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime, true);
-					} else if(!draftFiles.isEmpty()) {
+					}
+					//Setting the draft file list message
+					else if(!draftFiles.isEmpty()) {
 						//Converting the draft list to a string resource list
 						ArrayList<Integer> draftStringRes = new ArrayList<>();
 						for(ConversationManager.DraftFile draft : draftFiles) draftStringRes.add(ConversationManager.getNameFromContentType(draft.getFileType()));
@@ -829,6 +831,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 						lightItem = new ConversationManager.LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime, true);
 					}
 				}
+				//Otherwise, assigning the latest conversation item
+				else lightItem = lastItem;
 			}
 			
 			//Creating and adding the conversation info
