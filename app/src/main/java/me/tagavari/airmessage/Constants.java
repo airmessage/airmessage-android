@@ -570,15 +570,15 @@ public class Constants {
 		
 		@Override
 		public CharSequence getTransformation(CharSequence source, View view) {
-			if (view instanceof TextView) {
+			if(view instanceof TextView) {
 				TextView textView = (TextView) view;
 				Linkify.addLinks(textView, Linkify.ALL);
-				if (textView.getText() == null || !(textView.getText() instanceof Spannable)) {
+				if(textView.getText() == null || !(textView.getText() instanceof Spannable)) {
 					return source;
 				}
 				Spannable text = (Spannable) textView.getText();
 				URLSpan[] spans = text.getSpans(0, textView.length(), URLSpan.class);
-				for (int i = spans.length - 1; i >= 0; i--) {
+				for(int i = spans.length - 1; i >= 0; i--) {
 					URLSpan oldSpan = spans[i];
 					int start = text.getSpanStart(oldSpan);
 					int end = text.getSpanEnd(oldSpan);
@@ -1174,5 +1174,9 @@ public class Constants {
 		
 		if(intent.resolveActivity(context.getPackageManager()) != null) context.startActivity(intent);
 		else Toast.makeText(context, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
+	}
+	
+	static String cleanFileName(String fileName) {
+		return fileName.replace('\u0000', '?').replace('/', '-');
 	}
 }

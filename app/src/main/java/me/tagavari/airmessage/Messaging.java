@@ -668,7 +668,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		LocalBroadcastManager.getInstance(this).registerReceiver(contactsUpdateBroadcastReceiver, new IntentFilter(MainApplication.localBCContactUpdate));
 		
 		//Configuring the input field
-		messageInputField.setContentProcessor((uri, type, name, size) -> queueAttachment(new SimpleAttachmentInfo(uri, type, name, size, -1), findAppropriateTileHelper(type), true));
+		messageInputField.setContentProcessor((uri, type, name, size) -> queueAttachment(new SimpleAttachmentInfo(uri, type, Constants.cleanFileName(name), size, -1), findAppropriateTileHelper(type), true));
 		
 		//Setting up the attachments
 		{
@@ -790,7 +790,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		/* inputBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
 			boolean movingUp = top < oldTop;
-			System.out.println("OLCL: " + top + " < " + oldTop);
 			if(top > oldTop) { //Layout is expanding downwards
 				closeAttachmentsPanel(false);
 				inputBar.post(() -> inputBar.requestLayout());
@@ -3179,7 +3178,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Removing the item
 		QueuedFileInfo queuedItem = null;
-		for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext(); ) {
+		for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext();) {
 			draftIndex = iterator.nextIndex();
 			queuedItem = iterator.next();
 			if(queuedItem.getItem().compare(item)) {
@@ -4000,7 +3999,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		public boolean compare(SimpleAttachmentInfo item) {
-			return this.getModificationDate() == item.getModificationDate() && Objects.equals(this.getFile(), item.getFile());
+			return this.getModificationDate() == item.getModificationDate() &&
+				   ((this.getUri() != null && this.getUri().equals(item.getUri())) ||
+					(this.getFile() != null && this.getFile().equals(item.getFile())));
 		}
 		
 		abstract class Extension {
