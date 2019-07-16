@@ -2835,7 +2835,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		void scrollToBottom() {
 			//Returning if the list has already been scrolled to the bottom
-			if(isScrolledToBottom()) return;
+			//if(isScrolledToBottom()) return;
 			
 			//Scrolling to the bottom
 			recyclerView.smoothScrollToPosition(getItemCount() - 1);
