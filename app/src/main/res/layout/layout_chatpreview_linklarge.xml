@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:orientation="vertical"
+	android:background="@drawable/rectangle_chatpreview"
+	android:backgroundTint="?android:attr/colorBackgroundFloating">
+	<!-- Image preview -->
+	<ImageView
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:minHeight="20dp"
+		android:maxHeight="120dp" />
+
+	<!-- Link title -->
+	<TextView
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Link title"
+		android:textColor="?android:attr/textColorPrimary"
+		android:textStyle="bold"
+		android:textSize="16sp"
+		android:layout_marginLeft="8dp"
+		android:layout_marginRight="8dp"
+		android:layout_marginTop="4dp" />
+
+	<!-- Link description -->
+	<TextView
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Link description"
+		android:textColor="?android:attr/textColorSecondary"
+		android:textSize="14sp"
+		android:layout_marginLeft="8dp"
+		android:layout_marginRight="8dp"
+		android:layout_marginTop="4dp" />
+
+	<!-- Link address -->
+	<TextView
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Link address"
+		android:textColor="?android:attr/textColorSecondary"
+		android:textSize="12sp"
+		android:layout_marginLeft="8dp"
+		android:layout_marginRight="8dp"
+		android:layout_marginTop="4dp"
+		android:layout_marginBottom="4dp"/>
+</LinearLayout>

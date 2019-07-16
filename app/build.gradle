@@ -112,6 +112,8 @@ dependencies {
 	implementation "com.github.bumptech.glide:glide:4.9.0"
 	implementation "jp.wasabeef:glide-transformations:4.0.1"
 	annotationProcessor "com.github.bumptech.glide:compiler:4.9.0"
+
+	implementation "io.github.ponnamkarthik:richlinkpreview:1.0.9"
 }
 
 repositories {

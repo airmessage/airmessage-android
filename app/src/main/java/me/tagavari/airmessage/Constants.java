@@ -573,7 +573,6 @@ public class Constants {
 		public CharSequence getTransformation(CharSequence source, View view) {
 			if(view instanceof TextView) {
 				TextView textView = (TextView) view;
-				Linkify.addLinks(textView, Linkify.ALL);
 				if(textView.getText() == null || !(textView.getText() instanceof Spannable)) {
 					return source;
 				}

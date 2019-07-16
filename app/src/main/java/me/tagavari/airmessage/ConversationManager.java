@@ -4,7 +4,6 @@ import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.DownloadManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -25,10 +24,14 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Spannable;
+import android.text.SpannableString;
 import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
+import android.text.style.URLSpan;
+import android.text.util.Linkify;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -47,6 +50,9 @@ import android.view.animation.AnimationUtils;
 import android.view.animation.BounceInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.view.animation.ScaleAnimation;
+import android.view.textclassifier.TextClassificationManager;
+import android.view.textclassifier.TextClassifier;
+import android.view.textclassifier.TextLinks;
 import android.webkit.MimeTypeMap;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -95,6 +101,10 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.TransitionManager;
 import androidx.core.util.Consumer;
+
+import io.github.ponnamkarthik.richlinkpreview.MetaData;
+import io.github.ponnamkarthik.richlinkpreview.ResponseListener;
+import io.github.ponnamkarthik.richlinkpreview.RichPreview;
 import jp.wasabeef.glide.transformations.BlurTransformation;
 import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.view.InvisibleInkView;
@@ -569,7 +579,7 @@ class ConversationManager {
 			}
 			
 			//Getting the view
-			ViewGroup iconGroup = (ViewGroup) LayoutInflater.from(context).inflate(R.layout.generation_conversationicon, null);
+			ViewGroup iconGroup = (ViewGroup) LayoutInflater.from(context).inflate(R.layout.layout_conversationicon, null);
 			
 			//Getting the view data
 			int currentUserViewIndex = Math.min(conversationMembers.size() - 1, maxUsersToDisplay - 1);
@@ -4067,6 +4077,8 @@ class ConversationManager {
 		
 		//Creating the component values
 		String messageText;
+		boolean messageTextSpannableLoading = false;
+		Spannable messageTextSpannable = null;
 		
 		MessageTextInfo(long localID, String guid, MessageInfo message, String messageText) {
 			//Calling the super constructor
@@ -4082,8 +4094,28 @@ class ConversationManager {
 		
 		@Override
 		void bindView(ViewHolder viewHolder, Context context) {
-			//Setting the text
-			viewHolder.labelMessage.setText(messageText);
+			//Checking if the device can use Smart Linkify (Android 8.0 Oreo, API 26 and above)
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+				//Setting the text
+				if(messageTextSpannable != null) {
+					viewHolder.labelMessage.setText(messageTextSpannable);
+				} else {
+					//Requesting the text to be processed
+					if(!messageTextSpannableLoading) {
+						new TextLinksAsyncTask(context, this).execute();
+						messageTextSpannableLoading = true;
+					}
+					
+					//Setting the message without links for now
+					viewHolder.labelMessage.setText(messageText);
+				}
+			} else {
+				//Setting the text
+				viewHolder.labelMessage.setText(messageText);
+				
+				//Defaulting to standard Linkify
+				addTextLinksLegacy(viewHolder.labelMessage);
+			}
 			
 			{
 				//Setting the alignment
@@ -4146,10 +4178,70 @@ class ConversationManager {
 			else viewHolder.inkView.setVisibility(View.GONE);
 		}
 		
-		private void setupTextLinks(TextView textView) {
+		private void addTextLinksLegacy(TextView textView) {
 			//Setting up the URL checker
+			Linkify.addLinks(textView, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES | Linkify.PHONE_NUMBERS);
 			textView.setTransformationMethod(new Constants.CustomTabsLinkTransformationMethod(0xFFFFFFFF));
 			textView.setMovementMethod(LinkMovementMethod.getInstance());
+		}
+		
+		void updateTextLinks(Spannable spannable) {
+			//Updating the text
+			messageTextSpannableLoading = false;
+			messageTextSpannable = spannable;
+			
+			//Updating the message label, if it is available
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) {
+				viewHolder.labelMessage.setMovementMethod(LinkMovementMethod.getInstance());
+				viewHolder.labelMessage.setText(spannable);
+			}
+			
+			//Getting any URL spans
+			URLSpan[] urlSpans = spannable.getSpans(0, spannable.length(), URLSpan.class);
+			if(urlSpans.length > 0) {
+				String url = urlSpans[0].getURL();
+				
+				RichPreview richPreview = new RichPreview(new ResponseListener() {
+					@Override
+					public void onData(MetaData metaData) {
+						//data = metaData;
+						
+						//Implement your Layout
+					}
+					
+					@Override
+					public void onError(Exception exception) {
+						exception.printStackTrace();
+					}
+				});
+			}
+		}
+		
+		private static class TextLinksAsyncTask extends AsyncTask<Void, Void, Spannable> {
+			private final TextClassifier textClassifier;
+			private final String messageText;
+			private final WeakReference<MessageTextInfo> messageReference;
+			
+			TextLinksAsyncTask(Context context, MessageTextInfo message) {
+				textClassifier = ((TextClassificationManager) context.getSystemService(Context.TEXT_CLASSIFICATION_SERVICE)).getTextClassifier();
+				messageText = message.getText();
+				messageReference = new WeakReference<>(message);
+			}
+			
+			@Override
+			protected Spannable doInBackground(Void... voids) {
+				Spannable spannable = new SpannableString(messageText);
+				textClassifier.generateLinks(new TextLinks.Request.Builder(messageText).build()).apply(spannable, TextLinks.APPLY_STRATEGY_REPLACE, null);
+				return spannable;
+			}
+			
+			@Override
+			protected void onPostExecute(Spannable spannable) {
+				System.out.println("Returning spannable: " + spannable);
+				MessageTextInfo messageTextInfo = messageReference.get();
+				if(messageTextInfo != null) messageTextInfo.updateTextLinks(spannable);
+			}
 		}
 		
 		/* @SuppressLint("ClickableViewAccessibility")
@@ -4251,9 +4343,6 @@ class ConversationManager {
 			viewHolder.labelMessage.setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
 			
 			viewHolder.inkView.setBackgroundColor(backgroundColor);
-			
-			//Setting up the text links (to update the toolbar color in Chrome's custom tabs)
-			setupTextLinks(viewHolder.labelMessage);
 		}
 		
 		@Override
