@@ -1117,21 +1117,14 @@ class ConversationManager {
 			//Returning if there are no items in the conversation
 			if(lastConversationItem == null && !draftAvailable) return;
 			
-			//If there is no draft message available, or the last conversation item is later than the draft update time
-			if(!draftAvailable || lastConversationItem.getDate() > draftUpdateTime) {
-				//Setting the last item
-				lastItem = new LightConversationItem("", lastConversationItem.getDate(), lastConversationItem.getLocalID(), lastConversationItem.getServerID());
-				lastConversationItem.getSummary(context, new Constants.ResultCallback<String>() {
-					@Override
-					public void onResult(boolean wasTasked, String result) {
-						lastItem.setMessage(result);
-					}
-				});
-			} else {
+			//Checking if there is a draft message available, and it was updated more recently than the last item in the conversation
+			if(draftAvailable && (lastConversationItem == null || draftUpdateTime > lastConversationItem.getDate())) {
 				//Checking if there is a draft message
 				if(draftMessage != null) {
 					lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, draftMessage), draftUpdateTime, true);
-				} else if(!draftFiles.isEmpty()) {
+				}
+				//Setting the draft file list message
+				else if(!draftFiles.isEmpty()) {
 					//Converting the draft list to a string resource list
 					ArrayList<Integer> draftStringRes = new ArrayList<>();
 					for(DraftFile draft : draftFiles) draftStringRes.add(getNameFromContentType(draft.getFileType()));
@@ -1141,6 +1134,15 @@ class ConversationManager {
 					else summary = context.getResources().getQuantityString(R.plurals.message_multipleattachments, draftStringRes.size(), draftStringRes.size());
 					lastItem = new LightConversationItem(context.getResources().getString(R.string.prefix_draft, summary), draftUpdateTime, true);
 				}
+			} else {
+				//Setting the last conversation item
+				lastItem = new LightConversationItem("", lastConversationItem.getDate(), lastConversationItem.getLocalID(), lastConversationItem.getServerID());
+				lastConversationItem.getSummary(context, new Constants.ResultCallback<String>() {
+					@Override
+					public void onResult(boolean wasTasked, String result) {
+						lastItem.setMessage(result);
+					}
+				});
 			}
 		}
 		

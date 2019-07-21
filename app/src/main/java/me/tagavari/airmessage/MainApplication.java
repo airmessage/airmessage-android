@@ -335,7 +335,6 @@ public class MainApplication extends Application {
 		if(level >= TRIM_MEMORY_MODERATE) {
 			//Clearing the messages
 			if(conversationReference != null) conversationReference.clear();
-			
 		}
 		
 		if(level >= TRIM_MEMORY_BACKGROUND) {
