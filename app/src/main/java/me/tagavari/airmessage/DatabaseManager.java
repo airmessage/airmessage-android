@@ -94,7 +94,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.MessageEntry.COLUMN_NAME_SENDSTYLE + " TEXT, " +
 			Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED + " INTEGER NOT NULL DEFAULT 0, " +
 			Contract.MessageEntry.COLUMN_NAME_CHAT + " INTEGER NOT NULL," +
-			Contract.MessageEntry.COLUMN_NAME_PREVIEW_AVAILABLE + " INTEGER," +
+			Contract.MessageEntry.COLUMN_NAME_PREVIEW_STATE + " INTEGER DEFAULT 0," +
 			Contract.MessageEntry.COLUMN_NAME_PREVIEW_ID + " INTEGER," +
 			Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED + " INTEGER NOT NULL," +
 			Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET + " INTEGER NOT NULL" +
@@ -426,11 +426,11 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Updating the group action subtype columns (0 is now UNKNOWN, JOIN and LEAVE have been shifted up by 1)
 				database.execSQL("UPDATE messages SET item_subtype = item_subtype + 1 WHERE item_type = 1");
 			case 9:
-				//Adding the chat preview links
-				database.execSQL("ALTER TABlE messages ADD preview_available INTEGER;");
+				//Adding the message preview links
+				database.execSQL("ALTER TABlE messages ADD preview_state INTEGER DEFAULT 0;");
 				database.execSQL("ALTER TABlE messages ADD preview_id INTEGER;");
 				
-				//Adding the chat preview table
+				//Adding the message preview table
 				database.execSQL("CREATE TABLE messagepreview (" +
 						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE," +
 						"type INTEGER NOT NULL, " +
@@ -476,7 +476,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			static final String COLUMN_NAME_SENDSTYLE = "send_style";
 			static final String COLUMN_NAME_SENDSTYLEVIEWED = "send_style_viewed";
 			static final String COLUMN_NAME_CHAT = "chat";
-			static final String COLUMN_NAME_PREVIEW_AVAILABLE = "preview_available";
+			static final String COLUMN_NAME_PREVIEW_STATE = "preview_state";
 			static final String COLUMN_NAME_PREVIEW_ID = "preview_id";
 			static final String COLUMN_NAME_SORTID_LINKED = "sort_id_linked"; //The last serverlinked (server_id is not null) item above this item
 			static final String COLUMN_NAME_SORTID_LINKEDOFFSET = "sort_id_linked_offset"; //How many items away this item is from the last serverlinked item
@@ -911,9 +911,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 	}
 	
 	private static class ConversationItemIndices {
-		final int iLocalID, iServerID, iGuid, iSender, iItemType, iDate, iState, iError, iErrorDetails, iDateRead, iSendStyle, iSendStyleViewed, iMessageText, iOther;
+		final int iLocalID, iServerID, iGuid, iSender, iItemType, iDate, iState, iError, iErrorDetails, iDateRead, iSendStyle, iSendStyleViewed, iPreviewState, iPreviewID, iMessageText, iOther;
 		
-		ConversationItemIndices(int iLocalID, int iServerID, int iGuid, int iSender, int iItemType, int iDate, int iState, int iError, int iErrorDetails, int iDateRead, int iSendStyle, int iSendStyleViewed, int iMessageText, int iOther) {
+		ConversationItemIndices(int iLocalID, int iServerID, int iGuid, int iSender, int iItemType, int iDate, int iState, int iError, int iErrorDetails, int iDateRead, int iSendStyle, int iSendStyleViewed, int iPreviewState, int iPreviewID, int iMessageText, int iOther) {
 			this.iLocalID = iLocalID;
 			this.iServerID = iServerID;
 			this.iGuid = iGuid;
@@ -926,6 +926,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 			this.iDateRead = iDateRead;
 			this.iSendStyle = iSendStyle;
 			this.iSendStyleViewed = iSendStyleViewed;
+			this.iPreviewState = iPreviewState;
+			this.iPreviewID = iPreviewID;
 			this.iMessageText = iMessageText;
 			this.iOther = iOther;
 		}
@@ -944,10 +946,12 @@ class DatabaseManager extends SQLiteOpenHelper {
 		int iDateRead = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATEREAD);
 		int iSendStyle = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
 		int iSendStyleViewed = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED);
+		int iPreviewState = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_PREVIEW_STATE);
+		int iPreviewID = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_PREVIEW_ID);
 		int iMessageText = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
 		int iOther = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER);
 		
-		return new ConversationItemIndices(iLocalID, iServerID, iGuid, iSender, iItemType, iDate, iState, iError, iErrorDetails, iDateRead, iSendStyle, iSendStyleViewed, iMessageText, iOther);
+		return new ConversationItemIndices(iLocalID, iServerID, iGuid, iSender, iItemType, iDate, iState, iError, iErrorDetails, iDateRead, iSendStyle, iSendStyleViewed, iPreviewState, iPreviewID, iMessageText, iOther);
 	}
 	
 	private static ConversationManager.ConversationItem loadConversationItem(ConversationItemIndices indices, Cursor cursor, SQLiteDatabase database, ConversationManager.ConversationInfo conversationInfo) {
@@ -969,6 +973,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			String sendStyle = cursor.getString(indices.iSendStyle);
 			boolean sendStyleViewed = cursor.getInt(indices.iSendStyleViewed) != 0;
 			String message = cursor.getString(indices.iMessageText);
+			int previewState = cursor.getInt(indices.iPreviewState);
 			
 			//Creating the conversation item
 			ConversationManager.MessageInfo messageInfo = new ConversationManager.MessageInfo(localID, serverID, guid, conversationInfo, sender, message, sendStyle, sendStyleViewed, date, stateCode, errorCode, errorDetailsAvailable, dateRead);
@@ -1059,6 +1064,28 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				//Closing the tapback cursor
 				tapbackCursor.close();
+			}
+			
+			//Checking if there is a preview available
+			if(previewState == ConversationManager.MessagePreviewInfo.stateAvailable) {
+				//Querying for the preview
+				long previewID = cursor.getLong(indices.iPreviewID);
+				Cursor previewCursor = database.query(Contract.MessagePreviewEntry.TABLE_NAME, null,
+						Contract.MessagePreviewEntry._ID + " = ?", new String[]{Long.toString(previewID)}, null, null, null, "1");
+				
+				//Getting the data
+				ConversationManager.MessagePreviewInfo preview = ConversationManager.MessagePreviewInfo.getMessagePreview(
+						localID,
+						previewCursor.getInt(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_TYPE)),
+						previewCursor.getBlob(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_DATA)),
+						previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_TARGET)),
+						previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_TITLE)),
+						previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_SUBTITLE))
+				);
+				previewCursor.close();
+				
+				//Adding the preview to the message
+				messageInfo.setMessagePreview(preview);
 			}
 			
 			//Returning the item

@@ -2162,6 +2162,8 @@ class ConversationManager {
 		private final ArrayList<AttachmentInfo> attachments;
 		private final String sendStyle;
 		private boolean sendStyleViewed;
+		private int messagePreviewState = MessagePreviewInfo.stateNotTried;
+		private MessagePreviewInfo messagePreview = null;
 		private int messageState;
 		private int errorCode;
 		private boolean errorDetailsAvailable;
@@ -2218,6 +2220,19 @@ class ConversationManager {
 		
 		void removeAttachment(AttachmentInfo attachment) {
 			attachments.remove(attachment);
+		}
+		
+		/**
+		 * Assign this message a preview, to be displayed underneath the original message contents
+		 * @param preview the preview to be displayed, NULL if unavailable
+		 */
+		void setMessagePreview(MessagePreviewInfo preview) {
+			if(preview == null) {
+				messagePreviewState = MessagePreviewInfo.stateUnavailable;
+			} else {
+				messagePreviewState = MessagePreviewInfo.stateAvailable;
+				messagePreview = preview;
+			}
 		}
 		
 		String getSender() {
@@ -4198,14 +4213,14 @@ class ConversationManager {
 			}
 			
 			//Getting any URL spans
-			URLSpan[] urlSpans = spannable.getSpans(0, spannable.length(), URLSpan.class);
+			/* URLSpan[] urlSpans = spannable.getSpans(0, spannable.length(), URLSpan.class);
 			if(urlSpans.length > 0) {
 				String url = urlSpans[0].getURL();
 				
 				RichPreview richPreview = new RichPreview(new ResponseListener() {
 					@Override
 					public void onData(MetaData metaData) {
-						//data = metaData;
+						data = metaData;
 						
 						//Implement your Layout
 					}
@@ -4215,7 +4230,7 @@ class ConversationManager {
 						exception.printStackTrace();
 					}
 				});
-			}
+			} */
 		}
 		
 		private static class TextLinksAsyncTask extends AsyncTask<Void, Void, Spannable> {
@@ -6247,6 +6262,45 @@ class ConversationManager {
 				this.iconResource = iconResource;
 				this.color = color;
 			}
+		}
+	}
+	
+	static abstract class MessagePreviewInfo {
+		static final int typeLink = 0;
+		
+		static final int stateNotTried = 0;
+		static final int stateUnavailable = 1;
+		static final int stateAvailable = 2;
+		
+		private final long messageID;
+		
+		MessagePreviewInfo(long messageID) {
+			this.messageID = messageID;
+		}
+		
+		static MessagePreviewInfo getMessagePreview(long messageID, int type, byte[] data, String target, String title, String subtitle) {
+			switch(type) {
+				case typeLink:
+					return new MessagePreviewLink(messageID, data, target, title, subtitle);
+				default:
+					throw new IllegalArgumentException("Unknown message preview info type: " + type);
+			}
+		}
+	}
+	
+	static class MessagePreviewLink extends MessagePreviewInfo {
+		private final byte[] data;
+		private final String target;
+		private final String title;
+		private final String subtitle;
+		
+		MessagePreviewLink(long messageID, byte[] data, String target, String title, String subtitle) {
+			super(messageID);
+			
+			this.data = data;
+			this.target = target;
+			this.title = title;
+			this.subtitle = subtitle;
 		}
 	}
 	
