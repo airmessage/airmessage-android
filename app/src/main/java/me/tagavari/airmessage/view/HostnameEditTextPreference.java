@@ -40,12 +40,13 @@ public class HostnameEditTextPreference extends EditTextPreference {
 	
 	public static class HostnameEditTextPreferenceDialog extends EditTextPreferenceDialogFragmentCompat {
 		private Button positiveButton;
+		private boolean buttonEnabled = false;
 		
 		public static HostnameEditTextPreferenceDialog newInstance(String key) {
 			final HostnameEditTextPreferenceDialog fragment = new HostnameEditTextPreferenceDialog();
-			final Bundle b = new Bundle(1);
-			b.putString(ARG_KEY, key);
-			fragment.setArguments(b);
+			final Bundle bundle = new Bundle(1);
+			bundle.putString(ARG_KEY, key);
+			fragment.setArguments(bundle);
 			return fragment;
 		}
 		
@@ -53,7 +54,10 @@ public class HostnameEditTextPreference extends EditTextPreference {
 		@Override
 		public Dialog onCreateDialog(Bundle savedInstanceState) {
 			Dialog dialog = super.onCreateDialog(savedInstanceState);
-			dialog.setOnShowListener(dialog1 -> positiveButton = ((AlertDialog) dialog1).getButton(AlertDialog.BUTTON_POSITIVE));
+			dialog.setOnShowListener(dialog1 -> {
+				positiveButton = ((AlertDialog) dialog1).getButton(AlertDialog.BUTTON_POSITIVE);
+				positiveButton.setEnabled(buttonEnabled);
+			});
 			return dialog;
 		}
 		
@@ -63,7 +67,8 @@ public class HostnameEditTextPreference extends EditTextPreference {
 			
 			EditText editText = view.findViewById(android.R.id.edit);
 			
-			editText.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+			editText.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD); //TODO replace with EditTextPreference.OnBindEditTextListener with next AndroidX update
+			editText.setSelection(editText.getText().length());
 			editText.addTextChangedListener(new TextWatcher() {
 				@Override
 				public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -72,7 +77,8 @@ public class HostnameEditTextPreference extends EditTextPreference {
 				
 				@Override
 				public void onTextChanged(CharSequence s, int start, int before, int count) {
-					positiveButton.setEnabled(s.length() == 0 || Constants.regExValidAddress.matcher(s).find());
+					buttonEnabled = s.length() == 0 || Constants.regExValidAddress.matcher(s).find();
+					if(positiveButton != null) positiveButton.setEnabled(buttonEnabled);
 				}
 				
 				@Override

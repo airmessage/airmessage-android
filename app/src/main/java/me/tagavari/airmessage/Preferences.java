@@ -56,7 +56,7 @@ import androidx.preference.SwitchPreferenceCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import me.tagavari.airmessage.view.HostnameEditTextPreference;
 
-public class Preferences extends AppCompatActivity {
+public class Preferences extends AppCompatActivity implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
 	//Creating the reference values
 	private static final int permissionRequestLocation = 0;
 	
@@ -68,10 +68,21 @@ public class Preferences extends AppCompatActivity {
 		//Setting the content view
 		setContentView(R.layout.activity_preferences);
 		
-		//Adding the fragment
+		if (savedInstanceState == null) {
+			// Create the fragment only when the activity is created for the first time.
+			// ie. not after orientation changes
+			Fragment fragment = getSupportFragmentManager().findFragmentByTag(SettingsFragment.FRAGMENT_TAG);
+			if (fragment == null) fragment = new SettingsFragment();
+			
+			FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+			fragmentTransaction.replace(R.id.container, fragment, SettingsFragment.FRAGMENT_TAG);
+			fragmentTransaction.commit();
+		}
+		
+		/* //Adding the fragment
 		getSupportFragmentManager().beginTransaction()
 				.replace(R.id.container, new SettingsFragment())
-				.commit();
+				.commit(); */
 		
 		//Enabling the toolbar and up navigation
 		setSupportActionBar(findViewById(R.id.toolbar));
@@ -79,6 +90,20 @@ public class Preferences extends AppCompatActivity {
 		
 		//Configuring the AMOLED theme
 		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
+	}
+	
+	@Override
+	public boolean onPreferenceStartScreen(PreferenceFragmentCompat preferenceFragmentCompat, PreferenceScreen preferenceScreen) {
+		FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+		SettingsFragment fragment = new SettingsFragment();
+		Bundle bundle = new Bundle();
+		bundle.putString(PreferenceFragmentCompat.ARG_PREFERENCE_ROOT, preferenceScreen.getKey());
+		fragment.setArguments(bundle);
+		fragmentTransaction.replace(R.id.container, fragment, preferenceScreen.getKey());
+		fragmentTransaction.addToBackStack(preferenceScreen.getKey());
+		fragmentTransaction.commit();
+		
+		return true;
 	}
 	
 	@Override
@@ -106,7 +131,9 @@ public class Preferences extends AppCompatActivity {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 	} */
 	
-	public static class SettingsFragment extends PreferenceFragmentCompat implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
+	public static class SettingsFragment extends PreferenceFragmentCompat {
+		static final String FRAGMENT_TAG = "preferencefragment";
+		
 		/* Preference.OnPreferenceClickListener ringtoneClickListener = preference -> {
 			//Returning true
 			return true;
@@ -528,8 +555,7 @@ public class Preferences extends AppCompatActivity {
 			updateServerURL(findPreference(getResources().getString(R.string.preference_server_serverdetails_key)));
 			
 			//Updating the notification preference
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-				updateMessageNotificationPreference(findPreference(getResources().getString(R.string.preference_messagenotifications_key)));
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) updateMessageNotificationPreference(findPreference(getResources().getString(R.string.preference_messagenotifications_key)));
 		}
 		
 		@Override
@@ -543,25 +569,23 @@ public class Preferences extends AppCompatActivity {
 		
 		@Override
 		public void onDisplayPreferenceDialog(Preference preference) {
-			// Try if the preference is one of our custom Preferences
+			//Creating the custom dialog fragment if a custom preference was selected
 			DialogFragment dialogFragment = null;
 			if(preference instanceof RingtonePreference) {
-				// Create a new instance of TimePreferenceDialogFragment with the key of the related
-				// Preference
 				dialogFragment = RingtonePreferenceDialogFragmentCompat.newInstance(preference.getKey());
 			} else if(preference instanceof HostnameEditTextPreference) {
 				dialogFragment = HostnameEditTextPreference.HostnameEditTextPreferenceDialog.newInstance(preference.getKey());
 			}
 			
-			// If it was one of our custom Preferences, show its dialog
+			//Displaying the fragment
 			if(dialogFragment != null) {
 				dialogFragment.setTargetFragment(this, 0);
-				dialogFragment.show(this.getFragmentManager(), "androidx.preference" + ".PreferenceFragment.DIALOG");
+				dialogFragment.show(getFragmentManager(), null);
+				return;
 			}
-			// Could not be handled here. Try with the super method.
-			else {
-				super.onDisplayPreferenceDialog(preference);
-			}
+			
+			//Passing the request on to the superclass
+			super.onDisplayPreferenceDialog(preference);
 		}
 		
 		@TargetApi(26)
@@ -996,7 +1020,7 @@ public class Preferences extends AppCompatActivity {
 			return this;
 		}
 		
-		@Override
+		/* @Override
 		public boolean onPreferenceStartScreen(PreferenceFragmentCompat preferenceFragmentCompat, PreferenceScreen preferenceScreen) {
 			FragmentTransaction ft = getActivity().getSupportFragmentManager().beginTransaction();
 			MyPreferenceFragment fragment = new MyPreferenceFragment();
@@ -1007,23 +1031,7 @@ public class Preferences extends AppCompatActivity {
 			ft.addToBackStack(preferenceScreen.getKey());
 			ft.commit();
 			return true;
-		}
-		
-		public static class MyPreferenceFragment extends AppPreferenceFragment {
-			@Override
-			public void onCreatePreferences(Bundle bundle, String rootKey) {
-				setPreferencesFromResource(R.xml.preferences, rootKey);
-			}
-		}
-		
-		public static abstract class AppPreferenceFragment extends PreferenceFragmentCompat {
-			@Override
-			public void onViewCreated(View view, Bundle savedInstanceState) {
-				super.onViewCreated(view, savedInstanceState);
-				
-				view.setBackgroundColor(Constants.resolveColorAttr(getContext(), android.R.attr.colorBackground));
-			}
-		}
+		} */
 	}
 	
 	static boolean getPreferenceAMOLED(Context context) {
