@@ -1086,7 +1086,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				//Adding the preview to the message
 				messageInfo.setMessagePreview(preview);
-			}
+			} else if(previewState == ConversationManager.MessagePreviewInfo.stateUnavailable) messageInfo.setMessagePreview(null);
 			
 			//Returning the item
 			return messageInfo;
@@ -1317,6 +1317,27 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Returning the conversation items
 		return conversationItems; */
+	}
+	
+	ConversationManager.MessagePreviewInfo loadMessagePreview(long previewID) {
+		//Querying for the preview
+		SQLiteDatabase database = getReadableDatabase();
+		Cursor previewCursor = database.query(Contract.MessagePreviewEntry.TABLE_NAME, null,
+				Contract.MessagePreviewEntry._ID + " = ?", new String[]{Long.toString(previewID)}, null, null, null, "1");
+		
+		//Getting the data
+		ConversationManager.MessagePreviewInfo preview = ConversationManager.MessagePreviewInfo.getMessagePreview(
+				previewID,
+				previewCursor.getInt(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_TYPE)),
+				previewCursor.getBlob(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_DATA)),
+				previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_TARGET)),
+				previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_TITLE)),
+				previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_SUBTITLE))
+		);
+		previewCursor.close();
+		
+		//Returning the preview
+		return preview;
 	}
 	
 	static class ConversationLazyLoader {
@@ -3458,6 +3479,46 @@ class DatabaseManager extends SQLiteOpenHelper {
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED, 1);
 		getWritableDatabase().update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+	}
+	
+	void setMessagePreviewState(long messageID, int state) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
+		//Creating the content values
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_PREVIEW_STATE, state);
+		
+		//Updating the database
+		database.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+	}
+	
+	void setMessagePreviewData(long messageID, ConversationManager.MessagePreviewInfo messagePreview) {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
+		ContentValues contentValues = new ContentValues();
+		
+		//Adding the preview information
+		long previewID;
+		{
+			contentValues.put(Contract.MessagePreviewEntry.COLUMN_NAME_TYPE, messagePreview.getType());
+			contentValues.put(Contract.MessagePreviewEntry.COLUMN_NAME_DATA, messagePreview.getData());
+			contentValues.put(Contract.MessagePreviewEntry.COLUMN_NAME_TARGET, messagePreview.getTarget());
+			contentValues.put(Contract.MessagePreviewEntry.COLUMN_NAME_TITLE, messagePreview.getTitle());
+			contentValues.put(Contract.MessagePreviewEntry.COLUMN_NAME_SUBTITLE, messagePreview.getSubtitle());
+			
+			previewID = database.insert(Contract.MessagePreviewEntry.TABLE_NAME, null, contentValues);
+		}
+		
+		//Updating the message
+		{
+			contentValues.clear();
+			contentValues.put(Contract.MessageEntry.COLUMN_NAME_PREVIEW_STATE, ConversationManager.MessagePreviewInfo.stateAvailable);
+			contentValues.put(Contract.MessageEntry.COLUMN_NAME_PREVIEW_ID, previewID);
+			
+			database.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+		}
 	}
 	
 	/* static List<BlockedAddresses.BlockedAddress> fetchBlockedAddresses(SQLiteDatabase readableDatabase) {

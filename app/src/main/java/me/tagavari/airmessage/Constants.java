@@ -14,6 +14,7 @@ import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.ShapeDrawable;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
@@ -500,14 +501,34 @@ public class Constants {
 		
 		//Setting the radius
 		drawable.setCornerRadii(alignToRight ?
-				new float[]{pxRadiusNormal, pxRadiusNormal,
-						radiusTop, radiusTop,
-						radiusBottom, radiusBottom,
-						pxRadiusNormal, pxRadiusNormal} :
-				new float[]{radiusTop, radiusTop,
-						pxRadiusNormal, pxRadiusNormal,
-						pxRadiusNormal, pxRadiusNormal,
-						radiusBottom, radiusBottom});
+								new float[]{pxRadiusNormal, pxRadiusNormal,
+											radiusTop, radiusTop,
+											radiusBottom, radiusBottom,
+											pxRadiusNormal, pxRadiusNormal} :
+								new float[]{radiusTop, radiusTop,
+											pxRadiusNormal, pxRadiusNormal,
+											pxRadiusNormal, pxRadiusNormal,
+											radiusBottom, radiusBottom});
+		
+		//Returning the drawable
+		return drawable;
+	}
+	
+	static Drawable createRoundedDrawableOutline(GradientDrawable drawable, boolean softenTop, boolean softenBottom, boolean alignToRight, int pxRadiusNormal, int pxRadiusSoftened) {
+		//Determining the radius values
+		int radiusTop = softenTop ? pxRadiusSoftened : pxRadiusNormal;
+		int radiusBottom = softenBottom ? pxRadiusSoftened : pxRadiusNormal;
+		
+		//Setting the radius
+		drawable.setCornerRadii(alignToRight ?
+								new float[]{pxRadiusNormal, pxRadiusNormal,
+											radiusTop, radiusTop,
+											radiusBottom, radiusBottom,
+											pxRadiusNormal, pxRadiusNormal} :
+								new float[]{radiusTop, radiusTop,
+											pxRadiusNormal, pxRadiusNormal,
+											pxRadiusNormal, pxRadiusNormal,
+											radiusBottom, radiusBottom});
 		
 		//Returning the drawable
 		return drawable;

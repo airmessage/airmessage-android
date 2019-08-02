@@ -114,6 +114,7 @@ dependencies {
 	annotationProcessor "com.github.bumptech.glide:compiler:4.9.0"
 
 	implementation "io.github.ponnamkarthik:richlinkpreview:1.0.9"
+	implementation "org.jsoup:jsoup:1.12.1"
 }
 
 repositories {
