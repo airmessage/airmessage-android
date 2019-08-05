@@ -2235,6 +2235,10 @@ class ConversationManager {
 			return messageText == null ? null : messageText.getText();
 		}
 		
+		MessageTextInfo getMessageTextInfo() {
+			return messageText;
+		}
+		
 		ArrayList<AttachmentInfo> getAttachments() {
 			return attachments;
 		}
@@ -3742,7 +3746,6 @@ class ConversationManager {
 		private int messagePreviewState = MessagePreviewInfo.stateNotTried;
 		private long messagePreviewID;
 		private boolean messagePreviewLoading = false;
-		private final List<MessagePreviewCallback> messagePreviewCallbackList = new ArrayList<>();
 		private WeakReference<MessagePreviewInfo> messagePreviewReference = null;
 		
 		//Creating the other values
@@ -4060,12 +4063,12 @@ class ConversationManager {
 		
 		abstract VH createViewHolder(Context context, ViewGroup parent);
 		
-		boolean shouldFetchMessagePreview() {
-			return messagePreviewState == MessagePreviewInfo.stateNotTried;
-		}
-		
 		void setMessagePreviewState(int state) {
 			messagePreviewState = state;
+		}
+		
+		int getMessagePreviewState() {
+			return messagePreviewState;
 		}
 		
 		void setMessagePreviewLoading(boolean messagePreviewLoading) {
@@ -4090,7 +4093,7 @@ class ConversationManager {
 				messagePreviewReference = new WeakReference<>(preview);
 				
 				//Adding the preview view
-				addMessagePreviewView(MainApplication.getInstance(), preview);
+				addMessagePreviewView(preview);
 			}
 		}
 		
@@ -4103,29 +4106,37 @@ class ConversationManager {
 			messagePreviewLoading = false;
 			
 			//Notifying the callback listeners
-			for(MessagePreviewCallback callback : messagePreviewCallbackList) callback.onResult(preview, true);
-			messagePreviewCallbackList.clear();
+			//for(MessagePreviewCallback callback : messagePreviewCallbackList) callback.onResult(preview, true);
+			//messagePreviewCallbackList.clear();
+			
+			//Adding the preview view
+			addMessagePreviewView(preview);
 			
 			//Setting the reference
 			messagePreviewReference = new WeakReference<>(preview);
 		}
 		
-		void getLoadMessagePreview(MessagePreviewCallback callback) {
+		/**
+		 * Retrieve a copy of the message preview information
+		 * This function will return an instance of the preview information immediately if it is available in memory
+		 * Otherwise, it will fetch it from disk and return with applyMessagePreview, which calls addMessagePreviewView for each message component to override individually
+		 * @return the instance of the message preview info, if available
+		 */
+		MessagePreviewInfo getLoadMessagePreview() {
 			//Returning the preview immediately if there is one available in memory
 			if(messagePreviewReference != null) {
 				MessagePreviewInfo preview = messagePreviewReference.get();
-				if(preview != null) callback.onResult(preview, false);
-				return;
+				if(preview != null) return preview;
 			}
-			
-			//Adding the callback to the queue
-			messagePreviewCallbackList.add(callback);
 			
 			//Starting the loading task (if it hasn't already been started)
 			if(!messagePreviewLoading) {
 				new LoadMessagePreviewAsyncTask(this).execute();
 				messagePreviewLoading = true;
 			}
+			
+			//Returning null (to signify that the result will be returned later)
+			return null;
 		}
 		
 		private static class LoadMessagePreviewAsyncTask extends AsyncTask<Void, Void, MessagePreviewInfo> {
@@ -4150,12 +4161,7 @@ class ConversationManager {
 			}
 		}
 		
-		interface MessagePreviewCallback {
-			void onResult(MessagePreviewInfo preview, boolean wasTasked);
-		}
-		
-		void addMessagePreviewView(Context context, MessagePreviewInfo preview) {
-			System.out.println("Loaded message preview: " + preview.getTitle());
+		void addMessagePreviewView(MessagePreviewInfo preview) {
 		}
 		
 		static abstract class ViewHolder extends RecyclerView.ViewHolder {
@@ -4233,8 +4239,14 @@ class ConversationManager {
 				addTextLinksLegacy(viewHolder.labelMessage);
 			}
 			
+			//Checking if a message preview is available
+			if(getMessagePreviewState() == MessagePreviewInfo.stateAvailable) {
+				//Requesting the message preview information
+				MessagePreviewInfo preview = getLoadMessagePreview();
+				if(preview != null) addMessagePreviewView(preview, viewHolder, context);
+			}
 			//Checking if a message preview should be fetched
-			if(shouldFetchMessagePreview() && !isMessagePreviewLoading()) {
+			else if(getMessagePreviewState() == MessagePreviewInfo.stateNotTried && !isMessagePreviewLoading()) {
 				//Getting any URL spans
 				Matcher matcher = Patterns.WEB_URL.matcher(messageText);
 				if(matcher.find()) {
@@ -4243,10 +4255,13 @@ class ConversationManager {
 					
 					//Fetching the data
 					setMessagePreviewLoading(true);
-					new RichPreview(new RichPreviewResponseListener(getMessageInfo())).getPreview(url);
+					new RichPreview(new RichPreviewResponseListener(this)).getPreview(url);
 				} else {
 					//Updating the preview
-					getMessageInfo().setMessagePreview(null);
+					setMessagePreview(null);
+					
+					//Updating the state on disk
+					new MessagePreviewStateUpdateAsyncTask(getLocalID(), MessagePreviewInfo.stateUnavailable).execute();
 				}
 			}
 			
@@ -4357,39 +4372,55 @@ class ConversationManager {
 			}
 		}
 		
+		private static class MessagePreviewStateUpdateAsyncTask extends AsyncTask<Void, Void, Void> {
+			private final long localID;
+			private final int state;
+			
+			MessagePreviewStateUpdateAsyncTask(long localID, int state) {
+				this.localID = localID;
+				this.state = state;
+			}
+			
+			@Override
+			protected Void doInBackground(Void... voids) {
+				DatabaseManager.getInstance().setMessagePreviewState(localID, state);
+				return null;
+			}
+		}
+		
 		private static class RichPreviewResponseListener implements ResponseListener {
-			private final WeakReference<MessageInfo> messageReference;
+			private final WeakReference<MessageTextInfo> messageTextReference;
 			private final long messageID;
 			
-			RichPreviewResponseListener(MessageInfo message) {
+			RichPreviewResponseListener(MessageTextInfo messageTextInfo) {
 				//Setting the message reference
-				messageReference = new WeakReference<>(message);
-				messageID = message.getLocalID();
+				messageTextReference = new WeakReference<>(messageTextInfo);
+				messageID = messageTextInfo.getLocalID();
 			}
 			
 			@Override
 			public void onData(MetaData metaData) {
 				System.out.println("Received meta data!");
 				//Fetching the link preview
-				new LinkPreviewAsyncTask(messageReference.get(), messageID, metaData).execute();
+				new LinkPreviewAsyncTask(messageTextReference.get(), messageID, metaData).execute();
 			}
 			
 			@Override
 			public void onError(Exception exception) {
 				//Updating the message
-				MessageInfo message = messageReference.get();
-				if(message != null) message.setMessagePreviewLoading(false);
+				MessageTextInfo messageTextInfo = messageTextReference.get();
+				if(messageTextInfo != null) messageTextInfo.setMessagePreviewLoading(false);
 			}
 		}
 		
 		private static class LinkPreviewAsyncTask extends AsyncTask<Void, Void, MessagePreviewInfo> {
-			private final WeakReference<MessageInfo> messageInfoReference;
+			private final WeakReference<MessageTextInfo> messageTextReference;
 			private final long messageID;
 			private final MetaData linkMetaData;
 			private final String downloadURL;
 			
-			LinkPreviewAsyncTask(MessageInfo messageInfo, long messageID, MetaData linkMetaData) {
-				messageInfoReference = new WeakReference<>(messageInfo); //TODO test weak reference with NULL value (in case the response listener above loses reference to the message before this point)
+			LinkPreviewAsyncTask(MessageTextInfo messageTextInfo, long messageID, MetaData linkMetaData) {
+				messageTextReference = new WeakReference<>(messageTextInfo); //TODO test weak reference with NULL value (in case the response listener above loses reference to the message before this point)
 				this.messageID = messageID;
 				this.linkMetaData = linkMetaData;
 				this.downloadURL = linkMetaData.getImageurl();
@@ -4424,12 +4455,12 @@ class ConversationManager {
 			@Override
 			protected void onPostExecute(MessagePreviewInfo preview) {
 				//Getting the message
-				MessageInfo messageInfo = messageInfoReference.get();
+				MessageTextInfo messageTextInfo = messageTextReference.get();
 				
 				//Assigning the preview
-				if(messageInfo != null) {
-					messageInfo.setMessagePreviewLoading(false);
-					if(preview != null) messageInfo.setMessagePreview(preview);
+				if(messageTextInfo != null) {
+					messageTextInfo.setMessagePreviewLoading(false);
+					if(preview != null) messageTextInfo.setMessagePreview(preview);
 				}
 			}
 		}
@@ -4498,6 +4529,16 @@ class ConversationManager {
 				
 				return view.onTouchEvent(event);
 			});
+		}
+		
+		@Override
+		void addMessagePreviewView(MessagePreviewInfo preview) {
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) addMessagePreviewView(preview, viewHolder, viewHolder.content.getContext());
+		}
+		
+		private void addMessagePreviewView(MessagePreviewInfo preview, ViewHolder viewHolder, Context context) {
+			viewHolder.
 		}
 		
 		@Override

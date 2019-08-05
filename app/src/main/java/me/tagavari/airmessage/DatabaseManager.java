@@ -1066,27 +1066,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 				tapbackCursor.close();
 			}
 			
-			//Checking if there is a preview available
-			if(previewState == ConversationManager.MessagePreviewInfo.stateAvailable) {
-				//Querying for the preview
-				long previewID = cursor.getLong(indices.iPreviewID);
-				Cursor previewCursor = database.query(Contract.MessagePreviewEntry.TABLE_NAME, null,
-						Contract.MessagePreviewEntry._ID + " = ?", new String[]{Long.toString(previewID)}, null, null, null, "1");
-				
-				//Getting the data
-				ConversationManager.MessagePreviewInfo preview = ConversationManager.MessagePreviewInfo.getMessagePreview(
-						localID,
-						previewCursor.getInt(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_TYPE)),
-						previewCursor.getBlob(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_DATA)),
-						previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_TARGET)),
-						previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_TITLE)),
-						previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_SUBTITLE))
-				);
-				previewCursor.close();
-				
-				//Adding the preview to the message
-				messageInfo.setMessagePreview(preview);
-			} else if(previewState == ConversationManager.MessagePreviewInfo.stateUnavailable) messageInfo.setMessagePreview(null);
+			//Setting the message preview state
+			ConversationManager.MessageTextInfo messageTextInfo = messageInfo.getMessageTextInfo();
+			if(messageTextInfo != null) messageTextInfo.setMessagePreviewState(previewState);
 			
 			//Returning the item
 			return messageInfo;
