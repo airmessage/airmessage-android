@@ -362,4 +362,6 @@
 	<string name="preference_features_replysuggestions_description">Afficher les suggestions de réponse lorsqu\'elles sont disponibles</string>
 	<string name="action_connectiontroubleshootingguide">Consulter l\'aide</string>
 	<string name="message_setup_connectionhelp">Problème de connection?</string>
+	<string name="preference_features_messagepreviews_description">Afficher des prévisualisations de liens Web et d\'endroits dans les conversations</string>
+	<string name="preference_features_messagepreviews_title">Prévisualisations de message</string>
 </resources>

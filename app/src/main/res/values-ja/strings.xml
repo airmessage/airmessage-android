@@ -243,7 +243,7 @@
 	<string name="preference_server_foregroundservice_title">フォアグラウンドでサービスを実行</string>
 	<string name="preference_server_foregroundservice_description">通知を表示し、起動時に接続を許可します</string>
 	<string name="preference_server_disconnectionnotification_title">切断の通知</string>
-	<string name="preference_server_disconnectionnotification_description">切断の時は、通知を表示</string>
+	<string name="preference_server_disconnectionnotification_description">切断の時は、通知を表示する</string>
 	<string name="action_choosephoto">画像の選択</string>
 	<string name="action_refresh">更新</string>
 	<string name="prefix_you">あなた：%s</string>
@@ -346,7 +346,9 @@
 	<string name="action_newconversation">新しい会話</string>
 	<string name="preferencegroup_features_title">メッセージング</string>
 	<string name="preference_features_replysuggestions_title">スマート返信</string>
-	<string name="preference_features_replysuggestions_description">可能であれば会話やメッセージ通知に返信候補を表示</string>
+	<string name="preference_features_replysuggestions_description">可能であれば会話やメッセージ通知に返信候補を表示する</string>
 	<string name="action_connectiontroubleshootingguide">ヘルプ</string>
 	<string name="message_setup_connectionhelp">接続問題ですか？</string>
+	<string name="preference_features_messagepreviews_description">チャットにウェブリンクと場所のプレビューを表示する</string>
+	<string name="preference_features_messagepreviews_title">メッセージのプレビュー</string>
 </resources>

@@ -1053,6 +1053,10 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_showreadreceipts_key), true);
 	}
 	
+	static boolean getPreferenceMessagePreviews(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_features_messagepreviews_key), true);
+	}
+	
 	static String getPreferenceFallbackServer(Context context) {
 		String value = PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_server_serverfallback_key), null);
 		return value != null && value.isEmpty() ? null : value;

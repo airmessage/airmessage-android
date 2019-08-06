@@ -4096,11 +4096,9 @@ class ConversationManager {
 		 */
 		void setMessagePreview(MessagePreviewInfo preview) {
 			if(preview == null) {
-				System.out.println("New message preview: (null)");
 				//Setting the message preview state
 				messagePreviewState = MessagePreviewInfo.stateUnavailable;
 			} else {
-				System.out.println("New message preview: " + preview.title);
 				//Setting the message preview
 				messagePreviewState = MessagePreviewInfo.stateAvailable;
 				messagePreviewReference = new WeakReference<>(preview);
@@ -4286,32 +4284,33 @@ class ConversationManager {
 			//Resetting the preview view
 			clearMessagePreviewView(viewHolder);
 			
-			//Checking if a message preview is available
-			if(getMessagePreviewState() == MessagePreviewInfo.stateAvailable) {
-				//Requesting the message preview information
-				MessagePreviewInfo preview = getLoadMessagePreview();
-				if(preview != null) {
-					addMessagePreviewView(preview, viewHolder, context);
-					System.out.println("Loading preview right from memory!");
+			//Checking if previews are enabled
+			if(Preferences.getPreferenceMessagePreviews(context)) {
+				//Checking if a message preview is available
+				if(getMessagePreviewState() == MessagePreviewInfo.stateAvailable) {
+					//Requesting the message preview information
+					MessagePreviewInfo preview = getLoadMessagePreview();
+					if(preview != null) {
+						addMessagePreviewView(preview, viewHolder, context);
+					}
 				}
-			}
-			//Checking if a message preview should be fetched
-			else if(getMessagePreviewState() == MessagePreviewInfo.stateNotTried && !isMessagePreviewLoading()) {
-				//Getting any URL spans
-				Matcher matcher = Patterns.WEB_URL.matcher(messageText);
-				if(matcher.find()) {
-					String url = matcher.group();
-					System.out.println("Fetching URL: " + url);
-					
-					//Fetching the data
-					setMessagePreviewLoading(true);
-					new RichPreview(new RichPreviewResponseListener(this, url)).getPreview(url);
-				} else {
-					//Updating the preview
-					setMessagePreview(null);
-					
-					//Updating the state on disk
-					new MessagePreviewStateUpdateAsyncTask(getLocalID(), MessagePreviewInfo.stateUnavailable).execute();
+				//Checking if a message preview should be fetched
+				else if(getMessagePreviewState() == MessagePreviewInfo.stateNotTried && !isMessagePreviewLoading()) {
+					//Getting any URL spans
+					Matcher matcher = Patterns.WEB_URL.matcher(messageText);
+					if(matcher.find()) {
+						String url = matcher.group();
+						
+						//Fetching the data
+						setMessagePreviewLoading(true);
+						new RichPreview(new RichPreviewResponseListener(this, url)).getPreview(url);
+					} else {
+						//Updating the preview
+						setMessagePreview(null);
+						
+						//Updating the state on disk
+						new MessagePreviewStateUpdateAsyncTask(getLocalID(), MessagePreviewInfo.stateUnavailable).execute();
+					}
 				}
 			}
 			
@@ -4441,7 +4440,6 @@ class ConversationManager {
 				this.originalURL = originalURL;
 				this.linkMetaData = linkMetaData;
 				this.downloadURL = linkMetaData.getImageurl();
-				System.out.println("Downloading URL: " + downloadURL);
 			}
 			
 			@Override
