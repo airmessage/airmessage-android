@@ -222,6 +222,9 @@ public class NewMessage extends AppCompatActivity {
 		//Configuring the AMOLED theme
 		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
 		
+		//Setting the status bar color
+		Constants.updateChromeOSStatusBar(this);
+		
 		//Adding the input listeners
 		recipientInput.addTextChangedListener(recipientInputTextWatcher);
 		recipientInput.setOnKeyListener(recipientInputOnKeyListener);

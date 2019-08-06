@@ -90,6 +90,9 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 		
 		//Configuring the AMOLED theme
 		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
+		
+		//Setting the status bar color
+		Constants.updateChromeOSStatusBar(this);
 	}
 	
 	@Override

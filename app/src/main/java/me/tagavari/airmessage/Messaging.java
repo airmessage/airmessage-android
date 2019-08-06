@@ -343,7 +343,24 @@ public class Messaging extends AppCompatCompositeActivity {
 		However, on Chrome OS, the default keyboard does not trigger this. (Let's just hope the user doesn't install a third-party keyboard!)
 		 */
 		if(keyCode == KeyEvent.KEYCODE_ENTER && !event.isShiftPressed() &&
-				(event.getSource() != InputDevice.SOURCE_UNKNOWN || Constants.isChromeOS(Messaging.this))) {
+		   (event.getSource() != InputDevice.SOURCE_UNKNOWN || Constants.isChromeOS(Messaging.this))) {
+			//Sending the message
+			sendMessage();
+			
+			//Returning true
+			return true;
+		}
+		
+		//Returning false
+		return false;
+	};
+	private final TextView.OnEditorActionListener inputFieldEditorActionListener = (textView, actionID, event) -> {
+		/*
+		IME_ACTION_DONE is triggered on the Google Pixelbook
+		IME_NULL is triggered with external wireless keyboards
+		 */
+		if(actionID == EditorInfo.IME_ACTION_DONE ||
+		   (actionID == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_DOWN)) {
 			//Sending the message
 			sendMessage();
 			
@@ -588,6 +605,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Configuring the AMOLED theme
 		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
 		
+		//Setting the status bar color
+		Constants.updateChromeOSStatusBar(this);
+		
 		//Getting the conversation ID
 		long conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
 		
@@ -635,7 +655,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the listeners
 		rootView.getViewTreeObserver().addOnGlobalLayoutListener(rootLayoutListener);
 		messageInputField.addTextChangedListener(inputFieldTextWatcher);
-		messageInputField.setOnKeyListener(inputFieldKeyListener);
+		//messageInputField.setOnKeyListener(inputFieldKeyListener);
+		messageInputField.setOnEditorActionListener(inputFieldEditorActionListener);
 		//messageInputField.setOnClickListener(view -> closeAttachmentsPanel(false));
 		buttonSendMessage.setOnClickListener(sendButtonClickListener);
 		buttonAddContent.setOnClickListener(view -> {

@@ -1151,7 +1151,7 @@ public class Constants {
 		return context.getPackageManager().hasSystemFeature("org.chromium.arc.device_management");
 	}
 	
-	static void updateChromeOSStatusbar(AppCompatActivity activity) {
+	static void updateChromeOSStatusBar(AppCompatActivity activity) {
 		//Ignoring if not running on a Chrome OS device
 		if(!isChromeOS(activity)) return;
 		
