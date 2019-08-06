@@ -44,12 +44,12 @@
 				app:layout_constraintLeft_toLeftOf="parent"
 				app:layout_constraintRight_toRightOf="parent"
 				app:layout_constraintTop_toBottomOf="@id/message"
-				android:visibility="gone">
+				android:visibility="visible">
 				<ViewStub
-					android:id="@+id/viewstub_messagepreview_link"
+					android:id="@+id/viewstub_messagepreview_linklarge"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:inflatedId="@layout/layout_messagepreview_linklarge" />
+					android:layout="@layout/layout_messagepreview_linklarge" />
 			</FrameLayout>
 			
 			<me.tagavari.airmessage.view.InvisibleInkView

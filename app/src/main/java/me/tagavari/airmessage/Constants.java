@@ -514,19 +514,37 @@ public class Constants {
 		return drawable;
 	}
 	
-	static Drawable createRoundedDrawableOutline(GradientDrawable drawable, boolean softenTop, boolean softenBottom, boolean alignToRight, int pxRadiusNormal, int pxRadiusSoftened) {
+	static Drawable createRoundedDrawableTop(GradientDrawable drawable, boolean softenTop, boolean softenBottom, boolean alignToRight, int pxRadiusNormal, int pxRadiusSoftened) {
 		//Determining the radius values
 		int radiusTop = softenTop ? pxRadiusSoftened : pxRadiusNormal;
-		int radiusBottom = softenBottom ? pxRadiusSoftened : pxRadiusNormal;
 		
 		//Setting the radius
 		drawable.setCornerRadii(alignToRight ?
 								new float[]{pxRadiusNormal, pxRadiusNormal,
 											radiusTop, radiusTop,
-											radiusBottom, radiusBottom,
-											pxRadiusNormal, pxRadiusNormal} :
+											0, 0,
+											0, 0} :
 								new float[]{radiusTop, radiusTop,
 											pxRadiusNormal, pxRadiusNormal,
+											0, 0,
+											0, 0});
+		
+		//Returning the drawable
+		return drawable;
+	}
+	
+	static Drawable createRoundedDrawableBottom(GradientDrawable drawable, boolean softenTop, boolean softenBottom, boolean alignToRight, int pxRadiusNormal, int pxRadiusSoftened) {
+		//Determining the radius values
+		int radiusBottom = softenBottom ? pxRadiusSoftened : pxRadiusNormal;
+		
+		//Setting the radius
+		drawable.setCornerRadii(alignToRight ?
+								new float[]{0, 0,
+											0, 0,
+											radiusBottom, radiusBottom,
+											pxRadiusNormal, pxRadiusNormal} :
+								new float[]{0, 0,
+											0, 0,
 											pxRadiusNormal, pxRadiusNormal,
 											radiusBottom, radiusBottom});
 		
@@ -811,6 +829,13 @@ public class Constants {
 	static float resolveFloatAttr(Context context, @AttrRes int floatAttr) {
 		TypedArray typedArray = context.obtainStyledAttributes(new TypedValue().data, new int[]{floatAttr});
 		float value = typedArray.getFloat(0, -1);
+		typedArray.recycle();
+		return value;
+	}
+	
+	static Drawable resolveDrawableAttr(Context context, @AttrRes int floatAttr) {
+		TypedArray typedArray = context.obtainStyledAttributes(new TypedValue().data, new int[]{floatAttr});
+		Drawable value = typedArray.getDrawable(0);
 		typedArray.recycle();
 		return value;
 	}

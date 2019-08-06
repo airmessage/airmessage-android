@@ -16,9 +16,12 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Icon;
 import android.graphics.drawable.PaintDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -4071,6 +4074,10 @@ class ConversationManager {
 			return messagePreviewState;
 		}
 		
+		void setMessagePreviewID(long id) {
+			messagePreviewID = id;
+		}
+		
 		void setMessagePreviewLoading(boolean messagePreviewLoading) {
 			this.messagePreviewLoading = messagePreviewLoading;
 		}
@@ -4085,9 +4092,11 @@ class ConversationManager {
 		 */
 		void setMessagePreview(MessagePreviewInfo preview) {
 			if(preview == null) {
+				System.out.println("New message preview: (null)");
 				//Setting the message preview state
 				messagePreviewState = MessagePreviewInfo.stateUnavailable;
 			} else {
+				System.out.println("New message preview: " + preview.title);
 				//Setting the message preview
 				messagePreviewState = MessagePreviewInfo.stateAvailable;
 				messagePreviewReference = new WeakReference<>(preview);
@@ -4162,6 +4171,7 @@ class ConversationManager {
 		}
 		
 		void addMessagePreviewView(MessagePreviewInfo preview) {
+		
 		}
 		
 		static abstract class ViewHolder extends RecyclerView.ViewHolder {
@@ -4172,6 +4182,8 @@ class ConversationManager {
 			
 			final ViewGroup messagePreviewContainer;
 			
+			private MessagePreviewInfo.ViewHolder currentPreviewVH = null;
+			
 			ViewHolder(View view) {
 				super(view);
 				
@@ -4181,6 +4193,17 @@ class ConversationManager {
 				tapbackContainer = view.findViewById(R.id.tapback_container);
 				
 				messagePreviewContainer = view.findViewById(R.id.group_messagepreview);
+			}
+			
+			MessagePreviewInfo.ViewHolder getCurrentPreviewVH() {
+				return currentPreviewVH;
+			}
+			
+			void setCurrentPreviewVH(MessagePreviewInfo.ViewHolder viewHolder) {
+				if(currentPreviewVH != null) currentPreviewVH.setVisibility(false);
+				currentPreviewVH = viewHolder;
+				if(viewHolder != null) viewHolder.setVisibility(true);
+				messagePreviewContainer.setVisibility(viewHolder != null ? View.VISIBLE : View.GONE);
 			}
 			
 			void releaseResources() {}
@@ -4239,11 +4262,34 @@ class ConversationManager {
 				addTextLinksLegacy(viewHolder.labelMessage);
 			}
 			
+			//Setting the message alignment
+			((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
+			
+			//Updating the view color
+			updateViewColor(viewHolder, context);
+			
+			//Assigning the interaction listeners
+			//assignInteractionListeners(viewHolder);
+			assignInteractionListenersLegacy(viewHolder.labelMessage);
+			
+			//Enforcing the maximum content width
+			{
+				int maxWidth = getMaxMessageWidth(context.getResources());
+				viewHolder.labelMessage.setMaxWidth(maxWidth);
+				viewHolder.messagePreviewContainer.getLayoutParams().width = maxWidth;
+			}
+			
+			//Resetting the preview view
+			clearMessagePreviewView(viewHolder);
+			
 			//Checking if a message preview is available
 			if(getMessagePreviewState() == MessagePreviewInfo.stateAvailable) {
 				//Requesting the message preview information
 				MessagePreviewInfo preview = getLoadMessagePreview();
-				if(preview != null) addMessagePreviewView(preview, viewHolder, context);
+				if(preview != null) {
+					addMessagePreviewView(preview, viewHolder, context);
+					System.out.println("Loading preview right from memory!");
+				}
 			}
 			//Checking if a message preview should be fetched
 			else if(getMessagePreviewState() == MessagePreviewInfo.stateNotTried && !isMessagePreviewLoading()) {
@@ -4264,56 +4310,6 @@ class ConversationManager {
 					new MessagePreviewStateUpdateAsyncTask(getLocalID(), MessagePreviewInfo.stateUnavailable).execute();
 				}
 			}
-			
-			{
-				//Setting the alignment
-				//viewHolder.itemView.setForegroundGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
-				((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
-				//FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) viewHolder.groupContainer.getLayoutParams();
-				//params.gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START) | Gravity.CENTER_VERTICAL;
-				
-				/* RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) viewHolder.groupContainer.getLayoutParams();
-				if(getMessageInfo().isOutgoing()) {
-					params.removeRule(RelativeLayout.ALIGN_PARENT_START);
-					params.addRule(RelativeLayout.ALIGN_PARENT_END);
-				} else {
-					params.removeRule(RelativeLayout.ALIGN_PARENT_END);
-					params.addRule(RelativeLayout.ALIGN_PARENT_START);
-				} */
-				
-				/* ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) viewHolder.groupContainer.getLayoutParams();
-				if(getMessageInfo().isOutgoing()) {
-					params.startToStart = ConstraintLayout.LayoutParams.UNSET;
-					params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
-				} else {
-					params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
-					params.endToEnd = ConstraintLayout.LayoutParams.UNSET;
-				} */
-			}
-			//((RelativeLayout) viewHolder.itemView).setGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
-			
-			//Inflating and adding the text content
-			//setupTextLinks(viewHolder.labelMessage);
-			
-			//Updating the view color
-			updateViewColor(viewHolder, context);
-			
-			//Assigning the interaction listeners
-			//assignInteractionListeners(viewHolder);
-			assignInteractionListenersLegacy(viewHolder.labelMessage);
-			
-			//Getting the maximum content width
-			//int maxContentWidth = (int) Math.min(context.getResources().getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, context.getResources().getDisplayMetrics().widthPixels * .7F);
-			
-			//Enforcing the maximum content width
-			/* View contentView = convertView.findViewById(R.id.content);
-			contentView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-			if(contentView.getMeasuredWidth() > maxContentWidth) contentView.getLayoutParams().width = maxContentWidth; */
-			
-			viewHolder.labelMessage.setMaxWidth(getMaxMessageWidth(context.getResources()));
-			/* viewHolder.labelMessage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-			if(viewHolder.labelMessage.getMeasuredWidth() > maxContentWidth) viewHolder.labelMessage.getLayoutParams().width = maxContentWidth;
-			else viewHolder.labelMessage.getLayoutParams().width = ViewGroup.LayoutParams.WRAP_CONTENT; */
 			
 			//Building the common views
 			buildCommonViews(viewHolder, context);
@@ -4400,9 +4396,8 @@ class ConversationManager {
 			
 			@Override
 			public void onData(MetaData metaData) {
-				System.out.println("Received meta data!");
 				//Fetching the link preview
-				new LinkPreviewAsyncTask(messageTextReference.get(), messageID, metaData).execute();
+				new LinkPreviewAsyncTask(messageTextReference.get(), messageID, metaData.getUrl(), metaData).execute();
 			}
 			
 			@Override
@@ -4416,12 +4411,14 @@ class ConversationManager {
 		private static class LinkPreviewAsyncTask extends AsyncTask<Void, Void, MessagePreviewInfo> {
 			private final WeakReference<MessageTextInfo> messageTextReference;
 			private final long messageID;
+			private final String originalURL;
 			private final MetaData linkMetaData;
 			private final String downloadURL;
 			
-			LinkPreviewAsyncTask(MessageTextInfo messageTextInfo, long messageID, MetaData linkMetaData) {
+			LinkPreviewAsyncTask(MessageTextInfo messageTextInfo, long messageID, String originalURL, MetaData linkMetaData) {
 				messageTextReference = new WeakReference<>(messageTextInfo); //TODO test weak reference with NULL value (in case the response listener above loses reference to the message before this point)
 				this.messageID = messageID;
+				this.originalURL = originalURL;
 				this.linkMetaData = linkMetaData;
 				this.downloadURL = linkMetaData.getImageurl();
 				System.out.println("Downloading URL: " + downloadURL);
@@ -4443,7 +4440,7 @@ class ConversationManager {
 				}
 				
 				//Creating the message preview
-				MessagePreviewInfo messagePreview = new MessagePreviewLink(messageID, imageBytes, linkMetaData.getUrl(), linkMetaData.getTitle(), linkMetaData.getDescription());
+				MessagePreviewInfo messagePreview = new MessagePreviewLink(messageID, imageBytes, originalURL, linkMetaData.getTitle(), linkMetaData.getDescription(), linkMetaData.getSitename());
 				
 				//Saving the data
 				DatabaseManager.getInstance().setMessagePreviewData(messageID, messagePreview);
@@ -4538,7 +4535,34 @@ class ConversationManager {
 		}
 		
 		private void addMessagePreviewView(MessagePreviewInfo preview, ViewHolder viewHolder, Context context) {
-			viewHolder.
+			//Getting the message preview's view holder
+			MessagePreviewInfo.ViewHolder messagePreviewVH;
+			
+			if(preview instanceof MessagePreviewLink) {
+				messagePreviewVH = viewHolder.getMessagePreviewLinkVH();
+			} else {
+				throw new IllegalArgumentException("Unsupported type of message preview provided: " + preview.getClass().getName());
+			}
+			
+			//Binding the view
+			preview.bind(messagePreviewVH, context);
+			
+			//Setting the current preview view holder
+			viewHolder.setCurrentPreviewVH(messagePreviewVH);
+			
+			//Expanding the text to match the view
+			viewHolder.labelMessage.getLayoutParams().width = 0;
+			
+			//Updating the view edges
+			getMessageInfo().updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
+		}
+		
+		private void clearMessagePreviewView(ViewHolder viewHolder) {
+			//Resetting the text's width to its default
+			viewHolder.labelMessage.getLayoutParams().width = ViewGroup.LayoutParams.WRAP_CONTENT;
+			
+			//Removing the current preview view
+			viewHolder.setCurrentPreviewVH(null);
 		}
 		
 		@Override
@@ -4578,14 +4602,31 @@ class ConversationManager {
 		
 		@Override
 		void updateViewEdges(ViewHolder viewHolder, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
-			//Updating the text view's background
-			viewHolder.labelMessage.setBackground(Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
-			
-			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
-			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
-			
-			if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			//Checking if there is not a message preview active
+			if(viewHolder.getCurrentPreviewVH() == null) {
+				//Updating the text view's background
+				viewHolder.labelMessage.setBackground(Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
+				
+				//Updating the ink view's background
+				int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
+				int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
+				
+				if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+				else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			} else {
+				//Updating the text view's background
+				viewHolder.labelMessage.setBackground(Constants.createRoundedDrawableTop(new GradientDrawable(), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
+				
+				//Updating the ink view's background
+				int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
+				//int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
+				
+				if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, 0, 0);
+				else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, 0, 0);
+				
+				//Updating the preview view's background
+				viewHolder.getMessagePreviewLinkVH().updateViewEdges(anchoredTop, anchoredBottom, alignToRight, pxCornerAnchored, pxCornerUnanchored);
+			}
 		}
 		
 		@Override
@@ -4729,12 +4770,25 @@ class ConversationManager {
 			final TextView labelMessage;
 			final InvisibleInkView inkView;
 			
+			private MessagePreviewLink.ViewHolder messagePreviewLinkVH = null;
+			
 			ViewHolder(View view) {
 				super(view);
 				
 				content = view.findViewById(R.id.content);
 				labelMessage = content.findViewById(R.id.message);
 				inkView = content.findViewById(R.id.content_ink);
+			}
+			
+			MessagePreviewLink.ViewHolder getMessagePreviewLinkVH() {
+				//Inflating and creating the view holder if it isn't already ready
+				if(messagePreviewLinkVH == null) {
+					ViewStub viewStub = messagePreviewContainer.findViewById(R.id.viewstub_messagepreview_linklarge);
+					messagePreviewLinkVH = new MessagePreviewLink.ViewHolder(viewStub.inflate());
+				}
+				
+				//Returning the view holder
+				return messagePreviewLinkVH;
 			}
 			
 			@Override
@@ -6481,7 +6535,7 @@ class ConversationManager {
 		}
 	}
 	
-	static abstract class MessagePreviewInfo {
+	static abstract class MessagePreviewInfo<VH extends MessagePreviewInfo.ViewHolder> {
 		static final int typeLink = 0;
 		
 		static final int stateNotTried = 0;
@@ -6493,19 +6547,21 @@ class ConversationManager {
 		private final String target;
 		private final String title;
 		private final String subtitle;
+		private final String caption;
 		
-		MessagePreviewInfo(long messageID, byte[] data, String target, String title, String subtitle) {
+		MessagePreviewInfo(long messageID, byte[] data, String target, String title, String subtitle, String caption) {
 			this.messageID = messageID;
 			this.data = data;
 			this.target = target;
 			this.title = title;
 			this.subtitle = subtitle;
+			this.caption = caption;
 		}
 		
-		static MessagePreviewInfo getMessagePreview(long messageID, int type, byte[] data, String target, String title, String subtitle) {
+		static MessagePreviewInfo getMessagePreview(long messageID, int type, byte[] data, String target, String title, String subtitle, String caption) {
 			switch(type) {
 				case typeLink:
-					return new MessagePreviewLink(messageID, data, target, title, subtitle);
+					return new MessagePreviewLink(messageID, data, target, title, subtitle, caption);
 				default:
 					throw new IllegalArgumentException("Unknown message preview info type: " + type);
 			}
@@ -6528,16 +6584,71 @@ class ConversationManager {
 		String getSubtitle() {
 			return subtitle;
 		}
+		
+		String getCaption() {
+			return caption;
+		}
+		
+		abstract void bind(VH viewHolder, Context context);
+		
+		static abstract class ViewHolder {
+			final View viewRoot;
+			
+			ViewHolder(View view) {
+				viewRoot = view;
+			}
+			
+			void setVisibility(boolean visible) {
+				viewRoot.setVisibility(visible ? View.VISIBLE : View.GONE);
+			}
+			
+			abstract void updateViewEdges(boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored);
+		}
 	}
 	
-	static class MessagePreviewLink extends MessagePreviewInfo {
-		MessagePreviewLink(long messageID, byte[] data, String target, String title, String subtitle) {
-			super(messageID, data, target, title, subtitle);
+	static class MessagePreviewLink extends MessagePreviewInfo<MessagePreviewLink.ViewHolder> {
+		MessagePreviewLink(long messageID, byte[] data, String target, String title, String subtitle, String caption) {
+			super(messageID, data, target, title, subtitle, caption);
 		}
 		
 		@Override
 		int getType() {
 			return typeLink;
+		}
+		
+		@Override
+		void bind(ViewHolder viewHolder, Context context) {
+			Glide.with(context).load(getData()).into(viewHolder.imageHeader);
+			viewHolder.labelTitle.setText(getTitle());
+			viewHolder.labelDescription.setText(getSubtitle());
+			viewHolder.labelAddress.setText(getCaption());
+			viewHolder.viewRoot.setOnClickListener(view -> Constants.launchUri(context, Uri.parse(getTarget())));
+		}
+		
+		static class ViewHolder extends MessagePreviewInfo.ViewHolder {
+			private final ImageView imageHeader;
+			private final TextView labelTitle;
+			private final TextView labelDescription;
+			private final TextView labelAddress;
+			
+			ViewHolder(View view) {
+				super(view);
+				
+				imageHeader = view.findViewById(R.id.image_header);
+				labelTitle = view.findViewById(R.id.label_title);
+				labelDescription = view.findViewById(R.id.label_description);
+				labelAddress = view.findViewById(R.id.label_address);
+			}
+			
+			@Override
+			void updateViewEdges(boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
+				viewRoot.setBackground(Constants.createRoundedDrawableBottom((GradientDrawable) viewRoot.getResources().getDrawable(R.drawable.rectangle_chatpreview, null), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
+				
+				RippleDrawable rippleDrawable = (RippleDrawable) Constants.resolveDrawableAttr(viewRoot.getContext(), android.R.attr.selectableItemBackground); //Ripple drawable from Android attributes
+				Drawable shapeDrawable = Constants.createRoundedDrawableBottom(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFFFFFFFF, 0xFFFFFFFF}), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored); //Getting a standard drawable for the shape
+				rippleDrawable.setDrawableByLayerId(android.R.id.mask, shapeDrawable); //Applying the drawable to the ripple drawable
+				viewRoot.setForeground(rippleDrawable);
+			}
 		}
 	}
 	

@@ -143,7 +143,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.MessagePreviewEntry.COLUMN_NAME_DATA + " BLOB, " +
 			Contract.MessagePreviewEntry.COLUMN_NAME_TARGET + " BLOB, " +
 			Contract.MessagePreviewEntry.COLUMN_NAME_TITLE + " TEXT, " +
-			Contract.MessagePreviewEntry.COLUMN_NAME_SUBTITLE + " TEXT " +
+			Contract.MessagePreviewEntry.COLUMN_NAME_SUBTITLE + " TEXT, " +
+			Contract.MessagePreviewEntry.COLUMN_NAME_CAPTION + " TEXT " +
 			");";
 	private static final String SQL_CREATE_TABLE_STICKER = "CREATE TABLE " + Contract.StickerEntry.TABLE_NAME + " (" +
 			Contract.StickerEntry._ID + " INTEGER PRIMARY KEY UNIQUE, " +
@@ -437,7 +438,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 						"data BLOB, " +
 						"target BLOB, " +
 						"title TEXT, " +
-						"subtitle TEXT " +
+						"subtitle TEXT, " +
+						"caption TEXT " +
 						");");
 		}
 	}
@@ -532,6 +534,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			static final String COLUMN_NAME_TARGET = "target";
 			static final String COLUMN_NAME_TITLE = "title";
 			static final String COLUMN_NAME_SUBTITLE = "subtitle";
+			static final String COLUMN_NAME_CAPTION = "caption";
 		}
 		
 		static class StickerEntry implements BaseColumns {
@@ -1068,7 +1071,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 			
 			//Setting the message preview state
 			ConversationManager.MessageTextInfo messageTextInfo = messageInfo.getMessageTextInfo();
-			if(messageTextInfo != null) messageTextInfo.setMessagePreviewState(previewState);
+			if(messageTextInfo != null) {
+				messageTextInfo.setMessagePreviewState(previewState);
+				if(!cursor.isNull(indices.iPreviewID)) messageTextInfo.setMessagePreviewID(cursor.getLong(indices.iPreviewID));
+			}
 			
 			//Returning the item
 			return messageInfo;
@@ -1307,6 +1313,10 @@ class DatabaseManager extends SQLiteOpenHelper {
 		Cursor previewCursor = database.query(Contract.MessagePreviewEntry.TABLE_NAME, null,
 				Contract.MessagePreviewEntry._ID + " = ?", new String[]{Long.toString(previewID)}, null, null, null, "1");
 		
+		if(!previewCursor.moveToFirst()) {
+			previewCursor.close();
+			return null;
+		}
 		//Getting the data
 		ConversationManager.MessagePreviewInfo preview = ConversationManager.MessagePreviewInfo.getMessagePreview(
 				previewID,
@@ -1314,7 +1324,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 				previewCursor.getBlob(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_DATA)),
 				previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_TARGET)),
 				previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_TITLE)),
-				previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_SUBTITLE))
+				previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_SUBTITLE)),
+				previewCursor.getString(previewCursor.getColumnIndexOrThrow(Contract.MessagePreviewEntry.COLUMN_NAME_CAPTION))
 		);
 		previewCursor.close();
 		
@@ -3489,6 +3500,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			contentValues.put(Contract.MessagePreviewEntry.COLUMN_NAME_TARGET, messagePreview.getTarget());
 			contentValues.put(Contract.MessagePreviewEntry.COLUMN_NAME_TITLE, messagePreview.getTitle());
 			contentValues.put(Contract.MessagePreviewEntry.COLUMN_NAME_SUBTITLE, messagePreview.getSubtitle());
+			contentValues.put(Contract.MessagePreviewEntry.COLUMN_NAME_CAPTION, messagePreview.getCaption());
 			
 			previewID = database.insert(Contract.MessagePreviewEntry.TABLE_NAME, null, contentValues);
 		}
