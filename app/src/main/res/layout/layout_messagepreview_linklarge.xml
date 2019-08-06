@@ -2,7 +2,7 @@
 <LinearLayout
 	android:id="@+id/group_messagepreview_linklarge"
 	xmlns:android="http://schemas.android.com/apk/res/android"
-	android:layout_width="256dp"
+	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
 	android:orientation="vertical"
 	android:background="@drawable/rectangle_chatpreview"
@@ -22,7 +22,6 @@
 		android:layout_height="wrap_content"
 		android:text="Link title"
 		android:textColor="?android:attr/textColorPrimary"
-		android:textStyle="bold"
 		android:textSize="16sp"
 		android:maxLines="1"
 		android:layout_marginLeft="16dp"

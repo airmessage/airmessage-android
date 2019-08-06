@@ -50,6 +50,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.WeakReference;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -1220,6 +1222,14 @@ public class Constants {
 		
 		if(intent.resolveActivity(context.getPackageManager()) != null) context.startActivity(intent);
 		else Toast.makeText(context, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
+	}
+	
+	//https://stackoverflow.com/questions/9607903/get-domain-name-from-given-url
+	static String getDomainName(String url) throws URISyntaxException {
+		URI uri = new URI(url);
+		String domain = uri.getHost();
+		if(domain == null) return null;
+		return domain.startsWith("www.") ? domain.substring(4) : domain;
 	}
 	
 	static String cleanFileName(String fileName) {

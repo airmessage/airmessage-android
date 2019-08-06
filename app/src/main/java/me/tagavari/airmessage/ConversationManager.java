@@ -80,9 +80,13 @@ import org.lukhnos.nnio.file.Paths;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -4301,7 +4305,7 @@ class ConversationManager {
 					
 					//Fetching the data
 					setMessagePreviewLoading(true);
-					new RichPreview(new RichPreviewResponseListener(this)).getPreview(url);
+					new RichPreview(new RichPreviewResponseListener(this, url)).getPreview(url);
 				} else {
 					//Updating the preview
 					setMessagePreview(null);
@@ -4386,18 +4390,34 @@ class ConversationManager {
 		
 		private static class RichPreviewResponseListener implements ResponseListener {
 			private final WeakReference<MessageTextInfo> messageTextReference;
-			private final long messageID;
+			private final long messageTextID;
+			private final String originalURL;
 			
-			RichPreviewResponseListener(MessageTextInfo messageTextInfo) {
+			RichPreviewResponseListener(MessageTextInfo messageTextInfo, String originalURL) {
 				//Setting the message reference
 				messageTextReference = new WeakReference<>(messageTextInfo);
-				messageID = messageTextInfo.getLocalID();
+				messageTextID = messageTextInfo.getLocalID();
+				this.originalURL = originalURL;
 			}
 			
 			@Override
 			public void onData(MetaData metaData) {
+				//Getting the message
+				MessageTextInfo messageText = messageTextReference.get();
+				//Checking if there is no useful data
+				String title = metaData.getTitle();
+				if(title == null || title.isEmpty()) {
+					//Updating the preview
+					if(messageText != null) messageText.setMessagePreview(null);
+					
+					//Updating the state on disk
+					new MessagePreviewStateUpdateAsyncTask(messageTextID, MessagePreviewInfo.stateUnavailable).execute();
+					
+					return;
+				}
+				
 				//Fetching the link preview
-				new LinkPreviewAsyncTask(messageTextReference.get(), messageID, metaData.getUrl(), metaData).execute();
+				new LinkPreviewAsyncTask(messageText, messageTextID, originalURL, metaData).execute();
 			}
 			
 			@Override
@@ -4427,20 +4447,37 @@ class ConversationManager {
 			@Override
 			protected MessagePreviewInfo doInBackground(Void... params) {
 				//Fetching the image data
-				byte[] imageBytes;
-				try(BufferedInputStream in = new BufferedInputStream(new URL(downloadURL).openStream());
-					ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-					byte[] buffer = new byte[1024];
-					int bytesRead;
-					while((bytesRead = in.read(buffer)) != -1) out.write(buffer, 0, bytesRead);
-					imageBytes = out.toByteArray();
-				} catch(Exception exception) {
-					exception.printStackTrace();
-					return null;
+				byte[] imageBytes = null;
+				
+				if(downloadURL != null && !downloadURL.isEmpty()) {
+					try(BufferedInputStream in = new BufferedInputStream(new URL(downloadURL).openStream());
+						ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+						byte[] buffer = new byte[1024];
+						int bytesRead;
+						while((bytesRead = in.read(buffer)) != -1) out.write(buffer, 0, bytesRead);
+						imageBytes = out.toByteArray();
+					} catch(FileNotFoundException exception) {
+						exception.printStackTrace();
+						//Not returning, as the preview should simply be displayed without an image if the URI 404'd
+					} catch(IOException exception) {
+						exception.printStackTrace();
+						return null;
+					}
 				}
 				
 				//Creating the message preview
-				MessagePreviewInfo messagePreview = new MessagePreviewLink(messageID, imageBytes, originalURL, linkMetaData.getTitle(), linkMetaData.getDescription(), linkMetaData.getSitename());
+				String caption;
+				if(linkMetaData.getSitename() != null && !linkMetaData.getSitename().isEmpty()) caption = linkMetaData.getSitename();
+				else {
+					try {
+						caption = Constants.getDomainName(originalURL);
+						if(caption == null) return null;
+					} catch(URISyntaxException exception) {
+						exception.printStackTrace();
+						return null;
+					}
+				}
+				MessagePreviewInfo messagePreview = new MessagePreviewLink(messageID, imageBytes, originalURL, linkMetaData.getTitle(), linkMetaData.getDescription(), caption);
 				
 				//Saving the data
 				DatabaseManager.getInstance().setMessagePreviewData(messageID, messagePreview);
@@ -6618,10 +6655,31 @@ class ConversationManager {
 		
 		@Override
 		void bind(ViewHolder viewHolder, Context context) {
-			Glide.with(context).load(getData()).into(viewHolder.imageHeader);
+			//Loading the image (or disabling it if there is none)
+			byte[] data = getData();
+			if(data == null) {
+				viewHolder.imageHeader.setVisibility(View.GONE);
+			} else {
+				viewHolder.imageHeader.setVisibility(View.VISIBLE);
+				Glide.with(context).load(data).into(viewHolder.imageHeader);
+			}
+			
+			//Setting the title
 			viewHolder.labelTitle.setText(getTitle());
-			viewHolder.labelDescription.setText(getSubtitle());
+			
+			//Setting the description (or disabling it if there is none)
+			String subtitle = getSubtitle();
+			if(subtitle == null || subtitle.isEmpty()) {
+				viewHolder.labelDescription.setVisibility(View.GONE);
+			} else {
+				viewHolder.labelDescription.setVisibility(View.VISIBLE);
+				viewHolder.labelDescription.setText(subtitle);
+			}
+			
+			//Setting the address (as the site name, or otherwise the host)
 			viewHolder.labelAddress.setText(getCaption());
+			
+			//Setting the click listener
 			viewHolder.viewRoot.setOnClickListener(view -> Constants.launchUri(context, Uri.parse(getTarget())));
 		}
 		
