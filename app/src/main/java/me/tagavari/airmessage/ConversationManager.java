@@ -3751,7 +3751,7 @@ class ConversationManager {
 		
 		//Creating the message preview values
 		private int messagePreviewState = MessagePreviewInfo.stateNotTried;
-		private long messagePreviewID;
+		private long messagePreviewID = -1;
 		private boolean messagePreviewLoading = false;
 		private WeakReference<MessagePreviewInfo> messagePreviewReference = null;
 		
@@ -4116,6 +4116,9 @@ class ConversationManager {
 			//Setting the preview as not loading
 			messagePreviewLoading = false;
 			
+			//Returning if the preview is invalid
+			if(preview == null) return;
+			
 			//Notifying the callback listeners
 			//for(MessagePreviewCallback callback : messagePreviewCallbackList) callback.onResult(preview, true);
 			//messagePreviewCallbackList.clear();
@@ -4245,6 +4248,7 @@ class ConversationManager {
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
 				//Setting the text
 				if(messageTextSpannable != null) {
+					viewHolder.labelMessage.setMovementMethod(LinkMovementMethod.getInstance());
 					viewHolder.labelMessage.setText(messageTextSpannable);
 				} else {
 					//Requesting the text to be processed
@@ -4416,7 +4420,7 @@ class ConversationManager {
 				}
 				
 				//Fetching the link preview
-				new LinkPreviewAsyncTask(messageText, messageTextID, originalURL, metaData).execute();
+				new LinkPreviewAsyncTask(messageTextReference, messageTextID, originalURL, metaData).execute();
 			}
 			
 			@Override
@@ -4434,8 +4438,8 @@ class ConversationManager {
 			private final MetaData linkMetaData;
 			private final String downloadURL;
 			
-			LinkPreviewAsyncTask(MessageTextInfo messageTextInfo, long messageID, String originalURL, MetaData linkMetaData) {
-				messageTextReference = new WeakReference<>(messageTextInfo); //TODO test weak reference with NULL value (in case the response listener above loses reference to the message before this point)
+			LinkPreviewAsyncTask(WeakReference<MessageTextInfo> messageTextReference, long messageID, String originalURL, MetaData linkMetaData) {
+				this.messageTextReference = messageTextReference;
 				this.messageID = messageID;
 				this.originalURL = originalURL;
 				this.linkMetaData = linkMetaData;
