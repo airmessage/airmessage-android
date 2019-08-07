@@ -11,6 +11,7 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ClipDescription;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -3240,8 +3241,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			final QueuedFileInfo finalQueuedItem = queuedItem;
 			request.getCallbacks().onRemovalFinish = () -> {
 				//Removing the draft from the conversation in memory
-				if(viewModel.conversationInfo != null)
-					viewModel.conversationInfo.removeDraftFileUpdate(Messaging.this, finalQueuedItem.getDraftFile(), updateTime);
+				if(viewModel.conversationInfo != null) viewModel.conversationInfo.removeDraftFileUpdate(Messaging.this, finalQueuedItem.getDraftFile(), updateTime);
 			};
 			service.addFileProcessingRequest(request);
 		}
@@ -3252,21 +3252,18 @@ public class Messaging extends AppCompatCompositeActivity {
 			List<AttachmentsRecyclerAdapter<?>> adapterList = new ArrayList<>();
 			for(int i = draftIndex; i < viewModel.draftQueueList.size(); i++) {
 				QueuedFileInfo listedItem = viewModel.draftQueueList.get(i);
-				if(listedItem.getItem().getListAdapter() == null || adapterList.contains(listedItem.getItem().getListAdapter()))
-					continue;
+				if(listedItem.getItem().getListAdapter() == null || adapterList.contains(listedItem.getItem().getListAdapter())) continue;
 				adapterList.add(listedItem.getItem().getListAdapter());
 			}
 			for(AttachmentsRecyclerAdapter<?> adapter : adapterList) adapter.recalculateIndices();
 			
 			//Updating the item selection
-			if(item.getFile() != null && item.getListAdapter() != null)
-				item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
+			if(item.getListAdapter() != null) item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
 		}
 		
 		//Animating the list
 		if(viewModel.draftQueueList.isEmpty()) {
-			if(currentListAttachmentQueueValueAnimator != null)
-				currentListAttachmentQueueValueAnimator.cancel();
+			if(currentListAttachmentQueueValueAnimator != null) currentListAttachmentQueueValueAnimator.cancel();
 			//listAttachmentQueue.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 			
 			ValueAnimator anim = ValueAnimator.ofInt(listAttachmentQueue.getHeight(), 0);
@@ -4905,26 +4902,30 @@ public class Messaging extends AppCompatCompositeActivity {
 						//Querying the media files
 						try(Cursor cursor = getApplication().getContentResolver().query(
 								MediaStore.Files.getContentUri("external"),
-								new String[]{MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.DATE_MODIFIED},
+								new String[]{MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.DATE_MODIFIED},
 								msQuerySelection,
 								null,
 								MediaStore.Files.FileColumns.DATE_ADDED + " DESC" + ' ' + "LIMIT " + attachmentsTileCount)) {
 							if(cursor == null) return null;
 							
-							int indexData = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA);
-							int indexType = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE);
-							int indexSize = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE);
-							int indexModificationDate = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED);
+							//int indexData = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA);
+							int iLocalID = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID);
+							int iType = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE);
+							int iDisplayName = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME);
+							int iSize = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE);
+							int iModificationDate = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED);
 							
 							while(cursor.moveToNext()) {
+								Uri uri = ContentUris.withAppendedId(MediaStore.Files.getContentUri("external"), cursor.getInt(iLocalID));
 								//Getting the file information
-								File file = new File(cursor.getString(indexData));
-								String fileType = cursor.getString(indexType);
+								//File file = new File(cursor.getString(iData));
+								String fileType = cursor.getString(iType);
 								if(fileType == null) fileType = "application/octet-stream";
-								String fileName = file.getName();
-								long fileSize = cursor.getLong(indexSize);
-								long modificationDate = cursor.getLong(indexModificationDate);
-								list.add(new SimpleAttachmentInfo(file, fileType, fileName, fileSize, modificationDate));
+								String fileName = Constants.cleanFileName(cursor.getString(iDisplayName));
+								long fileSize = cursor.getLong(iSize);
+								long modificationDate = cursor.getLong(iModificationDate);
+								//list.add(new SimpleAttachmentInfo(file, fileType, fileName, fileSize, modificationDate));
+								list.add(new SimpleAttachmentInfo(uri, fileType, fileName, fileSize, modificationDate));
 							}
 						}
 						
