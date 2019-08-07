@@ -5,7 +5,9 @@
 	android:id="@+id/root"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	tools:context=".Conversations">
+	tools:context=".Conversations"
+	android:clipChildren="false"
+	android:fitsSystemWindows="true">
 	<!-- App bar -->
 	<com.google.android.material.appbar.AppBarLayout
 		android:id="@+id/appbar"
@@ -96,7 +98,8 @@
 	<RelativeLayout
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		app:layout_behavior="@string/appbar_scrolling_view_behavior">
+		app:layout_behavior="@string/appbar_scrolling_view_behavior"
+		android:clipChildren="false">
 		<!-- Loading Text -->
 		<TextView
 			android:id="@+id/loading_text"
@@ -139,6 +142,7 @@
 				android:progressBackgroundTint="@color/colorPrimary"
 				android:indeterminateTint="@color/colorPrimary" />
 		</LinearLayout>
+
 		<!-- Error view -->
 		<LinearLayout
 			android:id="@+id/errorview"
@@ -163,6 +167,7 @@
 				android:text="@string/action_retry"
 				android:textColor="@color/colorPrimary" />
 		</LinearLayout>
+
 		<!-- No conversations view -->
 		<TextView
 			android:id="@+id/no_conversations"
@@ -198,6 +203,7 @@
 			android:dividerHeight="0dp"
 			android:theme="@style/OverscrollNeutralizer"
 			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+			android:clipChildren="false"
 			android:clipToPadding="false"
 			android:visibility="gone" />
 		<!-- Search view -->
@@ -206,6 +212,7 @@
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:background="?android:attr/colorBackground"
+			android:clipChildren="false"
 			android:visibility="gone">
 			<TextView
 				android:id="@+id/label_search_noresults"
@@ -221,17 +228,19 @@
 				android:divider="@null"
 				android:dividerHeight="0dp"
 				android:theme="@style/OverscrollNeutralizer"
+				android:clipChildren="false"
+				android:clipToPadding="false"
 				app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 		</RelativeLayout>
 	</RelativeLayout>
 
 	<!-- Bottom shadow -->
-	<View
+	<!-- <View
 		android:id="@+id/bottomshadow"
 		android:layout_width="match_parent"
 		android:layout_height="3dp"
 		android:background="@drawable/appear_bottomshadow"
-		android:layout_gravity="bottom" />
+		android:layout_gravity="bottom" /> -->
 
 	<!-- Bottom divider -->
 	<View

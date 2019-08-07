@@ -11,7 +11,8 @@
 		android:id="@+id/appbar"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:background="@color/colorToolbar">
+		android:background="@color/colorToolbar"
+		android:fitsSystemWindows="true">
 		<!-- Toolbar -->
 		<com.google.android.material.appbar.MaterialToolbar
 			android:id="@+id/toolbar"
@@ -132,8 +133,8 @@
 			android:layout_height="match_parent"
 			android:scrollbars="vertical"
 			android:theme="@style/OverscrollNeutralizer"
-			android:visibility="visible"
-			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+			android:clipToPadding="false"/>
 		<!-- Loading text -->
 		<!-- <TextView
 			android:id="@+id/message_loading"
@@ -198,12 +199,12 @@
 		</LinearLayout>
 
 		<!-- Bottom shadow -->
-		<View
+		<!-- <View
 			android:id="@+id/bottomshadow"
 			android:layout_width="match_parent"
 			android:layout_height="3dp"
 			android:background="@drawable/appear_bottomshadow"
-			android:layout_alignParentBottom="true" />
+			android:layout_alignParentBottom="true" /> -->
 
 		<!-- Bottom divider -->
 		<View

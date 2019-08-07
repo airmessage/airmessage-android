@@ -48,6 +48,9 @@ import java.util.ListIterator;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
@@ -55,7 +58,9 @@ import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-public class NewMessage extends AppCompatActivity {
+import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
+
+public class NewMessage extends AppCompatCompositeActivity {
 	//Creating the constants
 	private static final int menuIdentifierConfirmParticipants = 0;
 	
@@ -63,6 +68,8 @@ public class NewMessage extends AppCompatActivity {
 	
 	//Creating the view model and plugin values
 	private ActivityViewModel viewModel;
+	
+	private PluginQNavigation pluginQNavigation;
 	
 	//Creating the view values
 	private ViewGroup recipientViewGroup;
@@ -199,6 +206,10 @@ public class NewMessage extends AppCompatActivity {
 		}
 	};
 	
+	public NewMessage() {
+		addPlugin(pluginQNavigation = new PluginQNavigation());
+	}
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		//Calling the super method
@@ -219,6 +230,17 @@ public class NewMessage extends AppCompatActivity {
 		
 		groupMessagePermission = findViewById(R.id.group_permission);
 		groupMessageError = findViewById(R.id.group_error);
+		
+		//Setting the list padding
+		//pluginQNavigation.setViewForInsets(new View[]{contactListView});
+		ViewCompat.setOnApplyWindowInsetsListener(contactListView, new OnApplyWindowInsetsListener() {
+			@Override
+			public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
+				//((ViewGroup.MarginLayoutParams) reyclerView.getLayoutParams()).bottomMargin = -insets.getSystemWindowInsetBottom();
+				contactListView.setPadding(contactListView.getPaddingLeft(), contactListView.getPaddingTop(), contactListView.getPaddingRight(), insets.getSystemWindowInsetBottom());
+				return insets.consumeSystemWindowInsets();
+			}
+		});
 		
 		//Configuring the AMOLED theme
 		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();

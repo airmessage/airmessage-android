@@ -18,7 +18,9 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -40,6 +42,9 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.util.Consumer;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
@@ -55,11 +60,20 @@ import androidx.preference.PreferenceScreen;
 import androidx.preference.PreferenceViewHolder;
 import androidx.preference.SwitchPreferenceCompat;
 import androidx.recyclerview.widget.RecyclerView;
+
+import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.view.HostnameEditTextPreference;
 
-public class Preferences extends AppCompatActivity implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
+public class Preferences extends AppCompatCompositeActivity implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
 	//Creating the reference values
 	private static final int permissionRequestLocation = 0;
+	
+	//Creating the plugin values
+	private PluginQNavigation pluginQNavigation;
+	
+	public Preferences() {
+		addPlugin(pluginQNavigation = new PluginQNavigation());
+	}
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -69,7 +83,7 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 		//Setting the content view
 		setContentView(R.layout.activity_preferences);
 		
-		if (savedInstanceState == null) {
+		if(savedInstanceState == null) {
 			// Create the fragment only when the activity is created for the first time.
 			// ie. not after orientation changes
 			Fragment fragment = getSupportFragmentManager().findFragmentByTag(SettingsFragment.FRAGMENT_TAG);
@@ -456,6 +470,17 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 			
 			//Enforcing the maximum content width
 			Constants.enforceContentWidth(getResources(), getListView());
+			
+			//Setting the list padding
+			View reyclerView = view.findViewById(R.id.recycler_view);
+			ViewCompat.setOnApplyWindowInsetsListener(reyclerView, new OnApplyWindowInsetsListener() {
+				@Override
+				public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
+					//((ViewGroup.MarginLayoutParams) reyclerView.getLayoutParams()).bottomMargin = -insets.getSystemWindowInsetBottom();
+					reyclerView.setPadding(reyclerView.getPaddingLeft(), reyclerView.getPaddingTop(), reyclerView.getPaddingRight(), insets.getSystemWindowInsetBottom());
+					return insets.consumeSystemWindowInsets();
+				}
+			});
 			
 			//if(Preferences.getPreferenceAMOLED(getContext())) setDarkAMOLED();
 		}

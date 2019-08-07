@@ -25,14 +25,13 @@
 		android:label="@string/app_name"
 		android:name=".MainApplication"
 		android:supportsRtl="true"
-		android:theme="@style/DayNight"
 		tools:ignore="GoogleAppIndexingWarning">
 		<!-- Conversation list -->
 		<activity
 			android:label="@string/app_name"
 			android:launchMode="singleTop"
 			android:name=".Conversations"
-			android:theme="@style/DayNight.NoActionbar.Unprotected"
+			android:theme="@style/DayNight.NoActionBar.Protected"
 			android:windowSoftInputMode="adjustResize">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
@@ -48,7 +47,7 @@
 			android:exported="false"
 			android:name=".Messaging"
 			android:parentActivityName=".Conversations"
-			android:theme="@style/DayNight.NoActionbar.Unprotected"
+			android:theme="@style/DayNight.NoActionBar"
 			android:windowSoftInputMode="adjustResize">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
@@ -59,7 +58,7 @@
 			android:label="@string/screen_newconversation"
 			android:name=".NewMessage"
 			android:parentActivityName=".Conversations"
-			android:theme="@style/DayNight.NoActionbar.Unprotected"
+			android:theme="@style/DayNight.NoActionBar.Protected"
 			android:windowSoftInputMode="adjustResize|stateVisible">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 	</activity>
@@ -69,7 +68,7 @@
 			android:exported="false"
 			android:label="@string/screen_settings"
 			android:name=".Preferences"
-			android:theme="@style/DayNight.NoActionbar.Unprotected"
+			android:theme="@style/DayNight.NoActionBar.Protected"
 			android:parentActivityName=".Conversations">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />

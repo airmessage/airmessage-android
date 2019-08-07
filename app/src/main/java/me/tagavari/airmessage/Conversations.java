@@ -56,6 +56,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	//Creating the plugin values
 	private ConversationsBase conversationsBasePlugin;
 	private PluginMessageBar pluginMessageBar;
+	private PluginQNavigation pluginQNavigation;
 	
 	//Creating the view model and info bar values
 	private ActivityViewModel viewModel;
@@ -72,6 +73,8 @@ public class Conversations extends AppCompatCompositeActivity {
 	private EditText editTextBarSearch;
 	private ImageButton buttonBarSearchClear;
 	private FloatingActionButton floatingActionButton;
+	
+	private RecyclerView mainMessageList;
 	
 	private ViewGroup groupSearch;
 	private SearchRecyclerAdapter searchRecyclerAdapter = null;
@@ -125,6 +128,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Setting the plugins
 		addPlugin(conversationsBasePlugin = new ConversationsBase(() -> new RecyclerAdapter(conversationsBasePlugin.conversations)));
 		addPlugin(pluginMessageBar = new PluginMessageBar());
+		addPlugin(pluginQNavigation = new PluginQNavigation());
 		addPlugin(new PluginThemeUpdater());
 	}
 	
@@ -171,12 +175,15 @@ public class Conversations extends AppCompatCompositeActivity {
 		buttonBarSearchClear = findViewById(R.id.search_buttonclear);
 		floatingActionButton = findViewById(R.id.fab);
 		
+		mainMessageList = findViewById(R.id.list);
 		groupSearch = findViewById(R.id.viewgroup_search);
 		
 		//Setting the plugin views
-		RecyclerView mainMessageList = findViewById(R.id.list);
 		conversationsBasePlugin.setViews(mainMessageList, findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
+		
+		//Setting the list padding
+		pluginQNavigation.setViewForInsets(new View[]{mainMessageList, findViewById(R.id.list_search)});
 		
 		//Enforcing the maximum content width
 		Constants.enforceContentWidth(getResources(), conversationsBasePlugin.recyclerView);
@@ -773,6 +780,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		groupBarSearch.setAlpha(1);
 		editTextBarSearch.requestFocus();
 		groupSearch.setVisibility(View.VISIBLE);
+		mainMessageList.setVisibility(View.INVISIBLE);
 		
 		//Updating the close button
 		buttonBarSearchClear.setVisibility(editTextBarSearch.getText().length() > 0 ? View.VISIBLE : View.GONE);
@@ -812,6 +820,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Setting the search group state
 		groupSearch.setVisibility(query.isEmpty() ? View.GONE : View.VISIBLE);
+		mainMessageList.setVisibility(query.isEmpty() ? View.VISIBLE : View.INVISIBLE);
 	}
 	
 	private class SearchRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
