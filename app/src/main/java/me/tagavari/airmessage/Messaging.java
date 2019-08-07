@@ -2440,10 +2440,10 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void requestCamera(boolean video) {
 		//Creating the intent
-		Intent takePictureIntent = new Intent(video ? MediaStore.ACTION_VIDEO_CAPTURE : MediaStore.ACTION_IMAGE_CAPTURE);
+		Intent cameraCaptureIntent = new Intent(video ? MediaStore.ACTION_VIDEO_CAPTURE : MediaStore.ACTION_IMAGE_CAPTURE);
 		
 		//Checking if there are no apps that can take the intent
-		if(takePictureIntent.resolveActivity(getPackageManager()) == null) {
+		if(cameraCaptureIntent.resolveActivity(getPackageManager()) == null) {
 			//Telling the user via a toast
 			Toast.makeText(Messaging.this, R.string.message_intenterror_camera, Toast.LENGTH_SHORT).show();
 			
@@ -2452,16 +2452,14 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Finding a free file
-		viewModel.targetFileIntent = MainApplication.getDraftTarget(this, viewModel.conversationID, Constants.pictureName);
+		viewModel.targetFileIntent = MainApplication.getDraftTarget(this, viewModel.conversationID, video ? Constants.videoName : Constants.pictureName);
 		
-		//Getting the content uri
-		Uri imageUri = FileProvider.getUriForFile(this, MainApplication.fileAuthority, viewModel.targetFileIntent);
-		
-		//Setting the clip data
-		takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+		//Setting the output file target
+		Uri targetUri = FileProvider.getUriForFile(this, MainApplication.fileAuthority, viewModel.targetFileIntent);
+		cameraCaptureIntent.putExtra(MediaStore.EXTRA_OUTPUT, targetUri);
 		
 		//Starting the activity
-		startActivityForResult(takePictureIntent, intentTakePicture);
+		startActivityForResult(cameraCaptureIntent, intentTakePicture);
 	}
 	
 	private void launchPickerIntent(String[] mimeTypes) {

@@ -171,6 +171,7 @@ public class Constants {
 	static final int defaultPort = 1359;
 	static final String recordingName = "recording.amr";
 	static final String pictureName = "image.jpg";
+	static final String videoName = "video.mp4";
 	static final String defaultFileName = "file";
 	static final int smartReplyHistoryLength = 10;
 	
