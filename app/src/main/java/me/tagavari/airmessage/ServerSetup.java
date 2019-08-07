@@ -1,6 +1,5 @@
 package me.tagavari.airmessage;
 
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -10,8 +9,6 @@ import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
-import android.text.InputFilter;
-import android.text.Spanned;
 import android.text.TextWatcher;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,10 +17,8 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.List;
-import java.util.regex.Pattern;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -46,6 +41,8 @@ public class ServerSetup extends AppCompatActivity {
 	//Creating the activity values
 	private ActivityViewModel viewModel;
 	private boolean isComplete = false;
+	
+	private int paneMaxHeight = Constants.dpToPx(600);
 	
 	//Creating the view values
 	private EditText hostnameInputField;
@@ -176,7 +173,9 @@ public class ServerSetup extends AppCompatActivity {
 		{
 			int maxContentWidth = Constants.dpToPx(500);
 			ViewGroup content = findViewById(R.id.content);
-			for(int i = 0; i < content.getChildCount(); i++) Constants.enforceContentWidth(maxContentWidth, content.getChildAt(i));
+			content.post(() -> {
+				for(int i = 0; i < content.getChildCount(); i++) Constants.enforceContentWidthImmediate(maxContentWidth, content.getChildAt(i));
+			});
 		}
 		
 		//Getting the view models
@@ -227,17 +226,30 @@ public class ServerSetup extends AppCompatActivity {
 		
 		//Configuring the header images
 		getWindow().getDecorView().post(() -> {
-			float windowHeight = Constants.pxToDp(Constants.getWindowHeight(this));
-			ImageView imageHeader = findViewById(R.id.image_header);
-			if(windowHeight < 577) {
-				//Short banner
+			//Checking if the view is large
+			ViewGroup windowGroup = findViewById(R.id.group_pane);
+			if(windowGroup != null) { //group_pane is only available when the large resource is being used
+				//Setting the short banner banner
+				ImageView imageHeader = findViewById(R.id.image_header);
 				imageHeader.setImageResource(R.drawable.onboarding_download_short);
-			} else if(windowHeight < 772) {
-				//Medium banner
-				imageHeader.setImageResource(R.drawable.onboarding_download_medium);
+				
+				//Limiting the pane's height
+				if(windowGroup.getHeight() > paneMaxHeight) windowGroup.getLayoutParams().height = paneMaxHeight;
 			} else {
-				//Tall banner
-				imageHeader.setImageResource(R.drawable.onboarding_download_tall);
+				//Getting the window height
+				float windowHeight = Constants.pxToDp(Constants.getWindowHeight(this));
+				//float windowHeight = findViewById(R.id.content).getHeight();
+				ImageView imageHeader = findViewById(R.id.image_header);
+				if(windowHeight < 577) {
+					//Short banner
+					imageHeader.setImageResource(R.drawable.onboarding_download_short);
+				} else if(windowHeight < 772) {
+					//Medium banner
+					imageHeader.setImageResource(R.drawable.onboarding_download_medium);
+				} else {
+					//Tall banner
+					imageHeader.setImageResource(R.drawable.onboarding_download_tall);
+				}
 			}
 		});
 	}

@@ -16,11 +16,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.content.pm.ShortcutManager;
 import android.content.res.ColorStateList;
-import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.database.ContentObserver;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 import android.graphics.Outline;
@@ -41,12 +38,10 @@ import android.os.Looper;
 import android.os.Parcelable;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
-import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
-import android.text.method.ScrollingMovementMethod;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
@@ -80,7 +75,6 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
-import android.widget.Scroller;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -603,7 +597,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
 		
 		//Enforcing the maximum content width
-		Constants.enforceContentWidth(getResources(), messageList);
+		Constants.enforceContentWidthView(getResources(), messageList);
 		
 		//Configuring the AMOLED theme
 		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();

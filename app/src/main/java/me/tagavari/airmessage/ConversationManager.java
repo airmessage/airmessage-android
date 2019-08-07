@@ -7745,6 +7745,6 @@ class ConversationManager {
 	}
 	
 	private static int getMaxMessageWidth(Resources resources) {
-		return (int) Math.min(resources.getDimensionPixelSize(R.dimen.contentwidth_max) * .7F, resources.getDisplayMetrics().widthPixels * 0.7F);
+		return (int) Math.min(Constants.getMaxContentWidth(resources) * .7F, resources.getDisplayMetrics().widthPixels * 0.7F);
 	}
 }

@@ -3,7 +3,11 @@
 	<!-- <declare-styleable name="AutoGridLayout">
 		<attr name="columnWidth" format="dimension" />
 	</declare-styleable> -->
-	
+
+	<declare-styleable name="RoundedViewSimple">
+		<attr name="radius" format="dimension" />
+	</declare-styleable>
+
 	<declare-styleable name="RoundedView">
 		<attr name="radii" format="dimension" />
 		<attr name="radiusTop" format="dimension" />

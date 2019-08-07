@@ -755,7 +755,7 @@ public class Constants {
 		}
 	} */
 	
-	/* static void enforceContentWidth(Resources resources, View view) {
+	/* static void enforceContentWidthView(Resources resources, View view) {
 		//Getting the maximum content width
 		int maxContentWidth = resources.getDimensionPixelSize(R.dimen.contentwidth_max);
 		
@@ -763,23 +763,59 @@ public class Constants {
 		view.post(() -> {if(view.getMeasuredWidth() > maxContentWidth) view.getLayoutParams().width = maxContentWidth;});
 	} */
 	
-	static void enforceContentWidth(Resources resources, View view) {
-		enforceContentWidth(resources.getDimensionPixelSize(R.dimen.contentwidth_max), view);
+	static int getMaxContentWidth(Resources resources) {
+		return resources.getDimensionPixelSize(R.dimen.contentwidth_max);
 	}
 	
-	static void enforceContentWidth(int maxContentWidth, View view) {
-		//Enforcing the maximum content width
-		view.post(() -> {
-			//Getting the width
-			int width = view.getWidth();
-			
-			//Returning if the view is already below the width
-			if(width <= maxContentWidth) return;
-			
-			//Updating the padding
-			int padding = (width - maxContentWidth) / 2;
-			view.setPaddingRelative(padding, view.getPaddingTop(), padding, view.getPaddingBottom());
-		});
+	/**
+	 * Helper method for calculatePaddingContentWidth() that handles finding the width
+	 * @param resources Android resources, to fetch the maximum content width
+	 * @param view The view to limit
+	 * @return padding (in pixels) that should be applied to the view
+	 */
+	static int calculatePaddingContentWidth(Resources resources, View view) {
+		return calculatePaddingContentWidth(getMaxContentWidth(resources), view);
+	}
+	
+	/**
+	 * Calculates the size that should be allocated to padding in order to keep the view a reasonable width
+	 * @param maxContentWidth The size to limit the view to
+	 * @param view The view to limit
+	 * @return padding (in pixels) that should be applied to the view
+	 */
+	static int calculatePaddingContentWidth(int maxContentWidth, View view) {
+		//Getting the width
+		int width = view.getWidth();
+		
+		//Returning if the view is already below the width
+		if(width <= maxContentWidth) return 0;
+		
+		//Returning the padding
+		return (width - maxContentWidth) / 2;
+	}
+	
+	/**
+	 * Friendly method to quickly enforce the maximum content width on a specified view
+	 * @param resources Android resources, to fetch the maximum content width
+	 * @param view The view to limit
+	 */
+	static void enforceContentWidthView(Resources resources, View view) {
+		view.post(() -> enforceContentWidthImmediate(getMaxContentWidth(resources), view));
+	}
+	
+	/**
+	 * Adds padding to either side of the view to prevent it from expanding to take up the entire display, if the screen is large enough
+	 * @param maxContentWidth The size to limit the view to
+	 * @param view The view to limit
+	 */
+	static void enforceContentWidthImmediate(int maxContentWidth, View view) {
+		//Calculating and applying the margin
+		int padding = calculatePaddingContentWidth(maxContentWidth, view);
+		//view.setPadding(padding, view.getPaddingTop(), padding, view.getPaddingBottom());
+		ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
+		layoutParams.leftMargin = padding;
+		layoutParams.rightMargin = padding;
+		view.setLayoutParams(layoutParams);
 	}
 	
 	/* private static final char[] hexArray = "0123456789ABCDEF".toCharArray();

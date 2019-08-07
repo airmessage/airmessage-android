@@ -18,9 +18,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -39,8 +37,6 @@ import androidx.annotation.Nullable;
 import androidx.annotation.PluralsRes;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.core.util.Consumer;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
@@ -469,7 +465,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			super.onViewCreated(view, savedInstanceState);
 			
 			//Enforcing the maximum content width
-			Constants.enforceContentWidth(getResources(), getListView());
+			Constants.enforceContentWidthView(getResources(), getListView());
 			
 			//Setting the list padding
 			View reyclerView = view.findViewById(R.id.recycler_view);

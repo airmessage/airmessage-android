@@ -39,7 +39,6 @@ import java.util.regex.Pattern;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.view.ActionMode;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModel;
@@ -73,8 +72,6 @@ public class Conversations extends AppCompatCompositeActivity {
 	private EditText editTextBarSearch;
 	private ImageButton buttonBarSearchClear;
 	private FloatingActionButton floatingActionButton;
-	
-	private RecyclerView mainMessageList;
 	
 	private ViewGroup groupSearch;
 	private SearchRecyclerAdapter searchRecyclerAdapter = null;
@@ -175,18 +172,36 @@ public class Conversations extends AppCompatCompositeActivity {
 		buttonBarSearchClear = findViewById(R.id.search_buttonclear);
 		floatingActionButton = findViewById(R.id.fab);
 		
-		mainMessageList = findViewById(R.id.list);
+		RecyclerView listSearch = findViewById(R.id.list_search);
 		groupSearch = findViewById(R.id.viewgroup_search);
 		
 		//Setting the plugin views
-		conversationsBasePlugin.setViews(mainMessageList, findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
+		conversationsBasePlugin.setViews(findViewById(R.id.list), findViewById(R.id.syncview_progress), findViewById(R.id.no_conversations));
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
 		
 		//Setting the list padding
-		pluginQNavigation.setViewForInsets(new View[]{mainMessageList, findViewById(R.id.list_search)});
+		pluginQNavigation.setViewForInsets(new View[]{conversationsBasePlugin.recyclerView, findViewById(R.id.list_search)});
 		
-		//Enforcing the maximum content width
-		Constants.enforceContentWidth(getResources(), conversationsBasePlugin.recyclerView);
+		conversationsBasePlugin.recyclerView.post(() -> {
+			//Calculating the required padding
+			int padding = Constants.calculatePaddingContentWidth(getResources(), conversationsBasePlugin.recyclerView);
+			
+			//Applying the padding to the main list
+			{
+				ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) conversationsBasePlugin.recyclerView.getLayoutParams();
+				layoutParams.leftMargin = padding;
+				layoutParams.rightMargin = padding;
+				conversationsBasePlugin.recyclerView.setLayoutParams(layoutParams);
+			}
+			
+			//Applying the padding to the search results list
+			{
+				ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) listSearch.getLayoutParams();
+				layoutParams.leftMargin = padding;
+				layoutParams.rightMargin = padding;
+				listSearch.setLayoutParams(layoutParams);
+			}
+		});
 		
 		//Configuring the AMOLED theme
 		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
@@ -208,7 +223,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Setting the search recycler adapter
 			searchRecyclerAdapter = new SearchRecyclerAdapter(conversationsBasePlugin.conversations);
-			((RecyclerView) findViewById(R.id.list_search)).setAdapter(searchRecyclerAdapter);
+			listSearch.setAdapter(searchRecyclerAdapter);
 			
 			//Updating the search applicability
 			//updateSearchApplicability();
@@ -230,10 +245,10 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Configuring the app bar
 		appBarLayout.setLiftable(false);
-		mainMessageList.addOnScrollListener(new RecyclerView.OnScrollListener() {
+		conversationsBasePlugin.recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 			@Override
 			public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-				appBarLayout.setLifted(((LinearLayoutManager) mainMessageList.getLayoutManager()).findFirstCompletelyVisibleItemPosition() > 0);
+				appBarLayout.setLifted(((LinearLayoutManager) conversationsBasePlugin.recyclerView.getLayoutManager()).findFirstCompletelyVisibleItemPosition() > 0);
 			}
 		});
 		
@@ -780,7 +795,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		groupBarSearch.setAlpha(1);
 		editTextBarSearch.requestFocus();
 		groupSearch.setVisibility(View.VISIBLE);
-		mainMessageList.setVisibility(View.INVISIBLE);
+		conversationsBasePlugin.recyclerView.setVisibility(View.INVISIBLE);
 		
 		//Updating the close button
 		buttonBarSearchClear.setVisibility(editTextBarSearch.getText().length() > 0 ? View.VISIBLE : View.GONE);
@@ -812,15 +827,17 @@ public class Conversations extends AppCompatCompositeActivity {
 	}
 	
 	private void updateSearchFilter(String query) {
+		boolean queryAvailable = !query.isEmpty();
+		
 		//Returning if the search is not active
-		if(!query.isEmpty() && !viewModel.isSearching) return;
+		if(queryAvailable && !viewModel.isSearching) return;
 		
 		//Updating the recycler adapter
 		if(searchRecyclerAdapter != null) searchRecyclerAdapter.updateFilterText(query);
 		
 		//Setting the search group state
-		groupSearch.setVisibility(query.isEmpty() ? View.GONE : View.VISIBLE);
-		mainMessageList.setVisibility(query.isEmpty() ? View.VISIBLE : View.INVISIBLE);
+		groupSearch.setVisibility(queryAvailable ? View.VISIBLE : View.GONE);
+		conversationsBasePlugin.recyclerView.setVisibility(queryAvailable ? View.INVISIBLE : View.VISIBLE);
 	}
 	
 	private class SearchRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
