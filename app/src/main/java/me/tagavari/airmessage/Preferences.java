@@ -12,7 +12,6 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -23,6 +22,7 @@ import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 import com.takisoft.preferencex.RingtonePreference;
 import com.takisoft.preferencex.RingtonePreferenceDialogFragmentCompat;
@@ -50,6 +50,7 @@ import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceGroup;
 import androidx.preference.PreferenceGroupAdapter;
+import androidx.preference.PreferenceManager;
 import androidx.preference.PreferenceScreen;
 import androidx.preference.PreferenceViewHolder;
 import androidx.preference.SwitchPreferenceCompat;
@@ -176,7 +177,7 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 		}; */
 		Preference.OnPreferenceClickListener deleteAttachmentsClickListener = preference -> {
 			//Creating a dialog
-			AlertDialog dialog = new AlertDialog.Builder(getActivity())
+			AlertDialog dialog = new MaterialAlertDialogBuilder(getActivity())
 					//Setting the name
 					.setMessage(R.string.message_confirm_deleteattachments)
 					//Setting the negative button
@@ -218,7 +219,7 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 		};
 		Preference.OnPreferenceClickListener deleteMessagesClickListener = preference -> {
 			//Creating a dialog
-			AlertDialog dialog = new AlertDialog.Builder(getActivity())
+			AlertDialog dialog = new MaterialAlertDialogBuilder(getActivity())
 					//Setting the name
 					.setMessage(R.string.message_confirm_deletemessages)
 					//Setting the negative button
@@ -264,7 +265,7 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 			}
 			
 			//Creating a dialog
-			AlertDialog dialog = new AlertDialog.Builder(getActivity())
+			AlertDialog dialog = new MaterialAlertDialogBuilder(getActivity())
 					//Setting the text
 					.setTitle(R.string.message_confirm_resyncmessages)
 					.setMessage(R.string.message_confirm_resyncmessages_description)
@@ -279,7 +280,7 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 						AdvancedSyncDialogManager _dialogManager = new AdvancedSyncDialogManager(getLayoutInflater());
 						
 						//Creating the dialog
-						AlertDialog _dialog = new AlertDialog.Builder(getActivity())
+						AlertDialog _dialog = new MaterialAlertDialogBuilder(getActivity())
 								.setTitle(R.string.message_confirm_resyncmessages_advanced)
 								.setView(_dialogManager.getView())
 								.setNegativeButton(android.R.string.cancel, (DialogInterface _dialogInterface, int _which) -> _dialogInterface.dismiss())
@@ -396,7 +397,7 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 			} */
 			
 			{
-				SwitchPreferenceCompat locationSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_location_key));
+				/* SwitchPreferenceCompat locationSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_location_key));
 				locationSwitch.setChecked(ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED);
 				
 				SwitchPreferenceCompat amoledSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_amoled_key));
@@ -405,13 +406,18 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 					getActivity().recreate();
 					
 					return true;
-				});
+				}); */
 				
-				ListPreference darkModePreference = (ListPreference) findPreference(getResources().getString(R.string.preference_appearance_theme_key));
-				locationSwitch.setEnabled(darkModePreference.getValue().equals(MainApplication.darkModeAutomatic));
-				amoledSwitch.setEnabled(!darkModePreference.getValue().equals(MainApplication.darkModeAlwaysLight));
 				
-				locationSwitch.setOnPreferenceChangeListener((preference, value) -> {
+				//Setting the theme options based on the system version
+				ListPreference themePreference = (ListPreference) findPreference(getResources().getString(R.string.preference_appearance_theme_key));
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) themePreference.setEntries(R.array.preference_appearance_theme_entries_androidQ);
+				else themePreference.setEntries(R.array.preference_appearance_theme_entries_old);
+				
+				//locationSwitch.setEnabled(themePreference.getValue().equals(MainApplication.darkModeFollowSystem));
+				//amoledSwitch.setEnabled(!themePreference.getValue().equals(MainApplication.darkModeLight));
+				
+				/* locationSwitch.setOnPreferenceChangeListener((preference, value) -> {
 					//Opening the application settings if the permission has been granted
 					if(ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
 					//Otherwise requesting the permission
@@ -420,7 +426,7 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 					
 					//Returning false (to prevent the system from changing the option)
 					return false;
-				});
+				}); */
 			}
 			
 			//Setting the intents
@@ -1038,7 +1044,8 @@ public class Preferences extends AppCompatActivity implements PreferenceFragment
 	}
 	
 	static boolean getPreferenceAMOLED(Context context) {
-		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_amoled_key), false);
+		return false; //Feature disabled
+		//return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_amoled_key), false);
 	}
 	
 	static boolean getPreferenceReplySuggestions(Context context) {

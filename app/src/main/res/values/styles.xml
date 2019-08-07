@@ -19,6 +19,7 @@
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
+		<item name="android:colorBackground">@color/colorBackground</item>
 
 		<!-- <item name="android:statusBarColor">@color/colorBackgroundSurface</item>
 		<item name="android:windowLightStatusBar">true</item> -->
@@ -30,13 +31,14 @@
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
-		
+		<item name="android:colorBackground">@color/colorBackground</item>
+
 		<item name="windowActionModeOverlay">true</item>
 		<item name="android:actionModeBackground">@android:color/transparent</item>
 		<item name="android:actionModeCloseDrawable">@drawable/close</item>
 		<item name="actionBarPopupTheme">@style/ActionModeOverflowMenu</item>
 		<!--<item name="android:statusBarColor">@color/colorBackgroundSurface</item>-->
-		<item name="android:statusBarColor">?android:attr/colorBackgroundFloating</item>
+		<item name="android:statusBarColor">@color/colorToolbar</item>
 		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
 	</style>
 
@@ -81,6 +83,7 @@
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorAccent</item>
+		<item name="android:colorBackground">@color/colorBackground</item>
 		
 		<item name="android:statusBarColor">?android:attr/colorBackground</item>
 		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
@@ -90,10 +93,11 @@
 		<item name="android:textColor">@android:color/primary_text_light</item>
 	</style>
 	
-	<style name="ActivityDialogTheme" parent="Theme.MaterialComponents.Light.Dialog"> <!-- @android:style/Theme.Material.Light.Dialog.NoActionBar -->
+	<style name="ActivityDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog"> <!-- @android:style/Theme.Material.Light.Dialog.NoActionBar -->
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item> -->
+		<item name="colorAccent">@color/colorPrimary</item>
+		<item name="android:colorBackground">@color/colorBackground</item>
 		<item name="windowNoTitle">true</item>
 		
 		<!-- <item name="android:statusBarColor">@android:color/transparent</item>

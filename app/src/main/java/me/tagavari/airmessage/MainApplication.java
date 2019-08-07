@@ -347,21 +347,19 @@ public class MainApplication extends Application {
 	
 	
 	static final String darkModeFollowSystem = "follow_system";
-	static final String darkModeAutomatic = "auto";
-	static final String darkModeAlwaysLight = "off";
-	static final String darkModeAlwaysDark = "on";
+	//static final String darkModeAutomatic = "auto";
+	static final String darkModeLight = "off";
+	static final String darkModeDark = "on";
 	void applyDarkMode(String method) {
 		switch(method) {
 			case darkModeFollowSystem: //Follow system
-				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM); //On Android Q and above, the app should follow the system's dark mode setting
+				else AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO_BATTERY); //On older versions of Android, "automatic" should mean to follow the battery saver setting
 				break;
-			case darkModeAutomatic: //Automatic
-				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO);
-				break;
-			case darkModeAlwaysLight: //Always light
+			case darkModeLight: //Always light
 				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
 				break;
-			case darkModeAlwaysDark: //Always dark
+			case darkModeDark: //Always dark
 				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
 				break;
 		}

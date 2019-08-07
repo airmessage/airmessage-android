@@ -15,14 +15,15 @@ android {
 			keyPassword keystoreProperties["keyPassword"]
 		}
 	}
-	compileSdkVersion 28
-	buildToolsVersion "28.0.3"
+	compileSdkVersion 29
+	buildToolsVersion "29.0.0"
 	defaultConfig {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
-		targetSdkVersion 28
-		versionCode 57
+		targetSdkVersion 29
+		targetSdkVersion 29
 		versionName "0.4.9"
+		versionCode 57
 
 		resConfigs "en", "fr", "ja"
 	}
@@ -80,7 +81,7 @@ dependencies {
 	implementation "androidx.browser:browser:$androidXVersion"
 
 	//Material components
-	implementation "com.google.android.material:material:1.0.0"
+	implementation "com.google.android.material:material:1.1.0-alpha09"
 
 	//Android architecture components
 	implementation "androidx.lifecycle:lifecycle-extensions:2.0.0"
@@ -98,8 +99,8 @@ dependencies {
 
 	//Services
 	implementation "com.google.firebase:firebase-core:17.0.1"
-	implementation "com.google.firebase:firebase-ml-natural-language:20.0.1"
-	implementation "com.google.firebase:firebase-ml-natural-language-smart-reply-model:20.0.1"
+	implementation "com.google.firebase:firebase-ml-natural-language:20.0.2"
+	implementation "com.google.firebase:firebase-ml-natural-language-smart-reply-model:20.0.2"
 	implementation "com.crashlytics.sdk.android:crashlytics:2.10.1"
 
 	//Helper

@@ -15,9 +15,9 @@
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent"
-		android:background="?android:attr/colorBackgroundFloating">
+		android:background="@color/colorToolbar">
 		<!-- Toolbar -->
-		<androidx.appcompat.widget.Toolbar
+		<com.google.android.material.appbar.MaterialToolbar
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
 			android:layout_height="?android:attr/actionBarSize"
@@ -220,6 +220,7 @@
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:src="@drawable/add_rounded"
+					android:tint="?attr/colorOnPrimary"
 					android:layout_gravity="center" />
 			</FrameLayout>
 
@@ -349,7 +350,7 @@
 		android:layout_margin="16dp"
 		android:src="@drawable/chevron_down_rounded"
 		android:visibility="gone"
-		app:backgroundTint="?android:attr/colorBackgroundFloating"
+		app:backgroundTint="@color/colorToolbar"
 		app:fabSize="mini"
 		app:layout_constraintBottom_toTopOf="@id/inputbar"
 		app:layout_constraintEnd_toEndOf="parent"
@@ -376,10 +377,10 @@
 		android:translationY="6dp"
 		android:translationZ="12dp"
 		android:visibility="gone"
-		app:layout_constraintBottom_toTopOf="@+id/fab_bottom"
-		app:layout_constraintEnd_toEndOf="@+id/fab_bottom"
-		app:layout_constraintStart_toEndOf="@+id/fab_bottom"
-		app:layout_constraintTop_toTopOf="@+id/fab_bottom" />
+		app:layout_constraintBottom_toTopOf="@id/fab_bottom"
+		app:layout_constraintEnd_toEndOf="@id/fab_bottom"
+		app:layout_constraintStart_toEndOf="@id/fab_bottom"
+		app:layout_constraintTop_toTopOf="@id/fab_bottom" />
 
 	<!-- FAB circular ripple effect view -->
 	<View
@@ -390,8 +391,10 @@
 		android:background="@drawable/circle"
 		android:backgroundTint="@color/colorPrimaryLight"
 		android:visibility="gone"
-		app:layout_constraintLeft_toLeftOf="@+id/fab_bottom"
-		app:layout_constraintTop_toTopOf="@+id/fab_bottom" />
+		app:layout_constraintLeft_toLeftOf="@id/fab_bottom"
+		app:layout_constraintRight_toRightOf="@id/fab_bottom"
+		app:layout_constraintTop_toTopOf="@id/fab_bottom"
+		app:layout_constraintBottom_toBottomOf="@id/fab_bottom" />
 
 	<!-- Scrim -->
 	<View
@@ -414,7 +417,7 @@
 		android:id="@+id/panel_messaginginfo"
 		android:layout_width="0px"
 		android:layout_height="wrap_content"
-		android:background="?android:attr/colorBackgroundFloating"
+		android:background="@color/colorToolbar"
 		android:elevation="16dp"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"

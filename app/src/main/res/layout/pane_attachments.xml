@@ -32,7 +32,7 @@
 				android:layout_marginLeft="@dimen/contenttile_margin"
 				android:layout_marginRight="@dimen/contenttile_margin"
 				android:background="@drawable/rounded_selectable_contenttile"
-				android:backgroundTint="?android:attr/colorBackground"
+				android:backgroundTint="@color/colorToolbar"
 				android:padding="10dp"
 				android:textColor="?android:attr/textColorSecondary"
 				app:layout_constraintStart_toEndOf="@id/button_attachment_gallery_systempicker"
@@ -103,7 +103,7 @@
 					android:layout_height="wrap_content"
 					android:layout_gravity="center"
 					android:src="@drawable/gallery"
-					android:tint="@android:color/white" />
+					android:tint="?attr/colorOnPrimary" />
 			</androidx.cardview.widget.CardView>
 		</androidx.constraintlayout.widget.ConstraintLayout>
 		<!-- Audio files -->
@@ -132,7 +132,7 @@
 					android:layout_height="wrap_content"
 					android:layout_gravity="center"
 					android:src="@drawable/volume"
-					android:tint="@android:color/white" />
+					android:tint="?attr/colorOnPrimary" />
 			</androidx.cardview.widget.CardView>
 
 			<FrameLayout
@@ -143,7 +143,7 @@
 				android:layout_marginRight="@dimen/contenttile_margin"
 				android:layout_weight="1"
 				android:background="@drawable/rounded_selectable_contenttile"
-				android:backgroundTint="?android:attr/colorBackground"
+				android:backgroundTint="@color/colorToolbar"
 				android:padding="10dp"
 				android:textColor="?android:attr/textColorSecondary">
 
@@ -169,7 +169,7 @@
 					android:layout_width="match_parent"
 					android:layout_height="match_parent"
 					android:background="@drawable/rounded_selectable_contenttile"
-					android:backgroundTint="?android:attr/colorBackground"
+					android:backgroundTint="@color/colorToolbar"
 					android:padding="10dp">
 
 					<TextView

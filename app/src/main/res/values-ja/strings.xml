@@ -311,12 +311,18 @@
 		<item quantity="other">%d年</item>
 	</plurals>
 
-	<string-array name="preference_appearance_theme_entries">
-		<item>システムに一致</item>
-		<item>自動</item>
-		<item>いつも光</item>
-		<item>いつも暗い</item>
+	<string-array name="preference_appearance_theme_entries_old">
+		<item>光</item>
+		<item>暗い</item>
+		<item>バッテリーセーバーで設定</item>
 	</string-array>
+
+	<string-array name="preference_appearance_theme_entries_androidQ">
+		<item>光</item>
+		<item>暗い</item>
+		<item>システムに一致</item>
+	</string-array>
+
 	<string name="action_copytoclipboard">コピー</string>
 	<string name="message_messageerror_desc_air_unauthorized">AirMessageサーバーはメッセージを送信許可がありません</string>
 	<string name="message_messageerror_desc_air_badrequest">メッセージの処理中にエラーが発生しました</string>

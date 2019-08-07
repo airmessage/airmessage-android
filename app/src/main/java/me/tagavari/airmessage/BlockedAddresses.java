@@ -19,6 +19,8 @@ import java.util.Iterator;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
 public class BlockedAddresses extends AppCompatActivity {
 	//Creating the view values
 	private ListAdapter blockedListAdapter;
@@ -138,7 +140,7 @@ public class BlockedAddresses extends AppCompatActivity {
 				//Setting the listeners
 				convertView.findViewById(R.id.button_remove).setOnClickListener(view -> {
 					//Showing a dialog
-					new AlertDialog.Builder(BlockedAddresses.this)
+					new MaterialAlertDialogBuilder(BlockedAddresses.this)
 							.setMessage(R.string.message_confirm_unblock)
 							.setPositiveButton(R.string.action_unblock, (dialog, which) -> removeBlockedAddress(blockedAddress.normalizedAddress))
 							.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())

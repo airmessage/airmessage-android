@@ -27,6 +27,10 @@ public class ColorHelper {
 		return modifyColorRaw(color, darkColorRatio);
 	}
 	
+	static int darkModeLightenColor(int color) {
+		return modifyColorMultiply(color, 1.5F);
+	}
+	
 	static int modifyColorRaw(int color, float factor) {
 		int a = Color.alpha(color);
 		int r = Math.round(Color.red(color) * factor);

@@ -21,18 +21,18 @@
 		android:id="@+id/appbar"
 		android:layout_width="0px"
 		android:layout_height="wrap_content"
-		android:background="?android:attr/colorBackgroundFloating"
+		android:background="@color/colorToolbar"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent">
 		<!-- Toolbar -->
-		<androidx.appcompat.widget.Toolbar
+		<com.google.android.material.appbar.MaterialToolbar
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
 			android:layout_height="?android:attr/actionBarSize"
 			android:theme="@style/SolidActionBarClear"
 			app:titleTextAppearance="@style/LightToolbarText">
-		</androidx.appcompat.widget.Toolbar>
+		</com.google.android.material.appbar.MaterialToolbar>
 
 		<!-- AMOLED divider -->
 		<View

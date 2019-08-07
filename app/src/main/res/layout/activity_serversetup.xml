@@ -31,7 +31,7 @@
 	<RelativeLayout
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:background="?android:attr/colorBackgroundFloating"
+		android:background="@color/colorToolbar"
 		android:padding="5dp"
 		android:clipToPadding="false"
 		android:elevation="8dp">

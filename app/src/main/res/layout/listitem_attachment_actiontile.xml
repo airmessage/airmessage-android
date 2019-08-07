@@ -4,7 +4,7 @@
 	android:layout_height="@dimen/contenttile_size"
 	android:layout_marginEnd="@dimen/contenttile_margin"
 	android:background="@drawable/rounded_selectable_contenttile"
-	android:backgroundTint="?android:attr/colorBackground"
+	android:backgroundTint="@color/colorToolbar"
 	android:padding="10dp">
 	
 	<TextView

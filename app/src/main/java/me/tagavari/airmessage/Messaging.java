@@ -91,6 +91,7 @@ import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.util.Consumer;
 import androidx.core.util.Pools;
 import androidx.core.view.inputmethod.EditorInfoCompat;
@@ -117,6 +118,7 @@ import com.crashlytics.android.Crashlytics;
 import com.google.android.gms.common.util.BiConsumer;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
@@ -1615,7 +1617,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			findViewById(R.id.button_delete).setOnClickListener(view -> {
 				//Creating a dialog
-				AlertDialog dialog = new AlertDialog.Builder(this)
+				AlertDialog dialog = new MaterialAlertDialogBuilder(this)
 						.setMessage(R.string.message_confirm_deleteconversation_current)
 						.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
 						.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
@@ -1638,8 +1640,15 @@ public class Messaging extends AppCompatCompositeActivity {
 				dialog.setOnShowListener(dialogInterface -> {
 					//Setting the button's colors
 					int color = getResources().getColor(R.color.colorActionDelete, null);
-					dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
-					dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
+					ColorStateList colorRipple = ColorStateList.valueOf(ColorUtils.setAlphaComponent(color, Constants.rippleAlphaInt));
+					
+					MaterialButton buttonPositive = (MaterialButton) dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+					buttonPositive.setTextColor(color);
+					buttonPositive.setRippleColor(colorRipple);
+					
+					MaterialButton buttonNegative = (MaterialButton) dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+					buttonNegative.setTextColor(color);
+					buttonNegative.setRippleColor(colorRipple);
 				});
 				
 				//Showing the dialog
@@ -1960,6 +1969,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Getting the color
 		int color = viewModel.conversationInfo.getConversationColor();
+		color = ColorHelper.darkModeLightenColor(color);
 		int darkerColor = ColorHelper.darkenColor(color);
 		int lighterColor = ColorHelper.lightenColor(color);
 		
@@ -2300,7 +2310,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Coloring the FAB
 		bottomFAB.setBackgroundTintList(ColorStateList.valueOf(getConversationUIColor()));
-		bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
+		bottomFAB.setImageTintList(ColorStateList.valueOf(Constants.resolveColorAttr(this, R.attr.colorOnPrimary)));
 		
 		//Updating the badge
 		bottomFABBadge.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? getResources().getConfiguration().getLocales().get(0) : getResources().getConfiguration().locale, "%d", viewModel.conversationInfo.getUnreadMessageCount()));
@@ -2320,7 +2330,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(viewModel.conversationInfo.getUnreadMessageCount() > 0) {
 			//Coloring the FAB
 			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(colorTint));
-			bottomFAB.setImageTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white, null)));
+			bottomFAB.setImageTintList(ColorStateList.valueOf(Constants.resolveColorAttr(this, R.attr.colorOnPrimary)));
 			
 			//Updating the badge text
 			bottomFABBadge.setText(Constants.intToFormattedString(getResources(), viewModel.conversationInfo.getUnreadMessageCount()));
@@ -2395,7 +2405,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Checking if the request was denied
 				if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
 					//Creating a dialog
-					AlertDialog dialog = new AlertDialog.Builder(Messaging.this)
+					AlertDialog dialog = new MaterialAlertDialogBuilder(Messaging.this)
 							.setTitle(R.string.message_permissionrejected)
 							.setMessage(R.string.message_permissiondetails_microphone_failedrequest)
 							.setPositiveButton(R.string.action_retry, (dialogInterface, which) -> {

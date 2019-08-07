@@ -28,6 +28,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -539,7 +540,7 @@ public class Conversations extends AppCompatCompositeActivity {
 				return true;
 			case R.id.action_feedback: //Send feedback
 				//Showing a dialog
-				new AlertDialog.Builder(this)
+				new MaterialAlertDialogBuilder(this)
 						.setTitle(R.string.action_sendfeedback)
 						.setMessage(R.string.dialog_feedback_message)
 						.setNeutralButton(R.string.dialog_feedback_email, (dialog, which) -> {
@@ -1369,7 +1370,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Checking if the item is the delete button
 			else if(menuItem.getItemId() == R.id.action_delete) {
 				//Displaying a dialog
-				new AlertDialog.Builder(Conversations.this)
+				new MaterialAlertDialogBuilder(Conversations.this)
 						//Setting the message
 						.setMessage(getResources().getQuantityString(R.plurals.message_confirm_deleteconversation, selectedConversations))
 						//Setting the button

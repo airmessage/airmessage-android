@@ -36,6 +36,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.util.BiConsumer;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.lang.ref.WeakReference;
@@ -691,7 +692,7 @@ public class NewMessage extends AppCompatActivity {
 					recipientInput.setText("");
 				} else {
 					//Showing a dialog
-					new AlertDialog.Builder(NewMessage.this)
+					new MaterialAlertDialogBuilder(NewMessage.this)
 							.setTitle(R.string.contact_address_select)
 							.setItems(contactInfo.addresses.toArray(new String[0]), ((dialogInterface, index) -> {
 								//Adding the selected chip
@@ -990,7 +991,7 @@ public class NewMessage extends AppCompatActivity {
 							recipientInput.setText("");
 						} else {
 							//Showing a dialog
-							new AlertDialog.Builder(NewMessage.this)
+							new MaterialAlertDialogBuilder(NewMessage.this)
 									.setTitle(R.string.imperative_selectdestination)
 									.setItems(contactInfo.addresses.toArray(new String[0]), ((dialogInterface, index) -> {
 										//Adding the selected chip

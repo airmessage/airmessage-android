@@ -282,12 +282,17 @@
 		<item quantity="one">%d sélectionnée</item>
 		<item quantity="other">%d sélectionnées</item>
 	</plurals>
-	
-	<string-array name="preference_appearance_theme_entries">
+
+	<string-array name="preference_appearance_theme_entries_old">
+		<item>Lumineux</item>
+		<item>Sombre</item>
+		<item>Défini par l\'économie d\'énergie</item>
+	</string-array>
+
+	<string-array name="preference_appearance_theme_entries_androidQ">
+		<item>Lumineux</item>
+		<item>Sombre</item>
 		<item>Assortir le système</item>
-		<item>Automatique</item>
-		<item>Toujours lumineux</item>
-		<item>Toujours sombre</item>
 	</string-array>
 	
 	<string name="message_serverstatus_authfail">Le mot de passe a été rejeté</string>

@@ -73,6 +73,7 @@ import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 import com.google.android.gms.common.util.BiConsumer;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.pnikosis.materialishprogress.ProgressWheel;
 
 import org.lukhnos.nnio.file.Paths;
@@ -111,6 +112,7 @@ import androidx.collection.LongSparseArray;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.graphics.ColorUtils;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.TransitionManager;
@@ -3131,7 +3133,7 @@ class ConversationManager {
 				final WeakReference<Context> contextReference = new WeakReference<>(newContext);
 				
 				//Configuring the dialog
-				AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(newContext)
+				MaterialAlertDialogBuilder dialogBuilder = new MaterialAlertDialogBuilder(newContext)
 						.setTitle(R.string.message_messageerror_title)
 						.setNeutralButton(R.string.action_deletemessage, (dialog, which) -> {
 							Context anotherNewContext = contextReference.get();
@@ -3314,7 +3316,7 @@ class ConversationManager {
 			textView.setText(details);
 			
 			//Showing the dialog
-			new AlertDialog.Builder(context)
+			new MaterialAlertDialogBuilder(context)
 					.setTitle(R.string.message_messageerror_details_title)
 					.setView(dialogView)
 					.setNeutralButton(R.string.action_copytoclipboard, (dialog, which) -> {
@@ -4616,7 +4618,8 @@ class ConversationManager {
 					textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
 				} else {
 					backgroundColor = context.getResources().getColor(R.color.colorPrimary, null);
-					textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+					//textColor = context.getResources().getColor(R.color.textColorWhite, null);
+					textColor = Constants.resolveColorAttr(context, R.attr.colorOnPrimary);
 				}
 			} else {
 				if(Preferences.getPreferenceAdvancedColor(context)) {
@@ -4706,7 +4709,7 @@ class ConversationManager {
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
-						new AlertDialog.Builder(newContext)
+						new MaterialAlertDialogBuilder(newContext)
 								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()
@@ -5162,8 +5165,9 @@ class ConversationManager {
 					cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoing, null));
 					cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorMessageOutgoingAccent, null));
 				} else {
-					cslText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhite, null));
-					cslSecondaryText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhiteSecondary, null));
+					int colorOnPrimary = Constants.resolveColorAttr(context, R.attr.colorOnPrimary);
+					cslText = ColorStateList.valueOf(colorOnPrimary);
+					cslSecondaryText = ColorStateList.valueOf(ColorUtils.setAlphaComponent(colorOnPrimary, Constants.secondaryAlphaInt));
 					cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorPrimary, null));
 					cslAccent = ColorStateList.valueOf(context.getResources().getColor(R.color.colorPrimaryLight, null));
 				}
@@ -5350,7 +5354,7 @@ class ConversationManager {
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 						
 						//Showing a dialog
-						new AlertDialog.Builder(newContext)
+						new MaterialAlertDialogBuilder(newContext)
 								.setTitle(R.string.message_messagedetails_title)
 								.setMessage(stringBuilder.toString())
 								.create()

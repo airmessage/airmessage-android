@@ -188,7 +188,9 @@ public class Constants {
 	static final String bulletSeparator = " • ";
 	
 	//Creating the reference constants
-	static final float disabledAlpha = 0.54f;
+	static final float disabledAlpha = 0.54F;
+	static final int rippleAlphaInt = 51; //20%
+	static final int secondaryAlphaInt = 179; //70%
 	static final int[] effectColors = {
 			0xFCE18A, //Yellow
 			0xFF726D, //Orange

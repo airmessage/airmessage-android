@@ -22,6 +22,6 @@
 	
 	<style name="Pass.AppTheme.Setup" parent="Base.DayNight.NoActionBar">
 		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
-		<item name="android:navigationBarColor">?android:attr/colorBackgroundFloating</item>
+		<item name="android:navigationBarColor">@color/colorToolbar</item>
 	</style>
 </resources>

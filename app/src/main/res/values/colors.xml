@@ -6,6 +6,9 @@
     <color name="colorAccent">@color/colorPrimary</color>
 	<color name="colorAccentDark">@color/colorPrimaryDark</color>
 
+	<color name="colorBackground">#FAFAFA</color>
+	<color name="colorToolbar">#FFFFFF</color>
+
 	<color name="colorTextPrimary">#DE000000</color>
 	
 	<color name="colorExperimental">#651FFF</color>
@@ -58,7 +61,8 @@
 	
 	<color name="colorTextWhite">#FFFFFF</color>
 	<color name="colorTextWhiteSecondary">#B3FFFFFF</color>
-	
+	<color name="colorTextBlack">#000000</color>
+
 	<color name="imageDrawDrawer">#80212121</color>
 	<color name="drawColor_red">#F44336</color>
 	<color name="drawColor_orange">#FF9800</color>

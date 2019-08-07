@@ -31,6 +31,7 @@ import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 
 public class ServerSetup extends AppCompatActivity {
@@ -287,7 +288,7 @@ public class ServerSetup extends AppCompatActivity {
 			List<ConversationManager.ConversationInfo> conversations = ConversationManager.getConversations();
 			if(conversations != null && !conversations.isEmpty()) {
 				//Showing a warning
-				new AlertDialog.Builder(this)
+				new MaterialAlertDialogBuilder(this)
 						.setTitle(R.string.message_setup_sync_warning_title)
 						.setMessage(R.string.message_setup_sync_description)
 						.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
@@ -449,35 +450,35 @@ public class ServerSetup extends AppCompatActivity {
 		
 		switch(reason) {
 			case ConnectionService.intentResultCodeInternalException: //Internal exception
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new MaterialAlertDialogBuilder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_internalexception)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultCodeBadRequest: //Bad request
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new MaterialAlertDialogBuilder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_badrequest)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultCodeConnection: //Connection failed
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new MaterialAlertDialogBuilder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_connectionerrror)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultCodeUnauthorized: //Authentication failed
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new MaterialAlertDialogBuilder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_authfail)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;
 			case ConnectionService.intentResultCodeClientOutdated: //Client outdated
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new MaterialAlertDialogBuilder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_clientoutdated)
 						.setPositiveButton(R.string.action_update, (dialog, which) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))))
@@ -485,7 +486,7 @@ public class ServerSetup extends AppCompatActivity {
 						.create();
 				break;
 			case ConnectionService.intentResultCodeServerOutdated: //Server outdated
-				alertDialog = new AlertDialog.Builder(this)
+				alertDialog = new MaterialAlertDialogBuilder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
 						.setMessage(R.string.message_serverstatus_serveroutdated)
 						.setPositiveButton(R.string.screen_help, (dialog, which) -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)))
