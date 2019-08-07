@@ -159,6 +159,7 @@ class NotificationUtils {
 			NotificationCompat.Action action =
 					new NotificationCompat.Action.Builder(R.drawable.check_circle, context.getResources().getString(R.string.action_markread), pendingIntent)
 							.setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
+							.setShowsUserInterface(false)
 							.build();
 			
 			//Adding the action
@@ -186,6 +187,7 @@ class NotificationUtils {
 							.setAllowGeneratedReplies(true)
 							.addRemoteInput(remoteInput)
 							.setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+							.setShowsUserInterface(false)
 							.build();
 			
 			//Adding the action
