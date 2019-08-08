@@ -9,18 +9,23 @@
 		<item name="android:windowBackground">@color/colorBackgroundLight</item>
 	</style> -->
 	
-	<style name="Base.DayNight" parent="@style/Theme.MaterialComponents.Light" />
-	<style name="Base.DayNight.NoActionBar" parent="@style/Theme.MaterialComponents.Light.NoActionBar" />
+	<style name="Base.DayNight" parent="@style/Theme.MaterialComponents.DayNight">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorPrimary</item>
+		<item name="android:colorBackground">@color/colorBackground</item>
+	</style>
+	<style name="Base.DayNight.NoActionBar" parent="@style/Theme.MaterialComponents.DayNight.NoActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorPrimary</item>
+		<item name="android:colorBackground">@color/colorBackground</item>
+	</style>
 	
 	<style name="Pass.DayNight" parent="@style/Base.DayNight" />
 	<style name="Pass.DayNight.NoActionBar" parent="@style/Base.DayNight.NoActionBar" />
 	
 	<style name="DayNight" parent="@style/Pass.DayNight">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-		<item name="android:colorBackground">@color/colorBackground</item>
-
 		<!-- <item name="android:statusBarColor">@color/colorBackgroundSurface</item>
 		<item name="android:windowLightStatusBar">true</item> -->
 		
@@ -28,20 +33,11 @@
 	</style>
 
 	<style name="DayNight.Translucent" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-
 		<item name="android:windowTranslucentStatus">true</item>
 		<item name="android:windowTranslucentNavigation">true</item>
 	</style>
 	
 	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-		<item name="android:colorBackground">@color/colorBackground</item>
-
 		<item name="windowActionModeOverlay">true</item>
 		<item name="android:actionModeBackground">@android:color/transparent</item>
 		<item name="android:actionModeCloseDrawable">@drawable/close</item>
@@ -87,11 +83,6 @@
 	
 	<style name="Pass.AppTheme.Setup" parent="Base.DayNight.NoActionBar" />
 	<style name="AppTheme.Setup" parent="@style/Pass.AppTheme.Setup">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorAccent</item>
-		<item name="android:colorBackground">@color/colorBackground</item>
-		
 		<item name="android:statusBarColor">?android:attr/colorBackground</item>
 		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
 	</style>

@@ -1090,41 +1090,31 @@ public class Messaging extends AppCompatCompositeActivity implements OnMapReadyC
 	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		super.onActivityResult(requestCode, resultCode, intent);
 		
-		//Checking if the request code is taking a picture
-		if(requestCode == intentTakePicture) {
-			//Returning if the current input state is not the content bar
-			//if(viewModel.inputState != inputStateContent) return;
-			
-			//Checking if the result was a success
-			if(resultCode == RESULT_OK) {
-				//Queuing the file
-				if(viewModel.targetFileIntent != null)
-					new QueueFileAsyncTask(this).execute(viewModel.targetFileIntent);
-			}
-		}
-		//Otherwise if the request code is the media picker
-		else if(requestCode == intentPickFile) {
-			//Returning if the current input state is not the content bar
-			//if(viewModel.inputState != ActivityViewModel.inputStateContent) return;
-			
-			//Checking if the result was a success
-			if(resultCode == RESULT_OK) {
-				//Getting the content
-				if(intent.getData() != null) {
-					//Queuing the content
-					new QueueUriAsyncTask(this).execute(intent.getData());
-				} else if(intent.getClipData() != null) {
-					//Getting the content
-					Uri[] list = new Uri[intent.getClipData().getItemCount()];
-					for(int i = 0; i < intent.getClipData().getItemCount(); i++) list[i] = intent.getClipData().getItemAt(i).getUri();
-					
-					//Queuing the content
-					new QueueUriAsyncTask(this).execute(list);
-				}
-				break;
-			case intentTakePicture:
+		switch(requestCode) {
+			case intentTakePicture: //Taking a picture
+				//Returning if the current input state is not the content bar
+				//if(viewModel.inputState != inputStateContent) return;
+				
 				//Queuing the file
 				if(resultCode == RESULT_OK && viewModel.targetFileIntent != null) new QueueFileAsyncTask(this).execute(viewModel.targetFileIntent);
+				break;
+			case intentPickFile: //Media picker
+				//Returning if the current input state is not the content bar
+				//if(viewModel.inputState != ActivityViewModel.inputStateContent) return;
+				
+				//Checking if the result was a success
+				if(resultCode == RESULT_OK) {
+					//Getting the content
+					if(intent.getData() != null) {
+						//Queuing the content
+						new QueueUriAsyncTask(this).execute(intent.getData());
+					} else if(intent.getClipData() != null) {
+						Uri[] list = new Uri[intent.getClipData().getItemCount()];
+						for(int i = 0; i < intent.getClipData().getItemCount(); i++)
+							list[i] = intent.getClipData().getItemAt(i).getUri();
+						new QueueUriAsyncTask(this).execute(list);
+					}
+				}
 				break;
 			case intentLocationResolution:
 				//Updating the attachment section

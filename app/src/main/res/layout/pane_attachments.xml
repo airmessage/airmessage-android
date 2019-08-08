@@ -134,7 +134,7 @@
 					android:layout_height="wrap_content"
 					android:layout_gravity="center"
 					android:src="@drawable/location"
-					android:tint="@android:color/white" />
+					android:tint="?attr/colorOnPrimary" />
 			</androidx.cardview.widget.CardView>
 
 			<FrameLayout
@@ -145,7 +145,7 @@
 				android:layout_marginRight="@dimen/contenttile_margin"
 				android:layout_weight="1"
 				android:background="@drawable/rounded_selectable_contenttile"
-				android:backgroundTint="?android:attr/colorBackground"
+				android:backgroundTint="@color/colorToolbar"
 				android:padding="10dp"
 				android:textColor="?android:attr/textColorSecondary">
 				<TextView
@@ -154,7 +154,8 @@
 					android:layout_height="wrap_content"
 					android:layout_gravity="center"
 					android:gravity="center"
-					android:text="@string/imperative_permission_location" />
+					android:text="@string/imperative_permission_location"
+					android:textColor="?android:attr/textColorSecondary" />
 			</FrameLayout>
 
 			<androidx.cardview.widget.CardView

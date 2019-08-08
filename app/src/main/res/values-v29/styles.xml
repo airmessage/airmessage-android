@@ -7,4 +7,9 @@
 
 		<item name="android:navigationBarColor">@android:color/transparent</item>
 	</style>
+
+	<style name="DayNight.Translucent" parent="@style/Pass.DayNight.NoActionBar">
+		<item name="android:windowTranslucentStatus">true</item>
+		<item name="android:navigationBarColor">@android:color/transparent</item>
+	</style>
 </resources>
