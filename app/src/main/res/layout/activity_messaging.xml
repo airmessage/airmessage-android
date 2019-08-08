@@ -15,7 +15,8 @@
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent"
-		android:background="@color/colorToolbar">
+		android:background="@color/colorToolbar"
+		android:alpha="0.97">
 		<!-- Toolbar -->
 		<com.google.android.material.appbar.MaterialToolbar
 			android:id="@+id/toolbar"
@@ -410,10 +411,10 @@
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/appbar" />
+		app:layout_constraintTop_toTopOf="parent" />
 
 	<!-- Info page -->
-	<FrameLayout
+	<me.tagavari.airmessage.view.RoundedFrameLayout
 		android:id="@+id/panel_messaginginfo"
 		android:layout_width="0px"
 		android:layout_height="wrap_content"
@@ -422,11 +423,13 @@
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/appbar">
+		app:layout_constraintTop_toBottomOf="@id/appbar"
+		app:radiusTop="8dp"
+		android:visibility="gone">
 		<ViewStub
 			android:id="@+id/viewstub_messaginginfo"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:layout="@layout/pane_messaginginfo" />
-	</FrameLayout>
+	</me.tagavari.airmessage.view.RoundedFrameLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

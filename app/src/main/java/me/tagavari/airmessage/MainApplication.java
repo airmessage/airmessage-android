@@ -344,8 +344,6 @@ public class MainApplication extends Application {
 		}
 	}
 	
-	
-	
 	static final String darkModeFollowSystem = "follow_system";
 	//static final String darkModeAutomatic = "auto";
 	static final String darkModeLight = "off";

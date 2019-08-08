@@ -12,37 +12,40 @@ import me.tagavari.airmessage.Constants;
 import me.tagavari.airmessage.R;
 
 public class RoundedFrameLayout extends FrameLayout {
-	private static final float defaultRadius = 4F;
-	private float cornerRadius;
+	private float[] radii = new float[8];
 	
 	private RectF rectF;
 	private Path path = new Path();
 	
 	public RoundedFrameLayout(Context context) {
 		super(context);
-		init(context, null, 0);
 	}
 	
 	public RoundedFrameLayout(Context context, AttributeSet attrs) {
 		super(context, attrs);
-		init(context, attrs, 0);
+		TypedArray typedArray = context.getTheme().obtainStyledAttributes(attrs, R.styleable.RoundedView, 0, 0);
+		
+		try {
+			float radius = typedArray.getDimensionPixelSize(R.styleable.RoundedView_radius, -1);
+			if(radius != -1) {
+				for(int i = 0; i < radii.length; i++) radii[i] = radius;
+			} else {
+				float radiusTop = typedArray.getDimensionPixelSize(R.styleable.RoundedView_radiusTop, 0);
+				for(int i = 0; i < 4; i++) radii[i] = radiusTop;
+				float radiusBottom = typedArray.getDimensionPixelSize(R.styleable.RoundedView_radiusBottom, 0);
+				for(int i = 4; i < 8; i++) radii[i] = radiusBottom;
+			}
+		} finally {
+			typedArray.recycle();
+		}
 	}
 	
-	private void init(Context context, AttributeSet attrs, int defStyle) {
-		//Setting the default radius
-		DisplayMetrics metrics = context.getResources().getDisplayMetrics();
-		float radius = defaultRadius;
-		
-		if(attrs != null) {
-			TypedArray typedArray = context.getTheme().obtainStyledAttributes(attrs, R.styleable.RoundedViewSimple, 0, 0);
-			
-			try {
-				radius = typedArray.getDimension(R.styleable.RoundedViewSimple_radius, radius);
-			} finally {
-				typedArray.recycle();
-			}
-		}
-		cornerRadius = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, defaultRadius, metrics);
+	public void setRadii(float topLeft, float topRight, float bottomRight, float bottomLeft) {
+		//Setting the radii
+		radii = new float[]{topLeft, topLeft,
+							topRight, topRight,
+							bottomRight, bottomRight,
+							bottomLeft, bottomLeft};
 	}
 	
 	@Override
@@ -70,7 +73,7 @@ public class RoundedFrameLayout extends FrameLayout {
 	
 	private void resetPath() {
 		path.reset();
-		path.addRoundRect(rectF, cornerRadius, cornerRadius, Path.Direction.CW);
+		path.addRoundRect(rectF, radii, Path.Direction.CW);
 		path.close();
 	}
 }

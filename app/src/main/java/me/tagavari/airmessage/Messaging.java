@@ -20,6 +20,7 @@ import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
+import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.PointF;
 import android.graphics.Rect;
@@ -58,7 +59,7 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.ViewStub;
 import android.view.ViewTreeObserver;
-import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
@@ -89,11 +90,15 @@ import androidx.core.content.FileProvider;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.util.Consumer;
 import androidx.core.util.Pools;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.inputmethod.EditorInfoCompat;
 import androidx.core.view.inputmethod.InputConnectionCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
@@ -132,6 +137,7 @@ import java.util.Objects;
 
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.view.AppleEffectView;
+import me.tagavari.airmessage.view.OverScrollScrollView;
 import me.tagavari.airmessage.view.VisualizerView;
 import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
@@ -175,6 +181,11 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	//Creating the state values
 	private boolean currentScreenEffectPlaying = false;
+	
+	private boolean bottomDetailsWindowIntercept = false;
+	private float bottomDetailsWindowDragY = -1;
+	//private float bottomDetailsWindowStartY;
+	private float bottomDetailsWindowEndY;
 	
 	//Creating the listener values
 	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
@@ -251,6 +262,13 @@ public class Messaging extends AppCompatCompositeActivity {
 			rebuildContactViews();
 		}
 	};
+	private final OverScrollScrollView.OverScrollListener detailsPanelOverScrollListener = new OverScrollScrollView.OverScrollListener() {
+		@Override
+		public void onOverScroll(float scrollY) {
+			//Only accepting when the user overscrolls from the top of the window
+			if(scrollY > 0) bottomDetailsWindowIntercept = true;
+		}
+	};
 	
 	//Creating the view values
 	private View rootView;
@@ -271,6 +289,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	private FloatingActionButton bottomFAB;
 	private TextView bottomFABBadge;
 	private AppleEffectView appleEffectView;
+	private FrameLayout bottomDetailsPanel;
+	
 	private final HashMap<ConversationManager.MemberInfo, View> memberListViews = new HashMap<>();
 	
 	private View detailScrim;
@@ -588,10 +608,37 @@ public class Messaging extends AppCompatCompositeActivity {
 		bottomFAB = findViewById(R.id.fab_bottom);
 		bottomFABBadge = findViewById(R.id.fab_bottom_badge);
 		appleEffectView = findViewById(R.id.effect_foreground);
+		bottomDetailsPanel = findViewById(R.id.panel_messaginginfo);
 		
 		detailScrim = findViewById(R.id.scrim);
 		
 		listAttachmentQueue = findViewById(R.id.inputbar_attachments);
+		
+		//Setting the window layout
+		getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+		getWindow().setStatusBarColor(Color.TRANSPARENT);
+		
+		ViewCompat.setOnApplyWindowInsetsListener(rootView, new OnApplyWindowInsetsListener() {
+			@Override
+			public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
+				appBar.setPadding(appBar.getPaddingLeft(), insets.getSystemWindowInsetTop(), appBar.getPaddingRight(), appBar.getPaddingBottom());
+				
+				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.getSystemWindowInsetBottom());
+				/* ValueAnimator valueAnimator = ValueAnimator.ofInt(rootView.getPaddingBottom(), insets.getSystemWindowInsetBottom());
+				valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+					@Override
+					public void onAnimationUpdate(ValueAnimator valueAnimator) {
+						int value = (int) valueAnimator.getAnimatedValue();
+						rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), value);
+					}
+				});
+				valueAnimator.setDuration(100);
+				valueAnimator.setInterpolator(new FastOutSlowInInterpolator());
+				valueAnimator.start(); */
+				
+				return insets.consumeSystemWindowInsets();
+			}
+		});
 		
 		//Setting the plugin views
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
@@ -1012,6 +1059,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+		super.onActivityResult(requestCode, resultCode, intent);
+		
 		//Checking if the request code is taking a picture
 		if(requestCode == intentTakePicture) {
 			//Returning if the current input state is not the content bar
@@ -1295,7 +1344,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Animating in the panel
 			ValueAnimator animator = ValueAnimator.ofInt(0, targetHeight);
 			animator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
-			animator.setInterpolator(new AccelerateDecelerateInterpolator());
+			animator.setInterpolator(new FastOutSlowInInterpolator());
 			animator.addUpdateListener(animation -> {
 				int value = (int) animation.getAnimatedValue();
 				attachmentsPanel.getLayoutParams().height = value;
@@ -1334,7 +1383,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(animate) {
 			ValueAnimator animator = ValueAnimator.ofInt(attachmentsPanel.getHeight(), 0);
 			animator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
-			animator.setInterpolator(new AccelerateDecelerateInterpolator());
+			animator.setInterpolator(new FastOutSlowInInterpolator());
 			animator.addUpdateListener(animation -> {
 				int value = (int) animation.getAnimatedValue();
 				attachmentsPanel.getLayoutParams().height = value;
@@ -1652,12 +1701,16 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Adding the conversation members
 			detailsBuildConversationMembers(new ArrayList<>(viewModel.conversationInfo.getConversationMembers()));
+			
+			//Setting the panel position
+			bottomDetailsPanel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+			bottomDetailsPanel.setTranslationY(bottomDetailsPanel.getMeasuredHeight());
 		} else {
 			((ScrollView) findViewById(R.id.group_messaginginfo_scroll)).fullScroll(ScrollView.FOCUS_UP);
 		}
 		
 		//Finding the views
-		FrameLayout panel = findViewById(R.id.panel_messaginginfo);
+		FrameLayout panel = bottomDetailsPanel;
 		ViewGroup content = findViewById(R.id.group_messaginginfo_content);
 		
 		//Measuring the content
@@ -1677,30 +1730,48 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		if(restore) {
-			//Configuring the views
+			//Showing the details panel
+			bottomDetailsPanel.setVisibility(View.VISIBLE);
+			bottomDetailsPanel.setTranslationY(0);
+			
+			//Showing the scrim
 			detailScrim.setVisibility(View.VISIBLE);
 			detailScrim.setAlpha(1);
+			
+			//ADding the overscroll listener
+			OverScrollScrollView scrollView = panel.findViewById(R.id.group_messaginginfo_scroll);
+			scrollView.setOverScrollListener(detailsPanelOverScrollListener);
 		} else {
-			//Animating in the panel
-			int duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
-			Animation animation = AnimationUtils.loadAnimation(this, R.anim.messagedetails_slide_in_bottom);
-			animation.setAnimationListener(new Animation.AnimationListener() {
-				@Override
-				public void onAnimationStart(Animation animation) {
-					panel.setVisibility(View.VISIBLE);
-				}
-				
-				@Override
-				public void onAnimationEnd(Animation animation) {
-				}
-				
-				@Override
-				public void onAnimationRepeat(Animation animation) {
-				}
-			});
-			panel.startAnimation(animation);
-			detailScrim.animate().alpha(1).withStartAction(() -> detailScrim.setVisibility(View.VISIBLE)).setDuration(duration).start();
+			animateDetailsPanelOpen();
 		}
+	}
+	
+	private void animateDetailsPanelOpen() {
+		//Getting the animation duration
+		long duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
+		
+		//Animating in the panel
+		FrameLayout panel = bottomDetailsPanel;
+		panel.animate()
+				.translationY(0)
+				.setDuration(duration)
+				.setInterpolator(new DecelerateInterpolator())
+				.setListener(new AnimatorListenerAdapter() {
+					@Override
+					public void onAnimationStart(Animator animation) {
+						panel.setVisibility(View.VISIBLE);
+					}
+					
+					@Override
+					public void onAnimationEnd(Animator animation) {
+						//Setting the overscroll listener
+						OverScrollScrollView scrollView = panel.findViewById(R.id.group_messaginginfo_scroll);
+						scrollView.setOverScrollListener(detailsPanelOverScrollListener);
+					}
+				}).start();
+		
+		//Animating in the scrim
+		detailScrim.animate().alpha(1).withStartAction(() -> detailScrim.setVisibility(View.VISIBLE)).setDuration(duration).start();
 	}
 	
 	private void closeDetailsPanel() {
@@ -1710,27 +1781,46 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the panel as closed
 		viewModel.isDetailsPanelOpen = false;
 		
-		//Animating out the panel
-		FrameLayout panel = findViewById(R.id.panel_messaginginfo);
-		Animation animation = AnimationUtils.loadAnimation(this, R.anim.messagedetails_slide_out_bottom);
-		animation.setAnimationListener(new Animation.AnimationListener() {
-			@Override
-			public void onAnimationStart(Animation animation) {
-			}
-			
-			@Override
-			public void onAnimationEnd(Animation animation) {
-				panel.setVisibility(View.GONE);
-			}
-			
-			@Override
-			public void onAnimationRepeat(Animation animation) {
-			}
-		});
-		panel.startAnimation(animation);
+		//Starting the animation
+		animateDetailsPanelClose();
+	}
+	
+	private void animateDetailsPanelClose() {
+		//Getting the animation duration
+		long duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
 		
-		int duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
+		//Animating out the panel
+		FrameLayout panel = bottomDetailsPanel;
+		panel.animate()
+				.translationY(panel.getHeight())
+				.setDuration(duration)
+				.setInterpolator(new DecelerateInterpolator())
+				.setListener(new AnimatorListenerAdapter() {
+					@Override
+					public void onAnimationStart(Animator animation) {
+						//Disabling the scroll listener
+						OverScrollScrollView scrollView = panel.findViewById(R.id.group_messaginginfo_scroll);
+						scrollView.setOverScrollListener(null);
+					}
+					
+					@Override
+					public void onAnimationEnd(Animator animation) {
+						//Hiding the panel
+						panel.setVisibility(View.GONE);
+					}
+				}).start();
+		
+		//Animating out the scrim
 		detailScrim.animate().alpha(0).withEndAction(() -> detailScrim.setVisibility(View.GONE)).setDuration(duration).start();
+	}
+	
+	void releaseDragDetailsPanel() {
+		//Checking if the panel should collapse (more than 100dp dragged down)
+		if(bottomDetailsPanel.getTranslationY() > Constants.dpToPx(100)) {
+			closeDetailsPanel();
+		} else {
+			animateDetailsPanelOpen();
+		}
 	}
 	
 	private boolean checkInputVisibility() {
@@ -1940,22 +2030,60 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	@Override
-	public boolean dispatchTouchEvent(MotionEvent event) {
-		//Calling the super method if there is no recording taking place
-		if(!viewModel.isRecording()) return super.dispatchTouchEvent(event);
+	public boolean dispatchTouchEvent(MotionEvent motionEvent) {
+		//Checking if there is a recording taking place
+		if(viewModel.isRecording()) {
+			//Consuming the move event (as to not affect the elements below)
+			if(motionEvent.getAction() == MotionEvent.ACTION_MOVE) return true;
+			else if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
+				//Stopping the recording session
+				stopRecording();
+				
+				//Returning true to consume the event
+				return true;
+			}
+		}
 		
-		//Consuming the move event (as to not affect the elements below)
-		if(event.getAction() == MotionEvent.ACTION_MOVE) return true;
-		else if(event.getAction() == MotionEvent.ACTION_UP) {
-			//Stopping the recording session
-			stopRecording();
-			
-			//Returning true to consume the event
-			return true;
+		if(bottomDetailsWindowIntercept) {
+			if(motionEvent.getAction() == MotionEvent.ACTION_MOVE) {
+				//Assigning the start data
+				if(bottomDetailsWindowDragY == -1) {
+					bottomDetailsWindowDragY = motionEvent.getY();
+					bottomDetailsWindowEndY = bottomDetailsPanel.getHeight();
+				} else {
+					//Calculating the Y movement delta
+					float deltaY = motionEvent.getRawY() - bottomDetailsWindowDragY;
+					bottomDetailsWindowDragY = motionEvent.getY();
+					
+					//Checking if the panel is going to be placed back at its original location
+					if(bottomDetailsPanel.getTranslationY() + deltaY <= 0) {
+						//Setting the translation and scrim opacity
+						bottomDetailsPanel.setTranslationY(0);
+						detailScrim.setAlpha(1);
+						
+						//Cancelling the motion
+						bottomDetailsWindowIntercept = false;
+						bottomDetailsWindowDragY = -1;
+						releaseDragDetailsPanel();
+					} else {
+						//Setting the bottom panel translation
+						bottomDetailsPanel.setTranslationY(Math.min(bottomDetailsPanel.getTranslationY() + deltaY, bottomDetailsWindowEndY));
+						
+						//Setting the scrim opacity
+						detailScrim.setAlpha(1 - (bottomDetailsPanel.getTranslationY() / bottomDetailsPanel.getHeight()));
+						
+						return true;
+					}
+				}
+			} else if(motionEvent.getAction() == MotionEvent.ACTION_UP || motionEvent.getAction() == MotionEvent.ACTION_CANCEL) {
+				bottomDetailsWindowIntercept = false;
+				bottomDetailsWindowDragY = -1;
+				releaseDragDetailsPanel();
+			}
 		}
 		
 		//Calling the super method
-		return super.dispatchTouchEvent(event);
+		return super.dispatchTouchEvent(motionEvent);
 	}
 	
 	private void colorUI(ViewGroup root) {
@@ -1964,7 +2092,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Getting the color
 		int color = viewModel.conversationInfo.getConversationColor();
-		color = ColorHelper.darkModeLightenColor(color);
+		if(Constants.isNightMode(getResources())) color = ColorHelper.darkModeLightenColor(color);
 		int darkerColor = ColorHelper.darkenColor(color);
 		int lighterColor = ColorHelper.lightenColor(color);
 		

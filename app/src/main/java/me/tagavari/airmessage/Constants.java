@@ -885,9 +885,7 @@ public class Constants {
 			case Configuration.UI_MODE_NIGHT_YES:
 				return true;
 			case Configuration.UI_MODE_NIGHT_NO:
-				return false;
 			case Configuration.UI_MODE_NIGHT_UNDEFINED:
-				return false;
 			default:
 				return false;
 		}
