@@ -622,6 +622,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			@Override
 			public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
 				appBar.setPadding(appBar.getPaddingLeft(), insets.getSystemWindowInsetTop(), appBar.getPaddingRight(), appBar.getPaddingBottom());
+				appBar.post(() -> {
+					messageList.setPadding(messageList.getPaddingLeft(), appBar.getHeight(), messageList.getPaddingRight(), messageList.getPaddingBottom());
+				});
 				
 				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.getSystemWindowInsetBottom());
 				/* ValueAnimator valueAnimator = ValueAnimator.ofInt(rootView.getPaddingBottom(), insets.getSystemWindowInsetBottom());
@@ -728,7 +731,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		contentRecordButton.setOnTouchListener(recordingTouchListener); */
 		bottomFAB.setOnClickListener(view -> messageListAdapter.scrollToBottom());
 		appleEffectView.setFinishListener(() -> currentScreenEffectPlaying = false);
-		detailScrim.setOnClickListener(view -> closeDetailsPanel());
+		detailScrim.setOnClickListener(view -> closeDetailsPanel(true));
 		
 		LocalBroadcastManager.getInstance(this).registerReceiver(contactsUpdateBroadcastReceiver, new IntentFilter(MainApplication.localBCContactUpdate));
 		
@@ -1226,7 +1229,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	@Override
 	public void onBackPressed() {
 		//Closing the details panel if it is open
-		if(viewModel.isDetailsPanelOpen) closeDetailsPanel();
+		if(viewModel.isDetailsPanelOpen) closeDetailsPanel(true);
 			//Closing the attachments panel if it is open
 		else if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel(true);
 			//Otherwise passing the event to the superclass
@@ -1774,7 +1777,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		detailScrim.animate().alpha(1).withStartAction(() -> detailScrim.setVisibility(View.VISIBLE)).setDuration(duration).start();
 	}
 	
-	private void closeDetailsPanel() {
+	private void closeDetailsPanel(boolean animateAccelerate) {
 		//Returning if the conversation is not ready or the panel is already closed
 		if(viewModel.conversationInfo == null || !viewModel.isDetailsPanelOpen) return;
 		
@@ -1782,10 +1785,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewModel.isDetailsPanelOpen = false;
 		
 		//Starting the animation
-		animateDetailsPanelClose();
+		animateDetailsPanelClose(animateAccelerate);
 	}
 	
-	private void animateDetailsPanelClose() {
+	private void animateDetailsPanelClose(boolean animateAccelerate) {
 		//Getting the animation duration
 		long duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
 		
@@ -1794,7 +1797,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		panel.animate()
 				.translationY(panel.getHeight())
 				.setDuration(duration)
-				.setInterpolator(new DecelerateInterpolator())
+				.setInterpolator(animateAccelerate ? new AccelerateInterpolator() : new DecelerateInterpolator())
 				.setListener(new AnimatorListenerAdapter() {
 					@Override
 					public void onAnimationStart(Animator animation) {
@@ -1817,7 +1820,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	void releaseDragDetailsPanel() {
 		//Checking if the panel should collapse (more than 100dp dragged down)
 		if(bottomDetailsPanel.getTranslationY() > Constants.dpToPx(100)) {
-			closeDetailsPanel();
+			closeDetailsPanel(false);
 		} else {
 			animateDetailsPanelOpen();
 		}
@@ -4448,8 +4451,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				.build())
 				.setMaxStreams(2)
 				.build();
-		private int soundIDMessageIncoming = soundPool.load(getApplication(), R.raw.message_received, 1);
-		private int soundIDMessageOutgoing = soundPool.load(getApplication(), R.raw.message_sent, 1);
+		private int soundIDMessageIncoming = soundPool.load(getApplication(), R.raw.message_in, 1);
+		private int soundIDMessageOutgoing = soundPool.load(getApplication(), R.raw.message_out, 1);
 		private int soundIDMessageError = soundPool.load(getApplication(), R.raw.message_error, 1);
 		private int soundIDRecordingStart = soundPool.load(getApplication(), R.raw.recording_start, 1);
 		private int soundIDRecordingEnd = soundPool.load(getApplication(), R.raw.recording_end, 1);

@@ -468,15 +468,17 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			Constants.enforceContentWidthView(getResources(), getListView());
 			
 			//Setting the list padding
-			View reyclerView = view.findViewById(R.id.recycler_view);
-			ViewCompat.setOnApplyWindowInsetsListener(reyclerView, new OnApplyWindowInsetsListener() {
-				@Override
-				public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
-					//((ViewGroup.MarginLayoutParams) reyclerView.getLayoutParams()).bottomMargin = -insets.getSystemWindowInsetBottom();
-					reyclerView.setPadding(reyclerView.getPaddingLeft(), reyclerView.getPaddingTop(), reyclerView.getPaddingRight(), insets.getSystemWindowInsetBottom());
-					return insets.consumeSystemWindowInsets();
-				}
-			});
+			View recyclerView = view.findViewById(R.id.recycler_view);
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+				ViewCompat.setOnApplyWindowInsetsListener(recyclerView, new OnApplyWindowInsetsListener() {
+					@Override
+					public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
+						//((ViewGroup.MarginLayoutParams) reyclerView.getLayoutParams()).bottomMargin = -insets.getSystemWindowInsetBottom();
+						recyclerView.setPadding(recyclerView.getPaddingLeft(), recyclerView.getPaddingTop(), recyclerView.getPaddingRight(), insets.getSystemWindowInsetBottom());
+						return insets.consumeSystemWindowInsets();
+					}
+				});
+			}
 			
 			//if(Preferences.getPreferenceAMOLED(getContext())) setDarkAMOLED();
 		}
