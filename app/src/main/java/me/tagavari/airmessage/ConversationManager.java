@@ -16,7 +16,6 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Icon;
@@ -33,7 +32,6 @@ import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
-import android.text.style.URLSpan;
 import android.text.util.Linkify;
 import android.util.DisplayMetrics;
 import android.util.Patterns;
@@ -83,13 +81,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
-import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -106,8 +101,8 @@ import java.util.Random;
 import java.util.regex.Matcher;
 
 import androidx.annotation.DrawableRes;
+import androidx.annotation.LayoutRes;
 import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.AlertDialog;
 import androidx.collection.LongSparseArray;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
@@ -2654,9 +2649,9 @@ class ConversationManager {
 					AttachmentInfo.ViewHolder attachmentViewHolder = (AttachmentInfo.ViewHolder) attachmentInfo.getViewHolder();
 					if(attachmentViewHolder != null) {
 						attachmentViewHolder.groupDownload.setVisibility(View.GONE);
-						attachmentViewHolder.groupContent.setVisibility(View.GONE);
+						attachmentViewHolder.groupContentFrame.setVisibility(View.GONE);
 						attachmentViewHolder.groupProcessing.setVisibility(View.GONE);
-						if(attachmentViewHolder.groupFailed != null) attachmentViewHolder.groupFailed.setVisibility(View.GONE);
+						attachmentViewHolder.groupFailed.setVisibility(View.GONE);
 						attachmentInfo.updateContentView(attachmentViewHolder, newContext);
 					}
 				};
@@ -5066,8 +5061,8 @@ class ConversationManager {
 				if(isFetching) {
 					//Showing the download content view
 					viewHolder.groupDownload.setVisibility(View.VISIBLE);
-					viewHolder.groupContent.setVisibility(View.GONE);
-					if(viewHolder.groupFailed != null) viewHolder.groupFailed.setVisibility(View.GONE);
+					viewHolder.groupContentFrame.setVisibility(View.GONE);
+					viewHolder.groupFailed.setVisibility(View.GONE);
 					viewHolder.groupProcessing.setVisibility(View.GONE);
 					
 					//Hiding the content type
@@ -5086,14 +5081,15 @@ class ConversationManager {
 				else if(messageInfo.getMessageState() == Constants.messageStateCodeGhost || messageInfo.isSending) {
 					//Showing the processing view
 					viewHolder.groupDownload.setVisibility(View.GONE);
-					viewHolder.groupContent.setVisibility(View.GONE);
-					if(viewHolder.groupFailed != null) viewHolder.groupFailed.setVisibility(View.GONE);
+					viewHolder.groupContentFrame.setVisibility(View.GONE);
+					viewHolder.groupFailed.setVisibility(View.GONE);
 					viewHolder.groupProcessing.setVisibility(View.VISIBLE);
+					viewHolder.labelProcessing.setText(getResourceTypeName());
 				} else {
 					//Showing the standard download content view
 					viewHolder.groupDownload.setVisibility(View.VISIBLE);
-					viewHolder.groupContent.setVisibility(View.GONE);
-					if(viewHolder.groupFailed != null) viewHolder.groupFailed.setVisibility(View.GONE);
+					viewHolder.groupContentFrame.setVisibility(View.GONE);
+					viewHolder.groupFailed.setVisibility(View.GONE);
 					viewHolder.groupProcessing.setVisibility(View.GONE);
 					
 					if(fileSize != -1) viewHolder.labelDownloadSize.setVisibility(View.VISIBLE);
@@ -5112,8 +5108,9 @@ class ConversationManager {
 			} else {
 				//Hiding the views
 				viewHolder.groupDownload.setVisibility(View.GONE);
-				viewHolder.groupContent.setVisibility(View.GONE);
-				if(viewHolder.groupFailed != null) viewHolder.groupFailed.setVisibility(View.GONE);
+				viewHolder.groupContentFrame.setVisibility(View.GONE);
+				viewHolder.groupFailed.setVisibility(View.GONE);
+				viewHolder.labelFailed.setText(getResourceTypeName()); //In the case that the attachment decides to display this view group later on
 				viewHolder.groupProcessing.setVisibility(View.GONE);
 				
 				//Setting up the content view
@@ -5141,7 +5138,7 @@ class ConversationManager {
 			//Assigning the drawable
 			viewHolder.groupDownload.setBackground(drawable);
 			viewHolder.groupProcessing.setBackground(drawable);
-			if(viewHolder.groupFailed != null) viewHolder.groupFailed.setBackground(drawable);
+			viewHolder.groupFailed.setBackground(drawable);
 			
 			//Updating the content view's edges
 			updateContentViewEdges(viewHolder, drawable, anchoredTop, anchoredBottom, alignToRight, pxCornerAnchored, pxCornerUnanchored);
@@ -5203,11 +5200,9 @@ class ConversationManager {
 			viewHolder.labelProcessing.setTextColor(cslText);
 			viewHolder.labelProcessing.setCompoundDrawableTintList(cslText);
 			
-			if(viewHolder.groupFailed != null) {
-				viewHolder.groupFailed.setBackgroundTintList(cslBackground);
-				viewHolder.labelFailed.setTextColor(cslText);
-				viewHolder.labelFailed.setCompoundDrawableTintList(cslText);
-			}
+			viewHolder.groupFailed.setBackgroundTintList(cslBackground);
+			viewHolder.labelFailed.setTextColor(cslText);
+			viewHolder.labelFailed.setCompoundDrawableTintList(cslText);
 			
 			//Updating the content view color
 			updateContentViewColor(viewHolder, context, cslText, cslBackground, cslAccent);
@@ -5510,6 +5505,22 @@ class ConversationManager {
 		
 		//abstract ViewHolder createViewHolder(Context context, ViewGroup parent);
 		
+		void openAttachmentFile(Context context) {
+			//Returning if there is no content
+			if(file == null) return;
+			
+			//Creating a content URI
+			Uri content = FileProvider.getUriForFile(context, MainApplication.fileAuthority, file);
+			
+			//Launching the content viewer
+			Intent intent = new Intent();
+			intent.setAction(Intent.ACTION_VIEW);
+			intent.setDataAndType(content, fileType);
+			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+			if(intent.resolveActivity(context.getPackageManager()) != null) context.startActivity(intent);
+			else Toast.makeText(context, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
+		}
+		
 		static abstract class ViewHolder extends MessageComponent.ViewHolder {
 			final ViewGroup groupDownload;
 			final ProgressBar progressDownload;
@@ -5517,13 +5528,13 @@ class ConversationManager {
 			final TextView labelDownloadType;
 			final ImageView imageDownload;
 			
-			final ViewGroup groupContent;
-			
-			final ViewGroup groupFailed; //This field can be null in some cases (other attachment info), so always do validity checks before using it
+			final ViewGroup groupFailed;
 			final TextView labelFailed;
 			
 			final ViewGroup groupProcessing;
 			final TextView labelProcessing;
+			
+			final ViewGroup groupContentFrame;
 			
 			ViewHolder(View view) {
 				super(view);
@@ -5534,13 +5545,13 @@ class ConversationManager {
 				labelDownloadType = groupDownload.findViewById(R.id.label_type);
 				imageDownload = groupDownload.findViewById(R.id.download_icon);
 				
-				groupContent = view.findViewById(R.id.content);
-				
 				groupFailed = view.findViewById(R.id.failedcontent);
-				labelFailed = groupFailed == null ? null : groupFailed.findViewById(R.id.failed_label);
+				labelFailed = groupFailed.findViewById(R.id.failed_label);
 				
 				groupProcessing = view.findViewById(R.id.processingcontent);
 				labelProcessing = groupProcessing.findViewById(R.id.processing_label);
+				
+				groupContentFrame = view.findViewById(R.id.frame_content);
 			}
 		}
 		
@@ -5550,6 +5561,21 @@ class ConversationManager {
 		
 		static File getAbsolutePath(Context context, String path) {
 			return Paths.get(MainApplication.getAttachmentDirectory(context).getPath()).resolve(path).toFile();
+		}
+		
+		static View getEmptyAttachmentView(LayoutInflater layoutInflater, ViewGroup parent) {
+			return layoutInflater.inflate(R.layout.listitem_contentstructure, parent, false);
+		}
+		
+		static View buildAttachmentView(LayoutInflater layoutInflater, ViewGroup parent, @LayoutRes int contentLayout) {
+			//Inflating the structure view
+			View structureView = getEmptyAttachmentView(layoutInflater, parent);
+			
+			//Adding the content layout
+			layoutInflater.inflate(contentLayout, structureView.findViewById(R.id.frame_content), true);
+			
+			//Returning the view
+			return structureView;
 		}
 	}
 	
@@ -5645,7 +5671,7 @@ class ConversationManager {
 			} else viewHolder.inkView.setVisibility(View.GONE);
 			
 			//Revealing the layout
-			viewHolder.groupContent.setVisibility(View.VISIBLE);
+			viewHolder.groupContentFrame.setVisibility(View.VISIBLE);
 			
 			/*//Creating a weak reference to the context
 			WeakReference<Context> contextReference = new WeakReference<>(context);
@@ -5667,11 +5693,11 @@ class ConversationManager {
 						float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), width, height);
 						
 						//Configuring the layout
-						newViewHolder.groupContent.getLayoutParams().width = (int) (width * multiplier);
-						newViewHolder.groupContent.getLayoutParams().height = (int) (height * multiplier);
+						newViewHolder.groupContentFrame.getLayoutParams().width = (int) (width * multiplier);
+						newViewHolder.groupContentFrame.getLayoutParams().height = (int) (height * multiplier);
 						
 						//Showing the layout
-						newViewHolder.groupContent.setVisibility(View.VISIBLE);
+						newViewHolder.groupContentFrame.setVisibility(View.VISIBLE);
 						
 						try {
 							//Configuring the animated image
@@ -5706,11 +5732,11 @@ class ConversationManager {
 						float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), width, height);
 						
 						//Configuring the layout
-						newViewHolder.groupContent.getLayoutParams().width = (int) (width * multiplier);
-						newViewHolder.groupContent.getLayoutParams().height = (int) (height * multiplier);
+						newViewHolder.groupContentFrame.getLayoutParams().width = (int) (width * multiplier);
+						newViewHolder.groupContentFrame.getLayoutParams().height = (int) (height * multiplier);
 						
 						//Showing the layout
-						newViewHolder.groupContent.setVisibility(View.VISIBLE);
+						newViewHolder.groupContentFrame.setVisibility(View.VISIBLE);
 					}
 					
 					@Override
@@ -5726,19 +5752,19 @@ class ConversationManager {
 						//Checking if the bitmap is invalid
 						if(bitmap == null) {
 							//Showing the failed view
-							newViewHolder.groupContent.setVisibility(View.GONE);
+							newViewHolder.groupContentFrame.setVisibility(View.GONE);
 							newViewHolder.groupFailed.setVisibility(View.VISIBLE);
 						} else {
 							//Configuring the layout
 							//ViewGroup.LayoutParams params = content.getLayoutParams();
 							
 							float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), bitmap.getWidth(), bitmap.getHeight());
-							newViewHolder.groupContent.getLayoutParams().width = (int) (bitmap.getWidth() * multiplier);
-							newViewHolder.groupContent.getLayoutParams().height = (int) (bitmap.getHeight() * multiplier);
+							newViewHolder.groupContentFrame.getLayoutParams().width = (int) (bitmap.getWidth() * multiplier);
+							newViewHolder.groupContentFrame.getLayoutParams().height = (int) (bitmap.getHeight() * multiplier);
 							//content.setLayoutParams(params);
 							
 							//Showing the layout
-							newViewHolder.groupContent.setVisibility(View.VISIBLE);
+							newViewHolder.groupContentFrame.setVisibility(View.VISIBLE);
 							
 							//Setting the bitmap
 							newViewHolder.imageContent.setImageBitmap(bitmap);
@@ -5786,7 +5812,8 @@ class ConversationManager {
 		
 		@Override
 		void onClick(Messaging activity) {
-			//Returning if there is no content
+			openAttachmentFile(activity);
+			/* //Returning if there is no content
 			if(file == null) return;
 			
 			//Getting the view holder
@@ -5797,14 +5824,6 @@ class ConversationManager {
 			//if(viewHolder.inkView.getVisibility() != View.VISIBLE || viewHolder.inkView.reveal()) {
 			//}
 			
-			//Getting the file extension
-				/* String fileName = file.getName();
-				int substringStart = file.getName().lastIndexOf(".") + 1;
-				if(fileName.length() <= substringStart) return; */
-			
-			//Getting the file mime type
-			//String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substring(substringStart));
-			
 			//Creating a content URI
 			Uri content = FileProvider.getUriForFile(activity, MainApplication.fileAuthority, file);
 			
@@ -5814,7 +5833,7 @@ class ConversationManager {
 			intent.setDataAndType(content, fileType);
 			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 			if(intent.resolveActivity(activity.getPackageManager()) != null) activity.startActivity(intent);
-			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
+			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show(); */
 		}
 		
 		@Override
@@ -5829,10 +5848,11 @@ class ConversationManager {
 		
 		@Override
 		ViewHolder createViewHolder(Context context, ViewGroup parent) {
-			return new ViewHolder(LayoutInflater.from(context).inflate(R.layout.listitem_contentimage, parent, false));
+			return new ViewHolder(buildAttachmentView(LayoutInflater.from(context), parent, R.layout.listitem_contentimage));
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
+			final ViewGroup groupContent;
 			final RoundedImageView imageContent;
 			final InvisibleInkView inkView;
 			final View backgroundView;
@@ -5840,6 +5860,7 @@ class ConversationManager {
 			ViewHolder(View view) {
 				super(view);
 				
+				groupContent = groupContentFrame.findViewById(R.id.content);
 				imageContent = groupContent.findViewById(R.id.content_view);
 				inkView = groupContent.findViewById(R.id.content_ink);
 				backgroundView = groupContent.findViewById(R.id.content_background);
@@ -5959,7 +5980,7 @@ class ConversationManager {
 				viewHolder.groupFailed.setVisibility(View.VISIBLE);
 			} else {
 				//Showing the content view
-				viewHolder.groupContent.setVisibility(View.VISIBLE);
+				viewHolder.groupContentFrame.setVisibility(View.VISIBLE);
 				
 				//Checking if the state is playing or the file is ready
 				if(isPlaying || fileState == fileStateLoaded) {
@@ -6009,48 +6030,54 @@ class ConversationManager {
 			//Returning if there is no content
 			if(file == null) return;
 			
-			//Getting the activity callbacks
-			ConversationInfo.ActivityCallbacks callbacks = getMessageInfo().getConversationInfo().activityCallbacks;
-			if(callbacks == null) return;
-			
-			//Getting the audio message manager
-			Messaging.AudioPlaybackManager audioPlaybackManager = callbacks.getAudioPlaybackManager();
-			
-			//Checking if the request ID matches
-			if(audioPlaybackManager.compareRequestID(Messaging.AudioPlaybackManager.requestTypeAttachment + localID)) {
-				//Toggling play
-				audioPlaybackManager.togglePlaying();
+			//Checking if the file couldn't be processed
+			if(fileState == fileStateFailed) {
+				//Opening the file directly
+				openAttachmentFile(activity);
+			} else {
+				//Getting the activity callbacks
+				ConversationInfo.ActivityCallbacks callbacks = getMessageInfo().getConversationInfo().activityCallbacks;
+				if(callbacks == null) return;
 				
-				//Returning
-				return;
-			}
-			
-			//Preparing the media player
-			audioPlaybackManager.play(Messaging.AudioPlaybackManager.requestTypeAttachment + localID, file, new Messaging.AudioPlaybackManager.Callbacks() {
-				@Override
-				public void onPlay() {
-					setMediaPlaying(true);
+				//Getting the audio message manager
+				Messaging.AudioPlaybackManager audioPlaybackManager = callbacks.getAudioPlaybackManager();
+				
+				//Checking if the request ID matches
+				if(audioPlaybackManager.compareRequestID(Messaging.AudioPlaybackManager.requestTypeAttachment + localID)) {
+					//Toggling play
+					audioPlaybackManager.togglePlaying();
+					
+					//Returning
+					return;
 				}
 				
-				@Override
-				public void onProgress(long time) {
-					setMediaProgress(time);
-				}
-				
-				@Override
-				public void onPause() {
-					setMediaPlaying(false);
-				}
-				
-				@Override
-				public void onStop() {
-					ViewHolder viewHolder = getViewHolder();
-					if(viewHolder != null) {
-						setMediaPlaying(viewHolder, false);
-						setMediaProgress(viewHolder, 0);
+				//Preparing the media player
+				audioPlaybackManager.play(Messaging.AudioPlaybackManager.requestTypeAttachment + localID, file, new Messaging.AudioPlaybackManager.Callbacks() {
+					@Override
+					public void onPlay() {
+						setMediaPlaying(true);
 					}
-				}
-			});
+					
+					@Override
+					public void onProgress(long time) {
+						setMediaProgress(time);
+					}
+					
+					@Override
+					public void onPause() {
+						setMediaPlaying(false);
+					}
+					
+					@Override
+					public void onStop() {
+						ViewHolder viewHolder = getViewHolder();
+						if(viewHolder != null) {
+							setMediaPlaying(viewHolder, false);
+							setMediaProgress(viewHolder, 0);
+						}
+					}
+				});
+			}
 		}
 		
 		@Override
@@ -6109,10 +6136,11 @@ class ConversationManager {
 		
 		@Override
 		ViewHolder createViewHolder(Context context, ViewGroup parent) {
-			return new ViewHolder(LayoutInflater.from(context).inflate(R.layout.listitem_contentaudio, parent, false));
+			return new ViewHolder(buildAttachmentView(LayoutInflater.from(context), parent, R.layout.listitem_contentaudio));
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
+			final ViewGroup groupContent;
 			final ImageView contentIcon;
 			final TextView contentLabel;
 			final ProgressBar contentProgress;
@@ -6120,6 +6148,7 @@ class ConversationManager {
 			ViewHolder(View view) {
 				super(view);
 				
+				groupContent = groupContentFrame.findViewById(R.id.content);
 				contentIcon = groupContent.findViewById(R.id.content_icon);
 				contentLabel = groupContent.findViewById(R.id.content_duration);
 				contentProgress = groupContent.findViewById(R.id.content_progress);
@@ -6194,7 +6223,7 @@ class ConversationManager {
 			} else viewHolder.inkView.setVisibility(View.GONE);
 			
 			//Revealing the layout
-			viewHolder.groupContent.setVisibility(View.VISIBLE);
+			viewHolder.groupContentFrame.setVisibility(View.VISIBLE);
 			
 			/* //Creating a weak reference to the context
 			WeakReference<Context> contextReference = new WeakReference<>(context);
@@ -6214,11 +6243,11 @@ class ConversationManager {
 					float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), width, height);
 					
 					//Configuring the layout
-					newViewHolder.groupContent.getLayoutParams().width = (int) (width * multiplier);
-					newViewHolder.groupContent.getLayoutParams().height = (int) (height * multiplier);
+					newViewHolder.groupContentFrame.getLayoutParams().width = (int) (width * multiplier);
+					newViewHolder.groupContentFrame.getLayoutParams().height = (int) (height * multiplier);
 					
 					//Showing the layout
-					newViewHolder.groupContent.setVisibility(View.VISIBLE);
+					newViewHolder.groupContentFrame.setVisibility(View.VISIBLE);
 				}
 				
 				@Override
@@ -6234,19 +6263,19 @@ class ConversationManager {
 					//Checking if the bitmap is invalid
 					if(bitmap == null) {
 						//Showing the failed view
-						newViewHolder.groupContent.setVisibility(View.GONE);
+						newViewHolder.groupContentFrame.setVisibility(View.GONE);
 						newViewHolder.groupFailed.setVisibility(View.VISIBLE);
 					} else {
 						//Configuring the layout
 						//ViewGroup.LayoutParams params = content.getLayoutParams();
 						
 						float multiplier = Constants.calculateImageAttachmentMultiplier(context.getResources(), bitmap.getWidth(), bitmap.getHeight());
-						newViewHolder.groupContent.getLayoutParams().width = (int) (bitmap.getWidth() * multiplier);
-						newViewHolder.groupContent.getLayoutParams().height = (int) (bitmap.getHeight() * multiplier);
+						newViewHolder.groupContentFrame.getLayoutParams().width = (int) (bitmap.getWidth() * multiplier);
+						newViewHolder.groupContentFrame.getLayoutParams().height = (int) (bitmap.getHeight() * multiplier);
 						//content.setLayoutParams(params);
 						
 						//Showing the layout
-						newViewHolder.groupContent.setVisibility(View.VISIBLE);
+						newViewHolder.groupContentFrame.setVisibility(View.VISIBLE);
 						
 						//Setting the bitmap
 						newViewHolder.imageContent.setImageBitmap(bitmap);
@@ -6284,20 +6313,7 @@ class ConversationManager {
 		
 		@Override
 		void onClick(Messaging activity) {
-			//Returning if there is no content
-			if(file == null) return;
-			
-			//Creating a content URI
-			Uri content = FileProvider.getUriForFile(activity, MainApplication.fileAuthority, file);
-			
-			//Launching the content viewer
-			Intent intent = new Intent();
-			intent.setAction(Intent.ACTION_VIEW);
-			intent.setDataAndType(content, "video/*");
-			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-			if(intent.resolveActivity(activity.getPackageManager()) != null)
-				activity.startActivity(intent);
-			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
+			openAttachmentFile(activity);
 		}
 		
 		@Override
@@ -6312,10 +6328,11 @@ class ConversationManager {
 		
 		@Override
 		ViewHolder createViewHolder(Context context, ViewGroup parent) {
-			return new ViewHolder(LayoutInflater.from(context).inflate(R.layout.listitem_contentvideo, parent, false));
+			return new ViewHolder(buildAttachmentView(LayoutInflater.from(context), parent, R.layout.listitem_contentvideo));
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
+			final ViewGroup groupContent;
 			final RoundedImageView imageContent;
 			final InvisibleInkView inkView;
 			final View backgroundView;
@@ -6323,6 +6340,7 @@ class ConversationManager {
 			ViewHolder(View view) {
 				super(view);
 				
+				groupContent = groupContentFrame.findViewById(R.id.content);
 				imageContent = groupContent.findViewById(R.id.content_view);
 				inkView = groupContent.findViewById(R.id.content_ink);
 				backgroundView = groupContent.findViewById(R.id.content_background);
@@ -6339,6 +6357,238 @@ class ConversationManager {
 			}
 		}
 	}
+	
+	/* static class VCFAttachmentInfo extends AttachmentInfo<VCFAttachmentInfo.ViewHolder> {
+		//Creating the reference values
+		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
+		static final String MIME_PREFIX = "text/x-vcard";
+		static final int RESOURCE_NAME = R.string.part_content_vcf;
+		
+		private static final int resDrawablePlay = R.drawable.play_rounded;
+		private static final int resDrawablePause = R.drawable.pause_rounded;
+		
+		private static final int fileStateIdle = 0;
+		private static final int fileStateLoading = 1;
+		private static final int fileStateLoaded = 2;
+		private static final int fileStateFailed = 3;
+		
+		//Creating the media values
+		private String contactName;
+		
+		VCFAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+			super(localID, guid, message, fileName, fileType, fileSize);
+		}
+		
+		VCFAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+			super(localID, guid, message, fileName, fileType, fileSize, file);
+		}
+		
+		VCFAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
+		}
+		
+		VCFAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
+		}
+		
+		@Override
+		void updateContentViewColor(ViewHolder viewHolder, Context context, ColorStateList cslText, ColorStateList cslBackground, ColorStateList cslAccent) {
+			viewHolder.groupContentFrame.setBackgroundTintList(cslBackground);
+			viewHolder.contentIcon.setImageTintList(cslText);
+			viewHolder.contentLabel.setTextColor(cslText);
+			viewHolder.contentProgress.setProgressTintList(cslText);
+			//viewHolder.contentProgress.setBackgroundTintList(cslText); //cslBackground
+			viewHolder.contentProgress.setProgressBackgroundTintList(ColorStateList.valueOf(ColorHelper.modifyColorRaw(cslBackground.getDefaultColor(), 0.9F))); //cslBackground //TODO possibly use less lazy and hacky method
+		}
+		
+		@Override
+		void updateContentView(ViewHolder viewHolder, Context context) {
+			//Loading the file data if the state is idle
+			if(file != null && fileState == fileStateIdle) {
+				new GetDurationTask(this).execute(file);
+				fileState = fileStateLoading;
+			}
+			
+			//Checking if the file state is invalid
+			if(fileState == fileStateFailed) {
+				//Showing the failed view
+				viewHolder.groupFailed.setVisibility(View.VISIBLE);
+			} else {
+				//Showing the content view
+				viewHolder.groupContentFrame.setVisibility(View.VISIBLE);
+				
+				//Checking if the state is playing or the file is ready
+				if(isPlaying || fileState == fileStateLoaded) {
+					//Updating the media
+					updateMediaPlaying(viewHolder);
+					updateMediaProgress(viewHolder);
+				} else resetPlaying(viewHolder);
+			}
+		}
+		
+		private static class GetDurationTask extends AsyncTask<File, Void, Long> {
+			//Creating the values
+			private final WeakReference<AudioAttachmentInfo> attachmentReference;
+			
+			GetDurationTask(AudioAttachmentInfo attachmentInfo) {
+				//Setting the reference
+				attachmentReference = new WeakReference<>(attachmentInfo);
+			}
+			
+			@Override
+			protected Long doInBackground(File... parameters) {
+				//Returning the duration
+				return Constants.getMediaDuration(parameters[0]);
+			}
+			
+			@Override
+			protected void onPostExecute(Long result) {
+				//Getting the attachment
+				AudioAttachmentInfo attachmentInfo = attachmentReference.get();
+				if(attachmentInfo == null) return;
+				
+				//Setting the duration
+				attachmentInfo.fileState = fileStateLoaded;
+				attachmentInfo.duration = result;
+				attachmentInfo.updateMediaProgress();
+			}
+		}
+		
+		@Override
+		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
+			//Assigning the drawable
+			viewHolder.groupContentFrame.setBackground(drawable.getConstantState().newDrawable());
+		}
+		
+		@Override
+		void onClick(Messaging activity) {
+			//Returning if there is no content
+			if(file == null) return;
+			
+			//Getting the activity callbacks
+			ConversationInfo.ActivityCallbacks callbacks = getMessageInfo().getConversationInfo().activityCallbacks;
+			if(callbacks == null) return;
+			
+			//Getting the audio message manager
+			Messaging.AudioPlaybackManager audioPlaybackManager = callbacks.getAudioPlaybackManager();
+			
+			//Checking if the request ID matches
+			if(audioPlaybackManager.compareRequestID(Messaging.AudioPlaybackManager.requestTypeAttachment + localID)) {
+				//Toggling play
+				audioPlaybackManager.togglePlaying();
+				
+				//Returning
+				return;
+			}
+			
+			//Preparing the media player
+			audioPlaybackManager.play(Messaging.AudioPlaybackManager.requestTypeAttachment + localID, file, new Messaging.AudioPlaybackManager.Callbacks() {
+				@Override
+				public void onPlay() {
+					setMediaPlaying(true);
+				}
+				
+				@Override
+				public void onProgress(long time) {
+					setMediaProgress(time);
+				}
+				
+				@Override
+				public void onPause() {
+					setMediaPlaying(false);
+				}
+				
+				@Override
+				public void onStop() {
+					ViewHolder viewHolder = getViewHolder();
+					if(viewHolder != null) {
+						setMediaPlaying(viewHolder, false);
+						setMediaProgress(viewHolder, 0);
+					}
+				}
+			});
+		}
+		
+		@Override
+		int getItemViewType() {
+			return ITEM_VIEW_TYPE;
+		}
+		
+		@Override
+		int getResourceTypeName() {
+			return RESOURCE_NAME;
+		}
+		
+		void setMediaPlaying(boolean playing) {
+			//Calling the overload method
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) setMediaPlaying(viewHolder, playing);
+		}
+		
+		private void setMediaPlaying(ViewHolder viewholder, boolean playing) {
+			isPlaying = playing;
+			updateMediaPlaying(viewholder);
+		}
+		
+		private void updateMediaPlaying(ViewHolder viewHolder) {
+			viewHolder.contentIcon.setImageResource(isPlaying ?
+													resDrawablePause :
+													resDrawablePlay);
+		}
+		
+		void setMediaProgress(long progress) {
+			//Calling the overload method
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) setMediaProgress(viewHolder, progress);
+		}
+		
+		private void setMediaProgress(ViewHolder viewHolder, long progress) {
+			mediaProgress = progress;
+			updateMediaProgress(viewHolder);
+		}
+		
+		void updateMediaProgress() {
+			//Calling the overload method
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) updateMediaProgress(viewHolder);
+		}
+		
+		private void updateMediaProgress(ViewHolder viewHolder) {
+			viewHolder.contentProgress.setProgress((int) ((float) mediaProgress / (float) duration * 100F));
+			viewHolder.contentLabel.setText(DateUtils.formatElapsedTime(((int) Math.floor(mediaProgress <= 0 ? duration / 1000L : mediaProgress / 1000L))));
+		}
+		
+		private void resetPlaying(ViewHolder viewHolder) {
+			setMediaPlaying(viewHolder, false);
+			setMediaProgress(viewHolder, 0);
+		}
+		
+		@Override
+		ViewHolder createViewHolder(Context context, ViewGroup parent) {
+			return new ViewHolder(buildAttachmentView(LayoutInflater.from(context), parent, R.layout.listitem_contentvcf));
+		}
+		
+		static class ViewHolder extends AttachmentInfo.ViewHolder {
+			final ImageView contentIcon;
+			final TextView contentLabel;
+			final ProgressBar contentProgress;
+			
+			ViewHolder(View view) {
+				super(view);
+				
+				contentIcon = groupContentFrame.findViewById(R.id.content_icon);
+				contentLabel = groupContentFrame.findViewById(R.id.content_duration);
+				contentProgress = groupContentFrame.findViewById(R.id.content_progress);
+			}
+			
+			@Override
+			void releaseResources() {
+				contentIcon.setImageResource(resDrawablePlay);
+				contentProgress.setProgress(0);
+				contentLabel.setText(DateUtils.formatElapsedTime(0));
+			}
+		}
+	} */
 	
 	static class OtherAttachmentInfo extends AttachmentInfo<OtherAttachmentInfo.ViewHolder> {
 		//Creating the reference values
@@ -6363,28 +6613,15 @@ class ConversationManager {
 		}
 		
 		@Override
-		void updateContentViewColor(ViewHolder viewHolder, Context context, ColorStateList cslText, ColorStateList cslBackground, ColorStateList cslAccent) {
-			viewHolder.groupContent.setBackgroundTintList(cslBackground);
-			viewHolder.labelContent.setTextColor(cslText);
-			viewHolder.labelContent.setCompoundDrawableTintList(cslText);
-		}
-		
-		@Override
 		void updateContentView(ViewHolder viewHolder, Context context) {
 			//Enforcing the maximum content width
-			viewHolder.labelContent.setMaxWidth(getMaxMessageWidth(context.getResources()));
+			viewHolder.labelFailed.setMaxWidth(getMaxMessageWidth(context.getResources()));
 			
 			//Configuring the content view
-			viewHolder.labelContent.setText(fileName);
+			viewHolder.labelFailed.setText(fileName);
 			
 			//Showing the content view
-			viewHolder.groupContent.setVisibility(View.VISIBLE);
-		}
-		
-		@Override
-		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
-			//Assigning the drawable
-			viewHolder.groupContent.setBackground(drawable.getConstantState().newDrawable());
+			viewHolder.groupFailed.setVisibility(View.VISIBLE);
 		}
 		
 		@Override
@@ -6423,16 +6660,12 @@ class ConversationManager {
 		
 		@Override
 		ViewHolder createViewHolder(Context context, ViewGroup parent) {
-			return new ViewHolder(LayoutInflater.from(context).inflate(R.layout.listitem_contentother, parent, false));
+			return new ViewHolder(getEmptyAttachmentView(LayoutInflater.from(context), parent));
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
-			final TextView labelContent;
-			
 			ViewHolder(View view) {
 				super(view);
-				
-				labelContent = view.findViewById(R.id.content_label);
 			}
 		}
 	}

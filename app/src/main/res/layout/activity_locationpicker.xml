@@ -23,7 +23,6 @@
 			app:backgroundTint="@color/colorToolbar"
 			app:fabSize="mini"
 			app:srcCompat="@drawable/close"
-			app:tint="?android:attr/colorControlNormal"
 			android:onClick="onCloseClicked" />
 
 		<androidx.cardview.widget.CardView
