@@ -49,7 +49,9 @@ public class ServerSetup extends AppCompatActivity {
 	//Creating the view values
 	private EditText hostnameInputField;
 	private EditText passwordInputField;
+	private View backButton;
 	private View nextButton;
+	private TextView nextButtonLabel;
 	
 	private Snackbar connectionSnackbar = null;
 	
@@ -155,13 +157,15 @@ public class ServerSetup extends AppCompatActivity {
 		//Getting the views
 		hostnameInputField = findViewById(R.id.input_address);
 		passwordInputField = findViewById(R.id.input_password);
+		backButton = findViewById(R.id.backbutton);
 		nextButton = findViewById(R.id.nextbutton);
+		nextButtonLabel = nextButton.findViewById(R.id.nextbuttonlabel);
 		layoutAddress = findViewById(R.id.layout_serververification);
 		layoutSync = findViewById(R.id.layout_serversync);
 		
 		passwordInputField.setOnEditorActionListener((view, actionID, event) -> {
 			if(actionID == EditorInfo.IME_ACTION_GO) {
-				onNextButtonClick(null);
+				onNextButtonClick();
 				return true;
 			}
 			return false;
@@ -177,6 +181,10 @@ public class ServerSetup extends AppCompatActivity {
 		//Getting the view models
 		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
 		
+		//Setting the click listener
+		backButton.setOnClickListener(view -> onBackButtonClick());
+		nextButton.setOnClickListener(view -> onNextButtonClick());
+		
 		//Setting the address box watcher
 		hostnameInputField.addTextChangedListener(hostnameInputWatcher);
 		passwordInputField.addTextChangedListener(passwordInputWatcher);
@@ -185,7 +193,7 @@ public class ServerSetup extends AppCompatActivity {
 		isRequired = getIntent().getBooleanExtra(intentExtraRequired, false);
 		
 		//Enabling the back button if the change is not required
-		if(!isRequired) findViewById(R.id.backbutton).setVisibility(View.VISIBLE);
+		if(!isRequired) backButton.setVisibility(View.VISIBLE);
 		
 		//Filling in the input fields with previous information
 		SharedPreferences sharedPreferences = ((MainApplication) getApplication()).getConnectivitySharedPrefs();
@@ -257,7 +265,7 @@ public class ServerSetup extends AppCompatActivity {
 		LocalBroadcastManager.getInstance(ServerSetup.this).unregisterReceiver(serviceBroadcastReceiver);
 	}
 	
-	public void onNextButtonClick(View view) {
+	void onNextButtonClick() {
 		//Checking if the page is the verification page
 		if(viewModel.page == ActivityViewModel.pageVerification) {
 			//Checking if the server parameters are valid
@@ -290,6 +298,13 @@ public class ServerSetup extends AppCompatActivity {
 				finishSetup();
 			}
 		}
+	}
+	
+	void onBackButtonClick() {
+		//Retracting the page
+		if(viewModel.page > 0) setPage(viewModel.page - 1, false);
+			//Otherwise finishing the activity (if the server change isn't required)
+		else if(!isRequired) finish();
 	}
 	
 	private void finishSetup() {
@@ -338,7 +353,7 @@ public class ServerSetup extends AppCompatActivity {
 				passwordInputField.setEnabled(true);
 				
 				//Setting the "NEXT" button
-				((TextView) findViewById(R.id.nextbuttonlabel)).setText(R.string.action_next);
+				nextButtonLabel.setText(R.string.action_next);
 				if(isRequired) findViewById(R.id.backbutton).setVisibility(View.GONE);
 				
 				break;
@@ -370,7 +385,7 @@ public class ServerSetup extends AppCompatActivity {
 				}
 				
 				//Setting the "SKIP" button
-				((TextView) findViewById(R.id.nextbuttonlabel)).setText(R.string.action_skip);
+				nextButtonLabel.setText(R.string.action_skip);
 				findViewById(R.id.backbutton).setVisibility(View.VISIBLE);
 				
 				break;
@@ -411,13 +426,6 @@ public class ServerSetup extends AppCompatActivity {
 		
 		//Telling the service to connect
 		startService(new Intent(this, ConnectionService.class).setAction(ConnectionService.selfIntentActionConnect).putExtra(Constants.intentParamLaunchID, viewModel.connectionLaunchID = ConnectionService.getNextLaunchID()));
-	}
-	
-	public void onBackButtonClick(View view) {
-		//Retracting the page
-		if(viewModel.page > 0) setPage(viewModel.page - 1, false);
-		//Otherwise finishing the activity (if the server change isn't required)
-		else if(!isRequired) finish();
 	}
 	
 	@Override
