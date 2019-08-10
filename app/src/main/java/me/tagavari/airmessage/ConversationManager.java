@@ -6358,7 +6358,7 @@ class ConversationManager {
 		}
 	}
 	
-	/* static class VCFAttachmentInfo extends AttachmentInfo<VCFAttachmentInfo.ViewHolder> {
+	static class VCFAttachmentInfo extends AttachmentInfo<VCFAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
 		static final String MIME_PREFIX = "text/x-vcard";
@@ -6569,26 +6569,21 @@ class ConversationManager {
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
-			final ImageView contentIcon;
-			final TextView contentLabel;
-			final ProgressBar contentProgress;
+			final ViewGroup groupContent;
+			final ImageView iconProfile;
+			final ImageView iconPlaceholder;
+			final TextView labelName;
 			
 			ViewHolder(View view) {
 				super(view);
 				
-				contentIcon = groupContentFrame.findViewById(R.id.content_icon);
-				contentLabel = groupContentFrame.findViewById(R.id.content_duration);
-				contentProgress = groupContentFrame.findViewById(R.id.content_progress);
-			}
-			
-			@Override
-			void releaseResources() {
-				contentIcon.setImageResource(resDrawablePlay);
-				contentProgress.setProgress(0);
-				contentLabel.setText(DateUtils.formatElapsedTime(0));
+				groupContent = groupContentFrame.findViewById(R.id.content);
+				iconProfile = groupContent.findViewById(R.id.image_profile);
+				iconPlaceholder = groupContent.findViewById(R.id.icon_placeholder);
+				labelName = groupContent.findViewById(R.id.label_name);
 			}
 		}
-	} */
+	}
 	
 	static class OtherAttachmentInfo extends AttachmentInfo<OtherAttachmentInfo.ViewHolder> {
 		//Creating the reference values
