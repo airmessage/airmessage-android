@@ -6378,6 +6378,190 @@ class ConversationManager {
 		}
 	}
 	
+	static class VLocationAttachmentInfo extends AttachmentInfo<VLocationAttachmentInfo.ViewHolder> {
+		//Creating the reference values
+		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
+		static final String MIME_TYPE = "text/x-vlocation";
+		static final int RESOURCE_NAME = R.string.part_content_vcf;
+		
+		private static final int fileStateIdle = 0;
+		private static final int fileStateLoading = 1;
+		private static final int fileStateLoaded = 2;
+		private static final int fileStateFailed = 3;
+		
+		//Creating the media values
+		private int fileState = fileStateIdle;
+		private String contactName;
+		private Bitmap contactIcon;
+		
+		VLocationAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+			super(localID, guid, message, fileName, fileType, fileSize);
+		}
+		
+		VLocationAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+			super(localID, guid, message, fileName, fileType, fileSize, file);
+		}
+		
+		VLocationAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
+		}
+		
+		VLocationAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
+		}
+		
+		static boolean checkFileApplicability(String fileType, String fileName) {
+			return Constants.compareMimeTypes(MIME_TYPE, fileType);
+		}
+		
+		@Override
+		void updateContentViewColor(ViewHolder viewHolder, Context context, ColorStateList cslText, ColorStateList cslBackground, ColorStateList cslAccent) {
+			viewHolder.groupContent.setBackgroundTintList(cslBackground);
+			//viewHolder.iconPlaceholder.setImageTintList(cslText);
+			viewHolder.labelName.setTextColor(cslText);
+		}
+		
+		@Override
+		void updateContentView(ViewHolder viewHolder, Context context) {
+			//Loading the file data if the state is idle
+			if(file != null && fileState == fileStateIdle) {
+				new LoadContactTask(this, file).execute();
+				fileState = fileStateLoading;
+			}
+			
+			//Checking if the file state is invalid
+			if(fileState == fileStateFailed) {
+				//Showing the failed view
+				viewHolder.groupFailed.setVisibility(View.VISIBLE);
+			} else {
+				//Showing the content view
+				viewHolder.groupContentFrame.setVisibility(View.VISIBLE);
+				
+				//Updating the view data
+				updateViewData(viewHolder);
+			}
+		}
+		
+		void updateViewData() {
+			//Calling the overload method
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) updateViewData(viewHolder);
+		}
+		
+		private void updateViewData(ViewHolder viewHolder) {
+			//Setting the contact name label
+			if(contactName == null) viewHolder.labelName.setText(R.string.part_content_vcf);
+			else viewHolder.labelName.setText(contactName);
+			
+			//Setting the contact's picture
+			if(contactIcon == null) {
+				viewHolder.iconPlaceholder.setVisibility(View.VISIBLE);
+				viewHolder.iconProfile.setVisibility(View.GONE);
+			} else {
+				viewHolder.iconPlaceholder.setVisibility(View.GONE);
+				viewHolder.iconProfile.setVisibility(View.VISIBLE);
+				viewHolder.iconProfile.setImageBitmap(contactIcon);
+			}
+		}
+		
+		private static class LoadContactTask extends AsyncTask<Void, Void, Constants.Tuple2<String, Bitmap>> {
+			//Creating the values
+			private final WeakReference<VCFAttachmentInfo> attachmentReference;
+			private final File file;
+			
+			LoadContactTask(VCFAttachmentInfo attachmentInfo, File file) {
+				//Setting the parameters
+				attachmentReference = new WeakReference<>(attachmentInfo);
+				this.file = file;
+			}
+			
+			@Override
+			protected Constants.Tuple2<String, Bitmap> doInBackground(Void... parameters) {
+				try {
+					//Parsing the file
+					VCard vcard = Ezvcard.parse(file).first();
+					String name = null;
+					Bitmap bitmap = null;
+					
+					//Getting the name
+					if(vcard.getFormattedName() != null) name = vcard.getFormattedName().getValue();
+					
+					if(!vcard.getPhotos().isEmpty()) {
+						//Reading the profile picture
+						Photo photo = vcard.getPhotos().get(0);
+						byte[] photoData = photo.getData();
+						bitmap = BitmapFactory.decodeByteArray(photoData, 0, photoData.length);
+						//photo.getUrl();
+					}
+					
+					return new Constants.Tuple2<>(name, bitmap);
+				} catch(IOException exception) {
+					exception.printStackTrace();
+					return null;
+				}
+			}
+			
+			@Override
+			protected void onPostExecute(Constants.Tuple2<String, Bitmap> result) {
+				//Getting the attachment
+				VCFAttachmentInfo attachmentInfo = attachmentReference.get();
+				if(attachmentInfo == null) return;
+				
+				//Setting the data
+				if(result == null) {
+					attachmentInfo.fileState = fileStateFailed;
+				} else {
+					attachmentInfo.fileState = fileStateLoaded;
+					attachmentInfo.contactName = result.item1;
+					attachmentInfo.contactIcon = result.item2;
+					attachmentInfo.updateViewData();
+				}
+			}
+		}
+		
+		@Override
+		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
+			//Assigning the drawable
+			viewHolder.groupContent.setBackground(drawable.getConstantState().newDrawable());
+		}
+		
+		@Override
+		void onClick(Messaging activity) {
+			openAttachmentFile(activity);
+		}
+		
+		@Override
+		int getItemViewType() {
+			return ITEM_VIEW_TYPE;
+		}
+		
+		@Override
+		int getResourceTypeName() {
+			return RESOURCE_NAME;
+		}
+		
+		@Override
+		ViewHolder createViewHolder(Context context, ViewGroup parent) {
+			return new ViewHolder(buildAttachmentView(LayoutInflater.from(context), parent, R.layout.listitem_contentvcf));
+		}
+		
+		static class ViewHolder extends AttachmentInfo.ViewHolder {
+			final ViewGroup groupContent;
+			final ImageView iconProfile;
+			final ImageView iconPlaceholder;
+			final TextView labelName;
+			
+			ViewHolder(View view) {
+				super(view);
+				
+				groupContent = groupContentFrame.findViewById(R.id.content);
+				iconProfile = groupContent.findViewById(R.id.image_profile);
+				iconPlaceholder = groupContent.findViewById(R.id.icon_placeholder);
+				labelName = groupContent.findViewById(R.id.label_name);
+			}
+		}
+	}
+	
 	static class VCFAttachmentInfo extends AttachmentInfo<VCFAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();

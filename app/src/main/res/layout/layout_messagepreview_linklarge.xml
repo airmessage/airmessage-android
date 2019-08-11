@@ -6,6 +6,7 @@
 	android:layout_height="wrap_content"
 	android:orientation="vertical"
 	android:background="@drawable/rectangle_chatpreview"
+	android:focusable="true"
 	android:clickable="true"
 	android:foreground="?android:attr/selectableItemBackground">
 	<!-- Image preview -->
