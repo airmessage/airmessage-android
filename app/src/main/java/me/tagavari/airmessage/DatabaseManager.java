@@ -862,7 +862,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 					else if(!draftFiles.isEmpty()) {
 						//Converting the draft list to a string resource list
 						ArrayList<Integer> draftStringRes = new ArrayList<>();
-						for(ConversationManager.DraftFile draft : draftFiles) draftStringRes.add(ConversationManager.getNameFromContentType(draft.getFileType()));
+						for(ConversationManager.DraftFile draft : draftFiles) draftStringRes.add(ConversationManager.getNameFromContent(draft.getFileType(), draft.getFileName()));
 						
 						String summary;
 						if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
@@ -1661,7 +1661,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 				
 				//Retrieving the attachments
 				cursor = database.query(Contract.AttachmentEntry.TABLE_NAME,
-						new String[]{Contract.AttachmentEntry.COLUMN_NAME_FILETYPE},
+						new String[]{Contract.AttachmentEntry.COLUMN_NAME_FILETYPE, Contract.AttachmentEntry.COLUMN_NAME_FILENAME},
 						Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(lastItemID)},
 						null, null, null);
 				
@@ -1674,7 +1674,8 @@ class DatabaseManager extends SQLiteOpenHelper {
 				//Getting the attachment string resources
 				List<Integer> attachmentStringRes = new ArrayList<>();
 				int indexType = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE);
-				do attachmentStringRes.add(ConversationManager.getNameFromContentType(cursor.getString(indexType)));
+				int indexName = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILENAME);
+				do attachmentStringRes.add(ConversationManager.getNameFromContent(cursor.getString(indexType), cursor.getString(indexName)));
 				while(cursor.moveToNext());
 				
 				//Closing the cursor

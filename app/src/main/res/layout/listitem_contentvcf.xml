@@ -47,7 +47,7 @@
 		android:id="@+id/label_name"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:text="Contact name"
+		android:text="@string/part_content_vcf"
 		android:textColor="?android:attr/textColorPrimary"
 		android:textSize="16sp"
 		android:gravity="center_vertical"

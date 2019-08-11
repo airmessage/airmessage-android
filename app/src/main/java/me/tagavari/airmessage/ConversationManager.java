@@ -14,6 +14,7 @@ import android.content.pm.ShortcutManager;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -66,6 +67,19 @@ import android.widget.TextSwitcher;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.DrawableRes;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.RequiresApi;
+import androidx.collection.LongSparseArray;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+import androidx.core.graphics.ColorUtils;
+import androidx.core.util.Consumer;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.transition.TransitionManager;
+
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
@@ -100,19 +114,9 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.regex.Matcher;
 
-import androidx.annotation.DrawableRes;
-import androidx.annotation.LayoutRes;
-import androidx.annotation.RequiresApi;
-import androidx.collection.LongSparseArray;
-import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
-import androidx.core.graphics.ColorUtils;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.transition.TransitionManager;
-import androidx.core.util.Consumer;
-
+import ezvcard.Ezvcard;
+import ezvcard.VCard;
+import ezvcard.property.Photo;
 import io.github.ponnamkarthik.richlinkpreview.MetaData;
 import io.github.ponnamkarthik.richlinkpreview.ResponseListener;
 import io.github.ponnamkarthik.richlinkpreview.RichPreview;
@@ -1148,7 +1152,7 @@ class ConversationManager {
 				else if(!draftFiles.isEmpty()) {
 					//Converting the draft list to a string resource list
 					ArrayList<Integer> draftStringRes = new ArrayList<>();
-					for(DraftFile draft : draftFiles) draftStringRes.add(getNameFromContentType(draft.getFileType()));
+					for(DraftFile draft : draftFiles) draftStringRes.add(getNameFromContent(draft.getFileType(), draft.getFileName()));
 					
 					String summary;
 					if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
@@ -3465,7 +3469,7 @@ class ConversationManager {
 		void getSummary(Context context, Constants.ResultCallback<String> callback) {
 			//Converting the attachment list to a string resource list
 			ArrayList<Integer> attachmentStringRes = new ArrayList<>();
-			for(AttachmentInfo attachment : attachments) attachmentStringRes.add(getNameFromContentType(attachment.getContentType()));
+			for(AttachmentInfo attachment : attachments) attachmentStringRes.add(getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 			
 			//Returning the summary
 			callback.onResult(false, getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes));
@@ -3475,7 +3479,7 @@ class ConversationManager {
 			//Converting the attachment list to a string resource list
 			ArrayList<Integer> attachmentStringRes = new ArrayList<>();
 			for(AttachmentInfo attachment : attachments)
-				attachmentStringRes.add(getNameFromContentType(attachment.getContentType()));
+				attachmentStringRes.add(getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 			
 			//Returning the result of the static method
 			return getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes);
@@ -3520,7 +3524,7 @@ class ConversationManager {
 			//Converting the attachment list to a string resource list
 			List<Integer> attachmentStringRes = new ArrayList<>();
 			for(AttachmentInfo attachment : attachments)
-				attachmentStringRes.add(getNameFromContentType(attachment.getContentType()));
+				attachmentStringRes.add(getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 			
 			//Returning the summary
 			return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes), getDate(), getLocalID(), getServerID());
@@ -5342,7 +5346,7 @@ class ConversationManager {
 						
 						//Building the message
 						StringBuilder stringBuilder = new StringBuilder();
-						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(getNameFromContentType(getContentType())))).append('\n'); //Message type
+						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(getNameFromContent(getContentType(), fileName)))).append('\n'); //Message type
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getTimeFormat(newContext).format(sentDate) + Constants.bulletSeparator + DateFormat.getLongDateFormat(newContext).format(sentDate))).append('\n'); //Time sent
 						stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_size, fileSize != -1 ? Formatter.formatFileSize(newContext, fileSize) : newContext.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment file size
@@ -5493,6 +5497,10 @@ class ConversationManager {
 			return fileType;
 		}
 		
+		String getFileName() {
+			return fileName;
+		}
+		
 		abstract int getResourceTypeName();
 		
 		ConnectionService.FilePushRequest getDraftingPushRequest() {
@@ -5582,7 +5590,7 @@ class ConversationManager {
 	static class ImageAttachmentInfo extends AttachmentInfo<ImageAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
-		static final String MIME_PREFIX = "image";
+		static final String MIME_TYPE = "image/*";
 		static final int RESOURCE_NAME = R.string.part_content_image;
 		
 		ImageAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
@@ -5632,6 +5640,10 @@ class ConversationManager {
 			//Submitting the view
 			return convertView;
 		} */
+		
+		static boolean checkFileApplicability(String fileType, String fileName) {
+			return Constants.compareMimeTypes(MIME_TYPE, fileType);
+		}
 		
 		@Override
 		void updateContentView(ViewHolder viewHolder, Context context) {
@@ -5891,7 +5903,7 @@ class ConversationManager {
 	static class AudioAttachmentInfo extends AttachmentInfo<AudioAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
-		static final String MIME_PREFIX = "audio";
+		static final String MIME_TYPE = "audio/*";
 		static final int RESOURCE_NAME = R.string.part_content_audio;
 		
 		private static final int resDrawablePlay = R.drawable.play_rounded;
@@ -5955,6 +5967,10 @@ class ConversationManager {
 			//Submitting the view
 			return convertView;
 		} */
+		
+		static boolean checkFileApplicability(String fileType, String fileName) {
+			return Constants.compareMimeTypes(MIME_TYPE, fileType);
+		}
 		
 		@Override
 		void updateContentViewColor(ViewHolder viewHolder, Context context, ColorStateList cslText, ColorStateList cslBackground, ColorStateList cslAccent) {
@@ -6166,7 +6182,7 @@ class ConversationManager {
 	static class VideoAttachmentInfo extends AttachmentInfo<VideoAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
-		static final String MIME_PREFIX = "video";
+		static final String MIME_TYPE = "video/*";
 		static final int RESOURCE_NAME = R.string.part_content_video;
 		
 		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
@@ -6183,6 +6199,10 @@ class ConversationManager {
 		
 		VideoAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
+		}
+		
+		static boolean checkFileApplicability(String fileType, String fileName) {
+			return Constants.compareMimeTypes(MIME_TYPE, fileType);
 		}
 		
 		@Override
@@ -6361,11 +6381,8 @@ class ConversationManager {
 	static class VCFAttachmentInfo extends AttachmentInfo<VCFAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
-		static final String MIME_PREFIX = "text/x-vcard";
+		static final String MIME_TYPE = "text/x-vcard";
 		static final int RESOURCE_NAME = R.string.part_content_vcf;
-		
-		private static final int resDrawablePlay = R.drawable.play_rounded;
-		private static final int resDrawablePause = R.drawable.pause_rounded;
 		
 		private static final int fileStateIdle = 0;
 		private static final int fileStateLoading = 1;
@@ -6373,7 +6390,9 @@ class ConversationManager {
 		private static final int fileStateFailed = 3;
 		
 		//Creating the media values
+		private int fileState = fileStateIdle;
 		private String contactName;
+		private Bitmap contactIcon;
 		
 		VCFAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			super(localID, guid, message, fileName, fileType, fileSize);
@@ -6391,21 +6410,22 @@ class ConversationManager {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
+		static boolean checkFileApplicability(String fileType, String fileName) {
+			return Constants.compareMimeTypes(MIME_TYPE, fileType);
+		}
+		
 		@Override
 		void updateContentViewColor(ViewHolder viewHolder, Context context, ColorStateList cslText, ColorStateList cslBackground, ColorStateList cslAccent) {
-			viewHolder.groupContentFrame.setBackgroundTintList(cslBackground);
-			viewHolder.contentIcon.setImageTintList(cslText);
-			viewHolder.contentLabel.setTextColor(cslText);
-			viewHolder.contentProgress.setProgressTintList(cslText);
-			//viewHolder.contentProgress.setBackgroundTintList(cslText); //cslBackground
-			viewHolder.contentProgress.setProgressBackgroundTintList(ColorStateList.valueOf(ColorHelper.modifyColorRaw(cslBackground.getDefaultColor(), 0.9F))); //cslBackground //TODO possibly use less lazy and hacky method
+			viewHolder.groupContent.setBackgroundTintList(cslBackground);
+			viewHolder.iconPlaceholder.setImageTintList(cslText);
+			viewHolder.labelName.setTextColor(cslText);
 		}
 		
 		@Override
 		void updateContentView(ViewHolder viewHolder, Context context) {
 			//Loading the file data if the state is idle
 			if(file != null && fileState == fileStateIdle) {
-				new GetDurationTask(this).execute(file);
+				new LoadContactTask(this, file).execute();
 				fileState = fileStateLoading;
 			}
 			
@@ -6417,96 +6437,93 @@ class ConversationManager {
 				//Showing the content view
 				viewHolder.groupContentFrame.setVisibility(View.VISIBLE);
 				
-				//Checking if the state is playing or the file is ready
-				if(isPlaying || fileState == fileStateLoaded) {
-					//Updating the media
-					updateMediaPlaying(viewHolder);
-					updateMediaProgress(viewHolder);
-				} else resetPlaying(viewHolder);
+				//Updating the view data
+				updateViewData();
 			}
 		}
 		
-		private static class GetDurationTask extends AsyncTask<File, Void, Long> {
+		void updateViewData() {
+			//Calling the overload method
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) updateViewData(viewHolder);
+		}
+		
+		private void updateViewData(ViewHolder viewHolder) {
+			//Setting the contact name label
+			if(contactName == null) viewHolder.labelName.setText(R.string.part_content_vcf);
+			else viewHolder.labelName.setText(contactName);
+			
+			//Setting the contact's picture
+			if(contactIcon == null) {
+				viewHolder.iconPlaceholder.setVisibility(View.VISIBLE);
+				viewHolder.iconProfile.setVisibility(View.GONE);
+			} else {
+				viewHolder.iconPlaceholder.setVisibility(View.GONE);
+				viewHolder.iconProfile.setVisibility(View.VISIBLE);
+				viewHolder.iconProfile.setImageBitmap(contactIcon);
+			}
+		}
+		
+		private static class LoadContactTask extends AsyncTask<Void, Void, Constants.Tuple2<String, Bitmap>> {
 			//Creating the values
-			private final WeakReference<AudioAttachmentInfo> attachmentReference;
+			private final WeakReference<VCFAttachmentInfo> attachmentReference;
+			private final File file;
 			
-			GetDurationTask(AudioAttachmentInfo attachmentInfo) {
-				//Setting the reference
+			LoadContactTask(VCFAttachmentInfo attachmentInfo, File file) {
+				//Setting the parameters
 				attachmentReference = new WeakReference<>(attachmentInfo);
+				this.file = file;
 			}
 			
 			@Override
-			protected Long doInBackground(File... parameters) {
-				//Returning the duration
-				return Constants.getMediaDuration(parameters[0]);
+			protected Constants.Tuple2<String, Bitmap> doInBackground(Void... parameters) {
+				try {
+					//Parsing the file
+					VCard vcard = Ezvcard.parse(file).first();
+					String name = null;
+					Bitmap bitmap = null;
+					
+					//Getting the name
+					if(vcard.getFormattedName() != null) name = vcard.getFormattedName().getValue();
+					
+					if(!vcard.getPhotos().isEmpty()) {
+						//Reading the profile picture
+						Photo photo = vcard.getPhotos().get(0);
+						byte[] photoData = photo.getData();
+						bitmap = BitmapFactory.decodeByteArray(photoData, 0, photoData.length);
+						//photo.getUrl();
+					}
+					
+					return new Constants.Tuple2<>(name, bitmap);
+				} catch(IOException exception) {
+					exception.printStackTrace();
+					return null;
+				}
 			}
 			
 			@Override
-			protected void onPostExecute(Long result) {
+			protected void onPostExecute(Constants.Tuple2<String, Bitmap> result) {
 				//Getting the attachment
-				AudioAttachmentInfo attachmentInfo = attachmentReference.get();
+				VCFAttachmentInfo attachmentInfo = attachmentReference.get();
 				if(attachmentInfo == null) return;
 				
 				//Setting the duration
 				attachmentInfo.fileState = fileStateLoaded;
-				attachmentInfo.duration = result;
-				attachmentInfo.updateMediaProgress();
+				attachmentInfo.contactName = result.item1;
+				attachmentInfo.contactIcon = result.item2;
+				attachmentInfo.updateViewData();
 			}
 		}
 		
 		@Override
 		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Assigning the drawable
-			viewHolder.groupContentFrame.setBackground(drawable.getConstantState().newDrawable());
+			viewHolder.groupContent.setBackground(drawable.getConstantState().newDrawable());
 		}
 		
 		@Override
 		void onClick(Messaging activity) {
-			//Returning if there is no content
-			if(file == null) return;
-			
-			//Getting the activity callbacks
-			ConversationInfo.ActivityCallbacks callbacks = getMessageInfo().getConversationInfo().activityCallbacks;
-			if(callbacks == null) return;
-			
-			//Getting the audio message manager
-			Messaging.AudioPlaybackManager audioPlaybackManager = callbacks.getAudioPlaybackManager();
-			
-			//Checking if the request ID matches
-			if(audioPlaybackManager.compareRequestID(Messaging.AudioPlaybackManager.requestTypeAttachment + localID)) {
-				//Toggling play
-				audioPlaybackManager.togglePlaying();
-				
-				//Returning
-				return;
-			}
-			
-			//Preparing the media player
-			audioPlaybackManager.play(Messaging.AudioPlaybackManager.requestTypeAttachment + localID, file, new Messaging.AudioPlaybackManager.Callbacks() {
-				@Override
-				public void onPlay() {
-					setMediaPlaying(true);
-				}
-				
-				@Override
-				public void onProgress(long time) {
-					setMediaProgress(time);
-				}
-				
-				@Override
-				public void onPause() {
-					setMediaPlaying(false);
-				}
-				
-				@Override
-				public void onStop() {
-					ViewHolder viewHolder = getViewHolder();
-					if(viewHolder != null) {
-						setMediaPlaying(viewHolder, false);
-						setMediaProgress(viewHolder, 0);
-					}
-				}
-			});
+			openAttachmentFile(activity);
 		}
 		
 		@Override
@@ -6517,50 +6534,6 @@ class ConversationManager {
 		@Override
 		int getResourceTypeName() {
 			return RESOURCE_NAME;
-		}
-		
-		void setMediaPlaying(boolean playing) {
-			//Calling the overload method
-			ViewHolder viewHolder = getViewHolder();
-			if(viewHolder != null) setMediaPlaying(viewHolder, playing);
-		}
-		
-		private void setMediaPlaying(ViewHolder viewholder, boolean playing) {
-			isPlaying = playing;
-			updateMediaPlaying(viewholder);
-		}
-		
-		private void updateMediaPlaying(ViewHolder viewHolder) {
-			viewHolder.contentIcon.setImageResource(isPlaying ?
-													resDrawablePause :
-													resDrawablePlay);
-		}
-		
-		void setMediaProgress(long progress) {
-			//Calling the overload method
-			ViewHolder viewHolder = getViewHolder();
-			if(viewHolder != null) setMediaProgress(viewHolder, progress);
-		}
-		
-		private void setMediaProgress(ViewHolder viewHolder, long progress) {
-			mediaProgress = progress;
-			updateMediaProgress(viewHolder);
-		}
-		
-		void updateMediaProgress() {
-			//Calling the overload method
-			ViewHolder viewHolder = getViewHolder();
-			if(viewHolder != null) updateMediaProgress(viewHolder);
-		}
-		
-		private void updateMediaProgress(ViewHolder viewHolder) {
-			viewHolder.contentProgress.setProgress((int) ((float) mediaProgress / (float) duration * 100F));
-			viewHolder.contentLabel.setText(DateUtils.formatElapsedTime(((int) Math.floor(mediaProgress <= 0 ? duration / 1000L : mediaProgress / 1000L))));
-		}
-		
-		private void resetPlaying(ViewHolder viewHolder) {
-			setMediaPlaying(viewHolder, false);
-			setMediaProgress(viewHolder, 0);
 		}
 		
 		@Override
@@ -6607,6 +6580,10 @@ class ConversationManager {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
+		static boolean checkFileApplicability(String fileType, String fileName) {
+			return true;
+		}
+		
 		@Override
 		void updateContentView(ViewHolder viewHolder, Context context) {
 			//Enforcing the maximum content width
@@ -6621,26 +6598,7 @@ class ConversationManager {
 		
 		@Override
 		void onClick(Messaging activity) {
-			//Returning if there is no content
-			if(file == null) return;
-			
-			//Creating a content URI
-			Uri content = FileProvider.getUriForFile(activity, MainApplication.fileAuthority, file);
-			
-			//Getting the MIME type
-			String fileName = file.getName();
-			int substringStart = file.getName().lastIndexOf(".") + 1;
-			if(fileName.length() <= substringStart) return;
-			String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substring(substringStart));
-			
-			//Launching the content viewer
-			Intent intent = new Intent();
-			intent.setAction(Intent.ACTION_VIEW);
-			intent.setDataAndType(content, mimeType);
-			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-			if(intent.resolveActivity(activity.getPackageManager()) != null)
-				activity.startActivity(intent);
-			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
+			openAttachmentFile(activity);
 		}
 		
 		@Override
@@ -7802,12 +7760,13 @@ class ConversationManager {
 		}
 	}
 	
-	static int getNameFromContentType(String mimeType) {
+	static int getNameFromContent(String fileType, String fileName) {
 		//Returning the type
-		if(mimeType == null || mimeType.isEmpty()) return OtherAttachmentInfo.RESOURCE_NAME;
-		else if(mimeType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return ImageAttachmentInfo.RESOURCE_NAME;
-		else if(mimeType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return VideoAttachmentInfo.RESOURCE_NAME;
-		else if(mimeType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return AudioAttachmentInfo.RESOURCE_NAME;
+		if(fileType == null || fileType.isEmpty()) return OtherAttachmentInfo.RESOURCE_NAME;
+		else if(ImageAttachmentInfo.checkFileApplicability(fileType, fileName)) return ImageAttachmentInfo.RESOURCE_NAME;
+		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return VideoAttachmentInfo.RESOURCE_NAME;
+		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return AudioAttachmentInfo.RESOURCE_NAME;
+		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return VCFAttachmentInfo.RESOURCE_NAME;
 		else return OtherAttachmentInfo.RESOURCE_NAME;
 	}
 	
@@ -7951,24 +7910,27 @@ class ConversationManager {
 	
 	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, long fileSize) {
 		if(fileType == null) fileType = Constants.defaultMIMEType;
-		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
-		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
-		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
+		if(ImageAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
+		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
+		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
+		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VCFAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 	}
 	
 	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, long fileSize, File file) {
 		if(fileType == null) fileType = Constants.defaultMIMEType;
-		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
-		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
-		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
+		if(ImageAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
+		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
+		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
+		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VCFAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 	}
 	
 	static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, long fileSize, Uri fileUri) {
-		if(fileType.startsWith(ImageAttachmentInfo.MIME_PREFIX)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
-		else if(fileType.startsWith(AudioAttachmentInfo.MIME_PREFIX)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
-		else if(fileType.startsWith(VideoAttachmentInfo.MIME_PREFIX)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
+		if(ImageAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
+		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
+		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
+		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VCFAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 	}
 	
