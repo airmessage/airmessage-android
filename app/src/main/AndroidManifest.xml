@@ -103,7 +103,7 @@
 			android:exported="false"
 			android:name=".LocationPicker"
 			android:parentActivityName=".Messaging"
-			android:theme="@style/DayNight.Translucent"
+			android:theme="@style/DayNight.Transparent"
 			android:windowSoftInputMode="adjustResize">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>

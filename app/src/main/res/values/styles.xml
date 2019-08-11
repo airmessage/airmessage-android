@@ -31,16 +31,22 @@
 		
 		<!--<item name="dialogTheme">@style/ThemeOverlay.MaterialComponents.Dialog</item>-->
 	</style>
-
+	
 	<style name="DayNight.Translucent" parent="@style/Pass.DayNight.NoActionBar">
 		<item name="android:windowTranslucentStatus">true</item>
 		<item name="android:windowTranslucentNavigation">true</item>
 	</style>
 	
+	<style name="DayNight.Transparent" parent="@style/Pass.DayNight.NoActionBar">
+		<item name="android:statusBarColor">@android:color/transparent</item>
+		<item name="android:navigationBarColor">@android:color/transparent</item>
+		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
+	</style>
+	
 	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">
 		<item name="windowActionModeOverlay">true</item>
 		<item name="android:actionModeBackground">@android:color/transparent</item>
-		<item name="android:actionModeCloseDrawable">@drawable/close</item>
+		<item name="android:actionModeCloseDrawable">@drawable/close_control</item>
 		<item name="actionBarPopupTheme">@style/ActionModeOverflowMenu</item>
 		<!--<item name="android:statusBarColor">@color/colorBackgroundSurface</item>-->
 		<item name="android:statusBarColor">@color/colorToolbar</item>

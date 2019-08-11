@@ -16,7 +16,6 @@ import android.transition.Transition;
 import android.transition.TransitionManager;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.TextSwitcher;
 
@@ -24,6 +23,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
@@ -38,6 +40,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.IOException;
 import java.util.List;
@@ -46,11 +49,13 @@ import java.util.Locale;
 public class LocationPicker extends AppCompatActivity {
 	private ActivityViewModel viewModel;
 	
+	private FloatingActionButton fabClose;
 	private CardView containerSelection;
 	private TextSwitcher labelLocation;
 	private TextSwitcher labelCoordinates;
 	
-	GoogleMap googleMap;
+	private final Rect googleMapBasePadding = new Rect(); //Padding for the Google Map view, minus the height of the bottom selection container
+	private GoogleMap googleMap;
 	private MapView mapView;
 	private Marker mapMarker;
 	private GoogleMap.OnMapClickListener mapClickListener = tapPosition -> {
@@ -91,7 +96,9 @@ public class LocationPicker extends AppCompatActivity {
 		setContentView(R.layout.activity_locationpicker);
 		
 		//Setting the window
-		getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+		//getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+		//getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+		getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
 		
 		//Getting the view model
 		viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
@@ -135,6 +142,7 @@ public class LocationPicker extends AppCompatActivity {
 		mapView = findViewById(R.id.mapview);
 		mapView.onCreate(savedInstanceState);
 		mapView.getMapAsync(mapCallback);
+		fabClose = findViewById(R.id.fab_close);
 		containerSelection = findViewById(R.id.container_selection);
 		labelLocation = containerSelection.findViewById(R.id.label_location);
 		labelCoordinates = containerSelection.findViewById(R.id.label_coordinates);
@@ -149,6 +157,46 @@ public class LocationPicker extends AppCompatActivity {
 		}
 		labelLocation.setCurrentText(viewModel.getMapPositionName());
 		labelCoordinates.setCurrentText(locationToString(viewModel.mapPosition));
+		
+		ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), new OnApplyWindowInsetsListener() {
+			ViewGroup.MarginLayoutParams fabParams = (ViewGroup.MarginLayoutParams) fabClose.getLayoutParams();
+			int fabMarginStart = fabParams.getMarginStart();
+			int fabMarginTop = fabParams.topMargin;
+			
+			ViewGroup.MarginLayoutParams containerParams = (ViewGroup.MarginLayoutParams) containerSelection.getLayoutParams();
+			int containerMarginLeft = containerParams.leftMargin;
+			int containerMarginBottom = containerParams.bottomMargin;
+			int containerMarginRight = containerParams.rightMargin;
+			
+			@Override
+			public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
+				//Setting the close button margins
+				{
+					int insetStart = Constants.isLTR(getResources()) ? insets.getSystemWindowInsetLeft() : insets.getSystemWindowInsetRight();
+					
+					fabParams.setMarginStart(fabMarginStart + insetStart);
+					fabParams.topMargin = fabMarginTop + insets.getSystemWindowInsetTop();
+					fabClose.setLayoutParams(fabParams);
+				}
+				
+				//Setting the selection container margins
+				{
+					containerParams.leftMargin = containerMarginLeft + insets.getSystemWindowInsetLeft();
+					containerParams.bottomMargin = containerMarginBottom + insets.getSystemWindowInsetBottom();
+					containerParams.rightMargin = containerMarginRight + insets.getSystemWindowInsetRight();
+					containerSelection.setLayoutParams(containerParams);
+				}
+				
+				//Updating the map
+				googleMapBasePadding.left = insets.getSystemWindowInsetLeft();
+				googleMapBasePadding.right = insets.getSystemWindowInsetLeft();
+				googleMapBasePadding.top = fabParams.topMargin + fabClose.getHeight() + fabParams.bottomMargin;
+				googleMapBasePadding.bottom = 0;
+				updateMapPadding();
+				
+				return insets.consumeSystemWindowInsets();
+			}
+		});
 	}
 	
 	@Override
@@ -184,12 +232,9 @@ public class LocationPicker extends AppCompatActivity {
 	private void updateMapPadding() {
 		if(googleMap == null) return;
 		
-		Rect rectangle = new Rect();
-		getWindow().getDecorView().getWindowVisibleDisplayFrame(rectangle);
-		
 		ViewGroup.MarginLayoutParams selectionLayoutParams = (ViewGroup.MarginLayoutParams) containerSelection.getLayoutParams();
 		int selectionHeight = containerSelection.getHeight() + selectionLayoutParams.bottomMargin + selectionLayoutParams.topMargin;
-		googleMap.setPadding(rectangle.left, rectangle.top, getWindow().getDecorView().getWidth() - rectangle.right, getWindow().getDecorView().getHeight() - rectangle.bottom + selectionHeight);
+		googleMap.setPadding(googleMapBasePadding.left, googleMapBasePadding.top, googleMapBasePadding.right, googleMapBasePadding.bottom + selectionHeight);
 	}
 	
 	private static String locationToString(LatLng position) {

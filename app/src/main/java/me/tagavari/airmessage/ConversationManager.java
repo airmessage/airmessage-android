@@ -6417,7 +6417,7 @@ class ConversationManager {
 		@Override
 		void updateContentViewColor(ViewHolder viewHolder, Context context, ColorStateList cslText, ColorStateList cslBackground, ColorStateList cslAccent) {
 			viewHolder.groupContent.setBackgroundTintList(cslBackground);
-			viewHolder.iconPlaceholder.setImageTintList(cslText);
+			//viewHolder.iconPlaceholder.setImageTintList(cslText);
 			viewHolder.labelName.setTextColor(cslText);
 		}
 		
@@ -6438,7 +6438,7 @@ class ConversationManager {
 				viewHolder.groupContentFrame.setVisibility(View.VISIBLE);
 				
 				//Updating the view data
-				updateViewData();
+				updateViewData(viewHolder);
 			}
 		}
 		
@@ -6507,11 +6507,15 @@ class ConversationManager {
 				VCFAttachmentInfo attachmentInfo = attachmentReference.get();
 				if(attachmentInfo == null) return;
 				
-				//Setting the duration
-				attachmentInfo.fileState = fileStateLoaded;
-				attachmentInfo.contactName = result.item1;
-				attachmentInfo.contactIcon = result.item2;
-				attachmentInfo.updateViewData();
+				//Setting the data
+				if(result == null) {
+					attachmentInfo.fileState = fileStateFailed;
+				} else {
+					attachmentInfo.fileState = fileStateLoaded;
+					attachmentInfo.contactName = result.item1;
+					attachmentInfo.contactIcon = result.item2;
+					attachmentInfo.updateViewData();
+				}
 			}
 		}
 		

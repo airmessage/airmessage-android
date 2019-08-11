@@ -24,4 +24,12 @@
 		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
 		<item name="android:navigationBarColor">@color/colorToolbar</item>
 	</style>
+	
+	<style name="DayNight.Transparent" parent="@style/Pass.DayNight.NoActionBar">
+		<item name="android:statusBarColor">@android:color/transparent</item>
+		<item name="android:navigationBarColor">@android:color/transparent</item>
+		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
+		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
+		<item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+	</style>
 </resources>
