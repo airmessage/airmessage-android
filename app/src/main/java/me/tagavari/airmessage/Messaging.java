@@ -343,7 +343,24 @@ public class Messaging extends AppCompatCompositeActivity {
 		However, on Chrome OS, the default keyboard does not trigger this. (Let's just hope the user doesn't install a third-party keyboard!)
 		 */
 		if(keyCode == KeyEvent.KEYCODE_ENTER && !event.isShiftPressed() &&
-				(event.getSource() != InputDevice.SOURCE_UNKNOWN || Constants.isChromeOS(Messaging.this))) {
+		   (event.getSource() != InputDevice.SOURCE_UNKNOWN || Constants.isChromeOS(Messaging.this))) {
+			//Sending the message
+			sendMessage();
+			
+			//Returning true
+			return true;
+		}
+		
+		//Returning false
+		return false;
+	};
+	private final TextView.OnEditorActionListener inputFieldEditorActionListener = (textView, actionID, event) -> {
+		/*
+		IME_ACTION_DONE is triggered on the Google Pixelbook
+		IME_NULL is triggered with external wireless keyboards
+		 */
+		if(actionID == EditorInfo.IME_ACTION_DONE ||
+		   (actionID == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_DOWN)) {
 			//Sending the message
 			sendMessage();
 			
@@ -588,6 +605,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Configuring the AMOLED theme
 		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
 		
+		//Setting the status bar color
+		Constants.updateChromeOSStatusBar(this);
+		
 		//Getting the conversation ID
 		long conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
 		
@@ -635,7 +655,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the listeners
 		rootView.getViewTreeObserver().addOnGlobalLayoutListener(rootLayoutListener);
 		messageInputField.addTextChangedListener(inputFieldTextWatcher);
-		messageInputField.setOnKeyListener(inputFieldKeyListener);
+		//messageInputField.setOnKeyListener(inputFieldKeyListener);
+		messageInputField.setOnEditorActionListener(inputFieldEditorActionListener);
 		//messageInputField.setOnClickListener(view -> closeAttachmentsPanel(false));
 		buttonSendMessage.setOnClickListener(sendButtonClickListener);
 		buttonAddContent.setOnClickListener(view -> {
@@ -2419,10 +2440,10 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void requestCamera(boolean video) {
 		//Creating the intent
-		Intent takePictureIntent = new Intent(video ? MediaStore.ACTION_VIDEO_CAPTURE : MediaStore.ACTION_IMAGE_CAPTURE);
+		Intent cameraCaptureIntent = new Intent(video ? MediaStore.ACTION_VIDEO_CAPTURE : MediaStore.ACTION_IMAGE_CAPTURE);
 		
 		//Checking if there are no apps that can take the intent
-		if(takePictureIntent.resolveActivity(getPackageManager()) == null) {
+		if(cameraCaptureIntent.resolveActivity(getPackageManager()) == null) {
 			//Telling the user via a toast
 			Toast.makeText(Messaging.this, R.string.message_intenterror_camera, Toast.LENGTH_SHORT).show();
 			
@@ -2431,16 +2452,14 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Finding a free file
-		viewModel.targetFileIntent = MainApplication.getDraftTarget(this, viewModel.conversationID, Constants.pictureName);
+		viewModel.targetFileIntent = MainApplication.getDraftTarget(this, viewModel.conversationID, video ? Constants.videoName : Constants.pictureName);
 		
-		//Getting the content uri
-		Uri imageUri = FileProvider.getUriForFile(this, MainApplication.fileAuthority, viewModel.targetFileIntent);
-		
-		//Setting the clip data
-		takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+		//Setting the output file target
+		Uri targetUri = FileProvider.getUriForFile(this, MainApplication.fileAuthority, viewModel.targetFileIntent);
+		cameraCaptureIntent.putExtra(MediaStore.EXTRA_OUTPUT, targetUri);
 		
 		//Starting the activity
-		startActivityForResult(takePictureIntent, intentTakePicture);
+		startActivityForResult(cameraCaptureIntent, intentTakePicture);
 	}
 	
 	private void launchPickerIntent(String[] mimeTypes) {

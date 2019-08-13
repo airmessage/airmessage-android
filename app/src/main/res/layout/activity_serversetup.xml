@@ -47,7 +47,6 @@
 			android:focusable="true"
 			android:clickable="false"
 			android:gravity="center"
-			android:onClick="onNextButtonClick"
 			android:padding="5dp">
 			
 			<TextView
@@ -88,7 +87,6 @@
 			android:gravity="center"
 			android:focusable="true"
 			android:clickable="true"
-			android:onClick="onBackButtonClick"
 			android:padding="5dp"
 			android:visibility="gone">
 			

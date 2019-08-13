@@ -171,6 +171,7 @@ public class Constants {
 	static final int defaultPort = 1359;
 	static final String recordingName = "recording.amr";
 	static final String pictureName = "image.jpg";
+	static final String videoName = "video.mp4";
 	static final String defaultFileName = "file";
 	static final int smartReplyHistoryLength = 10;
 	
@@ -1151,7 +1152,7 @@ public class Constants {
 		return context.getPackageManager().hasSystemFeature("org.chromium.arc.device_management");
 	}
 	
-	static void updateChromeOSStatusbar(AppCompatActivity activity) {
+	static void updateChromeOSStatusBar(AppCompatActivity activity) {
 		//Ignoring if not running on a Chrome OS device
 		if(!isChromeOS(activity)) return;
 		
