@@ -6463,15 +6463,17 @@ class ConversationManager {
 		}
 		
 		private void updateViewData(ViewHolder viewHolder) {
-			//Checking if there is no data
-			if(locationData == null) {
+			//Checking if there is no data, or there was a problem loading the data
+			if(locationData == null || fileState != fileStateLoaded) {
 				//Hiding the content view
 				viewHolder.groupContentFrame.setVisibility(View.GONE);
+				viewHolder.groupFailed.setVisibility(View.VISIBLE);
 				return;
 			}
 			
 			//Showing the content view
 			viewHolder.groupContentFrame.setVisibility(View.VISIBLE);
+			viewHolder.groupFailed.setVisibility(View.GONE);
 			
 			//Setting the click listener
 			viewHolder.groupContent.setOnClickListener(view -> Constants.launchUri(viewHolder.groupContent.getContext(), locationData.mapLink));
@@ -6623,7 +6625,7 @@ class ConversationManager {
 					//Finding the Apple Maps URL group
 					String mapURLGroup = null;
 					for(RawProperty property : vcard.getExtendedProperties()) {
-						if(!"map url".equals(property.getValue())) continue;
+						if(!"X-ABLabel".equals(property.getPropertyName()) || !"map url".equals(property.getValue())) continue;
 						mapURLGroup = property.getGroup();
 						break;
 					}
@@ -6671,8 +6673,9 @@ class ConversationManager {
 				} else {
 					attachmentInfo.fileState = fileStateLoaded;
 					attachmentInfo.locationData = result;
-					attachmentInfo.updateViewData();
 				}
+				
+				attachmentInfo.updateViewData();
 			}
 		}
 		
@@ -6731,12 +6734,12 @@ class ConversationManager {
 			
 			@Override
 			void pause() {
-				mapHeader.onPause();
+				if(googleMap != null) mapHeader.onPause();
 			}
 			
 			@Override
 			void resume() {
-				mapHeader.onResume();
+				if(googleMap != null) mapHeader.onResume();
 			}
 		}
 	}
@@ -6812,6 +6815,18 @@ class ConversationManager {
 		}
 		
 		private void updateViewData(ViewHolder viewHolder) {
+			//Checking if there is no content available
+			if(fileState != fileStateLoaded) {
+				//Hiding the content view
+				viewHolder.groupContentFrame.setVisibility(View.GONE);
+				viewHolder.groupFailed.setVisibility(View.VISIBLE);
+				return;
+			}
+			
+			//Showing the content view
+			viewHolder.groupContentFrame.setVisibility(View.VISIBLE);
+			viewHolder.groupFailed.setVisibility(View.GONE);
+			
 			//Setting the contact name label
 			if(contactName == null) viewHolder.labelName.setText(R.string.part_content_vcf);
 			else viewHolder.labelName.setText(contactName);
@@ -6877,8 +6892,9 @@ class ConversationManager {
 					attachmentInfo.fileState = fileStateLoaded;
 					attachmentInfo.contactName = result.item1;
 					attachmentInfo.contactIcon = result.item2;
-					attachmentInfo.updateViewData();
 				}
+				
+				attachmentInfo.updateViewData();
 			}
 		}
 		

@@ -114,7 +114,7 @@ public class LocationPicker extends AppCompatActivity {
 		}).get(ActivityViewModel.class);
 		
 		//Setting the listeners
-		viewModel.mapPositionName.observe(this, name -> {
+		viewModel.mapPositionAddress.observe(this, name -> {
 			ChangeBounds transition = new ChangeBounds();
 			transition.addListener(new Transition.TransitionListener() {
 				@Override
@@ -155,7 +155,7 @@ public class LocationPicker extends AppCompatActivity {
 			labelLocation.setOutAnimation(AnimationUtils.loadAnimation(this,android.R.anim.slide_out_right));
 			labelCoordinates.setOutAnimation(AnimationUtils.loadAnimation(this,android.R.anim.slide_out_right));
 		}
-		labelLocation.setCurrentText(viewModel.getMapPositionName());
+		labelLocation.setCurrentText(viewModel.getMapPositionAddress());
 		labelCoordinates.setCurrentText(Constants.locationToString(viewModel.mapPosition));
 		
 		ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), new OnApplyWindowInsetsListener() {
@@ -217,14 +217,16 @@ public class LocationPicker extends AppCompatActivity {
 		mapView.onResume();
 	}
 	
-	public void onCloseClicked(View view) {
+	public void onClickClose(View view) {
 		setResult(Activity.RESULT_CANCELED);
 		finish();
 	}
 	
-	public void onConfirmClicked(View view) {
+	public void onClickConfirm(View view) {
 		Intent returnIntent = new Intent();
 		returnIntent.putExtra(Constants.intentParamData, viewModel.mapPosition);
+		returnIntent.putExtra(Constants.intentParamAddress, viewModel.getMapPositionAddress());
+		returnIntent.putExtra(Constants.intentParamName, viewModel.getMapPositionName());
 		setResult(Activity.RESULT_OK, returnIntent);
 		finish();
 	}
@@ -239,9 +241,10 @@ public class LocationPicker extends AppCompatActivity {
 	
 	private static class ActivityViewModel extends AndroidViewModel {
 		private LatLng mapPosition;
-		private final MutableLiveData<String> mapPositionName = new MutableLiveData<>();
+		private final MutableLiveData<String> mapPositionAddress = new MutableLiveData<>();
+		private String mapPositionName;
 		
-		private AsyncTask<LatLng, Void, String> geocoderTask = null;
+		private AsyncTask geocoderTask = null;
 		private Geocoder geocoder;
 		
 		ActivityViewModel(Application application, LatLng mapPosition) {
@@ -263,34 +266,48 @@ public class LocationPicker extends AppCompatActivity {
 			if(!Geocoder.isPresent()) return;
 			
 			//Loading the map position
-			mapPositionName.setValue("");
+			mapPositionAddress.setValue("");
 			if(geocoderTask != null) geocoderTask.cancel(false);
-			geocoderTask = new AsyncTask<LatLng, Void, String>() {
+			geocoderTask = new AsyncTask<LatLng, Void, Constants.Tuple2<String, String>>() {//Returns the full address, and the feature name / street address
 				@Override
-				protected String doInBackground(LatLng... arguments) {
+				protected Constants.Tuple2<String, String> doInBackground(LatLng... arguments) {
 					LatLng mapPosition = arguments[0];
 					try {
 						List<Address> results = geocoder.getFromLocation(mapPosition.latitude, mapPosition.longitude, 1);
-						if(results == null || results.isEmpty()) return "";
-						return results.get(0).getAddressLine(0);
+						if(results == null || results.isEmpty()) return null;
+						Address address = results.get(0);
+						
+						String locationAddress = address.getAddressLine(0);
+						
+						String locationName;
+						if(address.getSubThoroughfare() != null && address.getThoroughfare() != null) locationName = address.getSubThoroughfare() + " " + address.getThoroughfare();
+						else locationName = address.getFeatureName();
+						return new Constants.Tuple2<>(locationAddress, locationName);
 					} catch(IOException | IllegalArgumentException exception) {
 						exception.printStackTrace();
-						return "";
+						return null;
 					}
 				}
 				
 				@Override
-				protected void onPostExecute(String address) {
-					//Setting the value
-					if(!address.equals("")) mapPositionName.setValue(address);
+				protected void onPostExecute(Constants.Tuple2<String, String> address) {
+					//Setting the values
+					if(address != null) {
+						mapPositionAddress.setValue(address.item1);
+						mapPositionName = address.item2;
+					}
 				}
 			}.execute(mapPosition);
 		}
 		
-		String getMapPositionName() {
-			String value = mapPositionName.getValue();
+		String getMapPositionAddress() {
+			String value = mapPositionAddress.getValue();
 			if(value == null) return "";
 			return value;
+		}
+		
+		String getMapPositionName() {
+			return mapPositionName;
 		}
 	}
 }

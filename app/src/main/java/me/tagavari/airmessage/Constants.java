@@ -109,6 +109,8 @@ public class Constants {
 	static final String intentParamRequestID = "requestID";
 	static final String intentParamLaunchID = "launchID";
 	static final String intentParamCode = "code";
+	static final String intentParamName = "name";
+	static final String intentParamAddress = "address";
 	
 	static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	
@@ -175,6 +177,7 @@ public class Constants {
 	static final int defaultPort = 1359;
 	static final String recordingName = "recording.amr";
 	static final String pictureName = "image.jpg";
+	static final String locationName = "location.loc.vcf";
 	static final String videoName = "video.mp4";
 	static final String defaultFileName = "file";
 	static final int smartReplyHistoryLength = 10;

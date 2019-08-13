@@ -27,7 +27,6 @@ import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.location.Location;
-import android.location.LocationManager;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -63,8 +62,6 @@ import android.view.ViewOutlineProvider;
 import android.view.ViewStub;
 import android.view.ViewTreeObserver;
 import android.view.animation.AccelerateInterpolator;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.view.inputmethod.EditorInfo;
@@ -130,14 +127,9 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
-import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButton;
@@ -156,8 +148,14 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Objects;
 
+import ezvcard.VCard;
+import ezvcard.VCardVersion;
+import ezvcard.io.text.VCardWriter;
+import ezvcard.property.RawProperty;
+import ezvcard.property.Url;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.OverScrollScrollView;
@@ -1120,6 +1118,20 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Updating the attachment section
 				if(resultCode == RESULT_OK) viewModel.updateAttachmentsLocationState();
 				break;
+			case intentPickLocation: {
+				//Getting the data
+				LatLng mapPosition = intent.getParcelableExtra(Constants.intentParamData);
+				String mapPositionAddress = intent.getStringExtra(Constants.intentParamAddress);
+				String mapPositionName = intent.getStringExtra(Constants.intentParamName);
+				
+				//Selecting a file to write to
+				File file = MainApplication.getDraftTarget(this, viewModel.conversationID, mapPositionName != null ? Constants.cleanFileName(mapPositionName) + ".loc.vcf" : Constants.locationName);
+				
+				//Writing the file and creating the attachment data
+				new WriteVLocationTask(file, mapPosition, mapPositionAddress, mapPositionName, this).execute();
+				
+				break;
+			}
 		}
 	}
 	
@@ -3703,6 +3715,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final int viewTypeMedia = 0;
 		static final int viewTypeDocument = 1;
 		static final int viewTypeAudio = 2;
+		static final int viewTypeContact = 3;
+		static final int viewTypeLocation = 4;
 		
 		abstract VH createViewHolder(ViewGroup parent);
 		
@@ -3928,7 +3942,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private static AttachmentTileHelper<AttachmentsMediaTileViewHolder> attachmentsMediaTileHelper = new AttachmentTileHelper<AttachmentsMediaTileViewHolder>() {
+	private static final AttachmentTileHelper<AttachmentsMediaTileViewHolder> attachmentsMediaTileHelper = new AttachmentTileHelper<AttachmentsMediaTileViewHolder>() {
 		@Override
 		AttachmentsMediaTileViewHolder createViewHolder(ViewGroup parent) {
 			return new AttachmentsMediaTileViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_attachment_mediatile, parent, false));
@@ -5639,6 +5653,73 @@ public class Messaging extends AppCompatCompositeActivity {
 		@Override
 		protected void onProgressUpdate(ConversationManager.MessageInfo... messages) {
 			for(ConversationManager.MessageInfo message : messages) onFinishListener.accept(message);
+		}
+	}
+	
+	private static class WriteVLocationTask extends AsyncTask<Void, Void, SimpleAttachmentInfo> {
+		private final File targetFile;
+		private final LatLng targetLocation;
+		private final String locationAddress;
+		private final String locationName;
+		private final WeakReference<Messaging> activityReference;
+		
+		WriteVLocationTask(File targetFile, LatLng targetLocation, String locationAddress, String locationName, Messaging activity) {
+			this.targetFile = targetFile;
+			this.targetLocation = targetLocation;
+			this.locationAddress = locationAddress;
+			this.locationName = locationName;
+			
+			activityReference = new WeakReference<>(activity);
+		}
+		
+		@Override
+		protected SimpleAttachmentInfo doInBackground(Void... voids) {
+			//Creating the vCard
+			VCard vcard = new VCard();
+			vcard.setProductId("-//" + Build.MANUFACTURER + "//" + "Android" + " " + Build.VERSION.RELEASE + "//" + Locale.getDefault().getLanguage().toUpperCase());
+			vcard.setFormattedName(locationName);
+			
+			//Constructing the URL
+			String stringLoc = targetLocation.latitude + "," + targetLocation.longitude;
+			Uri.Builder uriBuilder = new Uri.Builder()
+					.scheme("https")
+					.authority("maps.apple.com")
+					.appendQueryParameter("ll", stringLoc)
+					.appendQueryParameter("q", locationAddress != null ? locationName : stringLoc);
+			if(locationAddress != null) uriBuilder.appendQueryParameter("address", locationAddress);
+			Url url = new Url(uriBuilder.build().toString());
+			
+			//Adding the URL
+			url.setGroup("item1");
+			vcard.addUrl(url);
+			
+			//Adding the type identifier
+			RawProperty typeProperty = vcard.addExtendedProperty("X-ABLabel", "map url");
+			typeProperty.setGroup("item1");
+			
+			//Writing the vCard
+			try(VCardWriter writer = new VCardWriter(targetFile, VCardVersion.V3_0)) {
+				writer.write(vcard);
+			} catch(IOException exception) {
+				exception.printStackTrace();
+				return null;
+			}
+			
+			//Returning the attachment data
+			return new SimpleAttachmentInfo(targetFile, ConversationManager.VLocationAttachmentInfo.MIME_TYPE, targetFile.getName(), targetFile.length(), -1);
+		}
+		
+		@Override
+		protected void onPostExecute(SimpleAttachmentInfo attachmentInfo) {
+			//Ignoring the result if the file couldn't be written
+			if(attachmentInfo == null) return;
+			
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Queuing the file
+			activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
 		}
 	}
 	

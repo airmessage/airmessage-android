@@ -23,7 +23,7 @@
 			app:fabSize="mini"
 			app:srcCompat="@drawable/close"
 			app:tint="?android:attr/colorControlNormal"
-			android:onClick="onCloseClicked" />
+			android:onClick="onClickClose" />
 
 		<androidx.cardview.widget.CardView
 			android:id="@+id/container_selection"
@@ -93,7 +93,8 @@
 					android:tint="@color/colorPrimary"
 					android:background="?android:attr/selectableItemBackgroundBorderless"
 					android:layout_gravity="center"
-					android:layout_marginStart="16dp" />
+					android:layout_marginStart="16dp"
+					android:onClick="onClickConfirm" />
 			</LinearLayout>
 		</androidx.cardview.widget.CardView>
 	</androidx.constraintlayout.widget.ConstraintLayout>
