@@ -371,4 +371,10 @@
 	<string name="message_setup_connectionhelp">Problème de connection?</string>
 	<string name="preference_features_messagepreviews_description">Afficher des prévisualisations de liens Web et d\'endroits dans les conversations</string>
 	<string name="preference_features_messagepreviews_title">Prévisualisations de message</string>
+	<string name="imperative_enablelocationservices">Appuyez sur pour activer les services de location</string>
+	<string name="message_locationaddress_unknown">Adresse inconnue</string>
+	<string name="message_locationtitle_unknown">Emplacement sans nom</string>
+	<string name="message_notsupported">Cette fonctionnalité n\'est pas disponible</string>
+	<string name="part_content_location">Détails d\'emplacement</string>
+	<string name="part_content_vcf">Informations de contact</string>
 </resources>

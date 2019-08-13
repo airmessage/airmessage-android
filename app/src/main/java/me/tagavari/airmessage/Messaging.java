@@ -166,7 +166,7 @@ import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
 
-public class Messaging extends AppCompatCompositeActivity implements OnMapReadyCallback {
+public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
 	private static final int quickScrollFABThreshold = 3;
 	private static final float bottomSheetFillThreshold = 0.8F;
@@ -1582,7 +1582,13 @@ public class Messaging extends AppCompatCompositeActivity implements OnMapReadyC
 			//Configuring the map
 			groupContent.findViewById(R.id.frame_attachment_location_map).setClickable(false);
 			MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.frame_attachment_location_map);
-			mapFragment.getMapAsync(this);
+			mapFragment.getMapAsync(googleMap -> {
+				googleMap.setBuildingsEnabled(true);
+				googleMap.getUiSettings().setMapToolbarEnabled(false);
+				googleMap.getUiSettings().setAllGesturesEnabled(false);
+				googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(viewModel.attachmentsLocationResult.getLatitude(), viewModel.attachmentsLocationResult.getLongitude()), 15));
+				googleMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this, Constants.isNightMode(getResources()) ? R.raw.map_plaindark : R.raw.map_plainlight));
+			});
 			
 			groupContent.setOnClickListener(view -> {
 				startActivityForResult(new Intent(Messaging.this, LocationPicker.class).putExtra(Constants.intentParamData, viewModel.attachmentsLocationResult), intentPickLocation);
@@ -5862,15 +5868,6 @@ public class Messaging extends AppCompatCompositeActivity implements OnMapReadyC
 			if(activity == null) return;
 			activity.setActionBarTitle(result);
 		}
-	}
-	
-	@Override
-	public void onMapReady(GoogleMap googleMap) {
-		googleMap.setBuildingsEnabled(true);
-		googleMap.getUiSettings().setMapToolbarEnabled(false);
-		googleMap.getUiSettings().setAllGesturesEnabled(false);
-		googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(viewModel.attachmentsLocationResult.getLatitude(), viewModel.attachmentsLocationResult.getLongitude()), 15));
-		googleMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this, Constants.isNightMode(getResources()) ? R.raw.map_plaindark : R.raw.map_plainlight));
 	}
 	
 	void detailSwitchConversationColor(int newColor) {

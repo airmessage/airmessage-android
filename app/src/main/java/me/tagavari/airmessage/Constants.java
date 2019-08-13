@@ -41,6 +41,7 @@ import android.widget.Toolbar;
 
 import com.crashlytics.android.Crashlytics;
 import com.google.android.gms.common.util.BiConsumer;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
 
 import java.io.ByteArrayInputStream;
@@ -1266,6 +1267,10 @@ public class Constants {
 		String domain = uri.getHost();
 		if(domain == null) return null;
 		return domain.startsWith("www.") ? domain.substring(4) : domain;
+	}
+	
+	static String locationToString(LatLng position) {
+		return "(" + String.format(Locale.getDefault(), "%.5f", position.latitude) + ", " + String.format(Locale.getDefault(), "%.5f", position.longitude) + ")";
 	}
 	
 	static String cleanFileName(String fileName) {

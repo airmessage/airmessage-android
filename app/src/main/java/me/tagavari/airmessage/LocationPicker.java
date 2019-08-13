@@ -44,7 +44,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Locale;
 
 public class LocationPicker extends AppCompatActivity {
 	private ActivityViewModel viewModel;
@@ -67,11 +66,12 @@ public class LocationPicker extends AppCompatActivity {
 		
 		//Updating the labels
 		viewModel.loadMapAddress();
-		labelCoordinates.setText(locationToString(viewModel.mapPosition));
+		labelCoordinates.setText(Constants.locationToString(viewModel.mapPosition));
 	};
 	private OnMapReadyCallback mapCallback = googleMap -> {
 		//Setting the map
 		this.googleMap = googleMap;
+		
 		//Configuring the map
 		googleMap.getUiSettings().setRotateGesturesEnabled(false);
 		googleMap.getUiSettings().setTiltGesturesEnabled(false);
@@ -156,7 +156,7 @@ public class LocationPicker extends AppCompatActivity {
 			labelCoordinates.setOutAnimation(AnimationUtils.loadAnimation(this,android.R.anim.slide_out_right));
 		}
 		labelLocation.setCurrentText(viewModel.getMapPositionName());
-		labelCoordinates.setCurrentText(locationToString(viewModel.mapPosition));
+		labelCoordinates.setCurrentText(Constants.locationToString(viewModel.mapPosition));
 		
 		ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), new OnApplyWindowInsetsListener() {
 			ViewGroup.MarginLayoutParams fabParams = (ViewGroup.MarginLayoutParams) fabClose.getLayoutParams();
@@ -235,10 +235,6 @@ public class LocationPicker extends AppCompatActivity {
 		ViewGroup.MarginLayoutParams selectionLayoutParams = (ViewGroup.MarginLayoutParams) containerSelection.getLayoutParams();
 		int selectionHeight = containerSelection.getHeight() + selectionLayoutParams.bottomMargin + selectionLayoutParams.topMargin;
 		googleMap.setPadding(googleMapBasePadding.left, googleMapBasePadding.top, googleMapBasePadding.right, googleMapBasePadding.bottom + selectionHeight);
-	}
-	
-	private static String locationToString(LatLng position) {
-		return "(" + String.format(Locale.getDefault(), "%.5f", position.latitude) + ", " + String.format(Locale.getDefault(), "%.5f", position.longitude) + ")";
 	}
 	
 	private static class ActivityViewModel extends AndroidViewModel {

@@ -22,6 +22,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Icon;
 import android.graphics.drawable.PaintDrawable;
 import android.graphics.drawable.RippleDrawable;
+import android.location.Address;
+import android.location.Geocoder;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -85,7 +87,16 @@ import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 import com.google.android.gms.common.util.BiConsumer;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MapStyleOptions;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.shape.ShapeAppearanceModel;
 import com.pnikosis.materialishprogress.ProgressWheel;
 
 import org.lukhnos.nnio.file.Paths;
@@ -117,6 +128,8 @@ import java.util.regex.Matcher;
 import ezvcard.Ezvcard;
 import ezvcard.VCard;
 import ezvcard.property.Photo;
+import ezvcard.property.RawProperty;
+import ezvcard.property.Url;
 import io.github.ponnamkarthik.richlinkpreview.MetaData;
 import io.github.ponnamkarthik.richlinkpreview.ResponseListener;
 import io.github.ponnamkarthik.richlinkpreview.RichPreview;
@@ -5310,7 +5323,7 @@ class ConversationManager {
 			});
 		}
 		
-		private void displayContextMenu(View view, Context context) {
+		void displayContextMenu(View view, Context context) {
 			//Returning if there is no view
 			if(view == null) return;
 			
@@ -6382,7 +6395,7 @@ class ConversationManager {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
 		static final String MIME_TYPE = "text/x-vlocation";
-		static final int RESOURCE_NAME = R.string.part_content_vcf;
+		static final int RESOURCE_NAME = R.string.part_content_location;
 		
 		private static final int fileStateIdle = 0;
 		private static final int fileStateLoading = 1;
@@ -6391,8 +6404,7 @@ class ConversationManager {
 		
 		//Creating the media values
 		private int fileState = fileStateIdle;
-		private String contactName;
-		private Bitmap contactIcon;
+		private LocationData locationData = null;
 		
 		VLocationAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			super(localID, guid, message, fileName, fileType, fileSize);
@@ -6416,16 +6428,21 @@ class ConversationManager {
 		
 		@Override
 		void updateContentViewColor(ViewHolder viewHolder, Context context, ColorStateList cslText, ColorStateList cslBackground, ColorStateList cslAccent) {
-			viewHolder.groupContent.setBackgroundTintList(cslBackground);
+			//viewHolder.groupContent.setBackgroundTintList(cslBackground);
 			//viewHolder.iconPlaceholder.setImageTintList(cslText);
-			viewHolder.labelName.setTextColor(cslText);
+			//viewHolder.labelTitle.setTextColor(cslText);
+			//viewHolder.labelAddress.setTextColor(cslText);
+			if(viewHolder.googleMap != null) updateMapTheme(viewHolder.googleMap, context);
 		}
 		
 		@Override
 		void updateContentView(ViewHolder viewHolder, Context context) {
+			//Setting the view width
+			viewHolder.groupContent.getLayoutParams().width = getMaxMessageWidth(context.getResources());
+			
 			//Loading the file data if the state is idle
 			if(file != null && fileState == fileStateIdle) {
-				new LoadContactTask(this, file).execute();
+				new LoadLocationTask(this, file, context).execute();
 				fileState = fileStateLoading;
 			}
 			
@@ -6434,9 +6451,6 @@ class ConversationManager {
 				//Showing the failed view
 				viewHolder.groupFailed.setVisibility(View.VISIBLE);
 			} else {
-				//Showing the content view
-				viewHolder.groupContentFrame.setVisibility(View.VISIBLE);
-				
 				//Updating the view data
 				updateViewData(viewHolder);
 			}
@@ -6449,7 +6463,63 @@ class ConversationManager {
 		}
 		
 		private void updateViewData(ViewHolder viewHolder) {
-			//Setting the contact name label
+			//Checking if there is no data
+			if(locationData == null) {
+				//Hiding the content view
+				viewHolder.groupContentFrame.setVisibility(View.GONE);
+				return;
+			}
+			
+			//Showing the content view
+			viewHolder.groupContentFrame.setVisibility(View.VISIBLE);
+			
+			//Setting the click listener
+			viewHolder.groupContent.setOnClickListener(view -> Constants.launchUri(viewHolder.groupContent.getContext(), locationData.mapLink));
+			viewHolder.groupContent.setOnLongClickListener(clickView -> {
+				//Getting the context
+				Context context = clickView.getContext();
+				
+				//Returning if the view is not an activity
+				if(!(context instanceof Activity)) return false;
+				
+				//Displaying the context menu
+				displayContextMenu(clickView, context);
+				
+				//Returning
+				return true;
+			});
+			
+			//Setting the location title
+			if(locationData.title != null) viewHolder.labelTitle.setText(locationData.title);
+			else viewHolder.labelTitle.setText(R.string.message_locationtitle_unknown);
+			
+			//Setting the address
+			if(locationData.mapLocName != null) viewHolder.labelAddress.setText(locationData.mapLocName);
+			else {
+				if(locationData.mapLocPos != null) viewHolder.labelAddress.setText(Constants.locationToString(locationData.mapLocPos));
+				else viewHolder.labelTitle.setText(R.string.message_locationaddress_unknown);
+			}
+			
+			//Setting the map preview
+			if(locationData.mapLocPos == null) {
+				viewHolder.mapHeader.setVisibility(View.GONE);
+			} else {
+				//Showing the map view and setting it as non-clickable (so that the card view parent will handle clicks instead)
+				viewHolder.mapHeader.setVisibility(View.VISIBLE);
+				viewHolder.mapHeader.setClickable(false);
+				
+				if(viewHolder.googleMap != null) {
+					//Updating the current map, if it is available
+					updateMapLocation(viewHolder.googleMap);
+					updateMapTheme(viewHolder.googleMap, viewHolder.groupContent.getContext());
+				} else {
+					//Creating the Google map anew
+					viewHolder.mapHeader.getMapAsync(new MapReadyCallback(this));
+					viewHolder.mapHeader.onCreate(null);
+					viewHolder.mapHeader.onResume();
+				}
+			}
+			/* //Setting the contact title label
 			if(contactName == null) viewHolder.labelName.setText(R.string.part_content_vcf);
 			else viewHolder.labelName.setText(contactName);
 			
@@ -6461,59 +6531,146 @@ class ConversationManager {
 				viewHolder.iconPlaceholder.setVisibility(View.GONE);
 				viewHolder.iconProfile.setVisibility(View.VISIBLE);
 				viewHolder.iconProfile.setImageBitmap(contactIcon);
+			} */
+		}
+		
+		static void updateMapTheme(GoogleMap googleMap, Context context) {
+			googleMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(context, Constants.isNightMode(context.getResources()) ? R.raw.map_dark : R.raw.map_light));
+		}
+		
+		void updateMapLocation(GoogleMap googleMap) {
+			LatLng targetLocation = locationData.mapLocPos;
+			googleMap.clear();
+			googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(targetLocation, 15));
+			MarkerOptions markerOptions = new MarkerOptions().position(targetLocation);
+			googleMap.addMarker(markerOptions);
+		}
+		
+		private static class MapReadyCallback implements OnMapReadyCallback {
+			private final WeakReference<VLocationAttachmentInfo> attachmentReference;
+			
+			MapReadyCallback(VLocationAttachmentInfo attachment) {
+				//Setting the attachment reference
+				attachmentReference = new WeakReference<>(attachment);
+			}
+			
+			@Override
+			public void onMapReady(GoogleMap googleMap) {
+				//Getting the attachment
+				VLocationAttachmentInfo attachment = attachmentReference.get();
+				if(attachment == null) return;
+				
+				VLocationAttachmentInfo.ViewHolder viewHolder = attachment.getViewHolder();
+				if(viewHolder == null) return;
+				
+				//Updating the view holder information
+				viewHolder.googleMap = googleMap;
+				
+				//Configuring the map
+				googleMap.getUiSettings().setMapToolbarEnabled(false);
+				updateMapTheme(googleMap, MainApplication.getInstance());
+				attachment.updateMapLocation(googleMap);
 			}
 		}
 		
-		private static class LoadContactTask extends AsyncTask<Void, Void, Constants.Tuple2<String, Bitmap>> {
+		private static class LocationData {
+			String title = null;
+			Uri mapLink = null;
+			LatLng mapLocPos = null;
+			String mapLocName = null;
+		}
+		
+		private static class LoadLocationTask extends AsyncTask<Void, Void, LocationData> {
 			//Creating the values
-			private final WeakReference<VCFAttachmentInfo> attachmentReference;
+			private final WeakReference<VLocationAttachmentInfo> attachmentReference;
 			private final File file;
+			private Geocoder geocoder = null;
 			
-			LoadContactTask(VCFAttachmentInfo attachmentInfo, File file) {
+			LoadLocationTask(VLocationAttachmentInfo attachmentInfo, File file, Context context) {
 				//Setting the parameters
 				attachmentReference = new WeakReference<>(attachmentInfo);
 				this.file = file;
+				if(Geocoder.isPresent()) geocoder = new Geocoder(context);
 			}
 			
 			@Override
-			protected Constants.Tuple2<String, Bitmap> doInBackground(Void... parameters) {
+			protected LocationData doInBackground(Void... parameters) {
+				LocationData locationData = new LocationData();
+				
 				try {
 					//Parsing the file
 					VCard vcard = Ezvcard.parse(file).first();
-					String name = null;
-					Bitmap bitmap = null;
 					
-					//Getting the name
-					if(vcard.getFormattedName() != null) name = vcard.getFormattedName().getValue();
+					//Getting the title
+					if(vcard.getFormattedName() != null) locationData.title = vcard.getFormattedName().getValue();
 					
-					if(!vcard.getPhotos().isEmpty()) {
-						//Reading the profile picture
-						Photo photo = vcard.getPhotos().get(0);
-						byte[] photoData = photo.getData();
-						bitmap = BitmapFactory.decodeByteArray(photoData, 0, photoData.length);
-						//photo.getUrl();
+					/*
+					The following section extracts the URL from the VCF file
+					Here is an example of relevant location data in a VCF file:
+						item1.ADR;type=WORK;type=pref:;;Street address;City;State;ZIP code;Country
+						item1.X-ABADR:US
+						item1.X-APPLE-SUBLOCALITY:Area
+						item1.X-APPLE-SUBADMINISTRATIVEAREA:City
+						item2.URL;type=pref:http://www.restaurant.com
+						item2.X-ABLabel:_$!<HomePage>!$_
+						item3.URL:https://maps.apple.com/?q=...
+						item3.X-ABLabel:map url
+					
+					The X-ABLabel parameter, with the value "map url" is used to identify the correct group for the map URL
+					In this case, the group is "item3"
+					 */
+					
+					//Finding the Apple Maps URL group
+					String mapURLGroup = null;
+					for(RawProperty property : vcard.getExtendedProperties()) {
+						if(!"map url".equals(property.getValue())) continue;
+						mapURLGroup = property.getGroup();
+						break;
 					}
 					
-					return new Constants.Tuple2<>(name, bitmap);
-				} catch(IOException exception) {
+					//Getting the URL from the relevant group
+					if(mapURLGroup != null) {
+						for(Url url : vcard.getUrls()) {
+							if(!mapURLGroup.equals(url.getGroup())) continue;
+							locationData.mapLink = Uri.parse(url.getValue());
+							break;
+						}
+					}
+					
+					//Pulling the coordinates from the map URL
+					//See the following link for more details (Apple Map Links documentation)
+					//https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/MapLinks/MapLinks.html
+					String[] stringMapCoords = locationData.mapLink.getQueryParameter("ll").split(",");
+					locationData.mapLocPos = new LatLng(Double.parseDouble(stringMapCoords[0]), Double.parseDouble(stringMapCoords[1]));
+					
+					//Reverse-Geocoding the coordinates for a user-friendly location string
+					if(Geocoder.isPresent()) {
+						List<Address> results = geocoder.getFromLocation(locationData.mapLocPos.latitude, locationData.mapLocPos.longitude, 1);
+						if(results != null && !results.isEmpty()) {
+							locationData.mapLocName = results.get(0).getAddressLine(0);
+						}
+					}
+				} catch(IOException | NullPointerException exception) {
+					//Printing the stack trace
 					exception.printStackTrace();
-					return null;
 				}
+				
+				//Returning any available data
+				return locationData;
 			}
 			
 			@Override
-			protected void onPostExecute(Constants.Tuple2<String, Bitmap> result) {
+			protected void onPostExecute(LocationData result) {
 				//Getting the attachment
-				VCFAttachmentInfo attachmentInfo = attachmentReference.get();
+				VLocationAttachmentInfo attachmentInfo = attachmentReference.get();
 				if(attachmentInfo == null) return;
 				
 				//Setting the data
-				if(result == null) {
+				if(result == null || result.mapLink == null) {
 					attachmentInfo.fileState = fileStateFailed;
 				} else {
 					attachmentInfo.fileState = fileStateLoaded;
-					attachmentInfo.contactName = result.item1;
-					attachmentInfo.contactIcon = result.item2;
+					attachmentInfo.locationData = result;
 					attachmentInfo.updateViewData();
 				}
 			}
@@ -6522,7 +6679,17 @@ class ConversationManager {
 		@Override
 		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 			//Assigning the drawable
-			viewHolder.groupContent.setBackground(drawable.getConstantState().newDrawable());
+			//viewHolder.groupContent.setBackground(drawable.getConstantState().newDrawable());
+			
+			ShapeAppearanceModel shapeAppearance = new ShapeAppearanceModel();
+			
+			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
+			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
+			
+			if(alignToRight) shapeAppearance.setCornerRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
+			else shapeAppearance.setCornerRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
+			
+			viewHolder.groupContent.setShapeAppearanceModel(shapeAppearance);
 		}
 		
 		@Override
@@ -6542,22 +6709,34 @@ class ConversationManager {
 		
 		@Override
 		ViewHolder createViewHolder(Context context, ViewGroup parent) {
-			return new ViewHolder(buildAttachmentView(LayoutInflater.from(context), parent, R.layout.listitem_contentvcf));
+			return new ViewHolder(buildAttachmentView(LayoutInflater.from(context), parent, R.layout.listitem_contentlocation));
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
-			final ViewGroup groupContent;
-			final ImageView iconProfile;
-			final ImageView iconPlaceholder;
-			final TextView labelName;
+			final MaterialCardView groupContent;
+			final MapView mapHeader;
+			final TextView labelTitle;
+			final TextView labelAddress;
+			
+			GoogleMap googleMap;
 			
 			ViewHolder(View view) {
 				super(view);
 				
 				groupContent = groupContentFrame.findViewById(R.id.content);
-				iconProfile = groupContent.findViewById(R.id.image_profile);
-				iconPlaceholder = groupContent.findViewById(R.id.icon_placeholder);
-				labelName = groupContent.findViewById(R.id.label_name);
+				mapHeader = groupContent.findViewById(R.id.map_header);
+				labelTitle = groupContent.findViewById(R.id.label_title);
+				labelAddress = groupContent.findViewById(R.id.label_address);
+			}
+			
+			@Override
+			void pause() {
+				mapHeader.onPause();
+			}
+			
+			@Override
+			void resume() {
+				mapHeader.onResume();
 			}
 		}
 	}
@@ -6565,7 +6744,7 @@ class ConversationManager {
 	static class VCFAttachmentInfo extends AttachmentInfo<VCFAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
-		static final String MIME_TYPE = "text/x-vcard";
+		static final String MIME_TYPE = "text/vcard";
 		static final int RESOURCE_NAME = R.string.part_content_vcf;
 		
 		private static final int fileStateIdle = 0;
@@ -7954,6 +8133,7 @@ class ConversationManager {
 		else if(ImageAttachmentInfo.checkFileApplicability(fileType, fileName)) return ImageAttachmentInfo.RESOURCE_NAME;
 		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return VideoAttachmentInfo.RESOURCE_NAME;
 		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return AudioAttachmentInfo.RESOURCE_NAME;
+		else if(VLocationAttachmentInfo.checkFileApplicability(fileType, fileName)) return VLocationAttachmentInfo.RESOURCE_NAME;
 		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return VCFAttachmentInfo.RESOURCE_NAME;
 		else return OtherAttachmentInfo.RESOURCE_NAME;
 	}
@@ -8101,6 +8281,7 @@ class ConversationManager {
 		if(ImageAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
+		else if(VLocationAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VLocationAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VCFAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 	}
@@ -8110,6 +8291,7 @@ class ConversationManager {
 		if(ImageAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
+		else if(VLocationAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VLocationAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VCFAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 	}
@@ -8118,6 +8300,7 @@ class ConversationManager {
 		if(ImageAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.ImageAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
+		else if(VLocationAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VLocationAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VCFAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 	}

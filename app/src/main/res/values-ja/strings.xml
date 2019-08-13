@@ -358,4 +358,10 @@
 	<string name="message_setup_connectionhelp">接続問題ですか？</string>
 	<string name="preference_features_messagepreviews_description">チャットにウェブリンクと場所のプレビューを表示する</string>
 	<string name="preference_features_messagepreviews_title">メッセージのプレビュー</string>
+	<string name="imperative_enablelocationservices">タップして位置情報をONにする</string>
+	<string name="message_locationaddress_unknown">不明な場所</string>
+	<string name="message_locationtitle_unknown">無題の住所</string>
+	<string name="message_notsupported">この機能は利用できません</string>
+	<string name="part_content_location">場所の詳細</string>
+	<string name="part_content_vcf">連絡先</string>
 </resources>

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView android:id="@+id/group_messagepreview_linklarge"
+<com.google.android.material.card.MaterialCardView
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/content"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
 	android:foreground="?android:attr/selectableItemBackground"
@@ -11,8 +12,7 @@
 	app:cardElevation="0dp"
 	app:cardUseCompatPadding="false"
 	app:strokeColor="@color/colorDivider"
-	app:strokeWidth="1dp"
-	xmlns:map="http://schemas.android.com/tools">
+	app:strokeWidth="1dp">
 	<LinearLayout
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
@@ -22,9 +22,10 @@
 			android:id="@+id/map_header"
 			android:layout_width="match_parent"
 			android:layout_height="128dp"
-			android:scaleType="centerCrop"
-			map:mapType="normal"
-			map:liteMode="true" />
+			app:mapType="normal"
+			app:liteMode="true"
+			app:uiCompass="false"
+			android:clickable="false" />
 		
 		<!-- Link title -->
 		<TextView
