@@ -1,15 +1,13 @@
 <LinearLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
-	android:id="@+id/content"
-	android:layout_width="wrap_content"
-	android:layout_height="wrap_content"
-	android:minHeight="@dimen/messagebubble_minheight"
-	android:paddingBottom="@dimen/messagebubble_padding_y"
-	android:paddingLeft="@dimen/messagebubble_padding_x"
-	android:paddingRight="@dimen/messagebubble_padding_x"
-	android:paddingTop="@dimen/messagebubble_padding_y"
-	android:background="@drawable/rounded_rectangle"
-	android:backgroundTint="@color/colorMessageOutgoing"
+	android:layout_width="200dp"
+	android:layout_height="@dimen/contenttile_size"
+	android:layout_marginEnd="@dimen/contenttile_margin"
+	android:background="@drawable/rounded_selectable_contenttile"
+	android:backgroundTint="@color/colorLocation"
+	android:focusable="true"
+	android:clickable="true"
+	android:padding="16dp"
 	android:orientation="horizontal"
 	android:gravity="center_vertical">
 	<FrameLayout
@@ -39,7 +37,7 @@
 			android:id="@+id/icon_placeholder"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:src="@drawable/person_add_round"
+			android:src="@drawable/location_round"
 			android:layout_gravity="center"
 			android:tint="?android:attr/colorControlNormal" />
 	</FrameLayout>
@@ -47,9 +45,10 @@
 		android:id="@+id/label_name"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:text="@string/part_content_vcf"
-		android:textColor="?android:attr/textColorPrimary"
+		android:text="@string/part_content_location"
+		android:textColor="@android:color/black"
 		android:textSize="16sp"
 		android:gravity="center_vertical"
-		android:layout_marginStart="12dp" />
+		android:layout_marginStart="16dp"
+		android:maxLines="3" />
 </LinearLayout>

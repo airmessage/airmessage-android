@@ -329,7 +329,7 @@
 	<string name="part_content_image">Image</string>
 	<string name="part_content_video">Video</string>
 	<string name="part_content_audio">Audio</string>
-	<string name="part_content_vcf">Contact details</string>
+	<string name="part_content_contact">Contact details</string>
 	<string name="part_content_location">Location details</string>
 	<string name="part_content_other">File</string>
 	<string name="part_unknown">Unknown</string>

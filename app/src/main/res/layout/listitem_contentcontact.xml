@@ -1,13 +1,15 @@
 <LinearLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
-	android:layout_width="200dp"
-	android:layout_height="@dimen/contenttile_size"
-	android:layout_marginEnd="@dimen/contenttile_margin"
-	android:background="@drawable/rounded_selectable_contenttile"
-	android:backgroundTint="@color/colorContact"
-	android:focusable="true"
-	android:clickable="true"
-	android:padding="16dp"
+	android:id="@+id/content"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:minHeight="@dimen/messagebubble_minheight"
+	android:paddingBottom="@dimen/messagebubble_padding_y"
+	android:paddingLeft="@dimen/messagebubble_padding_x"
+	android:paddingRight="@dimen/messagebubble_padding_x"
+	android:paddingTop="@dimen/messagebubble_padding_y"
+	android:background="@drawable/rounded_rectangle"
+	android:backgroundTint="@color/colorMessageOutgoing"
 	android:orientation="horizontal"
 	android:gravity="center_vertical">
 	<FrameLayout
@@ -46,9 +48,8 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:text="@string/part_content_contact"
-		android:textColor="@android:color/white"
+		android:textColor="?android:attr/textColorPrimary"
 		android:textSize="16sp"
 		android:gravity="center_vertical"
-		android:layout_marginStart="16dp"
-		android:maxLines="3" />
+		android:layout_marginStart="12dp" />
 </LinearLayout>

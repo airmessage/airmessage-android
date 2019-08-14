@@ -58,8 +58,8 @@
 	<color name="colorServerDisconnected">#F44336</color>
 	
 	<color name="colorRecording">#FF5252</color>
-	<color name="colorContact">#536DFE</color>
-	<color name="colorLocation">#FFC400</color>
+	<color name="colorContact">#8C9EFF</color>
+	<color name="colorLocation">#FFE57F</color>
 	
 	<color name="colorTextWhite">#FFFFFF</color>
 	<color name="colorTextWhiteSecondary">#B3FFFFFF</color>

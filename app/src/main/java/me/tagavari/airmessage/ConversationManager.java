@@ -6521,19 +6521,6 @@ class ConversationManager {
 					viewHolder.mapHeader.onResume();
 				}
 			}
-			/* //Setting the contact title label
-			if(contactName == null) viewHolder.labelName.setText(R.string.part_content_vcf);
-			else viewHolder.labelName.setText(contactName);
-			
-			//Setting the contact's picture
-			if(contactIcon == null) {
-				viewHolder.iconPlaceholder.setVisibility(View.VISIBLE);
-				viewHolder.iconProfile.setVisibility(View.GONE);
-			} else {
-				viewHolder.iconPlaceholder.setVisibility(View.GONE);
-				viewHolder.iconProfile.setVisibility(View.VISIBLE);
-				viewHolder.iconProfile.setImageBitmap(contactIcon);
-			} */
 		}
 		
 		static void updateMapTheme(GoogleMap googleMap, Context context) {
@@ -6744,11 +6731,10 @@ class ConversationManager {
 		}
 	}
 	
-	static class VCFAttachmentInfo extends AttachmentInfo<VCFAttachmentInfo.ViewHolder> {
+	static class ContactAttachmentInfo extends AttachmentInfo<ContactAttachmentInfo.ViewHolder> {
 		//Creating the reference values
 		static final int ITEM_VIEW_TYPE = MessageComponent.getNextItemViewType();
-		static final String MIME_TYPE = "text/vcard";
-		static final int RESOURCE_NAME = R.string.part_content_vcf;
+		static final int RESOURCE_NAME = R.string.part_content_contact;
 		
 		private static final int fileStateIdle = 0;
 		private static final int fileStateLoading = 1;
@@ -6760,24 +6746,24 @@ class ConversationManager {
 		private String contactName;
 		private Bitmap contactIcon;
 		
-		VCFAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
+		ContactAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize) {
 			super(localID, guid, message, fileName, fileType, fileSize);
 		}
 		
-		VCFAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
+		ContactAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, File file) {
 			super(localID, guid, message, fileName, fileType, fileSize, file);
 		}
 		
-		VCFAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
+		ContactAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, byte[] fileChecksum) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileChecksum);
 		}
 		
-		VCFAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
+		ContactAttachmentInfo(long localID, String guid, MessageInfo message, String fileName, String fileType, long fileSize, Uri fileUri) {
 			super(localID, guid, message, fileName, fileType, fileSize, fileUri);
 		}
 		
 		static boolean checkFileApplicability(String fileType, String fileName) {
-			return Constants.compareMimeTypes(MIME_TYPE, fileType);
+			return Constants.compareMimeTypes("text/vcard", fileType) || Constants.compareMimeTypes("text/x-vcard", fileType);
 		}
 		
 		@Override
@@ -6828,7 +6814,7 @@ class ConversationManager {
 			viewHolder.groupFailed.setVisibility(View.GONE);
 			
 			//Setting the contact name label
-			if(contactName == null) viewHolder.labelName.setText(R.string.part_content_vcf);
+			if(contactName == null) viewHolder.labelName.setText(R.string.part_content_contact);
 			else viewHolder.labelName.setText(contactName);
 			
 			//Setting the contact's picture
@@ -6844,10 +6830,10 @@ class ConversationManager {
 		
 		private static class LoadContactTask extends AsyncTask<Void, Void, Constants.Tuple2<String, Bitmap>> {
 			//Creating the values
-			private final WeakReference<VCFAttachmentInfo> attachmentReference;
+			private final WeakReference<ContactAttachmentInfo> attachmentReference;
 			private final File file;
 			
-			LoadContactTask(VCFAttachmentInfo attachmentInfo, File file) {
+			LoadContactTask(ContactAttachmentInfo attachmentInfo, File file) {
 				//Setting the parameters
 				attachmentReference = new WeakReference<>(attachmentInfo);
 				this.file = file;
@@ -6882,7 +6868,7 @@ class ConversationManager {
 			@Override
 			protected void onPostExecute(Constants.Tuple2<String, Bitmap> result) {
 				//Getting the attachment
-				VCFAttachmentInfo attachmentInfo = attachmentReference.get();
+				ContactAttachmentInfo attachmentInfo = attachmentReference.get();
 				if(attachmentInfo == null) return;
 				
 				//Setting the data
@@ -6921,7 +6907,7 @@ class ConversationManager {
 		
 		@Override
 		ViewHolder createViewHolder(Context context, ViewGroup parent) {
-			return new ViewHolder(buildAttachmentView(LayoutInflater.from(context), parent, R.layout.listitem_contentvcf));
+			return new ViewHolder(buildAttachmentView(LayoutInflater.from(context), parent, R.layout.listitem_contentcontact));
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
@@ -8150,7 +8136,7 @@ class ConversationManager {
 		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return VideoAttachmentInfo.RESOURCE_NAME;
 		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return AudioAttachmentInfo.RESOURCE_NAME;
 		else if(VLocationAttachmentInfo.checkFileApplicability(fileType, fileName)) return VLocationAttachmentInfo.RESOURCE_NAME;
-		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return VCFAttachmentInfo.RESOURCE_NAME;
+		else if(ContactAttachmentInfo.checkFileApplicability(fileType, fileName)) return ContactAttachmentInfo.RESOURCE_NAME;
 		else return OtherAttachmentInfo.RESOURCE_NAME;
 	}
 	
@@ -8298,7 +8284,7 @@ class ConversationManager {
 		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 		else if(VLocationAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VLocationAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
-		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VCFAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
+		else if(ContactAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ContactAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize);
 	}
 	
@@ -8308,7 +8294,7 @@ class ConversationManager {
 		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 		else if(VLocationAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VLocationAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
-		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VCFAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
+		else if(ContactAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ContactAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, file);
 	}
 	
@@ -8317,7 +8303,7 @@ class ConversationManager {
 		else if(AudioAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.AudioAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 		else if(VideoAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VideoAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 		else if(VLocationAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VLocationAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
-		else if(VCFAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ConversationManager.VCFAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
+		else if(ContactAttachmentInfo.checkFileApplicability(fileType, fileName)) return new ContactAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 		return new ConversationManager.OtherAttachmentInfo(fileID, fileGuid, messageInfo, fileName, fileType, fileSize, fileUri);
 	}
 	

@@ -21,6 +21,8 @@ import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.PointF;
@@ -139,7 +141,9 @@ import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -151,9 +155,11 @@ import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Objects;
 
+import ezvcard.Ezvcard;
 import ezvcard.VCard;
 import ezvcard.VCardVersion;
 import ezvcard.io.text.VCardWriter;
+import ezvcard.property.Photo;
 import ezvcard.property.RawProperty;
 import ezvcard.property.Url;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
@@ -177,6 +183,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final String mimeTypeVideo = "video/*";
 	private static final String mimeTypeAudio = "audio/*";
 	private static final String mimeTypeGIF = "image/gif";
+	private static final String mimeTypeVCard = "text/vcard";
+	private static final String mimeTypeVLocation = "text/x-vlocation";
 	
 	private static final long confettiDuration = 1000;
 	//private static final float disabledAlpha = 0.38F
@@ -3576,6 +3584,12 @@ public class Messaging extends AppCompatCompositeActivity {
 				case AttachmentTileHelper.viewTypeAudio:
 					tileViewHolder = attachmentsAudioTileHelper.createViewHolder(container);
 					break;
+				case AttachmentTileHelper.viewTypeContact:
+					tileViewHolder = attachmentsContactTileHelper.createViewHolder(container);
+					break;
+				case AttachmentTileHelper.viewTypeLocation:
+					tileViewHolder = attachmentsLocationTileHelper.createViewHolder(container);
+					break;
 				default:
 					throw new IllegalArgumentException("Invalid view type received: " + viewType);
 			}
@@ -3658,6 +3672,10 @@ public class Messaging extends AppCompatCompositeActivity {
 				contentViewHolder.itemView.setPivotY(0.5F);
 				contentViewHolder.itemView.setScaleX(scale);
 				contentViewHolder.itemView.setScaleY(scale);
+				
+				int contentWidth = (int) (contentViewHolder.itemView.getLayoutParams().width * scale);
+				container.getLayoutParams().width = contentWidth;
+				itemView.getLayoutParams().width = contentWidth + Constants.dpToPx(30);
 			}
 			
 			void setAppearenceState(boolean state, boolean animate) {
@@ -3728,10 +3746,10 @@ public class Messaging extends AppCompatCompositeActivity {
 	AttachmentTileHelper<?> findAppropriateTileHelper(String mimeType) {
 		if(mimeType == null) return attachmentsDocumentTileHelper;
 		
-		{
-			if(Constants.compareMimeTypes(mimeType, mimeTypeImage) || Constants.compareMimeTypes(mimeType, mimeTypeVideo)) return attachmentsMediaTileHelper;
-			else if(Constants.compareMimeTypes(mimeType, mimeTypeAudio)) return attachmentsAudioTileHelper;
-		}
+		if(Constants.compareMimeTypes(mimeType, mimeTypeImage) || Constants.compareMimeTypes(mimeType, mimeTypeVideo)) return attachmentsMediaTileHelper;
+		else if(Constants.compareMimeTypes(mimeType, mimeTypeAudio)) return attachmentsAudioTileHelper;
+		else if(ConversationManager.ContactAttachmentInfo.checkFileApplicability(mimeType, null)) return attachmentsContactTileHelper;
+		else if(Constants.compareMimeTypes(mimeType, mimeTypeVLocation)) return attachmentsLocationTileHelper;
 		
 		return attachmentsDocumentTileHelper;
 	}
@@ -4190,6 +4208,92 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	};
 	
+	private static class AttachmentsLocationTileViewHolder extends AttachmentTileViewHolder {
+		//Creating the view values
+		final TextView labelName;
+		
+		AttachmentsLocationTileViewHolder(View itemView) {
+			super(itemView);
+			
+			labelName = itemView.findViewById(R.id.label_name);
+		}
+	}
+	
+	private static final AttachmentTileHelper<AttachmentsLocationTileViewHolder> attachmentsLocationTileHelper = new AttachmentTileHelper<AttachmentsLocationTileViewHolder>() {
+		@Override
+		AttachmentsLocationTileViewHolder createViewHolder(ViewGroup parent) {
+			return new AttachmentsLocationTileViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_attachment_locationtile, parent, false));
+		}
+		
+		@Override
+		void bindView(Context context, AttachmentsLocationTileViewHolder viewHolder, SimpleAttachmentInfo item) {
+			//Returning if the file is invalid
+			if(item == null) return;
+			
+			//Getting the extension data
+			SimpleAttachmentInfo.LocationExtension extension = (SimpleAttachmentInfo.LocationExtension) item.getExtension();
+			
+			//Setting the location name label
+			if(extension.locationName == null) viewHolder.labelName.setText(R.string.part_content_location);
+			else viewHolder.labelName.setText(extension.locationName);
+		}
+		
+		@Override
+		int getViewType() {
+			return viewTypeLocation;
+		}
+	};
+	
+	private static class AttachmentsContactTileViewHolder extends AttachmentTileViewHolder {
+		//Creating the view values
+		final ImageView iconProfile;
+		final ImageView iconPlaceholder;
+		final TextView labelName;
+		
+		AttachmentsContactTileViewHolder(View itemView) {
+			super(itemView);
+			
+			iconProfile = itemView.findViewById(R.id.image_profile);
+			iconPlaceholder = itemView.findViewById(R.id.icon_placeholder);
+			labelName = itemView.findViewById(R.id.label_name);
+		}
+	}
+	
+	private static final AttachmentTileHelper<AttachmentsContactTileViewHolder> attachmentsContactTileHelper = new AttachmentTileHelper<AttachmentsContactTileViewHolder>() {
+		@Override
+		AttachmentsContactTileViewHolder createViewHolder(ViewGroup parent) {
+			return new AttachmentsContactTileViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_attachment_contacttile, parent, false));
+		}
+		
+		@Override
+		void bindView(Context context, AttachmentsContactTileViewHolder viewHolder, SimpleAttachmentInfo item) {
+			//Returning if the file is invalid
+			if(item == null) return;
+			
+			//Getting the extension data
+			SimpleAttachmentInfo.ContactExtension extension = (SimpleAttachmentInfo.ContactExtension) item.getExtension();
+			
+			//Setting the contact name label
+			if(extension.contactName == null) viewHolder.labelName.setText(R.string.part_content_contact);
+			else viewHolder.labelName.setText(extension.contactName);
+			
+			//Setting the contact's picture
+			if(extension.contactIcon == null) {
+				viewHolder.iconPlaceholder.setVisibility(View.VISIBLE);
+				viewHolder.iconProfile.setVisibility(View.GONE);
+			} else {
+				viewHolder.iconPlaceholder.setVisibility(View.GONE);
+				viewHolder.iconProfile.setVisibility(View.VISIBLE);
+				viewHolder.iconProfile.setImageBitmap(extension.contactIcon);
+			}
+		}
+		
+		@Override
+		int getViewType() {
+			return viewTypeContact;
+		}
+	};
+	
 	private static class SimpleAttachmentInfo {
 		private final File file;
 		private final Uri uri;
@@ -4240,8 +4344,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		private void assignExtension() {
-			if(Constants.compareMimeTypes(fileType, "audio/*")) extension = new AudioExtension();
-			else if(Constants.compareMimeTypes(fileType, "video/*")) extension = new VideoExtension();
+			if(Constants.compareMimeTypes(fileType, mimeTypeAudio)) extension = new AudioExtension();
+			else if(Constants.compareMimeTypes(fileType, mimeTypeVideo)) extension = new VideoExtension();
+			else if(Constants.compareMimeTypes(fileType, mimeTypeVLocation)) extension = new LocationExtension();
+			else if(ConversationManager.ContactAttachmentInfo.checkFileApplicability(fileType, null)) extension = new ContactExtension();
+			//else if(Constants.compareMimeTypes(fileType, mimeTypeVLocation)) extension = new LocationExtension();
 			else extension = null;
 			
 			if(extension != null) extension.initialize();
@@ -4392,6 +4499,69 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			long getMediaDuration() {
 				return mediaDuration;
+			}
+		}
+		
+		class LocationExtension extends Extension {
+			private String locationName = null;
+			
+			@Override
+			void initialize() {
+				try {
+					//Getting the input stream
+					InputStream fileStream;
+					if(file != null) fileStream = new FileInputStream(file);
+					else if(uri != null) fileStream = MainApplication.getInstance().getContentResolver().openInputStream(uri);
+					else return;
+					if(fileStream == null) return;
+					
+					//Parsing the file
+					VCard vcard = Ezvcard.parse(fileStream).first();
+					
+					//Getting the name
+					if(vcard.getFormattedName() != null) locationName = vcard.getFormattedName().getValue();
+				} catch(IOException exception) {
+					exception.printStackTrace();
+				}
+			}
+		}
+		
+		class ContactExtension extends Extension {
+			private String contactName = null;
+			private Bitmap contactIcon = null;
+			
+			@Override
+			void initialize() {
+				try {
+					//Getting the input stream
+					InputStream fileStream;
+					if(file != null) fileStream = new FileInputStream(file);
+					else if(uri != null) fileStream = MainApplication.getInstance().getContentResolver().openInputStream(uri);
+					else return;
+					if(fileStream == null) return;
+					
+					//Parsing the file
+					VCard vcard = Ezvcard.parse(fileStream).first();
+					String name = null;
+					Bitmap bitmap = null;
+					
+					//Getting the name
+					if(vcard.getFormattedName() != null) name = vcard.getFormattedName().getValue();
+					
+					//Getting the bitmap
+					if(!vcard.getPhotos().isEmpty()) {
+						//Reading the profile picture
+						Photo photo = vcard.getPhotos().get(0);
+						byte[] photoData = photo.getData();
+						bitmap = BitmapFactory.decodeByteArray(photoData, 0, photoData.length);
+					}
+					
+					//Setting the information
+					contactName = name;
+					contactIcon = bitmap;
+				} catch(IOException exception) {
+					exception.printStackTrace();
+				}
 			}
 		}
 	}
