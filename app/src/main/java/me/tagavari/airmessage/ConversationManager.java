@@ -2088,28 +2088,33 @@ class ConversationManager {
 		private final String fileName;
 		private final long fileSize;
 		private final String fileType;
-		
-		private final File originalFile;
 		private final long modificationDate;
 		
-		DraftFile(long localID, File file, String fileName, long fileSize, String fileType) {
+		private final File originalFile;
+		private final Uri originalUri;
+		
+		DraftFile(long localID, File file, String fileName, long fileSize, String fileType, long modificationDate) {
 			this.localID = localID;
 			this.file = file;
 			this.fileName = fileName;
 			this.fileSize = fileSize;
 			this.fileType = fileType;
+			this.modificationDate = modificationDate;
+			
 			this.originalFile = null;
-			this.modificationDate = 0;
+			this.originalUri = null;
 		}
 		
-		DraftFile(long localID, File file, String fileName, long fileSize, String fileType, File originalFile, long modificationDate) {
+		DraftFile(long localID, File file, String fileName, long fileSize, String fileType, long modificationDate, File originalFile, Uri originalUri) {
 			this.localID = localID;
 			this.file = file;
 			this.fileName = fileName;
 			this.fileSize = fileSize;
 			this.fileType = fileType;
-			this.originalFile = originalFile;
 			this.modificationDate = modificationDate;
+			
+			this.originalFile = originalFile;
+			this.originalUri = originalUri;
 		}
 		
 		long getLocalID() {
@@ -2132,12 +2137,16 @@ class ConversationManager {
 			return fileType;
 		}
 		
+		long getModificationDate() {
+			return modificationDate;
+		}
+		
 		File getOriginalFile() {
 			return originalFile;
 		}
 		
-		long getModificationDate() {
-			return modificationDate;
+		Uri getOriginalUri() {
+			return originalUri;
 		}
 		
 		static String getRelativePath(Context context, File file) {

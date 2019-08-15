@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteConstraintException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.net.Uri;
 import android.provider.BaseColumns;
 import android.util.Base64;
 import android.util.LongSparseArray;
@@ -119,8 +120,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.DraftFileEntry.COLUMN_NAME_FILENAME + " TEXT NOT NULL," +
 			Contract.DraftFileEntry.COLUMN_NAME_FILESIZE + " INTEGER NOT NULL," +
 			Contract.DraftFileEntry.COLUMN_NAME_FILETYPE + " TEXT NOT NULL," +
+			Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE + " INTEGER," +
 			Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH + " TEXT," +
-			Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE + " INTEGER" +
+			Contract.DraftFileEntry.COLUMN_NAME_ORIGINALURI + " TEXT" +
 			");";
 	private static final String SQL_CREATE_TABLE_MEMBERS = "CREATE TABLE " + Contract.MemberEntry.TABLE_NAME + " (" +
 			Contract.MemberEntry.COLUMN_NAME_MEMBER + " TEXT NOT NULL," +
@@ -441,6 +443,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 						"subtitle TEXT, " +
 						"caption TEXT " +
 						");");
+				
+				//Adding the original URI to the drafts table
+				database.execSQL("ALTER TABlE draft_files ADD original_uri TEXT;");
 		}
 	}
 	
@@ -505,8 +510,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 			static final String COLUMN_NAME_FILENAME = "file_name";
 			static final String COLUMN_NAME_FILESIZE = "file_size";
 			static final String COLUMN_NAME_FILETYPE = "file_type";
-			static final String COLUMN_NAME_ORIGINALPATH = "original_path";
 			static final String COLUMN_NAME_MODIFICATIONDATE = "modification_date";
+			static final String COLUMN_NAME_ORIGINALPATH = "original_path";
+			static final String COLUMN_NAME_ORIGINALURI = "original_uri";
 		}
 		
 		static class MemberEntry implements BaseColumns {
@@ -1500,7 +1506,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		writableDatabase.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + "=?", new String[]{Long.toString(localID)});
 	} */
 	
-	ConversationManager.DraftFile addDraftReference(long conversationID, File file, String fileName, long fileSize, String fileType, File originalFile, long modificationDate, long updateTime) {
+	ConversationManager.DraftFile addDraftReference(long conversationID, File file, String fileName, long fileSize, String fileType, long modificationDate, File originalFile, Uri originalUri, long updateTime) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
@@ -1514,10 +1520,9 @@ class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_FILENAME, fileName);
 		contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_FILESIZE, fileSize);
 		contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_FILETYPE, fileType);
-		if(originalFile != null) {
-			contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH, originalFile.getAbsolutePath());
-			contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE, modificationDate);
-		}
+		contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE, modificationDate);
+		if(originalFile != null) contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH, originalFile.getAbsolutePath());
+		if(originalUri != null) contentValues.put(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALURI, originalUri.toString());
 		
 		long localID;
 		try {
@@ -1531,7 +1536,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		updateConversationDraftUpdateTime(database, conversationID, updateTime);
 		
 		//Returning the new draft file information
-		return new ConversationManager.DraftFile(localID, file, fileName, fileSize, fileType, originalFile, modificationDate);
+		return new ConversationManager.DraftFile(localID, file, fileName, fileSize, fileType, modificationDate, originalFile, originalUri);
 	}
 	
 	void removeDraftReference(long draftID, long updateTime) {
@@ -1568,7 +1573,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Querying the database
 		try(Cursor cursor = database.query(Contract.DraftFileEntry.TABLE_NAME,
-				new String[]{Contract.DraftFileEntry._ID, Contract.DraftFileEntry.COLUMN_NAME_FILE, Contract.DraftFileEntry.COLUMN_NAME_FILENAME, Contract.DraftFileEntry.COLUMN_NAME_FILESIZE, Contract.DraftFileEntry.COLUMN_NAME_FILETYPE, Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH, Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE},
+				new String[]{Contract.DraftFileEntry._ID, Contract.DraftFileEntry.COLUMN_NAME_FILE, Contract.DraftFileEntry.COLUMN_NAME_FILENAME, Contract.DraftFileEntry.COLUMN_NAME_FILESIZE, Contract.DraftFileEntry.COLUMN_NAME_FILETYPE, Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE, Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH, Contract.DraftFileEntry.COLUMN_NAME_ORIGINALURI},
 				Contract.DraftFileEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationID)},
 				null, null, null)) {
 			//Reading the results
@@ -1580,18 +1585,21 @@ class DatabaseManager extends SQLiteOpenHelper {
 				int indexFileName = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILENAME);
 				int indexFileSize = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILESIZE);
 				int indexFileType = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILETYPE);
-				int indexOriginalPath = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH);
 				int indexModificationDate = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE);
+				int indexOriginalPath = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH);
+				int indexOriginalUri = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALURI);
 				do {
-					String originalPath;
+					String originalPath = cursor.getString(indexOriginalPath);
+					String originalUri = cursor.getString(indexOriginalUri);
 					draftList.add(new ConversationManager.DraftFile(
 							cursor.getLong(indexIdentifier),
 							ConversationManager.DraftFile.getAbsolutePath(MainApplication.getInstance(), cursor.getString(indexFile)),
 							cursor.getString(indexFileName),
 							cursor.getLong(indexFileSize),
 							cursor.getString(indexFileType),
-							(originalPath = cursor.getString(indexOriginalPath)) == null ? null : new File(originalPath),
-							originalPath == null ? 0 : cursor.getLong(indexModificationDate)
+							cursor.getLong(indexModificationDate),
+							originalPath == null ? null : new File(originalPath),
+							originalUri == null ? null : Uri.parse(originalUri)
 					));
 				} while(cursor.moveToNext());
 			}
@@ -2183,24 +2191,27 @@ class DatabaseManager extends SQLiteOpenHelper {
 	
 	private ArrayList<ConversationManager.DraftFile> loadDraftFiles(SQLiteDatabase database, Context context, long chatID) {
 		ArrayList<ConversationManager.DraftFile> draftFiles = new ArrayList<>();
-		try(Cursor cursor = database.query(Contract.DraftFileEntry.TABLE_NAME, new String[]{Contract.DraftFileEntry._ID, Contract.DraftFileEntry.COLUMN_NAME_FILE, Contract.DraftFileEntry.COLUMN_NAME_FILENAME, Contract.DraftFileEntry.COLUMN_NAME_FILESIZE, Contract.DraftFileEntry.COLUMN_NAME_FILETYPE, Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH, Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE}, Contract.DraftFileEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(chatID)}, null, null, null)) {
+		try(Cursor cursor = database.query(Contract.DraftFileEntry.TABLE_NAME, new String[]{Contract.DraftFileEntry._ID, Contract.DraftFileEntry.COLUMN_NAME_FILE, Contract.DraftFileEntry.COLUMN_NAME_FILENAME, Contract.DraftFileEntry.COLUMN_NAME_FILESIZE, Contract.DraftFileEntry.COLUMN_NAME_FILETYPE, Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE, Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH, Contract.DraftFileEntry.COLUMN_NAME_ORIGINALURI}, Contract.DraftFileEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(chatID)}, null, null, null)) {
 			int indexIdentifier = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry._ID);
 			int indexFile = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILE);
 			int indexFileName = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILENAME);
 			int indexFileSize = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILESIZE);
 			int indexFileType = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_FILETYPE);
-			int indexOriginalPath = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH);
 			int indexModificationDate = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_MODIFICATIONDATE);
+			int indexOriginalPath = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALPATH);
+			int indexOriginalUri = cursor.getColumnIndexOrThrow(Contract.DraftFileEntry.COLUMN_NAME_ORIGINALURI);
 			while(cursor.moveToNext()) {
 				String originalPath = cursor.getString(indexOriginalPath);
+				String originalUri = cursor.getString(indexOriginalUri);
 				draftFiles.add(new ConversationManager.DraftFile(
 						cursor.getLong(indexIdentifier),
 						ConversationManager.DraftFile.getAbsolutePath(context, cursor.getString(indexFile)),
 						cursor.getString(indexFileName),
 						cursor.getLong(indexFileSize),
 						cursor.getString(indexFileType),
+						cursor.getLong(indexModificationDate),
 						originalPath == null ? null : new File(originalPath),
-						cursor.getLong(indexModificationDate)));
+						originalUri == null ? null : Uri.parse(originalUri)));
 			}
 		}
 		return draftFiles;

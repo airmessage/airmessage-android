@@ -3384,7 +3384,7 @@ public class ConnectionService extends Service {
 		private String fileType;
 		private String fileName;
 		private long updateTime;
-		private long fileModificationDate = 0;
+		private long fileModificationDate = -1;
 		private boolean uploadRequested;
 		private int state;
 		
@@ -3437,7 +3437,7 @@ public class ConnectionService extends Service {
 			//if(Paths.get(sendFile.toURI()).startsWith(MainApplication.getDraftDirectory(MainApplication.getInstance()).getPath())) state = stateQueued;
 		}
 		
-		FilePushRequest(@NonNull Uri uri, String fileType, String fileName, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
+		FilePushRequest(@NonNull Uri uri, String fileType, String fileName, long fileModificationDate, ConversationManager.ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
 			//Calling the main constructor
 			this(conversationInfo, attachmentID, draftID, state, updateTime, uploadRequested);
 			
@@ -3448,6 +3448,7 @@ public class ConnectionService extends Service {
 			sendUri = uri;
 			this.fileType = fileType;
 			this.fileName = fileName;
+			this.fileModificationDate = fileModificationDate;
 		}
 		
 		void setAttachmentID(long value) {
@@ -4025,7 +4026,7 @@ public class ConnectionService extends Service {
 						//Setting the state
 						pushRequest.state = FilePushRequest.stateAttached;
 					} else {
-						ConversationManager.DraftFile draft = DatabaseManager.getInstance().addDraftReference(pushRequest.conversationID, pushRequest.sendFile, pushRequest.sendFile.getName(), pushRequest.sendFile.length(), pushRequest.fileType, originalFile, pushRequest.fileModificationDate, pushRequest.updateTime);
+						ConversationManager.DraftFile draft = DatabaseManager.getInstance().addDraftReference(pushRequest.conversationID, pushRequest.sendFile, pushRequest.sendFile.getName(), pushRequest.sendFile.length(), pushRequest.fileType, pushRequest.fileModificationDate, originalFile, pushRequest.sendUri, pushRequest.updateTime);
 						if(draft == null) {
 							//Deleting the target file
 							pushRequest.sendFile.delete();

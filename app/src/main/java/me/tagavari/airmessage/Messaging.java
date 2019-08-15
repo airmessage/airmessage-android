@@ -43,6 +43,8 @@ import android.os.Looper;
 import android.os.Parcelable;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
+import android.provider.OpenableColumns;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
@@ -1176,7 +1178,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(context == null) return null;
 			
 			//Adding the files
-			for(File file : files) list.add(new SimpleAttachmentInfo(file, Constants.getMimeType(file), file.getName(), file.length(), -1));
+			for(File file : files) list.add(new SimpleAttachmentInfo(file, Constants.getMimeType(file), file.getName(), file.length(), file.lastModified()));
 			
 			//Returning
 			return list;
@@ -1216,7 +1218,28 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Adding the files
 			for(Uri uri : uris) {
 				if(uri == null) continue;
-				list.add(new SimpleAttachmentInfo(uri, Constants.getMimeType(context, uri), Constants.getUriName(context, uri), Constants.getUriSize(context, uri), -1));
+				
+				//Querying the file data
+				try(Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
+					if(cursor == null) continue;
+					
+					int iType = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE);
+					int iDisplayName = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME);
+					int iSize = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE);
+					int iModificationDate = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED);
+					
+					if(!cursor.moveToFirst()) continue;
+					
+					//Getting the file information
+					String fileType = cursor.getString(iType);
+					if(fileType == null) fileType = "application/octet-stream";
+					String fileName = Constants.cleanFileName(cursor.getString(iDisplayName));
+					long fileSize = cursor.getLong(iSize);
+					long modificationDate = cursor.getLong(iModificationDate);
+					list.add(new SimpleAttachmentInfo(uri, fileType, fileName, fileSize, modificationDate));
+				}
+				
+				//list.add(new SimpleAttachmentInfo(uri, Constants.getMimeType(context, uri), Constants.getUriName(context, uri), Constants.getUriSize(context, uri), -1));
 			}
 			
 			//Returning
@@ -1328,7 +1351,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			messageList.add(messageInfo);
 			
 			//Dequeuing the item
-			dequeueAttachment(queuedFile.getItem(), true, false);
+			dequeueAttachment(queuedFile, true, false);
 			viewModel.conversationInfo.removeDraftFileUpdate(this, queuedFile.getDraftFile(), -1);
 		}
 		
@@ -3340,12 +3363,11 @@ public class Messaging extends AppCompatCompositeActivity {
 				for(ListIterator<SimpleAttachmentInfo> loadedIterator = fileList.listIterator(); loadedIterator.hasNext(); ) {
 					//Getting the item information
 					int loadedIndex = loadedIterator.nextIndex();
-					if(usesActionButton())
-						loadedIndex += 1; //The action button takes up the first slot at the start
+					if(usesActionButton()) loadedIndex += 1; //The action button takes up the first slot at the start
 					SimpleAttachmentInfo loadedItem = loadedIterator.next();
 					
 					//Skipping the remainder of the iteration if the items don't match
-					if(!loadedItem.compare(queuedItem.getItem())) continue;
+					if(!loadedItem.compare(queuedItem)) continue;
 					
 					//Updating the items' adapter information
 					queuedItem.getItem().setAdapterInformation(this, loadedIndex);
@@ -3407,7 +3429,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the processing request
 		ConnectionService.FilePushRequest request = item.getFile() != null ?
 													new ConnectionService.FilePushRequest(item.getFile(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false) :
-													new ConnectionService.FilePushRequest(item.getUri(), item.getFileType(), item.getFileName(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false);
+													new ConnectionService.FilePushRequest(item.getUri(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, ConnectionService.FilePushRequest.stateLinked, updateTime, false);
 		request.getCallbacks().onFail = (result, details) -> {
 			//Dequeuing the attachment
 			dequeueAttachment(item, true, false);
@@ -3471,24 +3493,47 @@ public class Messaging extends AppCompatCompositeActivity {
 		return draftIndex;
 	}
 	
-	int dequeueAttachment(SimpleAttachmentInfo item, boolean updateListing, boolean updateElsewhere) {
-		int draftIndex = -1;
-		
+	int dequeueAttachment(SimpleAttachmentInfo attachmentInfo, boolean updateListing, boolean updateElsewhere) {
 		//Removing the item
+		int queuedItemIndex = -1;
 		QueuedFileInfo queuedItem = null;
 		for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext();) {
-			draftIndex = iterator.nextIndex();
-			queuedItem = iterator.next();
-			if(queuedItem.getItem().compare(item)) {
+			int index = iterator.nextIndex();
+			QueuedFileInfo item = iterator.next();
+			
+			if(attachmentInfo.compare(item)) {
 				iterator.remove();
-				listAttachmentQueue.getAdapter().notifyItemRemoved(draftIndex);
+				listAttachmentQueue.getAdapter().notifyItemRemoved(index);
+				
+				queuedItemIndex = index;
+				queuedItem = item;
 				break;
 			}
 		}
 		
 		//Returning if no item was found
-		if(draftIndex == -1) return -1;
+		if(queuedItemIndex == -1) return -1;
 		
+		//Dequeuing the item
+		return dequeueAttachment(queuedItem, queuedItemIndex, updateListing, updateElsewhere);
+	}
+	
+	int dequeueAttachment(QueuedFileInfo queuedItem, boolean updateListing, boolean updateElsewhere) {
+		//Getting the item index
+		int queuedItemIndex = viewModel.draftQueueList.indexOf(queuedItem);
+		
+		//Returning if no item was found
+		if(queuedItemIndex == -1) return -1;
+		
+		//Removing the item
+		viewModel.draftQueueList.remove(queuedItemIndex);
+		listAttachmentQueue.getAdapter().notifyItemRemoved(queuedItemIndex);
+		
+		//Dequeuing the item
+		return dequeueAttachment(queuedItem, queuedItemIndex, updateListing, updateElsewhere);
+	}
+	
+	private int dequeueAttachment(QueuedFileInfo queuedItem, int queuedItemIndex, boolean updateListing, boolean updateElsewhere) {
 		//Removing the draft from the conversation and from disk
 		if(updateElsewhere && queuedItem.getDraftFile() != null) {
 			//Getting the connection service
@@ -3515,7 +3560,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(updateListing) {
 			//Updating the relevant adapters
 			List<AttachmentsRecyclerAdapter<?>> adapterList = new ArrayList<>();
-			for(int i = draftIndex; i < viewModel.draftQueueList.size(); i++) {
+			for(int i = queuedItemIndex; i < viewModel.draftQueueList.size(); i++) {
 				QueuedFileInfo listedItem = viewModel.draftQueueList.get(i);
 				if(listedItem.getItem().getListAdapter() == null || adapterList.contains(listedItem.getItem().getListAdapter())) continue;
 				adapterList.add(listedItem.getItem().getListAdapter());
@@ -3523,7 +3568,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			for(AttachmentsRecyclerAdapter<?> adapter : adapterList) adapter.recalculateIndices();
 			
 			//Updating the item selection
-			if(item.getListAdapter() != null) item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
+			SimpleAttachmentInfo attachmentInfo = queuedItem.getItem();
+			if(attachmentInfo.getListAdapter() != null) attachmentInfo.getListAdapter().notifyItemChanged(attachmentInfo.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
 		}
 		
 		//Animating the list
@@ -3553,8 +3599,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		updateSendButton(false);
 		
 		//Returning the removed item index
-		return draftIndex;
+		return queuedItemIndex;
 	}
+	
 	
 	private class AttachmentsQueueRecyclerAdapter extends RecyclerView.Adapter<AttachmentsQueueRecyclerAdapter.QueueTileViewHolder> {
 		//Creating the reference values
@@ -3607,7 +3654,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			fileInfo.getTileHelper().bindView(Messaging.this, holder.contentViewHolder, fileInfo.item);
 			
 			//Hooking up the remove button
-			holder.buttonRemove.setOnClickListener(view -> dequeueAttachment(fileInfo.item, true, true));
+			holder.buttonRemove.setOnClickListener(view -> dequeueAttachment(fileInfo, true, true));
 			
 			//Setting the view state
 			holder.setAppearenceState(fileInfo.getFilePushRequest() == null || !fileInfo.getFilePushRequest().isInProcessing(), false);
@@ -3940,7 +3987,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	 */
 	private int getDraftItemIndex(SimpleAttachmentInfo item) {
 		for(int i = 0; i < viewModel.draftQueueList.size(); i++) {
-			if(viewModel.draftQueueList.get(i).getItem().compare(item)) return i;
+			if(item.compare(viewModel.draftQueueList.get(i))) return i;
 		}
 		return -1;
 	}
@@ -4342,7 +4389,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		SimpleAttachmentInfo(ConversationManager.DraftFile draft) {
-			this(draft.getOriginalFile() != null ? draft.getOriginalFile() : draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getFileSize(), draft.getModificationDate());
+			this(draft.getFile() != null ? draft.getFile() : draft.getOriginalFile(), draft.getFileType(), draft.getFileName(), draft.getFileSize(), draft.getModificationDate());
 		}
 		
 		private void assignExtension() {
@@ -4391,6 +4438,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		int getListIndex() {
 			return listIndex;
+		}
+		
+		public boolean compare(QueuedFileInfo item) {
+			return this.getModificationDate() == item.getItem().getModificationDate() &&
+				   ((this.getUri() != null && this.getUri().equals(item.getDraftFile().getOriginalUri())) ||
+					(this.getFile() != null && this.getFile().equals(item.getDraftFile().getOriginalFile())));
 		}
 		
 		public boolean compare(SimpleAttachmentInfo item) {
