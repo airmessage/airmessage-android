@@ -9,6 +9,7 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.transition.ChangeBounds;
 import android.transition.Scene;
@@ -52,6 +53,7 @@ public class LocationPicker extends AppCompatActivity {
 	private CardView containerSelection;
 	private TextSwitcher labelLocation;
 	private TextSwitcher labelCoordinates;
+	private View systemProtectionTop, systemProtectionBottom;
 	
 	private final Rect googleMapBasePadding = new Rect(); //Padding for the Google Map view, minus the height of the bottom selection container
 	private GoogleMap googleMap;
@@ -96,8 +98,6 @@ public class LocationPicker extends AppCompatActivity {
 		setContentView(R.layout.activity_locationpicker);
 		
 		//Setting the window
-		//getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-		//getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
 		getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
 		
 		//Getting the view model
@@ -146,6 +146,8 @@ public class LocationPicker extends AppCompatActivity {
 		containerSelection = findViewById(R.id.container_selection);
 		labelLocation = containerSelection.findViewById(R.id.label_location);
 		labelCoordinates = containerSelection.findViewById(R.id.label_coordinates);
+		systemProtectionTop = findViewById(R.id.view_protection_top);
+		systemProtectionBottom = findViewById(R.id.view_protection_bottom);
 		
 		//Configuring the views
 		containerSelection.setOnTouchListener((view, event) -> true); //To prevent touches from going through to the map
@@ -158,6 +160,10 @@ public class LocationPicker extends AppCompatActivity {
 		labelLocation.setCurrentText(viewModel.getMapPositionAddress());
 		labelCoordinates.setCurrentText(Constants.locationToString(viewModel.mapPosition));
 		
+		//Hiding the navigation bar protection on Android Q
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) systemProtectionBottom.setVisibility(View.GONE);
+		
+		//Listening for window insets
 		ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), new OnApplyWindowInsetsListener() {
 			ViewGroup.MarginLayoutParams fabParams = (ViewGroup.MarginLayoutParams) fabClose.getLayoutParams();
 			int fabMarginStart = fabParams.getMarginStart();
@@ -193,6 +199,10 @@ public class LocationPicker extends AppCompatActivity {
 				googleMapBasePadding.top = fabParams.topMargin + fabClose.getHeight() + fabParams.bottomMargin;
 				googleMapBasePadding.bottom = 0;
 				updateMapPadding();
+				
+				//Updating the system bar protections
+				systemProtectionTop.getLayoutParams().height = insets.getSystemWindowInsetTop();
+				systemProtectionBottom.getLayoutParams().height = insets.getSystemWindowInsetBottom();
 				
 				return insets.consumeSystemWindowInsets();
 			}

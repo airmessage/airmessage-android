@@ -8,6 +8,20 @@
 		android:id="@+id/mapview"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent" />
+	<View
+		android:id="@+id/view_protection_top"
+		android:layout_width="match_parent"
+		android:layout_height="0px"
+		android:layout_gravity="top"
+		android:background="@color/colorToolbar"
+		android:alpha="0.5" />
+	<View
+		android:id="@+id/view_protection_bottom"
+		android:layout_width="match_parent"
+		android:layout_height="0px"
+		android:layout_gravity="bottom"
+		android:background="@color/colorToolbar"
+		android:alpha="0.5" />
 	<androidx.constraintlayout.widget.ConstraintLayout
 		android:layout_width="match_parent"
 		android:layout_height="match_parent">

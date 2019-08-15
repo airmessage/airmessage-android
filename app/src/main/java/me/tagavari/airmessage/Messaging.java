@@ -1127,6 +1127,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				if(resultCode == RESULT_OK) viewModel.updateAttachmentsLocationState();
 				break;
 			case intentPickLocation: {
+				if(resultCode != RESULT_OK) break;
+				
 				//Getting the data
 				LatLng mapPosition = intent.getParcelableExtra(Constants.intentParamData);
 				String mapPositionAddress = intent.getStringExtra(Constants.intentParamAddress);
