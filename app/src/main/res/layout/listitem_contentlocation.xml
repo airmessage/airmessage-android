@@ -1,32 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView
-	xmlns:app="http://schemas.android.com/apk/res-auto"
+<FrameLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:id="@+id/content"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
-	android:foreground="?android:attr/selectableItemBackground"
 	android:focusable="true"
 	android:clickable="true"
-	app:cardCornerRadius="4dp"
-	app:cardElevation="0dp"
-	app:cardUseCompatPadding="false"
-	app:strokeColor="@color/colorDivider"
-	app:strokeWidth="1dp">
+	android:foreground="?android:attr/selectableItemBackground">
+	<!-- Content -->
 	<LinearLayout
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:orientation="vertical">
 		<!-- Image preview -->
-		<com.google.android.gms.maps.MapView
-			android:id="@+id/map_header"
+		<me.tagavari.airmessage.view.RoundedFrameLayout
+			android:id="@+id/frame_header"
 			android:layout_width="match_parent"
-			android:layout_height="128dp"
-			app:mapType="normal"
-			app:liteMode="true"
-			app:uiCompass="false"
-			android:clickable="false" />
-		
+			android:layout_height="128dp">
+			<com.google.android.gms.maps.MapView
+				android:id="@+id/map_header"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				app:mapType="normal"
+				app:liteMode="true"
+				app:uiCompass="false"
+				android:clickable="false" />
+		</me.tagavari.airmessage.view.RoundedFrameLayout>
+
 		<!-- Link title -->
 		<TextView
 			android:id="@+id/label_title"
@@ -39,7 +40,7 @@
 			android:layout_marginLeft="16dp"
 			android:layout_marginRight="16dp"
 			android:layout_marginTop="12dp" />
-		
+
 		<!-- Link address -->
 		<LinearLayout
 			android:layout_width="match_parent"
@@ -67,4 +68,11 @@
 				android:maxLines="1" />
 		</LinearLayout>
 	</LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+
+	<!-- Border view, in order to render the border on top of all view content -->
+	<View
+		android:id="@+id/view_border"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:background="@drawable/rectangle_chatpreviewfull" />
+</FrameLayout>

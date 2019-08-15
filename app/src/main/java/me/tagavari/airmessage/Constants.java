@@ -500,9 +500,10 @@ public class Constants {
 	}
 	
 	static Drawable createRoundedDrawable(boolean softenTop, boolean softenBottom, boolean alignToRight, int pxRadiusNormal, int pxRadiusSoftened) {
-		//Creating the drawable
-		GradientDrawable drawable = new GradientDrawable();
-		
+		return createRoundedDrawable(new GradientDrawable(), softenTop, softenBottom, alignToRight, pxRadiusNormal, pxRadiusSoftened);
+	}
+	
+	static Drawable createRoundedDrawable(GradientDrawable drawable, boolean softenTop, boolean softenBottom, boolean alignToRight, int pxRadiusNormal, int pxRadiusSoftened) {
 		//Determining the radius values
 		int radiusTop = softenTop ? pxRadiusSoftened : pxRadiusNormal;
 		int radiusBottom = softenBottom ? pxRadiusSoftened : pxRadiusNormal;

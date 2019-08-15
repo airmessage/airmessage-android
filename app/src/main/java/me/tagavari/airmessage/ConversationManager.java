@@ -20,6 +20,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Icon;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.PaintDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.location.Address;
@@ -136,6 +137,7 @@ import io.github.ponnamkarthik.richlinkpreview.RichPreview;
 import jp.wasabeef.glide.transformations.BlurTransformation;
 import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.view.InvisibleInkView;
+import me.tagavari.airmessage.view.RoundedFrameLayout;
 import me.tagavari.airmessage.view.RoundedImageView;
 
 class ConversationManager {
@@ -2190,8 +2192,6 @@ class ConversationManager {
 		private static final int dpDefaultMessagePadding = 5;
 		private static final int dpRelatedMessagePadding = 1;
 		private static final int dpInterMessagePadding = 2;
-		private static final int dpCornerAnchored = 5;
-		private static final int dpCornerUnanchored = 20;
 		
 		//Creating the values
 		private final String sender;
@@ -2346,8 +2346,8 @@ class ConversationManager {
 			}
 			
 			//Getting the corner values in pixels
-			int pxCornerAnchored = Constants.dpToPx(dpCornerAnchored);
-			int pxCornerUnanchored = Constants.dpToPx(dpCornerUnanchored);
+			int pxCornerAnchored = viewHolder.itemView.getResources().getDimensionPixelSize(R.dimen.messagebubble_radius_anchored);
+			int pxCornerUnanchored = viewHolder.itemView.getResources().getDimensionPixelSize(R.dimen.messagebubble_radius);
 			
 			//Checking if there is text
 			if(messageText != null) messageText.updateViewEdges((MessageTextInfo.ViewHolder) viewHolder.messageComponents.get(0), isAnchoredTop, isAnchoredBottom || !attachments.isEmpty(), alignToRight, pxCornerAnchored, pxCornerUnanchored);
@@ -2676,8 +2676,9 @@ class ConversationManager {
 					if(attachmentViewHolder != null) {
 						attachmentViewHolder.groupDownload.setVisibility(View.GONE);
 						attachmentViewHolder.groupContentFrame.setVisibility(View.GONE);
-						attachmentViewHolder.groupProcessing.setVisibility(View.GONE);
 						attachmentViewHolder.groupFailed.setVisibility(View.GONE);
+						attachmentViewHolder.labelFailed.setText(attachmentInfo.getResourceTypeName()); //In the case that the attachment decides to display this view group later on
+						attachmentViewHolder.groupProcessing.setVisibility(View.GONE);
 						attachmentInfo.updateContentView(attachmentViewHolder, newContext);
 					}
 				};
@@ -5035,32 +5036,8 @@ class ConversationManager {
 				}
 			}
 			
-			{
-				//Setting the alignment
-				//viewHolder.itemView.setForegroundGravity(getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
-				((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
-				/* RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) viewHolder.groupContainer.getLayoutParams();
-				if(getMessageInfo().isOutgoing()) {
-					params.removeRule(RelativeLayout.ALIGN_PARENT_START);
-					params.addRule(RelativeLayout.ALIGN_PARENT_END);
-				} else {
-					params.removeRule(RelativeLayout.ALIGN_PARENT_END);
-					params.addRule(RelativeLayout.ALIGN_PARENT_START);
-				} */
-			}
-			
-			//((RelativeLayout) viewHolder.itemView).setGravity(messageInfo.isOutgoing() ? Gravity.END : Gravity.START);
-			/* LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams();
-			layoutParams.gravity = messageInfo.isOutgoing() ? Gravity.END : Gravity.START;
-			viewHolder.itemView.setLayoutParams(layoutParams); */
-			
-			/* //Configuring the download view
-			viewHolder.labelDownloadType.setText(getResourceTypeName());
-			if(fileSize == -1) viewHolder.labelDownloadSize.setVisibility(View.GONE);
-			else {
-				viewHolder.labelDownloadSize.setVisibility(View.GONE);
-				viewHolder.labelDownloadSize.setText(Constants.humanReadableByteCount(fileSize, true));
-			} */
+			//Setting the alignment
+			((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
 			
 			//Building the view
 			buildView(viewHolder, context);
@@ -5096,7 +5073,7 @@ class ConversationManager {
 					viewHolder.labelDownloadType.setVisibility(View.GONE);
 					
 					//Disabling the download icon visually
-					viewHolder.imageDownload.setAlpha(Constants.disabledAlpha);
+					viewHolder.iconDownload.setAlpha(Constants.disabledAlpha);
 					
 					//Getting and preparing the progress bar
 					viewHolder.progressDownload.setIndeterminate(isFetchWaiting);
@@ -5120,7 +5097,7 @@ class ConversationManager {
 					
 					if(fileSize != -1) viewHolder.labelDownloadSize.setVisibility(View.VISIBLE);
 					viewHolder.labelDownloadType.setVisibility(View.VISIBLE);
-					viewHolder.imageDownload.setAlpha(1F);
+					viewHolder.iconDownload.setAlpha(1F);
 					viewHolder.progressDownload.setVisibility(View.GONE);
 					
 					//Configuring the download view
@@ -5216,7 +5193,7 @@ class ConversationManager {
 			viewHolder.groupDownload.invalidate();
 			viewHolder.labelDownloadSize.setTextColor(cslSecondaryText);
 			viewHolder.labelDownloadType.setTextColor(cslText);
-			viewHolder.imageDownload.setImageTintList(cslText);
+			viewHolder.iconDownload.setImageTintList(cslText);
 			viewHolder.progressDownload.setProgressTintList(cslText);
 			//viewHolder.progressDownload.setSecondaryProgressTintList(cslAccent);
 			viewHolder.progressDownload.setIndeterminateTintList(ColorStateList.valueOf(ColorHelper.modifyColorRaw(cslBackground.getDefaultColor(), 0.9F)));
@@ -5556,7 +5533,7 @@ class ConversationManager {
 			final ProgressBar progressDownload;
 			final TextView labelDownloadSize;
 			final TextView labelDownloadType;
-			final ImageView imageDownload;
+			final ImageView iconDownload;
 			
 			final ViewGroup groupFailed;
 			final TextView labelFailed;
@@ -5573,7 +5550,7 @@ class ConversationManager {
 				progressDownload = groupDownload.findViewById(R.id.download_progress);
 				labelDownloadSize = groupDownload.findViewById(R.id.label_size);
 				labelDownloadType = groupDownload.findViewById(R.id.label_type);
-				imageDownload = groupDownload.findViewById(R.id.download_icon);
+				iconDownload = groupDownload.findViewById(R.id.download_icon);
 				
 				groupFailed = view.findViewById(R.id.failedcontent);
 				labelFailed = groupFailed.findViewById(R.id.failed_label);
@@ -6512,11 +6489,11 @@ class ConversationManager {
 			}
 			
 			//Setting the map preview
-			if(locationData.mapLocPos == null) {
-				viewHolder.mapHeader.setVisibility(View.GONE);
+			if(locationData.mapLocPos == null || !Preferences.getPreferenceMessagePreviews(viewHolder.itemView.getContext())) {
+				viewHolder.frameHeader.setVisibility(View.GONE);
 			} else {
 				//Showing the map view and setting it as non-clickable (so that the card view parent will handle clicks instead)
-				viewHolder.mapHeader.setVisibility(View.VISIBLE);
+				viewHolder.frameHeader.setVisibility(View.VISIBLE);
 				viewHolder.mapHeader.setClickable(false);
 				
 				if(viewHolder.googleMap != null) {
@@ -6525,9 +6502,12 @@ class ConversationManager {
 					updateMapTheme(viewHolder.googleMap, viewHolder.groupContent.getContext());
 				} else {
 					//Creating the Google map anew
-					viewHolder.mapHeader.getMapAsync(new MapReadyCallback(this));
+					MapReadyCallback callback = new MapReadyCallback(this);
+					callback.tempViewHolder = viewHolder;
+					viewHolder.mapHeader.getMapAsync(callback);
 					viewHolder.mapHeader.onCreate(null);
 					viewHolder.mapHeader.onResume();
+					viewHolder.mapHeader.post(() -> callback.tempViewHolder = null);
 				}
 			}
 		}
@@ -6546,6 +6526,7 @@ class ConversationManager {
 		
 		private static class MapReadyCallback implements OnMapReadyCallback {
 			private final WeakReference<VLocationAttachmentInfo> attachmentReference;
+			VLocationAttachmentInfo.ViewHolder tempViewHolder = null;
 			
 			MapReadyCallback(VLocationAttachmentInfo attachment) {
 				//Setting the attachment reference
@@ -6554,13 +6535,18 @@ class ConversationManager {
 			
 			@Override
 			public void onMapReady(GoogleMap googleMap) {
+				System.out.println("Map is ready!");
 				//Getting the attachment
 				VLocationAttachmentInfo attachment = attachmentReference.get();
 				if(attachment == null) return;
 				
-				VLocationAttachmentInfo.ViewHolder viewHolder = attachment.getViewHolder();
+				System.out.println("Attachment is available!");
+				VLocationAttachmentInfo.ViewHolder viewHolder;
+				if(tempViewHolder != null) viewHolder = tempViewHolder;
+				else viewHolder = attachment.getViewHolder();
 				if(viewHolder == null) return;
 				
+				System.out.println("VH is available!");
 				//Updating the view holder information
 				viewHolder.googleMap = googleMap;
 				
@@ -6680,7 +6666,8 @@ class ConversationManager {
 			//Assigning the drawable
 			//viewHolder.groupContent.setBackground(drawable.getConstantState().newDrawable());
 			
-			ShapeAppearanceModel shapeAppearance = new ShapeAppearanceModel();
+			//Setting the card shape
+			/* ShapeAppearanceModel shapeAppearance = new ShapeAppearanceModel();
 			
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
 			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
@@ -6688,7 +6675,29 @@ class ConversationManager {
 			if(alignToRight) shapeAppearance.setCornerRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
 			else shapeAppearance.setCornerRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 			
-			viewHolder.groupContent.setShapeAppearanceModel(shapeAppearance);
+			viewHolder.groupContent.setShapeAppearanceModel(shapeAppearance); */
+			
+			//Assigning the border shape
+			//viewRoot.setBackground(Constants.createRoundedDrawableBottom(new GradientDrawable(), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
+			viewHolder.viewBorder.setBackground(Constants.createRoundedDrawable((GradientDrawable) viewHolder.viewBorder.getResources().getDrawable(R.drawable.rectangle_chatpreviewfull, null).mutate().getConstantState().newDrawable(), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
+			
+			//Updating the touch ripple
+			RippleDrawable rippleDrawable = (RippleDrawable) Constants.resolveDrawableAttr(viewHolder.groupContent.getContext(), android.R.attr.selectableItemBackground); //Ripple drawable from Android attributes
+			Drawable shapeDrawable = Constants.createRoundedDrawable(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFFFFFFFF, 0xFFFFFFFF}), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored); //Getting a standard drawable for the shape
+			rippleDrawable.setDrawableByLayerId(android.R.id.mask, shapeDrawable); //Applying the drawable to the ripple drawable
+			viewHolder.groupContent.setForeground(rippleDrawable);
+			
+			//Updating the map clip
+			int cornerRadius = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
+			int radiusLeft, radiusRight;
+			if(alignToRight) {
+				radiusLeft = pxCornerUnanchored;
+				radiusRight = cornerRadius;
+			} else {
+				radiusLeft = cornerRadius;
+				radiusRight = pxCornerUnanchored;
+			}
+			viewHolder.frameHeader.setRadii(radiusLeft, radiusRight, 0, 0);
 		}
 		
 		@Override
@@ -6712,7 +6721,9 @@ class ConversationManager {
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
-			final MaterialCardView groupContent;
+			final ViewGroup groupContent;
+			final View viewBorder;
+			final RoundedFrameLayout frameHeader;
 			final MapView mapHeader;
 			final TextView labelTitle;
 			final TextView labelAddress;
@@ -6723,7 +6734,9 @@ class ConversationManager {
 				super(view);
 				
 				groupContent = groupContentFrame.findViewById(R.id.content);
-				mapHeader = groupContent.findViewById(R.id.map_header);
+				viewBorder = groupContent.findViewById(R.id.view_border);
+				frameHeader = groupContent.findViewById(R.id.frame_header);
+				mapHeader = frameHeader.findViewById(R.id.map_header);
 				labelTitle = groupContent.findViewById(R.id.label_title);
 				labelAddress = groupContent.findViewById(R.id.label_address);
 			}
@@ -7254,6 +7267,7 @@ class ConversationManager {
 		}
 		
 		static class ViewHolder extends MessagePreviewInfo.ViewHolder {
+			private final View viewBorder;
 			private final ImageView imageHeader;
 			private final TextView labelTitle;
 			private final TextView labelDescription;
@@ -7262,6 +7276,7 @@ class ConversationManager {
 			ViewHolder(View view) {
 				super(view);
 				
+				viewBorder = view.findViewById(R.id.view_border);
 				imageHeader = view.findViewById(R.id.image_header);
 				labelTitle = view.findViewById(R.id.label_title);
 				labelDescription = view.findViewById(R.id.label_description);
@@ -7270,8 +7285,11 @@ class ConversationManager {
 			
 			@Override
 			void updateViewEdges(boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
-				viewRoot.setBackground(Constants.createRoundedDrawableBottom((GradientDrawable) viewRoot.getResources().getDrawable(R.drawable.rectangle_chatpreview, null), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
+				//Assigning the border shape
+				//viewRoot.setBackground(Constants.createRoundedDrawableBottom(new GradientDrawable(), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
+				viewBorder.setBackground(Constants.createRoundedDrawableBottom((GradientDrawable) viewRoot.getResources().getDrawable(R.drawable.rectangle_chatpreviewfull, null), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
 				
+				//Updating the touch ripple
 				RippleDrawable rippleDrawable = (RippleDrawable) Constants.resolveDrawableAttr(viewRoot.getContext(), android.R.attr.selectableItemBackground); //Ripple drawable from Android attributes
 				Drawable shapeDrawable = Constants.createRoundedDrawableBottom(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFFFFFFFF, 0xFFFFFFFF}), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored); //Getting a standard drawable for the shape
 				rippleDrawable.setDrawableByLayerId(android.R.id.mask, shapeDrawable); //Applying the drawable to the ripple drawable
