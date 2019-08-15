@@ -6535,24 +6535,21 @@ class ConversationManager {
 			
 			@Override
 			public void onMapReady(GoogleMap googleMap) {
-				System.out.println("Map is ready!");
 				//Getting the attachment
 				VLocationAttachmentInfo attachment = attachmentReference.get();
 				if(attachment == null) return;
 				
-				System.out.println("Attachment is available!");
 				VLocationAttachmentInfo.ViewHolder viewHolder;
 				if(tempViewHolder != null) viewHolder = tempViewHolder;
 				else viewHolder = attachment.getViewHolder();
 				if(viewHolder == null) return;
 				
-				System.out.println("VH is available!");
 				//Updating the view holder information
 				viewHolder.googleMap = googleMap;
 				
 				//Configuring the map
 				googleMap.getUiSettings().setMapToolbarEnabled(false);
-				updateMapTheme(googleMap, MainApplication.getInstance());
+				updateMapTheme(googleMap, viewHolder.mapHeader.getContext());
 				attachment.updateMapLocation(googleMap);
 			}
 		}
