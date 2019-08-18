@@ -7093,7 +7093,7 @@ class ConversationManager {
 		//Getting the top 3 conversations
 		MainApplication.LoadFlagArrayList<ConversationInfo> conversations = getConversations();
 		if(conversations == null || !conversations.isLoaded()) return;
-		List<ConversationManager.ConversationInfo> topConversations = conversations.subList(0, Math.min(conversations.size(), 3));
+		List<ConversationManager.ConversationInfo> topConversations = new ArrayList<>(conversations.subList(0, Math.min(conversations.size(), 3))); //Cloning the list, otherwise this list may be modified while previews are being generated
 		
 		//Creating the shortcuts
 		generateShortcutInfo(context, topConversations, (wasTasked, shortcutList) -> {

@@ -343,7 +343,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		However, on Chrome OS, the default keyboard does not trigger this. (Let's just hope the user doesn't install a third-party keyboard!)
 		 */
 		if(keyCode == KeyEvent.KEYCODE_ENTER && !event.isShiftPressed() &&
-		   (event.getSource() != InputDevice.SOURCE_UNKNOWN || Constants.isChromeOS(Messaging.this))) {
+		   (event.getSource() != InputDevice.SOURCE_UNKNOWN || Constants.isChromeOS(this))) {
 			//Sending the message
 			sendMessage();
 			
@@ -360,7 +360,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		IME_NULL is triggered with external wireless keyboards
 		 */
 		if(actionID == EditorInfo.IME_ACTION_DONE ||
-		   (actionID == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_DOWN)) {
+		   (actionID == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_DOWN && event.getSource() != InputDevice.SOURCE_UNKNOWN)) {
 			//Sending the message
 			sendMessage();
 			
@@ -2855,6 +2855,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		void scrollToBottom() {
 			//Returning if the list has already been scrolled to the bottom
 			//if(isScrolledToBottom()) return;
+			
+			//Returning if the list cannot be scrolled
+			if(recyclerView == null || getItemCount() == 0) return;
 			
 			//Scrolling to the bottom
 			recyclerView.smoothScrollToPosition(getItemCount() - 1);
