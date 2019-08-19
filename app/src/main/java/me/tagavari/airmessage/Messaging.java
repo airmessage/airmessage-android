@@ -4513,6 +4513,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		public boolean compare(QueuedFileInfo item) {
+			if(item.getDraftFile() == null) return compare(item.item);
 			return this.getModificationDate() == item.getItem().getModificationDate() &&
 				   ((this.getUri() != null && this.getUri().equals(item.getDraftFile().getOriginalUri())) ||
 					(this.getFile() != null && this.getFile().equals(item.getDraftFile().getOriginalFile())));
