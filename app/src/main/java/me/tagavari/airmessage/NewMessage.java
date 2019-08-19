@@ -331,7 +331,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch(item.getItemId()) {
-			case android.R.id.home: //Home button
+			case android.R.id.home: //Up button
 				//Finishing the activity
 				finish();
 				

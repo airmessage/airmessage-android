@@ -46,6 +46,12 @@ public class RoundedFrameLayout extends FrameLayout {
 							topRight, topRight,
 							bottomRight, bottomRight,
 							bottomLeft, bottomLeft};
+		resetPath();
+	}
+	
+	public void setRadiiRaw(float[] radii) {
+		this.radii = radii;
+		resetPath();
 	}
 	
 	@Override
@@ -72,6 +78,7 @@ public class RoundedFrameLayout extends FrameLayout {
 	}
 	
 	private void resetPath() {
+		if(rectF == null) return;
 		path.reset();
 		path.addRoundRect(rectF, radii, Path.Direction.CW);
 		path.close();

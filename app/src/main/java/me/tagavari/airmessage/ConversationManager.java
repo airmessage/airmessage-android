@@ -4,6 +4,7 @@ import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.ActivityOptions;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -20,7 +21,6 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Icon;
-import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.PaintDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.location.Address;
@@ -95,9 +95,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.shape.ShapeAppearanceModel;
 import com.pnikosis.materialishprogress.ProgressWheel;
 
 import org.lukhnos.nnio.file.Paths;
@@ -136,11 +134,12 @@ import io.github.ponnamkarthik.richlinkpreview.ResponseListener;
 import io.github.ponnamkarthik.richlinkpreview.RichPreview;
 import jp.wasabeef.glide.transformations.BlurTransformation;
 import me.tagavari.airmessage.common.SharedValues;
+import me.tagavari.airmessage.messaging.ConversationAttachmentList;
 import me.tagavari.airmessage.view.InvisibleInkView;
 import me.tagavari.airmessage.view.RoundedFrameLayout;
 import me.tagavari.airmessage.view.RoundedImageView;
 
-class ConversationManager {
+public class ConversationManager {
 	//Message burst - Sending single messages one after the other
 	private static final long conversationBurstTimeMillis = 30 * 1000; //30 seconds
 	//Message session - A conversation session, where conversation participants are active
@@ -464,6 +463,8 @@ class ConversationManager {
 		
 		//private int currentUserViewIndex = -1;
 		private transient Constants.ViewHolderSource<ItemViewHolder> viewHolderSource = null;
+		
+		private LongSparseArray<AttachmentInfo> localIDAttachmentMap;
 		
 		static void setSelectionSource(SelectionSource source) {
 			selectionSource = source;
@@ -1009,6 +1010,14 @@ class ConversationManager {
 			
 			//Updating the view
 			itemView.flagMuted.setVisibility(isMuted ? View.VISIBLE : View.GONE);
+		}
+		
+		LongSparseArray<AttachmentInfo> getLocalIDAttachmentMap() {
+			return localIDAttachmentMap;
+		}
+		
+		void setLocalIDAttachmentMap(LongSparseArray<AttachmentInfo> localIDAttachmentMap) {
+			this.localIDAttachmentMap = localIDAttachmentMap;
 		}
 		
 		MessageInfo getActivityStateTargetRead() {
@@ -3819,7 +3828,7 @@ class ConversationManager {
 		
 		abstract int getItemViewType();
 		
-		long getLocalID() {
+		public long getLocalID() {
 			return localID;
 		}
 		
@@ -4243,6 +4252,14 @@ class ConversationManager {
 			
 			void resume() {}
 		}
+		
+		/**
+		 * Returns the view to use when this component is involved in shared element transitions
+		 * @return The view to animate
+		 */
+		View getSharedElementView() {
+			return null;
+		}
 	}
 	
 	static class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder> {
@@ -4324,14 +4341,36 @@ class ConversationManager {
 				}
 				//Checking if a message preview should be fetched
 				else if(getMessagePreviewState() == MessagePreviewInfo.stateNotTried && !isMessagePreviewLoading()) {
-					//Getting any URL spans
+					//Finding any URL spans
 					Matcher matcher = Patterns.WEB_URL.matcher(messageText);
-					if(matcher.find()) {
-						String url = matcher.group();
+					int matchOffset = 0;
+					String targetUrl = null;
+					
+					while(matcher.find(matchOffset)) {
+						//Getting the URL
+						String urlString = matcher.group();
 						
+						//Updating the offset
+						matchOffset = matcher.end();
+						
+						//Skipping the URL if it has a custom scheme (the WEB_URL matcher will not include the scheme in the URL if it is unknown)
+						String schemeOutside = messageText.substring(0, matcher.start());
+						if(schemeOutside.matches("\\w(?:\\w|\\d|\\+|-|\\.)*:\\/\\/$")) continue; //https://regex101.com/r/hW5bOW/1
+						
+						if(!urlString.contains("://")) urlString = "https://" + urlString; //Adding the scheme if it doesn't have one
+						else if(urlString.startsWith("http://")) urlString = urlString.replaceFirst("http://", "https://"); //Replacing HTTP schemes with HTTPS schemes
+						else if(!urlString.startsWith("https://")) continue; //Ignoring URLs of other schemes
+						
+						//Setting the url
+						targetUrl = urlString;
+						break;
+					}
+					
+					//Checking if a URL was found
+					if(targetUrl != null) {
 						//Fetching the data
 						setMessagePreviewLoading(true);
-						new RichPreview(new RichPreviewResponseListener(this, url)).getPreview(url);
+						new RichPreview(new RichPreviewResponseListener(this, targetUrl)).getPreview(targetUrl);
 					} else {
 						//Updating the preview
 						setMessagePreview(null);
@@ -4388,7 +4427,28 @@ class ConversationManager {
 			@Override
 			protected Spannable doInBackground(Void... voids) {
 				Spannable spannable = new SpannableString(messageText);
-				textClassifier.generateLinks(new TextLinks.Request.Builder(messageText).build()).apply(spannable, TextLinks.APPLY_STRATEGY_REPLACE, null);
+				TextLinks textLinks = textClassifier.generateLinks(new TextLinks.Request.Builder(messageText).build());
+				textLinks.apply(spannable, TextLinks.APPLY_STRATEGY_REPLACE, null);
+				
+				//The following code block would be used to feed Smart Linkify's output into the message preview generator
+				/* String targetWebURL = null;
+				for(TextLinks.TextLink link : textLinks.getLinks()) {
+					//Skipping non-URL links
+					if(!TextClassifier.TYPE_URL.equals(link.getEntity(0))) continue;
+					
+					//Getting the URL
+					String urlString = messageText.substring(link.getStart(), link.getEnd());
+					
+					if(!urlString.contains("://")) urlString = "https://" + urlString; //Adding the scheme if it doesn't have one
+					else if(urlString.startsWith("http://")) urlString = urlString.replaceFirst("http://", "https://"); //Replacing HTTP schemes with HTTPS schemes
+					else if(!urlString.startsWith("https://")) continue; //Ignoring URLs of other schemes
+					
+					//Setting the target
+					targetWebURL = urlString;
+					
+					break;
+				} */
+				
 				return spannable;
 			}
 			
@@ -4862,7 +4922,7 @@ class ConversationManager {
 		}
 	}
 	
-	static abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> extends MessageComponent<VH> {
+	public static abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> extends MessageComponent<VH> {
 		//Creating the values
 		final String fileName;
 		final String fileType;
@@ -5394,11 +5454,11 @@ class ConversationManager {
 						return true;
 					}
 					case R.id.action_save: {
-						if(ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) exportFile(context, file);
+						if(ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) Constants.exportFile(context, file);
 						//Otherwise requesting the permission
 						else {
 							ConversationInfo.ActivityCallbacks updater = getMessageInfo().getConversationInfo().getActivityCallbacks();
-							if(updater != null) updater.requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, permissionRequestWriteStorageDownload, new LocationPermissionRequest(file));
+							if(updater != null) updater.requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, permissionRequestWriteStorageDownload, new ExportFileResultListener(file));
 						}
 						
 						//Returning true
@@ -5436,22 +5496,16 @@ class ConversationManager {
 			updateStickerVisibility();
 		}
 		
-		private static void exportFile(Context context, File file) {
-			Intent intent = new Intent(context, FileExportService.class);
-			intent.putExtra(Constants.intentParamData, file.getPath());
-			context.startService(intent);
-		}
-		
-		private static class LocationPermissionRequest implements BiConsumer<Context, Boolean> {
+		private static class ExportFileResultListener implements BiConsumer<Context, Boolean> {
 			private final File sendFile;
 			
-			LocationPermissionRequest(File sendFile) {
+			ExportFileResultListener(File sendFile) {
 				this.sendFile = sendFile;
 			}
 			
 			@Override
 			public void accept(Context context, Boolean result) {
-				if(result) exportFile(context, sendFile);
+				if(result) Constants.exportFile(context, sendFile);
 			}
 		}
 		
@@ -5484,20 +5538,28 @@ class ConversationManager {
 			}
 		}
 		
-		byte[] getFileChecksum() {
+		public byte[] getFileChecksum() {
 			return fileChecksum;
 		}
 		
-		void setFileChecksum(byte[] fileChecksum) {
+		public void setFileChecksum(byte[] fileChecksum) {
 			this.fileChecksum = fileChecksum;
 		}
 		
-		String getContentType() {
+		public String getFileName() {
+			return fileName;
+		}
+		
+		public String getContentType() {
 			return fileType;
 		}
 		
-		String getFileName() {
-			return fileName;
+		public long getFileSize() {
+			return fileSize;
+		}
+		
+		public File getFile() {
+			return file;
 		}
 		
 		abstract int getResourceTypeName();
@@ -5526,6 +5588,42 @@ class ConversationManager {
 			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 			if(intent.resolveActivity(context.getPackageManager()) != null) context.startActivity(intent);
 			else Toast.makeText(context, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
+		}
+		
+		void openAttachmentFileMediaViewer(Activity activity, View transitionView, float[] radiiRaw) {
+			//Assembling a list of all attachment files
+			ArrayList<ConversationAttachmentList.Item> itemList = new ArrayList<>();
+			LongSparseArray<AttachmentInfo> localIDAttachmentMap = new LongSparseArray<>();
+			int itemIndex = -1;
+			List<ConversationItem> conversationItemList = getMessageInfo().getConversationInfo().getConversationItems();
+			if(conversationItemList == null) {
+				itemList.add(new ConversationAttachmentList.Item(this));
+				localIDAttachmentMap.put(getLocalID(), this);
+				itemIndex = 0;
+			}
+			else {
+				for(ConversationItem conversationItem : conversationItemList) {
+					if(!(conversationItem instanceof MessageInfo)) continue;
+					List<AttachmentInfo> attachmentList = ((MessageInfo) conversationItem).getAttachments();
+					for(AttachmentInfo attachmentInfo : attachmentList) {
+						if(attachmentInfo.getFile() == null || !(attachmentInfo instanceof ImageAttachmentInfo || attachmentInfo instanceof VideoAttachmentInfo)) continue;
+						if(attachmentInfo == this) itemIndex = itemList.size();
+						itemList.add(new ConversationAttachmentList.Item(attachmentInfo));
+						localIDAttachmentMap.put(attachmentInfo.getLocalID(), attachmentInfo);
+					}
+				}
+			}
+			
+			//Setting the local ID attachment map
+			getMessageInfo().getConversationInfo().setLocalIDAttachmentMap(localIDAttachmentMap);
+			
+			//Launching the media viewer
+			if(itemIndex == -1) return;
+			Intent intent = new Intent(activity, MediaViewer.class);
+			intent.putExtra(MediaViewer.PARAM_INDEX, itemIndex);
+			intent.putParcelableArrayListExtra(MediaViewer.PARAM_DATALIST, itemList);
+			intent.putExtra(MediaViewer.PARAM_RADIIRAW, radiiRaw);
+			activity.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(activity, transitionView, "mediaViewer").toBundle());
 		}
 		
 		static abstract class ViewHolder extends MessageComponent.ViewHolder {
@@ -5823,28 +5921,15 @@ class ConversationManager {
 		
 		@Override
 		void onClick(Messaging activity) {
-			openAttachmentFile(activity);
-			/* //Returning if there is no content
-			if(file == null) return;
-			
-			//Getting the view holder
+			View transitionView = null;
+			float[] radiiRaw = new float[8];
 			ViewHolder viewHolder = getViewHolder();
-			if(viewHolder == null) return;
+			if(viewHolder != null) {
+				transitionView = viewHolder.imageContent;
+				radiiRaw = viewHolder.imageContent.getRadiiRaw();
+			}
 			
-			//Revealing the ink view (and checking if is already running a reveal)
-			//if(viewHolder.inkView.getVisibility() != View.VISIBLE || viewHolder.inkView.reveal()) {
-			//}
-			
-			//Creating a content URI
-			Uri content = FileProvider.getUriForFile(activity, MainApplication.fileAuthority, file);
-			
-			//Launching the content viewer
-			Intent intent = new Intent();
-			intent.setAction(Intent.ACTION_VIEW);
-			intent.setDataAndType(content, fileType);
-			intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-			if(intent.resolveActivity(activity.getPackageManager()) != null) activity.startActivity(intent);
-			else Toast.makeText(activity, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show(); */
+			openAttachmentFileMediaViewer(activity, transitionView, radiiRaw);
 		}
 		
 		@Override
@@ -5860,6 +5945,13 @@ class ConversationManager {
 		@Override
 		ViewHolder createViewHolder(Context context, ViewGroup parent) {
 			return new ViewHolder(buildAttachmentView(LayoutInflater.from(context), parent, R.layout.listitem_contentimage));
+		}
+		
+		@Override
+		View getSharedElementView() {
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder == null) return null;
+			return viewHolder.imageContent;
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
@@ -6332,7 +6424,15 @@ class ConversationManager {
 		
 		@Override
 		void onClick(Messaging activity) {
-			openAttachmentFile(activity);
+			View transitionView = null;
+			float[] radiiRaw = new float[8];
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder != null) {
+				transitionView = viewHolder.imageContent;
+				radiiRaw = viewHolder.imageContent.getRadiiRaw();
+			}
+			
+			openAttachmentFileMediaViewer(activity, transitionView, radiiRaw);
 		}
 		
 		@Override
@@ -6348,6 +6448,13 @@ class ConversationManager {
 		@Override
 		ViewHolder createViewHolder(Context context, ViewGroup parent) {
 			return new ViewHolder(buildAttachmentView(LayoutInflater.from(context), parent, R.layout.listitem_contentvideo));
+		}
+		
+		@Override
+		View getSharedElementView() {
+			ViewHolder viewHolder = getViewHolder();
+			if(viewHolder == null) return null;
+			return viewHolder.imageContent;
 		}
 		
 		static class ViewHolder extends AttachmentInfo.ViewHolder {
@@ -6660,22 +6767,7 @@ class ConversationManager {
 		
 		@Override
 		void updateContentViewEdges(ViewHolder viewHolder, Drawable drawable, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
-			//Assigning the drawable
-			//viewHolder.groupContent.setBackground(drawable.getConstantState().newDrawable());
-			
-			//Setting the card shape
-			/* ShapeAppearanceModel shapeAppearance = new ShapeAppearanceModel();
-			
-			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
-			int radiusBottom = anchoredBottom ? pxCornerAnchored : pxCornerUnanchored;
-			
-			if(alignToRight) shapeAppearance.setCornerRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
-			else shapeAppearance.setCornerRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
-			
-			viewHolder.groupContent.setShapeAppearanceModel(shapeAppearance); */
-			
 			//Assigning the border shape
-			//viewRoot.setBackground(Constants.createRoundedDrawableBottom(new GradientDrawable(), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
 			viewHolder.viewBorder.setBackground(Constants.createRoundedDrawable((GradientDrawable) viewHolder.viewBorder.getResources().getDrawable(R.drawable.rectangle_chatpreviewfull, null).mutate().getConstantState().newDrawable(), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
 			
 			//Updating the touch ripple

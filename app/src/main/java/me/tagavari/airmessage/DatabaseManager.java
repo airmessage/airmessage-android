@@ -29,8 +29,9 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import me.tagavari.airmessage.common.Blocks;
+import me.tagavari.airmessage.messaging.ConversationAttachmentList;
 
-class DatabaseManager extends SQLiteOpenHelper {
+public class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
 	private static final String DATABASE_NAME = "messages.db";
 	private static final int DATABASE_VERSION = 10;
@@ -143,7 +144,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 			Contract.MessagePreviewEntry._ID + " INTEGER PRIMARY KEY UNIQUE," +
 			Contract.MessagePreviewEntry.COLUMN_NAME_TYPE + " INTEGER NOT NULL, " +
 			Contract.MessagePreviewEntry.COLUMN_NAME_DATA + " BLOB, " +
-			Contract.MessagePreviewEntry.COLUMN_NAME_TARGET + " BLOB, " +
+			Contract.MessagePreviewEntry.COLUMN_NAME_TARGET + " TEXT, " +
 			Contract.MessagePreviewEntry.COLUMN_NAME_TITLE + " TEXT, " +
 			Contract.MessagePreviewEntry.COLUMN_NAME_SUBTITLE + " TEXT, " +
 			Contract.MessagePreviewEntry.COLUMN_NAME_CAPTION + " TEXT " +
@@ -434,11 +435,11 @@ class DatabaseManager extends SQLiteOpenHelper {
 				database.execSQL("ALTER TABlE messages ADD preview_id INTEGER;");
 				
 				//Adding the message preview table
-				database.execSQL("CREATE TABLE messagepreview (" +
+				database.execSQL("CREATE TABLE message_preview (" +
 						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE," +
 						"type INTEGER NOT NULL, " +
 						"data BLOB, " +
-						"target BLOB, " +
+						"target text, " +
 						"title TEXT, " +
 						"subtitle TEXT, " +
 						"caption TEXT " +
@@ -534,7 +535,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		static class MessagePreviewEntry implements BaseColumns {
-			static final String TABLE_NAME = "messagepreview";
+			static final String TABLE_NAME = "message_preview";
 			static final String COLUMN_NAME_TYPE = "type";
 			static final String COLUMN_NAME_DATA = "data";
 			static final String COLUMN_NAME_TARGET = "target";
@@ -572,7 +573,7 @@ class DatabaseManager extends SQLiteOpenHelper {
 		instance = new DatabaseManager(context);
 	}
 	
-	static DatabaseManager getInstance() {
+	public static DatabaseManager getInstance() {
 		return instance;
 	}
 	
@@ -1339,31 +1340,43 @@ class DatabaseManager extends SQLiteOpenHelper {
 		return preview;
 	}
 	
-	static class ConversationLazyLoader {
-		private ConversationManager.ConversationInfo conversationInfo;
-		private SQLiteDatabase database;
-		private Cursor cursor;
-		private ConversationItemIndices conversationItemIndices;
+	private static abstract class LazyLoader<T> {
+		SQLiteDatabase database;
+		Cursor cursor;
 		
-		ConversationLazyLoader(DatabaseManager databaseManager, ConversationManager.ConversationInfo conversationInfo) {
-			//Setting the conversation info
-			this.conversationInfo = conversationInfo;
-			
-			//Getting the database
-			database = databaseManager.getReadableDatabase();
-			
-			//Querying the database
-			cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, messageSortOrderDesc, null);
-			
-			//Getting the indices
-			conversationItemIndices = getConversationItemIndices(cursor);
+		void initialize(SQLiteDatabase database, Cursor cursor) {
+			this.database = database;
+			this.cursor = cursor;
 		}
 		
-		void setCursorPosition(int cursorPosition) {
+		public void setCursorPosition(int cursorPosition) {
 			cursor.moveToPosition(cursorPosition);
 		}
 		
-		List<ConversationManager.ConversationItem> loadNextChunk() {
+		public abstract List<T> loadNextChunk();
+	}
+	
+	static class ConversationLazyLoader extends LazyLoader<ConversationManager.ConversationItem> {
+		private ConversationManager.ConversationInfo conversationInfo;
+		private ConversationItemIndices conversationItemIndices;
+		
+		ConversationLazyLoader(DatabaseManager databaseManager, ConversationManager.ConversationInfo conversationInfo) {
+			//Building the query
+			SQLiteDatabase database = databaseManager.getReadableDatabase();
+			Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, messageSortOrderDesc, null);
+			
+			//Setting the conversation info
+			this.conversationInfo = conversationInfo;
+			
+			//Getting the indices
+			conversationItemIndices = getConversationItemIndices(cursor);
+			
+			//Initializing the loader
+			initialize(database, cursor);
+		}
+		
+		@Override
+		public List<ConversationManager.ConversationItem> loadNextChunk() {
 			//Creating the message list
 			List<ConversationManager.ConversationItem> conversationItems = new ArrayList<>();
 			
@@ -1371,6 +1384,64 @@ class DatabaseManager extends SQLiteOpenHelper {
 			for(int i = 0; i < Messaging.messageChunkSize; i++) {
 				if(!cursor.moveToNext()) break;
 				conversationItems.add(loadConversationItem(conversationItemIndices, cursor, database, conversationInfo));
+			}
+			
+			//Reversing the list
+			Collections.reverse(conversationItems);
+			
+			//Returning the list
+			return conversationItems;
+		}
+	}
+	
+	public static class ConversationAttachmentLazyLoader extends LazyLoader<ConversationAttachmentList.Item> {
+		private static final int loadChunkSize = 10;
+		
+		private final int iLocalID, iPath, iName, iType;
+		
+		public ConversationAttachmentLazyLoader(DatabaseManager databaseManager, long conversationID, String[] typeFilter) {
+			//Building the query
+			SQLiteDatabase database = databaseManager.getReadableDatabase();
+			StringBuilder typeSelection = new StringBuilder();
+			for(String type : typeFilter) typeSelection.append(" AND ").append(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE).append(" LIKE ").append(type.replace('*', '%'));
+			Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry._ID + ", " + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + ", " + Contract.AttachmentEntry.COLUMN_NAME_FILENAME + ", " + Contract.AttachmentEntry.COLUMN_NAME_FILETYPE + " FROM " + Contract.AttachmentEntry.TABLE_NAME +
+											  " JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry._ID + " = " + Contract.AttachmentEntry.TABLE_NAME + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE +
+											  " WHERE " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? " +
+											  typeSelection +
+											  " ORDER BY " + messageSortOrderDesc,
+					new String[]{Long.toString(conversationID)});
+			
+			//Getting the indices
+			iLocalID = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry._ID);
+			iPath = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
+			iName = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILENAME);
+			iType = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE);
+			
+			//Initializing the loader
+			initialize(database, cursor);
+		}
+		
+		@Override
+		public List<ConversationAttachmentList.Item> loadNextChunk() {
+			//Creating the item list
+			List<ConversationAttachmentList.Item> conversationItems = new ArrayList<>();
+			
+			//Loading the items
+			for(int i = 0; i < loadChunkSize; i++) {
+				if(!cursor.moveToNext()) break;
+				
+				//Ignoring invalid files
+				if(cursor.isNull(iPath)) continue;
+				File file = new File(cursor.getString(iPath));
+				if(!file.exists()) continue;
+				
+				//Adding the item
+				conversationItems.add(new ConversationAttachmentList.Item(
+						cursor.getLong(iLocalID),
+						file,
+						cursor.getString(iName),
+						cursor.getString(iType)
+				));
 			}
 			
 			//Reversing the list

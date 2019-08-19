@@ -3,12 +3,14 @@ package me.tagavari.airmessage;
 import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.LayoutTransition;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.SharedElementCallback;
 import android.content.BroadcastReceiver;
 import android.content.ClipDescription;
 import android.content.ContentUris;
@@ -49,6 +51,8 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
+import android.transition.Transition;
+import android.transition.TransitionListenerAdapter;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
@@ -88,6 +92,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.cardview.widget.CardView;
+import androidx.collection.LongSparseArray;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
@@ -155,6 +160,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 import ezvcard.Ezvcard;
@@ -165,6 +171,7 @@ import ezvcard.property.Photo;
 import ezvcard.property.RawProperty;
 import ezvcard.property.Url;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
+import me.tagavari.airmessage.extension.MediaSharedElementCallback;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.OverScrollScrollView;
 import me.tagavari.airmessage.view.VisualizerView;
@@ -652,29 +659,27 @@ public class Messaging extends AppCompatCompositeActivity {
 		getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
 		getWindow().setStatusBarColor(Color.TRANSPARENT);
 		
-		ViewCompat.setOnApplyWindowInsetsListener(rootView, new OnApplyWindowInsetsListener() {
-			@Override
-			public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
-				appBar.setPadding(appBar.getPaddingLeft(), insets.getSystemWindowInsetTop(), appBar.getPaddingRight(), appBar.getPaddingBottom());
-				appBar.post(() -> {
-					messageList.setPadding(messageList.getPaddingLeft(), appBar.getHeight(), messageList.getPaddingRight(), messageList.getPaddingBottom());
-				});
-				
-				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.getSystemWindowInsetBottom());
-				/* ValueAnimator valueAnimator = ValueAnimator.ofInt(rootView.getPaddingBottom(), insets.getSystemWindowInsetBottom());
-				valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-					@Override
-					public void onAnimationUpdate(ValueAnimator valueAnimator) {
-						int value = (int) valueAnimator.getAnimatedValue();
-						rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), value);
-					}
-				});
-				valueAnimator.setDuration(100);
-				valueAnimator.setInterpolator(new FastOutSlowInInterpolator());
-				valueAnimator.start(); */
-				
-				return insets.consumeSystemWindowInsets();
-			}
+		//Listening for window inset changes
+		ViewCompat.setOnApplyWindowInsetsListener(rootView, (view, insets) -> {
+			appBar.setPadding(appBar.getPaddingLeft(), insets.getSystemWindowInsetTop(), appBar.getPaddingRight(), appBar.getPaddingBottom());
+			appBar.post(() -> {
+				messageList.setPadding(messageList.getPaddingLeft(), appBar.getHeight(), messageList.getPaddingRight(), messageList.getPaddingBottom());
+			});
+			
+			rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.getSystemWindowInsetBottom());
+			/* ValueAnimator valueAnimator = ValueAnimator.ofInt(rootView.getPaddingBottom(), insets.getSystemWindowInsetBottom());
+			valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+				@Override
+				public void onAnimationUpdate(ValueAnimator valueAnimator) {
+					int value = (int) valueAnimator.getAnimatedValue();
+					rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), value);
+				}
+			});
+			valueAnimator.setDuration(100);
+			valueAnimator.setInterpolator(new FastOutSlowInInterpolator());
+			valueAnimator.start(); */
+			
+			return insets.consumeSystemWindowInsets();
 		});
 		
 		//Setting the plugin views
@@ -1045,6 +1050,73 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Unregistering the broadcast listeners
 		LocalBroadcastManager.getInstance(this).unregisterReceiver(contactsUpdateBroadcastReceiver);
+	}
+	
+	@Override
+	public void onActivityReenter(int resultCode, Intent data) {
+		//Returning if there is no data
+		if(viewModel.conversationInfo == null || viewModel.conversationItemList == null) return;
+		
+		//Getting the associated message information
+		long selectedID = data.getLongExtra(MediaViewer.PARAM_SELECTEDID, -1);
+		if(selectedID == -1) return;
+		
+		LongSparseArray<ConversationManager.AttachmentInfo> localIDConversationMap = viewModel.conversationInfo.getLocalIDAttachmentMap();
+		ConversationManager.AttachmentInfo attachmentInfo = localIDConversationMap.get(selectedID);
+		if(attachmentInfo == null) return;
+		
+		ConversationManager.MessageInfo messageInfo = attachmentInfo.getMessageInfo();
+		
+		//Scrolling the list to the message
+		int position = viewModel.conversationItemList.indexOf(messageInfo);
+		if(position != RecyclerView.NO_POSITION) messageList.scrollToPosition(position);
+		
+		//Setting the shared element transitions callback
+		MediaSharedElementCallback sharedElementCallback = new MediaSharedElementCallback();
+		setExitSharedElementCallback(sharedElementCallback);
+		/* setExitSharedElementCallback(new SharedElementCallback() {
+			@Override
+			public void onMapSharedElements(List<String> names, Map<String, View> sharedElements) {
+				if(viewModel.conversationInfo == null) return;
+				LongSparseArray<ConversationManager.AttachmentInfo> localIDConversationMap = viewModel.conversationInfo.getLocalIDAttachmentMap();
+				ConversationManager.AttachmentInfo attachmentInfo = localIDConversationMap.get(MediaViewer.selectedID);
+				if(attachmentInfo == null) return;
+				View view = attachmentInfo.getSharedElementView();
+				if(view == null) return;
+				
+				sharedElements.put(names.get(0), view);
+			}
+		}); */
+		supportPostponeEnterTransition();
+		messageList.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+			@Override
+			public boolean onPreDraw() {
+				messageList.getViewTreeObserver().removeOnPreDrawListener(this);
+				sharedElementCallback.setSharedElementViews(attachmentInfo.getSharedElementView());
+				supportStartPostponedEnterTransition();
+				return true;
+			}
+		});
+		
+		getWindow().getSharedElementExitTransition().addListener(new Transition.TransitionListener() {
+			@Override
+			public void onTransitionStart(Transition transition) {}
+			
+			@Override
+			public void onTransitionEnd(Transition transition) {
+				getWindow().getSharedElementExitTransition().removeListener(this);
+				setExitSharedElementCallback((SharedElementCallback) null);
+			}
+			
+			@Override
+			public void onTransitionCancel(Transition transition) {}
+			
+			@Override
+			public void onTransitionPause(Transition transition) {}
+			
+			@Override
+			public void onTransitionResume(Transition transition) {}
+		});
 	}
 	
 	long getConversationID() {

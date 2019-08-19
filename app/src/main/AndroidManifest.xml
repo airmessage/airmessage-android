@@ -98,6 +98,16 @@
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
+		<!-- Media viewer -->
+		<activity
+			android:exported="false"
+			android:name=".MediaViewer"
+			android:parentActivityName=".Messaging"
+			android:theme="@style/ThemeBlack"
+			android:configChanges="orientation|screenSize|layoutDirection">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
 		<!-- Location picker -->
 		<activity
 			android:exported="false"

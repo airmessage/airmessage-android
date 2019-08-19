@@ -91,16 +91,18 @@ dependencies {
 
 	//Layouts and views
 	implementation "androidx.constraintlayout:constraintlayout:1.1.3"
+	implementation "androidx.viewpager2:viewpager2:1.0.0-beta03"
 	implementation "com.google.android:flexbox:1.1.0"
 
 	implementation "com.pnikosis:materialish-progress:1.7"
-	implementation "de.hdodenhof:circleimageview:3.0.0"
 	implementation "nl.dionsegijn:konfetti:1.1.3"
+	implementation "de.hdodenhof:circleimageview:3.0.0"
+	implementation "com.github.chrisbanes:PhotoView:2.3.0"
 
 	//Services
-	implementation "com.google.firebase:firebase-core:17.0.1"
-	implementation "com.google.firebase:firebase-ml-natural-language:20.0.2"
-	implementation "com.google.firebase:firebase-ml-natural-language-smart-reply-model:20.0.2"
+	implementation "com.google.firebase:firebase-core:17.1.0"
+	implementation "com.google.firebase:firebase-ml-natural-language:21.0.0"
+	implementation "com.google.firebase:firebase-ml-natural-language-smart-reply-model:20.0.3"
 	implementation "com.crashlytics.sdk.android:crashlytics:2.10.1"
 	implementation "com.google.android.gms:play-services-maps:17.0.0"
 	implementation "com.google.android.gms:play-services-location:17.0.0"
@@ -112,12 +114,14 @@ dependencies {
 	implementation "com.googlecode.ez-vcard:ez-vcard:0.10.5"
 
 	//Backend
-	implementation "org.jetbrains.kotlin:kotlin-stdlib:1.3.41"
+	implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 	implementation "org.bouncycastle:bcprov-jdk15on:1.62"
 
 	implementation "com.github.bumptech.glide:glide:4.9.0"
 	implementation "jp.wasabeef:glide-transformations:4.0.1"
 	annotationProcessor "com.github.bumptech.glide:compiler:4.9.0"
+
+	implementation "com.google.android.exoplayer:exoplayer:2.10.4"
 
 	implementation "io.github.ponnamkarthik:richlinkpreview:1.0.9"
 	implementation "org.jsoup:jsoup:1.12.1"
@@ -134,3 +138,5 @@ repositories {
 }
 
 apply plugin: "com.google.gms.google-services"
+apply plugin: "kotlin-android-extensions"
+apply plugin: "kotlin-android"

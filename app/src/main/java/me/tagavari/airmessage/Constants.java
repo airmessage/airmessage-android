@@ -1280,4 +1280,10 @@ public class Constants {
 	static String cleanFileName(String fileName) {
 		return fileName.replace('\u0000', '?').replace('/', '-');
 	}
+	
+	public static void exportFile(Context context, File file) {
+		Intent intent = new Intent(context, FileExportService.class);
+		intent.putExtra(Constants.intentParamData, file.getPath());
+		context.startService(intent);
+	}
 }

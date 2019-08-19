@@ -44,6 +44,10 @@ public class RoundedImageView extends AppCompatImageView {
 				bottomLeft, bottomLeft};
 	}
 	
+	public float[] getRadiiRaw() {
+		return radii;
+	}
+	
 	private Path clipPath = new Path();
 	private RectF rect = new RectF();
 	@Override

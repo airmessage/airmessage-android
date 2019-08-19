@@ -134,7 +134,7 @@
 			android:scrollbars="vertical"
 			android:theme="@style/OverscrollNeutralizer"
 			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-			android:clipToPadding="false"/>
+			android:clipToPadding="false" />
 		<!-- Loading text -->
 		<!-- <TextView
 			android:id="@+id/message_loading"

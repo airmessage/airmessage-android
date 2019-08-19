@@ -98,7 +98,12 @@ public class LocationPicker extends AppCompatActivity {
 		setContentView(R.layout.activity_locationpicker);
 		
 		//Setting the window
-		getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+		int systemUIFlags = getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+		/* if(!Constants.isNightMode(getResources())) {
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) systemUIFlags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+			else systemUIFlags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+		} */
+		getWindow().getDecorView().setSystemUiVisibility(systemUIFlags);
 		
 		//Getting the view model
 		viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
