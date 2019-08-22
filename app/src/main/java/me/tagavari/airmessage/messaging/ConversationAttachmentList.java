@@ -10,8 +10,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
-import me.tagavari.airmessage.ConversationManager;
-import me.tagavari.airmessage.DatabaseManager;
+import me.tagavari.airmessage.data.DatabaseManager;
 
 public class ConversationAttachmentList {
 	//Creating the parameters
@@ -101,7 +100,7 @@ public class ConversationAttachmentList {
 			this.type = type;
 		}
 		
-		public Item(ConversationManager.AttachmentInfo attachmentInfo) {
+		public Item(AttachmentInfo attachmentInfo) {
 			this.localID = attachmentInfo.getLocalID();
 			this.file = attachmentInfo.getFile();
 			this.fileName = attachmentInfo.getFileName();

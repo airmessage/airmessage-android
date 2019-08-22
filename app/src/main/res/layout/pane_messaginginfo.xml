@@ -6,7 +6,7 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:overScrollMode="never"
-	tools:context=".Messaging">
+	tools:context=".activity.Messaging">
 	<LinearLayout
 		android:id="@+id/group_messaginginfo_content"
 		android:layout_width="match_parent"

@@ -11,6 +11,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+import me.tagavari.airmessage.util.Constants;
+
 public class ProcessingTest {
 	@Test
 	public void testCompression() throws IOException {

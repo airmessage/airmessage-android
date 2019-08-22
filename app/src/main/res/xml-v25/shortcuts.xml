@@ -6,11 +6,11 @@
 		<intent
 			android:action="android.intent.action.VIEW"
 			android:targetPackage="me.tagavari.airmessage"
-			android:targetClass="me.tagavari.airmessage.Conversations" />
+			android:targetClass="me.tagavari.airmessage.activity.Conversations" />
 		<intent
 			android:action="android.intent.action.VIEW"
 			android:targetPackage="me.tagavari.airmessage"
-			android:targetClass="me.tagavari.airmessage.NewMessage" />
+			android:targetClass="me.tagavari.airmessage.activity.NewMessage" />
 		<categories android:name="android.shortcut.conversation" />
 	</shortcut>
 </shortcuts>

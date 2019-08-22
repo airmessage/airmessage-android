@@ -15,7 +15,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.preference.PreferenceManager;
-import android.provider.Contacts;
 import android.provider.ContactsContract;
 
 import com.crashlytics.android.Crashlytics;
@@ -35,27 +34,36 @@ import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import io.fabric.sdk.android.Fabric;
+import me.tagavari.airmessage.activity.Preferences;
+import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.service.ConnectionService;
+import me.tagavari.airmessage.data.BitmapCacheHelper;
+import me.tagavari.airmessage.data.DatabaseManager;
+import me.tagavari.airmessage.data.UserCacheHelper;
+import me.tagavari.airmessage.messaging.ConversationInfo;
+import me.tagavari.airmessage.service.ServiceStartBoot;
+import me.tagavari.airmessage.util.Constants;
 
 public class MainApplication extends Application {
 	//Creating the reference values
-	static final String notificationChannelMessage = "message";
-	static final String notificationChannelStatus = "status";
+	public static final String notificationChannelMessage = "message";
+	public static final String notificationChannelStatus = "status";
 	
-	static final String notificationGroupMessage = "message";
+	public static final String notificationGroupMessage = "message";
 	
-	static final String dirNameDownload = "downloads";
-	static final String dirNameUpload = "uploads";
-	static final String dirNameDraft = "draft";
+	public static final String dirNameDownload = "downloads";
+	public static final String dirNameUpload = "uploads";
+	public static final String dirNameDraft = "draft";
 	
 	private static final String sharedPreferencesConnectivityFile = "connectivity";
-	static final String sharedPreferencesConnectivityKeyHostname = "hostname";
-	static final String sharedPreferencesConnectivityKeyPassword = "password";
-	static final String sharedPreferencesConnectivityKeyLastConnectionTime = "last_connection_time";
-	static final String sharedPreferencesConnectivityKeyLastConnectionHostname = "last_connection_hostname";
+	public static final String sharedPreferencesConnectivityKeyHostname = "hostname";
+	public static final String sharedPreferencesConnectivityKeyPassword = "password";
+	public static final String sharedPreferencesConnectivityKeyLastConnectionTime = "last_connection_time";
+	public static final String sharedPreferencesConnectivityKeyLastConnectionHostname = "last_connection_hostname";
 	
-	static final String localBCContactUpdate = "LocalMSG-Main-ContactUpdate";
+	public static final String localBCContactUpdate = "LocalMSG-Main-ContactUpdate";
 	
-	static final String fileAuthority = "me.tagavari.airmessage.fileprovider";
+	public static final String fileAuthority = "me.tagavari.airmessage.fileprovider";
 	
 	private final ContentObserver contentObserver = new ContentObserver(null) {
 		@Override
@@ -77,9 +85,9 @@ public class MainApplication extends Application {
 	//Creating the cache helpers
 	private BitmapCacheHelper bitmapCacheHelper;
 	private UserCacheHelper userCacheHelper;
-	private SoftReference<LoadFlagArrayList<ConversationManager.ConversationInfo>> conversationReference = null;
+	private SoftReference<LoadFlagArrayList<ConversationInfo>> conversationReference = null;
 	
-	//Creating the singletons
+	//Creating the references
 	private static WeakReference<MainApplication> instanceReference = null;
 	
 	//Creating the other reference values
@@ -134,9 +142,9 @@ public class MainApplication extends Application {
 		
 		//Getting the connection service information
 		SharedPreferences sharedPrefs = getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
-		ConnectionService.hostname = sharedPrefs.getString(sharedPreferencesConnectivityKeyHostname, null);
-		ConnectionService.hostnameFallback = Preferences.getPreferenceFallbackServer(this);
-		ConnectionService.password = sharedPrefs.getString(sharedPreferencesConnectivityKeyPassword, null);
+		ConnectionManager.hostname = sharedPrefs.getString(sharedPreferencesConnectivityKeyHostname, null);
+		ConnectionManager.hostnameFallback = Preferences.getPreferenceFallbackServer(this);
+		ConnectionManager.password = sharedPrefs.getString(sharedPreferencesConnectivityKeyPassword, null);
 		
 		//Creating the cache helpers
 		bitmapCacheHelper = new BitmapCacheHelper();
@@ -149,7 +157,7 @@ public class MainApplication extends Application {
 		applyDarkMode(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.preference_appearance_theme_key), ""));
 		
 		//Enabling / disabling the service on boot as per the shared preference
-		getPackageManager().setComponentEnabledSetting(new ComponentName(this, ConnectionService.ServiceStartBoot.class),
+		getPackageManager().setComponentEnabledSetting(new ComponentName(this, ServiceStartBoot.class),
 				PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_connectionboot_key), true) ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
 				PackageManager.DONT_KILL_APP);
 		
@@ -192,7 +200,7 @@ public class MainApplication extends Application {
 		return true;
 	} */
 	
-	static File getAttachmentDirectory(Context context) {
+	public static File getAttachmentDirectory(Context context) {
 		//Getting the media directory
 		File file = new File(context.getFilesDir(), "attachments");
 		
@@ -208,25 +216,25 @@ public class MainApplication extends Application {
 		return file;
 	}
 	
-	static File getDownloadDirectory(Context context) {
+	public static File getDownloadDirectory(Context context) {
 		return new File(getAttachmentDirectory(context), dirNameDownload);
 	}
 	
-	static File getUploadDirectory(Context context) {
+	public static File getUploadDirectory(Context context) {
 		return new File(getAttachmentDirectory(context), dirNameUpload);
 	}
 	
-	static File getUploadTarget(Context context, String fileName) {
+	public static File getUploadTarget(Context context, String fileName) {
 		File directory = Constants.findFreeFile(getUploadDirectory(context), Long.toString(System.currentTimeMillis()), false);
 		prepareDirectory(directory);
 		return new File(directory, fileName);
 	}
 	
-	static File getDraftDirectory(Context context) {
+	public static File getDraftDirectory(Context context) {
 		return new File(getAttachmentDirectory(context), dirNameDraft);
 	}
 	
-	static File getDraftTarget(Context context, long conversationID, String fileName) {
+	public static File getDraftTarget(Context context, long conversationID, String fileName) {
 		File conversationDir = new File(getDraftDirectory(context), Long.toString(conversationID));
 		prepareDirectory(conversationDir);
 		File collisionDir = Constants.findFreeFile(conversationDir, false); //Collision-avoidance directory: creates a directory, starting at index 0 in the conversation directory, each to host 1 file
@@ -234,7 +242,7 @@ public class MainApplication extends Application {
 		return new File(collisionDir, fileName);
 	}
 	
-	static File findUploadFileTarget(Context context, String fileName) {
+	public static File findUploadFileTarget(Context context, String fileName) {
 		//Finding a free directory and assigning the file to it
 		return new File(Constants.findFreeFile(getUploadDirectory(context), Long.toString(System.currentTimeMillis()), false), fileName);
 	}
@@ -256,44 +264,44 @@ public class MainApplication extends Application {
 		return true;
 	}
 	
-	static void clearAttachmentsDirectory(Context context) {
+	public static void clearAttachmentsDirectory(Context context) {
 		for(File childFiles : MainApplication.getAttachmentDirectory(context).listFiles()) Constants.recursiveDelete(childFiles);
 	}
 	
-	BitmapCacheHelper getBitmapCacheHelper() {
+	public BitmapCacheHelper getBitmapCacheHelper() {
 		return bitmapCacheHelper;
 	}
 	
-	UserCacheHelper getUserCacheHelper() {
+	public UserCacheHelper getUserCacheHelper() {
 		return userCacheHelper;
 	}
 	
-	void registerContactsListener() {
+	public void registerContactsListener() {
 		getContentResolver().registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contentObserver);
 	}
 	
-	static boolean canUseContacts(Context context) {
+	public static boolean canUseContacts(Context context) {
 		//Returning if the permission has been granted
 		return ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
 	}
 	
-	void setConversations(LoadFlagArrayList<ConversationManager.ConversationInfo> conversations) {
+	public void setConversations(LoadFlagArrayList<ConversationInfo> conversations) {
 		conversationReference = new SoftReference<>(conversations);
 	}
 	
-	LoadFlagArrayList<ConversationManager.ConversationInfo> getConversations() {
+	public LoadFlagArrayList<ConversationInfo> getConversations() {
 		if(conversationReference == null) return null;
 		return conversationReference.get();
 	}
 	
 	public static class LoadFlagArrayList<E> extends ArrayList<E> {
-		private boolean isLoaded = false;
+		private boolean isLoaded;
 		
-		boolean isLoaded() {
+		public boolean isLoaded() {
 			return isLoaded;
 		}
 		
-		void setLoaded(boolean loaded) {
+		public void setLoaded(boolean loaded) {
 			isLoaded = loaded;
 		}
 		
@@ -302,7 +310,7 @@ public class MainApplication extends Application {
 			this.isLoaded = isLoaded;
 		}
 		
-		LoadFlagArrayList(boolean isLoaded) {
+		public LoadFlagArrayList(boolean isLoaded) {
 			this.isLoaded = isLoaded;
 		}
 		
@@ -312,15 +320,15 @@ public class MainApplication extends Application {
 		}
 	}
 	
-	SharedPreferences getConnectivitySharedPrefs() {
+	public SharedPreferences getConnectivitySharedPrefs() {
 		return getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
 	}
 	
-	boolean isServerConfigured() {
+	public boolean isServerConfigured() {
 		return !getConnectivitySharedPrefs().getString(sharedPreferencesConnectivityKeyHostname, "").isEmpty();
 	}
 	
-	void startConnectionService() {
+	public void startConnectionService() {
 		startService(new Intent(this, ConnectionService.class));
 	}
 	
@@ -344,11 +352,11 @@ public class MainApplication extends Application {
 		}
 	}
 	
-	static final String darkModeFollowSystem = "follow_system";
-	//static final String darkModeAutomatic = "auto";
-	static final String darkModeLight = "off";
-	static final String darkModeDark = "on";
-	void applyDarkMode(String method) {
+	public static final String darkModeFollowSystem = "follow_system";
+	//public static final String darkModeAutomatic = "auto";
+	public static final String darkModeLight = "off";
+	public static final String darkModeDark = "on";
+	public void applyDarkMode(String method) {
 		switch(method) {
 			case darkModeFollowSystem: //Follow system
 				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM); //On Android Q and above, the app should follow the system's dark mode setting
