@@ -3302,7 +3302,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	
 	public byte[] getStickerBlob(long identifier) {
 		try(Cursor cursor = getReadableDatabase().query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry.COLUMN_NAME_DATA}, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(identifier)}, null, null, null, "1")) {
-			if(cursor.moveToNext()) return cursor.getBlob(0);
+			if(cursor.moveToNext()) return cursor.getBlob(cursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_DATA));
 			return null;
 		}
 	}

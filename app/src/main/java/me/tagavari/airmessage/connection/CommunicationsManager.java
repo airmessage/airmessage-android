@@ -1,17 +1,14 @@
 package me.tagavari.airmessage.connection;
 
-import android.app.AlarmManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 
-import java.lang.ref.WeakReference;
 import java.util.List;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
-import me.tagavari.airmessage.service.ConnectionService;
 
 public abstract class CommunicationsManager {
 	//Creating the reference values

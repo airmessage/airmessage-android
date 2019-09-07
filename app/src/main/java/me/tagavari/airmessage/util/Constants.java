@@ -78,6 +78,7 @@ import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.service.FileExportService;
+import me.tagavari.airmessage.service.UriExportService;
 
 public class Constants {
 	//Creating the constants
@@ -93,6 +94,7 @@ public class Constants {
 	
 	public static final Pattern regExValidAddress = Pattern.compile("^(((www\\.)?+[a-zA-Z0-9.\\-_]+(\\.[a-zA-Z]{2,})+)|(\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b))(/[a-zA-Z0-9_\\-\\s./?%#&=]*)?(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))?$");
 	
+	public static final String intentParamTarget = "target";
 	public static final String intentParamTargetID = "targetID";
 	public static final String intentParamGuid = "guid";
 	public static final String intentParamResult = "result";
@@ -1282,9 +1284,29 @@ public class Constants {
 		return "(" + String.format(Locale.getDefault(), "%.5f", position.latitude) + ", " + String.format(Locale.getDefault(), "%.5f", position.longitude) + ")";
 	}
 	
+	public static void createFileSAF(Activity activity, int requestCode, String mimeType, String fileName) {
+		Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+		
+		// Filter to only show results that can be "opened", such as
+		// a file (as opposed to a list of contacts or timezones).
+		intent.addCategory(Intent.CATEGORY_OPENABLE);
+		
+		// Create a file with the requested MIME type.
+		intent.setType(mimeType);
+		intent.putExtra(Intent.EXTRA_TITLE, fileName);
+		activity.startActivityForResult(intent, requestCode);
+	}
+	
 	public static void exportFile(Context context, File file) {
 		Intent intent = new Intent(context, FileExportService.class);
 		intent.putExtra(Constants.intentParamData, file.getPath());
+		context.startService(intent);
+	}
+	
+	public static void exportUri(Context context, File sourceFile, Uri targetUri) {
+		Intent intent = new Intent(context, UriExportService.class);
+		intent.putExtra(Constants.intentParamData, sourceFile);
+		intent.putExtra(Constants.intentParamTarget, targetUri);
 		context.startService(intent);
 	}
 }

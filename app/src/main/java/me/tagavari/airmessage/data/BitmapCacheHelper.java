@@ -252,8 +252,7 @@ public class BitmapCacheHelper {
 		//Checking if the bitmap is not cached
 		if(bitmap == null && !failedBitmapCache.contains(id)) {
 			//Adding the listener
-			if(callbackList.containsKey(id))
-				callbackList.get(id).add(callbacks);
+			if(callbackList.containsKey(id)) callbackList.get(id).add(callbacks);
 			else {
 				ArrayList<ImageDecodeResult> resultList = new ArrayList<>();
 				resultList.add(callbacks);
@@ -630,8 +629,7 @@ public class BitmapCacheHelper {
 			
 			//Caching the bitmap
 			if(bitmap == null) superclass.failedBitmapCache.add(requestKey);
-			else if(superclass.bitmapCache.get(requestKey) == null)
-				superclass.bitmapCache.put(requestKey, bitmap);
+			else if(superclass.bitmapCache.get(requestKey) == null) superclass.bitmapCache.put(requestKey, bitmap);
 			
 			//Telling the result listeners
 			if(superclass.callbackList.containsKey(requestKey)) {

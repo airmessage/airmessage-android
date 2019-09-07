@@ -161,6 +161,12 @@
 			android:exported="false"
 			android:name=".service.FileExportService" />
 
+		<!-- File-URI export service -->
+		<service
+			android:description="@string/servicedesc_fileexportservice"
+			android:exported="false"
+			android:name=".service.UriExportService" />
+
 		<!-- File provider -->
 		<provider
 			android:authorities="me.tagavari.airmessage.fileprovider"

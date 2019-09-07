@@ -219,6 +219,12 @@ class ClientProtocol6 extends ProtocolManager {
 				
 				break;
 			}
+			case nhtMassRetrievalFinish: {
+				//Finishing the mass retrieval
+				connectionManager.finishMassRetrieval();
+				
+				break;
+			}
 			case nhtMassRetrievalFile: {
 				//Reading the data
 				final short requestID;
@@ -498,7 +504,7 @@ class ClientProtocol6 extends ProtocolManager {
 		try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt)) {
 			//Adding the data
 			out.writeShort(requestID); //Request ID
-			out.writeBoolean(true); //Advanced retrieval
+			//out.writeBoolean(params.isAdvanced); //Advanced retrieval
 			
 			out.writeBoolean(params.restrictMessages); //Whether or not to time-restrict messages
 			if(params.restrictMessages) out.writeLong(params.timeSinceMessages); //Messages time since

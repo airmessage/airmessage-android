@@ -63,6 +63,8 @@ public class MediaViewer extends AppCompatActivity {
 	
 	private static final int permissionRequestExportFile = 0;
 	
+	private static final int activityResultCreateFileSAF = 0;
+	
 	private ViewPager2 viewPager;
 	private Toolbar toolbar;
 	private View scrimTop;
@@ -225,6 +227,15 @@ public class MediaViewer extends AppCompatActivity {
 	}
 	
 	@Override
+	protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		
+		if(requestCode == activityResultCreateFileSAF) {
+			if(resultCode == RESULT_OK) Constants.exportUri(this, targetExportFile, data.getData());
+		}
+	}
+	
+	@Override
 	public void onBackPressed() {
 		activityExiting = true;
 		super.onBackPressed();
@@ -239,14 +250,14 @@ public class MediaViewer extends AppCompatActivity {
 		super.finishAfterTransition();
 	}
 	
-	@Override
+	/* @Override
 	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 		if(requestCode == permissionRequestExportFile) {
 			if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 				Constants.exportFile(this, targetExportFile);
 			}
 		}
-	}
+	} */
 	
 	private void toggleUI() {
 		if(uiVisible) hideUI();
@@ -345,12 +356,8 @@ public class MediaViewer extends AppCompatActivity {
 	}
 	
 	private boolean saveItem(File file) {
-		//Exporting the file directly if there is already permission
-		if(ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) Constants.exportFile(this, file);
-		else {
-			targetExportFile = file;
-			ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, permissionRequestExportFile);
-		}
+		targetExportFile = file;
+		Constants.createFileSAF(this, activityResultCreateFileSAF, Constants.getMimeType(file), file.getName());
 		
 		//Returning true
 		return true;

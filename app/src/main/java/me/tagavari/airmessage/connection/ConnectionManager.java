@@ -571,6 +571,10 @@ public class ConnectionManager {
 		if(massRetrievalThread != null) massRetrievalThread.cancel(context);
 	}
 	
+	public void finishMassRetrieval() {
+		if(massRetrievalThread != null) massRetrievalThread.finish();
+	}
+	
 	public MassRetrievalThread getMassRetrievalThread() {
 		return massRetrievalThread;
 	}

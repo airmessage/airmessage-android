@@ -589,12 +589,8 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 					return true;
 				}
 				case R.id.action_save: {
-					if(ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) Constants.exportFile(context, file);
-					//Otherwise requesting the permission
-					else {
-						ConversationInfo.ActivityCallbacks updater = getMessageInfo().getConversationInfo().getActivityCallbacks();
-						if(updater != null) updater.requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, ConversationUtils.permissionRequestWriteStorageDownload, new ExportFileResultListener(file));
-					}
+					ConversationInfo.ActivityCallbacks updater = getMessageInfo().getConversationInfo().getActivityCallbacks();
+					updater.saveFile(file);
 					
 					//Returning true
 					return true;

@@ -322,7 +322,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			dialog.show();
 			
 			//Setting up the button
-			dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setEnabled(false);
+			//dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setEnabled(false);
 			
 			//Returning true
 			return true;

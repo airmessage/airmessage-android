@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.gms.common.util.BiConsumer;
 
+import java.io.File;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -1275,6 +1276,7 @@ public class ConversationInfo implements Serializable {
 		public abstract void playScreenEffect(String effect, View target);
 		
 		public abstract void requestPermission(String permission, int requestCode, BiConsumer<Context, Boolean> resultListener);
+		public abstract void saveFile(File file);
 	}
 	
 	public int getNextUserColor() {

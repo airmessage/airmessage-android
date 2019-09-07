@@ -238,7 +238,7 @@ public class ConnectionService extends Service {
 		registerReceiver(networkStateChangeBroadcastReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
 		registerReceiver(pingBroadcastReceiver, new IntentFilter(BCPingTimer));
 		registerReceiver(reconnectionBroadcastReceiver, new IntentFilter(BCReconnectTimer));
-		registerReceiver(serverConnectionStateChangeBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
+		LocalBroadcastManager.getInstance(this).registerReceiver(serverConnectionStateChangeBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
 		
 		//Setting the reference values
 		pingPendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(BCPingTimer), PendingIntent.FLAG_UPDATE_CURRENT);
@@ -303,7 +303,7 @@ public class ConnectionService extends Service {
 		unregisterReceiver(networkStateChangeBroadcastReceiver);
 		unregisterReceiver(pingBroadcastReceiver);
 		unregisterReceiver(reconnectionBroadcastReceiver);
-		unregisterReceiver(serverConnectionStateChangeBroadcastReceiver);
+		LocalBroadcastManager.getInstance(this).unregisterReceiver(serverConnectionStateChangeBroadcastReceiver);
 		
 		//Removing the notification
 		clearNotification();

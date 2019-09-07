@@ -226,6 +226,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final int intentTakePicture = 1;
 	private static final int intentLocationResolution = 2;
 	private static final int intentPickLocation = 3;
+	private static final int intentSaveFileSAF = 4;
 	
 	//Creating the static values
 	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
@@ -245,6 +246,35 @@ public class Messaging extends AppCompatCompositeActivity {
 	private float bottomDetailsWindowDragY = -1;
 	//private float bottomDetailsWindowStartY;
 	private float bottomDetailsWindowEndY;
+	
+	//Creating the view values
+	private View rootView;
+	private AppBarLayout appBar;
+	private TextView labelLoading;
+	private ViewGroup groupLoadFail;
+	private TextView labelLoadFail;
+	private RecyclerView messageList;
+	private View inputBar;
+	private View inputBarShadow;
+	private View attachmentsPanel;
+	private ImageButton buttonSendMessage;
+	private FrameLayout buttonAddContent;
+	private InsertionEditText messageInputField;
+	private ViewGroup recordingActiveGroup;
+	private TextView recordingTimeLabel;
+	private VisualizerView recordingVisualizer;
+	private FloatingActionButton bottomFAB;
+	private TextView bottomFABBadge;
+	private AppleEffectView appleEffectView;
+	private FrameLayout bottomDetailsPanel;
+	
+	private final HashMap<MemberInfo, View> memberListViews = new HashMap<>();
+	
+	private View detailScrim;
+	
+	private RecyclerView listAttachmentQueue;
+	
+	private final MessageListRecyclerAdapter messageListAdapter = new MessageListRecyclerAdapter();
 	
 	//Creating the listener values
 	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
@@ -330,44 +360,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(scrollY > 0) bottomDetailsWindowIntercept = true;
 		}
 	};
-	
-	//Creating the view values
-	private View rootView;
-	private AppBarLayout appBar;
-	private TextView labelLoading;
-	private ViewGroup groupLoadFail;
-	private TextView labelLoadFail;
-	private RecyclerView messageList;
-	private View inputBar;
-	private View inputBarShadow;
-	private View attachmentsPanel;
-	private ImageButton buttonSendMessage;
-	private FrameLayout buttonAddContent;
-	private InsertionEditText messageInputField;
-	private ViewGroup recordingActiveGroup;
-	private TextView recordingTimeLabel;
-	private VisualizerView recordingVisualizer;
-	private FloatingActionButton bottomFAB;
-	private TextView bottomFABBadge;
-	private AppleEffectView appleEffectView;
-	private FrameLayout bottomDetailsPanel;
-	
-	private final HashMap<MemberInfo, View> memberListViews = new HashMap<>();
-	
-	private View detailScrim;
-	
-	private RecyclerView listAttachmentQueue;
-	
-	//Creating the other values
-	private final MessageListRecyclerAdapter messageListAdapter = new MessageListRecyclerAdapter();
-	
-	private boolean currentSendButtonState = true;
-	private boolean toolbarVisible = true;
-	
-	private DialogFragment currentColorPickerDialog = null;
-	private MemberInfo currentColorPickerDialogMember = null;
-	
-	//Creating the listeners
 	private final ViewTreeObserver.OnGlobalLayoutListener rootLayoutListener = () -> {
 		{
 			//Getting the height
@@ -450,39 +442,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		return false;
 	};
 	private final View.OnClickListener sendButtonClickListener = view -> sendMessage();
-	
-	private static class GhostMessageFinishHandler implements Consumer<MessageInfo> {
-		@Override
-		public void accept(MessageInfo messageInfo) {
-			//Adding the message to the conversation in memory
-			messageInfo.getConversationInfo().addGhostMessage(MainApplication.getInstance(), messageInfo);
-			
-			//Sending the message
-			messageInfo.sendMessage(MainApplication.getInstance());
-		}
-	}
-	
-	/* private final View.OnTouchListener recordingTouchListener = new View.OnTouchListener() {
-		@Override
-		public boolean onTouch(View view, MotionEvent motionEvent) {
-			//Performing the click
-			view.performClick();
-			
-			//Checking if the input state is content and the action is a down touch
-			if(viewModel.inputState == ActivityViewModel.inputStateContent && motionEvent.getAction() == MotionEvent.ACTION_DOWN) {
-				//Attempting to start recording
-				boolean result = startRecording();
-				
-				//Moving the recording indicator if the recording could be started
-				if(result) recordingIndicator.setX(motionEvent.getRawX() - (float) recordingIndicator.getWidth() / 2f);
-				
-				//Returning true
-				return true;
-			}
-			//Returning false
-			return false;
-		}
-	}; */
 	private final Observer<Integer> messagesStateObserver = state -> {
 		switch(state) {
 			case ActivityViewModel.messagesStateLoadingConversation:
@@ -631,6 +590,15 @@ public class Messaging extends AppCompatCompositeActivity {
 				break;
 		}
 	};
+	
+	//Creating the other values
+	private boolean currentSendButtonState = true;
+	private boolean toolbarVisible = true;
+	
+	private DialogFragment currentColorPickerDialog = null;
+	private MemberInfo currentColorPickerDialogMember = null;
+	
+	private File currentTargetSAFFile = null;
 	
 	public Messaging() {
 		//Setting the plugins;
@@ -1234,6 +1202,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				break;
 			}
+			case intentSaveFileSAF:
+				if(resultCode == RESULT_OK) Constants.exportUri(this, currentTargetSAFFile, intent.getData());
+				break;
 		}
 	}
 	
@@ -6214,6 +6185,17 @@ public class Messaging extends AppCompatCompositeActivity {
 			activity.requestPermissions(new String[]{permission}, requestCode + permissionRequestMessageCustomOffset);
 			activity.viewModel.addPermissionsRequestListener(requestCode, resultListener);
 		}
+		
+		@Override
+		public void saveFile(File file) {
+			//Getting the activity
+			Messaging activity = activityReference.get();
+			if(activity == null) return;
+			
+			//Opening the file picker
+			activity.currentTargetSAFFile = file;
+			Constants.createFileSAF(activity, intentSaveFileSAF, Constants.getMimeType(file), file.getName());
+		}
 	}
 	
 	private static class ConversationTitleResultCallback implements Constants.TaskedResultCallback<String> {
@@ -6458,5 +6440,16 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private interface ContentProcessor {
 		void process(Uri content, String type, String name, long size);
+	}
+	
+	private static class GhostMessageFinishHandler implements Consumer<MessageInfo> {
+		@Override
+		public void accept(MessageInfo messageInfo) {
+			//Adding the message to the conversation in memory
+			messageInfo.getConversationInfo().addGhostMessage(MainApplication.getInstance(), messageInfo);
+			
+			//Sending the message
+			messageInfo.sendMessage(MainApplication.getInstance());
+		}
 	}
 }
