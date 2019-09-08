@@ -278,6 +278,11 @@ public class ConnectionManager {
 		this.flagShutdownRequested = flagShutdownRequested;
 	}
 	
+	public boolean isConnectedFallback() {
+		if(currentCommunicationsManager == null) return false;
+		return currentCommunicationsManager.isConnectedFallback();
+	}
+	
 	public CommunicationsManager getCurrentCommunicationsManager() {
 		return currentCommunicationsManager;
 	}

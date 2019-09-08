@@ -127,7 +127,7 @@ public class ConnectionService extends Service {
 			int state = intent.getIntExtra(Constants.intentParamState, -1);
 			if(state == -1) return;
 			
-			if(state == ConnectionManager.stateConnected) postConnectedNotification(true, true);
+			if(state == ConnectionManager.stateConnected) postConnectedNotification(true, connectionManager.isConnectedFallback());
 			else if(state == ConnectionManager.stateConnecting) postConnectedNotification(false, false);
 			else if(state == ConnectionManager.stateDisconnected) postDisconnectedNotification(true);
 		}

@@ -147,7 +147,7 @@
 		<receiver
 			android:enabled="true"
 			android:exported="false"
-			android:name=".NotificationUtils$NotificationBroadcastReceiver" />
+			android:name=".util.NotificationUtils$NotificationBroadcastReceiver" />
 
 		<!-- Server connection manager service -->
 		<service

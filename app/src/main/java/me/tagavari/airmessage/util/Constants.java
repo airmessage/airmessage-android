@@ -181,6 +181,7 @@ public class Constants {
 	public static final int defaultPort = 1359;
 	public static final String recordingName = "recording.amr";
 	public static final String pictureName = "image.jpg";
+	public static final String videoName = "video.mp4";
 	public static final String locationName = "location.loc.vcf";
 	public static final String defaultFileName = "file";
 	public static final int smartReplyHistoryLength = 10;

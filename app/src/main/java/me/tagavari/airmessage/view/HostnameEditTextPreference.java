@@ -36,7 +36,7 @@ public class HostnameEditTextPreference extends EditTextPreference {
 	
 	public static class HostnameEditTextPreferenceDialog extends EditTextPreferenceDialogFragmentCompat {
 		private Button positiveButton;
-		private boolean buttonEnabled = false;
+		private boolean buttonEnabled = true;
 		
 		public static HostnameEditTextPreferenceDialog newInstance(String key) {
 			final HostnameEditTextPreferenceDialog fragment = new HostnameEditTextPreferenceDialog();

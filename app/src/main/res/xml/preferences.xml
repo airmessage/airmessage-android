@@ -98,7 +98,7 @@
 			<intent
 				android:action="android.intent.action.VIEW"
 				android:targetPackage="me.tagavari.airmessage"
-				android:targetClass="me.tagavari.airmessage.ServerSetup" />
+				android:targetClass="me.tagavari.airmessage.activity.ServerSetup" />
         </androidx.preference.Preference>
 		<me.tagavari.airmessage.view.HostnameEditTextPreference
 			android:key="@string/preference_server_serverfallback_key"

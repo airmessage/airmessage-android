@@ -120,6 +120,12 @@ public class ClientCommCaladium extends CommunicationsManager {
 		return currentState;
 	}
 	
+	@Override
+	public boolean isConnectedFallback() {
+		if(connectionThread == null) return false;
+		return connectionThread.isUsingFallback();
+	}
+	
 	public boolean queuePacket(ConnectionManager.PacketStruct packet) {
 		return connectionThread != null && connectionThread.queuePacket(packet);
 	}

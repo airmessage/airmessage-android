@@ -80,6 +80,12 @@ public abstract class CommunicationsManager {
 	public abstract int getState();
 	
 	/**
+	 * Get whether or not the server is connected via the fallback address
+	 * @return fallback
+	 */
+	public abstract boolean isConnectedFallback();
+	
+	/**
 	 * Sends a ping packet to the server
 	 *
 	 * @return whether or not the message was successfully sent
