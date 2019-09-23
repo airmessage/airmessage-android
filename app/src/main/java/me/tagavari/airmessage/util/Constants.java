@@ -395,7 +395,7 @@ public class Constants {
 		//Attempting to pull the file name from the content resolver
 		if("content".equals(uri.getScheme())) {
 			try(Cursor cursor = context.getContentResolver().query(uri, new String[]{OpenableColumns.SIZE}, null, null, null)) {
-				if(cursor != null && cursor.moveToFirst()) return cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
+				if(cursor != null && cursor.moveToFirst()) return cursor.getLong(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE));
 			} catch(SecurityException exception) {
 				exception.printStackTrace();
 				return -1;

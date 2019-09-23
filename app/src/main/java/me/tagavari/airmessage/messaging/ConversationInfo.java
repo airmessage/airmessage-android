@@ -47,10 +47,6 @@ public class ConversationInfo implements Serializable {
 	private static final long serialVersionUID = 0;
 	
 	//Creating the reference values
-		/* private static final String timeFormat = "h:mm a";
-		private static final String dayFormat = "MMM d";
-		private static final String weekdayFormat = "E";
-		private static final String yearFormat = "y"; */
 	public static final Integer[] standardUserColors = {
 			0xFFFF1744, //Red
 			0xFFF50057, //Pink
@@ -74,13 +70,19 @@ public class ConversationInfo implements Serializable {
 	public static final int backupUserColor = 0xFF607D8B; //Blue grey
 	private static final int maxUsersToDisplay = 4;
 	
+	public static final int serviceHandlerAMBridge = 0; //AirMessage / iMessage bridge
+	public static final int serviceHandlerSystemMessaging = 1; //SMS and MMS
+	
+	public static final String serviceTypeSMS = "SMS"; //SMS and MMS
+	
 	//Creating the static values
 	private static SelectionSource selectionSource = id -> false;
 	
 	//Creating the values
-	private final long localID;
+	private long localID;
 	private String guid;
 	private ConversationState conversationState;
+	private int serviceHandler;
 	private String service;
 	private transient WeakReference<ArrayList<ConversationItem>> conversationItemsReference = null;
 	private transient WeakReference<ArrayList<MessageInfo>> ghostMessagesReference = null;
@@ -121,22 +123,24 @@ public class ConversationInfo implements Serializable {
 		draftFiles = new ArrayList<>();
 	}
 	
-	public ConversationInfo(long localID, String guid, ConversationState conversationState) {
+	public ConversationInfo(long localID, String guid, ConversationState conversationState, int serviceHandler) {
 		//Setting the identifiers and the state
 		this.localID = localID;
 		this.guid = guid;
 		this.conversationState = conversationState;
+		this.serviceHandler = serviceHandler;
 		
 		//Instantiating the lists
 		conversationMembers = new ArrayList<>();
 		draftFiles = new ArrayList<>();
 	}
 	
-	public	ConversationInfo(long localID, String guid, ConversationState conversationState, String service, ArrayList<MemberInfo> conversationMembers, String title, int unreadMessageCount, int conversationColor, String draftMessage, ArrayList<DraftFile> draftFiles, long draftUpdateTime) {
+	public ConversationInfo(long localID, String guid, ConversationState conversationState, int serviceHandler, String service, ArrayList<MemberInfo> conversationMembers, String title, int unreadMessageCount, int conversationColor, String draftMessage, ArrayList<DraftFile> draftFiles, long draftUpdateTime) {
 		//Setting the values
 		this.guid = guid;
 		this.localID = localID;
 		this.conversationState = conversationState;
+		this.serviceHandler = serviceHandler;
 		this.service = service;
 		this.conversationMembers = conversationMembers;
 		this.title = title;
@@ -601,12 +605,20 @@ public class ConversationInfo implements Serializable {
 		return localID;
 	}
 	
+	public void setLocalID(long localID) {
+		this.localID = localID;
+	}
+	
 	public String getGuid() {
 		return guid;
 	}
 	
 	public void setGuid(String guid) {
 		this.guid = guid;
+	}
+	
+	public int getServiceHandler() {
+		return serviceHandler;
 	}
 	
 	public String getService() {
@@ -1572,6 +1584,10 @@ public class ConversationInfo implements Serializable {
 	public void setConversationColor(int conversationColor) {
 		//Setting the color
 		this.conversationColor = conversationColor;
+	}
+	
+	public static int getDefaultConversationColor(long id) {
+		return standardUserColors[new Random(id).nextInt(standardUserColors.length)];
 	}
 	
 	public static int getDefaultConversationColor(String guid) {

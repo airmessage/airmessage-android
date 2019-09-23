@@ -32,7 +32,7 @@ public class MessagePreviewLink extends MessagePreviewInfo<MessagePreviewLink.Vi
 			viewHolder.imageHeader.setVisibility(View.GONE);
 		} else {
 			viewHolder.imageHeader.setVisibility(View.VISIBLE);
-			Glide.with(context).load(data).into(viewHolder.imageHeader);
+			if(Constants.validateContext(context)) Glide.with(context).load(data).into(viewHolder.imageHeader);
 		}
 		
 		//Setting the title

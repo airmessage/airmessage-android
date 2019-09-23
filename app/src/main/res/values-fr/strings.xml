@@ -377,4 +377,12 @@
 	<string name="message_notsupported">Cette fonctionnalité n\'est pas disponible</string>
 	<string name="part_content_location">Détails d\'emplacement</string>
 	<string name="part_content_contact">Informations de contact</string>
+	<string name="preference_textmessage_deliveryreport_title">Accusés de réception textos</string>
+	<string name="preference_textmessage_enable_title">Intégration des messages texte</string>
+	<string name="preferencegroup_textmessage_title">Messagerie texte</string>
+	<string name="preference_textmessage_enable_desc">Utiliser AirMessage pour envoyer et recevoir des SMS et des MMS</string>
+	<string name="preference_textmessage_deliveryreport_desc">Vérifier quand un message text est distribué</string>
+	<string name="servicedesc_systemmessageimport">Permet d\'importer et de gérer la fonctionnalité d\'intégration de messagerie texte d\'AirMessage</string>
+	<string name="progress_importtextmessages">Importation des messages texte&#8230;</string>
+	<string name="message_textmessageimport">Commencé l\'importation du message texte. Vérifiez la notification pour plus de détails.</string>
 </resources>

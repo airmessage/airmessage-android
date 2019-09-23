@@ -151,6 +151,8 @@
 	<string name="message_permissiondetails_microphone_missing">Missing permission to record audio</string>
 	<string name="message_permissiondetails_microphone_failedrequest">AirMessage must be able to record audio to send audio messages</string>
 
+	<string name="message_textmessageimport">Started text message import. See the notification for details.</string>
+
 	<string name="message_serverstatus_limitedfunctionality">%s. Functionality will be limited.</string>
 	<string name="message_serverstatus_internalexception">An internal error occurred</string>
 	<string name="message_serverstatus_badrequest">A connection compatibility error occurred</string>
@@ -298,6 +300,7 @@
 	<string name="progress_loading">Loading&#8230;</string>
 	<string name="progress_sync">Getting your messages&#8230;</string>
 	<string name="progress_connectingtoserver">Connecting to server&#8230;</string>
+	<string name="progress_importtextmessages">Importing text messages&#8230;</string>
 
 	<string name="time_now">Just now</string>
 	<string name="time_minutes">%d min</string>
@@ -364,6 +367,7 @@
 		<item quantity="other">Archive selected conversations?</item>
 	</plurals> -->
 	<string name="servicedesc_connectionservice">Creates and maintains a connection to the AirMessage server to send and receive messages</string>
+	<string name="servicedesc_systemmessageimport">Helps to import and manage AirMessage\'s SMS integration functionality</string>
 	<string name="servicedesc_fileexportservice">Copies sent and received files to local storage, as per the user\'s request</string>
 	<string name="notificationchannel_message">Messages</string>
 	<string name="notificationchannel_message_desc">Concerns notifications about incoming messages</string>

@@ -65,6 +65,15 @@
 	<string name="preference_server_downloadmessages_title">Sync messages</string>
 	<string name="preference_server_downloadmessages_desc">Copy all messages from the server to this device</string>
 
+	<string name="preferencegroup_textmessage_key" translatable="false">pref_group_textmessage</string>
+	<string name="preferencegroup_textmessage_title">Text messaging</string>
+	<string name="preference_textmessage_enable_key" translatable="false">pref_key_textmessage_enable</string>
+	<string name="preference_textmessage_enable_title">Enable text message integration</string>
+	<string name="preference_textmessage_enable_desc">Use AirMessage to send and receive SMS and MMS messages</string>
+	<string name="preference_textmessage_deliveryreport_key" translatable="false">pref_key_textmessage_deliveryreport</string>
+	<string name="preference_textmessage_deliveryreport_title">SMS delivery reports</string>
+	<string name="preference_textmessage_deliveryreport_desc">Find out when an SMS message is delivered</string>
+
     <string name="preferencegroup_server_key" translatable="false">pref_group_server</string>
     <string name="preferencegroup_server_title">Server</string>
     <string name="preference_server_serverdetails_key" translatable="false">pref_key_server_address</string>

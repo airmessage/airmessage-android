@@ -21,7 +21,6 @@ import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.ConversationsBase;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.messaging.ConversationInfo;

@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.activity;
 
+import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -37,6 +38,8 @@ import androidx.annotation.Nullable;
 import androidx.annotation.PluralsRes;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.util.Consumer;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
@@ -54,6 +57,7 @@ import androidx.preference.PreferenceGroupAdapter;
 import androidx.preference.PreferenceManager;
 import androidx.preference.PreferenceScreen;
 import androidx.preference.PreferenceViewHolder;
+import androidx.preference.SwitchPreference;
 import androidx.preference.SwitchPreferenceCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -64,6 +68,7 @@ import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.service.ServiceStartBoot;
+import me.tagavari.airmessage.service.SystemMessageImportService;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.util.Constants;
@@ -76,6 +81,7 @@ import me.tagavari.airmessage.view.HostnameEditTextPreference;
 public class Preferences extends AppCompatCompositeActivity implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
 	//Creating the reference values
 	private static final int permissionRequestLocation = 0;
+	private static final int permissionRequestSMS = 1;
 	
 	//Creating the plugin values
 	private PluginQNavigation pluginQNavigation;
@@ -337,6 +343,19 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Accepting the change
 			return true;
 		};
+		Preference.OnPreferenceChangeListener textIntegrationChangeListener = (preference, newValue) -> {
+			//Checking if the permission has already been granted
+			if(ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
+				//Launching the app details screen
+				startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
+			} else {
+				//Requesting permission
+				requestPermissions(new String[]{Manifest.permission.READ_SMS}, permissionRequestSMS);
+			}
+			
+			//Returning false (to prevent the system from changing the option)
+			return false;
+		};
 		Preference.OnPreferenceChangeListener fallbackServerChangeListener = (preference, newValue) -> {
 			//Setting the value
 			String newValueString = (String) newValue;
@@ -406,24 +425,11 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				
 				//Setting the listener
 				findPreference(getResources().getString(R.string.preference_messagenotifications_key)).setIntent(intent);
-			}/* else {
-				//Updating the notification information
-				String ringtonePreferenceKey = getResources().getString(R.string.preference_messagenotifications_sound_key);
-				updateRingtonePreference(findPreference(ringtonePreferenceKey));
-			} */
-			
-			//Setting the dependant states
-			/* {
-				SwitchPreferenceCompat foregroundServiceSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_server_foregroundservice_key));
-				findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setEnabled(foregroundServiceSwitch.isChecked());
-				findPreference(getResources().getString(R.string.preference_server_disconnectionnotification_key)).setEnabled(!foregroundServiceSwitch.isChecked());
-			} */
+			}
 			
 			{
-				/* SwitchPreferenceCompat locationSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_location_key));
-				locationSwitch.setChecked(ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED);
-				
-				SwitchPreferenceCompat amoledSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_amoled_key));
+				//Updating the AMOLED switch option
+				/* SwitchPreferenceCompat amoledSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_amoled_key));
 				amoledSwitch.setOnPreferenceChangeListener((preference, newValue) -> {
 					//Recreating the activity
 					getActivity().recreate();
@@ -431,25 +437,15 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					return true;
 				}); */
 				
-				
 				//Setting the theme options based on the system version
 				ListPreference themePreference = (ListPreference) findPreference(getResources().getString(R.string.preference_appearance_theme_key));
 				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) themePreference.setEntries(R.array.preference_appearance_theme_entries_androidQ);
 				else themePreference.setEntries(R.array.preference_appearance_theme_entries_old);
 				
-				//locationSwitch.setEnabled(themePreference.getValue().equals(MainApplication.darkModeFollowSystem));
-				//amoledSwitch.setEnabled(!themePreference.getValue().equals(MainApplication.darkModeLight));
-				
-				/* locationSwitch.setOnPreferenceChangeListener((preference, value) -> {
-					//Opening the application settings if the permission has been granted
-					if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
-					//Otherwise requesting the permission
-					else requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, permissionRequestLocation);
-					//else Constants.requestPermission(getActivity(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, Constants.permissionAccessCoarseLocation);
-					
-					//Returning false (to prevent the system from changing the option)
-					return false;
-				}); */
+				//Updating the text message integration option
+				SwitchPreference textIntegrationSwitch = (SwitchPreference) findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
+				textIntegrationSwitch.setChecked(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED);
+				textIntegrationSwitch.setOnPreferenceChangeListener(textIntegrationChangeListener);
 			}
 			
 			//Setting the intents
@@ -516,6 +512,25 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					
 					//Recreating the activity
 					getActivity().recreate();
+				}
+				//Otherwise checking if the result is a denial
+				else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
+					//Showing a snackbar
+					Snackbar.make(getView(), R.string.message_permissionrejected, Snackbar.LENGTH_LONG)
+							.setAction(R.string.screen_settings, view -> startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName()))))
+							.show();
+				}
+			} else if(requestCode == permissionRequestSMS) {
+				//Checking if the result is a success
+				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+					//Enabling the toggle
+					((SwitchPreference) findPreference(getResources().getString(R.string.preference_textmessage_enable_key))).setChecked(true);
+					
+					//Starting the import service
+					getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
+					
+					//Showing a snackbar
+					Snackbar.make(getView(), R.string.message_textmessageimport, Snackbar.LENGTH_LONG).show();
 				}
 				//Otherwise checking if the result is a denial
 				else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {

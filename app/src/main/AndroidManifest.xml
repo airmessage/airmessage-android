@@ -15,6 +15,12 @@
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.READ_CONTACTS" />
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+	<uses-permission android:name="android.permission.SEND_SMS" />
+	<uses-permission android:name="android.permission.READ_SMS" />
+	<uses-permission android:name="android.permission.WRITE_SMS" />
+	<uses-permission android:name="android.permission.RECEIVE_SMS" />
+	<uses-permission android:name="android.permission.RECEIVE_MMS" />
 	
 	<application
 		android:allowBackup="true"
@@ -155,6 +161,12 @@
 			android:exported="false"
 			android:name=".service.ConnectionService" />
 
+		<!-- Server connection manager service -->
+		<service
+			android:description="@string/servicedesc_systemmessageimport"
+			android:exported="false"
+			android:name=".service.SystemMessageImportService" />
+
 		<!-- File export service -->
 		<service
 			android:description="@string/servicedesc_fileexportservice"
@@ -198,6 +210,7 @@
 			android:name="com.google.android.geo.API_KEY"
 			android:value="AIzaSyCuqxy6XwkYtc1H3s-vealUkfyUBxSb45w" />
 
+		<!-- Android Auto integration -->
 		<meta-data
 			android:name="com.google.android.gms.car.application"
 			android:resource="@xml/automotive_app_desc" />

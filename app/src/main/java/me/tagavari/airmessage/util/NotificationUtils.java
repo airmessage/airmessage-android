@@ -124,7 +124,7 @@ public class NotificationUtils {
 		//Creating the notification builder
 		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, MainApplication.notificationChannelMessage)
 				//Setting the icon
-				.setSmallIcon(R.drawable.message)
+				.setSmallIcon(R.drawable.message_push)
 				//Setting the intent
 				.setContentIntent(clickPendingIntent)
 				//Setting the color
