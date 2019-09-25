@@ -15,6 +15,7 @@ import android.provider.Telephony;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import java.util.List;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.activity.ConversationsBase;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationItem;
@@ -91,8 +93,12 @@ public class SystemMessageImportService extends Service {
 			int iArchived = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.ARCHIVED);
 			int iRecipientIDs = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.RECIPIENT_IDS);
 			int iDate = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.DATE);
+			int iMessageCount = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.MESSAGE_COUNT);
 			
 			while(cursorConversation.moveToNext()) {
+				//Ignoring empty conversations
+				if(cursorConversation.getInt(iMessageCount) == 0) continue;
+				
 				//Getting the conversation thread ID
 				long threadID = cursorConversation.getLong(iThreadID);
 				
@@ -117,10 +123,11 @@ public class SystemMessageImportService extends Service {
 				//Adding the conversation to the list
 				conversationInfoList.add(conversationInfo);
 				
-				//Reading the conversation's messages
+				//Querying for the conversation's messages
 				Cursor cursorMessage = context.getContentResolver().query(ContentUris.withAppendedId(Telephony.Threads.CONTENT_URI, threadID), new String[]{Telephony.BaseMmsColumns._ID, Telephony.BaseMmsColumns.CONTENT_TYPE}, null, null, null);
 				if(cursorMessage == null) continue;
 				
+				//Getting the messages columns
 				int mMessageID = cursorMessage.getColumnIndexOrThrow(Telephony.BaseMmsColumns._ID);
 				int mContentType = cursorMessage.getColumnIndexOrThrow(Telephony.BaseMmsColumns.CONTENT_TYPE);
 				
@@ -139,12 +146,22 @@ public class SystemMessageImportService extends Service {
 						if(type == Telephony.Sms.MESSAGE_TYPE_SENT) sender = null;
 						else sender = cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
 						String message = cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.BODY));
-						long date = cursorSMS.getLong(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.DATE_SENT));
+						long date = cursorSMS.getLong(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.DATE));
+						int errorCode = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ERROR_CODE));
+						int statusCode = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.STATUS));
+						
+						//Mapping the status code
+						int messageState;
+						if(statusCode != Telephony.Sms.STATUS_COMPLETE) {
+							messageState = Constants.messageStateCodeGhost;
+						} else {
+							messageState = Constants.messageStateCodeSent;
+						}
 						
 						cursorSMS.close();
 						
 						//Creating the message
-						MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, false, date, Constants.messageStateCodeSent, Constants.messageErrorCodeLocalUnknown, false, -1);
+						MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, false, date, messageState, errorCode, false, -1);
 						
 						//Writing the message to disk
 						DatabaseManager.getInstance().addConversationItem(messageInfo);
@@ -168,6 +185,9 @@ public class SystemMessageImportService extends Service {
 				for(ConversationInfo conversationInfo : conversationInfoList) {
 					ConversationUtils.addConversation(conversationInfo);
 				}
+				
+				//Updating the conversation activity list
+				LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 				
 				//Telling the service that the task has been completed
 				SystemMessageImportService service = serviceReference.get();
