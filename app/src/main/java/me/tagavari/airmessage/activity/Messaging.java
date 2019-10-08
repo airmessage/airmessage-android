@@ -9,6 +9,8 @@ import android.app.Activity;
 import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.RemoteAction;
 import android.app.SharedElementCallback;
 import android.content.BroadcastReceiver;
 import android.content.ClipDescription;
@@ -71,6 +73,10 @@ import android.view.animation.OvershootInterpolator;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
+import android.view.textclassifier.ConversationAction;
+import android.view.textclassifier.ConversationActions;
+import android.view.textclassifier.TextClassificationManager;
+import android.view.textclassifier.TextClassifier;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -167,6 +173,7 @@ import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.request.FileProcessingRequest;
 import me.tagavari.airmessage.connection.request.FilePushRequest;
 import me.tagavari.airmessage.connection.request.FileRemovalRequest;
+import me.tagavari.airmessage.messaging.AMConversationAction;
 import me.tagavari.airmessage.messaging.ContactAttachmentInfo;
 import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.data.UserCacheHelper;
@@ -860,8 +867,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					messageListAdapter.notifyItemInserted(messageListAdapter.getItemCount());
 					getWindow().getDecorView().post(messageListAdapter::scrollToBottom);
 				}
-			}
-			else {
+			} else {
 				if(messageListAdapter.replySuggestionsAvailable) {
 					messageListAdapter.replySuggestionsAvailable = false;
 					messageListAdapter.notifyItemRemoved(messageListAdapter.getItemCount() - 1);
@@ -2306,11 +2312,11 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private void colorUI(ViewGroup root) {
-		//Returning if the conversation is invalid or "rainbow chats" is not enabled
-		if(!Preferences.getPreferenceAdvancedColor(this) || viewModel.conversationInfo == null) return;
+		//Returning if the conversation is invalid
+		if(viewModel.conversationInfo == null) return;
 		
 		//Getting the color
-		int color = viewModel.conversationInfo.getConversationColor();
+		int color = getConversationUIColor();
 		if(Constants.isNightMode(getResources())) color = ColorHelper.darkModeLightenColor(color);
 		int darkerColor = ColorHelper.darkenColor(color);
 		int lighterColor = ColorHelper.lightenColor(color);
@@ -2344,7 +2350,11 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	int getConversationUIColor() {
-		return Preferences.getPreferenceAdvancedColor(this) ? viewModel.conversationInfo.getConversationColor() : getResources().getColor(R.color.colorPrimary, null);
+		//Returning the color on a per-conversation basis
+		if(Preferences.getPreferenceAdvancedColor(this)) return viewModel.conversationInfo.getConversationColor();
+		
+		//Returning the service color
+		return ConversationInfo.getColor(getResources(), viewModel.conversationInfo.getServiceHandler(), viewModel.conversationInfo.getService());
 	}
 	
 	private void setActionBarTitle(String title) {
@@ -2488,18 +2498,36 @@ public class Messaging extends AppCompatCompositeActivity {
 	} */
 	
 	private String getInputBarMessage() {
-		//Returning a generic message if the service is invalid
-		if(viewModel.conversationInfo.getService() == null)
-			return getResources().getString(R.string.imperative_messageinput);
-		
-		switch(viewModel.conversationInfo.getService()) {
-			case Constants.serviceIDAppleMessage:
-				return getResources().getString(R.string.proper_imessage);
-			case Constants.serviceIDSMS:
-				return getResources().getString(R.string.proper_sms);
-			default:
-				return viewModel.conversationInfo.getService();
+		//AirMessage bridge
+		if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
+			//Returning a generic message if the service is invalid
+			if(viewModel.conversationInfo.getService() == null) return getResources().getString(R.string.imperative_messageinput);
+			
+			switch(viewModel.conversationInfo.getService()) {
+				case ConversationInfo.serviceTypeAppleMessage:
+					//iMessage
+					return getResources().getString(R.string.title_imessage);
+					//SMS bridge
+				case ConversationInfo.serviceTypeAppleTextMessageForwarding:
+					return getResources().getString(R.string.title_textmessageforwarding);
+				default:
+					return viewModel.conversationInfo.getService();
+			}
 		}
+		//System messaging
+		else if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging) {
+			switch(viewModel.conversationInfo.getService()) {
+				case ConversationInfo.serviceTypeSystemMMSSMS:
+					return getResources().getString(R.string.title_textmessage);
+				case ConversationInfo.serviceTypeSystemRCS:
+					return getResources().getString(R.string.title_rcs);
+				default:
+					return viewModel.conversationInfo.getService();
+			}
+		}
+		
+		//Returning a generic message
+		return getResources().getString(R.string.imperative_messageinput);
 	}
 	
 	void showServerWarning(int reason) {
@@ -4676,7 +4704,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_RIGHT));
 		}
 		
-		void setSuggestions(Context context, ActivityViewModel viewModel, String[] suggestions) {
+		void setSuggestions(Context context, ActivityViewModel viewModel, AMConversationAction[] suggestions) {
 			//Gathering active views
 			List<TextView> childViewList = new ArrayList<>(suggestions.length);
 			for(int i = 0; i < container.getChildCount(); i++) {
@@ -4698,26 +4726,45 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Creating a reference to the view model
 			WeakReference<ActivityViewModel> viewModelReference = new WeakReference<>(viewModel);
 			
-			//Setting the text
+			//Configuring the suggestion
 			for(int i = 0; i < suggestions.length; i++) {
 				TextView childView = childViewList.get(i);
-				String suggestionText = suggestions[i];
+				AMConversationAction conversationAction = suggestions[i];
 				
-				childView.setText(suggestionText);
-				childView.setOnClickListener(view -> {
-					//Getting the view model
-					ActivityViewModel newViewModel = viewModelReference.get();
-					if(newViewModel == null) return;
+				if(conversationAction.isReplyAction()) {
+					childView.setCompoundDrawables(null, null, null, null);
+					childView.setText(conversationAction.getReplyString());
+					childView.setOnClickListener(view -> {
+						//Getting the view model
+						ActivityViewModel newViewModel = viewModelReference.get();
+						if(newViewModel == null) return;
+						
+						//Clearing the suggestions
+						//newViewModel.smartReplyAvailable.setValue(false);
+						
+						//Creating a message
+						MessageInfo message = new MessageInfo(-1, -1, null, newViewModel.conversationInfo, null, conversationAction.getReplyString().toString(), null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+						
+						//Writing the messages to the database
+						new AddGhostMessageTask(newViewModel.getApplication(), new GhostMessageFinishHandler()).execute(message);
+					});
+				} else {
+					//Getting the remote action
+					AMConversationAction.AMRemoteAction remoteAction = conversationAction.getRemoteAction();
 					
-					//Clearing the suggestions
-					//newViewModel.smartReplyAvailable.setValue(false);
-					
-					//Creating a message
-					MessageInfo message = new MessageInfo(-1, -1, null, newViewModel.conversationInfo, null, suggestionText, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
-					
-					//Writing the messages to the database
-					new AddGhostMessageTask(newViewModel.getApplication(), new GhostMessageFinishHandler()).execute(message);
-				});
+					//Configuring the remote action
+					childView.setCompoundDrawablesRelative(remoteAction.getIcon().loadDrawable(context), null, null, null);
+					childView.setText(remoteAction.getTitle());
+					childView.setOnClickListener(view -> {
+						//Launching the intent
+						try {
+							remoteAction.getActionIntent().send();
+						} catch(PendingIntent.CanceledException exception) {
+							exception.printStackTrace();
+							return;
+						}
+					});
+				}
 			}
 		}
 	}
@@ -4818,7 +4865,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private final MutableLiveData<Boolean> smartReplyAvailable = new MutableLiveData<>();
 		private byte smartReplyRequestID = -1;
 		private boolean smartReplyAwaiting = false;
-		private String[] lastSmartReplyResult = null;
+		private AMConversationAction[] lastSmartReplyResult = null;
 		
 		private final MutableLiveData<Boolean> attachmentsLocationLoading = new MutableLiveData<>();
 		private final MutableLiveData<Integer> attachmentsLocationState = new MutableLiveData<>();
@@ -5318,6 +5365,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			recordingTimerHandler.removeCallbacks(recordingTimerHandlerRunnable);
 		}
 		
+		@SuppressLint("StaticFieldLeak")
 		private void updateSmartReply() {
 			//Returning if smart reply is disabled or the conversation has no messages
 			if(!Preferences.getPreferenceReplySuggestions(getApplication()) || conversationItemList == null || conversationItemList.isEmpty()) return;
@@ -5359,33 +5407,82 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Starting the smart reply request
 			smartReplyAwaiting = true;
 			short requestID = ++smartReplyRequestID;
-			FirebaseNaturalLanguage.getInstance().getSmartReply().suggestReplies(Constants.messageToFirebaseMessageList(messageHistory)).addOnSuccessListener(result -> {
-				//Ignoring if the request ID doesn't line up
-				if(smartReplyRequestID != requestID) return;
-				
-				if(result.getStatus() != SmartReplySuggestionResult.STATUS_SUCCESS) {
+			
+			if(false && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+				TextClassifier textClassifier = ((TextClassificationManager) getApplication().getSystemService(Context.TEXT_CLASSIFICATION_SERVICE)).getTextClassifier();
+				new AsyncTask<Void, Void, ConversationActions>() {
+					@Override
+					protected ConversationActions doInBackground(Void... args) {
+						//Requesting conversation actions
+						return textClassifier.suggestConversationActions(new ConversationActions.Request.Builder(Constants.messageToTextClassifierMessageList(messageHistory))
+								//.setMaxSuggestions(3)
+								//.setHints(Collections.singletonList(ConversationActions.Request.HINT_FOR_IN_APP))
+								.build());
+					}
+					
+					@Override
+					protected void onPostExecute(ConversationActions conversationActions) {
+						//Ignoring if the request ID doesn't line up
+						if(smartReplyRequestID != requestID) return;
+						
+						List<ConversationAction> actionList = conversationActions.getConversationActions();
+						if(actionList.isEmpty()) {
+							//Cancelling the smart reply request
+							smartReplyAvailable.setValue(false);
+							smartReplyAwaiting = false;
+						} else {
+							//Mapping the suggestions to an array
+							AMConversationAction[] suggestions = new AMConversationAction[actionList.size()];
+							for(int i = 0; i < actionList.size(); i++) {
+								ConversationAction action = actionList.get(i);
+								
+								//Text replies
+								if(action.getType().equals(ConversationAction.TYPE_TEXT_REPLY)) {
+									suggestions[i] = AMConversationAction.createReplyAction(action.getTextReply());
+								}
+								//Action replies
+								else {
+									RemoteAction remoteAction = action.getAction();
+									suggestions[i] = AMConversationAction.createRemoteAction(new AMConversationAction.AMRemoteAction(remoteAction.shouldShowIcon() ? remoteAction.getIcon() : null, remoteAction.getTitle(), remoteAction.getActionIntent()));
+								}
+							}
+							
+							//Finishing the smart reply
+							lastSmartReplyResult = suggestions;
+							smartReplyAvailable.setValue(true);
+							smartReplyAwaiting = false;
+						}
+					}
+				}.execute();
+			} else {
+				FirebaseNaturalLanguage.getInstance().getSmartReply().suggestReplies(Constants.messageToFirebaseMessageList(messageHistory)).addOnSuccessListener(result -> {
+					//Ignoring if the request ID doesn't line up
+					if(smartReplyRequestID != requestID) return;
+					
+					if(result.getStatus() != SmartReplySuggestionResult.STATUS_SUCCESS) {
+						//Cancelling the smart reply request
+						smartReplyAvailable.setValue(false);
+						smartReplyAwaiting = false;
+					} else {
+						//Mapping the suggestions to an array
+						AMConversationAction[] suggestions = new AMConversationAction[result.getSuggestions().size()];
+						for(int i = 0; i < suggestions.length; i++) suggestions[i] = AMConversationAction.createReplyAction(result.getSuggestions().get(i).getText());
+						
+						//Finishing the smart reply
+						lastSmartReplyResult = suggestions;
+						smartReplyAvailable.setValue(true);
+						smartReplyAwaiting = false;
+					}
+					
+				}).addOnFailureListener(exception -> {
+					//Ignoring if the request ID doesn't line up
+					if(smartReplyRequestID != requestID) return;
+					
 					//Cancelling the smart reply request
 					smartReplyAvailable.setValue(false);
 					smartReplyAwaiting = false;
-				} else {
-					//Mapping the suggestions to a string array and returning the result
-					String[] suggestions = new String[result.getSuggestions().size()];
-					for(int i = 0; i < suggestions.length; i++) suggestions[i] = result.getSuggestions().get(i).getText();
-					
-					//Cancelling the smart reply
-					lastSmartReplyResult = suggestions;
-					smartReplyAvailable.setValue(true);
-					smartReplyAwaiting = false;
-				}
-				
-			}).addOnFailureListener(exception -> {
-				//Ignoring if the request ID doesn't line up
-				if(smartReplyRequestID != requestID) return;
-				
-				//Cancelling the smart reply request
-				smartReplyAvailable.setValue(false);
-				smartReplyAwaiting = false;
-			});
+				});
+			}
 		}
 		
 		void indexAttachmentsGallery(AttachmentsLoadCallbacks listener, AttachmentsRecyclerAdapter<?> adapter) {

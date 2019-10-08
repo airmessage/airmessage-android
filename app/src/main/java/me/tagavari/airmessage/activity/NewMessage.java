@@ -1290,7 +1290,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 		private ArrayList<Chip> userChips = new ArrayList<>();
 		
 		//Creating the other values
-		String service = Constants.serviceIDAppleMessage;
+		String service = ConversationInfo.serviceTypeAppleMessage;
 		final MutableLiveData<Object> contactListLD = new MutableLiveData<>();
 		final ArrayList<ContactInfo> contactList = new ArrayList<>();
 		

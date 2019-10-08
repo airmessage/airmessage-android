@@ -2,6 +2,7 @@ package me.tagavari.airmessage.messaging;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -526,5 +527,15 @@ public abstract class MessageComponent<VH extends MessageComponent.ViewHolder> {
 	 */
 	public View getSharedElementView() {
 		return null;
+	}
+	
+	/**
+	 * Returns the color that this message should take, depending on the current service
+	 * This function does not take the advanced conversation coloring preference into account
+	 * @param resources The resources to use to fetch the color
+	 * @return The current service's color
+	 */
+	int getServiceColor(Resources resources) {
+		return ConversationInfo.getColor(resources, getMessageInfo().getConversationInfo().getServiceHandler(), getMessageInfo().getConversationInfo().getService());
 	}
 }

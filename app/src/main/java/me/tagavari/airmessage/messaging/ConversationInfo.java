@@ -2,6 +2,7 @@ package me.tagavari.airmessage.messaging;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.Icon;
@@ -73,7 +74,11 @@ public class ConversationInfo implements Serializable {
 	public static final int serviceHandlerAMBridge = 0; //AirMessage / iMessage bridge
 	public static final int serviceHandlerSystemMessaging = 1; //SMS and MMS
 	
-	public static final String serviceTypeSMS = "SMS"; //SMS and MMS
+	public static final String serviceTypeAppleMessage = "iMessage";
+	public static final String serviceTypeAppleTextMessageForwarding= "SMS";
+	
+	public static final String serviceTypeSystemMMSSMS = "MMSSMS"; //MMS and SMS
+	public static final String serviceTypeSystemRCS= "RCS"; //Rich communication services, Google Chat
 	
 	//Creating the static values
 	private static SelectionSource selectionSource = id -> false;
@@ -1748,5 +1753,38 @@ public class ConversationInfo implements Serializable {
 		public SimpleItemViewHolder(View view) {
 			super(view);
 		}
+	}
+	
+	public static int getColor(Resources resources, int serviceHandler, String serviceName) {
+		//AirMessage bridge
+		if(serviceHandler == ConversationInfo.serviceHandlerAMBridge) {
+			//Returning a default color if the service is invalid
+			if(serviceName == null) return resources.getColor(R.color.colorMessageDefault, null);
+			
+			switch(serviceName) {
+				case ConversationInfo.serviceTypeAppleMessage:
+					//iMessage
+					return resources.getColor(R.color.colorPrimary, null);
+				case ConversationInfo.serviceTypeAppleTextMessageForwarding:
+					//SMS bridge
+					return resources.getColor(R.color.colorMessageTextMessageForwarding, null);
+				default:
+					return resources.getColor(R.color.colorMessageDefault, null);
+			}
+		}
+		//System messaging
+		else if(serviceHandler == ConversationInfo.serviceHandlerSystemMessaging) {
+			switch(serviceName) {
+				case ConversationInfo.serviceTypeSystemMMSSMS:
+					return resources.getColor(R.color.colorMessageTextMessage, null);
+				case ConversationInfo.serviceTypeSystemRCS:
+					return resources.getColor(R.color.colorMessageRCS, null);
+				default:
+					return resources.getColor(R.color.colorMessageDefault, null);
+			}
+		}
+		
+		//Returning a default color
+		return resources.getColor(R.color.colorMessageDefault, null);
 	}
 }

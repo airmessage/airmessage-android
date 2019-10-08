@@ -111,7 +111,7 @@ public class SystemMessageImportService extends Service {
 					int conversationColor = ConversationInfo.getDefaultConversationColor(date);
 					
 					//Creating the conversation
-					conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
+					conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
 					conversationInfo.setConversationMembersCreateColors(getAddressFromRecipientId(context, recipientIDs));
 					conversationInfo.setArchived(archived);
 				}

@@ -325,8 +325,10 @@
 
 	<string name="imperative_enablelocationservices">Tap to enable location services</string>
 
-	<string name="proper_imessage" translatable="false">iMessage</string>
-	<string name="proper_sms" translatable="false">SMS</string>
+	<string name="title_imessage">iMessage</string>
+	<string name="title_textmessageforwarding">Text message forwarding</string>
+	<string name="title_textmessage">Text message</string>
+	<string name="title_rcs">Chat message</string>
 
 	<string name="part_content_text">Text</string>
 	<string name="part_content_image">Image</string>

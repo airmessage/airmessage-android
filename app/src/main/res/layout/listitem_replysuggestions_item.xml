@@ -12,6 +12,7 @@
 	android:paddingRight="@dimen/messagebubble_padding_x"
 	android:paddingTop="@dimen/messagebubble_padding_y"
 	android:textSize="16sp"
+	android:drawablePadding="8dp"
 	android:text="@string/placeholder_message"
 	android:textColor="@color/colorPrimary"
 	android:focusable="true"

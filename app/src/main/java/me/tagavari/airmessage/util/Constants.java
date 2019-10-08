@@ -1,6 +1,8 @@
 package me.tagavari.airmessage.util;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.Person;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -18,8 +20,10 @@ import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Message;
 import android.os.Parcel;
 import android.provider.OpenableColumns;
+import android.provider.Settings;
 import android.telephony.PhoneNumberUtils;
 import android.text.Spannable;
 import android.text.Spanned;
@@ -31,6 +35,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.Transformation;
+import android.view.textclassifier.ConversationActions;
 import android.webkit.MimeTypeMap;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -50,6 +55,10 @@ import java.io.StringWriter;
 import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -67,6 +76,7 @@ import java.util.zip.GZIPOutputStream;
 import androidx.annotation.AttrRes;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
@@ -132,7 +142,7 @@ public class Constants {
 	public static final String appleSendStyleScrnShootingStar = "com.apple.messages.effect.CKShootingStarEffect";
 	public static final String appleSendStyleScrnCelebration = "com.apple.messages.effect.CKSparklesEffect";
 	
-	public static final String defaultNotificationSound = "content://settings/system/notification_sound";
+	public static final Uri defaultNotificationSound = Settings.System.DEFAULT_NOTIFICATION_URI;//"content://settings/system/notification_sound";
 	
 	//Message state codes
 	public static final int messageStateCodeGhost = 0;
@@ -185,9 +195,6 @@ public class Constants {
 	public static final String locationName = "location.loc.vcf";
 	public static final String defaultFileName = "file";
 	public static final int smartReplyHistoryLength = 10;
-	
-	public static final String serviceIDAppleMessage = "iMessage";
-	public static final String serviceIDSMS = "SMS";
 	
 	//public static final int viewTagTypeKey = 0;
 	public static final String viewTagTypeItem = "item";
@@ -1208,6 +1215,23 @@ public class Constants {
 		for(MessageInfo message : messageList) {
 			if(message.getMessageText() == null) continue;
 			list.add(message.getSender() == null ? FirebaseTextMessage.createForLocalUser(message.getMessageText(), message.getDate()) : FirebaseTextMessage.createForRemoteUser(message.getMessageText(), message.getDate(), message.getSender()));
+		}
+		
+		return list;
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.Q)
+	public static List<ConversationActions.Message> messageToTextClassifierMessageList(List<MessageInfo> messageList) {
+		List<ConversationActions.Message> list = new ArrayList<>();
+		
+		for(MessageInfo message : messageList) {
+			if(message.getMessageText() == null) continue;
+			Person author = message.isOutgoing() ? ConversationActions.Message.PERSON_USER_SELF : ConversationActions.Message.PERSON_USER_OTHERS;//new Person.Builder().setName(message.getSender()).build();
+			ConversationActions.Message systemMessage = new ConversationActions.Message.Builder(author)
+					.setReferenceTime(ZonedDateTime.ofInstant(Instant.ofEpochMilli(message.getDate()), ZoneId.systemDefault()))
+					.setText(message.getMessageText())
+					.build();
+			list.add(systemMessage);
 		}
 		
 		return list;

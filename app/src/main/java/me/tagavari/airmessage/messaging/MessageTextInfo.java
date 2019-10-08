@@ -499,7 +499,8 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 				backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
 				textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
 			} else {
-				backgroundColor = context.getResources().getColor(R.color.colorPrimary, null);
+				//backgroundColor = context.getResources().getColor(R.color.colorPrimary, null);
+				backgroundColor = getServiceColor(context.getResources());
 				//textColor = context.getResources().getColor(R.color.textColorWhite, null);
 				textColor = Constants.resolveColorAttr(context, R.attr.colorOnPrimary);
 			}

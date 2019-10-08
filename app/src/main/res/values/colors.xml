@@ -6,6 +6,11 @@
     <color name="colorAccent">@color/colorPrimary</color>
 	<color name="colorAccentDark">@color/colorPrimaryDark</color>
 
+	<color name="colorMessageTextMessageForwarding">#1ABC9C</color>
+	<color name="colorMessageTextMessage">#2ECC71</color>
+	<color name="colorMessageRCS">#FFAB00</color>
+	<color name="colorMessageDefault">#607D8B</color>
+
 	<color name="colorBackground">#FAFAFA</color>
 	<color name="colorToolbar">#FFFFFF</color>
 

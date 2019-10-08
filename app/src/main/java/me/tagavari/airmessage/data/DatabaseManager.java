@@ -452,7 +452,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				database.execSQL("UPDATE messages SET item_subtype = item_subtype + 1 WHERE item_type = 1");
 			case 9:
 				//Adding the service handler column
-				database.execSQL("ALTER TABlE conversations ADD service_handler INTEGER NOT NULL;");
+				database.execSQL("ALTER TABlE conversations ADD service_handler INTEGER NOT NULL DEFAULT 0;"); //All messages at this point have been over AM bridge
 				
 				//Adding the message preview columns
 				database.execSQL("ALTER TABlE messages ADD preview_state INTEGER DEFAULT 0;");
