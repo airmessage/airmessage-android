@@ -74,7 +74,7 @@ public class VideoAttachmentInfo extends AttachmentInfo<VideoAttachmentInfo.View
 			RequestBuilder<Drawable> requestBuilder = Glide.with(context)
 					.load(file)
 					.transition(DrawableTransitionOptions.withCrossFade());
-					//.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getColor(R.color.colorImageUnloaded, null))));
+					//.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getServiceColor(R.color.colorImageUnloaded, null))));
 			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(ConversationUtils.invisibleInkBlurRadius, ConversationUtils.invisibleInkBlurSampling)));
 			
 			requestBuilder.into(viewHolder.imageContent);

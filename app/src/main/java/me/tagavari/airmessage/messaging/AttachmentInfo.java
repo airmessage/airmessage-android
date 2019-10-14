@@ -363,7 +363,7 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 				int colorOnPrimary = Constants.resolveColorAttr(context, R.attr.colorOnPrimary);
 				cslText = ColorStateList.valueOf(colorOnPrimary);
 				cslSecondaryText = ColorStateList.valueOf(ColorUtils.setAlphaComponent(colorOnPrimary, Constants.secondaryAlphaInt));
-				//cslBackground = ColorStateList.valueOf(context.getResources().getColor(R.color.colorPrimary, null));
+				//cslBackground = ColorStateList.valueOf(context.getResources().getServiceColor(R.color.colorPrimary, null));
 				int serviceColor = getServiceColor(context.getResources());
 				cslBackground = ColorStateList.valueOf(serviceColor);
 				cslAccent = ColorStateList.valueOf(ColorHelper.lightenColor(serviceColor));

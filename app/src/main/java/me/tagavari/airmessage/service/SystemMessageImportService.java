@@ -11,12 +11,19 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.provider.ContactsContract;
 import android.provider.Telephony;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +32,7 @@ import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.ConversationsBase;
 import me.tagavari.airmessage.data.DatabaseManager;
+import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
@@ -34,6 +42,8 @@ import me.tagavari.airmessage.util.ConversationUtils;
 public class SystemMessageImportService extends Service {
 	public static final String selfIntentActionImport = "import";
 	public static final String selfIntentActionDelete = "delete";
+	
+	private static final long notificationProgressMinUpdateInterval = 1000;
 	
 	private static final int notificationID = -2;
 	
@@ -52,7 +62,7 @@ public class SystemMessageImportService extends Service {
 			currentThread.start();
 			
 			//Posting the import notification
-			postImportNotification();
+			postNotification(this, getImportNotification(this));
 		} else {
 			//Stopping the service
 			stopSelf();
@@ -95,7 +105,19 @@ public class SystemMessageImportService extends Service {
 			int iDate = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.DATE);
 			int iMessageCount = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.MESSAGE_COUNT);
 			
+			int conversationCount = cursorConversation.getCount();
+			long lastNotificationUpdateTime = System.currentTimeMillis();
+			
 			while(cursorConversation.moveToNext()) {
+				//Adding to the counter and updating the notification
+				{
+					long currentTime = System.currentTimeMillis();
+					if(currentTime - lastNotificationUpdateTime >= notificationProgressMinUpdateInterval) {
+						postNotification(context, getImportNotification(context, cursorConversation.getPosition(), conversationCount));
+						lastNotificationUpdateTime = currentTime;
+					}
+				}
+				
 				//Ignoring empty conversations
 				if(cursorConversation.getInt(iMessageCount) == 0) continue;
 				
@@ -112,7 +134,8 @@ public class SystemMessageImportService extends Service {
 					
 					//Creating the conversation
 					conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
-					conversationInfo.setConversationMembersCreateColors(getAddressFromRecipientId(context, recipientIDs));
+					conversationInfo.setExternalID(threadID);
+					conversationInfo.setConversationMembersCreateColors(getAddressFromRecipientID(context, recipientIDs));
 					conversationInfo.setArchived(archived);
 				}
 				
@@ -136,44 +159,61 @@ public class SystemMessageImportService extends Service {
 					long messageID = cursorMessage.getLong(mMessageID);
 					if("application/vnd.wap.multipart.related".equals(cursorMessage.getString(mContentType))) {
 						//MMS message
+						try(Cursor cursorMMS = context.getContentResolver().query(Telephony.Mms.CONTENT_URI, null, Telephony.Mms._ID + " = ?", new String[]{Long.toString(messageID)}, null)) {
+							if(cursorMMS == null || !cursorMMS.moveToFirst()) continue;
+							
+							//Reading and saving the message
+							MessageInfo messageInfo = readSaveMMSMessage(cursorMMS, context, conversationInfo);
+							if(messageInfo == null) continue;
+							
+							//Setting the last item
+							lastConversationItem = messageInfo;
+						}
 					} else {
 						//SMS message
-						Cursor cursorSMS = context.getContentResolver().query(Telephony.Sms.CONTENT_URI, null, Telephony.Sms._ID + " = ?", new String[]{Long.toString(messageID)}, null);
-						if(cursorSMS == null || !cursorSMS.moveToFirst()) continue;
-						
-						int type = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.TYPE));
-						String sender;
-						if(type == Telephony.Sms.MESSAGE_TYPE_SENT) sender = null;
-						else sender = cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
-						String message = cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.BODY));
-						long date = cursorSMS.getLong(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.DATE));
-						int errorCode = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ERROR_CODE));
-						int statusCode = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.STATUS));
-						
-						//Mapping the status code
-						int messageState;
-						if(statusCode != Telephony.Sms.STATUS_COMPLETE) {
-							messageState = Constants.messageStateCodeGhost;
-						} else {
-							messageState = Constants.messageStateCodeSent;
+						try(Cursor cursorSMS = context.getContentResolver().query(Telephony.Sms.CONTENT_URI, null, Telephony.Sms._ID + " = ?", new String[]{Long.toString(messageID)}, null)) {
+							if(cursorSMS == null || !cursorSMS.moveToFirst()) continue;
+							
+							int type = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.TYPE));
+							String sender;
+							if(type == Telephony.Sms.MESSAGE_TYPE_SENT) sender = null;
+							else sender = cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+							String message = cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.BODY));
+							long date = cursorSMS.getLong(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.DATE));
+							int errorCode = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ERROR_CODE));
+							int statusCode = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.STATUS));
+							
+							//Mapping the status code
+							int messageState;
+							int messageErrorCode = Constants.messageErrorCodeOK;
+							if(statusCode == Telephony.Sms.STATUS_PENDING) {
+								messageState = Constants.messageStateCodeGhost;
+							} else if(statusCode == Telephony.Sms.STATUS_FAILED) {
+								messageState = Constants.messageStateCodeGhost;
+								messageErrorCode = Constants.messageErrorCodeServerUnknown;
+							} else {
+								messageState = Constants.messageStateCodeSent;
+							}
+							
+							//Creating the message
+							MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, false, date, messageState, messageErrorCode, false, -1);
+							if(messageErrorCode != Constants.messageErrorCodeOK) {
+								messageInfo.setErrorDetails("SMS error code " + errorCode);
+							}
+							
+							//Writing the message to disk
+							DatabaseManager.getInstance().addConversationItem(messageInfo, false);
+							
+							//Setting the last item
+							lastConversationItem = messageInfo;
 						}
-						
-						cursorSMS.close();
-						
-						//Creating the message
-						MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, false, date, messageState, errorCode, false, -1);
-						
-						//Writing the message to disk
-						DatabaseManager.getInstance().addConversationItem(messageInfo);
-						
-						//Setting the last item
-						lastConversationItem = messageInfo;
 					}
 				}
 				
 				//Setting the conversation's last item
 				if(lastConversationItem != null) conversationInfo.trySetLastItem(lastConversationItem.toLightConversationItemSync(context), false);
 				
+				//Closing the message cursor
 				cursorMessage.close();
 			}
 			
@@ -197,32 +237,28 @@ public class SystemMessageImportService extends Service {
 			});
 		}
 		
-		private static String[] getAddressFromRecipientId(Context context, String recipientIDs) {
-			//Getting the target URI
-			Uri addressUri = Uri.parse("content://mms-sms/canonical-address");
+		private static class MMSAttachmentInfo {
+			private final String contentType;
+			private final long partID;
+			private final String fileName;
 			
-			//Splitting the recipient IDs
-			String[] recipientIDArray = recipientIDs.split(" ");
-			
-			//Creating the list
-			String[] recipientAddressArray = new String[recipientIDArray.length];
-			
-			//Iterating over each recipient
-			for(int i = 0; i < recipientIDArray.length; i++) {
-				//Querying for the recipient data
-				Cursor cursor = context.getContentResolver().query(ContentUris.withAppendedId(addressUri, Long.parseLong(recipientIDArray[i])), new String[]{Telephony.CanonicalAddressesColumns.ADDRESS}, null, null, null);
-				//Ignoring invalid or empty results
-				if(cursor == null || !cursor.moveToNext()) continue;
-				
-				//Adding the address to the array
-				String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.CanonicalAddressesColumns.ADDRESS));
-				recipientAddressArray[i] = address;
-				
-				cursor.close();
+			public MMSAttachmentInfo(String contentType, long partID, String fileName) {
+				this.contentType = contentType;
+				this.partID = partID;
+				this.fileName = fileName;
 			}
 			
-			//Returning the array
-			return recipientAddressArray;
+			public String getContentType() {
+				return contentType;
+			}
+			
+			public long getPartID() {
+				return partID;
+			}
+			
+			public String getFileName() {
+				return fileName;
+			}
 		}
 	}
 	
@@ -235,19 +271,20 @@ public class SystemMessageImportService extends Service {
 		stopSelf();
 	}
 	
-	private void postImportNotification() {
-		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(notificationID, getImportNotification());
+	private static void postNotification(Context context, Notification notification) {
+		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationManager.notify(notificationID, notification);
 	}
 	
-	private Notification getImportNotification() {
+	private static Notification getImportNotification(Context context) {
 		//Building the notification
-		Notification notification = new NotificationCompat.Builder(this, MainApplication.notificationChannelStatus)
+		Notification notification = new NotificationCompat.Builder(context, MainApplication.notificationChannelStatus)
 				.setSmallIcon(R.drawable.message_download)
-				.setContentTitle(getResources().getString(R.string.progress_importtextmessages))
+				.setContentTitle(context.getResources().getString(R.string.progress_importtextmessages))
 				.setProgress(0, 0, true)
 				.setPriority(Notification.PRIORITY_MIN)
 				.setShowWhen(false)
+				.setLocalOnly(true)
 				.build();
 		
 		//Setting the notification as ongoing
@@ -255,5 +292,201 @@ public class SystemMessageImportService extends Service {
 		
 		//Returning the notification
 		return notification;
+	}
+	
+	private static Notification getImportNotification(Context context, int progress, int max) {
+		//Building the notification
+		Notification notification = new NotificationCompat.Builder(context, MainApplication.notificationChannelStatus)
+				.setSmallIcon(R.drawable.message_download)
+				.setContentTitle(context.getResources().getString(R.string.progress_importtextmessages))
+				.setProgress(max, progress, false)
+				.setPriority(Notification.PRIORITY_MIN)
+				.setShowWhen(false)
+				.setLocalOnly(true)
+				.build();
+		
+		//Setting the notification as ongoing
+		notification.flags = Notification.FLAG_ONGOING_EVENT;
+		
+		//Returning the notification
+		return notification;
+	}
+	
+	public static MessageInfo readSaveMMSMessage(Cursor cursorMMS, Context context, ConversationInfo conversationInfo) {
+		//Reading the common message data
+		long messageID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.MESSAGE_ID)) * 1000;
+		long date = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000;
+		int statusCode = cursorMMS.getInt(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.STATUS));
+		String subject = cursorMMS.getString(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.SUBJECT));
+		String sender = getMMSSender(context, messageID);
+		//long threadID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.THREAD_ID));
+		
+		StringBuilder messageTextSB = new StringBuilder();
+		List<ImportThread.MMSAttachmentInfo> messageAttachments = new ArrayList<>();
+		
+		//This URI has a constant at Telephony.Mms.Part.CONTENT_URI, but for some reason this is only available in Android Q, so we can't use it here
+		try(Cursor cursorMMSData = context.getContentResolver().query(Uri.parse("content://mms/part"), null, Telephony.Mms.Part.MSG_ID + " = ?", new String[]{Long.toString(messageID)}, null)) {
+			if(cursorMMSData == null || !cursorMMSData.moveToFirst()) return null;
+			
+			do {
+				//Reading the part data
+				long partID = cursorMMSData.getLong(cursorMMSData.getColumnIndex(Telephony.Mms.Part._ID));
+				String contentType = cursorMMSData.getString(cursorMMSData.getColumnIndex(Telephony.Mms.Part.CONTENT_TYPE));
+				String fileName = cursorMMSData.getString(cursorMMSData.getColumnIndex(Telephony.Mms.Part.FILENAME));
+				if(fileName == null) fileName = "unnamed_attachment";
+				
+				//Checking if the part is text
+				if("text/plain".equals(contentType)) {
+					//Reading the text
+					String data = cursorMMSData.getString(cursorMMSData.getColumnIndex(Telephony.Mms.Part._DATA));
+					String body;
+					if(data != null) body = getMMSTextContent(context, partID);
+					else body = cursorMMSData.getString(cursorMMSData.getColumnIndex(Telephony.Mms.Part.TEXT));
+					
+					//Appending the text
+					messageTextSB.append(body);
+				}
+				//Ignoring SMIL data
+				else if(!"application/smil".equals(contentType)) {
+					//Saving the part details
+					messageAttachments.add(new ImportThread.MMSAttachmentInfo(contentType, partID, fileName));
+				}
+			} while(cursorMMSData.moveToNext());
+		}
+		
+		//Getting the message text
+		String messageText = messageTextSB.length() > 0 ? messageTextSB.toString() : null;
+		
+		//Mapping the status code
+		int messageState;
+		int messageErrorCode = Constants.messageErrorCodeOK;
+		if(statusCode == Telephony.Sms.STATUS_PENDING) {
+			messageState = Constants.messageStateCodeGhost;
+		} else if(statusCode == Telephony.Sms.STATUS_FAILED) {
+			messageState = Constants.messageStateCodeGhost;
+			messageErrorCode = Constants.messageErrorCodeServerUnknown;
+		} else {
+			messageState = Constants.messageStateCodeSent;
+		}
+		
+		//Creating the message
+		MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, messageText, null, false, date, messageState, messageErrorCode, false, -1);
+		
+		//Adding the attachments
+		for(ImportThread.MMSAttachmentInfo attachment : messageAttachments) {
+			AttachmentInfo attachmentInfo = ConversationUtils.createAttachmentInfoFromType(-1, null, messageInfo, Constants.cleanFileName(attachment.getFileName()), attachment.getContentType(), -1);
+			messageInfo.addAttachment(attachmentInfo);
+		}
+		
+		//Writing the message to disk
+		DatabaseManager.getInstance().addConversationItem(messageInfo, false);
+		
+		//Copying the attachment data
+		for(int i = 0; i < messageAttachments.size(); i++) {
+			//Getting the attachment information
+			ImportThread.MMSAttachmentInfo mmsAttachmentInfo = messageAttachments.get(i);
+			AttachmentInfo attachmentInfo = messageInfo.getAttachments().get(i);
+			
+			//Finding a target file
+			File targetFileDir = new File(MainApplication.getDownloadDirectory(context), Long.toString(attachmentInfo.getLocalID()));
+			if(!targetFileDir.exists()) targetFileDir.mkdir();
+			else if(targetFileDir.isFile()) {
+				Constants.recursiveDelete(targetFileDir);
+				targetFileDir.mkdir();
+			}
+			File targetFile = new File(targetFileDir, attachmentInfo.getFileName());
+			
+			//Writing to the file
+			try(InputStream inputStream = context.getContentResolver().openInputStream(ContentUris.withAppendedId(Uri.parse("content://mms/part/"), mmsAttachmentInfo.getPartID()));
+				FileOutputStream outputStream = new FileOutputStream(targetFile)) {
+				if(inputStream == null) throw new IOException("Input stream is null");
+				
+				byte[] buf = new byte[1024];
+				int len;
+				while((len = inputStream.read(buf)) > 0) outputStream.write(buf, 0, len);
+			} catch(IOException exception) {
+				exception.printStackTrace();
+				continue;
+			}
+			
+			//Updating the attachment information
+			DatabaseManager.getInstance().updateAttachmentFile(attachmentInfo.getLocalID(), context, targetFile);
+		}
+		
+		//Returning the message
+		return messageInfo;
+	}
+	
+	private static String getMMSSender(Context context, long messageID) {
+		//Querying for the message information
+		try(Cursor cursor = context.getContentResolver().query(
+				Telephony.Mms.CONTENT_URI.buildUpon().appendPath(Long.toString(messageID)).appendPath("addr").build(), null,
+				//Telephony.Mms.Addr.MSG_ID + " = ?", new String[]{Long.toString(messageID)},
+				null, null,
+				null, null)) {
+			//Returning immediately if the cursor couldn't be opened
+			if(cursor == null || !cursor.moveToFirst()) return null;
+			
+			//Returning the sender
+			return cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms.Addr.ADDRESS));
+		}
+	}
+	
+	private static String getMMSTextContent(Context context, long partID) {
+		//Creating the string builder
+		StringBuilder stringBuilder = new StringBuilder();
+		
+		//Opening the stream
+		try(InputStream inputStream = context.getContentResolver().openInputStream(ContentUris.withAppendedId(Uri.parse("content://mms/part/"), partID))) {
+			//Returning immediately if the stream couldn't be opened
+			if(inputStream == null) return null;
+			
+			try(InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+				BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
+				//Reading to the string builder
+				String buffer;
+				do {
+					buffer = bufferedReader.readLine();
+					stringBuilder.append(buffer);
+				} while(buffer != null);
+			}
+		} catch(IOException exception) {
+			//Printing the stack trace
+			exception.printStackTrace();
+			
+			//Returning null
+			return null;
+		}
+		
+		//Returning the string builder
+		return stringBuilder.toString();
+	}
+	
+	public static String[] getAddressFromRecipientID(Context context, String recipientIDs) {
+		//Getting the target URI
+		Uri addressUri = Uri.parse("content://mms-sms/canonical-address");
+		
+		//Splitting the recipient IDs
+		String[] recipientIDArray = recipientIDs.split(" ");
+		
+		//Creating the list
+		String[] recipientAddressArray = new String[recipientIDArray.length];
+		
+		//Iterating over each recipient
+		for(int i = 0; i < recipientIDArray.length; i++) {
+			//Querying for the recipient data
+			Cursor cursor = context.getContentResolver().query(ContentUris.withAppendedId(addressUri, Long.parseLong(recipientIDArray[i])), new String[]{Telephony.CanonicalAddressesColumns.ADDRESS}, null, null, null);
+			//Ignoring invalid or empty results
+			if(cursor == null || !cursor.moveToNext()) continue;
+			
+			//Adding the address to the array
+			String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.CanonicalAddressesColumns.ADDRESS));
+			recipientAddressArray[i] = address;
+			
+			cursor.close();
+		}
+		
+		//Returning the array
+		return recipientAddressArray;
 	}
 }

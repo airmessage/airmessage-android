@@ -371,7 +371,7 @@
 	<string name="preference_textmessage_enable_desc">AirMessage で SMS と MMS メッセージを送受する</string>
 	<string name="servicedesc_systemmessageimport">AirMessageのテキストメッセージ統合機能のインポートと管理を支援します</string>
 	<string name="progress_importtextmessages">テキストメッセージをインポート中&#8230;</string>
-	<string name="message_textmessageimport">テキストメッセージのインポートを開始しました。 詳細については、通知をご覧ください。</string>
+	<string name="message_textmessageimport">テキストメッセージのインポートを開始しました</string>
 	<string name="title_textmessage">テキストメッセージ</string>
 	<string name="title_textmessageforwarding">テキストメッセージ転送</string>
 	<string name="title_rcs">チャットメッセージ</string>

@@ -1,11 +1,13 @@
-package me.tagavari.airmessage.service;
+package me.tagavari.airmessage.receiver;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
-public class ServiceStartBoot extends BroadcastReceiver {
+import me.tagavari.airmessage.service.ConnectionService;
+
+public class StartBootReceiver extends BroadcastReceiver {
 	@Override
 	public void onReceive(Context context, Intent intent) {
 		//Returning if the service is not a boot service

@@ -1,13 +1,22 @@
 package me.tagavari.airmessage.messaging;
 
 import android.animation.ValueAnimator;
+import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,17 +39,29 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.TransitionManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.klinker.android.send_message.Message;
+import com.klinker.android.send_message.Settings;
+import com.klinker.android.send_message.Transaction;
 import com.pnikosis.materialishprogress.ProgressWheel;
 
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.request.FilePushRequest;
 import me.tagavari.airmessage.connection.request.MessageResponseManager;
+import me.tagavari.airmessage.data.SMSIDParcelable;
+import me.tagavari.airmessage.receiver.TextMMSSentReceiver;
+import me.tagavari.airmessage.receiver.TextSMSDeliveredReceiver;
+import me.tagavari.airmessage.receiver.TextSMSSentReceiver;
 import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.MainApplication;
@@ -98,6 +119,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		this.sendStyleViewed = sendStyleViewed;
 		this.messageState = messageState;
 		this.errorCode = errorCode;
+		this.errorDetailsAvailable = errorDetailsAvailable;
 		this.dateRead = dateRead;
 	}
 	
@@ -113,6 +135,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		this.attachments = new ArrayList<>();
 		this.messageState = messageState;
 		this.errorCode = errorCode;
+		this.errorDetailsAvailable = errorDetailsAvailable;
 		this.dateRead = dateRead;
 	}
 	
@@ -446,7 +469,37 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		return DateFormat.format(context.getString(R.string.dateformat_outsideyear), sentCal).toString();
 	}
 	
+	/**
+	 * Sends this message, automatically determining the correct service to use
+	 * @param context The context to use
+	 * @return Whether or not the message was successfully sent
+	 */
 	public boolean sendMessage(Context context) {
+		//Checking if the service handler is AirMessage bridge
+		ConversationInfo conversationInfo = getConversationInfo();
+		if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
+			//Sending the message via AirMessage bridge
+			return sendMessageBridge(MainApplication.getInstance());
+		}
+		//Checking if the service handler is system messaging
+		else if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging) {
+			//Checking if the service is text messaging
+			if(ConversationInfo.serviceTypeSystemMMSSMS.equals(conversationInfo.getService())) {
+				//Sending the message via MMS / SMS
+				return sendMessageMMSSMS(context);
+			}
+		}
+		
+		//No valid service could be found
+		return false;
+	}
+	
+	/**
+	 * Send this message to the bridge server
+	 * @param context The context to use
+	 * @return Whether or not the message was successfully sent
+	 */
+	private boolean sendMessageBridge(Context context) {
 		//Creating a weak reference to the context
 		WeakReference<Context> contextReference = new WeakReference<>(context);
 		
@@ -614,6 +667,227 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 			//Returning true
 			return true;
 		}
+	}
+	
+	/**
+	 * Prepares to send a message, but uses the provided handler to handle sending the message.
+	 * Called primarily to handle updating the view progress and error.
+	 * @param context The context to use
+	 * @return Whether or not the message was successfully sent
+	 */
+	private boolean sendMessageMMSSMS(Context context) {
+		//Creating a weak reference to the context
+		WeakReference<Context> contextReference = new WeakReference<>(context);
+		
+		//Getting the view holder
+		ViewHolder viewHolder = getViewHolder();
+		
+		if(viewHolder != null) {
+			//Hiding the error view
+			viewHolder.buttonSendError.setVisibility(View.GONE);
+			
+			//Hiding the progress view
+			viewHolder.progressSend.setVisibility(View.GONE);
+		}
+		
+		//Configuring the message settings
+		Settings settings = new Settings();
+		settings.setUseSystemSending(true);
+		settings.setDeliveryReports(Preferences.getPreferenceSMSDeliveryReports(MainApplication.getInstance()));
+		Transaction transaction = new Transaction(MainApplication.getInstance(), settings);
+		
+		//Creating the parcelable data
+		SMSIDParcelable parcelData = new SMSIDParcelable(getLocalID());
+		
+		//Setting the intent data
+		Bundle bundle = new Bundle();
+		bundle.putParcelable(Constants.intentParamData, parcelData);
+		
+		{
+			Intent intent = new Intent(MainApplication.getInstance(), TextMMSSentReceiver.class);
+			intent.putExtra(Constants.intentParamData, bundle);
+			transaction.setExplicitBroadcastForSentMms(intent);
+		}
+		{
+			Intent intent = new Intent(MainApplication.getInstance(), TextSMSSentReceiver.class);
+			intent.putExtra(Constants.intentParamData, bundle);
+			transaction.setExplicitBroadcastForSentSms(intent);
+		}
+		{
+			Intent intent = new Intent(MainApplication.getInstance(), TextSMSDeliveredReceiver.class);
+			intent.putExtra(Constants.intentParamData, bundle);
+			transaction.setExplicitBroadcastForDeliveredSms(intent);
+		}
+		
+		//Creating the message
+		Message message = new Message();
+		
+		//Setting the message recipients
+		message.setAddresses(getConversationInfo().getNormalizedConversationMembersAsArray());
+		
+		//Setting the message text
+		if(getMessageText() != null) message.setText(getMessageText());
+		
+		//Checking if there are any attachments
+		if(attachments.isEmpty()) {
+			//Sending the message immediately
+			transaction.sendNewMessage(message, getConversationInfo().getExternalID());
+		} else {
+			//Getting the connection service
+			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
+			
+			//Checking if the connection manager is unavailable
+			if(connectionManager == null) {
+				//Setting the error code
+				setErrorCode(Constants.messageErrorCodeLocalNetwork);
+				setErrorDetails(null);
+				
+				//Updating the message's database entry
+				new UpdateErrorCodeTask(getLocalID(), Constants.messageErrorCodeLocalNetwork, null).execute();
+				
+				//Updating the adapter
+				ConversationInfo.ActivityCallbacks updater = getConversationInfo().getActivityCallbacks();
+				if(updater != null) updater.messageSendFailed(MessageInfo.this);
+				
+				//Updating the view
+				if(viewHolder != null) updateViewProgressState(viewHolder);
+				
+				//Returning
+				return false;
+			}
+			
+			Handler handler = new Handler(context.getMainLooper());
+			Constants.ValueWrapper<Integer> processedAttachmentsRemaining = new Constants.ValueWrapper<>(attachments.size());
+			for(AttachmentInfo attachmentInfo : attachments) {
+				//Constructing the push request
+				FilePushRequest request = attachmentInfo.getDraftingPushRequest();
+				if(request != null) {
+					request.setAttachmentID(attachmentInfo.getLocalID());
+					request.setUploadRequested(true);
+				} else {
+					if(attachmentInfo.file == null) continue;
+					request = new FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, FilePushRequest.stateAttached, System.currentTimeMillis(), true);
+				}
+				request.getCallbacks().onStart = () -> {
+					//Updating the progress bar
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
+					newViewHolder.progressSend.setProgress(0);
+				};
+				request.getCallbacks().onAttachmentPreparationFinished = file -> {
+					//Setting the attachment data
+					attachmentInfo.file = file;
+					attachmentInfo.fileUri = null;
+					
+					//Getting the context
+					Context newContext = contextReference.get();
+					if(newContext == null) return;
+					
+					//Updating the view
+					AttachmentInfo.ViewHolder attachmentViewHolder = (AttachmentInfo.ViewHolder) attachmentInfo.getViewHolder();
+					if(attachmentViewHolder != null) {
+						attachmentViewHolder.groupDownload.setVisibility(View.GONE);
+						attachmentViewHolder.groupContentFrame.setVisibility(View.GONE);
+						attachmentViewHolder.groupFailed.setVisibility(View.GONE);
+						attachmentViewHolder.labelFailed.setText(attachmentInfo.getResourceTypeName()); //In the case that the attachment decides to display this view group later on
+						attachmentViewHolder.groupProcessing.setVisibility(View.GONE);
+						attachmentInfo.updateContentView(attachmentViewHolder, newContext);
+					}
+				};
+				request.getCallbacks().onUploadProgress = value -> {
+					//Setting the send progress
+					sendProgress = value;
+					
+					//Updating the progress bar
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
+					newViewHolder.progressSend.setProgress(value);
+				};
+				request.getCallbacks().onUploadFinished = checksum -> {
+					//Setting the checksum
+					attachmentInfo.setFileChecksum(checksum);
+					
+					//Hiding the progress bar
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
+					TransitionManager.beginDelayedTransition((ViewGroup) newViewHolder.itemView);
+					newViewHolder.progressSend.setVisibility(View.GONE);
+				};
+				request.getCallbacks().onUploadResponseReceived = () -> {
+					//Setting the message as not sending
+					isSending = false;
+					
+					//Getting the view
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
+				};
+				request.getCallbacks().onFail = (resultCode, details) -> {
+					//Setting the error code
+					setErrorCode(errorCode);
+					setErrorDetails(errorDetails);
+					
+					//Updating the message's database entry
+					new UpdateErrorCodeTask(getLocalID(), errorCode, errorDetails).execute();
+					
+					//Updating the adapter
+					ConversationInfo.ActivityCallbacks updater = getConversationInfo().getActivityCallbacks();
+					if(updater != null) updater.messageSendFailed(MessageInfo.this);
+					
+					//Setting the message as not sending
+					isSending = false;
+					
+					//Hiding the progress bar and updating the state
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder == null) return;
+					newViewHolder.progressSend.setVisibility(View.GONE);
+					updateViewProgressState(viewHolder);
+				};
+				request.setCustomUploadHandler(filePushRequest -> {
+					//Reading the file
+					File file = filePushRequest.getSendFile();
+					byte[] fileBytes = new byte[(int) file.length()];
+					try(DataInputStream inputStream = new DataInputStream(new FileInputStream(file))) {
+						inputStream.readFully(fileBytes);
+					} catch(IOException exception) {
+						exception.printStackTrace();
+					}
+					
+					handler.post(() -> {
+						//Adding the file to the message
+						message.addMedia(fileBytes, attachmentInfo.getContentType(), file.getName());
+						
+						//Decreasing the remaining attachments count
+						processedAttachmentsRemaining.value--;
+						
+						//Sending the message if all attachments have been processed
+						if(processedAttachmentsRemaining.value == 0) {
+							transaction.sendNewMessage(message, getConversationInfo().getExternalID());
+							
+							//Hiding the progress bar
+							ViewHolder newViewHolder = getViewHolder();
+							if(newViewHolder == null) return;
+							newViewHolder.progressSend.setVisibility(View.GONE);
+						}
+					});
+				});
+				
+				//Queuing the request
+				connectionManager.addFileProcessingRequest(request);
+			}
+			
+			//Setting the upload values
+			isSending = true;
+			sendProgress = -1;
+			
+			if(viewHolder != null) {
+				//Showing and configuring the progress view
+				viewHolder.progressSend.setVisibility(View.VISIBLE);
+				viewHolder.progressSend.spin();
+			}
+		}
+		
+		//Returning true
+		return true;
 	}
 	
 	public void deleteMessage(Context context) {
@@ -978,7 +1252,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		}
 		
 		//Setting the upload spinner tint
-		viewHolder.progressSend.setBarColor(Preferences.getPreferenceAdvancedColor(context) ? getConversationInfo().getConversationColor() : context.getResources().getColor(R.color.colorPrimary, null));
+		viewHolder.progressSend.setBarColor(getConversationInfo().getDisplayConversationColor(context));
 		
 		//Updating the message colors
 		if(updateComponents && messageText != null) {

@@ -3,7 +3,6 @@ package me.tagavari.airmessage.activity;
 import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.app.NotificationManager;
 import android.content.ComponentName;
 import android.content.Context;
@@ -15,7 +14,10 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
+import android.provider.Telephony;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -25,15 +27,6 @@ import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.snackbar.Snackbar;
-import com.takisoft.preferencex.RingtonePreference;
-import com.takisoft.preferencex.RingtonePreferenceDialogFragmentCompat;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -41,7 +34,6 @@ import androidx.annotation.PluralsRes;
 import androidx.annotation.RequiresApi;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.util.Consumer;
 import androidx.core.view.OnApplyWindowInsetsListener;
@@ -53,32 +45,35 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
-import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceFragmentCompat;
-import androidx.preference.PreferenceGroup;
-import androidx.preference.PreferenceGroupAdapter;
 import androidx.preference.PreferenceManager;
 import androidx.preference.PreferenceScreen;
-import androidx.preference.PreferenceViewHolder;
 import androidx.preference.SwitchPreference;
 import androidx.preference.SwitchPreferenceCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
-import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.ConversationItem;
-import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.service.ServiceStartBoot;
-import me.tagavari.airmessage.service.SystemMessageImportService;
-import me.tagavari.airmessage.util.ConversationUtils;
-import me.tagavari.airmessage.messaging.AttachmentInfo;
-import me.tagavari.airmessage.util.Constants;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.snackbar.Snackbar;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
+import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.connection.MassRetrievalParams;
+import me.tagavari.airmessage.messaging.AttachmentInfo;
+import me.tagavari.airmessage.messaging.ConversationInfo;
+import me.tagavari.airmessage.messaging.ConversationItem;
+import me.tagavari.airmessage.messaging.MessageInfo;
+import me.tagavari.airmessage.service.ConnectionService;
+import me.tagavari.airmessage.receiver.StartBootReceiver;
+import me.tagavari.airmessage.service.SystemMessageImportService;
+import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.view.HostnameEditTextPreference;
 
 public class Preferences extends AppCompatCompositeActivity implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
@@ -86,6 +81,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	private static final int permissionRequestLocation = 0;
 	private static final int permissionRequestSMS = 1;
 	private static final int activityRequestRingtone = 0;
+	private static final int activityRequestDefaultMessagingApp = 1;
 	
 	//Creating the plugin values
 	private PluginQNavigation pluginQNavigation;
@@ -98,7 +94,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	public void onCreate(Bundle savedInstanceState) {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
-
+		
 		//Setting the content view
 		setContentView(R.layout.activity_preferences);
 		
@@ -106,17 +102,12 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			// Create the fragment only when the activity is created for the first time.
 			// ie. not after orientation changes
 			Fragment fragment = getSupportFragmentManager().findFragmentByTag(SettingsFragment.FRAGMENT_TAG);
-			if (fragment == null) fragment = new SettingsFragment();
+			if(fragment == null) fragment = new SettingsFragment();
 			
 			FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
 			fragmentTransaction.replace(R.id.container, fragment, SettingsFragment.FRAGMENT_TAG);
 			fragmentTransaction.commit();
 		}
-		
-		/* //Adding the fragment
-		getSupportFragmentManager().beginTransaction()
-				.replace(R.id.container, new SettingsFragment())
-				.commit(); */
 		
 		//Enabling the toolbar and up navigation
 		setSupportActionBar(findViewById(R.id.toolbar));
@@ -189,7 +180,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			intent.putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI, Settings.System.DEFAULT_NOTIFICATION_URI);
 			
 			Uri existingValue = getNotificationSound(getContext());
-			System.out.println("Current URI: " + existingValue);
 			if(existingValue == null) {
 				//Silent
 				intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, (Uri) null);
@@ -203,7 +193,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		};
 		Preference.OnPreferenceChangeListener startOnBootChangeListener = (preference, value) -> {
 			//Updating the service state
-			getActivity().getPackageManager().setComponentEnabledSetting(new ComponentName(getActivity(), ServiceStartBoot.class),
+			getActivity().getPackageManager().setComponentEnabledSetting(new ComponentName(getActivity(), StartBootReceiver.class),
 					(boolean) value ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
 					PackageManager.DONT_KILL_APP);
 			
@@ -374,7 +364,8 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
 			} else {
 				//Requesting permission
-				requestPermissions(new String[]{Manifest.permission.READ_SMS}, permissionRequestSMS);
+				requestDefaultMessagingApp();
+				//requestPermissions(new String[]{Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.RECEIVE_MMS}, permissionRequestSMS);
 			}
 			
 			//Returning false (to prevent the system from changing the option)
@@ -465,8 +456,8 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			Constants.enforceContentWidthView(getResources(), getListView());
 			
 			//Setting the list padding
-			View recyclerView = view.findViewById(R.id.recycler_view);
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+				View recyclerView = view.findViewById(R.id.recycler_view);
 				ViewCompat.setOnApplyWindowInsetsListener(recyclerView, new OnApplyWindowInsetsListener() {
 					@Override
 					public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
@@ -512,7 +503,8 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				//Checking if the result is a success
 				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 					//Enabling the toggle
-					((SwitchPreference) findPreference(getResources().getString(R.string.preference_textmessage_enable_key))).setChecked(true);
+					SwitchPreference preference = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
+					preference.setChecked(true);
 					
 					//Starting the import service
 					getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
@@ -550,6 +542,12 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				//Updating the preference summary
 				Preference preference = findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key));
 				preference.setSummary(getRingtoneTitle(ringtoneURI));
+			} else if(requestCode == activityRequestDefaultMessagingApp && resultCode == RESULT_OK) {
+				//Starting the import service
+				getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
+				
+				//Showing a snackbar
+				Snackbar.make(getView(), R.string.message_textmessageimport, Snackbar.LENGTH_LONG).show();
 			} else {
 				super.onActivityResult(requestCode, resultCode, data);
 			}
@@ -583,9 +581,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		public void onDisplayPreferenceDialog(Preference preference) {
 			//Creating the custom dialog fragment if a custom preference was selected
 			DialogFragment dialogFragment = null;
-			if(preference instanceof RingtonePreference) {
-				dialogFragment = RingtonePreferenceDialogFragmentCompat.newInstance(preference.getKey());
-			} else if(preference instanceof HostnameEditTextPreference) {
+			if(preference instanceof HostnameEditTextPreference) {
 				dialogFragment = HostnameEditTextPreference.HostnameEditTextPreferenceDialog.newInstance(preference.getKey());
 			}
 			
@@ -1046,6 +1042,12 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			return title;
 		}
 		
+		private void requestDefaultMessagingApp() {
+			Intent intent = new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
+			intent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, getActivity().getPackageName());
+			startActivityForResult(intent, activityRequestDefaultMessagingApp);
+		}
+		
 		/* @Override
 		public boolean onPreferenceStartScreen(PreferenceFragmentCompat preferenceFragmentCompat, PreferenceScreen preferenceScreen) {
 			FragmentTransaction ft = getActivity().getSupportFragmentManager().beginTransaction();
@@ -1086,6 +1088,10 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	
 	public static boolean getPreferenceMessagePreviews(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_features_messagepreviews_key), true);
+	}
+	
+	public static boolean getPreferenceSMSDeliveryReports(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_textmessage_deliveryreport_key), false);
 	}
 	
 	public static String getPreferenceFallbackServer(Context context) {

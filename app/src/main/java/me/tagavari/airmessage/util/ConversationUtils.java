@@ -230,6 +230,20 @@ public class ConversationUtils {
 		return null;
 	}
 	
+	public static ConversationInfo findConversationInfoExternalID(long externalID, int serviceHandler, String service) {
+		//Getting the conversations
+		ArrayList<ConversationInfo> conversations = getConversations();
+		if(conversations == null) return null;
+		
+		//Returning the conversation info
+		for(ConversationInfo conversationInfo : conversations) {
+			if(conversationInfo.getExternalID() == externalID && conversationInfo.getServiceHandler() == serviceHandler && conversationInfo.getService().equals(service)) return conversationInfo;
+		}
+		
+		//Returning null
+		return null;
+	}
+	
 	public static ArrayList<ConversationInfo> getForegroundConversations() {
 		//Creating the list
 		ArrayList<ConversationInfo> list = new ArrayList<>();

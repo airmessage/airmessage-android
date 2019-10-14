@@ -384,6 +384,22 @@ public class FileProcessingThread extends Thread {
 					continue;
 				} */
 				
+				//Checking if the request has a custom upload handler
+				if(pushRequest.getCustomUploadHandler() != null) {
+					//Marking the request as completed
+					pushRequest.setInProcessing(false);
+					pushRequest.setState(FilePushRequest.stateFinished);
+					
+					//Notifying the upload finished callback
+					handler.post(() -> finalCallbacks.onUploadFinished.accept(null));
+					
+					//Passing the load onto the custom upload handler
+					pushRequest.getCustomUploadHandler().accept(pushRequest);
+					
+					//Skipping the remainder of the iteration
+					continue;
+				}
+				
 				//Getting the connection service
 				ConnectionManager connectionManager = ConnectionService.getConnectionManager();
 				

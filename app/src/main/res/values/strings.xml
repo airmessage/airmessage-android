@@ -151,7 +151,7 @@
 	<string name="message_permissiondetails_microphone_missing">Missing permission to record audio</string>
 	<string name="message_permissiondetails_microphone_failedrequest">AirMessage must be able to record audio to send audio messages</string>
 
-	<string name="message_textmessageimport">Started text message import. See the notification for details.</string>
+	<string name="message_textmessageimport">Started importing text messages</string>
 
 	<string name="message_serverstatus_limitedfunctionality">%s. Functionality will be limited.</string>
 	<string name="message_serverstatus_internalexception">An internal error occurred</string>

@@ -1085,7 +1085,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	private Spannable getArchivedSpannable() {
 		Spannable text = new SpannableString(getResources().getString(R.string.screen_archived));
-		//text.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.colorArchived, null)), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+		//text.setSpan(new ForegroundColorSpan(getResources().getServiceColor(R.color.colorArchived, null)), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
 		return text;
 	}
 	
@@ -1178,8 +1178,8 @@ public class Conversations extends AppCompatCompositeActivity {
 			toolbar.animate().alpha(0).withEndAction(() -> toolbar.setVisibility(View.INVISIBLE));
 			
 			//Animating the app bar
-			/* int toolbarColor = getResources().getColor(R.color.colorContextualAppBar, null);
-			int statusBarColor = getResources().getColor(R.color.colorContextualAppBarDark, null);
+			/* int toolbarColor = getResources().getServiceColor(R.color.colorContextualAppBar, null);
+			int statusBarColor = getResources().getServiceColor(R.color.colorContextualAppBarDark, null);
 			animateAppBarColor(toolbarColor, statusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime)); */
 			
 			//Hiding the FAB

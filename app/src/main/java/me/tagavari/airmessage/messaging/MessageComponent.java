@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.data.BitmapCacheHelper;
@@ -536,6 +535,6 @@ public abstract class MessageComponent<VH extends MessageComponent.ViewHolder> {
 	 * @return The current service's color
 	 */
 	int getServiceColor(Resources resources) {
-		return ConversationInfo.getColor(resources, getMessageInfo().getConversationInfo().getServiceHandler(), getMessageInfo().getConversationInfo().getService());
+		return ConversationInfo.getServiceColor(resources, getMessageInfo().getConversationInfo().getServiceHandler(), getMessageInfo().getConversationInfo().getService());
 	}
 }

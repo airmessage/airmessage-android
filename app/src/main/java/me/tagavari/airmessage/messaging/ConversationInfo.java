@@ -35,6 +35,7 @@ import java.util.ListIterator;
 import java.util.Random;
 
 import me.tagavari.airmessage.activity.ConversationsBase;
+import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
@@ -86,6 +87,7 @@ public class ConversationInfo implements Serializable {
 	//Creating the values
 	private long localID;
 	private String guid;
+	private long externalID;
 	private ConversationState conversationState;
 	private int serviceHandler;
 	private String service;
@@ -620,6 +622,14 @@ public class ConversationInfo implements Serializable {
 	
 	public void setGuid(String guid) {
 		this.guid = guid;
+	}
+	
+	public long getExternalID() {
+		return externalID;
+	}
+	
+	public void setExternalID(long externalID) {
+		this.externalID = externalID;
 	}
 	
 	public int getServiceHandler() {
@@ -1591,6 +1601,19 @@ public class ConversationInfo implements Serializable {
 		this.conversationColor = conversationColor;
 	}
 	
+	/**
+	 * Fetch the color that should be displayed to the user while viewing this conversation.
+	 * This function takes into account the advanced color preference, as well as the current service.
+	 * @return the color value
+	 */
+	public int getDisplayConversationColor(Context context) {
+		//Returning the color on a per-conversation basis
+		if(Preferences.getPreferenceAdvancedColor(context)) return getConversationColor();
+		
+		//Returning the service color
+		return ConversationInfo.getServiceColor(context.getResources(), getServiceHandler(), getService());
+	}
+	
 	public static int getDefaultConversationColor(long id) {
 		return standardUserColors[new Random(id).nextInt(standardUserColors.length)];
 	}
@@ -1755,7 +1778,7 @@ public class ConversationInfo implements Serializable {
 		}
 	}
 	
-	public static int getColor(Resources resources, int serviceHandler, String serviceName) {
+	public static int getServiceColor(Resources resources, int serviceHandler, String serviceName) {
 		//AirMessage bridge
 		if(serviceHandler == ConversationInfo.serviceHandlerAMBridge) {
 			//Returning a default color if the service is invalid

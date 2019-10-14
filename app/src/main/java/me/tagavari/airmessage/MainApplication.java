@@ -41,7 +41,7 @@ import me.tagavari.airmessage.data.BitmapCacheHelper;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.service.ServiceStartBoot;
+import me.tagavari.airmessage.receiver.StartBootReceiver;
 import me.tagavari.airmessage.util.Constants;
 
 public class MainApplication extends Application {
@@ -157,7 +157,7 @@ public class MainApplication extends Application {
 		applyDarkMode(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.preference_appearance_theme_key), ""));
 		
 		//Enabling / disabling the service on boot as per the shared preference
-		getPackageManager().setComponentEnabledSetting(new ComponentName(this, ServiceStartBoot.class),
+		getPackageManager().setComponentEnabledSetting(new ComponentName(this, StartBootReceiver.class),
 				PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_connectionboot_key), true) ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
 				PackageManager.DONT_KILL_APP);
 		

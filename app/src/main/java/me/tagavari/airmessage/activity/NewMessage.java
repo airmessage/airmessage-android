@@ -569,7 +569,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 				//Creating the window
 				final PopupWindow popupWindow = new PopupWindow(popupView, Constants.dpToPx(300), Constants.dpToPx(56));
 				
-				//popupWindow.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.colorForegroundLight, null)));
+				//popupWindow.setBackgroundDrawable(new ColorDrawable(getResources().getServiceColor(R.color.colorForegroundLight, null)));
 				popupWindow.setOutsideTouchable(true);
 				popupWindow.setElevation(Constants.dpToPx(2));
 				popupWindow.setEnterTransition(new ChangeBounds());
@@ -674,7 +674,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 			View iconView = view.findViewById(R.id.profile);
 			ImageView profileDefault = iconView.findViewById(R.id.profile_default);
 			profileDefault.setVisibility(View.VISIBLE);
-			profileDefault.setColorFilter(getResources().getColor(R.color.colorPrimary, null), android.graphics.PorterDuff.Mode.MULTIPLY);
+			profileDefault.setColorFilter(getResources().getServiceColor(R.color.colorPrimary, null), android.graphics.PorterDuff.Mode.MULTIPLY);
 			((ImageView) iconView.findViewById(R.id.profile_image)).setImageBitmap(null);
 			
 			//Assigning the contact's image
@@ -1290,6 +1290,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 		private ArrayList<Chip> userChips = new ArrayList<>();
 		
 		//Creating the other values
+		int serviceHandler = ConversationInfo.serviceHandlerAMBridge;
 		String service = ConversationInfo.serviceTypeAppleMessage;
 		final MutableLiveData<Object> contactListLD = new MutableLiveData<>();
 		final ArrayList<ContactInfo> contactList = new ArrayList<>();
@@ -1534,7 +1535,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 						for(ListIterator<String> iterator = normalizedMembers.listIterator(); iterator.hasNext();) iterator.set(Constants.normalizeAddress(iterator.next())); */
 						
 						//Adding the conversation
-						return DatabaseManager.getInstance().addRetrieveClientCreatedConversationInfo(getApplication(), participants, service);
+						return DatabaseManager.getInstance().addRetrieveClientCreatedConversationInfo(getApplication(), participants, serviceHandler, service);
 					}
 					
 					@Override

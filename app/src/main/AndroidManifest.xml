@@ -21,6 +21,11 @@
 	<uses-permission android:name="android.permission.WRITE_SMS" />
 	<uses-permission android:name="android.permission.RECEIVE_SMS" />
 	<uses-permission android:name="android.permission.RECEIVE_MMS" />
+	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+	<uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+	<uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<uses-permission android:name="android.permission.WRITE_SETTINGS" />
 	
 	<application
 		android:allowBackup="true"
@@ -39,6 +44,18 @@
 			android:name=".activity.Conversations"
 			android:theme="@style/DayNight.NoActionBar.Protected"
 			android:windowSoftInputMode="adjustResize">
+			<intent-filter>
+				<category android:name="android.intent.category.DEFAULT" />
+				<category android:name="android.intent.category.BROWSABLE" />
+
+				<action android:name="android.intent.action.SEND" />
+				<action android:name="android.intent.action.SENDTO" />
+
+				<data android:scheme="sms" />
+				<data android:scheme="smsto" />
+				<data android:scheme="mms" />
+				<data android:scheme="mmsto" />
+			</intent-filter>
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />
@@ -194,11 +211,65 @@
 		<receiver
 			android:enabled="true"
 			android:exported="false"
-			android:name=".service.ServiceStartBoot">
+			android:name=".receiver.StartBootReceiver">
 			<intent-filter>
 				<action android:name="android.intent.action.BOOT_COMPLETED" />
 			</intent-filter>
 		</receiver>
+
+		<!-- MMS / SMS library helper service -->
+		<service android:name="com.android.mms.transaction.TransactionService" />
+
+		<!-- Sent MMS receiver -->
+		<receiver
+			android:name=".receiver.TextSMSSentReceiver"
+			android:taskAffinity="me.tagavari.airmessage.SMS_SENT" />
+
+		<!-- Delivered SMS receiver -->
+		<receiver
+			android:name=".receiver.TextSMSDeliveredReceiver"
+			android:taskAffinity="me.tagavari.airmessage.SMS_DELIVERED" />
+
+		<!-- Sent MMS receiver -->
+		<receiver
+			android:name=".receiver.TextMMSSentReceiver"
+			android:taskAffinity="com.klinker.android.messaging.MMS_SENT" />
+
+		<!-- Incoming SMS receiver -->
+		<receiver android:name=".receiver.TextSMSReceivedReceiver"
+			android:permission="android.permission.BROADCAST_SMS">
+			<intent-filter>
+				<action android:name="android.provider.Telephony.SMS_DELIVER" />
+			</intent-filter>
+		</receiver>
+
+		<!-- Incoming MMS processor -->
+		<receiver android:name="com.android.mms.transaction.PushReceiver"
+			android:permission="android.permission.BROADCAST_WAP_PUSH">
+			<intent-filter>
+				<action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
+				<data android:mimeType="application/vnd.wap.mms-message" />
+			</intent-filter>
+		</receiver>
+
+		<!-- Incoming MMS receiver -->
+		<receiver
+			android:name=".receiver.TextMMSReceivedReceiver"
+			android:taskAffinity="com.klinker.android.messaging.MMS_RECEIVED" />
+
+		<!-- Headless MMS / SMS manager for quick replies -->
+		<service android:name=".service.TextHeadlessService"
+			android:permission="android.permission.SEND_RESPOND_VIA_MESSAGE"
+			android:exported="true">
+			<intent-filter>
+				<action android:name="android.intent.action.RESPOND_VIA_MESSAGE" />
+				<category android:name="android.intent.category.DEFAULT" />
+				<data android:scheme="sms" />
+				<data android:scheme="smsto" />
+				<data android:scheme="mms" />
+				<data android:scheme="mmsto" />
+			</intent-filter>
+		</service>
 
 		<!-- Disables automatic Crashlytics initialization -->
 		<meta-data

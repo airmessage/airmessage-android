@@ -16,6 +16,7 @@ import android.content.BroadcastReceiver;
 import android.content.ClipDescription;
 import android.content.ContentUris;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentSender;
@@ -46,6 +47,7 @@ import android.os.Looper;
 import android.os.Parcelable;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
+import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
@@ -54,6 +56,7 @@ import android.transition.Transition;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.InputDevice;
 import android.view.KeyEvent;
@@ -146,6 +149,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
+import com.klinker.android.send_message.Settings;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -202,6 +206,8 @@ import me.tagavari.airmessage.view.VisualizerView;
 import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
+
+import static android.provider.Settings.System.canWrite;
 
 public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
@@ -1287,9 +1293,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				if(uri == null) continue;
 				
 				//Querying the file data
-				try(Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
+				try(Cursor cursor = context.getContentResolver().query(uri, new String[]{MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.DATE_MODIFIED}, null, null, null)) {
 					if(cursor == null) continue;
-					
 					int iType = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE);
 					int iDisplayName = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME);
 					int iSize = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE);
@@ -1375,51 +1380,91 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private void sendMessage() {
+		/* if(!canWrite(this)) {
+			Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS);
+			intent.setData(Uri.parse("package:" + getPackageName()));
+			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			
+			try {
+				startActivity(intent);
+			} catch (Exception e) {
+				Log.e("MainActivity", "error starting permission intent", e);
+			}
+			return;
+		} */
+		
 		//Creating the message list
 		ArrayList<MessageInfo> messageList = new ArrayList<>();
 		
-		//Checking if the message box has text
-		if(messageInputField.getText().length() > 0) {
-			//Getting the message text
-			String message = messageInputField.getText().toString();
+		//Getting the message details
+		String cleanMessageText = messageInputField.getText().toString().trim();
+		
+		//Returning if there is no data to send
+		if(cleanMessageText.isEmpty() && viewModel.draftQueueList.isEmpty()) return;
+		
+		//Checking if the current service handler is AirMessage bridge
+		if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
+			//Checking if the message box has text
+			if(!cleanMessageText.isEmpty()) {
+				//Creating a message
+				messageList.add(new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
+				
+				//Clearing the message box
+				messageInputField.setText("");
+				messageInputField.requestLayout(); //Height of input field doesn't update otherwise
+				//messageBoxHasText = false;
+				
+				//Saving the draft message
+				//viewModel.applyDraftMessage("");
+			}
 			
-			//Trimming the message
-			message = message.trim();
-			
-			//Returning if the message is empty
-			if(message.isEmpty()) return;
-			
-			//Creating a message
-			messageList.add(new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, message, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
+			//Iterating over the drafts
+			for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
+				//Creating the message
+				MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+				
+				//Creating the attachment
+				SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
+				AttachmentInfo attachment = ConversationUtils.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType(), attachmentFile.getFileSize());
+				attachment.setDraftingPushRequest(queuedFile.getFilePushRequest());
+				
+				//Adding the attachment to the message
+				messageInfo.addAttachment(attachment);
+				
+				//Adding the message to the list
+				messageList.add(messageInfo);
+				
+				//Dequeuing the item
+				dequeueAttachment(queuedFile, true, false);
+				viewModel.conversationInfo.removeDraftFileUpdate(this, queuedFile.getDraftFile(), -1);
+			}
+		} else {
+			//Creating the message
+			MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText.isEmpty() ? null : cleanMessageText, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 			
 			//Clearing the message box
-			messageInputField.setText("");
-			messageInputField.requestLayout(); //Height of input field doesn't update otherwise
-			//messageBoxHasText = false;
+			if(!cleanMessageText.isEmpty()) {
+				messageInputField.setText("");
+				messageInputField.requestLayout(); //Height of input field doesn't update otherwise
+			}
 			
-			//Saving the draft message
-			//viewModel.applyDraftMessage("");
-		}
-		
-		//Iterating over the drafts
-		for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
-			//Creating the message
-			MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+			//Iterating over the drafts
+			for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
+				//Creating the attachment
+				SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
+				AttachmentInfo attachment = ConversationUtils.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType(), attachmentFile.getFileSize());
+				attachment.setDraftingPushRequest(queuedFile.getFilePushRequest());
+				
+				//Adding the attachment to the message
+				messageInfo.addAttachment(attachment);
+				
+				//Dequeuing the item
+				dequeueAttachment(queuedFile, true, false);
+				viewModel.conversationInfo.removeDraftFileUpdate(this, queuedFile.getDraftFile(), -1);
+			}
 			
-			//Creating the attachment
-			SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
-			AttachmentInfo attachment = ConversationUtils.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType(), attachmentFile.getFileSize());
-			attachment.setDraftingPushRequest(queuedFile.getFilePushRequest());
-			
-			//Adding the attachment to the message
-			messageInfo.addAttachment(attachment);
-			
-			//Adding the message to the queue list
+			//Adding the message to the list
 			messageList.add(messageInfo);
-			
-			//Dequeuing the item
-			dequeueAttachment(queuedFile, true, false);
-			viewModel.conversationInfo.removeDraftFileUpdate(this, queuedFile.getDraftFile(), -1);
 		}
 		
 		//Returning if there are no items to send
@@ -2082,7 +2127,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Setting the default information
 			((TextView) memberEntry.findViewById(R.id.label_member)).setText(member.getName());
-			((ImageView) memberEntry.findViewById(R.id.profile_default)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
+			((ImageView) memberEntry.findViewById(R.id.profile_default)).setColorFilter(member.getServiceColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
 			
 			//Filling in the information
 			MainApplication.getInstance().getUserCacheHelper().getUserInfo(this, member.getName(), new UserCacheHelper.UserFetchResult(memberEntry) {
@@ -2112,8 +2157,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(members.size() == 1) {
 				changeColorButton.setVisibility(View.GONE);
 			} else {
-				changeColorButton.setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
-				changeColorButton.setOnClickListener(view -> showColorDialog(member, member.getColor()));
+				changeColorButton.setColorFilter(member.getServiceColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
+				changeColorButton.setOnClickListener(view -> showColorDialog(member, member.getServiceColor()));
 				changeColorButton.setVisibility(View.VISIBLE);
 			}
 			
@@ -2317,7 +2362,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Getting the color
 		int color = getConversationUIColor();
-		if(Constants.isNightMode(getResources())) color = ColorHelper.darkModeLightenColor(color);
 		int darkerColor = ColorHelper.darkenColor(color);
 		int lighterColor = ColorHelper.lightenColor(color);
 		
@@ -2350,11 +2394,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	int getConversationUIColor() {
-		//Returning the color on a per-conversation basis
-		if(Preferences.getPreferenceAdvancedColor(this)) return viewModel.conversationInfo.getConversationColor();
-		
-		//Returning the service color
-		return ConversationInfo.getColor(getResources(), viewModel.conversationInfo.getServiceHandler(), viewModel.conversationInfo.getService());
+		int color = viewModel.conversationInfo.getDisplayConversationColor(this);
+		if(Constants.isNightMode(getResources()) && Preferences.getPreferenceAdvancedColor(this)) color = ColorHelper.darkModeLightenColor(color); //Standard colors have night mode overrides by default
+		return color;
 	}
 	
 	private void setActionBarTitle(String title) {
@@ -2407,7 +2449,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		buttonSendMessage.setColorFilter(targetColor);
 		buttonSendMessage.setAlpha(state ? 1 : 0.5F);
 		
-		//buttonSendMessage.setImageTintList(ColorStateList.valueOf(state ? getResources().getColor(R.color.colorPrimary, null) : Constants.resolveColorAttr(this, android.R.attr.colorControlNormal)));
+		//buttonSendMessage.setImageTintList(ColorStateList.valueOf(state ? getResources().getServiceColor(R.color.colorPrimary, null) : Constants.resolveColorAttr(this, android.R.attr.colorControlNormal)));
 		//if(restore) buttonSendMessage.setAlpha(targetAlpha);
 		//else buttonSendMessage.animate().setDuration(100).alpha(targetAlpha);
 	}
@@ -3494,8 +3536,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			draft.setDraftFile(draftFile);
 			
 			//Adding the draft file to the conversation in memory
-			if(viewModel.conversationInfo != null)
-				viewModel.conversationInfo.addDraftFileUpdate(Messaging.this, draftFile, updateTime);
+			if(viewModel.conversationInfo != null) viewModel.conversationInfo.addDraftFileUpdate(Messaging.this, draftFile, updateTime);
 			
 			//Updating the attachment
 			listAttachmentQueue.getAdapter().notifyItemChanged(viewModel.draftQueueList.indexOf(draft), AttachmentsQueueRecyclerAdapter.payloadUpdateState);
@@ -4718,7 +4759,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Adding more views if necessary
 			while(childViewList.size() < suggestions.length) {
 				TextView item = (TextView) LayoutInflater.from(context).inflate(R.layout.listitem_replysuggestions_item, container, false);
-				if(Preferences.getPreferenceAdvancedColor(context)) item.setTextColor(viewModel.conversationInfo.getConversationColor());
+				item.setTextColor(viewModel.conversationInfo.getDisplayConversationColor(context));
 				container.addView(item);
 				childViewList.add(item);
 			}
@@ -4974,49 +5015,52 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Loading the conversation
 			conversationInfo = ConversationUtils.findConversationInfo(conversationID);
-			if(conversationInfo != null) new AsyncTask<Void, Void, DatabaseManager.ConversationLazyLoader>() {
-				@Override
-				protected DatabaseManager.ConversationLazyLoader doInBackground(Void... voids) {
-					return new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
-				}
-				
-				@Override
-				protected void onPostExecute(DatabaseManager.ConversationLazyLoader result) {
-					//Setting the lazy loader
-					conversationLazyLoader = result;
+			if(conversationInfo != null) {
+				new AsyncTask<Void, Void, DatabaseManager.ConversationLazyLoader>() {
+					@Override
+					protected DatabaseManager.ConversationLazyLoader doInBackground(Void... voids) {
+						return new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
+					}
 					
-					//Loading the conversation's messages
-					loadMessages();
-				}
-			}.execute();
-			else new AsyncTask<Void, Void, Constants.Tuple2<ConversationInfo, DatabaseManager.ConversationLazyLoader>>() {
-				@Override
-				protected Constants.Tuple2<ConversationInfo, DatabaseManager.ConversationLazyLoader> doInBackground(Void... args) {
-					//Getting the conversation
-					ConversationInfo conversation = DatabaseManager.getInstance().fetchConversationInfo(getApplication(), conversationID);
-					if(conversation == null) return null;
-					
-					//Creating the lazy loader
-					DatabaseManager.ConversationLazyLoader lazyLoader = new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversation);
-					
-					//Returning the data
-					return new Constants.Tuple2<>(conversation, lazyLoader);
-				}
-				
-				@Override
-				protected void onPostExecute(Constants.Tuple2<ConversationInfo, DatabaseManager.ConversationLazyLoader> result) {
-					//Setting the state to failed if the conversation info couldn't be fetched
-					if(result == null) messagesState.setValue(messagesStateFailedConversation);
-					else {
-						//Setting the conversation details
-						conversationInfo = result.item1;
-						conversationLazyLoader = result.item2;
+					@Override
+					protected void onPostExecute(DatabaseManager.ConversationLazyLoader result) {
+						//Setting the lazy loader
+						conversationLazyLoader = result;
 						
 						//Loading the conversation's messages
 						loadMessages();
 					}
-				}
-			}.execute();
+				}.execute();
+			} else {
+				new AsyncTask<Void, Void, Constants.Tuple2<ConversationInfo, DatabaseManager.ConversationLazyLoader>>() {
+					@Override
+					protected Constants.Tuple2<ConversationInfo, DatabaseManager.ConversationLazyLoader> doInBackground(Void... args) {
+						//Getting the conversation
+						ConversationInfo conversation = DatabaseManager.getInstance().fetchConversationInfo(getApplication(), conversationID);
+						if(conversation == null) return null;
+						
+						//Creating the lazy loader
+						DatabaseManager.ConversationLazyLoader lazyLoader = new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversation);
+						
+						//Returning the data
+						return new Constants.Tuple2<>(conversation, lazyLoader);
+					}
+					
+					@Override
+					protected void onPostExecute(Constants.Tuple2<ConversationInfo, DatabaseManager.ConversationLazyLoader> result) {
+						//Setting the state to failed if the conversation info couldn't be fetched
+						if(result == null) messagesState.setValue(messagesStateFailedConversation);
+						else {
+							//Setting the conversation details
+							conversationInfo = result.item1;
+							conversationLazyLoader = result.item2;
+							
+							//Loading the conversation's messages
+							loadMessages();
+						}
+					}
+				}.execute();
+			}
 		}
 		
 		@SuppressLint("StaticFieldLeak")
@@ -5990,7 +6034,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Adding the items to the database
 			for(MessageInfo message : messages) {
-				DatabaseManager.getInstance().addConversationItem(message);
+				DatabaseManager.getInstance().addConversationItem(message, message.getConversationInfo().getServiceHandler() == ConversationInfo.serviceHandlerAMBridge);
 				publishProgress(message);
 			}
 			

@@ -89,17 +89,17 @@
 		android:title="@string/preferencegroup_textmessage_title"
 		app:iconSpaceReserved="false">
 		<androidx.preference.SwitchPreference
-			android:defaultValue="false"
 			android:key="@string/preference_textmessage_enable_key"
 			android:title="@string/preference_textmessage_enable_title"
 			android:summary="@string/preference_textmessage_enable_desc"
+			android:defaultValue="false"
 			app:iconSpaceReserved="false" />
 		<androidx.preference.SwitchPreference
-			android:defaultValue="false"
 			android:key="@string/preference_textmessage_deliveryreport_key"
 			android:title="@string/preference_textmessage_deliveryreport_title"
 			android:dependency="@string/preference_textmessage_enable_key"
 			android:summary="@string/preference_textmessage_deliveryreport_desc"
+			android:defaultValue="false"
 			app:iconSpaceReserved="false" />
 	</androidx.preference.PreferenceCategory>
 

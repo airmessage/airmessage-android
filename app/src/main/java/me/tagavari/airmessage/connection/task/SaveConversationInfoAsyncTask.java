@@ -63,7 +63,7 @@ public class SaveConversationInfoAsyncTask extends QueueTask<Void, Void> {
 				List<ConversationItem> conversationItems = DatabaseManager.getInstance().loadConversationItems(availableConversation);
 				
 				//Searching for a matching conversation in the database
-				ConversationInfo clientConversation = DatabaseManager.getInstance().findConversationInfoWithMembers(context, availableConversation.getConversationMembersAsCollection(), availableConversation.getService(), true);
+				ConversationInfo clientConversation = DatabaseManager.getInstance().findConversationInfoWithMembers(context, availableConversation.getConversationMembersAsCollection(), availableConversation.getServiceHandler(), availableConversation.getService(), true);
 				
 				//Checking if a client conversation has not been found (the conversation is a new conversation from the server)
 				if(clientConversation == null) {

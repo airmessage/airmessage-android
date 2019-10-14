@@ -3,6 +3,7 @@ package me.tagavari.airmessage.connection.request;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
+import androidx.core.util.Consumer;
 
 import java.io.File;
 
@@ -34,6 +35,9 @@ public class FilePushRequest extends FileProcessingRequest {
 	private final String conversationGUID;
 	private final String[] conversationMembers;
 	private final String conversationService;
+	
+	//Creating the listener values
+	private Consumer<FilePushRequest> customUploadHandler = null;
 	
 	private FilePushRequest(ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested) {
 		//Setting the callbacks
@@ -169,5 +173,18 @@ public class FilePushRequest extends FileProcessingRequest {
 	
 	public String getConversationService() {
 		return conversationService;
+	}
+	
+	public Consumer<FilePushRequest> getCustomUploadHandler() {
+		return customUploadHandler;
+	}
+	
+	/**
+	 * Assign this request a custom upload handler. This consumer will be called on a worker thread, and is expected to handle uploading this message to be sent to the receiver.
+	 * If no custom uploader is provided, the file will be uploaded to the bridge server via the connection service.
+	 * @param customUploadHandler The upload handler to use
+	 */
+	public void setCustomUploadHandler(Consumer<FilePushRequest> customUploadHandler) {
+		this.customUploadHandler = customUploadHandler;
 	}
 }

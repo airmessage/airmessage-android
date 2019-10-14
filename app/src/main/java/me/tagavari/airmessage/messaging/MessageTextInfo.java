@@ -19,6 +19,7 @@ import android.text.format.DateFormat;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.util.Patterns;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -35,6 +36,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
+import androidx.core.graphics.ColorUtils;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -102,7 +104,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 				viewHolder.labelMessage.setText(messageText);
 			}
 		} else {
-			//Setting the text
+			//Setting the message text
 			viewHolder.labelMessage.setText(messageText);
 			
 			//Defaulting to standard Linkify
@@ -111,6 +113,15 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		
 		//Setting the message alignment
 		((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
+		
+		//Checking if the string consists exclusively of emoji characters
+		if(Constants.stringContainsOnlyEmoji(messageText)) {
+			//Increasing the text size
+			viewHolder.labelMessage.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
+		} else {
+			//Resetting the text size
+			viewHolder.labelMessage.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+		}
 		
 		//Updating the view color
 		updateViewColor(viewHolder, context);
@@ -499,18 +510,18 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 				backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
 				textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
 			} else {
-				//backgroundColor = context.getResources().getColor(R.color.colorPrimary, null);
+				//backgroundColor = context.getResources().getServiceColor(R.color.colorPrimary, null);
 				backgroundColor = getServiceColor(context.getResources());
-				//textColor = context.getResources().getColor(R.color.textColorWhite, null);
+				//textColor = context.getResources().getServiceColor(R.color.textColorWhite, null);
 				textColor = Constants.resolveColorAttr(context, R.attr.colorOnPrimary);
 			}
 		} else {
 			if(Preferences.getPreferenceAdvancedColor(context)) {
 				MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
 				int targetColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
-				//textColor = context.getResources().getColor(R.color.colorTextWhite, null);
+				//textColor = context.getResources().getServiceColor(R.color.colorTextWhite, null);
 				textColor = ColorHelper.modifyColorRaw(targetColor, Constants.isNightMode(context.getResources()) ? 1.3F : 0.75F);
-				backgroundColor = Color.argb(80, Color.red(targetColor), Color.green(targetColor), Color.blue(targetColor));
+				backgroundColor = ColorUtils.setAlphaComponent(targetColor, 80);
 			} else {
 				backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
 				textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
