@@ -1,13 +1,10 @@
 package me.tagavari.airmessage.connection;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.SystemClock;
 import android.util.SparseArray;
 
 import androidx.core.util.Consumer;
@@ -15,7 +12,6 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.crashlytics.android.Crashlytics;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -54,9 +50,7 @@ import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.DraftFile;
 import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.util.ConversationUtils;
 
 public class ConnectionManager {
 	/* COMMUNICATIONS VERSION CHANGES

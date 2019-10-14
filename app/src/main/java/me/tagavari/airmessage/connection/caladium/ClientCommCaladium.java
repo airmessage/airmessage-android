@@ -281,7 +281,7 @@ public class ClientCommCaladium extends CommunicationsManager {
 		//Reading the shared preferences connectivity information
 		SharedPreferences sharedPrefs = MainApplication.getInstance().getConnectivitySharedPrefs();
 		String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
-		long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, -1);
+		long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
 		
 		//Updating the shared preferences connectivity information
 		SharedPreferences.Editor sharedPrefsEditor = sharedPrefs.edit();
@@ -303,8 +303,8 @@ public class ClientCommCaladium extends CommunicationsManager {
 				sendConversationInfoRequest(connectionManager.getPendingConversations());
 				
 				//Setting the flags
-				connectionManager.setFlagMarkEndTime(false);
-				connectionManager.setFlagDropReconnect(false);
+				connectionManager.setFlagMarkEndTime(true);
+				connectionManager.setFlagDropReconnect(true);
 				
 				//Checking if the last connection is the same as the current one
 				if(ConnectionManager.hostname.equals(lastConnectionHostname)) {
