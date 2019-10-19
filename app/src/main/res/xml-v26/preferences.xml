@@ -18,17 +18,19 @@
 			android:title="@string/preference_appearance_theme_title"
 			android:summary="%s"
 			app:iconSpaceReserved="false" />
-		<!-- <androidx.preference.SwitchPreferenceCompat
+		<!-- <androidx.preference.SwitchPreference
 			android:key="@string/preference_appearance_location_key"
 			android:persistent="false"
 			android:title="@string/preference_appearance_location_title"
-			android:summary="@string/preference_appearance_location_description" />
-		<androidx.preference.SwitchPreferenceCompat
+			android:summary="@string/preference_appearance_location_description"
+			app:iconSpaceReserved="false" /> -->
+		<androidx.preference.SwitchPreference
 			android:key="@string/preference_appearance_amoled_key"
 			android:title="@string/preference_appearance_amoled_title"
 			android:summary="@string/preference_appearance_amoled_description"
-			android:defaultValue="false" /> -->
-		<androidx.preference.SwitchPreferenceCompat
+			android:defaultValue="false"
+			app:iconSpaceReserved="false" />
+		<androidx.preference.SwitchPreference
 			android:key="@string/preference_appearance_advancedcolor_key"
 			android:title="@string/preference_appearance_advancedcolor_title"
 			android:summary="@string/preference_appearance_advancedcolor_description"
@@ -40,19 +42,19 @@
 		android:key="@string/preferencegroup_features_key"
 		android:title="@string/preferencegroup_features_title"
 		app:iconSpaceReserved="false">
-		<androidx.preference.SwitchPreferenceCompat
+		<androidx.preference.SwitchPreference
 			android:key="@string/preference_appearance_showreadreceipts_key"
 			android:title="@string/preference_appearance_showreadreceipts_title"
 			android:summary="@string/preference_appearance_showreadreceipts_description"
 			android:defaultValue="true"
 			app:iconSpaceReserved="false" />
-		<androidx.preference.SwitchPreferenceCompat
+		<androidx.preference.SwitchPreference
 			android:key="@string/preference_features_replysuggestions_key"
 			android:title="@string/preference_features_replysuggestions_title"
 			android:summary="@string/preference_features_replysuggestions_description"
 			android:defaultValue="false"
 			app:iconSpaceReserved="false" />
-		<androidx.preference.SwitchPreferenceCompat
+		<androidx.preference.SwitchPreference
 			android:key="@string/preference_features_messagepreviews_key"
 			android:title="@string/preference_features_messagepreviews_title"
 			android:summary="@string/preference_features_messagepreviews_description"
@@ -123,7 +125,7 @@
 			android:summary="@string/preference_server_serverfallback_description"
 			app:iconSpaceReserved="false" />
 
-		<!-- <androidx.preference.SwitchPreferenceCompat
+		<!-- <androidx.preference.SwitchPreference
 			android:key="@string/preference_server_foregroundservice_key"
 			android:title="@string/preference_server_foregroundservice_title"
 			android:summary="@string/preference_server_foregroundservice_description"
@@ -133,17 +135,17 @@
 			android:key="@string/preference_server_connectionboot_key"
 			android:title="@string/preference_server_connectionboot_title"
 			app:iconSpaceReserved="false" />
-		<!-- <androidx.preference.SwitchPreferenceCompat
+		<!-- <androidx.preference.SwitchPreference
 			android:key="@string/preference_server_disconnectionnotification_key"
 			android:title="@string/preference_server_disconnectionnotification_title"
 			android:summary="@string/preference_server_disconnectionnotification_description"
 			android:defaultValue="true" /> -->
-		<!-- <androidx.preference.SwitchPreferenceCompat
+		<!-- <androidx.preference.SwitchPreference
 			android:defaultValue="true"
 			android:key="@string/preference_server_dropreconnect_key"
 			android:summary="@string/preference_server_dropreconnect_description"
 			android:title="@string/preference_server_dropreconnect_title" />
-		<androidx.preference.SwitchPreferenceCompat
+		<androidx.preference.SwitchPreference
 			android:defaultValue="true"
 			android:key="@string/preference_server_networkreconnect_key"
 			android:summary="@string/preference_server_networkreconnect_description"

@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.data;
 
+import android.app.DownloadManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -817,7 +818,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
-	public List<ConversationInfo> fetchConversationsWithState(Context context, ConversationInfo.ConversationState conversationState) {
+	public List<ConversationInfo> fetchConversationsWithState(Context context, ConversationInfo.ConversationState conversationState, int serviceHandler) {
 		//Creating the conversation list
 		List<ConversationInfo> conversationList = new ArrayList<>();
 		
@@ -825,13 +826,14 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		SQLiteDatabase database = getReadableDatabase();
 		
 		//Querying the database
-		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData, Contract.ConversationEntry.COLUMN_NAME_STATE + " = ?", new String[]{Integer.toString(conversationState.getIdentifier())}, null, null, null);
+		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData,
+				Contract.ConversationEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER + " = ?",
+				new String[]{Integer.toString(conversationState.getIdentifier()), Integer.toString(serviceHandler)}, null, null, null);
 		
 		//Getting the indexes
 		int indexChatID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry._ID);
 		int indexChatGUID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_GUID);
 		int indexChatExternalID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_EXTERNALID);
-		int indexChatServiceHandler = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER);
 		int indexChatService = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICE);
 		int indexChatName = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_NAME);
 		int indexChatUnreadMessages = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT);
@@ -847,7 +849,6 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			long chatID = cursor.getLong(indexChatID);
 			String chatGUID = cursor.getString(indexChatGUID);
 			long externalID = cursor.getLong(indexChatExternalID);
-			int serviceHandler = cursor.getInt(indexChatServiceHandler);
 			String service = cursor.getString(indexChatService);
 			String chatTitle = cursor.getString(indexChatName);
 			int chatUnreadMessages = cursor.getInt(indexChatUnreadMessages);
@@ -1845,18 +1846,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		//Adding the conversation created message
-		ConversationItem createdMessage = new ChatCreationMessage(localID, System.currentTimeMillis(), conversationInfo);
-		conversationInfo.trySetLastItem(createdMessage.toLightConversationItemSync(context), false);
-		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
-		
-		contentValues = new ContentValues();
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
-		
-		database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+		addConversationCreatedMessage(conversationInfo, context, database);
 		
 		//Returning the conversation info
 		return conversationInfo;
@@ -1867,10 +1857,13 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		SQLiteDatabase database = getWritableDatabase();
 		
 		//Returning the existing conversation if one already exists
-		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, null, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{guid}, null, null, null, "1");
+		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, null,
+				Contract.ConversationEntry.COLUMN_NAME_GUID + " = ? AND " + Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER + " = ?",
+				new String[]{guid, Integer.toString(ConversationInfo.serviceHandlerAMBridge)},
+				null, null, null, "1");
 		if(cursor.getCount() > 0) {
 			cursor.close();
-			return fetchConversationInfo(context, guid);
+			return fetchConversationInfo(context, guid, ConversationInfo.serviceHandlerAMBridge);
 		}
 		cursor.close();
 		
@@ -1897,15 +1890,17 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	}
 	
 	//Mixed source conversation (when starting a new conversation from the app). GUID comes from the server, members come from the client
-	public ConversationInfo addRetrieveMixedConversationInfo(Context context, String guid, String[] members, String service) {
+	public ConversationInfo addRetrieveMixedConversationInfoAMBridge(Context context, String guid, String[] members, String service) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
 		//Returning the existing conversation if one already exists
-		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, null, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{guid}, null, null, null, "1");
+		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, null,
+				Contract.ConversationEntry.COLUMN_NAME_GUID + " = ? AND " + Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER + " = ? AND " + Contract.ConversationEntry.COLUMN_NAME_SERVICE + " = ?", new String[]{guid, Integer.toString(ConversationInfo.serviceHandlerAMBridge), service},
+				null, null, null, "1");
 		if(cursor.getCount() > 0) {
 			cursor.close();
-			return fetchConversationInfo(context, guid);
+			return fetchConversationInfo(context, guid, ConversationInfo.serviceHandlerAMBridge);
 		}
 		cursor.close();
 		
@@ -1951,33 +1946,27 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		//Adding the conversation created message
-		ConversationItem createdMessage = new ChatCreationMessage(localID, System.currentTimeMillis(), conversationInfo);
-		conversationInfo.trySetLastItem(createdMessage.toLightConversationItemSync(context), false);
-		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
-		
-		contentValues = new ContentValues();
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
-		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
-		
-		database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+		addConversationCreatedMessage(conversationInfo, context, database);
 		
 		//Returning the conversation info
 		return conversationInfo;
 	}
 	
-	public ConversationInfo addReadyConversationInfo(Context context, Blocks.ConversationInfo structConversationInfo) {
+	public ConversationInfo addReadyConversationInfoAMBridge(Context context, Blocks.ConversationInfo structConversationInfo) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
 		//Deleting the conversation if it exists in the database
 		long existingLocalID = -1;
-		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, new String[]{Contract.ConversationEntry._ID}, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{structConversationInfo.guid}, null, null, null, "1");
+		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, new String[]{Contract.ConversationEntry._ID},
+				Contract.ConversationEntry.COLUMN_NAME_GUID + " = ? AND " + Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER + " = ?",
+				new String[]{structConversationInfo.guid, Integer.toString(ConversationInfo.serviceHandlerAMBridge)},
+				null, null, null, "1");
 		if(cursor.moveToNext()) {
 			existingLocalID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.ConversationEntry._ID));
-			database.delete(Contract.ConversationEntry.TABLE_NAME, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{structConversationInfo.guid});
+			database.delete(Contract.ConversationEntry.TABLE_NAME,
+					Contract.ConversationEntry.COLUMN_NAME_GUID + " = ? AND " + Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER + " = ?",
+					new String[]{structConversationInfo.guid, Integer.toString(ConversationInfo.serviceHandlerAMBridge)});
 		}
 		cursor.close();
 		
@@ -2070,6 +2059,27 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Returning true
 		return true;
+	}
+	
+	public void addConversationCreatedMessage(ConversationInfo conversationInfo, Context context) {
+		SQLiteDatabase database = getWritableDatabase();
+		addConversationCreatedMessage(conversationInfo, context, database);
+	}
+	
+	private void addConversationCreatedMessage(ConversationInfo conversationInfo, Context context, SQLiteDatabase database) {
+		ConversationItem createdMessage = new ChatCreationMessage(-1, System.currentTimeMillis(), conversationInfo);
+		conversationInfo.trySetLastItem(createdMessage.toLightConversationItemSync(context), false);
+		//conversationInfo.addConversationItems(context, Arrays.asList(createdMessage));
+		
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATE, createdMessage.getDate());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, createdMessage.getItemType());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_CHAT, createdMessage.getConversationInfo().getLocalID());
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKED, -1);
+		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SORTID_LINKEDOFFSET, 0);
+		
+		long createdMessageLocalID = database.insert(Contract.MessageEntry.TABLE_NAME, null, contentValues);
+		createdMessage.setLocalID(createdMessageLocalID);
 	}
 	
 	public ConversationInfo findConversationInfoWithMembers(Context context, List<String> members, int serviceHandler, String service) {
@@ -2165,12 +2175,15 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
-	public ConversationInfo fetchConversationInfo(Context context, String conversationGUID) {
+	public ConversationInfo fetchConversationInfo(Context context, String conversationGUID, int serviceHandler) {
 		//Getting the database
 		SQLiteDatabase database = getReadableDatabase();
 		
 		//Querying the database
-		try(Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData, Contract.ConversationEntry.COLUMN_NAME_GUID + " = ?", new String[]{conversationGUID}, null, null, null)) {
+		try(Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData,
+				Contract.ConversationEntry.COLUMN_NAME_GUID + " = ? AND " + Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER + " = ?",
+				new String[]{conversationGUID, Integer.toString(serviceHandler)},
+				null, null, null)) {
 			//Returning null if there are no results
 			if(!cursor.moveToNext()) return null;
 			
@@ -3107,7 +3120,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationInfo.getConversationColor());
 		
 		try {
-			database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + "=?", new String[]{Long.toString(conversationInfo.getLocalID())});
+			database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())});
 		} catch(SQLiteConstraintException exception) {
 			exception.printStackTrace();
 			return;
@@ -3143,7 +3156,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, sourceConversation.getService());
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_NAME, sourceConversation.getStaticTitle());
 		
-		database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + "=?", new String[]{Long.toString(targetConversation.getLocalID())});
+		database.update(Contract.ConversationEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(targetConversation.getLocalID())});
 		
 		//Checking if members should be updated
 		if(updateMembers) {
@@ -3276,19 +3289,35 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	} */
 	
 	public void deleteConversation(ConversationInfo conversationInfo) {
+		deleteConversation(conversationInfo.getLocalID());
+	}
+	
+	public void deleteConversation(long conversationID) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
 		//Deleting the conversation
-		database.delete(Contract.ConversationEntry.TABLE_NAME, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())});
+		database.delete(Contract.ConversationEntry.TABLE_NAME, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 		
 		//Deleting all related messages
-		try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID}, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())}, null, null, null)) {
-			while(cursor.moveToNext()) deleteMessage(cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID)));
+		try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry._ID}, Contract.MessageEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationID)}, null, null, null)) {
+			int columnIndexID = cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID);
+			while(cursor.moveToNext()) deleteMessage(cursor.getLong(columnIndexID));
 		}
 		
 		//Deleting all related members
-		database.delete(Contract.MemberEntry.TABLE_NAME, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationInfo.getLocalID())});
+		database.delete(Contract.MemberEntry.TABLE_NAME, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ?", new String[]{Long.toString(conversationID)});
+	}
+	
+	public void deleteConversations(int serviceHandler) {
+		//Deleting all conversations meeting the selection
+		SQLiteDatabase database = getReadableDatabase();
+		try(Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, new String[]{Contract.ConversationEntry._ID},
+				Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER + " = ?", new String[]{Integer.toString(serviceHandler)},
+				null, null, null)) {
+			int columnIndexID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry._ID);
+			while(cursor.moveToNext()) deleteConversation(cursor.getLong(columnIndexID));
+		}
 	}
 	
 	public void deleteMessage(long messageID) {

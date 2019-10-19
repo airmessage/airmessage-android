@@ -16,6 +16,7 @@
 	<uses-permission android:name="android.permission.READ_CONTACTS" />
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
+	<!-- Text message permissions -->
 	<uses-permission android:name="android.permission.SEND_SMS" />
 	<uses-permission android:name="android.permission.READ_SMS" />
 	<uses-permission android:name="android.permission.WRITE_SMS" />
@@ -70,7 +71,7 @@
 			android:exported="false"
 			android:name=".activity.Messaging"
 			android:parentActivityName=".activity.Conversations"
-			android:theme="@style/DayNight.NoActionBar"
+			android:theme="@style/DayNight.NoActionBar.Protected"
 			android:windowSoftInputMode="adjustResize">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>

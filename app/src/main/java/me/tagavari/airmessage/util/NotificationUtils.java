@@ -346,7 +346,7 @@ public class NotificationUtils {
 			//notification.setLargeIcon(Bitmap.createBitmap());
 		} else {
 			//Creating the messaging style
-			messagingStyle = new NotificationCompat.MessagingStyle(new Person.Builder().setName(context.getResources().getString(R.string.you)).build()).addMessage(message);
+			messagingStyle = new NotificationCompat.MessagingStyle(new Person.Builder().setName(context.getResources().getString(R.string.part_you)).build()).addMessage(message);
 			
 			//Configuring the messaging style
 			if(conversationInfo.isGroupChat()) {

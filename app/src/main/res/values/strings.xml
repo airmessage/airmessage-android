@@ -2,8 +2,6 @@
 	xmlns:tools="http://schemas.android.com/tools"
 	tools:locale="en">
 	<string name="app_name" translatable="false">AirMessage</string>
-	<string name="you">You</string>
-	<string name="to">To</string>
 
 	<string name="prefix_you">You: %s</string>
 	<string name="prefix_draft">Draft: %s</string>
@@ -301,6 +299,7 @@
 	<string name="progress_sync">Getting your messages&#8230;</string>
 	<string name="progress_connectingtoserver">Connecting to server&#8230;</string>
 	<string name="progress_importtextmessages">Importing text messages&#8230;</string>
+	<string name="progress_cleantextmessages">Cleaning up local text messages&#8230;</string>
 
 	<string name="time_now">Just now</string>
 	<string name="time_minutes">%d min</string>
@@ -329,6 +328,10 @@
 	<string name="title_textmessageforwarding">Text message forwarding</string>
 	<string name="title_textmessage">Text message</string>
 	<string name="title_rcs">Chat message</string>
+
+	<string name="part_you">You</string>
+	<string name="part_to">To</string>
+	<string name="part_via">Via</string>
 
 	<string name="part_content_text">Text</string>
 	<string name="part_content_image">Image</string>

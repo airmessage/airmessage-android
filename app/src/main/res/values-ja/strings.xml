@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<string name="to">宛先</string>
-	<string name="you">あなた</string>
+	<string name="part_to">宛先</string>
+	<string name="part_you">あなた</string>
 	<string name="action_send">送信</string>
 	<string name="action_next">次へ</string>
 	<string name="action_back">戻る</string>
@@ -375,4 +375,5 @@
 	<string name="title_textmessage">テキストメッセージ</string>
 	<string name="title_textmessageforwarding">テキストメッセージ転送</string>
 	<string name="title_rcs">チャットメッセージ</string>
+	<string name="part_via">経由</string>
 </resources>

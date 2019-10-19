@@ -42,6 +42,7 @@ import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.receiver.StartBootReceiver;
+import me.tagavari.airmessage.service.SystemMessageImportService;
 import me.tagavari.airmessage.util.Constants;
 
 public class MainApplication extends Application {
@@ -163,6 +164,15 @@ public class MainApplication extends Application {
 		
 		//Registering the content observer
 		if(canUseContacts(this)) registerContactsListener();
+		
+		//Checking if text message integration is in an invalid state (enabled, but permissions are missing)
+		if(Preferences.getPreferenceTextMessageIntegration(this) && !Preferences.isTextMessageIntegrationActive(this)) {
+			//Disabling text message integration
+			Preferences.setPreferenceTextMessageIntegration(this, false);
+			
+			//Clearing the database of text messages
+			startService(new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete));
+		}
 	}
 	
 	public static MainApplication getInstance() {

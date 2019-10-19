@@ -598,7 +598,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 					//Building the message
 					StringBuilder stringBuilder = new StringBuilder();
 					stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(R.string.part_content_text))).append('\n'); //Message type
-					stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
+					stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, getMessageInfo().getSender() != null ? getMessageInfo().getSender() : newContext.getResources().getString(R.string.part_you))).append('\n'); //Sender
 					stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getTimeFormat(newContext).format(sentDate) + Constants.bulletSeparator + DateFormat.getLongDateFormat(newContext).format(sentDate))).append('\n'); //Time sent
 					stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect
 					

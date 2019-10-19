@@ -27,6 +27,7 @@ import java.io.InputStreamReader;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ListIterator;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
@@ -61,8 +62,15 @@ public class SystemMessageImportService extends Service {
 			currentThread = new ImportThread(this, this);
 			currentThread.start();
 			
-			//Posting the import notification
+			//Posting the progress notification
 			postNotification(this, getImportNotification(this));
+		} else if(selfIntentActionDelete.equals(intentAction)) {
+			//Launching the delete thread
+			currentThread = new DeleteThread(this, this);
+			currentThread.start();
+			
+			//Posting the progress notification
+			getDeleteNotification(this);
 		} else {
 			//Stopping the service
 			stopSelf();
@@ -91,6 +99,7 @@ public class SystemMessageImportService extends Service {
 		public void run() {
 			//Getting the context
 			Context context = contextReference.get();
+			if(context == null) return;
 			
 			//Indexing the conversations
 			List<ConversationInfo> conversationInfoList = new ArrayList<>();
@@ -262,6 +271,49 @@ public class SystemMessageImportService extends Service {
 		}
 	}
 	
+	private static class DeleteThread extends Thread {
+		private final WeakReference<SystemMessageImportService> serviceReference;
+		private final WeakReference<Context> contextReference;
+		
+		DeleteThread(SystemMessageImportService service, Context context) {
+			//Setting the references
+			serviceReference = new WeakReference<>(service);
+			contextReference = new WeakReference<>(context);
+			
+			//Clearing relevant conversations from memory
+			ArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
+			if(conversations != null) {
+				for(ListIterator<ConversationInfo> iterator = conversations.listIterator(); iterator.hasNext();) {
+					ConversationInfo conversationInfo = iterator.next();
+					if(conversationInfo.getServiceHandler() != ConversationInfo.serviceHandlerSystemMessaging) continue;
+					iterator.remove();
+				}
+				
+				//Updating the conversation activity list
+				LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+			}
+		}
+		
+		@Override
+		public void run() {
+			//Getting the context
+			Context context = contextReference.get();
+			if(context == null) return;
+			
+			//Deleting related conversations and messages from the database
+			DatabaseManager.getInstance().deleteConversations(ConversationInfo.serviceHandlerSystemMessaging);
+			
+			//Running on the main thread
+			new Handler(Looper.getMainLooper()).post(() -> {
+				//Telling the service that the task has been completed
+				SystemMessageImportService service = serviceReference.get();
+				if(service != null) {
+					service.onFinish();
+				}
+			});
+		}
+	}
+	
 	private void onFinish() {
 		//Clearing the notification
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -282,6 +334,8 @@ public class SystemMessageImportService extends Service {
 				.setSmallIcon(R.drawable.message_download)
 				.setContentTitle(context.getResources().getString(R.string.progress_importtextmessages))
 				.setProgress(0, 0, true)
+				.setColor(context.getColor(R.color.colorMessageTextMessage))
+				.setColorized(false)
 				.setPriority(Notification.PRIORITY_MIN)
 				.setShowWhen(false)
 				.setLocalOnly(true)
@@ -300,6 +354,28 @@ public class SystemMessageImportService extends Service {
 				.setSmallIcon(R.drawable.message_download)
 				.setContentTitle(context.getResources().getString(R.string.progress_importtextmessages))
 				.setProgress(max, progress, false)
+				.setColor(context.getColor(R.color.colorMessageTextMessage))
+				.setColorized(false)
+				.setPriority(Notification.PRIORITY_MIN)
+				.setShowWhen(false)
+				.setLocalOnly(true)
+				.build();
+		
+		//Setting the notification as ongoing
+		notification.flags = Notification.FLAG_ONGOING_EVENT;
+		
+		//Returning the notification
+		return notification;
+	}
+	
+	private static Notification getDeleteNotification(Context context) {
+		//Building the notification
+		Notification notification = new NotificationCompat.Builder(context, MainApplication.notificationChannelStatus)
+				.setSmallIcon(R.drawable.message_download)
+				.setContentTitle(context.getResources().getString(R.string.progress_cleantextmessages))
+				.setProgress(0, 0, false)
+				.setColor(context.getColor(R.color.colorMessageTextMessage))
+				.setColorized(false)
 				.setPriority(Notification.PRIORITY_MIN)
 				.setShowWhen(false)
 				.setLocalOnly(true)

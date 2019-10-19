@@ -244,7 +244,7 @@
 
 	<!-- Bottom divider -->
 	<View
-		android:tag="@string/tag_amoleddivider"
+		android:tag="@string/tag_amoleddivider_bottom"
 		style="@style/Divider"
 		android:visibility="gone"
 		android:layout_gravity="bottom" />

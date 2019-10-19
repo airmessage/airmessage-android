@@ -6,6 +6,7 @@ import android.app.Application;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -13,11 +14,13 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.provider.Telephony;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.transition.ChangeBounds;
 import android.transition.Fade;
+import android.transition.TransitionManager;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -38,10 +41,17 @@ import com.google.android.material.snackbar.Snackbar;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
+import androidx.annotation.ColorRes;
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.StringRes;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.AppCompatTextView;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -72,13 +82,23 @@ public class NewMessage extends AppCompatCompositeActivity {
 	
 	private static final int permissionRequestContacts = 0;
 	
+	private static final MessageServiceDescription[] availableServiceArray = {
+			new MessageServiceDescription(R.drawable.message_push, R.string.title_imessage, false, -1, R.color.colorPrimary, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleMessage, true),
+			new MessageServiceDescription(R.drawable.message_bridge, R.string.title_textmessageforwarding, false, -1, R.color.colorMessageTextMessageForwarding, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleTextMessageForwarding, false),
+			new MessageServiceDescription(R.drawable.message_sms, R.string.title_textmessage, false, -1, R.color.colorMessageTextMessage, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, false),
+			//new MessageServiceDescription(R.drawable.message_plus, R.string.title_rcs, false, -1, R.color.colorMessageRCS, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemRCS, false),
+	};
+	
 	//Creating the view model and plugin values
 	private ActivityViewModel viewModel;
 	
 	private PluginQNavigation pluginQNavigation;
 	
+	//Creating the state values
+	private boolean serviceSelectorAvailable;
+	
 	//Creating the view values
-	private ViewGroup recipientViewGroup;
+	private ViewGroup recipientListGroup;
 	private MenuItem confirmMenuItem;
 	private EditText recipientInput;
 	private ImageButton recipientInputToggle;
@@ -89,6 +109,9 @@ public class NewMessage extends AppCompatCompositeActivity {
 	private ViewGroup groupMessageError;
 	//private ListView contactListView;
 	//private ListAdapter contactsListAdapter;
+	
+	private ServiceChipData[] serviceChipDataArray = new ServiceChipData[availableServiceArray.length];
+	private ServiceChipData currentActiveServiceChip = null;
 	
 	private final Observer<Integer> contactStateObserver = state -> {
 		switch(state) {
@@ -117,8 +140,6 @@ public class NewMessage extends AppCompatCompositeActivity {
 		
 		@Override
 		public void onTextChanged(CharSequence s, int start, int before, int count) {
-			//Trimming the string
-			String trimmedString = s.toString().trim();
 			/* //Getting the character sequence as a string
 			String cleanString = s.toString();
 			
@@ -155,7 +176,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 			addChip(new Chip(cleanString)); */
 			
 			//Filtering the list
-			contactsListAdapter.filterList(trimmedString);
+			contactsListAdapter.filterList(s.toString());
 		}
 		
 		@Override
@@ -229,9 +250,9 @@ public class NewMessage extends AppCompatCompositeActivity {
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 		
 		//Getting the views
-		recipientViewGroup = findViewById(R.id.viewgroup_recipients);
-		recipientInput = findViewById(R.id.recipients_input);
-		recipientInputToggle = findViewById(R.id.recipients_inputtoggle);
+		recipientListGroup = findViewById(R.id.group_recipientlist);
+		recipientInput = findViewById(R.id.input_recipients);
+		recipientInputToggle = findViewById(R.id.button_recipients);
 		contactListView = findViewById(R.id.list_contacts);
 		
 		groupMessagePermission = findViewById(R.id.group_permission);
@@ -280,6 +301,17 @@ public class NewMessage extends AppCompatCompositeActivity {
 		//Configuring the list
 		contactsListAdapter = new RecyclerAdapter(viewModel.contactList, contactListView);
 		contactListView.setAdapter(contactsListAdapter);
+		
+		if(serviceSelectorAvailable = Preferences.getPreferenceTextMessageIntegration(this)) {
+			//Building the service selector
+			buildServiceSelector();
+			
+			//Updating the list filter
+			contactsListAdapter.setFilterPhoneOnly(!viewModel.currentService.serviceSupportsEmail);
+		} else {
+			//Hiding the service selector input
+			findViewById(R.id.group_service).setVisibility(View.GONE);
+		}
 	}
 	
 	void setDarkAMOLED() {
@@ -318,8 +350,102 @@ public class NewMessage extends AppCompatCompositeActivity {
 			int chipIndex = 0;
 			for(Chip chip : viewModel.userChips) {
 				((ViewGroup) chip.getView().getParent()).removeView(chip.getView());
-				recipientViewGroup.addView(chip.getView(), chipIndex);
+				recipientListGroup.addView(chip.getView(), chipIndex);
 				chipIndex++;
+			}
+		}
+	}
+	
+	private void buildServiceSelector() {
+		//Getting the view group
+		ViewGroup viewGroup = findViewById(R.id.list_service);
+		
+		for(int i = 0; i < availableServiceArray.length; i++) {
+			//Getting the service description
+			MessageServiceDescription serviceDescription = availableServiceArray[i];
+			
+			//Creating the service chip view
+			ViewGroup chipView = (ViewGroup) getLayoutInflater().inflate(R.layout.listitem_servicechip, viewGroup, false);
+			TextView label = chipView.findViewById(R.id.label);
+			ImageView icon = chipView.findViewById(R.id.icon);
+			
+			//Creating the service chip data
+			ServiceChipData serviceChipData = new ServiceChipData(serviceDescription, chipView, label, icon);
+			serviceChipDataArray[i] = serviceChipData;
+			
+			//Setting the label text and icon
+			label.setText(serviceDescription.title);
+			icon.setImageResource(serviceDescription.icon);
+			
+			//Checking if this is the currently selected service
+			if(serviceDescription == viewModel.currentService) {
+				//Showing the label
+				label.setVisibility(View.VISIBLE);
+				
+				//Coloring the label
+				label.setTextColor(getResources().getColor(serviceDescription.color, null));
+				
+				//Coloring the icon
+				icon.setImageTintList(ColorStateList.valueOf(getResources().getColor(serviceDescription.color, null)));
+				
+				//Setting the view as the current active view
+				currentActiveServiceChip = serviceChipData;
+			} else {
+				//Hiding the label
+				label.setVisibility(View.GONE);
+				
+				//Coloring the icon
+				icon.setImageTintList(ColorStateList.valueOf(Constants.resolveColorAttr(this, android.R.attr.colorControlNormal)));
+			}
+			
+			//Setting the click listener
+			chipView.setOnClickListener(view -> {
+				//Ignoring if this is the currently active service
+				if(currentActiveServiceChip == serviceChipData) return;
+				
+				//Starting a transition
+				TransitionManager.beginDelayedTransition(findViewById(R.id.list_service));
+				
+				//Disabling the old view
+				currentActiveServiceChip.getLabel().setVisibility(View.GONE);
+				currentActiveServiceChip.getLabel().setTextColor(ColorStateList.valueOf(Constants.resolveColorAttr(this, android.R.attr.textColorSecondary)));
+				currentActiveServiceChip.getIcon().setImageTintList(ColorStateList.valueOf(Constants.resolveColorAttr(this, android.R.attr.colorControlNormal)));
+				
+				//Enabling the new view
+				label.setVisibility(View.VISIBLE);
+				label.setTextColor(getResources().getColor(serviceDescription.color, null));
+				icon.setImageTintList(ColorStateList.valueOf(getResources().getColor(serviceDescription.color, null)));
+				
+				//Setting the new selected service view
+				currentActiveServiceChip = serviceChipData;
+				
+				//Setting the selected service
+				viewModel.currentService = currentActiveServiceChip.getServiceDescription();
+				
+				//Updating the list
+				contactsListAdapter.setFilterPhoneOnly(!serviceDescription.serviceSupportsEmail);
+			});
+			
+			//textView.setCompoundDrawableTintList(ColorStateList.valueOf(getResources().getColor(serviceDescription.color, null)));
+			//textView.setCompoundDrawableTintList(ColorStateList.valueOf(Constants.resolveColorAttr(this, android.R.attr.textColorSecondary)));
+			
+			//Adding the view
+			viewGroup.addView(chipView);
+		}
+	}
+	
+	private void setPhoneServiceState(boolean enabled) {
+		for(ServiceChipData service : serviceChipDataArray) {
+			//Ignoring services that support email
+			if(service.getServiceDescription().serviceSupportsEmail) continue;
+			
+			//Updating the service state
+			if(enabled) {
+				service.getView().setClickable(true);
+				service.getView().animate().alpha(1);
+			} else {
+				service.getView().setClickable(false);
+				service.getView().animate().alpha(Constants.disabledAlpha);
 			}
 		}
 	}
@@ -501,10 +627,19 @@ public class NewMessage extends AppCompatCompositeActivity {
 		viewModel.userChips.add(chip);
 		
 		//Adding the view
-		recipientViewGroup.addView(chip.getView(), viewModel.userChips.size() - 1);
+		recipientListGroup.addView(chip.getView(), viewModel.userChips.size() - 1);
 		
 		//Setting the confirm button as visible
 		confirmMenuItem.setVisible(true);
+		
+		//Checking if the service selector is available, and a phone number is being added
+		if(serviceSelectorAvailable && Constants.validateEmail(chipName)) {
+			//Disabling relevant services
+			if(viewModel.participantsEmailCount == 0) setPhoneServiceState(false);
+			
+			//Adding to the email count
+			viewModel.participantsEmailCount++;
+		}
 	}
 	
 	private void removeChip(Chip chip) {
@@ -512,7 +647,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 		viewModel.userChips.remove(chip);
 		
 		//Removing the view
-		recipientViewGroup.removeView(chip.getView());
+		recipientListGroup.removeView(chip.getView());
 		
 		//Checking if there are no more chips
 		if(viewModel.userChips.isEmpty()) {
@@ -521,6 +656,15 @@ public class NewMessage extends AppCompatCompositeActivity {
 			
 			//Setting the confirm button as invisible
 			confirmMenuItem.setVisible(false);
+		}
+		
+		//Checking if the service selector is available. and an email address is being removed
+		if(serviceSelectorAvailable && Constants.validateEmail(chip.name)) {
+			//Taking from the email count
+			viewModel.participantsEmailCount--;
+			
+			//Re-enabling disabled services if there are no more emails
+			if(viewModel.participantsEmailCount == 0) setPhoneServiceState(true);
 		}
 	}
 	
@@ -602,247 +746,10 @@ public class NewMessage extends AppCompatCompositeActivity {
 		}
 	}
 	
-	/* private class ListAdapter extends BaseAdapter {
-		//Creating the list values
-		private ArrayList<ContactInfo> originalItems;
-		private final ArrayList<ContactInfo> filteredItems = new ArrayList<>();
-		
-		//Creating the other values
-		private View sendHeaderView;
-		private boolean sendHeaderShown = false;
-		private String lastFilterText = "";
-		
-		ListAdapter(ArrayList<ContactInfo> items) {
-			//Setting the original items
-			originalItems = items;
-			
-			//Setting the filtered items
-			filteredItems.addAll(items);
-			
-			//Inflating the header view
-			sendHeaderView = getLayoutInflater().inflate(R.layout.listitem_contact_sendheader, contactListView, false);
-		}
-		
-		@Override
-		public int getCount() {
-			return filteredItems.size();
-		}
-		
-		@Override
-		public ContactInfo getItem(int position) {
-			return filteredItems.get(position);
-		}
-		
-		@Override
-		public long getItemId(int position) {
-			return position;
-		}
-		
-		@Override
-		@NonNull
-		public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-			//Inflating the view if it is invalid
-			View view = convertView == null ? getLayoutInflater().inflate(R.layout.listitem_contact, null) : convertView;
-			
-			//Getting the item
-			ContactInfo contactInfo = getItem(position);
-			
-			//Returning the view if the info is invalid
-			if(contactInfo == null) return view;
-			
-			//Populating the view
-			((TextView) view.findViewById(R.id.label_name)).setText(contactInfo.name);
-			
-			int addressCount = contactInfo.addresses.size();
-			String firstAddress = contactInfo.addresses.get(0);
-			if(addressCount == 1) ((TextView) view.findViewById(R.id.label_address)).setText(firstAddress);
-			else ((TextView) view.findViewById(R.id.label_address)).setText(getResources().getQuantityString(R.plurals.contact_address_multiple, addressCount, firstAddress, addressCount - 1));
-			
-			//Showing / hiding the section header
-			boolean showHeader;
-			//if(!lastFilterText.isEmpty()) showHeader = false;
-			if(position > 0) {
-				ContactInfo contactInfoAbove = getItem(position - 1);
-				showHeader = contactInfoAbove == null || !stringsHeaderEqual(contactInfo.name, contactInfoAbove.name);
-			} else showHeader = true;
-			if(showHeader) {
-				view.findViewById(R.id.header).setVisibility(View.VISIBLE);
-				((TextView) view.findViewById(R.id.header_label)).setText(Character.toString(getNameHeader(contactInfo.name)));
-			} else view.findViewById(R.id.header).setVisibility(View.GONE);
-			
-			//Resetting the image view
-			View iconView = view.findViewById(R.id.profile);
-			ImageView profileDefault = iconView.findViewById(R.id.profile_default);
-			profileDefault.setVisibility(View.VISIBLE);
-			profileDefault.setColorFilter(getResources().getServiceColor(R.color.colorPrimary, null), android.graphics.PorterDuff.Mode.MULTIPLY);
-			((ImageView) iconView.findViewById(R.id.profile_image)).setImageBitmap(null);
-			
-			//Assigning the contact's image
-			MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(NewMessage.this, Long.toString(contactInfo.identifier), contactInfo.identifier, new BitmapCacheHelper.ImageDecodeResult() {
-				@Override
-				void onImageMeasured(int width, int height) {
-				
-				}
-				
-				@Override
-				void onImageDecoded(Bitmap result, boolean wasTasked) {
-					//Returning if the result is invalid
-					if(result == null) return;
-					
-					//Getting the view
-					View currentView = wasTasked ? contactListView.getChildAt(position - contactListView.getFirstVisiblePosition()) : view;
-					if(currentView == null) return;
-					
-					//Getting the icon view
-					View iconView = currentView.findViewById(R.id.profile);
-					if(iconView == null) return; //TODO find out why this is necessary
-					
-					//Hiding the default view
-					iconView.findViewById(R.id.profile_default).setVisibility(View.INVISIBLE);
-					
-					//Getting the profile image view
-					ImageView imageView = iconView.findViewById(R.id.profile_image);
-					
-					//Setting the bitmap
-					imageView.setImageBitmap(result);
-					
-					//Fading in the view
-					if(wasTasked) {
-						imageView.setAlpha(0F);
-						imageView.animate().alpha(1).setDuration(300).start();
-					}
-				}
-			});
-			
-			//Setting the click listener
-			view.findViewById(R.id.area_content).setOnClickListener(clickView -> {
-				//Checking if there is only one label
-				if(contactInfo.addresses.size() == 1) {
-					//Adding the chip
-					addChip(new Chip(contactInfo.addresses.get(0)));
-					
-					//Clearing the text
-					recipientInput.setText("");
-				} else {
-					//Showing a dialog
-					new MaterialAlertDialogBuilder(NewMessage.this)
-							.setTitle(R.string.contact_address_select)
-							.setItems(contactInfo.addresses.toArray(new String[0]), ((dialogInterface, index) -> {
-								//Adding the selected chip
-								addChip(new Chip(contactInfo.addresses.get(index)));
-								
-								//Clearing the text
-								recipientInput.setText("");
-							}))
-							.create().show();
-				}
-			});
-			
-			//Returning the view
-			return view;
-		}
-		
-		private char getNameHeader(String name) {
-			if(name.isEmpty()) return '?';
-			return name.charAt(0);
-		}
-		
-		private boolean stringsHeaderEqual(String string1, String string2) {
-			if(string1.isEmpty()) return string2.isEmpty();
-			return string1.charAt(0) == string2.charAt(0);
-		}
-		
-		void onListUpdated() {
-			filterList(lastFilterText);
-		}
-		
-		void updateOriginalItems(ArrayList<ContactInfo> list) {
-			//Setting the original items
-			originalItems = list;
-			
-			//Re-filtering the list
-			filterList(lastFilterText);
-		}
-		
-		void filterList(String filter) {
-			//Setting the last filter text
-			lastFilterText = filter;
-			
-			//Cleaning the filter
-			filter = filter.trim();
-			
-			//Copying the original items
-			filteredItems.clear();
-			
-			//Checking if the filter isn't empty
-			if(!filter.isEmpty()) {
-				//Normalizing the filter
-				String normalizedFilter = Constants.normalizeAddress(filter);
-				
-				//Filtering the list
-				contactLoop:
-				for(ContactInfo contactInfo : originalItems) {
-					//Adding the item if the name matches the filter
-					if(contactInfo.name != null && contactInfo.name.toLowerCase().contains(filter.toLowerCase())) {
-						filteredItems.add(contactInfo);
-						continue contactLoop;
-					}
-					
-					//Adding the item if any of the contact's addresses match the filter
-					for(String address : contactInfo.normalizedAddresses) if(address.startsWith(normalizedFilter)) {
-						filteredItems.add(contactInfo);
-						continue contactLoop;
-					}
-				}
-				
-				//Checking if the filter text is a valid label
-				if(Constants.validateAddress(filter)) {
-					//Showing the header view
-					setHeaderState(true);
-					
-					//Updating the header view
-					((TextView) sendHeaderView.findViewById(R.id.label_address)).setText(getResources().getString(R.string.contact_address_fill, filter));
-				} else {
-					//Hiding the header view
-					setHeaderState(false);
-				}
-			} else {
-				//Adding all of the items
-				filteredItems.addAll(originalItems);
-				
-				//Removing the header view
-				setHeaderState(false);
-			}
-			
-			//Notifying the adapter
-			notifyDataSetChanged();
-		}
-		
-		private void setHeaderState(boolean state) {
-			//Returning if the requested state matches the current state
-			if(sendHeaderShown == state) return;
-			
-			//Updating the state
-			sendHeaderShown = state;
-			
-			//Adding / removing the header and click listener
-			if(state) {
-				contactListView.addHeaderView(sendHeaderView);
-				sendHeaderView.setOnClickListener(view -> {
-					//Adding the chip
-					addChip(new Chip(lastFilterText.trim()));
-					
-					//Clearing the text
-					recipientInput.setText("");
-				});
-			}
-			else contactListView.removeHeaderView(sendHeaderView);
-		}
-	} */
-	
 	private class RecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 		//Creating the type constants
-		private static final int TYPE_HEADER = 0;
+		//private static final int TYPE_HEADER_SERVICE = 0;
+		private static final int TYPE_HEADER_DIRECT = 0;
 		private static final int TYPE_ITEM = 1;
 		
 		//Creating the list values
@@ -856,8 +763,12 @@ public class NewMessage extends AppCompatCompositeActivity {
 		private ContactsSearchTask contactsSearchTask = null;
 		
 		//Creating the other values
+		/* private final boolean serviceSelectorHeaderEnabled;
+		private boolean serviceSelectorHeaderVisible; */
 		private boolean directAddHeaderVisible = false;
 		private String lastFilterText = "";
+		//Filter out phone numbers, for the sake of non-iMessage services
+		private boolean filterPhoneOnly = false;
 		
 		RecyclerAdapter(ArrayList<ContactInfo> items, RecyclerView recyclerView) {
 			//Setting the items
@@ -866,13 +777,36 @@ public class NewMessage extends AppCompatCompositeActivity {
 			
 			//Adding the recycler values
 			this.recyclerView = recyclerView;
+			
+			//Setting the prefs
+			//this.serviceSelectorHeaderEnabled = serviceSelectorHeaderEnabled;
+			//serviceSelectorHeaderVisible = serviceSelectorHeaderEnabled;
 		}
 		
-		class HeaderViewHolder extends RecyclerView.ViewHolder {
+		/* class HeaderServiceViewHolder extends RecyclerView.ViewHolder {
+			//Creating the view values
+			private final ViewGroup groupContent;
+			private final ImageView icon;
+			private final TextView labelTitle;
+			private final TextView labelSubtitle;
+			
+			HeaderServiceViewHolder(View view) {
+				//Calling the super method
+				super(view);
+				
+				//Setting the views
+				groupContent = (ViewGroup) view;
+				icon = view.findViewById(R.id.icon);
+				labelTitle = view.findViewById(R.id.label_title);
+				labelSubtitle = view.findViewById(R.id.label_subtitle);
+			}
+		} */
+		
+		class HeaderDirectViewHolder extends RecyclerView.ViewHolder {
 			//Creating the view values
 			private final TextView label;
 			
-			HeaderViewHolder(View view) {
+			HeaderDirectViewHolder(View view) {
 				//Calling the super method
 				super(view);
 				
@@ -916,8 +850,10 @@ public class NewMessage extends AppCompatCompositeActivity {
 		@NonNull
 		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			switch(viewType) {
-				case TYPE_HEADER:
-					return new HeaderViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_contact_sendheader, parent, false));
+				/* case TYPE_HEADER_SERVICE:
+					return new HeaderServiceViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_serviceselection, parent, false)); */
+				case TYPE_HEADER_DIRECT:
+					return new HeaderDirectViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_contact_sendheader, parent, false));
 				case TYPE_ITEM:
 					return new ItemViewHolder(LayoutInflater.from(NewMessage.this).inflate(R.layout.listitem_contact, parent, false));
 				default:
@@ -928,15 +864,31 @@ public class NewMessage extends AppCompatCompositeActivity {
 		@Override
 		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder viewHolder, int position) {
 			switch(getItemViewType(position)) {
-				case TYPE_HEADER: {
+				/* case TYPE_HEADER_SERVICE: {
 					//Casting the view holder
-					HeaderViewHolder headerViewHolder = (HeaderViewHolder) viewHolder;
+					HeaderServiceViewHolder itemVH = (HeaderServiceViewHolder) viewHolder;
+					
+					//Getting the service details
+					MessageServiceDescription service = viewModel.currentService;
+					
+					//Setting the service details
+					itemVH.icon.setImageResource(service.icon);
+					itemVH.icon.setImageTintList(ColorStateList.valueOf(getResources().getColor(service.color, null)));
+					itemVH.labelTitle.setText(service.title);
+					itemVH.labelSubtitle.setText(R.string.message_selectedservice);
+					
+					//Breaking
+					break;
+				} */
+				case TYPE_HEADER_DIRECT: {
+					//Casting the view holder
+					HeaderDirectViewHolder itemVH = (HeaderDirectViewHolder) viewHolder;
 					
 					//Setting the label
-					headerViewHolder.label.setText(getResources().getString(R.string.action_sendto, lastFilterText));
+					itemVH.label.setText(getResources().getString(R.string.action_sendto, lastFilterText));
 					
 					//Setting the click listener
-					headerViewHolder.itemView.setOnClickListener(view -> {
+					itemVH.itemView.setOnClickListener(view -> {
 						//Adding the chip
 						addChip(new Chip(lastFilterText.trim()));
 						
@@ -949,36 +901,36 @@ public class NewMessage extends AppCompatCompositeActivity {
 				}
 				case TYPE_ITEM: {
 					//Casting the view holder
-					ItemViewHolder itemViewHolder = (ItemViewHolder) viewHolder;
+					ItemViewHolder itemVH = (ItemViewHolder) viewHolder;
 					
 					//Getting the item
 					ContactInfo contactInfo = getItemAtIndex(position);
 					
 					//Populating the view
-					itemViewHolder.contactName.setText(contactInfo.name);
+					itemVH.contactName.setText(contactInfo.name);
 					
 					int addressCount = contactInfo.addresses.size();
 					String firstAddress = contactInfo.addresses.get(0);
-					if(addressCount == 1) itemViewHolder.contactAddress.setText(firstAddress);
-					else itemViewHolder.contactAddress.setText(getResources().getQuantityString(R.plurals.message_multipledestinations, addressCount, firstAddress, addressCount - 1));
+					if(addressCount == 1) itemVH.contactAddress.setText(firstAddress);
+					else itemVH.contactAddress.setText(getResources().getQuantityString(R.plurals.message_multipledestinations, addressCount, firstAddress, addressCount - 1));
 					
 					//Showing / hiding the section header
 					boolean showHeader;
 					//if(!lastFilterText.isEmpty()) showHeader = false;
-					if(position > 0) {
-						ContactInfo contactInfoAbove = filteredItems.get(position - 1);
+					if(position > getHeaderCount()) {
+						ContactInfo contactInfoAbove = filteredItems.get(position - getHeaderCount() - 1);
 						showHeader = contactInfoAbove == null || !stringsHeaderEqual(contactInfo.name, contactInfoAbove.name);
 					} else showHeader = true;
 					
 					if(showHeader) {
-						itemViewHolder.header.setVisibility(View.VISIBLE);
-						itemViewHolder.headerLabel.setText(Character.toString(getNameHeader(contactInfo.name)));
-					} else itemViewHolder.header.setVisibility(View.GONE);
+						itemVH.header.setVisibility(View.VISIBLE);
+						itemVH.headerLabel.setText(Character.toString(getNameHeader(contactInfo.name)));
+					} else itemVH.header.setVisibility(View.GONE);
 					
 					//Resetting the image view
-					itemViewHolder.profileDefault.setVisibility(View.VISIBLE);
-					itemViewHolder.profileDefault.setColorFilter(getResources().getColor(R.color.colorPrimary, null), android.graphics.PorterDuff.Mode.MULTIPLY);
-					itemViewHolder.profileImage.setImageBitmap(null);
+					itemVH.profileDefault.setVisibility(View.VISIBLE);
+					itemVH.profileDefault.setColorFilter(getResources().getColor(R.color.colorPrimary, null), android.graphics.PorterDuff.Mode.MULTIPLY);
+					itemVH.profileImage.setImageBitmap(null);
 					
 					//Assigning the contact's image
 					MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(getApplicationContext(), Long.toString(contactInfo.identifier), contactInfo.identifier, new BitmapCacheHelper.ImageDecodeResult() {
@@ -996,7 +948,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 							if(!filteredItems.contains(contactInfo)) return;
 							
 							//Getting the view holder
-							ItemViewHolder currentViewHolder = wasTasked ? (ItemViewHolder) recyclerView.findViewHolderForAdapterPosition(getIndexOfItem(contactInfo)) : itemViewHolder;
+							ItemViewHolder currentViewHolder = wasTasked ? (ItemViewHolder) recyclerView.findViewHolderForAdapterPosition(getIndexOfItem(contactInfo)) : itemVH;
 							if(currentViewHolder == null) return;
 							
 							//Hiding the default view
@@ -1014,7 +966,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 					});
 					
 					//Setting the click listener
-					itemViewHolder.contentArea.setOnClickListener(clickView -> {
+					itemVH.contentArea.setOnClickListener(clickView -> {
 						//Checking if there is only one label
 						if(contactInfo.addresses.size() == 1) {
 							//Adding the chip
@@ -1023,8 +975,8 @@ public class NewMessage extends AppCompatCompositeActivity {
 							//Clearing the text
 							recipientInput.setText("");
 						} else {
-							//Showing a dialog
-							new MaterialAlertDialogBuilder(NewMessage.this)
+							//Creating the dialog
+							AlertDialog dialog = new MaterialAlertDialogBuilder(NewMessage.this)
 									.setTitle(R.string.imperative_selectdestination)
 									.setItems(contactInfo.addresses.toArray(new String[0]), ((dialogInterface, index) -> {
 										//Adding the selected chip
@@ -1033,7 +985,36 @@ public class NewMessage extends AppCompatCompositeActivity {
 										//Clearing the text
 										recipientInput.setText("");
 									}))
-									.create().show();
+									.create();
+							
+							//Disabling any unavailable items (email addresses, when only phone numbers can be used)
+							if(filterPhoneOnly) {
+								dialog.getListView().setOnHierarchyChangeListener(new ViewGroup.OnHierarchyChangeListener() {
+									@Override
+									public void onChildViewAdded(View parent, View child) {
+										//Getting the text
+										String text = ((AppCompatTextView) child).getText().toString();
+										
+										//Validating the text
+										boolean enabled = Constants.validatePhoneNumber(text);
+										
+										//Updating the child's status
+										if(!enabled) {
+											child.setEnabled(false);
+											child.setAlpha(Constants.disabledAlpha);
+											child.setOnClickListener(null);
+										}
+									}
+									
+									@Override
+									public void onChildViewRemoved(View parent, View child) {
+									
+									}
+								});
+							}
+							
+							//Showing the dialog
+							dialog.show();
 						}
 					});
 					
@@ -1044,25 +1025,41 @@ public class NewMessage extends AppCompatCompositeActivity {
 		}
 		
 		private ContactInfo getItemAtIndex(int index) {
-			return filteredItems.get(index - (directAddHeaderVisible ? 1 : 0));
+			return filteredItems.get(index - getHeaderCount());
 		}
 		
 		private int getIndexOfItem(ContactInfo contactInfo) {
-			return filteredItems.indexOf(contactInfo) + (directAddHeaderVisible ? 1 : 0);
+			return filteredItems.indexOf(contactInfo) + getHeaderCount();
 		}
 		
 		@Override
 		public int getItemCount() {
-			return filteredItems.size() + (directAddHeaderVisible ? 1 : 0);
+			return filteredItems.size() + getHeaderCount();
 		}
 		
 		@Override
 		public int getItemViewType(int position) {
-			//Returning "header" if the header is visible and the position is the first one
-			if(directAddHeaderVisible && position == 0) return TYPE_HEADER;
+			//Checking if the item is a header
+			if(position < getHeaderCount()) {
+				return TYPE_HEADER_DIRECT;
+				/* if(position == 0) {
+					if(serviceSelectorHeaderVisible) return TYPE_HEADER_SERVICE;
+					else if(directAddHeaderVisible) return TYPE_HEADER_DIRECT;
+					else throw new IllegalStateException("Unknown header position " + position);
+				}
+				else if(position == 1) return TYPE_HEADER_DIRECT; //The direct send header always comes second
+				else throw new IllegalStateException("Unknown header position " + position); */
+			}
 			
-			//Otherwise returning "item"
+			//Returning the item
 			return TYPE_ITEM;
+		}
+		
+		private int getHeaderCount() {
+			int offset = 0;
+			if(directAddHeaderVisible) offset++;
+			//if(serviceSelectorHeaderEnabled && serviceSelectorHeaderVisible) offset++;
+			return offset;
 		}
 		
 		private char getNameHeader(String name) {
@@ -1099,14 +1096,19 @@ public class NewMessage extends AppCompatCompositeActivity {
 			//Cancelling the current task
 			if(contactsSearchTask != null) contactsSearchTask.cancel(true);
 			
+			boolean filterEmpty = filter.isEmpty();
+			
+			//Showing the service header if there is no search query
+			//serviceSelectorHeaderVisible = filterEmpty;
+			
+			//Removing the header view if there is no filter
+			if(filterEmpty) directAddHeaderVisible = false;
+			
 			//Checking if the filter is empty
-			if(filter.isEmpty()) {
+			if(filterEmpty && !filterPhoneOnly) {
 				//Adding all of the items
 				filteredItems.clear();
 				filteredItems.addAll(originalItems);
-				
-				//Removing the header view
-				setHeaderState(false);
 				
 				//Notifying the adapter
 				notifyDataSetChanged();
@@ -1115,9 +1117,20 @@ public class NewMessage extends AppCompatCompositeActivity {
 				contactsSearchTask = null;
 			} else {
 				//Starting the task
-				contactsSearchTask = new ContactsSearchTask(new ArrayList<>(originalItems), filter, new ContactsSearchTaskListener(this));
+				contactsSearchTask = new ContactsSearchTask(new ArrayList<>(originalItems), filter, filterPhoneOnly, new ContactsSearchTaskListener(this));
 				contactsSearchTask.execute();
 			}
+		}
+		
+		void setFilterPhoneOnly(boolean value) {
+			//Returning if the requested value is already the current value
+			if(filterPhoneOnly == value) return;
+			
+			//Setting the value
+			filterPhoneOnly = value;
+			
+			//Updating the list
+			onListUpdated();
 		}
 		
 		void handleFilterResult(String query, List<ContactInfo> newFilteredItems, boolean queryValidAddress) {
@@ -1127,42 +1140,23 @@ public class NewMessage extends AppCompatCompositeActivity {
 			//Updating the list
 			filteredItems.clear();
 			filteredItems.addAll(newFilteredItems);
-			setHeaderState(queryValidAddress);
+			directAddHeaderVisible = queryValidAddress;
 			
 			//Notifying the adapter
 			notifyDataSetChanged();
-		}
-		
-		private void setHeaderState(boolean state) {
-			//Returning if the requested state matches the current state
-			if(directAddHeaderVisible == state) return;
-			
-			//Updating the state
-			directAddHeaderVisible = state;
-			
-			/* //Adding / removing the header and click listener
-			if(state) {
-				layoutManager.addHeaderView(directAddHeaderView);
-				directAddHeaderView.setOnClickListener(view -> {
-					//Adding the chip
-					addChip(new Chip(lastFilterText.trim()));
-					
-					//Clearing the text
-					recipientInput.setText("");
-				});
-			}
-			else contactListView.removeHeaderView(directAddHeaderView); */
 		}
 	}
 	
 	private static class ContactsSearchTask extends AsyncTask<Void, Void, Constants.Tuple2<List<ContactInfo>, Boolean>> {
 		private final List<ContactInfo> contactList;
 		private final String query;
+		private final boolean filterPhoneOnly;
 		private final Constants.TriConsumer<String, List<ContactInfo>, Boolean> resultListener;
 		
-		ContactsSearchTask(List<ContactInfo> contactList, String query, Constants.TriConsumer<String, List<ContactInfo>, Boolean> resultListener) {
+		ContactsSearchTask(List<ContactInfo> contactList, String query, boolean filterPhoneOnly, Constants.TriConsumer<String, List<ContactInfo>, Boolean> resultListener) {
 			this.contactList = contactList;
 			this.query = query;
+			this.filterPhoneOnly = filterPhoneOnly;
 			this.resultListener = resultListener;
 		}
 		
@@ -1175,6 +1169,12 @@ public class NewMessage extends AppCompatCompositeActivity {
 			//Normalizing the filter
 			String normalizedFilter = Constants.normalizeAddress(query);
 			
+			String strippedFilter = null;
+			if(!query.matches("[^\\+\\(\\)\\-\\d]*")) { //Checking for any non-phone number characters
+				strippedFilter = Constants.stripPhoneNumber(normalizedFilter);
+				if(!strippedFilter.startsWith("1")) strippedFilter = "1" + strippedFilter; //All normalized items start with "1"
+			}
+			
 			//Creating the list
 			List<ContactInfo> filteredItems = new ArrayList<>();
 			
@@ -1184,18 +1184,41 @@ public class NewMessage extends AppCompatCompositeActivity {
 				//Returning if the request has been cancelled
 				if(isCancelled()) return null;
 				
-				//Adding the item if the name matches the filter
-				if(contactInfo.name != null && contactInfo.name.toLowerCase().contains(query.toLowerCase())) {
-					filteredItems.add(contactInfo);
-					continue contactLoop;
+				//Filtering out contacts without phone numbers (if required)
+				if(filterPhoneOnly) {
+					boolean addressFound = false;
+					for(String address : contactInfo.normalizedAddresses) {
+						if(Constants.validatePhoneNumber(address)) {
+							addressFound = true;
+							break;
+						}
+					}
+					if(!addressFound) continue;
 				}
 				
-				//Adding the item if any of the contact's addresses match the filter
-				for(String address : contactInfo.normalizedAddresses)
-					if(address.startsWith(normalizedFilter)) {
+				if(query.isEmpty()) {
+					//Adding the item, as there is no filter
+					filteredItems.add(contactInfo);
+				} else {
+					//Adding the item if the name matches the filter
+					if(contactInfo.name != null && contactInfo.name.toLowerCase().contains(query.toLowerCase())) {
 						filteredItems.add(contactInfo);
-						continue contactLoop;
+					} else {
+						//Adding the item if any of the contact's addresses match the filter
+						for(String address : contactInfo.normalizedAddresses) {
+							if(address.startsWith(normalizedFilter)) {
+								filteredItems.add(contactInfo);
+								break;
+							} else {
+								//Checking if the address is a phone number
+								if(strippedFilter != null && Constants.validatePhoneNumber(address) && Constants.stripPhoneNumber(address).startsWith(strippedFilter)) {
+									filteredItems.add(contactInfo);
+									break;
+								}
+							}
+						}
 					}
+				}
 			}
 			
 			/* //Checking if the filter text is a valid label
@@ -1211,7 +1234,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 			if(isCancelled()) return null;
 			
 			//Checking the validity of the query as a contact address
-			boolean queryAddressValid = Constants.validateAddress(query);
+			boolean queryAddressValid = !query.isEmpty() && Constants.validateAddress(query);
 			
 			//Returning the data
 			return new Constants.Tuple2<>(filteredItems, queryAddressValid);
@@ -1288,10 +1311,10 @@ public class NewMessage extends AppCompatCompositeActivity {
 		
 		//Creating the input values
 		private ArrayList<Chip> userChips = new ArrayList<>();
+		private int participantsEmailCount = 0;
 		
 		//Creating the other values
-		int serviceHandler = ConversationInfo.serviceHandlerAMBridge;
-		String service = ConversationInfo.serviceTypeAppleMessage;
+		MessageServiceDescription currentService = availableServiceArray[0];
 		final MutableLiveData<Object> contactListLD = new MutableLiveData<>();
 		final ArrayList<ContactInfo> contactList = new ArrayList<>();
 		
@@ -1414,28 +1437,38 @@ public class NewMessage extends AppCompatCompositeActivity {
 			//Setting the state
 			loadingState.setValue(true);
 			
-			//Getting the connection manager
-			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-			
-			//Creating the response listener
-			ChatCreationResponseListener listener = new ChatCreationResponseListener(participants, connectionManager);
-			
-			//Checking if the connection manager is available
-			if(connectionManager == null) {
-				//Assuming a fail
-				listener.onFail();
+			//Checking if if the current service handler is AirMessage bridge
+			if(currentService.serviceHandler == ConversationInfo.serviceHandlerAMBridge) {
+				//Getting the connection manager
+				ConnectionManager connectionManager = ConnectionService.getConnectionManager();
+				
+				//Creating the response listener
+				ChatCreationResponseListener listener = new ChatCreationResponseListener(participants, currentService.serviceName, connectionManager);
+				
+				//Checking if the connection manager is available
+				if(connectionManager == null) {
+					//Assuming a fail
+					listener.onFail();
+				} else {
+					//Asking the server to create a chat
+					connectionManager.createChat(participants.toArray(new String[0]), currentService.serviceName, listener);
+				}
 			} else {
-				//Asking the server to create a chat
-				connectionManager.createChat(participants.toArray(new String[0]), service, listener);
+				if(currentService.serviceName.equals(ConversationInfo.serviceTypeSystemMMSSMS)) {
+					//Finding or creating and launching a new text message conversation
+					new FindCreateMMSSMSConversation().execute(participants.toArray(new String[0]));
+				}
 			}
 		}
 		
 		private class ChatCreationResponseListener extends ChatCreationResponseManager {
 			private final ArrayList<String> participants;
+			private final String serviceName;
 			
-			public ChatCreationResponseListener(ArrayList<String> participants, ConnectionManager connectionManager) {
+			public ChatCreationResponseListener(ArrayList<String> participants, String serviceName, ConnectionManager connectionManager) {
 				super(new ConnectionManager.ChatCreationDeregistrationListener(connectionManager));
 				this.participants = participants;
+				this.serviceName = serviceName;
 			}
 			
 			@SuppressLint("StaticFieldLeak")
@@ -1466,40 +1499,12 @@ public class NewMessage extends AppCompatCompositeActivity {
 						for(ListIterator<String> iterator = normalizedMembers.listIterator(); iterator.hasNext();) iterator.set(Constants.normalizeAddress(iterator.next())); */
 						
 						//Adding the conversation
-						return DatabaseManager.getInstance().addRetrieveMixedConversationInfo(getApplication(), chatGUID, participants.toArray(new String[0]), service);
+						return DatabaseManager.getInstance().addRetrieveMixedConversationInfoAMBridge(getApplication(), chatGUID, participants.toArray(new String[0]), serviceName);
 					}
 					
 					@Override
 					protected void onPostExecute(ConversationInfo result) {
-						//Checking if the result is a failure
-						if(result == null) {
-							//Enabling the UI
-							//activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-							loadingState.setValue(false);
-							
-							//Showing an error toast
-							Toast.makeText(getApplication(), R.string.message_serverstatus_internalexception, Toast.LENGTH_SHORT).show();
-						} else {
-							//Checking if the conversations exist
-							ArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
-							if(conversations != null && ConversationUtils.findConversationInfo(result.getLocalID()) == null) {
-								//Adding the conversation in memory
-								ConversationUtils.addConversation(result);
-								
-								//Updating the shortcut
-								List<ConversationInfo> shortcutUpdateList = Collections.singletonList(result);
-								ConversationUtils.updateShortcuts(getApplication(), shortcutUpdateList);
-								ConversationUtils.enableShortcuts(getApplication(), shortcutUpdateList);
-								
-								//Updating the conversation activity list
-								LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-						/* for(Conversations.ConversationsCallbacks callbacks : MainApplication.getConversationsActivityCallbacks())
-							callbacks.updateList(true); */
-							}
-							
-							//Launching the activity
-							launchConversation(result.getLocalID());
-						}
+						handleConversationConfirmation(result);
 					}
 				}.execute();
 			}
@@ -1535,35 +1540,77 @@ public class NewMessage extends AppCompatCompositeActivity {
 						for(ListIterator<String> iterator = normalizedMembers.listIterator(); iterator.hasNext();) iterator.set(Constants.normalizeAddress(iterator.next())); */
 						
 						//Adding the conversation
-						return DatabaseManager.getInstance().addRetrieveClientCreatedConversationInfo(getApplication(), participants, serviceHandler, service);
+						return DatabaseManager.getInstance().addRetrieveClientCreatedConversationInfo(getApplication(), participants, ConversationInfo.serviceHandlerAMBridge, serviceName);
 					}
 					
 					@Override
 					protected void onPostExecute(ConversationInfo result) {
-						//Checking if the result is a failure
-						if(result == null) {
-							//Enabling the UI
-							//activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-							loadingState.setValue(false);
-							
-							//Showing an error toast
-							Toast.makeText(getApplication(), R.string.message_serverstatus_internalexception, Toast.LENGTH_SHORT).show();
-						} else {
-							//Checking if the conversations exist
-							ArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
-							if(conversations != null && ConversationUtils.findConversationInfo(result.getLocalID()) == null) {
-								//Adding the conversation in memory
-								ConversationUtils.addConversation(result);
-								
-								//Updating the conversation activity list
-								LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-							}
-							
-							//Launching the activity
-							launchConversation(result.getLocalID());
-						}
+						handleConversationConfirmation(result);
 					}
 				}.execute();
+			}
+		}
+		
+		@SuppressLint("StaticFieldLeak")
+		private class FindCreateMMSSMSConversation extends AsyncTask<String, Void, ConversationInfo> {
+			@Override
+			protected ConversationInfo doInBackground(String... participants) {
+				//Finding or creating a matching conversation in Android's message database
+				long threadID = Telephony.Threads.getOrCreateThreadId(getApplication(), new HashSet<>(Arrays.asList(participants)));
+				
+				//Finding or creating a matching conversation in AirMessage's database
+				ConversationInfo conversationInfo = DatabaseManager.getInstance().findConversationByExternalID(getApplication(), threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
+				
+				//Creating a new conversation if no existing conversation was found
+				if(conversationInfo == null) {
+					//Creating the conversation
+					int conversationColor = ConversationInfo.getDefaultConversationColor(threadID);
+					conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
+					conversationInfo.setExternalID(threadID);
+					conversationInfo.setConversationMembersCreateColors(participants);
+					
+					//Writing the conversation to disk
+					boolean result = DatabaseManager.getInstance().addReadyConversationInfo(conversationInfo);
+					if(!result) return null;
+					DatabaseManager.getInstance().addConversationCreatedMessage(conversationInfo, getApplication());
+				}
+				
+				//Returning the conversation
+				return conversationInfo;
+			}
+			
+			@Override
+			protected void onPostExecute(ConversationInfo result) {
+				handleConversationConfirmation(result);
+			}
+		}
+		
+		private void handleConversationConfirmation(ConversationInfo result) {
+			//Checking if the result is a failure
+			if(result == null) {
+				//Enabling the UI
+				loadingState.setValue(false);
+				
+				//Showing an error toast
+				Toast.makeText(getApplication(), R.string.message_serverstatus_internalexception, Toast.LENGTH_SHORT).show();
+			} else {
+				//Checking if the conversations exist
+				ArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
+				if(conversations != null && ConversationUtils.findConversationInfo(result.getLocalID()) == null) {
+					//Adding the conversation in memory
+					ConversationUtils.addConversation(result);
+					
+					//Updating the shortcut
+					List<ConversationInfo> shortcutUpdateList = Collections.singletonList(result);
+					ConversationUtils.updateShortcuts(getApplication(), shortcutUpdateList);
+					ConversationUtils.enableShortcuts(getApplication(), shortcutUpdateList);
+					
+					//Updating the conversation activity list
+					LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+				}
+				
+				//Launching the activity
+				launchConversation(result.getLocalID());
 			}
 		}
 		
@@ -1579,6 +1626,65 @@ public class NewMessage extends AppCompatCompositeActivity {
 			activity.finish();
 			
 			return true;
+		}
+	}
+	
+	private static class MessageServiceDescription {
+		//Display values
+		@DrawableRes
+		private final int icon;
+		@StringRes
+		private final int title;
+		private final boolean subtitleAvailable;
+		@StringRes
+		private final int subtitle;
+		@ColorRes
+		private final int color;
+		
+		//Service values
+		private final int serviceHandler;
+		private final String serviceName;
+		private final boolean serviceSupportsEmail; //Whether or not this service supports email addresses
+		
+		MessageServiceDescription(int icon, int title, boolean subtitleAvailable, int subtitle, int color, int serviceHandler, String serviceName, boolean serviceSupportsEmail) {
+			this.icon = icon;
+			this.title = title;
+			this.subtitleAvailable = subtitleAvailable;
+			this.subtitle = subtitle;
+			this.color = color;
+			this.serviceHandler = serviceHandler;
+			this.serviceName = serviceName;
+			this.serviceSupportsEmail = serviceSupportsEmail;
+		}
+	}
+	
+	private static class ServiceChipData {
+		private final MessageServiceDescription serviceDescription;
+		private final ViewGroup view;
+		private final TextView label;
+		private final ImageView icon;
+		
+		public ServiceChipData(MessageServiceDescription serviceDescription, ViewGroup view, TextView label, ImageView icon) {
+			this.serviceDescription = serviceDescription;
+			this.view = view;
+			this.label = label;
+			this.icon = icon;
+		}
+		
+		public MessageServiceDescription getServiceDescription() {
+			return serviceDescription;
+		}
+		
+		public ViewGroup getView() {
+			return view;
+		}
+		
+		public TextView getLabel() {
+			return label;
+		}
+		
+		public ImageView getIcon() {
+			return icon;
 		}
 	}
 }

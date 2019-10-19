@@ -613,6 +613,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private File currentTargetSAFFile = null;
 	
+	private int currentInsetPaddingBottom = 0;
+	
 	public Messaging() {
 		//Setting the plugins;
 		addPlugin(pluginMessageBar = new PluginMessageBar());
@@ -655,7 +657,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		listAttachmentQueue = findViewById(R.id.inputbar_attachments);
 		
 		//Setting the window layout
-		getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+			getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+		} else {
+			getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+		}
+		
 		getWindow().setStatusBarColor(Color.TRANSPARENT);
 		
 		//Listening for window inset changes
@@ -665,18 +672,21 @@ public class Messaging extends AppCompatCompositeActivity {
 				messageList.setPadding(messageList.getPaddingLeft(), appBar.getHeight(), messageList.getPaddingRight(), messageList.getPaddingBottom());
 			});
 			
-			rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.getSystemWindowInsetBottom());
-			/* ValueAnimator valueAnimator = ValueAnimator.ofInt(rootView.getPaddingBottom(), insets.getSystemWindowInsetBottom());
-			valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-				@Override
-				public void onAnimationUpdate(ValueAnimator valueAnimator) {
-					int value = (int) valueAnimator.getAnimatedValue();
-					rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), value);
-				}
-			});
-			valueAnimator.setDuration(100);
-			valueAnimator.setInterpolator(new FastOutSlowInInterpolator());
-			valueAnimator.start(); */
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+				//Adding padding to the bottom input bar
+				//View inputBarText = inputBar.findViewById(R.id.inputbar_text);
+				//inputBarText.setPadding(inputBarText.getPaddingLeft(), inputBarText.getPaddingTop(), inputBarText.getPaddingRight(), insets.getSystemWindowInsetBottom());
+				inputBar.setPadding(inputBar.getPaddingLeft(), inputBar.getPaddingTop(), inputBar.getPaddingRight(), insets.getSystemWindowInsetBottom());
+				
+				//Adding padding to the details menu
+				View detailsMenu = findViewById(R.id.group_messaginginfo_content);
+				if(detailsMenu != null) detailsMenu.setPadding(detailsMenu.getPaddingLeft(), detailsMenu.getPaddingTop(), detailsMenu.getPaddingRight(), insets.getSystemWindowInsetBottom());
+			} else {
+				//Simply applying padding to the entire root view
+				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.getSystemWindowInsetBottom());
+			}
+			
+			currentInsetPaddingBottom = insets.getSystemWindowInsetBottom();
 			
 			return insets.consumeSystemWindowInsets();
 		});
@@ -1982,6 +1992,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Finding the views
 		FrameLayout panel = bottomDetailsPanel;
 		ViewGroup content = findViewById(R.id.group_messaginginfo_content);
+		
+		//Adding padding on Android Q
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+			content.setPadding(content.getPaddingLeft(), content.getPaddingTop(), content.getPaddingRight(), currentInsetPaddingBottom);
+		}
 		
 		//Measuring the content
 		content.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);

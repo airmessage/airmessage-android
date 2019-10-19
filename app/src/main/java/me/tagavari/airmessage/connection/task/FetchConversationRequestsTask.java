@@ -31,7 +31,7 @@ public class FetchConversationRequestsTask extends AsyncTask<Void, Void, List<Co
 		if(context == null) return null;
 		
 		//Fetching the incomplete conversations
-		return DatabaseManager.getInstance().fetchConversationsWithState(context, ConversationInfo.ConversationState.INCOMPLETE_SERVER);
+		return DatabaseManager.getInstance().fetchConversationsWithState(context, ConversationInfo.ConversationState.INCOMPLETE_SERVER, ConversationInfo.serviceHandlerAMBridge);
 	}
 	
 	@Override

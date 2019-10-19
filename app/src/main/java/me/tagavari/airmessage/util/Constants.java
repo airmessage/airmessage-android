@@ -24,6 +24,7 @@ import android.os.Message;
 import android.os.Parcel;
 import android.provider.OpenableColumns;
 import android.provider.Settings;
+import android.provider.Telephony;
 import android.telephony.PhoneNumberUtils;
 import android.text.Spannable;
 import android.text.Spanned;
@@ -736,6 +737,10 @@ public class Constants {
 		return address.replaceAll("[^\\d+]", "").length() >= 3 && address.matches("^\\+?[ \\d().-]+$");
 	}
 	
+	public static String stripPhoneNumber(String address) {
+		return address.replaceAll("[^\\d]", "");
+	}
+	
 	public static <K, V extends Comparable<? super V>> Map<K, V> sortMapByValueDesc(Map<K, V> map) {
 		List<Map.Entry<K, V>> list = new LinkedList<>(map.entrySet());
 		Collections.sort( list, (o1, o2) -> -o1.getValue().compareTo(o2.getValue()));
@@ -1251,12 +1256,18 @@ public class Constants {
 	
 	public static void setActivityAMOLEDBase(AppCompatActivity activity) {
 		activity.findViewById(android.R.id.content).getRootView().setBackgroundColor(Constants.colorAMOLED);
-		activity.getWindow().setNavigationBarColor(Constants.colorAMOLED);
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) activity.getWindow().setNavigationBarColor(Constants.colorAMOLED); //Leaving the transparent navigation bar on Android 10
 		activity.getWindow().setStatusBarColor(Constants.colorAMOLED);
 		activity.getSupportActionBar().setBackgroundDrawable(new ColorDrawable(Constants.colorAMOLED));
 		
 		for(View view : Constants.getViewsByTag(activity.findViewById(android.R.id.content), activity.getResources().getString(R.string.tag_amoleddivider))) {
 			view.setVisibility(View.VISIBLE);
+		}
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+			//The bottom divider is only necessary for actual navigation bars
+			for(View view : Constants.getViewsByTag(activity.findViewById(android.R.id.content), activity.getResources().getString(R.string.tag_amoleddivider_bottom))) {
+				view.setVisibility(View.VISIBLE);
+			}
 		}
 	}
 	
@@ -1368,5 +1379,9 @@ public class Constants {
 		
 		//Returning true
 		return true;
+	}
+	
+	public static boolean isDefaultMessagingApp(Context context) {
+		return context.getPackageName().equals(Telephony.Sms.getDefaultSmsPackage(context));
 	}
 }

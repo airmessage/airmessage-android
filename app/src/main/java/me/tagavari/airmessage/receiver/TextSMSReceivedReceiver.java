@@ -35,7 +35,7 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 			SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) pdus[i], format);
 			
 			//Saving the message
-			new GetAndroidThreadID(context, smsMessage.getOriginatingAddress(), externalID -> new SaveMessageTask(context, smsMessage, ConversationUtils.findConversationInfoExternalID(externalID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS)).execute()).execute();
+			new GetAndroidThreadID(context, smsMessage.getOriginatingAddress(), threadID -> new SaveMessageTask(context, smsMessage, threadID, ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS)).execute()).execute();
 		}
 	}
 	
@@ -70,11 +70,13 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 	private static class SaveMessageTask extends AsyncTask<Void, Void, SaveMessageTaskResult> {
 		private final WeakReference<Context> contextReference;
 		private final SmsMessage smsMessage;
+		private long threadID;
 		private ConversationInfo conversationInfo;
 		
-		SaveMessageTask(Context context, SmsMessage smsMessage, ConversationInfo conversationInfo) {
+		SaveMessageTask(Context context, SmsMessage smsMessage, long threadID, ConversationInfo conversationInfo) {
 			contextReference = new WeakReference<>(context);
 			this.smsMessage = smsMessage;
+			this.threadID = threadID;
 			this.conversationInfo = conversationInfo;
 		}
 		
@@ -84,20 +86,17 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 			Context context = contextReference.get();
 			if(context == null) return null;
 			
-			//Finding or creating a matching conversation in Android's message database
-			long externalID = Telephony.Threads.getOrCreateThreadId(context, smsMessage.getOriginatingAddress());
-			
 			//Fetching a matching conversation (if one was not found in memory)
 			boolean conversationNew = false;
 			if(conversationInfo == null) {
-				conversationInfo = DatabaseManager.getInstance().findConversationByExternalID(context, externalID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
+				conversationInfo = DatabaseManager.getInstance().findConversationByExternalID(context, threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
 				
 				//Creating a new conversation if no existing conversation was found
 				if(conversationInfo == null) {
 					//Creating the conversation
 					int conversationColor = ConversationInfo.getDefaultConversationColor(smsMessage.getTimestampMillis());
 					conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
-					conversationInfo.setExternalID(externalID);
+					conversationInfo.setExternalID(threadID);
 					conversationInfo.setConversationMembersCreateColors(new String[]{smsMessage.getOriginatingAddress()});
 					
 					//Writing the conversation to disk

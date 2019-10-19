@@ -4,6 +4,7 @@ import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.NotificationManager;
+import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -354,18 +355,24 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Recreating the activity
 			getActivity().recreate();
 			
+			
+			
 			//Accepting the change
 			return true;
 		};
 		Preference.OnPreferenceChangeListener textIntegrationChangeListener = (preference, newValue) -> {
-			//Checking if the permission has already been granted
-			if(ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
+			//Checking if the preference is enabled
+			if(((SwitchPreference) preference).isChecked()) {
 				//Launching the app details screen
 				startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
 			} else {
-				//Requesting permission
-				requestDefaultMessagingApp();
-				//requestPermissions(new String[]{Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.RECEIVE_MMS}, permissionRequestSMS);
+				if(Constants.isDefaultMessagingApp(getContext())) {
+					//Requesting permissions
+					requestPermissions(new String[]{Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.RECEIVE_MMS}, permissionRequestSMS);
+				} else {
+					//Requesting to be the default messaging app
+					requestDefaultMessagingApp();
+				}
 			}
 			
 			//Returning false (to prevent the system from changing the option)
@@ -402,23 +409,24 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			}
 			
 			{
-				//Updating the AMOLED switch option
-				/* SwitchPreferenceCompat amoledSwitch = (SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_amoled_key));
-				amoledSwitch.setOnPreferenceChangeListener((preference, newValue) -> {
-					//Recreating the activity
-					getActivity().recreate();
-					
-					return true;
-				}); */
-				
 				//Setting the theme options based on the system version
 				ListPreference themePreference = findPreference(getResources().getString(R.string.preference_appearance_theme_key));
 				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) themePreference.setEntries(R.array.preference_appearance_theme_entries_androidQ);
 				else themePreference.setEntries(R.array.preference_appearance_theme_entries_old);
 				
+				//Updating the AMOLED switch option
+				SwitchPreference amoledSwitch = findPreference(getResources().getString(R.string.preference_appearance_amoled_key));
+				amoledSwitch.setOnPreferenceChangeListener((preference, newValue) -> {
+					//Recreating the activity
+					getActivity().recreate();
+					
+					return true;
+				});
+				amoledSwitch.setEnabled(!themePreference.getValue().equals(MainApplication.darkModeLight));
+				
 				//Updating the text message integration option
 				SwitchPreference textIntegrationSwitch = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
-				textIntegrationSwitch.setChecked(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED);
+				//if(textIntegrationSwitch.isChecked() && !isTextMessageIntegrationActive(getContext())) textIntegrationSwitch.setChecked(false); //Unchecking the switch if it was previously checked, but can no longe rbe
 				textIntegrationSwitch.setOnPreferenceChangeListener(textIntegrationChangeListener);
 			}
 			
@@ -487,7 +495,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				//Checking if the result is a success
 				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 					//Enabling the toggle
-					((SwitchPreferenceCompat) findPreference(getResources().getString(R.string.preference_appearance_location_key))).setChecked(true);
+					((SwitchPreference) findPreference(getResources().getString(R.string.preference_appearance_location_key))).setChecked(true);
 					
 					//Recreating the activity
 					getActivity().recreate();
@@ -543,6 +551,10 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				Preference preference = findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key));
 				preference.setSummary(getRingtoneTitle(ringtoneURI));
 			} else if(requestCode == activityRequestDefaultMessagingApp && resultCode == RESULT_OK) {
+				//Enabling the toggle
+				SwitchPreference preference = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
+				preference.setChecked(true);
+				
 				//Starting the import service
 				getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
 				
@@ -1043,8 +1055,14 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		}
 		
 		private void requestDefaultMessagingApp() {
-			Intent intent = new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
-			intent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, getActivity().getPackageName());
+			Intent intent;
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+				RoleManager roleManager = getActivity().getSystemService(RoleManager.class);
+				intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS);
+			} else {
+				intent = new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
+				intent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, getActivity().getPackageName());
+			}
 			startActivityForResult(intent, activityRequestDefaultMessagingApp);
 		}
 		
@@ -1070,8 +1088,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	}
 	
 	public static boolean getPreferenceAMOLED(Context context) {
-		return false; //Feature disabled
-		//return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_amoled_key), false);
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_amoled_key), false);
 	}
 	
 	public static boolean getPreferenceReplySuggestions(Context context) {
@@ -1097,5 +1114,24 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	public static String getPreferenceFallbackServer(Context context) {
 		String value = PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_server_serverfallback_key), null);
 		return value != null && value.isEmpty() ? null : value;
+	}
+	
+	public static boolean getPreferenceTextMessageIntegration(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_textmessage_enable_key), false);
+	}
+	
+	public static void setPreferenceTextMessageIntegration(Context context, boolean value) {
+		PreferenceManager.getDefaultSharedPreferences(context).edit()
+				.putBoolean(context.getResources().getString(R.string.preference_textmessage_enable_key), value)
+				.apply();
+	}
+	
+	public static boolean isTextMessageIntegrationActive(Context context) {
+		return Constants.isDefaultMessagingApp(context) &&
+			   context.checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED &&
+			   context.checkSelfPermission(Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
+			   context.checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
+			   context.checkSelfPermission(Manifest.permission.RECEIVE_MMS) == PackageManager.PERMISSION_GRANTED &&
+			   getPreferenceTextMessageIntegration(context);
 	}
 }

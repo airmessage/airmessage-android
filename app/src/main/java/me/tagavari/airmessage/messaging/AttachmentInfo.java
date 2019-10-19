@@ -543,7 +543,7 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 					//Building the message
 					StringBuilder stringBuilder = new StringBuilder();
 					stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_type, newContext.getResources().getString(ConversationUtils.getNameFromContent(getContentType(), fileName)))).append('\n'); //Message type
-					stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : newContext.getResources().getString(R.string.you))).append('\n'); //Sender
+					stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : newContext.getResources().getString(R.string.part_you))).append('\n'); //Sender
 					stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getTimeFormat(newContext).format(sentDate) + Constants.bulletSeparator + DateFormat.getLongDateFormat(newContext).format(sentDate))).append('\n'); //Time sent
 					stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_size, fileSize != -1 ? Formatter.formatFileSize(newContext, fileSize) : newContext.getResources().getString(R.string.part_nodata))).append('\n'); //Attachment file size
 					stringBuilder.append(newContext.getResources().getString(R.string.message_messagedetails_sendeffect, getMessageInfo().getSendStyle() == null ? newContext.getResources().getString(R.string.part_none) : getMessageInfo().getSendStyle())); //Send effect

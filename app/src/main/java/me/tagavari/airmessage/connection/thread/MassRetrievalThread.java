@@ -209,7 +209,7 @@ public class MassRetrievalThread extends Thread {
 			if(context == null) return;
 			
 			for(Blocks.ConversationInfo structConversation : conversationList) {
-				ConversationInfo item = DatabaseManager.getInstance().addReadyConversationInfo(context, structConversation);
+				ConversationInfo item = DatabaseManager.getInstance().addReadyConversationInfoAMBridge(context, structConversation);
 				//if(item == null) item = DatabaseManager.getInstance().fetchConversationInfo(context, structConversation.guid);
 				if(item != null) conversationInfoList.add(item);
 			}

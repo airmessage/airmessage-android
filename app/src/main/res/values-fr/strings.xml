@@ -74,8 +74,8 @@
 	<string name="action_sync">Synchroniser</string>
 	<string name="action_enable">Activer</string>
 	<string name="action_save">Enregistrer</string>
-	<string name="to">À</string>
-	<string name="you">"Vous"</string>
+	<string name="part_to">À</string>
+	<string name="part_you">"Vous"</string>
 	<string name="prefix_you">"Vous: %s"</string>
 	<string name="prefix_draft">"Broullion: %s"</string>
 	<string name="part_content_text">Texte</string>
@@ -388,4 +388,5 @@
 	<string name="title_textmessage">Message texte</string>
 	<string name="title_textmessageforwarding">Transfert de SMS</string>
 	<string name="title_rcs">Message chat</string>
+	<string name="part_via">Via</string>
 </resources>

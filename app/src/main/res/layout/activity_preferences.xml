@@ -71,7 +71,7 @@
 		app:layout_constraintBottom_toBottomOf="parent" /> -->
 
 	<View
-		android:tag="@string/tag_amoleddivider"
+		android:tag="@string/tag_amoleddivider_bottom"
 		style="@style/Divider"
 		android:visibility="gone"
 		app:layout_constraintLeft_toLeftOf="parent"
