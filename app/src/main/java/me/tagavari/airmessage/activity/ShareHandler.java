@@ -111,7 +111,19 @@ public class ShareHandler extends AppCompatCompositeActivity {
 	}
 	
 	public void createNewConversation(View view) {
-		startActivity(new Intent(this, NewMessage.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
+		//Creating the intent
+		Intent intent = new Intent(getIntent()); //Required to pass URI permissions on to next activity
+		intent.setClass(this, NewMessage.class);
+		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+		
+		//Setting the fill data
+		if(targetText != null) intent.putExtra(Constants.intentParamDataText, targetText);
+		else intent.removeExtra(Constants.intentParamDataText);
+		if(targetUris != null) intent.putExtra(Constants.intentParamDataFile, targetUris);
+		else intent.removeExtra(Constants.intentParamDataFile);
+		
+		//Starting the activity
+		startActivity(intent);
 	}
 	
 	private class RecyclerAdapter extends ConversationsBase.RecyclerAdapter<ConversationInfo.SimpleItemViewHolder> {

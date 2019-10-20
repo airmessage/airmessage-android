@@ -1453,7 +1453,17 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, AttachmentInfo.getRelativePath(context, file));
 		
 		//Updating the data
-		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + "=?", new String[]{Long.toString(localID)});
+		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(localID)});
+	}
+	
+	public void updateAttachmentFile(long localID, Context context, File file, long fileSize) {
+		//Creating the content values variable
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, AttachmentInfo.getRelativePath(context, file));
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILESIZE, fileSize);
+		
+		//Updating the data
+		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(localID)});
 	}
 	
 	public void updateAttachmentChecksum(long localID, byte[] checksum) {
@@ -1462,7 +1472,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM, Base64.encodeToString(checksum, Base64.NO_WRAP));
 		
 		//Updating the data
-		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + "=?", new String[]{Long.toString(localID)});
+		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(localID)});
 	}
 	
 	/* static void createUpdateAttachmentFile(SQLiteDatabase writableDatabase, long localID, AttachmentInfo attachmentInfo, File file) {

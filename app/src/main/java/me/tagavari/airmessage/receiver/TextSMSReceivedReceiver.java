@@ -124,12 +124,6 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 			Context context = contextReference.get();
 			if(context == null) return;
 			
-			//Checking if there is a new conversation to be added
-			if(result.getNewConversationInfo() != null) {
-				//Adding the conversation in memory
-				ConversationUtils.addConversation(result.getNewConversationInfo());
-			}
-			
 			//Getting the data
 			MessageInfo messageInfo = result.getMessageInfo();
 			ConversationInfo conversationInfo = messageInfo.getConversationInfo();
@@ -143,6 +137,12 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 			if(!messageInfo.isOutgoing()) {
 				conversationInfo.setUnreadMessageCount(conversationInfo.getUnreadMessageCount() + 1);
 				conversationInfo.updateUnreadStatus(context);
+			}
+			
+			//Checking if there is a new conversation to be added
+			if(result.getNewConversationInfo() != null) {
+				//Adding the conversation in memory
+				ConversationUtils.addConversation(result.getNewConversationInfo());
 			}
 			
 			//Updating the conversation activity list

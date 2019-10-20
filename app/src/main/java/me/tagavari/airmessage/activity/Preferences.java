@@ -163,16 +163,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	public static class SettingsFragment extends PreferenceFragmentCompat {
 		static final String FRAGMENT_TAG = "preferencefragment";
 		
-		/* Preference.OnPreferenceClickListener ringtoneClickListener = preference -> {
-			//Returning true
-			return true;
-		};
-		Preference.OnPreferenceChangeListener ringtoneChangeListener = (preference, newValue) -> {
-			//updateRingtonePreference(preference);
-			
-			//Returning true
-			return true;
-		}; */
 		Preference.OnPreferenceClickListener notificationSoundClickListener = preference -> {
 			Intent intent = new Intent(RingtoneManager.ACTION_RINGTONE_PICKER);
 			intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION);
@@ -426,7 +416,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				
 				//Updating the text message integration option
 				SwitchPreference textIntegrationSwitch = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
-				//if(textIntegrationSwitch.isChecked() && !isTextMessageIntegrationActive(getContext())) textIntegrationSwitch.setChecked(false); //Unchecking the switch if it was previously checked, but can no longe rbe
 				textIntegrationSwitch.setOnPreferenceChangeListener(textIntegrationChangeListener);
 			}
 			
@@ -553,7 +542,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			} else if(requestCode == activityRequestDefaultMessagingApp && resultCode == RESULT_OK) {
 				//Enabling the toggle
 				SwitchPreference preference = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
-				preference.setChecked(true);
+				//preference.setChecked(true);
 				
 				//Starting the import service
 				getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));

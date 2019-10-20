@@ -11,7 +11,7 @@ public class StartBootReceiver extends BroadcastReceiver {
 	@Override
 	public void onReceive(Context context, Intent intent) {
 		//Returning if the service is not a boot service
-		if(!"android.intent.action.BOOT_COMPLETED".equals(intent.getAction())) return;
+		if(!Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) return;
 		
 		//Starting the service
 		Intent serviceIntent = new Intent(context, ConnectionService.class);

@@ -61,7 +61,7 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 	//Creating the values
 	final String fileName;
 	final String fileType;
-	final long fileSize;
+	long fileSize;
 	File file = null;
 	byte[] fileChecksum = null;
 	Uri fileUri = null;
@@ -687,8 +687,16 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 		return fileType;
 	}
 	
+	public void setFileSize(long fileSize) {
+		this.fileSize = fileSize;
+	}
+	
 	public long getFileSize() {
 		return fileSize;
+	}
+	
+	public void setFile(File file) {
+		this.file = file;
 	}
 	
 	public File getFile() {

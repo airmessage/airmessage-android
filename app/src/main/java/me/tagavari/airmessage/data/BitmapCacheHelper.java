@@ -30,6 +30,7 @@ import java.util.Map;
 
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.MainApplication;
+import me.tagavari.airmessage.util.ImageUtils;
 
 public class BitmapCacheHelper {
 	//Creating the reference values
@@ -476,7 +477,7 @@ public class BitmapCacheHelper {
 				if(bitmap == null) return null;
 				
 				//Rotating the bitmap
-				if(useExif) bitmap = rotateBitmap(bitmap, exifOrientation);
+				if(useExif) bitmap = ImageUtils.rotateBitmap(bitmap, exifOrientation);
 				
 				//Returning the bitmap
 				return bitmap;
@@ -509,49 +510,6 @@ public class BitmapCacheHelper {
 			if(superclass.callbackList.containsKey(requestKey)) {
 				if(decode) for(ImageDecodeResult callback : superclass.callbackList.get(requestKey)) callback.onImageDecoded(bitmap, true);
 				superclass.callbackList.remove(requestKey);
-			}
-		}
-		
-		private static Bitmap rotateBitmap(Bitmap bitmap, int orientation) {
-			Matrix matrix = new Matrix();
-			switch (orientation) {
-				case ExifInterface.ORIENTATION_NORMAL:
-					return bitmap;
-				case ExifInterface.ORIENTATION_FLIP_HORIZONTAL:
-					matrix.setScale(-1, 1);
-					break;
-				case ExifInterface.ORIENTATION_ROTATE_180:
-					matrix.setRotate(180);
-					break;
-				case ExifInterface.ORIENTATION_FLIP_VERTICAL:
-					matrix.setRotate(180);
-					matrix.postScale(-1, 1);
-					break;
-				case ExifInterface.ORIENTATION_TRANSPOSE:
-					matrix.setRotate(90);
-					matrix.postScale(-1, 1);
-					break;
-				case ExifInterface.ORIENTATION_ROTATE_90:
-					matrix.setRotate(90);
-					break;
-				case ExifInterface.ORIENTATION_TRANSVERSE:
-					matrix.setRotate(-90);
-					matrix.postScale(-1, 1);
-					break;
-				case ExifInterface.ORIENTATION_ROTATE_270:
-					matrix.setRotate(-90);
-					break;
-				default:
-					return bitmap;
-			}
-			try {
-				Bitmap bmRotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-				bitmap.recycle();
-				return bmRotated;
-			}
-			catch (OutOfMemoryError exception) {
-				exception.printStackTrace();
-				return null;
 			}
 		}
 	}

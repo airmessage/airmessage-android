@@ -16,7 +16,6 @@ import android.content.BroadcastReceiver;
 import android.content.ClipDescription;
 import android.content.ContentUris;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentSender;
@@ -47,7 +46,7 @@ import android.os.Looper;
 import android.os.Parcelable;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
-import android.provider.OpenableColumns;
+import android.provider.Telephony;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
@@ -149,7 +148,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
-import com.klinker.android.send_message.Settings;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -160,6 +158,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -208,6 +207,7 @@ import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
 
 import static android.provider.Settings.System.canWrite;
+import static android.provider.Settings.System.getInt;
 
 public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
@@ -523,7 +523,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							}
 							
 							//Creating a new request if there was no current request in the queue
-							if(currentRequest == null) currentRequest = new FilePushRequest(draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), FilePushRequest.stateQueued, 0, false);
+							if(currentRequest == null) currentRequest = new FilePushRequest(draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), FilePushRequest.stateQueued, 0, false, viewModel.doFilesRequireCompression());
 							
 							//Assigning the request to the queued item
 							queuedItem.setFilePushRequest(currentRequest);
@@ -585,6 +585,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				viewModel.updateSmartReply();
 			}
 			break;
+			case ActivityViewModel.messagesStateFailedMatching:
 			case ActivityViewModel.messagesStateFailedConversation:
 				labelLoading.setVisibility(View.GONE);
 				groupLoadFail.setVisibility(View.VISIBLE);
@@ -703,17 +704,71 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the status bar color
 		Constants.updateChromeOSStatusBar(this);
 		
-		//Getting the conversation ID
-		long conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
+		//Creating the filler values
+		String fillerText = null;
+		Uri[] fillerFiles = null;
 		
-		//Getting the view model
-		viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
-			@NonNull
-			@Override
-			public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
-				return (T) new ActivityViewModel(getApplication(), conversationID);
+		//Checking if the request is a send intent
+		if(Intent.ACTION_SEND.equals(getIntent().getAction()) || Intent.ACTION_SENDTO.equals(getIntent().getAction())) {
+			//Getting the recipient
+			String recipientData = getIntent().getDataString();
+			String recipient;
+			if(recipientData.startsWith("sms:")) recipient = recipientData.replaceFirst("sms:", "");
+			else if(recipientData.startsWith("smsto:")) recipient = recipientData.replaceFirst("smsto:", "");
+			else if(recipientData.startsWith("mms:")) recipient = recipientData.replaceFirst("mms:", "");
+			else if(recipientData.startsWith("mmsto:")) recipient = recipientData.replaceFirst("mmsto:", "");
+			else recipient = null;
+			//if(recipient.contains("%")) recipient = URLDecoder.decode(recipient, "UTF-8");
+			
+			//Getting the message
+			String message;
+			if(getIntent().hasExtra(Intent.EXTRA_TEXT)) message = getIntent().getStringExtra(Intent.EXTRA_TEXT);
+			else if(getIntent().hasExtra("sms_body")) message = getIntent().getStringExtra("sms_body");
+			else message = null;
+			fillerText = message;
+			
+			//Getting the extra files
+			List<Uri> sendFiles = new ArrayList<>();
+			{
+				Uri data = getIntent().getParcelableExtra(Intent.EXTRA_STREAM);
+				if(data != null) sendFiles.add(data);
+				else {
+					List<Uri> dataList = getIntent().getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+					if(dataList != null) sendFiles.addAll(dataList);
+				}
 			}
-		}).get(ActivityViewModel.class);
+			fillerFiles = sendFiles.toArray(new Uri[0]);
+			
+			//Getting the view model
+			viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
+				@NonNull
+				@Override
+				public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
+					return (T) new ActivityViewModel(getApplication(), new String[]{recipient});
+				}
+			}).get(ActivityViewModel.class);
+		} else {
+			//Getting the conversation ID
+			long conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
+			
+			//Getting the view model
+			viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
+				@NonNull
+				@Override
+				public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
+					return (T) new ActivityViewModel(getApplication(), conversationID);
+				}
+			}).get(ActivityViewModel.class);
+			
+			//Getting the filler data
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && getIntent().hasExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)) fillerText = getIntent().getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT); //Notification inline reply text (only supported on Android P and above)
+			else if(getIntent().hasExtra(Constants.intentParamDataText)) fillerText = getIntent().getStringExtra(Constants.intentParamDataText); //Shared text from activity
+			
+			if(getIntent().hasExtra(Constants.intentParamDataFile)) {
+				Parcelable[] parcelableArray = getIntent().getParcelableArrayExtra(Constants.intentParamDataFile);
+				fillerFiles = Arrays.copyOf(parcelableArray, parcelableArray.length, Uri[].class);
+			}
+		}
 		
 		//Restoring the input bar state
 		restoreInputBarState();
@@ -802,17 +857,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 		
 		//Setting the filler data
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && getIntent().hasExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT))
-			messageInputField.setText(getIntent().getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)); //Notification inline reply text (only supported on Android P and above)
-		else if(getIntent().hasExtra(Constants.intentParamDataText))
-			messageInputField.setText(getIntent().getStringExtra(Constants.intentParamDataText)); //Shared text from activity
-		if(getIntent().hasExtra(Constants.intentParamDataFile)) {
-			Parcelable[] targetParcelables = getIntent().getParcelableArrayExtra(Constants.intentParamDataFile);
-			Uri[] targetUris = new Uri[targetParcelables.length];
-			for(int i = 0; i < targetParcelables.length; i++)
-				targetUris[i] = (Uri) targetParcelables[i];
-			new QueueUriAsyncTask(this).execute(targetUris);
-		}
+		if(fillerText != null) messageInputField.setText(fillerText);
+		if(fillerFiles != null) new QueueUriAsyncTask(this).execute(fillerFiles);
 		
 		/* //Iterating over the loaded conversations
 		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext(); ) {
@@ -1277,8 +1323,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(activity == null) return;
 			
 			//Queuing the files
-			for(SimpleAttachmentInfo attachmentInfo : results)
-				activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
+			for(SimpleAttachmentInfo attachmentInfo : results) activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
 		}
 	}
 	
@@ -2423,6 +2468,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	public void onClickRetryLoad(View view) {
 		int state = viewModel.messagesState.getValue();
+		if(state == ActivityViewModel.messagesStateFailedMatching) viewModel.findCreateConversationMMSSMS();
 		if(state == ActivityViewModel.messagesStateFailedConversation) viewModel.loadConversation();
 		else if(state == ActivityViewModel.messagesStateFailedMessages) viewModel.loadMessages();
 	}
@@ -3538,8 +3584,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Creating the processing request
 		FilePushRequest request = item.getFile() != null ?
-													new FilePushRequest(item.getFile(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, FilePushRequest.stateLinked, updateTime, false) :
-													new FilePushRequest(item.getUri(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, FilePushRequest.stateLinked, updateTime, false);
+													new FilePushRequest(item.getFile(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, FilePushRequest.stateLinked, updateTime, false, viewModel.doFilesRequireCompression()) :
+													new FilePushRequest(item.getUri(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, FilePushRequest.stateLinked, updateTime, false, viewModel.doFilesRequireCompression());
 		request.getCallbacks().onFail = (result, details) -> {
 			//Dequeuing the attachment
 			dequeueAttachment(item, true, false);
@@ -4873,9 +4919,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		static final int messagesStateIdle = 0;
 		static final int messagesStateLoadingConversation = 1;
 		static final int messagesStateLoadingMessages = 2;
-		static final int messagesStateFailedConversation = 3;
-		static final int messagesStateFailedMessages = 4;
-		static final int messagesStateReady = 5;
+		static final int messagesStateFailedMatching = 3; //When given the recipients of the conversation to find the conversation ID
+		static final int messagesStateFailedConversation = 4;
+		static final int messagesStateFailedMessages = 5;
+		static final int messagesStateReady = 6;
 		
 		/* static final int smartReplyStateDisabled = 0;
 		static final int smartReplyStateLoading = 1;
@@ -4931,6 +4978,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private int lastUnreadCount = 0;
 		
 		//Creating the conversation values
+		private String[] conversationParticipantsTarget;
 		private long conversationID;
 		private ConversationInfo conversationInfo;
 		private ArrayList<ConversationItem> conversationItemList;
@@ -4980,20 +5028,35 @@ public class Messaging extends AppCompatCompositeActivity {
 		};
 		private final SparseArray<BiConsumer<Context, Boolean>> permissionRequestResultListenerList = new SparseArray<>();
 		
-		ActivityViewModel(Application application, long conversationID) {
+		private ActivityViewModel(@NonNull Application application) {
 			super(application);
-			
-			//Setting the values
-			this.conversationID = conversationID;
-			
-			//Loading the data
-			loadConversation();
 			
 			//Filling the attachment lists
 			Arrays.fill(attachmentStates, attachmentsStateIdle);
 			
 			//Initializing the states
 			attachmentsLocationLoading.setValue(false);
+		}
+		
+		ActivityViewModel(Application application, long conversationID) {
+			this(application);
+			
+			//Setting the values
+			this.conversationID = conversationID;
+			
+			//Loading the data
+			loadConversation();
+		}
+		
+		public ActivityViewModel(@NonNull Application application, String[] conversationParticipantsTarget) {
+			this(application);
+			
+			//Setting the values
+			this.conversationID = -1;
+			this.conversationParticipantsTarget = conversationParticipantsTarget;
+			
+			//Loading the conversation
+			findCreateConversationMMSSMS();
 		}
 		
 		@Override
@@ -5018,6 +5081,103 @@ public class Messaging extends AppCompatCompositeActivity {
 				//new UpdateUnreadMessageCount(MainApplication.getInstance(), conversationID, conversationInfo.getUnreadMessageCount()).execute();
 				DatabaseManager.getInstance().setUnreadMessageCount(conversationID, conversationInfo.getUnreadMessageCount()); //Maybe the task gets killed before it is completed?
 			}
+		}
+		
+		/**
+		 * Find or create a conversation, based on the data provided
+		 */
+		@SuppressLint("StaticFieldLeak")
+		void findCreateConversationMMSSMS() {
+			//Updating the state
+			messagesState.setValue(messagesStateLoadingConversation);
+			
+			//Searching for the conversation in memory
+			new AsyncTask<Void, Void, Long>() {
+				@Override
+				protected Long doInBackground(Void... voids) {
+					return Telephony.Threads.getOrCreateThreadId(getApplication(), new HashSet<>(Arrays.asList(conversationParticipantsTarget)));
+				}
+				
+				@Override
+				protected void onPostExecute(Long threadID) {
+					//Getting the conversation
+					conversationInfo = ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
+					
+					if(conversationInfo != null) {
+						new AsyncTask<Void, Void, DatabaseManager.ConversationLazyLoader>() {
+							@Override
+							protected DatabaseManager.ConversationLazyLoader doInBackground(Void... voids) {
+								return new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
+							}
+							
+							@Override
+							protected void onPostExecute(DatabaseManager.ConversationLazyLoader result) {
+								//Setting the lazy loader
+								conversationLazyLoader = result;
+								
+								//Loading the conversation's messages
+								loadMessages();
+							}
+						}.execute();
+					} else {
+						//Fetching or creating the conversation on disk
+						new AsyncTask<Void, Void, Constants.Tuple3<ConversationInfo, Boolean, DatabaseManager.ConversationLazyLoader>>() {
+							@Override
+							protected Constants.Tuple3<ConversationInfo, Boolean, DatabaseManager.ConversationLazyLoader> doInBackground(Void... voids) {
+								ConversationInfo conversationInfo = DatabaseManager.getInstance().findConversationByExternalID(getApplication(), threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
+								boolean conversationNew = false;
+								
+								//Creating a new conversation if no existing conversation was found
+								if(conversationInfo == null) {
+									//Creating the conversation
+									int conversationColor = ConversationInfo.getDefaultConversationColor(System.currentTimeMillis());
+									conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
+									conversationInfo.setExternalID(threadID);
+									conversationInfo.setConversationMembersCreateColors(conversationParticipantsTarget);
+									
+									//Writing the conversation to disk
+									boolean result = DatabaseManager.getInstance().addReadyConversationInfo(conversationInfo);
+									if(!result) return null;
+									
+									//Adding the conversation created message
+									DatabaseManager.getInstance().addConversationCreatedMessage(conversationInfo, getApplication());
+									
+									conversationNew = true;
+								}
+								
+								//Creating the lazy loader
+								DatabaseManager.ConversationLazyLoader lazyLoader = new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
+								
+								//Returning the data
+								return new Constants.Tuple3<>(conversationInfo, conversationNew, lazyLoader);
+							}
+							
+							@Override
+							protected void onPostExecute(Constants.Tuple3<ConversationInfo, Boolean, DatabaseManager.ConversationLazyLoader> result) {
+								//Setting the state to failed if the conversation info couldn't be fetched
+								if(result == null) messagesState.setValue(messagesStateFailedConversation);
+								else {
+									//Setting the conversation details
+									conversationInfo = result.item1;
+									boolean conversationNew = result.item2;
+									conversationLazyLoader = result.item3;
+									
+									//Adding the conversation if it is new
+									if(conversationNew) {
+										ConversationUtils.addConversation(conversationInfo);
+										
+										//Updating the conversation activity list
+										LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+									}
+									
+									//Loading the conversation's messages
+									loadMessages();
+								}
+							}
+						}.execute();
+					}
+				}
+			}.execute();
 		}
 		
 		/**
@@ -5741,6 +5901,10 @@ public class Messaging extends AppCompatCompositeActivity {
 			} catch(IntentSender.SendIntentException exception) {
 				exception.printStackTrace();
 			}
+		}
+		
+		boolean doFilesRequireCompression() {
+			return conversationInfo.getServiceHandler() != ConversationInfo.serviceHandlerAMBridge || !ConversationInfo.serviceTypeAppleMessage.equals(conversationInfo.getService());
 		}
 	}
 	

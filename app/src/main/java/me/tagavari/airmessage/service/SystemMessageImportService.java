@@ -334,8 +334,8 @@ public class SystemMessageImportService extends Service {
 				.setSmallIcon(R.drawable.message_download)
 				.setContentTitle(context.getResources().getString(R.string.progress_importtextmessages))
 				.setProgress(0, 0, true)
-				.setColor(context.getColor(R.color.colorMessageTextMessage))
-				.setColorized(false)
+				//.setColor(context.getColor(R.color.colorMessageTextMessage))
+				//.setColorized(false)
 				.setPriority(Notification.PRIORITY_MIN)
 				.setShowWhen(false)
 				.setLocalOnly(true)
@@ -354,8 +354,8 @@ public class SystemMessageImportService extends Service {
 				.setSmallIcon(R.drawable.message_download)
 				.setContentTitle(context.getResources().getString(R.string.progress_importtextmessages))
 				.setProgress(max, progress, false)
-				.setColor(context.getColor(R.color.colorMessageTextMessage))
-				.setColorized(false)
+				//.setColor(context.getColor(R.color.colorMessageTextMessage))
+				//.setColorized(false)
 				.setPriority(Notification.PRIORITY_MIN)
 				.setShowWhen(false)
 				.setLocalOnly(true)
@@ -374,8 +374,8 @@ public class SystemMessageImportService extends Service {
 				.setSmallIcon(R.drawable.message_download)
 				.setContentTitle(context.getResources().getString(R.string.progress_cleantextmessages))
 				.setProgress(0, 0, false)
-				.setColor(context.getColor(R.color.colorMessageTextMessage))
-				.setColorized(false)
+				//.setColor(context.getColor(R.color.colorMessageTextMessage))
+				//.setColorized(false)
 				.setPriority(Notification.PRIORITY_MIN)
 				.setShowWhen(false)
 				.setLocalOnly(true)
@@ -390,7 +390,7 @@ public class SystemMessageImportService extends Service {
 	
 	public static MessageInfo readSaveMMSMessage(Cursor cursorMMS, Context context, ConversationInfo conversationInfo) {
 		//Reading the common message data
-		long messageID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.MESSAGE_ID)) * 1000;
+		long messageID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms._ID));
 		long date = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000;
 		int statusCode = cursorMMS.getInt(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.STATUS));
 		String subject = cursorMMS.getString(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.SUBJECT));
@@ -473,20 +473,28 @@ public class SystemMessageImportService extends Service {
 			File targetFile = new File(targetFileDir, attachmentInfo.getFileName());
 			
 			//Writing to the file
+			long totalSize = 0;
+			
+			//Checking if the file type is an image
 			try(InputStream inputStream = context.getContentResolver().openInputStream(ContentUris.withAppendedId(Uri.parse("content://mms/part/"), mmsAttachmentInfo.getPartID()));
 				FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 				if(inputStream == null) throw new IOException("Input stream is null");
 				
 				byte[] buf = new byte[1024];
 				int len;
-				while((len = inputStream.read(buf)) > 0) outputStream.write(buf, 0, len);
+				while((len = inputStream.read(buf)) > 0) {
+					outputStream.write(buf, 0, len);
+					totalSize += len;
+				}
 			} catch(IOException exception) {
 				exception.printStackTrace();
 				continue;
 			}
 			
 			//Updating the attachment information
-			DatabaseManager.getInstance().updateAttachmentFile(attachmentInfo.getLocalID(), context, targetFile);
+			DatabaseManager.getInstance().updateAttachmentFile(attachmentInfo.getLocalID(), context, targetFile, totalSize);
+			attachmentInfo.setFile(targetFile);
+			attachmentInfo.setFileSize(totalSize);
 		}
 		
 		//Returning the message

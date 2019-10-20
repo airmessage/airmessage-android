@@ -1,22 +1,14 @@
 package me.tagavari.airmessage.messaging;
 
 import android.animation.ValueAnimator;
-import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
-import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.text.format.DateFormat;
-import android.util.Log;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -40,7 +32,6 @@ import androidx.transition.TransitionManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.klinker.android.send_message.Message;
-import com.klinker.android.send_message.Settings;
 import com.klinker.android.send_message.Transaction;
 import com.pnikosis.materialishprogress.ProgressWheel;
 
@@ -53,15 +44,11 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
+import id.zelory.compressor.Compressor;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.request.FilePushRequest;
 import me.tagavari.airmessage.connection.request.MessageResponseManager;
-import me.tagavari.airmessage.data.SMSIDParcelable;
-import me.tagavari.airmessage.receiver.TextMMSSentReceiver;
-import me.tagavari.airmessage.receiver.TextSMSDeliveredReceiver;
-import me.tagavari.airmessage.receiver.TextSMSSentReceiver;
 import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.MainApplication;
@@ -479,7 +466,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		ConversationInfo conversationInfo = getConversationInfo();
 		if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
 			//Sending the message via AirMessage bridge
-			return sendMessageBridge(MainApplication.getInstance());
+			return sendMessageAMBridge(MainApplication.getInstance());
 		}
 		//Checking if the service handler is system messaging
 		else if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging) {
@@ -499,7 +486,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	 * @param context The context to use
 	 * @return Whether or not the message was successfully sent
 	 */
-	private boolean sendMessageBridge(Context context) {
+	private boolean sendMessageAMBridge(Context context) {
 		//Creating a weak reference to the context
 		WeakReference<Context> contextReference = new WeakReference<>(context);
 		
@@ -574,7 +561,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 				request.setUploadRequested(true);
 			} else {
 				if(attachmentInfo.file == null) return false;
-				request = new FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, FilePushRequest.stateAttached, System.currentTimeMillis(), true);
+				request = new FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, FilePushRequest.stateAttached, System.currentTimeMillis(), true, false);
 			}
 			request.getCallbacks().onStart = () -> {
 				//Updating the progress bar
@@ -691,33 +678,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		}
 		
 		//Configuring the message settings
-		Settings settings = new Settings();
-		settings.setUseSystemSending(true);
-		settings.setDeliveryReports(Preferences.getPreferenceSMSDeliveryReports(MainApplication.getInstance()));
-		Transaction transaction = new Transaction(MainApplication.getInstance(), settings);
-		
-		//Creating the parcelable data
-		SMSIDParcelable parcelData = new SMSIDParcelable(getLocalID());
-		
-		//Setting the intent data
-		Bundle bundle = new Bundle();
-		bundle.putParcelable(Constants.intentParamData, parcelData);
-		
-		{
-			Intent intent = new Intent(MainApplication.getInstance(), TextMMSSentReceiver.class);
-			intent.putExtra(Constants.intentParamData, bundle);
-			transaction.setExplicitBroadcastForSentMms(intent);
-		}
-		{
-			Intent intent = new Intent(MainApplication.getInstance(), TextSMSSentReceiver.class);
-			intent.putExtra(Constants.intentParamData, bundle);
-			transaction.setExplicitBroadcastForSentSms(intent);
-		}
-		{
-			Intent intent = new Intent(MainApplication.getInstance(), TextSMSDeliveredReceiver.class);
-			intent.putExtra(Constants.intentParamData, bundle);
-			transaction.setExplicitBroadcastForDeliveredSms(intent);
-		}
+		Transaction transaction = Constants.getMMSSMSTransaction(MainApplication.getInstance(), getLocalID());
 		
 		//Creating the message
 		Message message = new Message();
@@ -766,7 +727,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 					request.setUploadRequested(true);
 				} else {
 					if(attachmentInfo.file == null) continue;
-					request = new FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, FilePushRequest.stateAttached, System.currentTimeMillis(), true);
+					request = new FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, FilePushRequest.stateAttached, System.currentTimeMillis(), true, true);
 				}
 				request.getCallbacks().onStart = () -> {
 					//Updating the progress bar

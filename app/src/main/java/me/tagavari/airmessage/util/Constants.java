@@ -42,6 +42,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Toolbar;
 
+import com.android.mms.transaction.Transaction;
 import com.crashlytics.android.Crashlytics;
 import com.google.android.gms.common.util.BiConsumer;
 import com.google.android.gms.maps.model.LatLng;
@@ -85,9 +86,14 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.core.util.Consumer;
 
+import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Preferences;
+import me.tagavari.airmessage.data.SMSIDParcelable;
 import me.tagavari.airmessage.messaging.MessageInfo;
+import me.tagavari.airmessage.receiver.TextMMSSentReceiver;
+import me.tagavari.airmessage.receiver.TextSMSDeliveredReceiver;
+import me.tagavari.airmessage.receiver.TextSMSSentReceiver;
 import me.tagavari.airmessage.service.FileExportService;
 import me.tagavari.airmessage.service.UriExportService;
 
@@ -1383,5 +1389,38 @@ public class Constants {
 	
 	public static boolean isDefaultMessagingApp(Context context) {
 		return context.getPackageName().equals(Telephony.Sms.getDefaultSmsPackage(context));
+	}
+	
+	public static com.klinker.android.send_message.Transaction getMMSSMSTransaction(Context context, long messageLocalID) {
+		com.klinker.android.send_message.Settings settings = new com.klinker.android.send_message.Settings();
+		settings.setUseSystemSending(true);
+		settings.setDeliveryReports(Preferences.getPreferenceSMSDeliveryReports(MainApplication.getInstance()));
+		com.klinker.android.send_message.Transaction transaction = new com.klinker.android.send_message.Transaction(context, settings);
+		
+		//Creating the parcelable data
+		SMSIDParcelable parcelData = new SMSIDParcelable(messageLocalID);
+		
+		//Setting the intent data
+		Bundle bundle = new Bundle();
+		bundle.putParcelable(Constants.intentParamData, parcelData);
+		
+		{
+			Intent intent = new Intent(MainApplication.getInstance(), TextMMSSentReceiver.class);
+			intent.putExtra(Constants.intentParamData, bundle);
+			transaction.setExplicitBroadcastForSentMms(intent);
+		}
+		{
+			Intent intent = new Intent(MainApplication.getInstance(), TextSMSSentReceiver.class);
+			intent.putExtra(Constants.intentParamData, bundle);
+			transaction.setExplicitBroadcastForSentSms(intent);
+		}
+		{
+			Intent intent = new Intent(MainApplication.getInstance(), TextSMSDeliveredReceiver.class);
+			intent.putExtra(Constants.intentParamData, bundle);
+			transaction.setExplicitBroadcastForDeliveredSms(intent);
+		}
+		
+		//Returning the transaction
+		return transaction;
 	}
 }

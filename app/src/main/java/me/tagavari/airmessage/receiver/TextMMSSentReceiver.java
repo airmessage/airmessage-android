@@ -9,6 +9,11 @@ import android.os.Looper;
 
 import com.klinker.android.send_message.MmsSentReceiver;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.SMSIDParcelable;
 import me.tagavari.airmessage.messaging.ConversationInfo;
@@ -24,6 +29,8 @@ public class TextMMSSentReceiver extends MmsSentReceiver {
 		Bundle bundle = intent.getBundleExtra(Constants.intentParamData);
 		SMSIDParcelable parcelData = bundle.getParcelable(Constants.intentParamData);
 		
+		boolean resultOK = resultCode == Activity.RESULT_OK;
+		
 		//Running on the main UI thread
 		new Handler(Looper.getMainLooper()).post(() -> {
 			//Finding the message in memory
@@ -38,8 +45,9 @@ public class TextMMSSentReceiver extends MmsSentReceiver {
 			
 			if(messageInfo != null) {
 				//Updating the message
-				if(resultCode == Activity.RESULT_OK) {
+				if(resultOK) {
 					messageInfo.setMessageState(Constants.messageStateCodeSent);
+					messageInfo.setErrorCode(Constants.messageErrorCodeOK);
 				} else {
 					messageInfo.setErrorCode(Constants.messageErrorCodeLocalUnknown);
 				}
@@ -49,8 +57,9 @@ public class TextMMSSentReceiver extends MmsSentReceiver {
 		});
 		
 		//Updating the message state on disk
-		if(resultCode == Activity.RESULT_OK) {
+		if(resultOK) {
 			DatabaseManager.getInstance().updateMessageState(parcelData.getMessageID(), Constants.messageStateCodeSent);
+			DatabaseManager.getInstance().updateMessageErrorCode(parcelData.getMessageID(), Constants.messageErrorCodeOK, null);
 		} else {
 			DatabaseManager.getInstance().updateMessageErrorCode(parcelData.getMessageID(), Constants.messageErrorCodeLocalUnknown, null);
 		}

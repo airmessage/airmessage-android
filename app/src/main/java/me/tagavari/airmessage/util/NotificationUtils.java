@@ -25,6 +25,9 @@ import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
 import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
 
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import androidx.core.app.NotificationCompat;
@@ -39,6 +42,7 @@ import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.request.MessageResponseManager;
+import me.tagavari.airmessage.receiver.TextSMSSentReceiver;
 import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.data.BitmapCacheHelper;
 import me.tagavari.airmessage.data.DatabaseManager;
@@ -398,6 +402,20 @@ public class NotificationUtils {
 				return;
 			}
 			
+			//Checking if the service handler is AirMessage Bridge
+			if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
+				sendMessageAMBridge(context, conversationInfo, responseMessage.toString());
+			}
+			//Otherwise checking if the service handler is system messaging
+			else if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging) {
+				if(ConversationInfo.serviceTypeSystemMMSSMS.equals(conversationInfo.getService())) sendMessageSMS(context, conversationInfo, responseMessage.toString());
+			}
+			
+			//Marking the conversation as read
+			markConversationRead(context, conversationInfo.getLocalID(), false);
+		}
+		
+		private void sendMessageAMBridge(Context context, ConversationInfo conversationInfo, String responseMessage) {
 			//Getting the connection manager
 			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
 			
@@ -419,11 +437,11 @@ public class NotificationUtils {
 			final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 			
 			//Sending the message
-			connectionManager.sendMessage(conversationInfo.getGuid(), responseMessage.toString(), new MessageResponseManager(new ConnectionManager.MessageResponseManagerDeregistrationListener(connectionManager)) {
+			connectionManager.sendMessage(conversationInfo.getGuid(), responseMessage, new MessageResponseManager(new ConnectionManager.MessageResponseManagerDeregistrationListener(connectionManager)) {
 				@Override
 				public void onSuccess() {
 					//Adding the message
-					addMessageToNotification(context, conversationInfo, responseMessage.toString(), null, System.currentTimeMillis() / 1000L, null);
+					addMessageToNotification(context, conversationInfo, responseMessage, null, System.currentTimeMillis() / 1000L, null);
 				}
 				
 				@Override
@@ -433,9 +451,72 @@ public class NotificationUtils {
 					if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
 				}
 			});
+		}
+		
+		private void sendMessageSMS(Context context, ConversationInfo conversationInfo, String responseMessage) {
+			//Creating the message
+			MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, null, responseMessage, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 			
-			//Marking the conversation as read
-			markConversationRead(context, conversationInfo.getLocalID(), false);
+			//Saving the message to disk and sending it
+			new SaveSendMessage(context, messageInfo, result -> {
+				if(result) {
+					//Adding the message
+					addMessageToNotification(context, conversationInfo, responseMessage, null, System.currentTimeMillis() / 1000L, null);
+				} else {
+					//Refreshing the notification
+					NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
+					Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
+					if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
+				}
+			}).execute();
+		}
+		
+		private static class SaveSendMessage extends AsyncTask<Void, Void, Void> {
+			private final WeakReference<Context> contextReference;
+			private final MessageInfo messageInfo;
+			private final Consumer<Boolean> resultListener;
+			
+			private SaveSendMessage(Context context, MessageInfo messageInfo, Consumer<Boolean> resultListener) {
+				contextReference = new WeakReference<>(context);
+				this.messageInfo = messageInfo;
+				this.resultListener = resultListener;
+			}
+			
+			@Override
+			protected Void doInBackground(Void... args) {
+				DatabaseManager.getInstance().addConversationItem(messageInfo, messageInfo.getConversationInfo().getServiceHandler() == ConversationInfo.serviceHandlerAMBridge);
+				return null;
+			}
+			
+			@Override
+			protected void onPostExecute(Void result) {
+				//Getting the context
+				Context context = contextReference.get();
+				if(context == null) return;
+				
+				//Adding the message in memory
+				ConversationInfo conversationInfo = ConversationUtils.findConversationInfo(messageInfo.getConversationInfo().getLocalID());
+				if(conversationInfo != null) conversationInfo.addConversationItems(context, Collections.singletonList(messageInfo));
+				
+				//Setting the listener
+				TextSMSSentReceiver.addListener(new SMSResultListener(messageInfo.getLocalID(), resultListener));
+				
+				//Sending the message
+				messageInfo.sendMessage(context);
+			}
+			
+			private static class SMSResultListener extends TextSMSSentReceiver.SMSSentListener {
+				private final Consumer<Boolean> resultListener;
+				private SMSResultListener(long messageID, Consumer<Boolean> resultListener) {
+					super(messageID);
+					this.resultListener = resultListener;
+				}
+				
+				@Override
+				public void onResult(boolean result) {
+					resultListener.accept(result);
+				}
+			}
 		}
 		
 		private void handleMarkRead(Context context, Intent intent) {

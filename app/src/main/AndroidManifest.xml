@@ -26,8 +26,8 @@
 	<uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 	<uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-	<uses-permission android:name="android.permission.WRITE_SETTINGS" />
-	
+	<!-- <uses-permission android:name="android.permission.WRITE_SETTINGS" /> -->
+
 	<application
 		android:allowBackup="true"
 		android:fullBackupContent="@xml/backup_rules"
@@ -46,18 +46,6 @@
 			android:theme="@style/DayNight.NoActionBar.Protected"
 			android:windowSoftInputMode="adjustResize">
 			<intent-filter>
-				<category android:name="android.intent.category.DEFAULT" />
-				<category android:name="android.intent.category.BROWSABLE" />
-
-				<action android:name="android.intent.action.SEND" />
-				<action android:name="android.intent.action.SENDTO" />
-
-				<data android:scheme="sms" />
-				<data android:scheme="smsto" />
-				<data android:scheme="mms" />
-				<data android:scheme="mmsto" />
-			</intent-filter>
-			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
@@ -73,6 +61,20 @@
 			android:parentActivityName=".activity.Conversations"
 			android:theme="@style/DayNight.NoActionBar.Protected"
 			android:windowSoftInputMode="adjustResize">
+			<!-- Direct MMS / SMS message handling -->
+			<intent-filter>
+				<category android:name="android.intent.category.DEFAULT" />
+				<category android:name="android.intent.category.BROWSABLE" />
+
+				<action android:name="android.intent.action.SEND" />
+				<action android:name="android.intent.action.SENDTO" />
+
+				<data android:scheme="sms" />
+				<data android:scheme="smsto" />
+				<data android:scheme="mms" />
+				<data android:scheme="mmsto" />
+			</intent-filter>
+
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
@@ -237,7 +239,8 @@
 			android:taskAffinity="com.klinker.android.messaging.MMS_SENT" />
 
 		<!-- Incoming SMS receiver -->
-		<receiver android:name=".receiver.TextSMSReceivedReceiver"
+		<receiver
+			android:name=".receiver.TextSMSReceivedReceiver"
 			android:permission="android.permission.BROADCAST_SMS">
 			<intent-filter>
 				<action android:name="android.provider.Telephony.SMS_DELIVER" />
@@ -245,7 +248,8 @@
 		</receiver>
 
 		<!-- Incoming MMS processor -->
-		<receiver android:name="com.android.mms.transaction.PushReceiver"
+		<receiver
+			android:name="com.android.mms.transaction.PushReceiver"
 			android:permission="android.permission.BROADCAST_WAP_PUSH">
 			<intent-filter>
 				<action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
@@ -259,7 +263,8 @@
 			android:taskAffinity="com.klinker.android.messaging.MMS_RECEIVED" />
 
 		<!-- Headless MMS / SMS manager for quick replies -->
-		<service android:name=".service.TextHeadlessService"
+		<service
+			android:name=".service.TextHeadlessService"
 			android:permission="android.permission.SEND_RESPOND_VIA_MESSAGE"
 			android:exported="true">
 			<intent-filter>
@@ -271,6 +276,13 @@
 				<data android:scheme="mmsto" />
 			</intent-filter>
 		</service>
+
+		<!-- Messaging app change receiver (to reset messaging data when another app is selected -->
+		<receiver android:name=".receiver.DefaultMessagingAppChangedReceiver">
+			<intent-filter>
+				<action android:name="android.provider.action.DEFAULT_SMS_PACKAGE_CHANGED" />
+			</intent-filter>
+		</receiver>
 
 		<!-- Disables automatic Crashlytics initialization -->
 		<meta-data

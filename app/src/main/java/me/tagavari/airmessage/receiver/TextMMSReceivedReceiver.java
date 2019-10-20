@@ -25,74 +25,102 @@ import me.tagavari.airmessage.util.NotificationUtils;
 public class TextMMSReceivedReceiver extends MmsReceivedReceiver {
 	@Override
 	public void onMessageReceived(Context context, Uri messageUri) {
-		try(Cursor cursorMMS = context.getContentResolver().query(messageUri, null, null, null, null)) {
-			//Getting the thread ID
-			long threadID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.THREAD_ID));
+		//Querying for message information
+		Cursor cursorMMS = context.getContentResolver().query(messageUri, null, null, null, null);
+		
+		//Returning if there are no results
+		if(cursorMMS == null) return;
+		
+		if(!cursorMMS.moveToFirst()) {
+			cursorMMS.close();
+			return;
+		}
+		
+		//Getting the thread ID
+		long threadID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.THREAD_ID));
+		
+		//Running on the main thread
+		new Handler(context.getMainLooper()).post(() -> {
+			//Searching for the conversation in memory
+			final ConversationInfo conversationInfoMem = ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
 			
-			//Running on the main thread
-			new Handler(context.getMainLooper()).post(() -> {
-				//Searching for the conversation in memory
-				final ConversationInfo conversationInfoMem = ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
-				
-				//Returning to a worker thread
-				new Thread(() -> {
-					ConversationInfo conversationInfo = conversationInfoMem;
-					boolean conversationNew = false;
-					//Fetching a matching conversation (if one was not found in memory)
+			//Returning to a worker thread
+			new Thread(() -> {
+				ConversationInfo conversationInfo = conversationInfoMem;
+				boolean conversationNew = false;
+				//Fetching a matching conversation (if one was not found in memory)
+				if(conversationInfo == null) {
+					conversationInfo = DatabaseManager.getInstance().findConversationByExternalID(context, threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
+					
+					//Creating a new conversation if no existing conversation was found
 					if(conversationInfo == null) {
-						conversationInfo = DatabaseManager.getInstance().findConversationByExternalID(context, threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
-						
-						//Creating a new conversation if no existing conversation was found
-						if(conversationInfo == null) {
-							//Getting the conversation participants
-							String recipientIDs;
-							try(Cursor cursorConversation = context.getContentResolver().query(Uri.parse("content://mms-sms/conversations?simple=true"), new String[]{"*"},
-									Telephony.Threads._ID + " = ?", new String[]{Long.toString(threadID)},
-									null)) {
-								if(cursorConversation == null || !cursorConversation.moveToFirst()) return;
-								
-								recipientIDs = cursorConversation.getString(cursorConversation.getColumnIndexOrThrow(Telephony.Threads.RECIPIENT_IDS));
-							}
+						//Getting the conversation participants
+						String recipientIDs;
+						try(Cursor cursorConversation = context.getContentResolver().query(Uri.parse("content://mms-sms/conversations?simple=true"), new String[]{"*"},
+								Telephony.Threads._ID + " = ?", new String[]{Long.toString(threadID)},
+								null)) {
+							if(cursorConversation == null || !cursorConversation.moveToFirst()) return;
 							
-							//Creating the conversation
-							int conversationColor = ConversationInfo.getDefaultConversationColor(threadID);
-							conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
-							conversationInfo.setExternalID(threadID);
-							conversationInfo.setConversationMembersCreateColors(SystemMessageImportService.getAddressFromRecipientID(context, recipientIDs));
-							
-							//Writing the conversation to disk
-							boolean result = DatabaseManager.getInstance().addReadyConversationInfo(conversationInfo);
-							if(!result) return;
-							
-							conversationNew = true;
+							recipientIDs = cursorConversation.getString(cursorConversation.getColumnIndexOrThrow(Telephony.Threads.RECIPIENT_IDS));
 						}
+						
+						//Creating the conversation
+						int conversationColor = ConversationInfo.getDefaultConversationColor(threadID);
+						conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
+						conversationInfo.setExternalID(threadID);
+						conversationInfo.setConversationMembersCreateColors(SystemMessageImportService.getAddressFromRecipientID(context, recipientIDs));
+						
+						//Writing the conversation to disk
+						boolean result = DatabaseManager.getInstance().addReadyConversationInfo(conversationInfo);
+						if(!result) {
+							cursorMMS.close();
+							return;
+						}
+						
+						conversationNew = true;
 					}
-					
-					//Reading and saving the message
-					MessageInfo messageInfo = SystemMessageImportService.readSaveMMSMessage(cursorMMS, context, conversationInfo);
-					if(messageInfo == null) return;
-					
-					//Running on the main thread
-					final SaveMessageTaskResult result = new SaveMessageTaskResult(messageInfo, conversationNew ? conversationInfo : null);
-					new Handler(context.getMainLooper()).post(() -> {
+				}
+				
+				//Reading and saving the message
+				MessageInfo messageInfo = SystemMessageImportService.readSaveMMSMessage(cursorMMS, context, conversationInfo);
+				cursorMMS.close();
+				if(messageInfo == null) return;
+				
+				//Running on the main thread
+				final SaveMessageTaskResult result = new SaveMessageTaskResult(messageInfo, conversationNew ? conversationInfo : null);
+				new Handler(context.getMainLooper()).post(new Runnable() {
+					@Override
+					public void run() {
+						//Getting the data
+						MessageInfo messageInfo = result.getMessageInfo();
+						ConversationInfo conversationInfo = messageInfo.getConversationInfo();
+						
+						//Adding the message to the conversation in memory
+						boolean addItemResult = conversationInfo.addConversationItems(context, Collections.singletonList(result.getMessageInfo()));
+						//Setting the last item if the conversation items couldn't be added
+						if(!addItemResult) conversationInfo.trySetLastItemUpdate(context, messageInfo, false);
+						
+						//Incrementing the conversation's unread count
+						if(!messageInfo.isOutgoing()) {
+							conversationInfo.setUnreadMessageCount(conversationInfo.getUnreadMessageCount() + 1);
+							conversationInfo.updateUnreadStatus(context);
+						}
+						
 						//Checking if there is a new conversation to be added
 						if(result.getNewConversationInfo() != null) {
 							//Adding the conversation in memory
 							ConversationUtils.addConversation(result.getNewConversationInfo());
 						}
 						
-						//Adding the message to the conversation in memory
-						result.getMessageInfo().getConversationInfo().addConversationItems(context, Collections.singletonList(result.getMessageInfo()));
+						//Updating the conversation activity list
+						LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 						
 						//Sending a notification
 						NotificationUtils.sendNotification(context, result.getMessageInfo());
-						
-						//Updating the conversation activity list
-						LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-					});
-				}).start();
-			});
-		}
+					}
+				});
+			}).start();
+		});
 	}
 	
 	@Override

@@ -2,14 +2,20 @@ package me.tagavari.airmessage.connection.thread;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.OpenableColumns;
 
 import androidx.core.util.Consumer;
+import androidx.exifinterface.media.ExifInterface;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -34,6 +40,7 @@ import me.tagavari.airmessage.connection.request.FileRemovalRequest;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.messaging.DraftFile;
 import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.util.ImageUtils;
 
 public class FileProcessingThread extends Thread {
 	//Creating the constants
@@ -241,6 +248,40 @@ public class FileProcessingThread extends Thread {
 						//Clearing the reference to the context
 						context = null;
 						
+						//Checking if compression is required, and the file is a JPEG image
+						if(pushRequest.isCompressionRequested() && Constants.compareMimeTypes(pushRequest.getFileType(), "image/jpeg")) {
+							//Reading the file data
+							ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+							byte[] buffer = new byte[ConnectionManager.attachmentChunkSize];
+							int bytesRead;
+							while((bytesRead = inputStream.read(buffer, 0, buffer.length)) != -1) {
+								byteArrayOutputStream.write(buffer, 0, bytesRead);
+							}
+							byte[] fileBytes = byteArrayOutputStream.toByteArray();
+							
+							//Reading the image's EXIF data
+							ExifInterface exif = null;
+							try {
+								exif = new ExifInterface(new ByteArrayInputStream(fileBytes));
+							} catch(IOException exception) {
+								//Printing the stack trace
+								exception.printStackTrace();
+							}
+							
+							//Getting the bitmap from the image
+							Bitmap bitmap = BitmapFactory.decodeByteArray(fileBytes, 0, fileBytes.length);
+							
+							//Fixing the bitmap orientation
+							if(exif != null) bitmap = ImageUtils.rotateBitmap(bitmap, exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL));
+							
+							//Compressing the image
+							byte[] imageBytes = ImageUtils.compressBitmap(bitmap);
+							
+							//Replacing the input stream
+							inputStream.close();
+							inputStream = new ByteArrayInputStream(imageBytes);
+						}
+						
 						//Preparing to read the file
 						long totalLength = inputStream.available();
 						byte[] buffer = new byte[ConnectionManager.attachmentChunkSize];
@@ -265,6 +306,7 @@ public class FileProcessingThread extends Thread {
 						
 						//Setting the send file
 						pushRequest.setSendFile(targetFile);
+						pushRequest.setCompressionRequested(false);
 					} catch(IOException exception) {
 						//Printing the stack trace
 						exception.printStackTrace();
@@ -324,6 +366,40 @@ public class FileProcessingThread extends Thread {
 				//Setting the state
 				if(requestUpload) pushRequest.setState(FilePushRequest.stateAttached);
 				else pushRequest.setState(FilePushRequest.stateQueued);
+			}
+			else {
+				//Checking if compression is required, and the file is a JPEG image
+				if(pushRequest.isCompressionRequested() &&
+				   Constants.compareMimeTypes(pushRequest.getFileType(), "image/jpeg") &&
+				   pushRequest.getSendFile() != null &&
+				   pushRequest.getSendFile().length() > ImageUtils.maxBytes) {
+					//Getting the file
+					File file = pushRequest.getSendFile();
+					
+					//Reading the image's EXIF data
+					ExifInterface exif = null;
+					try {
+						exif = new ExifInterface(file);
+					} catch(IOException exception) {
+						exception.printStackTrace();
+					}
+					
+					//Compressing the file
+					Bitmap bitmap = BitmapFactory.decodeFile(file.getPath());
+					
+					//Fixing the bitmap orientation
+					if(exif != null) bitmap = ImageUtils.rotateBitmap(bitmap, exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL));
+					
+					//Compressing the image
+					byte[] imageBytes = ImageUtils.compressBitmap(bitmap);
+					
+					//Overwriting the compressed image
+					try(FileOutputStream fileOutputStream = new FileOutputStream(pushRequest.getSendFile(), false)) {
+						fileOutputStream.write(imageBytes);
+					} catch(IOException exception) {
+						exception.printStackTrace();
+					}
+				}
 			}
 			
 			//Checking if an upload has been requested

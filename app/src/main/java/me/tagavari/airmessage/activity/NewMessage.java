@@ -13,6 +13,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.provider.ContactsContract;
 import android.provider.Telephony;
 import android.text.Editable;
@@ -58,6 +59,8 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -242,6 +245,14 @@ public class NewMessage extends AppCompatCompositeActivity {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
 		
+		//Reading the launch arguments
+		String targetText;
+		if(getIntent().hasExtra(Constants.intentParamDataText)) targetText = getIntent().getStringExtra(Constants.intentParamDataText);
+		else targetText = null;
+		Parcelable[] targetParcelables;
+		if(getIntent().hasExtra(Constants.intentParamDataFile)) targetParcelables = getIntent().getParcelableArrayExtra(Constants.intentParamDataFile);
+		else targetParcelables = null;
+		
 		//Setting the content view
 		setContentView(R.layout.activity_newmessage);
 		
@@ -287,7 +298,13 @@ public class NewMessage extends AppCompatCompositeActivity {
 		recipientInput.requestFocus();
 		
 		//Getting the view model
-		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
+		viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
+			@NonNull
+			@Override
+			public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
+				return (T) new ActivityViewModel(getApplication(), targetText, targetParcelables);
+			}
+		}).get(ActivityViewModel.class);
 		viewModel.setActivityReference(this);
 		
 		//Registering the observers
@@ -1313,6 +1330,10 @@ public class NewMessage extends AppCompatCompositeActivity {
 		private ArrayList<Chip> userChips = new ArrayList<>();
 		private int participantsEmailCount = 0;
 		
+		//Creating the fill values
+		private final String targetText;
+		private final Parcelable[] targetParcelables;
+		
 		//Creating the other values
 		MessageServiceDescription currentService = availableServiceArray[0];
 		final MutableLiveData<Object> contactListLD = new MutableLiveData<>();
@@ -1320,8 +1341,12 @@ public class NewMessage extends AppCompatCompositeActivity {
 		
 		private WeakReference<NewMessage> activityReference = null;
 		
-		public ActivityViewModel(@NonNull Application application) {
+		public ActivityViewModel(@NonNull Application application, String targetText, Parcelable[] targetParcelables) {
 			super(application);
+			
+			//Setting the fill values
+			this.targetText = targetText;
+			this.targetParcelables = targetParcelables;
 			
 			//Loading the data
 			loadContacts();
@@ -1619,8 +1644,16 @@ public class NewMessage extends AppCompatCompositeActivity {
 			Activity activity = activityReference.get();
 			if(activity == null) return false;
 			
+			//Creating the intent
+			Intent intent = new Intent(activity, Messaging.class);
+			intent.putExtra(Constants.intentParamTargetID, identifier);
+			
+			//Setting the fill data
+			if(targetText != null) intent.putExtra(Constants.intentParamDataText, targetText);
+			if(targetParcelables != null) intent.putExtra(Constants.intentParamDataFile, targetParcelables);
+			
 			//Launching the activity
-			activity.startActivity(new Intent(activity, Messaging.class).putExtra(Constants.intentParamTargetID, identifier));
+			activity.startActivity(intent);
 			
 			//Finishing this activity
 			activity.finish();

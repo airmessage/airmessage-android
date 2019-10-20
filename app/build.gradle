@@ -78,6 +78,7 @@ dependencies {
 	//Android extensions
 	implementation "androidx.preference:preference:1.1.0"
 	implementation "androidx.browser:browser:1.0.0"
+	implementation "androidx.exifinterface:exifinterface:1.1.0-rc01"
 
 	//Material components
 	implementation "com.google.android.material:material:1.1.0-beta01"
@@ -100,14 +101,15 @@ dependencies {
 
 	//Services
 	implementation "com.google.firebase:firebase-core:17.2.0"
-	implementation "com.google.firebase:firebase-ml-natural-language:21.0.3"
-	implementation "com.google.firebase:firebase-ml-natural-language-smart-reply-model:20.0.6"
+	implementation "com.google.firebase:firebase-ml-natural-language:22.0.0"
+	implementation "com.google.firebase:firebase-ml-natural-language-smart-reply-model:20.0.7"
 	implementation "com.crashlytics.sdk.android:crashlytics:2.10.1"
 	implementation "com.google.android.gms:play-services-maps:17.0.0"
 	implementation "com.google.android.gms:play-services-location:17.0.0"
 
 	//Tools
 	implementation "com.googlecode.ez-vcard:ez-vcard:0.10.5"
+	implementation "id.zelory:compressor:2.1.0"
 
 	//Backend
 	implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
