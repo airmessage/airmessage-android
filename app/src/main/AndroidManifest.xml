@@ -59,7 +59,7 @@
 			android:exported="false"
 			android:name=".activity.Messaging"
 			android:parentActivityName=".activity.Conversations"
-			android:theme="@style/DayNight.NoActionBar.Protected"
+			android:theme="@style/DayNight.NoActionBar"
 			android:windowSoftInputMode="adjustResize">
 			<!-- Direct MMS / SMS message handling -->
 			<intent-filter>

@@ -1611,8 +1611,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	public String getSummary(Context context) {
 		//Converting the attachment list to a string resource list
 		ArrayList<Integer> attachmentStringRes = new ArrayList<>();
-		for(AttachmentInfo attachment : attachments)
-			attachmentStringRes.add(ConversationUtils.getNameFromContent(attachment.getContentType(), attachment.getFileName()));
+		for(AttachmentInfo attachment : attachments) attachmentStringRes.add(ConversationUtils.getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 		
 		//Returning the result of the static method
 		return getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes);
@@ -1635,6 +1634,18 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		//Returning the string with the message
 		if(isFromMe) return context.getString(R.string.prefix_you, message);
 		else return message;
+	}
+	
+	public String getComponentSummary(Context context, int componentIndex) {
+		//Getting the component
+		MessageComponent messageComponent = getComponentAtIndex(componentIndex);
+		if(messageComponent == null) return null;
+		if(messageComponent instanceof MessageTextInfo) return ((MessageTextInfo) messageComponent).getText();
+		else if(messageComponent instanceof AttachmentInfo) {
+			AttachmentInfo attachment = (AttachmentInfo) messageComponent;
+			return context.getResources().getString(ConversationUtils.getNameFromContent(attachment.getContentType(), attachment.getFileName()));
+		}
+		return null;
 	}
 	
 	@Override

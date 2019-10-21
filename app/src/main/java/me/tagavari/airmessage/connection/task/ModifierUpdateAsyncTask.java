@@ -11,14 +11,15 @@ import java.util.List;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
+import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
+import me.tagavari.airmessage.util.NotificationUtils;
 
 public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 	//Creating the reference values
@@ -28,6 +29,7 @@ public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 	private final List<Blocks.ModifierInfo> structModifiers;
 	private final List<StickerInfo> stickerModifiers = new ArrayList<>();
 	private final List<TapbackInfo> tapbackModifiers = new ArrayList<>();
+	private final List<Constants.Tuple3<String, TapbackInfo, ConversationInfo>> tapbackModifierNotificationData = new ArrayList<>(); //Message, tapback, conversation info
 	private final List<TapbackRemovalStruct> tapbackRemovals = new ArrayList<>();
 	
 	private final ConnectionManager.Packager packager;
@@ -82,7 +84,22 @@ public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 				} else {
 					//Updating the modifier in the database
 					TapbackInfo tapback = DatabaseManager.getInstance().addMessageTapback(tapbackModifierInfo);
-					if(tapback != null) tapbackModifiers.add(tapback);
+					if(tapback != null) {
+						tapbackModifiers.add(tapback);
+						
+						//Getting the item's message
+						ConversationItem conversationItem = DatabaseManager.getInstance().loadConversationItem(context, tapback.getMessageID());
+						if(conversationItem instanceof MessageInfo) {
+							MessageInfo messageInfo = (MessageInfo) conversationItem;
+							
+							//Getting the message summary
+							String messageSummary = messageInfo.getComponentSummary(context, tapback.getMessageIndex());
+							if(messageSummary != null) {
+								//Adding the notification data
+								tapbackModifierNotificationData.add(new Constants.Tuple3<>(messageSummary, tapback, messageInfo.getConversationInfo()));
+							}
+						}
+					}
 				}
 			}
 		}
@@ -111,7 +128,7 @@ public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 			}
 			
 			//Skipping the remainder of the iteration if the message info is invalid (wasn't found)
-			if(messageInfo == null) return;
+			if(messageInfo == null) continue;
 			
 			//Checking if the modifier is an activity status modifier
 			if(modifierInfo instanceof Blocks.ActivityStatusModifierInfo) {
@@ -153,14 +170,17 @@ public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 			}
 			
 			//Skipping the remainder of the iteration if the message info is invalid (wasn't found)
-			if(messageInfo == null) return;
+			if(messageInfo == null) continue;
 			
 			//Updating the message
 			messageInfo.addLiveSticker(sticker, context);
 		}
 		
 		//Iterating over the tapback modifiers
-		for(TapbackInfo tapback : tapbackModifiers) {
+		for(int i = 0; i < tapbackModifiers.size(); i++) {
+			//Getting the tapback
+			TapbackInfo tapback = tapbackModifiers.get(i);
+			
 			//Finding the referenced item
 			MessageInfo messageInfo = null;
 			for(ConversationInfo loadedConversation : ConversationUtils.getLoadedConversations()) {
@@ -173,7 +193,7 @@ public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 			}
 			
 			//Skipping the remainder of the iteration if the message info is invalid (wasn't found)
-			if(messageInfo == null) return;
+			if(messageInfo == null) continue;
 			
 			//Updating the message
 			messageInfo.addLiveTapback(tapback, context);
@@ -193,10 +213,24 @@ public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 			}
 			
 			//Skipping the remainder of the iteration if the message info is invalid (wasn't found)
-			if(messageInfo == null) return;
+			if(messageInfo == null) continue;
 			
 			//Updating the message
 			messageInfo.removeLiveTapback(tapback.sender, tapback.messageIndex, context);
+		}
+		
+		//Iterating over the tapback notifications
+		for(Constants.Tuple3<String, TapbackInfo, ConversationInfo> tuple : tapbackModifierNotificationData) {
+			//Getting the data
+			String message = tuple.item1;
+			TapbackInfo tapback = tuple.item2;
+			ConversationInfo conversationInfo = tuple.item3;
+			
+			//Generating the tapback string
+			tapback.getSummary(context, message, summary -> {
+				//Sending a notification
+				NotificationUtils.sendNotification(context, summary, tapback.getSender(), System.currentTimeMillis(), conversationInfo);
+			});
 		}
 	}
 	

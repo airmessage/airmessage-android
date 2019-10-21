@@ -42,6 +42,7 @@ import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.request.MessageResponseManager;
+import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.receiver.TextSMSSentReceiver;
 import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.data.BitmapCacheHelper;
@@ -51,6 +52,11 @@ import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.MessageInfo;
 
 public class NotificationUtils {
+	/**
+	 * Sends a notification concerning a new message
+	 * @param context The context to use
+	 * @param messageInfo The message to notify the user about
+	 */
 	public static void sendNotification(Context context, MessageInfo messageInfo) {
 		//Returning message is outgoing or the message's conversation is loaded
 		if(messageInfo.isOutgoing() || Messaging.getForegroundConversations().contains(messageInfo.getConversationInfo().getLocalID()) || ConnectionService.getConnectionManager() != null && ConnectionService.getConnectionManager().isMassRetrievalInProgress()) return;
@@ -60,6 +66,25 @@ public class NotificationUtils {
 		
 		//Adding the message
 		addMessageToNotification(context, messageInfo.getConversationInfo(), messageInfo.getSummary(context), messageInfo.getSender(), messageInfo.getDate(), messageInfo.getSendStyle());
+	}
+	
+	/**
+	 * Sends a notification containing a raw string for the user
+	 * @param context The context to use
+	 * @param message The text message to notify the user about
+	 * @param sender The user who sent the message
+	 * @param timestamp the date the message was sent
+	 * @param conversationInfo The conversation this message is from
+	 */
+	public static void sendNotification(Context context, String message, String sender, long timestamp, ConversationInfo conversationInfo) {
+		//Returning message is outgoing or the message's conversation is loaded
+		if(sender == null || Messaging.getForegroundConversations().contains(conversationInfo.getLocalID()) || ConnectionService.getConnectionManager() != null && ConnectionService.getConnectionManager().isMassRetrievalInProgress()) return;
+		
+		//Returning if notifications are disabled or the conversation is muted
+		if((Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_getnotifications_key), false)) || conversationInfo.isMuted()) return;
+		
+		//Adding the message
+		addMessageToNotification(context, conversationInfo, message, sender, timestamp, null);
 	}
 	
 	/* private static Notification getSummaryNotification(Context context) {

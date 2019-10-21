@@ -4,9 +4,12 @@ import android.content.Context;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.StringRes;
+import androidx.core.util.Consumer;
 
+import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.common.SharedValues;
+import me.tagavari.airmessage.data.UserCacheHelper;
 
 public class TapbackInfo {
 	//Creating the reference values
@@ -99,6 +102,77 @@ public class TapbackInfo {
 				return new TapbackDisplay(R.drawable.question_rounded, context.getResources().getColor(R.color.tapback_question, null), R.string.part_tapback_question);
 			default:
 				return null;
+		}
+	}
+	
+	public void getSummary(Context context, String messageText, Consumer<String> resultListener) {
+		@StringRes
+		int stringID;
+		
+		//Checking if there is no sender
+		if(sender == null) {
+			//Getting the string ID to use
+			switch(code) {
+				case tapbackHeart:
+					stringID = R.string.message_tapback_add_heart_you;
+					break;
+				case tapbackLike:
+					stringID = R.string.message_tapback_add_like_you;
+					break;
+				case tapbackDislike:
+					stringID = R.string.message_tapback_add_dislike_you;
+					break;
+				case tapbackLaugh:
+					stringID = R.string.message_tapback_add_laugh_you;
+					break;
+				case tapbackExclamation:
+					stringID = R.string.message_tapback_add_exclamation_you;
+					break;
+				case tapbackQuestion:
+					stringID = R.string.message_tapback_add_question_you;
+					break;
+				default:
+					throw new IllegalStateException("Unknown tapback code: " + code);
+			}
+			
+			//Returning the string immediately
+			resultListener.accept(context.getResources().getString(stringID, messageText));
+		} else {
+			//Getting the string ID to use
+			switch(code) {
+				case tapbackHeart:
+					stringID = R.string.message_tapback_add_heart;
+					break;
+				case tapbackLike:
+					stringID = R.string.message_tapback_add_like;
+					break;
+				case tapbackDislike:
+					stringID = R.string.message_tapback_add_dislike;
+					break;
+				case tapbackLaugh:
+					stringID = R.string.message_tapback_add_laugh;
+					break;
+				case tapbackExclamation:
+					stringID = R.string.message_tapback_add_exclamation;
+					break;
+				case tapbackQuestion:
+					stringID = R.string.message_tapback_add_question;
+					break;
+				default:
+					throw new IllegalStateException("Unknown tapback code: " + code);
+			}
+			
+			//Getting the sender's name
+			MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, sender, new UserCacheHelper.UserFetchResult() {
+				@Override
+				public void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
+					//Getting the sender name
+					String senderName = userInfo == null ? sender : userInfo.getContactName();
+					
+					//Returning the result
+					resultListener.accept(context.getResources().getString(stringID, senderName, messageText));
+				}
+			});
 		}
 	}
 	

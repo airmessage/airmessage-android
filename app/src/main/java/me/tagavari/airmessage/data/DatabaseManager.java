@@ -1223,6 +1223,28 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		return conversationItems;
 	}
 	
+	public ConversationItem loadConversationItem(Context context, long localID) {
+		//Getting the database
+		SQLiteDatabase database = getReadableDatabase();
+		
+		//Querying the database
+		try(Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, null, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(localID)}, null, null, null, "1")) {
+			//Returning if there are no items
+			if(!cursor.moveToFirst()) return null;
+			
+			//Getting the indices
+			ConversationItemIndices indices = getConversationItemIndices(cursor);
+			
+			//Loading the conversation
+			long conversationID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_CHAT));
+			ConversationInfo conversationInfo = fetchConversationInfo(context, conversationID);
+			if(conversationInfo == null) return null;
+			
+			//Loading the item
+			return loadConversationItem(indices, cursor, database, conversationInfo);
+		}
+	}
+	
 	public MessagePreviewInfo loadMessagePreview(long previewID) {
 		//Querying for the preview
 		SQLiteDatabase database = getReadableDatabase();
@@ -3501,7 +3523,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			return null;
 		}
 		
-		//Getting the ID
+		//Getting the IDs
 		long messageID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID));
 		
 		//Closing the cursor

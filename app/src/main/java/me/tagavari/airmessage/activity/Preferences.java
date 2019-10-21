@@ -542,7 +542,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			} else if(requestCode == activityRequestDefaultMessagingApp && resultCode == RESULT_OK) {
 				//Enabling the toggle
 				SwitchPreference preference = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
-				//preference.setChecked(true);
+				preference.setChecked(true);
 				
 				//Starting the import service
 				getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
