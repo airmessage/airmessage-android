@@ -582,6 +582,9 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		menu.removeItem(R.id.action_save);
 		menu.removeItem(R.id.action_deletedata);
 		
+		//Removing the tapback info option if there are no tapbacks
+		if(tapbacks.isEmpty()) menu.removeItem(R.id.action_tapbackdetails);
+		
 		//Creating the context reference
 		WeakReference<Context> contextReference = new WeakReference<>(context);
 		
@@ -592,6 +595,13 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			if(newContext == null) return false;
 			
 			switch(menuItem.getItemId()) {
+				case R.id.action_tapbackdetails: {
+					//Displaying the tapback list
+					displayTapbackDialog(context);
+					
+					//Returning true
+					return true;
+				}
 				case R.id.action_details: {
 					Date sentDate = new Date(getMessageInfo().getDate());
 					

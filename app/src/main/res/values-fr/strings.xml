@@ -389,4 +389,38 @@
 	<string name="title_textmessageforwarding">Transfert de SMS</string>
 	<string name="title_rcs">Message chat</string>
 	<string name="part_via">Via</string>
+
+	<string name="message_tapback_add_heart">%1$s a ajouté un « J\’adore » à « %2$s »</string>
+	<string name="message_tapback_add_heart_you">Vous avez ajouté un « J\’adore » à « %s »</string>
+	<string name="message_tapback_remove_heart">%1$s a retiré son « J\’adore » de « %2$s »</string>
+	<string name="message_tapback_remove_heart_you">Vous avez retiré votre « J\’adore » de « %s »</string>
+	<string name="message_tapback_add_like">%1$s a ajouté un « J\’aime » à « %2$s »</string>
+	<string name="message_tapback_add_like_you">Vous avez ajouté un « J\’aime » à « %s »</string>
+	<string name="message_tapback_remove_like">%1$s a retiré son « J\’aime » de « %2$s »</string>
+	<string name="message_tapback_remove_like_you">Vous avez retiré votre « J\’aime » de « %s »</string>
+	<string name="message_tapback_add_dislike">%1$s a ajouté un « Je n\’aime pas » à « %2$s »</string>
+	<string name="message_tapback_add_dislike_you">Vous avez ajouté un « Je n\’aime pas » à « %s »</string>
+	<string name="message_tapback_remove_dislike">%1$s a retiré son « Je n\’aime pas » de « %2$s »</string>
+	<string name="message_tapback_remove_dislike_you">Vous avez retiré votre « Je n\’aime pas » de « %s »</string>
+	<string name="message_tapback_add_laugh">%1$s a ajouté un rire à « %2$s »</string>
+	<string name="message_tapback_add_laugh_you">Vous avez ajouté un rire à « %s »</string>
+	<string name="message_tapback_remove_laugh">%1$s a retiré son rire de « %2$s »</string>
+	<string name="message_tapback_remove_laugh_you">Vous avez retiré votre rire de « %s »</string>
+	<string name="message_tapback_add_exclamation">%1$s a ajouté des points d\’exclamation à « %2$s »</string>
+	<string name="message_tapback_add_exclamation_you">Vous avez ajouté des points d\’exclamation à « %s »</string>
+	<string name="message_tapback_remove_exclamation">%1$s a retiré ses points d\’exclamation de « %2$s »</string>
+	<string name="message_tapback_remove_exclamation_you">Vous avez retiré vos points d\’exclamation de « %s »</string>
+	<string name="message_tapback_add_question">%1$s a ajouté un point d\’interrogation à « %2$s »</string>
+	<string name="message_tapback_add_question_you">Vous avez ajouté un point d\’interrogation à « %s »</string>
+	<string name="message_tapback_remove_question">%1$s a retiré son point d\’interrogation de « %2$s »</string>
+	<string name="message_tapback_remove_question_you">Vous avez retiré votre point d\’interrogation de « %s »</string>
+
+	<string name="part_tapback_heart">J\'adore</string>
+	<string name="part_tapback_like">J\'aime</string>
+	<string name="part_tapback_dislike">Je n\'aime pas</string>
+	<string name="part_tapback_laugh">Rire</string>
+	<string name="part_tapback_exclamation">Points d\'exclamation</string>
+	<string name="part_tapback_question">Point d\'interrogation</string>
+	<string name="progress_cleantextmessages">Nettoyage des messages texte locaux&#8230;</string>
+	<string name="action_tapbackdetails">Afficher les détails Tapback</string>
 </resources>

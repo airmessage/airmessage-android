@@ -527,6 +527,9 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 			menu.findItem(R.id.action_deletedata).setEnabled(false);
 		}
 		
+		//Disabling the tapback info option if there are no tapbacks
+		if(tapbacks.isEmpty()) menu.removeItem(R.id.action_tapbackdetails);
+		
 		//Creating a weak reference to the context
 		WeakReference<Context> contextReference = new WeakReference<>(context);
 		
@@ -537,6 +540,13 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 			if(newContext == null) return false;
 			
 			switch(menuItem.getItemId()) {
+				case R.id.action_tapbackdetails: {
+					//Displaying the tapback list
+					displayTapbackDialog(context);
+					
+					//Returning true
+					return true;
+				}
 				case R.id.action_details: {
 					Date sentDate = new Date(getMessageInfo().getDate());
 					

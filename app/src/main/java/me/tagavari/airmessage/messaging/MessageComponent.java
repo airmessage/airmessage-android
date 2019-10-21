@@ -15,13 +15,18 @@ import android.view.animation.Animation;
 import android.view.animation.OvershootInterpolator;
 import android.view.animation.ScaleAnimation;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -366,6 +371,116 @@ public abstract class MessageComponent<VH extends MessageComponent.ViewHolder> {
 			//Adding the view to the container
 			viewHolder.tapbackContainer.addView(tapbackView);
 		}
+	}
+	
+	void displayTapbackDialog(Context context) {
+		//Creating the view
+		View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_simplelist, null);
+		LinearLayout viewGroup = dialogView.findViewById(R.id.list);
+		
+		//Sorting the tapback list by kind
+		Map<Integer, Integer> tapbackCounts = new HashMap<>();
+		for(TapbackInfo tapback : tapbacks) {
+			if(tapbackCounts.containsKey(tapback.getCode())) tapbackCounts.put(tapback.getCode(), tapbackCounts.get(tapback.getCode()) + 1);
+			else tapbackCounts.put(tapback.getCode(), 1);
+		}
+		
+		//Grouping matching tapback types
+		Map<Integer, List<TapbackInfo>> tapbackResponses = new HashMap<>();
+		for(TapbackInfo tapback : tapbacks) {
+			if(tapbackResponses.containsKey(tapback.getCode())) tapbackResponses.get(tapback.getCode()).add(tapback);
+			else tapbackResponses.put(tapback.getCode(), new ArrayList<>(Arrays.asList(tapback)));
+		}
+		
+		//Sorting the tapback counts by value (descending)
+		tapbackCounts = Constants.sortMapByValueDesc(tapbackCounts);
+		
+		//Iterating over the tapback groups
+		for(Map.Entry<Integer, Integer> entry : tapbackCounts.entrySet()) {
+			//Getting the display info
+			TapbackInfo.TapbackDisplay displayInfo = TapbackInfo.getTapbackDisplay(entry.getKey(), context);
+			
+			//Adding the header
+			TextView headerLabel = (TextView) LayoutInflater.from(context).inflate(R.layout.listitem_tapbackinfo_header, viewGroup, false);
+			headerLabel.setText(context.getResources().getString(displayInfo.label));
+			headerLabel.setCompoundDrawablesRelativeWithIntrinsicBounds(displayInfo.iconResource, 0, 0, 0);
+			headerLabel.setCompoundDrawableTintList(ColorStateList.valueOf(displayInfo.color));
+			viewGroup.addView(headerLabel);
+			
+			//Getting all tapbacks of this type
+			for(TapbackInfo tapback : tapbackResponses.get(entry.getKey())) {
+				//Getting the tapback information
+				String sender = tapback.getSender();
+				
+				//Creating the user view
+				ViewGroup userView = (ViewGroup) LayoutInflater.from(context).inflate(R.layout.listitem_tapbackinfo_user, viewGroup, false);
+				viewGroup.addView(userView);
+				WeakReference<ViewGroup> userViewReference = new WeakReference<>(userView);
+				TextView nameLabel = userView.findViewById(R.id.label_name);
+				
+				//Checking if the sender is the user
+				if(sender == null) {
+					//Setting the name to "you"
+					nameLabel.setText(R.string.part_you);
+					
+					//Setting the default user tint
+					((ImageView) userView.findViewById(R.id.profile_default)).setColorFilter(context.getResources().getColor(R.color.colorPrimary, null), android.graphics.PorterDuff.Mode.MULTIPLY);
+				} else {
+					//Setting the sender's name (temporarily)
+					nameLabel.setText(sender);
+					
+					//Setting the sender's name
+					MainApplication.getInstance().getUserCacheHelper().assignUserInfo(context.getApplicationContext(), sender, new Constants.TaskedViewSource() {
+						@Override
+						public View get(boolean wasTasked) {
+							//Returning the sender label
+							ViewGroup userView = userViewReference.get();
+							if(userView == null) return null;
+							return userView.findViewById(R.id.label_name);
+						}
+					});
+					
+					//Setting the default user tint
+					MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(sender);
+					int userTint = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
+					((ImageView) userView.findViewById(R.id.profile_default)).setColorFilter(userTint, android.graphics.PorterDuff.Mode.MULTIPLY);
+					
+					//Setting the user's profile image
+					MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context.getApplicationContext(), sender, sender, new BitmapCacheHelper.ImageDecodeResult() {
+						@Override
+						public void onImageMeasured(int width, int height) {}
+						
+						@Override
+						public void onImageDecoded(Bitmap result, boolean wasTasked) {
+							//Returning if the result is invalid
+							if(result == null) return;
+							
+							//Getting the view
+							ViewGroup userView = userViewReference.get();
+							ImageView profileDefault = userView.findViewById(R.id.profile_default);
+							ImageView profileImage = userView.findViewById(R.id.profile_image);
+							
+							//Hiding the default view
+							profileDefault.setVisibility(View.INVISIBLE);
+							
+							//Setting the bitmap
+							profileImage.setImageBitmap(result);
+							
+							//Fading in the view
+							if(wasTasked) {
+								profileImage.setAlpha(0F);
+								profileImage.animate().alpha(1).setDuration(300).start();
+							}
+						}
+					});
+				}
+			}
+		}
+		
+		//Showing the dialog
+		new MaterialAlertDialogBuilder(context)
+				.setView(dialogView)
+				.create().show();
 	}
 	
 	public abstract VH createViewHolder(Context context, ViewGroup parent);

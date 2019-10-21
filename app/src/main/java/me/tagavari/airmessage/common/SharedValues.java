@@ -320,11 +320,11 @@ public class SharedValues {
 		//Creating the reference values
 		public static final int tapbackBaseAdd = 2000;
 		public static final int tapbackBaseRemove = 3000;
-		public static final int tapbackLove = 0;
+		public static final int tapbackHeart = 0;
 		public static final int tapbackLike = 1;
 		public static final int tapbackDislike = 2;
 		public static final int tapbackLaugh = 3;
-		public static final int tapbackEmphasis = 4;
+		public static final int tapbackExclamation = 4;
 		public static final int tapbackQuestion = 5;
 		
 		public int messageIndex;

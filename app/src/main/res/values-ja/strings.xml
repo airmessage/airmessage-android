@@ -139,8 +139,8 @@
 	<string name="message_confirm_resyncmessages_advanced">詳細同期</string>
 	<string name="message_confirm_deleteconversation_current">この会話を削除しますか？</string>
 	<string name="message_confirm_unblock">%sのブロックを解除しますか？</string>
-	<string name="message_shareable_text">%1$sの%2$s、%3$sは「%4$s」と送信しました</string>
-	<string name="message_shareable_text_you">%1$sの%2$s、私は「%3$s」と送信しますた</string>
+	<string name="message_shareable_text">%1$sの%2$s、%3$s：%4$s</string>
+	<string name="message_shareable_text_you">%1$sの%2$s、私：%3$s</string>
 	<string name="message_connection_connected">サーバーに接続しています</string>
 	<string name="message_connection_connectedfallback">代替経由でサーバーに接続しています</string>
 	<string name="message_connection_disconnected">サーバーから切断されています</string>
@@ -376,4 +376,43 @@
 	<string name="title_textmessageforwarding">テキストメッセージ転送</string>
 	<string name="title_rcs">チャットメッセージ</string>
 	<string name="part_via">経由</string>
+
+	<string name="message_tapback_add_heart">%1$sさんは「%2$s」に「ハート」と応答</string>
+	<string name="message_tapback_add_heart_you">あなたは「%s」に「ハート」と応答</string>
+	<string name="message_tapback_remove_heart">%1$sさんは「%2$s」から「ハート」を削除</string>
+	<string name="message_tapback_remove_heart_you">あなたは「%s」から「ハート」を削除</string>
+
+	<string name="message_tapback_add_like">%1$sさんは「%2$s」に「いいね」と応答</string>
+	<string name="message_tapback_add_like_you">あなたは「%s」に「いいね」と応答</string>
+	<string name="message_tapback_remove_like">%1$sさんは「%2$s」から「いいね」を削除</string>
+	<string name="message_tapback_remove_like_you">あなたは「%s」から「いいね」を削除</string>
+
+	<string name="message_tapback_add_dislike">%1$sさんは「%2$s」に「よくないね」と応答</string>
+	<string name="message_tapback_add_dislike_you">あなたは「%s」に「よくないね」と応答</string>
+	<string name="message_tapback_remove_dislike">%1$sさんは「%2$s」から「よくないね」を削除</string>
+	<string name="message_tapback_remove_dislike_you">あなたは「%s」から「よくないね」を削除</string>
+
+	<string name="message_tapback_add_laugh">%1$sさんは「%2$s」に「笑」と応答</string>
+	<string name="message_tapback_add_laugh_you">あなたは「%s」に「笑」と応答</string>
+	<string name="message_tapback_remove_laugh">%1$sさんは「%2$s」から「笑」を削除</string>
+	<string name="message_tapback_remove_laugh_you">あなたは「%s」から「笑」を削除</string>
+
+	<string name="message_tapback_add_exclamation">%1$sさんは「%2$s」に「！！」と応答</string>
+	<string name="message_tapback_add_exclamation_you">あなたは「%s」に「！！」と応答</string>
+	<string name="message_tapback_remove_exclamation">%1$sさんは「%2$s」から「！！」を削除</string>
+	<string name="message_tapback_remove_exclamation_you">あなたは「%s」から「！！」を削除</string>
+
+	<string name="message_tapback_add_question">%1$sさんは「%2$s」に「？」と応答</string>
+	<string name="message_tapback_add_question_you">あなたは「%s」に「？」と応答</string>
+	<string name="message_tapback_remove_question">%1$sさんは「%2$s」から「？」を削除</string>
+	<string name="message_tapback_remove_question_you">あなたは「%s」から「？」を削除</string>
+
+	<string name="part_tapback_heart">ハート</string>
+	<string name="part_tapback_like">いいね</string>
+	<string name="part_tapback_dislike">よくないね</string>
+	<string name="part_tapback_laugh">笑</string>
+	<string name="part_tapback_exclamation">ビックリマーク</string>
+	<string name="part_tapback_question">疑問符</string>
+	<string name="progress_cleantextmessages">ローカルテキストメッセージを片付け中&#8230;</string>
+	<string name="action_tapbackdetails">Tapback の詳細を表示</string>
 </resources>

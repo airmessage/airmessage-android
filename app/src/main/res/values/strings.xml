@@ -63,6 +63,7 @@
 	<string name="action_copytoclipboard">Copy to clipboard</string>
 	<string name="action_newconversation">New conversation</string>
 	<string name="action_connectiontroubleshootingguide">View help</string>
+	<string name="action_tapbackdetails">View tapback details</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -178,6 +179,31 @@
 	<string name="message_eventtype_kick_you_agent">You removed %s from the conversation</string>
 	<string name="message_eventtype_kick_you_object">%s removed you from the conversation</string>
 	<string name="message_eventtype_unknown">Unknown event</string>
+
+	<string name="message_tapback_add_heart">%1$s loved \"%2$s\"</string>
+	<string name="message_tapback_add_heart_you">You loved \"%s\"</string>
+	<string name="message_tapback_remove_heart">%1$s removed a heart from \"%2$s\"</string>
+	<string name="message_tapback_remove_heart_you">You removed a heart from \"%s\"</string>
+	<string name="message_tapback_add_like">%1$s liked \"%2$s\"</string>
+	<string name="message_tapback_add_like_you">You liked \"%s\"</string>
+	<string name="message_tapback_remove_like">%1$s removed a liked from \"%2$s\"</string>
+	<string name="message_tapback_remove_like_you">You removed a liked from \"%s\"</string>
+	<string name="message_tapback_add_dislike">%1$s disliked \"%2$s\"</string>
+	<string name="message_tapback_add_dislike_you">You disliked \"%s\"</string>
+	<string name="message_tapback_remove_dislike">%1$s removed a dislike from \"%2$s\"</string>
+	<string name="message_tapback_remove_dislike_you">You removed a dislike from \"%s\"</string>
+	<string name="message_tapback_add_laugh">%1$s laughed at \"%2$s\"</string>
+	<string name="message_tapback_add_laugh_you">You laughed at \"%s\"</string>
+	<string name="message_tapback_remove_laugh">%1$s removed a laugh from \"%2$s\"</string>
+	<string name="message_tapback_remove_laugh_you">You removed a laugh from \"%s\"</string>
+	<string name="message_tapback_add_exclamation">%1$s emphasized \"%2$s\"</string>
+	<string name="message_tapback_add_exclamation_you">You emphasized \"%s\"</string>
+	<string name="message_tapback_remove_exclamation">%1$s removed an exclamation from \"%2$s\"</string>
+	<string name="message_tapback_remove_exclamation_you">You removed an exclamation from \"%s\"</string>
+	<string name="message_tapback_add_question">%1$s questioned \"%2$s\"</string>
+	<string name="message_tapback_add_question_you">You questioned \"%s\"</string>
+	<string name="message_tapback_remove_question">%1$s removed a question mark from \"%2$s\"</string>
+	<string name="message_tapback_remove_question_you">You removed a question mark from \"%s\"</string>
 
 	<string name="message_setup_connect_address">Server address</string>
 	<string name="message_setup_connect_noserver">Don\'t have a server?</string>
@@ -346,6 +372,13 @@
 	<string name="part_conversations">Conversations</string>
 	<string name="part_messages">Messages</string>
 	<string name="part_camera">Camera</string>
+
+	<string name="part_tapback_heart">Heart</string>
+	<string name="part_tapback_like">Like</string>
+	<string name="part_tapback_dislike">Dislike</string>
+	<string name="part_tapback_laugh">Laugh</string>
+	<string name="part_tapback_exclamation">Exclamation</string>
+	<string name="part_tapback_question">Question mark</string>
 
 	<string name="state_sent">Sent</string>
 	<string name="state_delivered">Delivered</string>
