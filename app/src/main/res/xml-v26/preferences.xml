@@ -115,7 +115,7 @@
 			app:iconSpaceReserved="false">
 			<intent
 				android:action="android.intent.action.VIEW"
-				android:targetPackage="me.tagavari.airmessage"
+				android:targetPackage="@string/applicationId"
 				android:targetClass="me.tagavari.airmessage.activity.ServerSetup" />
 		</androidx.preference.Preference>
 

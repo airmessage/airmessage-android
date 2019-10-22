@@ -31,6 +31,11 @@ android {
 		debug {
 			ext.enableCrashlytics = false
 
+			applicationIdSuffix ".debug"
+			versionNameSuffix "-DEBUG"
+
+			resValue "string", "applicationId", "me.tagavari.airmessage.debug"
+
 			/* minifyEnabled true
 			shrinkResources true
 
@@ -43,6 +48,8 @@ android {
 
 			useProguard true
 			proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro" */
+
+			resValue "string", "applicationId", "me.tagavari.airmessage"
 
 			signingConfig signingConfigs.config
 		}

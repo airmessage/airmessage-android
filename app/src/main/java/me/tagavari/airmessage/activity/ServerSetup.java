@@ -183,7 +183,7 @@ public class ServerSetup extends AppCompatActivity {
 			int maxContentWidth = Constants.dpToPx(500);
 			ViewGroup content = findViewById(R.id.content);
 			content.post(() -> {
-				for(int i = 0; i < content.getChildCount(); i++) Constants.enforceContentWidthImmediate(maxContentWidth, content.getChildAt(i));
+				for(int i = 0; i < content.getChildCount(); i++) Constants.enforceContentWidthImmediatePadding(maxContentWidth, content.getChildAt(i));
 			});
 		}
 		
@@ -267,7 +267,7 @@ public class ServerSetup extends AppCompatActivity {
 	protected void onStop() {
 		super.onStop();
 		
-		if(!isComplete && viewModel.originalHostname != null && viewModel.originalPassword != null) {
+		if(!isComplete && viewModel.originalHostname != null && viewModel.originalPassword != null && !isChangingConfigurations()) {
 			//Restoring the connection values
 			ConnectionManager.hostname = viewModel.originalHostname;
 			ConnectionManager.hostnameFallback = viewModel.originalHostnameFallback;

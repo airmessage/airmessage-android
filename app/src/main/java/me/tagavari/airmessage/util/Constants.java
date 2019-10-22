@@ -845,6 +845,12 @@ public class Constants {
 		view.setLayoutParams(layoutParams);
 	}
 	
+	public static void enforceContentWidthImmediatePadding(int maxContentWidth, View view) {
+		//Calculating and applying the margin
+		int padding = calculatePaddingContentWidth(maxContentWidth, view);
+		view.setPadding(padding, view.getPaddingTop(), padding, view.getPaddingBottom());
+	}
+	
 	/* private static final char[] hexArray = "0123456789ABCDEF".toCharArray();
 	static String bytesToHex(byte[] bytes) {
 		char[] hexChars = new char[bytes.length * 2];
