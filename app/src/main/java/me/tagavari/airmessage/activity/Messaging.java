@@ -1262,11 +1262,44 @@ public class Messaging extends AppCompatCompositeActivity {
 				String mapPositionAddress = intent.getStringExtra(Constants.intentParamAddress);
 				String mapPositionName = intent.getStringExtra(Constants.intentParamName);
 				
-				//Selecting a file to write to
-				File file = MainApplication.getDraftTarget(this, viewModel.conversationID, mapPositionName != null ? Constants.cleanFileName(mapPositionName) + ".loc.vcf" : Constants.locationName);
-				
-				//Writing the file and creating the attachment data
-				new WriteVLocationTask(file, mapPosition, mapPositionAddress, mapPositionName, this).execute();
+				//Checking if this is an iMessage conversation
+				if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge &&
+				   ConversationInfo.serviceTypeAppleMessage.equals(viewModel.conversationInfo.getService())) {
+					//Selecting a file to write to
+					File file = MainApplication.getDraftTarget(this, viewModel.conversationID, mapPositionName != null ? Constants.cleanFileName(mapPositionName) + ".loc.vcf" : Constants.locationName);
+					
+					//Writing the file and creating the attachment data
+					new WriteVLocationTask(file, mapPosition, mapPositionAddress, mapPositionName, this).execute();
+				} else {
+					//Creating the query string
+					String query;
+					if(mapPositionAddress != null) {
+						query = mapPositionAddress;
+					} else {
+						query = mapPosition.latitude + "," + mapPosition.longitude;
+					}
+					
+					//Building the Google Maps URL
+					Uri mapsUri = new Uri.Builder()
+							.scheme("https")
+							.authority("www.google.com")
+							.appendPath("maps")
+							.appendPath("search")
+							.appendPath("")
+							.appendQueryParameter("api", "1")
+							.appendQueryParameter("query", query)
+							.build();
+					
+					//Appending to the text box
+					String currentInputText = messageInputField.getText().toString();
+					if(currentInputText.isEmpty()) {
+						messageInputField.setText(mapsUri.toString());
+					} else {
+						//Adding a whitespace character if there is none
+						if(!Character.isWhitespace(currentInputText.charAt(currentInputText.length() - 1))) currentInputText += " ";
+						messageInputField.setText(currentInputText + mapsUri.toString());
+					}
+				}
 				
 				break;
 			}
