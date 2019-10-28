@@ -42,12 +42,12 @@
 		android:key="@string/preferencegroup_features_key"
 		android:title="@string/preferencegroup_features_title"
 		app:iconSpaceReserved="false">
-		<androidx.preference.SwitchPreference
+		<!-- <androidx.preference.SwitchPreference
 			android:key="@string/preference_appearance_showreadreceipts_key"
 			android:title="@string/preference_appearance_showreadreceipts_title"
 			android:summary="@string/preference_appearance_showreadreceipts_description"
 			android:defaultValue="true"
-			app:iconSpaceReserved="false" />
+			app:iconSpaceReserved="false" /> -->
 		<androidx.preference.SwitchPreference
 			android:key="@string/preference_features_replysuggestions_key"
 			android:title="@string/preference_features_replysuggestions_title"

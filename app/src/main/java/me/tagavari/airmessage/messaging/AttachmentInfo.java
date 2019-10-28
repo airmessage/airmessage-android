@@ -520,11 +520,15 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 		Menu menu = popupMenu.getMenu();
 		menu.removeItem(R.id.action_copytext);
 		
-		//Disabling the share and delete option if there is no data
+		//Disabling the share, save, and delete option if there is no data
 		if(file == null) {
 			menu.findItem(R.id.action_share).setEnabled(false);
 			menu.findItem(R.id.action_save).setEnabled(false);
 			menu.findItem(R.id.action_deletedata).setEnabled(false);
+		}
+		//Remove the delete option if the file was not sent over AirMessage Bridge
+		if(getMessageInfo().getConversationInfo().getServiceHandler() != ConversationInfo.serviceHandlerAMBridge) {
+			menu.removeItem(R.id.action_deletedata);
 		}
 		
 		//Disabling the tapback info option if there are no tapbacks

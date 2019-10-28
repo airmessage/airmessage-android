@@ -1089,7 +1089,8 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	}
 	
 	public static boolean getPreferenceShowReadReceipts(Context context) {
-		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_showreadreceipts_key), true);
+		return true;
+		//return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_showreadreceipts_key), true);
 	}
 	
 	public static boolean getPreferenceMessagePreviews(Context context) {
