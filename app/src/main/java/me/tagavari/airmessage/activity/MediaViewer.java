@@ -337,7 +337,7 @@ public class MediaViewer extends AppCompatActivity {
 		intent.setAction(Intent.ACTION_SEND);
 		
 		//Creating a content URI
-		Uri content = FileProvider.getUriForFile(this, MainApplication.fileAuthority, file);
+		Uri content = FileProvider.getUriForFile(this, MainApplication.getFileAuthority(MainApplication.getInstance()), file);
 		
 		//Setting the intent file
 		intent.putExtra(Intent.EXTRA_STREAM, content);

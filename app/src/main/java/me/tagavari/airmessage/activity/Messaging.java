@@ -2945,7 +2945,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewModel.targetFileIntent = MainApplication.getDraftTarget(this, viewModel.conversationID, video ? Constants.videoName : Constants.pictureName);
 		
 		//Setting the output file target
-		Uri targetUri = FileProvider.getUriForFile(this, MainApplication.fileAuthority, viewModel.targetFileIntent);
+		Uri targetUri = FileProvider.getUriForFile(this, MainApplication.getFileAuthority(this), viewModel.targetFileIntent);
 		cameraCaptureIntent.putExtra(MediaStore.EXTRA_OUTPUT, targetUri);
 		
 		//Starting the activity

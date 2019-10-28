@@ -64,8 +64,6 @@ public class MainApplication extends Application {
 	
 	public static final String localBCContactUpdate = "LocalMSG-Main-ContactUpdate";
 	
-	public static final String fileAuthority = "me.tagavari.airmessage.fileprovider";
-	
 	private final ContentObserver contentObserver = new ContentObserver(null) {
 		@Override
 		public void onChange(boolean selfChange) {
@@ -209,6 +207,10 @@ public class MainApplication extends Application {
 		//Returning true
 		return true;
 	} */
+	
+	public static String getFileAuthority(Context context) {
+		return context.getPackageName() + ".fileprovider";
+	}
 	
 	public static File getAttachmentDirectory(Context context) {
 		//Getting the media directory

@@ -49,6 +49,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.regex.Matcher;
 
 import io.github.ponnamkarthik.richlinkpreview.MetaData;
@@ -315,7 +317,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			}
 			
 			//Fetching the link preview
-			new LinkPreviewAsyncTask(messageTextReference, messageTextID, originalURL, metaData).execute();
+			new LinkPreviewAsyncTask(messageTextReference, messageTextID, originalURL, metaData).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 		}
 		
 		@Override

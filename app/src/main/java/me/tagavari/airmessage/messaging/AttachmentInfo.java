@@ -583,7 +583,7 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 					intent.setAction(Intent.ACTION_SEND);
 					
 					//Creating a content URI
-					Uri content = FileProvider.getUriForFile(newContext, MainApplication.fileAuthority, file);
+					Uri content = FileProvider.getUriForFile(newContext, MainApplication.getFileAuthority(context), file);
 					
 					//Setting the intent file
 					intent.putExtra(Intent.EXTRA_STREAM, content);
@@ -730,7 +730,7 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 		if(file == null) return;
 		
 		//Creating a content URI
-		Uri content = FileProvider.getUriForFile(context, MainApplication.fileAuthority, file);
+		Uri content = FileProvider.getUriForFile(context, MainApplication.getFileAuthority(context), file);
 		
 		//Launching the content viewer
 		Intent intent = new Intent();
