@@ -18,6 +18,7 @@ import com.google.android.material.snackbar.Snackbar;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ListIterator;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -588,17 +589,15 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 			Context context = contextReference.get();
 			if(context == null) return null;
 			
-			//Clearing the attachments directory
-			MainApplication.clearAttachmentsDirectory(context);
-			
-			//Clearing the path links in the database
-			DatabaseManager.getInstance().clearAttachmentFiles();
+			//Clearing the attachment files from AM bridge
+			DatabaseManager.getInstance().clearDeleteAttachmentFilesAMBridge();
 			
 			//Returning
 			return null;
 		}
 	}
 	
+	@Deprecated
 	static class DeleteMessagesTask extends AsyncTask<Void, Void, Void> {
 		//Creating the values
 		private final WeakReference<Context> contextReference;
@@ -674,8 +673,11 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 				//Disabling other shortcuts
 				if(context != null) ConversationUtils.disableShortcuts(context, conversations);
 				
-				//Clearing the conversations in memory
-				conversations.clear();
+				//Clearing AM bridge conversations in memory
+				for(ListIterator<ConversationInfo> iterator = conversations.listIterator(); iterator.hasNext();) {
+					ConversationInfo conversationInfo = iterator.next();
+					if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) iterator.remove();
+				}
 			}
 			
 			//Updating the conversation activity list
@@ -693,10 +695,10 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 			if(context == null) return null;
 			
 			//Removing the messages from the database
-			DatabaseManager.getInstance().deleteEverything();
+			DatabaseManager.getInstance().deleteEverythingAMBridge();
 			
 			//Clearing the attachments directory
-			MainApplication.clearAttachmentsDirectory(context);
+			//MainApplication.clearAttachmentsDirectory(context);
 			
 			//Returning
 			return null;

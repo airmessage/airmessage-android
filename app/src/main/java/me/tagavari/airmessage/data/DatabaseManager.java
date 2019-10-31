@@ -1469,6 +1469,37 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(localID)});
 	}
 	
+	public void clearDeleteAttachmentFilesAMBridge() {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
+		//Selecting all attachments (ID and file path) under an AM Bridge conversation
+		try(Cursor cursor = database.rawQuery("SELECT " + Contract.AttachmentEntry.TABLE_NAME + "." + Contract.AttachmentEntry._ID + ", " + Contract.AttachmentEntry.TABLE_NAME + "." + Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + " FROM " + Contract.AttachmentEntry.TABLE_NAME + " " +
+											  "JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.TABLE_NAME + "." + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry._ID + " " +
+											  "JOIN " + Contract.ConversationEntry.TABLE_NAME + " ON " + Contract.MessageEntry.TABLE_NAME + "." + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + Contract.ConversationEntry.TABLE_NAME + "." + Contract.ConversationEntry._ID + " " +
+											  "WHERE " + Contract.ConversationEntry.TABLE_NAME + "." + Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER +" = ?", new String[]{Integer.toString(ConversationInfo.serviceHandlerAMBridge)})) {
+			//Getting the indices
+			int iLocalID = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry._ID);
+			int iPath = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
+			
+			while(cursor.moveToNext()) {
+				//Getting the attachment details
+				long localID = cursor.getLong(iLocalID);
+				String path = cursor.getString(iPath);
+				
+				//Getting the attachment file
+				File attachmentFile = path == null ? null : AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), path);
+				if(attachmentFile != null) {
+					//Deleting the file
+					attachmentFile.delete();
+					
+					//Invalidating the attachment
+					invalidateAttachment(localID);
+				}
+			}
+		}
+	}
+	
 	public void updateAttachmentFile(long localID, Context context, File file) {
 		//Creating the content values variable
 		ContentValues contentValues = new ContentValues();
@@ -3287,18 +3318,6 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		getWritableDatabase().delete(Contract.MemberEntry.TABLE_NAME, Contract.MemberEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MemberEntry.COLUMN_NAME_MEMBER + " = ?", new String[]{Long.toString(chatID), member});
 	}
 	
-	public void clearAttachmentFiles() {
-		//Creating the content values
-		ContentValues contentValues = new ContentValues();
-		contentValues.putNull(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
-		
-		//Getting the database
-		SQLiteDatabase database = getWritableDatabase();
-		
-		//Updating the database
-		database.update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + " IS NOT NULL", null);
-	}
-	
 	/* void removeText(long messageID) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
@@ -3356,13 +3375,50 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
-		//Deleting the message
+		//Deleting the message entries
 		database.delete(Contract.MessageEntry.TABLE_NAME, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 		
-		//Deleting all related entries
+		//Querying associated attachment files
+		try(Cursor cursor = database.query(Contract.AttachmentEntry.TABLE_NAME, new String[]{Contract.AttachmentEntry._ID, Contract.AttachmentEntry.COLUMN_NAME_FILEPATH},
+				Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(messageID)},
+				null, null, null, null)) {
+			//Getting the indices
+			int iLocalID = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry._ID);
+			int iPath = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
+			
+			while(cursor.moveToNext()) {
+				//Getting the attachment details
+				long localID = cursor.getLong(iLocalID);
+				String path = cursor.getString(iPath);
+				
+				//Deleting the attachment file
+				File attachmentFile = path == null ? null : AttachmentInfo.getAbsolutePath(MainApplication.getInstance(), path);
+				if(attachmentFile != null) attachmentFile.delete();
+			}
+		}
+		//Deleting associated attachment entries
 		database.delete(Contract.AttachmentEntry.TABLE_NAME, Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(messageID)});
+		
+		//Clearing sticker and tapback entries
 		database.delete(Contract.StickerEntry.TABLE_NAME, Contract.StickerEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(messageID)});
 		database.delete(Contract.TapbackEntry.TABLE_NAME, Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(messageID)});
+	}
+	
+	public void deleteEverythingAMBridge() {
+		//Getting the database
+		SQLiteDatabase database = getWritableDatabase();
+		
+		//Deleting conversations from AM bridge
+		try(Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, new String[]{Contract.ConversationEntry._ID},
+				Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER + " = ?", new String[]{Integer.toString(ConversationInfo.serviceHandlerAMBridge)},
+				null, null, null)) {
+			
+			//Deleting the conversations
+			int iLocalID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry._ID);
+			while(cursor.moveToNext()) {
+				deleteConversation(cursor.getLong(iLocalID));
+			}
+		}
 	}
 	
 	public void deleteEverything() {

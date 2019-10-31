@@ -239,7 +239,7 @@ public class MassRetrievalThread extends Thread {
 						//Setting the conversations in memory
 						ArrayList<ConversationInfo> sharedConversations = ConversationUtils.getConversations();
 						if(sharedConversations != null) {
-							sharedConversations.clear();
+							//sharedConversations.clear();
 							sharedConversations.addAll(conversationInfoList);
 							
 							//Updating shortcuts
