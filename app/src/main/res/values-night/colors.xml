@@ -2,6 +2,8 @@
 <resources>
 	<color name="colorPrimary">#82B1FF</color>
 
+	<color name="colorWarning">#FFD180</color>
+
 	<color name="colorMessageTextMessageForwarding">#62EFCD</color>
 	<color name="colorMessageTextMessage">#6EFFA0</color>
 	<color name="colorMessageRCS">#FFDD4B</color>

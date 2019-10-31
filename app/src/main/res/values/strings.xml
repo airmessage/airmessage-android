@@ -162,6 +162,7 @@
 	<string name="message_serverstatus_unknown">An unknown error occurred</string>
 
 	<string name="message_serverupdate">A server update is available</string>
+	<string name="message_appvaliditywarning">This installation of AirMessage could not be verified. Your messaging data may be at risk. Please install AirMessage from the Play Store.</string>
 	<string name="message_searchnoresults">No results</string>
 
 	<string name="message_eventtype_chatrename_change">%1$s named the conversation \"%2$s\"</string>

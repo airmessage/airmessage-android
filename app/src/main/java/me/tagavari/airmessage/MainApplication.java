@@ -169,7 +169,9 @@ public class MainApplication extends Application {
 			Preferences.setPreferenceTextMessageIntegration(this, false);
 			
 			//Clearing the database of text messages
-			startService(new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete));
+			Intent serviceIntent = new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete);
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
+			else startService(serviceIntent);
 		}
 	}
 	

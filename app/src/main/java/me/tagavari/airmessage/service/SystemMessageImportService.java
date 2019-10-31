@@ -63,14 +63,14 @@ public class SystemMessageImportService extends Service {
 			currentThread.start();
 			
 			//Posting the progress notification
-			postNotification(this, getImportNotification(this));
+			startForeground(notificationID, getImportNotification(this));
 		} else if(selfIntentActionDelete.equals(intentAction)) {
 			//Launching the delete thread
 			currentThread = new DeleteThread(this, this);
 			currentThread.start();
 			
 			//Posting the progress notification
-			getDeleteNotification(this);
+			startForeground(notificationID, getDeleteNotification(this));
 		} else {
 			//Stopping the service
 			stopSelf();

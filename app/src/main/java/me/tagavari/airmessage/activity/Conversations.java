@@ -4,7 +4,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.Signature;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -33,6 +35,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.lang.ref.WeakReference;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -41,6 +45,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.view.ActionMode;
 import androidx.appcompat.widget.Toolbar;
+import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -75,7 +80,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	//Creating the view model and info bar values
 	private ActivityViewModel viewModel;
-	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarSystemUpdate;
+	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarSystemUpdate, infoBarValidityWarning;
 	
 	//Creating the menu values
 	private MenuItem menuItemSearch = null;
@@ -132,7 +137,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			} else {
 				hideServerWarning();
 				if(state == ConnectionManager.stateConnected) {
-					if(connectionManager != null && connectionManager.getActiveCommunicationsVersion() < ConnectionManager.mmCommunicationsVersion) infoBarSystemUpdate.show();
+					if(connectionManager.getActiveCommunicationsVersion() != -1 && connectionManager.getActiveCommunicationsVersion() < ConnectionManager.mmCommunicationsVersion) infoBarSystemUpdate.show();
 					else infoBarSystemUpdate.hide();
 				}
 			}
@@ -275,6 +280,11 @@ public class Conversations extends AppCompatCompositeActivity {
 		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
 		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, permissionRequestContacts));
 		infoBarSystemUpdate = pluginMessageBar.create(R.drawable.update, getResources().getString(R.string.message_serverupdate));
+		infoBarValidityWarning = pluginMessageBar.create(R.drawable.warning, getResources().getString(R.string.message_appvaliditywarning));
+		viewModel.installValidity.observe(this, isValid -> {
+			System.out.println("Validity update: " + isValid);
+			if(!isValid) infoBarValidityWarning.show();
+		});
 		
 		//Restoring the state
 		restoreListingArchivedState();
@@ -1147,6 +1157,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		final List<Long> actionModeSelections = new ArrayList<>();
 		boolean listingArchived = false;
 		boolean isSearching = false;
+		final MutableLiveData<Boolean> installValidity = new MutableLiveData<>();
 		
 		public ActivityViewModel() {
 			final WeakReference<List<Long>> actionModeSelectionsReference = new WeakReference<>(actionModeSelections);
@@ -1154,6 +1165,76 @@ public class Conversations extends AppCompatCompositeActivity {
 				List<Long> selections = actionModeSelectionsReference.get();
 				return selections != null && selections.contains(id);
 			});
+			runInstallValidityCheck();
+		}
+		
+		private void runInstallValidityCheck() {
+			Context context = MainApplication.getInstance();
+			//Validating the app immediately if it was installed from the Google Play Store
+			if("com.android.vending".equals(context.getPackageManager().getInstallerPackageName(context.getPackageName()))) {
+				installValidity.setValue(true);
+				return;
+			}
+			
+			//Validating the app if all of its signing certificates match
+			String[] fingerprints = getFingerprints(context, "SHA1");
+			if(fingerprints.length == 0) {
+				installValidity.setValue(false);
+				return;
+			}
+			for(String fingerprint : fingerprints) {
+				if(!checkFingerprint(fingerprint)) {
+					installValidity.setValue(false);
+					return;
+				}
+			}
+			
+			installValidity.setValue(true);
+		}
+		
+		//https://stackoverflow.com/a/54791043
+		private static String[] getFingerprints(Context context, String key) {
+			//Creating the fingerprint array
+			String[] fingerprintArray = new String[0];
+			
+			try {
+				//Getting the package information
+				final PackageInfo info = context.getPackageManager().getPackageInfo(BuildConfig.APPLICATION_ID, PackageManager.GET_SIGNATURES);
+				
+				fingerprintArray = new String[info.signatures.length];
+				for(int iSig = 0; iSig < info.signatures.length; iSig++) {
+					//Getting the signature
+					Signature signature = info.signatures[iSig];
+					
+					//Getting the signature hash
+					final MessageDigest md = MessageDigest.getInstance(key);
+					md.update(signature.toByteArray());
+					
+					//Building a fingerprint string from the signature
+					final byte[] digest = md.digest();
+					final StringBuilder toRet = new StringBuilder();
+					for(int i = 0; i < digest.length; i++) {
+						if(i != 0) toRet.append(":");
+						int b = digest[i] & 0xff;
+						String hex = Integer.toHexString(b);
+						if(hex.length() == 1) toRet.append("0");
+						toRet.append(hex);
+					}
+					
+					//Adding the fingerprint string
+					fingerprintArray[iSig] = toRet.toString();
+				}
+			} catch(PackageManager.NameNotFoundException | NoSuchAlgorithmException exception) {
+				exception.printStackTrace();
+			}
+			
+			//Returning the signature array
+			return fingerprintArray;
+		}
+		
+		private static boolean checkFingerprint(String fingerprint) {
+			return "f8:15:22:84:65:57:87:bd:0b:79:97:29:5e:d6:d2:40:bf:74:e7:f3".equals(fingerprint) || //Debug fingerprint
+				   "78:29:b4:4f:d8:15:9d:3c:ca:42:79:a4:9b:8c:7b:17:70:5b:2c:0f".equals(fingerprint); //Release fingerprint (Google Play app signing)
 		}
 	}
 	

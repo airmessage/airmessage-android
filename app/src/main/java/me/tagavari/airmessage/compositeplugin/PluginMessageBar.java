@@ -124,7 +124,10 @@ public class PluginMessageBar extends AppCompatActivityPlugin {
 				iconView = view.findViewById(R.id.icon);
 				textView = view.findViewById(R.id.text);
 				buttonView = view.findViewById(R.id.button);
-				if(infoBarColor != -1) buttonView.setTextColor(infoBarColor);
+				if(infoBarColor != -1) {
+					buttonView.setTextColor(infoBarColor);
+					buttonView.setRippleColor(ColorStateList.valueOf(infoBarColor));
+				}
 			}
 			
 			//Filling in the view details
