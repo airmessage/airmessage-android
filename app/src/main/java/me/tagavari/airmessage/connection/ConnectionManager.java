@@ -868,8 +868,10 @@ public class ConnectionManager {
 		@Override
 		public void accept(MessageResponseManager item) {
 			ConnectionManager manager = getManager();
-			int index = manager.messageSendRequests.indexOfValue(item);
-			if(index != -1) manager.messageSendRequests.removeAt(index);
+			if(manager != null) {
+				int index = manager.messageSendRequests.indexOfValue(item);
+				if(index != -1) manager.messageSendRequests.removeAt(index);
+			}
 		}
 	}
 	
@@ -881,8 +883,10 @@ public class ConnectionManager {
 		@Override
 		public void accept(ChatCreationResponseManager item) {
 			ConnectionManager manager = getManager();
-			int index = manager.chatCreationRequests.indexOfValue(item);
-			if(index != -1) manager.messageSendRequests.removeAt(index);
+			if(manager != null) {
+				int index = manager.chatCreationRequests.indexOfValue(item);
+				if(index != -1) manager.messageSendRequests.removeAt(index);
+			}
 		}
 	}
 	
@@ -907,9 +911,8 @@ public class ConnectionManager {
 		
 		@Override
 		public void accept(FileProcessingRequest request) {
-			ConnectionManager connectionManager = getManager();
-			if(connectionManager == null) return;
-			connectionManager.fileProcessingRequestCurrent.set(request);
+			ConnectionManager manager = getManager();
+			if(manager != null) manager.fileProcessingRequestCurrent.set(request);
 		}
 	}
 	
