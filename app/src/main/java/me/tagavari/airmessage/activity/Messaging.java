@@ -125,6 +125,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.signature.MediaStoreSignature;
 import com.crashlytics.android.Crashlytics;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.ResolvableApiException;
@@ -4215,6 +4216,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Setting the image thumbnail
 			Glide.with(context)
 					.load(item.getFile() != null ? item.getFile() : item.getUri())
+					.signature(new MediaStoreSignature(item.fileType != null ? item.fileType : "", item.modificationDate != -1 ? item.modificationDate : 0, 0))
 					.apply(RequestOptions.centerCropTransform())
 					.transition(DrawableTransitionOptions.withCrossFade())
 					.into(viewHolder.imageThumbnail);
