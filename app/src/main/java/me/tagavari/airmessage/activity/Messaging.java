@@ -6484,8 +6484,10 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 			
 			//Playing sounds
-			if(messageIncoming) activity.viewModel.playSound(ActivityViewModel.soundMessageIncoming);
-			if(messageOutgoing) activity.viewModel.playSound(ActivityViewModel.soundMessageOutgoing);
+			if(Preferences.getPreferenceMessageSounds(activity)) {
+				if(messageIncoming) activity.viewModel.playSound(ActivityViewModel.soundMessageIncoming);
+				if(messageOutgoing) activity.viewModel.playSound(ActivityViewModel.soundMessageOutgoing);
+			}
 			
 			//Updating the reply suggestions
 			activity.viewModel.updateSmartReply();
@@ -6511,7 +6513,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(!activity.hasWindowFocus()) return;
 			
 			//Playing a sound
-			activity.viewModel.playSound(ActivityViewModel.soundMessageError);
+			if(Preferences.getPreferenceMessageSounds(activity)) activity.viewModel.playSound(ActivityViewModel.soundMessageError);
 		}
 		
 		@Override
