@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.messaging;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.PaintDrawable;
@@ -8,10 +9,16 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.Nullable;
+
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestBuilder;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.Target;
 
 import java.io.File;
 
@@ -81,6 +88,7 @@ public class ImageAttachmentInfo extends AttachmentInfo<ImageAttachmentInfo.View
 		return Constants.compareMimeTypes(MIME_TYPE, fileType);
 	}
 	
+	@SuppressLint("CheckResult")
 	@Override
 	public void updateContentView(ViewHolder viewHolder, Context context) {
 		/* //Configuring the content view
@@ -108,6 +116,18 @@ public class ImageAttachmentInfo extends AttachmentInfo<ImageAttachmentInfo.View
 					.load(file)
 					.transition(DrawableTransitionOptions.withCrossFade());
 					//.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getServiceColor(R.color.colorImageUnloaded, null))));
+			requestBuilder.addListener(new RequestListener<Drawable>() {
+				@Override
+				public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+					return false;
+				}
+				
+				@Override
+				public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+					viewHolder.imageContent.post(viewHolder.imageContent::requestLayout);
+					return false;
+				}
+			});
 			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(ConversationUtils.invisibleInkBlurRadius, ConversationUtils.invisibleInkBlurSampling)));
 			requestBuilder.into(viewHolder.imageContent);
 		}

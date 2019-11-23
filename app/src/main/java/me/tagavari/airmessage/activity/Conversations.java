@@ -282,7 +282,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		infoBarSystemUpdate = pluginMessageBar.create(R.drawable.update, getResources().getString(R.string.message_serverupdate));
 		infoBarValidityWarning = pluginMessageBar.create(R.drawable.warning, getResources().getString(R.string.message_appvaliditywarning));
 		viewModel.installValidity.observe(this, isValid -> {
-			System.out.println("Validity update: " + isValid);
 			if(!isValid) infoBarValidityWarning.show();
 		});
 		

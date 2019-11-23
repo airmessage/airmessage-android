@@ -110,6 +110,9 @@ public class TextMMSReceivedReceiver extends MmsReceivedReceiver {
 						if(result.getNewConversationInfo() != null) {
 							//Adding the conversation in memory
 							ConversationUtils.addConversation(result.getNewConversationInfo());
+						} else {
+							//Re-sorting the conversation
+							ConversationUtils.sortConversation(conversationInfo);
 						}
 						
 						//Updating the conversation activity list
