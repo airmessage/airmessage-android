@@ -211,7 +211,10 @@
 	<string name="list_n_middle">と%s</string>
 	<string name="list_n_end">と%s</string>
 	<string name="notificationchannel_message">メッセージ</string>
-	<string name="notificationchannel_status">状態</string>
+	<string name="notificationchannel_status">一般的なステータス</string>
+	<string name="notificationchannel_status_desc">サーバー接続などのステータス通知</string>
+	<string name="notificationchannel_statusimportant">重要なステータスアラート</string>
+	<string name="notificationchannel_statusimportant_desc">接続の切断やダウンタイムなど、重要なステータスに関する通知</string>
 	<string name="notificationchannelimportance_0">オフ</string>
 	<string name="preference_messagenotifications_title">メッセージの通知</string>
 	<string name="preferencegroup_messagenotifications_title">通知</string>
@@ -259,7 +262,6 @@
 	<string name="message_draft_limitreached">下書きファイルの制限です</string>
 	<string name="imperative_recording_cancel">スライドしてキャンセル</string>
 	<string name="notificationchannel_message_desc">着信のメッセージの通知</string>
-	<string name="notificationchannel_status_desc">サーバー接続などの状態通知</string>
 	<string name="notificationchannelimportance_1">重要度の低い</string>
 	<string name="notificationchannelimportance_2">重要度中</string>
 	<string name="notificationchannelimportance_3">最重要度</string>

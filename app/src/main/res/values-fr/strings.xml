@@ -156,8 +156,10 @@
 	<string name="servicedesc_connectionservice">Crée et maintient une connexion au serveur AirMessage pour envoyer et recevoir des messages</string>
 	<string name="notificationchannel_message">Messages</string>
 	<string name="notificationchannel_message_desc">Concerne les notifications sur les messages entrants</string>
-	<string name="notificationchannel_status">Statut</string>
-	<string name="notificationchannel_status_desc">Concerne les notifications sur les messages d\'état, tels que la connectivité du serveur</string>
+	<string name="notificationchannel_status">Statut général</string>
+	<string name="notificationchannel_status_desc">Concerne les notifications sur les messages de statut, tels que la connectivité du serveur</string>
+	<string name="notificationchannel_statusimportant">Alertes de statut importantes</string>
+	<string name="notificationchannel_statusimportant_desc">Concerne les notifications sur les mises au point de statut importantes, telles que les connexions perdues et les temps d\'arrêt</string>
 	<string name="message_connectionerrror">N\'a pas pu se connecter au serveur</string>
 	<string name="message_permissiondetails_microphone_missing">L\'autorisation d\'enregistrer de l\'audio est manquante</string>
 	<string name="action_draw">Dessiner</string>

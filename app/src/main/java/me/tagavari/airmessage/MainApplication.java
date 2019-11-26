@@ -49,6 +49,7 @@ public class MainApplication extends Application {
 	//Creating the reference values
 	public static final String notificationChannelMessage = "message";
 	public static final String notificationChannelStatus = "status";
+	public static final String notificationChannelStatusImportant = "status_important";
 	
 	public static final String notificationGroupMessage = "message";
 	
@@ -115,27 +116,35 @@ public class MainApplication extends Application {
 			//Initializing the notification channels
 			NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 			{
-				NotificationChannel messageChannel = new NotificationChannel(notificationChannelMessage, getResources().getString(R.string.notificationchannel_message), NotificationManager.IMPORTANCE_HIGH);
-				messageChannel.setDescription(getString(R.string.notificationchannel_message_desc));
-				messageChannel.enableVibration(true);
-				messageChannel.setShowBadge(true);
-				messageChannel.enableLights(true);
-				messageChannel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.notification_ding),
+				NotificationChannel channel = new NotificationChannel(notificationChannelMessage, getResources().getString(R.string.notificationchannel_message), NotificationManager.IMPORTANCE_HIGH);
+				channel.setDescription(getString(R.string.notificationchannel_message_desc));
+				channel.enableVibration(true);
+				channel.setShowBadge(true);
+				channel.enableLights(true);
+				channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.notification_ding),
 						new AudioAttributes.Builder()
 								.setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
 								.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
 								.setLegacyStreamType(AudioManager.STREAM_NOTIFICATION)
 								.build());
 				//messageChannel.setGroup(notificationGroupMessage);
-				notificationManager.createNotificationChannel(messageChannel);
+				notificationManager.createNotificationChannel(channel);
 			}
 			{
-				NotificationChannel statusChannel = new NotificationChannel(notificationChannelStatus, getResources().getString(R.string.notificationchannel_status), NotificationManager.IMPORTANCE_MIN);
-				statusChannel.setDescription(getString(R.string.notificationchannel_status_desc));
-				statusChannel.enableVibration(false);
-				statusChannel.setShowBadge(false);
-				statusChannel.enableLights(false);
-				notificationManager.createNotificationChannel(statusChannel);
+				NotificationChannel channel = new NotificationChannel(notificationChannelStatus, getResources().getString(R.string.notificationchannel_status), NotificationManager.IMPORTANCE_MIN);
+				channel.setDescription(getString(R.string.notificationchannel_status_desc));
+				channel.enableVibration(false);
+				channel.setShowBadge(false);
+				channel.enableLights(false);
+				notificationManager.createNotificationChannel(channel);
+			}
+			{
+				NotificationChannel channel = new NotificationChannel(notificationChannelStatusImportant, getResources().getString(R.string.notificationchannel_statusimportant), NotificationManager.IMPORTANCE_DEFAULT);
+				channel.setDescription(getString(R.string.notificationchannel_statusimportant_desc));
+				channel.enableVibration(true);
+				channel.setShowBadge(true);
+				channel.enableLights(true);
+				notificationManager.createNotificationChannel(channel);
 			}
 		}
 		

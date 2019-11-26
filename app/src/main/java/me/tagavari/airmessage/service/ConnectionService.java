@@ -9,47 +9,24 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.Handler;
+import android.os.Build;
 import android.os.IBinder;
-import android.os.Looper;
 import android.os.SystemClock;
 
-import java.io.File;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import java.lang.ref.WeakReference;
+
 import me.tagavari.airmessage.BuildConfig;
-import me.tagavari.airmessage.connection.CommunicationsManager;
-import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
-import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
-import me.tagavari.airmessage.connection.request.MessageResponseManager;
-import me.tagavari.airmessage.connection.task.FetchConversationRequestsTask;
-import me.tagavari.airmessage.connection.thread.MassRetrievalThread;
-import me.tagavari.airmessage.connection.task.MessageUpdateAsyncTask;
-import me.tagavari.airmessage.connection.request.FileDownloadRequest;
-import me.tagavari.airmessage.connection.task.ModifierUpdateAsyncTask;
-import me.tagavari.airmessage.connection.task.SaveConversationInfoAsyncTask;
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.ConversationItem;
-import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.util.ConversationUtils;
-import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Conversations;
-import me.tagavari.airmessage.activity.Preferences;
-import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.common.SharedValues;
+import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.util.Constants;
 
 public class ConnectionService extends Service {
 	//Creating the constants
@@ -65,6 +42,9 @@ public class ConnectionService extends Service {
 	
 	private static final String BCPingTimer = "me.tagavari.airmessage.connection.ConnectionService-StartPing";
 	private static final String BCReconnectTimer = "me.tagavari.airmessage.connection.ConnectionService-StartReconnect";
+	
+	private static final int notificationID = -1;
+	private static final int notificationAlertID = -2;
 	
 	//Creating the access values
 	private static WeakReference<ConnectionService> serviceReference = null;
@@ -129,12 +109,12 @@ public class ConnectionService extends Service {
 			
 			if(state == ConnectionManager.stateConnected) postConnectedNotification(true, connectionManager.isConnectedFallback());
 			else if(state == ConnectionManager.stateConnecting) postConnectedNotification(false, false);
-			else if(state == ConnectionManager.stateDisconnected) postDisconnectedNotification(true);
+			else if(state == ConnectionManager.stateDisconnected) postDisconnectedNotification(connectionManager.getLastConnectionResult() != ConnectionManager.intentResultCodeSuccess);
 		}
 	};
 	
 	//Creating the other values
-	private static final int notificationID = -1;
+	private static boolean lastNotificationDisconnected = false;
 	
 	private final ConnectionManager connectionManager = new ConnectionManager(new ConnectionManager.ServiceCallbacks() {
 		@Override
@@ -343,19 +323,47 @@ public class ConnectionService extends Service {
 		if(isConnected && !foregroundServiceRequested()) return;
 		
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(notificationID, getBackgroundNotification(isConnected, isFallback));
+		if(!isStatusNotificationEnabled(notificationManager)) {
+			//Clearing the separate disconnection notification
+			notificationManager.cancel(notificationAlertID);
+		} else {
+			//Updating the status ID
+			notificationManager.notify(notificationID, getBackgroundNotification(isConnected, isFallback));
+		}
+		
+		lastNotificationDisconnected = false;
 	}
 	
 	private void postDisconnectedNotification(boolean silent) {
-		if(!foregroundServiceRequested() && !disconnectedNotificationRequested()) return;
+		if((!foregroundServiceRequested() && !disconnectedNotificationRequested()) || lastNotificationDisconnected) return;
 		
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(notificationID, getOfflineNotification(silent));
+		if(!isStatusNotificationEnabled(notificationManager)) {
+			//Posting the notification under a separate ID
+			notificationManager.notify(notificationAlertID, getOfflineNotification(silent, MainApplication.notificationChannelStatusImportant));
+		} else {
+			//Updating the status notification
+			String channelID = isStatusImportantNotificationEnabled(notificationManager) ? MainApplication.notificationChannelStatusImportant : MainApplication.notificationChannelStatus; //Reverting to the regular status channel if the important channel is disabled
+			notificationManager.notify(notificationID, getOfflineNotification(silent, channelID));
+		}
+		lastNotificationDisconnected = true;
 	}
 	
 	private void clearNotification() {
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		notificationManager.cancel(notificationID);
+	}
+	
+	private boolean isStatusNotificationEnabled(NotificationManager notificationManager) {
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			return notificationManager.getNotificationChannel(MainApplication.notificationChannelStatus).getImportance() != NotificationManager.IMPORTANCE_NONE;
+		} else return true; //Nothing we can do anyways, if the user has blocked all app notifications
+	}
+	
+	private boolean isStatusImportantNotificationEnabled(NotificationManager notificationManager) {
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			return notificationManager.getNotificationChannel(MainApplication.notificationChannelStatusImportant).getImportance() != NotificationManager.IMPORTANCE_NONE;
+		} else return true; //Nothing we can do anyways, if the user has blocked all app notifications
 	}
 	
 	/* private void finishService() {
@@ -403,9 +411,9 @@ public class ConnectionService extends Service {
 		return notification;
 	}
 	
-	private Notification getOfflineNotification(boolean silent) {
+	private Notification getOfflineNotification(boolean silent, String channelID) {
 		//Building and returning the notification
-		return new NotificationCompat.Builder(this, MainApplication.notificationChannelStatus)
+		return new NotificationCompat.Builder(this, channelID)
 				.setSmallIcon(R.drawable.warning)
 				.setContentTitle(getResources().getString(R.string.message_connection_disconnected))
 				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
@@ -414,6 +422,7 @@ public class ConnectionService extends Service {
 				.addAction(R.drawable.wifi, getResources().getString(R.string.action_reconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.addAction(R.drawable.close_circle, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.setShowWhen(false)
+				.setPriority(NotificationCompat.PRIORITY_HIGH)
 				.setOnlyAlertOnce(silent)
 				.build();
 	}
