@@ -114,7 +114,7 @@ public class ConversationInfo implements Serializable {
 	//private int currentUserViewIndex = -1;
 	private transient Constants.ViewHolderSource<ItemViewHolder> viewHolderSource = null;
 	
-	private LongSparseArray<AttachmentInfo> localIDAttachmentMap;
+	private transient LongSparseArray<AttachmentInfo> localIDAttachmentMap;
 	
 	public static void setSelectionSource(SelectionSource source) {
 		selectionSource = source;
