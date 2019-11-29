@@ -213,7 +213,7 @@ public class AudioAttachmentInfo extends AttachmentInfo<AudioAttachmentInfo.View
 						setMediaProgress(viewHolder, 0);
 					}
 				}
-			});
+			}, activity);
 		}
 	}
 	

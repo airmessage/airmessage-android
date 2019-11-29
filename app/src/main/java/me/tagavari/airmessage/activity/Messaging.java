@@ -93,6 +93,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.cardview.widget.CardView;
@@ -127,6 +128,30 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.signature.MediaStoreSignature;
 import com.crashlytics.android.Crashlytics;
+import com.google.android.exoplayer2.DefaultLoadControl;
+import com.google.android.exoplayer2.DefaultRenderersFactory;
+import com.google.android.exoplayer2.ExoPlayerFactory;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.Renderer;
+import com.google.android.exoplayer2.RenderersFactory;
+import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.audio.AudioProcessor;
+import com.google.android.exoplayer2.audio.AudioRendererEventListener;
+import com.google.android.exoplayer2.drm.DrmSessionManager;
+import com.google.android.exoplayer2.drm.FrameworkMediaCrypto;
+import com.google.android.exoplayer2.ext.ffmpeg.FfmpegAudioRenderer;
+import com.google.android.exoplayer2.ext.opus.LibopusAudioRenderer;
+import com.google.android.exoplayer2.ext.opus.OpusDecoderException;
+import com.google.android.exoplayer2.mediacodec.MediaCodecSelector;
+import com.google.android.exoplayer2.metadata.MetadataOutput;
+import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.source.ProgressiveMediaSource;
+import com.google.android.exoplayer2.text.TextOutput;
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
+import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
+import com.google.android.exoplayer2.util.Util;
+import com.google.android.exoplayer2.video.VideoRendererEventListener;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.common.util.BiConsumer;
@@ -4426,7 +4451,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Setting the click listener
 			final QueuedFileInfo finalQueuedFileInfo = queuedInfo;
-			viewHolder.itemView.setOnClickListener(view -> extension.play(activity.viewModel.audioPlaybackManager, finalQueuedFileInfo, viewHolderSource));
+			viewHolder.itemView.setOnClickListener(view -> extension.play(activity.viewModel.audioPlaybackManager, finalQueuedFileInfo, viewHolderSource, view.getContext()));
 		}
 		
 		private int findAttachmentInQueue(Messaging activity, SimpleAttachmentInfo item) {
@@ -4666,7 +4691,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				else if(uri != null) mediaDuration = Constants.getMediaDuration(MainApplication.getInstance(), uri);
 			}
 			
-			void play(AudioPlaybackManager playbackManager, QueuedFileInfo queuedInfo, Constants.ViewHolderSource<AttachmentsAudioTileViewHolder> viewSource) {
+			void play(AudioPlaybackManager playbackManager, QueuedFileInfo queuedInfo, Constants.ViewHolderSource<AttachmentsAudioTileViewHolder> viewSource, Context context) {
 				//Returning if the file is invalid
 				File targetFile = queuedInfo.getDraftFile().getFile();
 				if(targetFile == null) return;
@@ -4717,7 +4742,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							updateViewProgress(viewHolder);
 						}
 					}
-				});
+				}, context);
 				
 				isSelected = true;
 			}
@@ -5037,7 +5062,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private int soundIDRecordingStart = soundPool.load(getApplication(), R.raw.recording_start, 1);
 		private int soundIDRecordingEnd = soundPool.load(getApplication(), R.raw.recording_end, 1);
 		
-		final AudioPlaybackManager audioPlaybackManager = new AudioPlaybackManager();
+		final AudioPlaybackManager audioPlaybackManager = new AudioPlaybackManager(getApplication());
 		
 		private MediaRecorder mediaRecorder = null;
 		private final MutableLiveData<Boolean> isRecording = new MutableLiveData<>();
@@ -5943,6 +5968,18 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
+	private static class RenderersFactory extends DefaultRenderersFactory {
+		public RenderersFactory(Context context) {
+			super(context);
+		}
+		
+		@Override
+		protected void buildAudioRenderers(Context context, int extensionRendererMode, MediaCodecSelector mediaCodecSelector, @Nullable DrmSessionManager<FrameworkMediaCrypto> drmSessionManager, boolean playClearSamplesWithoutKeys, boolean enableDecoderFallback, AudioProcessor[] audioProcessors, Handler eventHandler, AudioRendererEventListener eventListener, ArrayList<Renderer> out) {
+			super.buildAudioRenderers(context, extensionRendererMode, mediaCodecSelector, drmSessionManager, playClearSamplesWithoutKeys, enableDecoderFallback, audioProcessors, eventHandler, eventListener, out);
+			out.add(new LibopusAudioRenderer());
+		}
+	}
+	
 	public static class AudioPlaybackManager {
 		//Creating the constants
 		public static final String requestTypeAttachment = "attachment-";
@@ -5950,81 +5987,74 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Creating the values
 		private String requestID = "";
-		private MediaPlayer mediaPlayer = new MediaPlayer();
+		private final SimpleExoPlayer exoPlayer;
 		private Callbacks callbacks = null;
 		private final Handler mediaPlayerHandler = new Handler(Looper.getMainLooper());
 		private final Runnable mediaPlayerHandlerRunnable = new Runnable() {
 			@Override
 			public void run() {
 				//Notifying the listener
-				callbacks.onProgress(mediaPlayer.getCurrentPosition());
+				callbacks.onProgress(exoPlayer.getCurrentPosition());
 				
 				//Running again
 				mediaPlayerHandler.postDelayed(this, 10);
 			}
 		};
 		
-		public AudioPlaybackManager() {
-			//Setting the media player listeners
-			mediaPlayer.setOnPreparedListener(player -> {
-				//Playing the media
-				player.start();
-				
-				//Starting the timer
-				startTimer();
-				
-				//Notifying the listener
-				callbacks.onPlay();
-			});
-			mediaPlayer.setOnCompletionListener(player -> {
-				//Cancelling the timer
-				stopTimer();
-				
-				//Notifying the listener
-				callbacks.onStop();
+		public AudioPlaybackManager(Context context) {
+			//Creating the exo player
+			exoPlayer = ExoPlayerFactory.newSimpleInstance(context, new Messaging.RenderersFactory(context).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON), new DefaultTrackSelector(), new DefaultLoadControl());
+			
+			exoPlayer.addListener(new Player.EventListener() {
+				@Override
+				public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
+					if(playWhenReady && playbackState == Player.STATE_READY) {
+						System.out.println("Starting timer!");
+						//Starting the timer
+						startTimer();
+						
+						//Notifying the listener
+						if(callbacks != null) callbacks.onPlay();
+					} else if(playWhenReady && playbackState == Player.STATE_ENDED) {
+						System.out.println("Stopping timer!");
+						//Cancelling the timer
+						stopTimer();
+						
+						//Notifying the listener
+						if(callbacks != null) callbacks.onStop();
+					}
+				}
 			});
 		}
 		
 		public void release() {
 			//Cancelling the timer
-			if(mediaPlayer.isPlaying())
-				mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
+			if(exoPlayer.getPlaybackState() == Player.STATE_READY) mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
 			
-			//Releasing the media player
-			mediaPlayer.release();
+			//Releasing the player
+			exoPlayer.release();
 		}
 		
-		public boolean play(File file, Callbacks callbacks) {
-			return play(null, file, callbacks);
+		public boolean play(File file, Callbacks callbacks, Context context) {
+			return play(null, file, callbacks, context);
 		}
 		
-		public boolean play(String requestID, File file, Callbacks callbacks) {
+		public boolean play(String requestID, File file, Callbacks callbacks, Context context) {
 			//Returning true if the request ID matches (or the request ID is null)
 			if(this.requestID != null && this.requestID.equals(requestID)) return true;
 			
 			//Stopping the current media player
 			stop();
 			
-			//Resetting the media player
-			mediaPlayer.reset();
-			
-			try {
-				//Creating the media player
-				mediaPlayer.setDataSource(file.getPath());
-			} catch(IOException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				
-				//Returning false
-				return false;
-			}
+			//Setting the media player source
+			DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(context, Util.getUserAgent(context, context.getResources().getString(R.string.app_name)));
+			MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.fromFile(file));
+			exoPlayer.prepare(mediaSource);
+			exoPlayer.setPlayWhenReady(true);
 			
 			//Setting the request information
 			this.requestID = requestID;
 			this.callbacks = callbacks;
-			
-			//Preparing the media player
-			mediaPlayer.prepareAsync();
 			
 			//Returning true
 			return true;
@@ -6032,9 +6062,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		public void togglePlaying() {
 			//Checking if the media player is playing
-			if(mediaPlayer.isPlaying()) {
+			if(exoPlayer.getPlayWhenReady() && exoPlayer.getPlaybackState() != Player.STATE_ENDED) {
+				System.out.println("Pausing player!");
 				//Pausing the media player
-				mediaPlayer.pause();
+				exoPlayer.setPlayWhenReady(false);
 				
 				//Cancelling the playback timer
 				stopTimer();
@@ -6042,8 +6073,13 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Notifying the listener
 				callbacks.onPause();
 			} else {
+				System.out.println("Resuming player!");
 				//Playing the media player
-				mediaPlayer.start();
+				if(exoPlayer.getPlaybackState() == Player.STATE_ENDED) {
+					System.out.println("Player has ended!");
+					exoPlayer.seekTo(0);
+				}
+				exoPlayer.setPlayWhenReady(true);
 				
 				//Starting the playback timer
 				startTimer();
@@ -6056,7 +6092,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		public void stop() {
 			//if(!mediaPlayer.isPlaying()) return;
 			
-			mediaPlayer.stop();
+			exoPlayer.stop();
 			if(callbacks != null) callbacks.onStop();
 			stopTimer();
 		}
