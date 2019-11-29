@@ -196,7 +196,7 @@ public class Constants {
 	public static final String feedbackEmail = "hello@airmessage.org";
 	
 	public static final int defaultPort = 1359;
-	public static final String recordingName = "recording.amr";
+	public static final String recordingName = "Audio Message.amr";
 	public static final String pictureName = "image.jpg";
 	public static final String videoName = "video.mp4";
 	public static final String locationName = "location.loc.vcf";
@@ -589,17 +589,16 @@ public class Constants {
 		return type == null ? defaultMIMEType : type;
 	}
 	
-	/* static String getMimeType(File file) {
-		String type = null;
-		String extension = MimeTypeMap.getFileExtensionFromUrl(file.getPath());
-		if(extension != null) {
-			type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
-		}
-		return type;
-	} */
+	public static String fileExtensionFromURL(String url) {
+		int separatorIndex = url.lastIndexOf(".");
+		int queryIndex = url.lastIndexOf("?");
+		if(separatorIndex == -1) return null;
+		else if(separatorIndex < queryIndex) return url.substring(separatorIndex + 1, queryIndex);
+		else return url.substring(separatorIndex + 1);
+	}
 	
 	public static String getMimeType(File file) {
-		String extension = MimeTypeMap.getFileExtensionFromUrl(file.getPath());
+		String extension = fileExtensionFromURL(file.getPath());
 		if(extension != null) {
 			String type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
 			return type == null ? defaultMIMEType : type;
