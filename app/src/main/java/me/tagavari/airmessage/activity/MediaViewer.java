@@ -1,11 +1,10 @@
 package me.tagavari.airmessage.activity;
 
-import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
+import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
@@ -22,8 +21,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.util.Consumer;
 import androidx.core.view.ViewCompat;
@@ -47,11 +44,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.extension.MediaSharedElementCallback;
 import me.tagavari.airmessage.messaging.ConversationAttachmentList;
+import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.view.RoundedFrameLayout;
 
 public class MediaViewer extends AppCompatActivity {
@@ -61,23 +58,26 @@ public class MediaViewer extends AppCompatActivity {
 	public static final String PARAM_RADIIRAW = "radii_raw";
 	public static final String PARAM_SELECTEDID = "selected_id";
 	
+	private static final String INSTANCEPARAM_RESTORE = "restore";
+	
 	private static final int permissionRequestExportFile = 0;
 	
 	private static final int activityResultCreateFileSAF = 0;
 	
 	private ViewPager2 viewPager;
+	private RecyclerAdapter recyclerAdapter;
 	private Toolbar toolbar;
 	private View scrimTop;
 	private View scrimBottom;
 	
-	private final List<PlayerView> playerViewList = new ArrayList<>();
-	private Player currentPlayer = null;
 	private boolean uiVisible = true;
 	
 	private boolean activityExiting = false;
 	
 	public static long selectedID = -1;
 	private ConversationAttachmentList.Item selectedItem;
+	
+	private boolean autoPlay = false;
 	
 	private File targetExportFile = null;
 	
@@ -113,6 +113,13 @@ public class MediaViewer extends AppCompatActivity {
 		getSupportActionBar().setDisplayShowTitleEnabled(false);
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 		getSupportActionBar().setHomeAsUpIndicator(R.drawable.arrow_back);
+		
+		//Restoring the activity data
+		if(savedInstanceState == null) {
+			autoPlay = true;
+		} else {
+			autoPlay = savedInstanceState.getBoolean(INSTANCEPARAM_RESTORE, true);
+		}
 		
 		//Getting the activity parameters
 		int selectionIndex = getIntent().getIntExtra(PARAM_INDEX, 0);
@@ -174,7 +181,7 @@ public class MediaViewer extends AppCompatActivity {
 		});
 		
 		//Initializing the view pager
-		viewPager.setAdapter(new RecyclerAdapter(itemList));
+		viewPager.setAdapter(recyclerAdapter = new RecyclerAdapter(itemList));
 		viewPager.setCurrentItem(selectionIndex, false);
 		//viewPager.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 		//new RVPagerSnapHelperListenable().attachToRecyclerView(recyclerView, new PagerListener());
@@ -187,11 +194,17 @@ public class MediaViewer extends AppCompatActivity {
 			
 			@Override
 			public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-				if(currentPlayer != null) currentPlayer.setPlayWhenReady(false);
+				if(positionOffsetPixels != 0) recyclerAdapter.pausePlayer();
 			}
 		});
 		selectedItem = itemList.get(selectionIndex);
 		selectedID = selectedItem.localID;
+	}
+	
+	@Override
+	protected void onSaveInstanceState(@NonNull Bundle outState) {
+		super.onSaveInstanceState(outState);
+		outState.putBoolean(INSTANCEPARAM_RESTORE, true);
 	}
 	
 	@Override
@@ -207,7 +220,16 @@ public class MediaViewer extends AppCompatActivity {
 	protected void onPause() {
 		super.onPause();
 		
-		if(currentPlayer != null) currentPlayer.setPlayWhenReady(false);
+		//Pausing the current video player
+		recyclerAdapter.pausePlayer();
+	}
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		
+		//Releasing the recycler view data
+		recyclerAdapter.release();
 	}
 	
 	@Override
@@ -289,8 +311,8 @@ public class MediaViewer extends AppCompatActivity {
 		//Enabling immersive mode
 		getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_IMMERSIVE | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
 		
-		//Updating the video players
-		for(PlayerView playerView : playerViewList) playerView.hideController();
+		//Hiding the recycler adapter views' UI
+		recyclerAdapter.hideLocalUI();
 	}
 	
 	private void showUI() {
@@ -318,8 +340,8 @@ public class MediaViewer extends AppCompatActivity {
 		//Disabling immersive mode
 		getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() & ~(View.SYSTEM_UI_FLAG_IMMERSIVE | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION));
 		
-		//Updating the video players
-		for(PlayerView playerView : playerViewList) playerView.showController();
+		//Show the recycler adapter views' UI
+		recyclerAdapter.showLocalUI();
 	}
 	
 	private boolean shareItem(File file) {
@@ -367,12 +389,33 @@ public class MediaViewer extends AppCompatActivity {
 		private static final int viewTypeImage = 0;
 		private static final int viewTypeVideo = 1;
 		
+		private Player currentPlayer = null;
 		private final List<ConversationAttachmentList.Item> itemList;
+		private final List<SimpleExoPlayer> playerList = new ArrayList<>();
+		private final List<PlayerView> playerViewList = new ArrayList<>();
 		
 		RecyclerAdapter(List<ConversationAttachmentList.Item> itemList) {
 			this.itemList = itemList;
 			
 			setHasStableIds(true);
+		}
+		
+		public void pausePlayer() {
+			if(currentPlayer != null) currentPlayer.setPlayWhenReady(false);
+		}
+		
+		public void release() {
+			for(SimpleExoPlayer player : playerList) player.release();
+		}
+		
+		public void hideLocalUI() {
+			//Updating the video players
+			for(PlayerView playerView : playerViewList) playerView.hideController();
+		}
+		
+		public void showLocalUI() {
+			//Updating the video players
+			for(PlayerView playerView : playerViewList) playerView.showController();
 		}
 		
 		@Override
@@ -411,6 +454,9 @@ public class MediaViewer extends AppCompatActivity {
 			//Getting the item
 			ConversationAttachmentList.Item item = itemList.get(position);
 			
+			boolean shouldAutoPlay = autoPlay && selectedID == item.localID;
+			if(shouldAutoPlay) autoPlay = false;
+			
 			switch(getItemViewType(position)) {
 				case viewTypeImage: {
 					//Loading the image
@@ -420,7 +466,8 @@ public class MediaViewer extends AppCompatActivity {
 				}
 				case viewTypeVideo: {
 					VideoViewHolder videoViewHolder = (VideoViewHolder) holder;
-					videoViewHolder.playVideo(item.file);
+					videoViewHolder.playVideo(item.file, shouldAutoPlay);
+					if(shouldAutoPlay) hideUI();
 					break;
 				}
 			}
@@ -442,11 +489,6 @@ public class MediaViewer extends AppCompatActivity {
 						.load(file)
 						.transition(DrawableTransitionOptions.withCrossFade())
 						.into(imageView);
-				
-				//Setting the image listener
-				imageView.setOnClickListener(view -> {
-				
-				});
 			}
 		}
 		
@@ -459,10 +501,14 @@ public class MediaViewer extends AppCompatActivity {
 				//Creating the player instance
 				player = ExoPlayerFactory.newSimpleInstance(MediaViewer.this);
 				
+				//Adding the player to the list
+				playerList.add(player);
+				
 				//Linking the player to the player view
 				PlayerView playerView = itemView.findViewById(R.id.playerview);
 				playerView.setPlayer(player);
 				
+				//Adding the player view to the list
 				playerViewList.add(playerView);
 				
 				//Keeping the video player's UI in line with the activity's UI
@@ -471,7 +517,7 @@ public class MediaViewer extends AppCompatActivity {
 					else hideUI();
 				});
 				
-				//Ensuring that the player control bar has appropriate margins, not to fall behind the system bars
+				//Ensuring that the player control bar has appropriate margins, as not to fall behind the system bars
 				ViewGroup controlBar = playerView.findViewById(R.id.group_controlbar);
 				Consumer<Rect> insetsUpdateListener = rect -> {
 					ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) controlBar.getLayoutParams();
@@ -494,18 +540,11 @@ public class MediaViewer extends AppCompatActivity {
 				});
 			}
 			
-			void playVideo(File file) {
+			void playVideo(File file, boolean autoPlay) {
 				DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(MediaViewer.this, Util.getUserAgent(MediaViewer.this, getResources().getString(R.string.app_name)));
 				MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.fromFile(file));
 				player.prepare(videoSource);
-				
-				//if(currentPlayer != null) currentPlayer.seekTo(0);
-				/* {
-					int index = playerList.indexOfValue(player);
-					if(index != -1) playerList.removeAt(index);
-					
-					playerList.put(position, player);
-				} */
+				player.setPlayWhenReady(autoPlay);
 			}
 		}
 	}

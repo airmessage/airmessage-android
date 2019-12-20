@@ -139,9 +139,6 @@ import com.google.android.exoplayer2.audio.AudioProcessor;
 import com.google.android.exoplayer2.audio.AudioRendererEventListener;
 import com.google.android.exoplayer2.drm.DrmSessionManager;
 import com.google.android.exoplayer2.drm.FrameworkMediaCrypto;
-import com.google.android.exoplayer2.ext.ffmpeg.FfmpegAudioRenderer;
-import com.google.android.exoplayer2.ext.opus.LibopusAudioRenderer;
-import com.google.android.exoplayer2.ext.opus.OpusDecoderException;
 import com.google.android.exoplayer2.mediacodec.MediaCodecSelector;
 import com.google.android.exoplayer2.metadata.MetadataOutput;
 import com.google.android.exoplayer2.source.MediaSource;
@@ -5968,18 +5965,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private static class RenderersFactory extends DefaultRenderersFactory {
-		public RenderersFactory(Context context) {
-			super(context);
-		}
-		
-		@Override
-		protected void buildAudioRenderers(Context context, int extensionRendererMode, MediaCodecSelector mediaCodecSelector, @Nullable DrmSessionManager<FrameworkMediaCrypto> drmSessionManager, boolean playClearSamplesWithoutKeys, boolean enableDecoderFallback, AudioProcessor[] audioProcessors, Handler eventHandler, AudioRendererEventListener eventListener, ArrayList<Renderer> out) {
-			super.buildAudioRenderers(context, extensionRendererMode, mediaCodecSelector, drmSessionManager, playClearSamplesWithoutKeys, enableDecoderFallback, audioProcessors, eventHandler, eventListener, out);
-			out.add(new LibopusAudioRenderer());
-		}
-	}
-	
 	public static class AudioPlaybackManager {
 		//Creating the constants
 		public static final String requestTypeAttachment = "attachment-";
@@ -6003,20 +5988,18 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		public AudioPlaybackManager(Context context) {
 			//Creating the exo player
-			exoPlayer = ExoPlayerFactory.newSimpleInstance(context, new Messaging.RenderersFactory(context).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON), new DefaultTrackSelector(), new DefaultLoadControl());
+			exoPlayer = ExoPlayerFactory.newSimpleInstance(context);
 			
 			exoPlayer.addListener(new Player.EventListener() {
 				@Override
 				public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
 					if(playWhenReady && playbackState == Player.STATE_READY) {
-						System.out.println("Starting timer!");
 						//Starting the timer
 						startTimer();
 						
 						//Notifying the listener
 						if(callbacks != null) callbacks.onPlay();
 					} else if(playWhenReady && playbackState == Player.STATE_ENDED) {
-						System.out.println("Stopping timer!");
 						//Cancelling the timer
 						stopTimer();
 						
@@ -6063,7 +6046,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		public void togglePlaying() {
 			//Checking if the media player is playing
 			if(exoPlayer.getPlayWhenReady() && exoPlayer.getPlaybackState() != Player.STATE_ENDED) {
-				System.out.println("Pausing player!");
 				//Pausing the media player
 				exoPlayer.setPlayWhenReady(false);
 				
@@ -6073,10 +6055,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Notifying the listener
 				callbacks.onPause();
 			} else {
-				System.out.println("Resuming player!");
 				//Playing the media player
 				if(exoPlayer.getPlaybackState() == Player.STATE_ENDED) {
-					System.out.println("Player has ended!");
 					exoPlayer.seekTo(0);
 				}
 				exoPlayer.setPlayWhenReady(true);
