@@ -228,7 +228,7 @@ public class MassRetrievalThread extends Thread {
 					cancelCurrentFile();
 					
 					//Sorting the conversations
-					Collections.sort(conversationInfoList, ConversationUtils.conversationComparator);
+					//Collections.sort(conversationInfoList, ConversationUtils.conversationComparator);
 					
 					//Running on the main thread
 					handler.post(() -> {
@@ -239,12 +239,14 @@ public class MassRetrievalThread extends Thread {
 						//Setting the conversations in memory
 						ArrayList<ConversationInfo> sharedConversations = ConversationUtils.getConversations();
 						if(sharedConversations != null) {
-							//sharedConversations.clear();
 							sharedConversations.addAll(conversationInfoList);
 							
+							//Sorting the conversations
+							Collections.sort(sharedConversations, ConversationUtils.conversationComparator);
+							
 							//Updating shortcuts
-							ConversationUtils.updateShortcuts(context, conversationInfoList);
-							ConversationUtils.enableShortcuts(context, conversationInfoList);
+							ConversationUtils.updateShortcuts(context, sharedConversations);
+							ConversationUtils.enableShortcuts(context, sharedConversations);
 						}
 						
 						//Sending the mass retrieval broadcast
