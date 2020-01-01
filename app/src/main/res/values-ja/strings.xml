@@ -326,7 +326,10 @@
 		<item>システムに一致</item>
 	</string-array>
 
-	<string name="action_copytoclipboard">コピー</string>
+	<string name="action_copy">コピー</string>
+	<string name="action_copytoclipboard">クリップボードにコピー</string>
+	<string name="action_savetofile">ファイルに保存</string>
+	<string name="action_relaunchapp">再起動</string>
 	<string name="message_messageerror_desc_air_unauthorized">AirMessage サーバーはメッセージを送信許可がありません</string>
 	<string name="message_messageerror_desc_air_badrequest">メッセージの処理中にエラーが発生しました</string>
 	<string name="message_messageerror_desc_air_noconversation">会話の入手可能ではありません</string>
@@ -363,6 +366,8 @@
 	<string name="imperative_enablelocationservices">タップして位置情報をONにする</string>
 	<string name="message_locationaddress_unknown">不明な場所</string>
 	<string name="message_locationtitle_unknown">無題の住所</string>
+	<string name="message_crashreport_title">何かがうまくいきませんでした&#8230;</string>
+	<string name="message_crashreport_subtitle">AirMessage デバッグクラッシュレポート</string>
 	<string name="message_notsupported">この機能は利用できません</string>
 	<string name="part_content_location">場所の詳細</string>
 	<string name="part_content_contact">連絡先</string>

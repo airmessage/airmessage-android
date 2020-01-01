@@ -115,6 +115,12 @@
 		<item name="android:windowTranslucentStatus">true</item>
 		<item name="android:windowTranslucentNavigation">true</item> -->
 	</style>
+
+	<style name="CrashReport" parent="Theme.MaterialComponents.NoActionBar">
+		<item name="android:colorBackground">@color/colorError</item>
+		<item name="android:statusBarColor">@color/colorError</item>
+		<item name="android:navigationBarColor">@color/colorError</item>
+	</style>
 	
 	<style name="OverscrollNeutralizer" parent="@style/Base.DayNight">
 		<item name="android:colorPrimary">@android:color/darker_gray</item>

@@ -30,6 +30,7 @@
 	<string name="action_remove">Remove</string>
 	<string name="action_unblock">Unblock</string>
 	<string name="action_reconfigure">Reconfigure</string>
+	<string name="action_copy">Copy</string>
 	<string name="action_copytext">Copy text</string>
 	<string name="action_share">Share</string>
 	<string name="action_save">Save</string>
@@ -61,6 +62,8 @@
 	<string name="action_getnotifications">Get notifications</string>
 	<string name="action_pinconversation">Pin conversation</string>
 	<string name="action_copytoclipboard">Copy to clipboard</string>
+	<string name="action_savetofile">Save to file</string>
+	<string name="action_relaunchapp">Relaunch app</string>
 	<string name="action_newconversation">New conversation</string>
 	<string name="action_connectiontroubleshootingguide">View help</string>
 	<string name="action_tapbackdetails">View tapback details</string>
@@ -283,6 +286,9 @@
 	
 	<string name="message_locationtitle_unknown">Unnamed location</string>
 	<string name="message_locationaddress_unknown">Unknown address</string>
+
+	<string name="message_crashreport_title">Something went wrong&#8230;</string>
+	<string name="message_crashreport_subtitle">AirMessage debug crash report</string>
 
 	<string name="message_advancedsync_downloadmessages">Download messages&#8230;</string>
 	<string name="message_advancedsync_downloadattachments">Download attachment files&#8230;</string>

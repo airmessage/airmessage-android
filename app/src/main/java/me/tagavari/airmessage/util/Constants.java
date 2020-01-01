@@ -1352,8 +1352,15 @@ public class Constants {
 	
 	public static void exportUri(Context context, File sourceFile, Uri targetUri) {
 		Intent intent = new Intent(context, UriExportService.class);
-		intent.putExtra(Constants.intentParamData, sourceFile);
-		intent.putExtra(Constants.intentParamTarget, targetUri);
+		intent.putExtra(UriExportService.PARAM_INPUTFILE, sourceFile);
+		intent.putExtra(UriExportService.PARAM_OUTPUTURI, targetUri);
+		context.startService(intent);
+	}
+	
+	public static void exportUri(Context context, String sourceText, Uri targetUri) {
+		Intent intent = new Intent(context, UriExportService.class);
+		intent.putExtra(UriExportService.PARAM_INPUTTEXT, sourceText);
+		intent.putExtra(UriExportService.PARAM_OUTPUTURI, targetUri);
 		context.startService(intent);
 	}
 	

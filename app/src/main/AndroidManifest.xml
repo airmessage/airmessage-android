@@ -168,6 +168,15 @@
 			</intent-filter>
 		</activity>
 
+		<!-- Crash report -->
+		<activity
+			android:exported="false"
+			android:name=".activity.CrashReport"
+			android:theme="@style/CrashReport"
+			android:windowSoftInputMode="adjustResize">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
 		<!-- Notification response -->
 		<receiver
 			android:enabled="true"

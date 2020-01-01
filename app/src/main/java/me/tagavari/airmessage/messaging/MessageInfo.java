@@ -1451,7 +1451,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		new MaterialAlertDialogBuilder(context)
 				.setTitle(R.string.message_messageerror_details_title)
 				.setView(dialogView)
-				.setNeutralButton(R.string.action_copytoclipboard, (dialog, which) -> {
+				.setNeutralButton(R.string.action_copy, (dialog, which) -> {
 					ClipboardManager clipboard = (ClipboardManager) MainApplication.getInstance().getSystemService(Context.CLIPBOARD_SERVICE);
 					clipboard.setPrimaryClip(ClipData.newPlainText("Error details", details));
 					Toast.makeText(MainApplication.getInstance(), R.string.message_textcopied, Toast.LENGTH_SHORT).show();

@@ -1,8 +1,11 @@
 package me.tagavari.airmessage;
 
+import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -34,6 +37,7 @@ import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import io.fabric.sdk.android.Fabric;
+import me.tagavari.airmessage.activity.CrashReport;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.service.ConnectionService;
@@ -92,6 +96,26 @@ public class MainApplication extends Application {
 	
 	//Creating the other reference values
 	private static final BouncyCastleProvider securityProvider = new BouncyCastleProvider();
+	
+	private Thread.UncaughtExceptionHandler defaultUEH;
+	
+	public MainApplication() {
+		//Initializing a custom crash reporter if in debug mode
+		if(BuildConfig.DEBUG) {
+			//Getting the system's default uncaught exception handler
+			defaultUEH = Thread.getDefaultUncaughtExceptionHandler();
+			
+			Thread.setDefaultUncaughtExceptionHandler((thread, exception) -> {
+				Intent activityIntent = new Intent(this, CrashReport.class).putExtra(CrashReport.PARAM_STACKTRACE, exception.toString()).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);;
+				PendingIntent pendingIntent = PendingIntent.getActivity(this, 1, activityIntent, PendingIntent.FLAG_ONE_SHOT);
+				((AlarmManager) getSystemService(Activity.ALARM_SERVICE)).set(AlarmManager.ELAPSED_REALTIME_WAKEUP, 0, pendingIntent);
+				
+				//Passing the exception onto the system
+				System.exit(2);
+				defaultUEH.uncaughtException(thread, exception);
+			});
+		}
+	}
 	
 	@Override
 	public void onCreate() {

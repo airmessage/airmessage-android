@@ -343,7 +343,10 @@
 	<string name="message_messageerror_desc_air_unauthorized">AirMessage Server n\'est pas autorisé à envoyer des messages</string>
 	<string name="message_messageerror_desc_air_noconversation">Cette conversation n\'est pas disponible</string>
 	<string name="message_messageerror_desc_air_serverexpired">Ce message n\'a pas pu être envoyé correctement</string>
-	<string name="action_copytoclipboard">Copier</string>
+	<string name="action_copy">Copier</string>
+	<string name="action_copytoclipboard">Copier dans le presse-papier</string>
+	<string name="action_savetofile">Enregistrer dans un fichier</string>
+	<string name="action_relaunchapp">Relancer l\'application</string>
 	<string name="message_messageerror_details_title">Détails de l\'erreur</string>
 	<string name="message_messageerror_details_unavailable">Aucun détail d\'erreur disponible</string>
 	<string name="message_messageerror_details_loadfailed">Échec du chargement des détails d\'erreur</string>
@@ -376,6 +379,8 @@
 	<string name="imperative_enablelocationservices">Appuyez sur pour activer les services de location</string>
 	<string name="message_locationaddress_unknown">Adresse inconnue</string>
 	<string name="message_locationtitle_unknown">Emplacement sans nom</string>
+	<string name="message_crashreport_title">Quelque chose a mal tourné&#8230;</string>
+	<string name="message_crashreport_subtitle">Rapport de crash de débogage d\'AirMessage</string>
 	<string name="message_notsupported">Cette fonctionnalité n\'est pas disponible</string>
 	<string name="part_content_location">Détails d\'emplacement</string>
 	<string name="part_content_contact">Informations de contact</string>
