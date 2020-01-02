@@ -1406,19 +1406,22 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Querying the file data
 				try(Cursor cursor = context.getContentResolver().query(uri, new String[]{MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.DATE_MODIFIED}, null, null, null)) {
 					if(cursor == null) continue;
-					int iType = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE);
-					int iDisplayName = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME);
-					int iSize = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE);
-					int iModificationDate = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED);
+					int iType = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE);
+					int iDisplayName = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME);
+					int iSize = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE);
+					int iModificationDate = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED);
 					
 					if(!cursor.moveToFirst()) continue;
 					
 					//Getting the file information
-					String fileType = cursor.getString(iType);
-					if(fileType == null) fileType = "application/octet-stream";
-					String fileName = Constants.cleanFileName(cursor.getString(iDisplayName));
-					long fileSize = cursor.getLong(iSize);
-					long modificationDate = cursor.getLong(iModificationDate);
+					String fileName = iDisplayName == -1 ? null : Constants.cleanFileName(cursor.getString(iDisplayName));
+					String fileType = iType == -1 ? null : cursor.getString(iType);
+					if(fileType == null) {
+						if(fileName != null) fileType = Constants.getMimeType(context, uri);
+						if(fileType == null) fileType = "application/octet-stream";
+					}
+					long fileSize = iSize == -1 ? -1 : cursor.getLong(iSize);
+					long modificationDate = iModificationDate == -1 ? -1 : cursor.getLong(iModificationDate);
 					list.add(new SimpleAttachmentInfo(uri, fileType, fileName, fileSize, modificationDate));
 				}
 				

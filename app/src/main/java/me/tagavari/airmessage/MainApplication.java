@@ -17,6 +17,7 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Process;
 import android.preference.PreferenceManager;
 import android.provider.ContactsContract;
 
@@ -26,6 +27,8 @@ import com.crashlytics.android.core.CrashlyticsCore;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -106,11 +109,17 @@ public class MainApplication extends Application {
 			defaultUEH = Thread.getDefaultUncaughtExceptionHandler();
 			
 			Thread.setDefaultUncaughtExceptionHandler((thread, exception) -> {
-				Intent activityIntent = new Intent(this, CrashReport.class).putExtra(CrashReport.PARAM_STACKTRACE, exception.toString()).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);;
+				//Getting the exception
+				StringWriter stringWriter = new StringWriter();
+				PrintWriter printWriter = new PrintWriter(stringWriter);
+				exception.printStackTrace(printWriter);
+				
+				//Pending the next activity start
+				Intent activityIntent = new Intent(this, CrashReport.class).putExtra(CrashReport.PARAM_STACKTRACE, stringWriter.toString()).setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
 				PendingIntent pendingIntent = PendingIntent.getActivity(this, 1, activityIntent, PendingIntent.FLAG_ONE_SHOT);
 				((AlarmManager) getSystemService(Activity.ALARM_SERVICE)).set(AlarmManager.ELAPSED_REALTIME_WAKEUP, 0, pendingIntent);
 				
-				//Passing the exception onto the system
+				//Killing the process
 				System.exit(2);
 				defaultUEH.uncaughtException(thread, exception);
 			});
