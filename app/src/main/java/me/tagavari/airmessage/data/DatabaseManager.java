@@ -1876,6 +1876,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//contentValues.put(Contract.ConversationEntry.COLUMN_NAME_GUID, message); //Conversation not serverlinked, so no GUID can be provided
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_STATE, ConversationInfo.ConversationState.INCOMPLETE_CLIENT.getIdentifier());
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICE, service);
+		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER, serviceHandler);
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_COLOR, conversationColor);
 		
 		long localID;

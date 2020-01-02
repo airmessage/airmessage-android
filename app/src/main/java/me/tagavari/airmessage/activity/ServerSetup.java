@@ -29,6 +29,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 
+import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.messaging.ConversationInfo;
@@ -190,16 +191,41 @@ public class ServerSetup extends AppCompatActivity {
 		//Getting the view models
 		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
 		
+		//Getting if the change is required
+		isRequired = getIntent().getBooleanExtra(intentExtraRequired, false);
+		
 		//Setting the click listener
 		backButton.setOnClickListener(view -> onBackButtonClick());
 		nextButton.setOnClickListener(view -> onNextButtonClick());
 		
+		{
+			TextView labelLinkServerGuide = findViewById(R.id.label_linkserverguide);
+			labelLinkServerGuide.setOnClickListener(view -> Constants.launchUri(this, Constants.serverSetupAddress));
+			if(BuildConfig.DEBUG) labelLinkServerGuide.setOnLongClickListener(view -> {
+				//Filling in bogus data
+				ConnectionManager.hostname = "127.0.0.1";
+				ConnectionManager.password = "password";
+				SharedPreferences.Editor editor = ((MainApplication) getApplication()).getConnectivitySharedPrefs().edit();
+				editor.putString(MainApplication.sharedPreferencesConnectivityKeyHostname, "127.0.0.1");
+				editor.putString(MainApplication.sharedPreferencesConnectivityKeyPassword, "password");
+				editor.apply();
+				
+				//Starting the new activity
+				startActivity(new Intent(this, Conversations.class));
+				
+				//Enabling transitions
+				overridePendingTransition(R.anim.fade_in_light, R.anim.activity_slide_up);
+				
+				//Finishing the activity
+				finish();
+				
+				return true;
+			});
+		}
+		
 		//Setting the address box watcher
 		hostnameInputField.addTextChangedListener(hostnameInputWatcher);
 		passwordInputField.addTextChangedListener(passwordInputWatcher);
-		
-		//Getting if the change is required
-		isRequired = getIntent().getBooleanExtra(intentExtraRequired, false);
 		
 		//Enabling the back button if the change is not required
 		if(!isRequired) backButton.setVisibility(View.VISIBLE);
@@ -550,10 +576,6 @@ public class ServerSetup extends AppCompatActivity {
 			nextButton.setAlpha(0.38F);
 			nextButton.setClickable(false);
 		}
-	}
-	
-	public void onClickLaunchServerGuide(View view) {
-		Constants.launchUri(this, Constants.serverSetupAddress);
 	}
 	
 	public static class ActivityViewModel extends ViewModel {
