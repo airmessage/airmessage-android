@@ -71,7 +71,8 @@
 	<string name="preferencegroup_textmessage_title">Text messaging</string>
 	<string name="preference_textmessage_enable_key" translatable="false">pref_key_textmessage_enable</string>
 	<string name="preference_textmessage_enable_title">Enable text message integration</string>
-	<string name="preference_textmessage_enable_desc">Use AirMessage to send and receive SMS and MMS messages</string>
+	<!-- <string name="preference_textmessage_enable_desc">Use AirMessage to send and receive SMS and MMS messages</string> -->
+	<string name="preference_textmessage_enable_desc">WARNING: This feature may be changed or removed at any time</string>
 	<string name="preference_textmessage_deliveryreport_key" translatable="false">pref_key_textmessage_deliveryreport</string>
 	<string name="preference_textmessage_deliveryreport_title">SMS delivery reports</string>
 	<string name="preference_textmessage_deliveryreport_desc">Find out when an SMS message is delivered</string>

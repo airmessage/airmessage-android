@@ -375,7 +375,8 @@
 	<string name="preference_textmessage_enable_title">テキストメッセージ統合</string>
 	<string name="preferencegroup_textmessage_title">テキストメッセージング</string>
 	<string name="preference_textmessage_deliveryreport_desc">SMS メッセージが配信されたことを確認する</string>
-	<string name="preference_textmessage_enable_desc">AirMessage で SMS と MMS メッセージを送受する</string>
+<!--	<string name="preference_textmessage_enable_desc">AirMessage で SMS と MMS メッセージを送受する</string>-->
+	<string name="preference_textmessage_enable_desc">注：この機能は変更または削除される場合があります</string>
 	<string name="servicedesc_systemmessageimport">AirMessageのテキストメッセージ統合機能のインポートと管理を支援します</string>
 	<string name="progress_importtextmessages">テキストメッセージをインポート中&#8230;</string>
 	<string name="message_textmessageimport">テキストメッセージのインポートを開始しました</string>
