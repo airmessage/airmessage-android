@@ -26,7 +26,9 @@ public class TextMMSReceivedReceiver extends MmsReceivedReceiver {
 	@Override
 	public void onMessageReceived(Context context, Uri messageUri) {
 		//Querying for message information
-		Cursor cursorMMS = context.getContentResolver().query(messageUri, null, null, null, null);
+		Cursor cursorMMS = context.getContentResolver().query(
+				messageUri, new String[]{Telephony.Mms._ID, Telephony.Mms.DATE, Telephony.Mms.STATUS, Telephony.Mms.SUBJECT, Telephony.Mms.THREAD_ID},
+				null, null, null);
 		
 		//Returning if there are no results
 		if(cursorMMS == null) return;
