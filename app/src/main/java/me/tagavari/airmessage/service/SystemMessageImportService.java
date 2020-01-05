@@ -233,9 +233,7 @@ public class SystemMessageImportService extends Service {
 									}
 								}
 								
-								String sender;
-								if(isOutgoing) sender = null;
-								else sender = cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+								String sender = isOutgoing ? null : cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
 								String message = cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.BODY));
 								long date = cursorSMS.getLong(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.DATE));
 								int errorCode = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ERROR_CODE));
@@ -468,7 +466,7 @@ public class SystemMessageImportService extends Service {
 		long messageID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms._ID));
 		long date = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000;
 		String subject = cursorMMS.getString(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.SUBJECT));
-		String sender = getMMSSender(context, messageID);
+		String sender = isOutgoing ? null : getMMSSender(context, messageID);
 		//long threadID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.THREAD_ID));
 		
 		StringBuilder messageTextSB = new StringBuilder();
