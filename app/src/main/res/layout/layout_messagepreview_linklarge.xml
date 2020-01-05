@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/group_messagepreview_linklarge"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:focusable="true"
+	android:clickable="true"
+	android:foreground="?android:attr/selectableItemBackground">
+	<!-- Content -->
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="vertical">
+		<!-- Image preview -->
+		<ImageView
+			android:id="@+id/image_header"
+			android:layout_width="match_parent"
+			android:layout_height="128dp"
+			android:scaleType="centerCrop" />
+
+		<!-- Link title -->
+		<TextView
+			android:id="@+id/label_title"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Link title"
+			android:textColor="?android:attr/textColorPrimary"
+			android:textSize="16sp"
+			android:maxLines="1"
+			android:layout_marginLeft="16dp"
+			android:layout_marginRight="16dp"
+			android:layout_marginTop="12dp" />
+
+		<!-- Link description -->
+		<TextView
+			android:id="@+id/label_description"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Link description"
+			android:textColor="?android:attr/textColorSecondary"
+			android:textSize="14sp"
+			android:maxLines="2"
+			android:layout_marginLeft="16dp"
+			android:layout_marginRight="16dp"
+			android:layout_marginTop="4dp" />
+
+		<!-- Link address -->
+		<LinearLayout
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginLeft="16dp"
+			android:layout_marginRight="16dp"
+			android:layout_marginTop="4dp"
+			android:layout_marginBottom="12dp"
+			android:orientation="horizontal"
+			android:gravity="center_vertical" >
+			<ImageView
+				android:layout_width="18dp"
+				android:layout_height="18dp"
+				android:src="@drawable/web"
+				android:tint="?android:attr/textColorSecondary"
+				android:tintMode="src_in"
+				android:layout_marginEnd="4dp"/>
+			<TextView
+				android:id="@+id/label_address"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Link address"
+				android:textColor="?android:attr/textColorSecondary"
+				android:textSize="12sp"
+				android:maxLines="1" />
+		</LinearLayout>
+	</LinearLayout>
+
+	<!-- Border view, in order to render the border on top of all view content -->
+	<View
+		android:id="@+id/view_border"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:background="@drawable/rectangle_chatpreview" />
+</FrameLayout>

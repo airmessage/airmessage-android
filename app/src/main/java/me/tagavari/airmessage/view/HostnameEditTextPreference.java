@@ -2,16 +2,12 @@ package me.tagavari.airmessage.view;
 
 import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.os.Bundle;
 import android.text.Editable;
-import android.text.InputFilter;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 
@@ -19,7 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.preference.EditTextPreference;
 import androidx.preference.EditTextPreferenceDialogFragmentCompat;
-import me.tagavari.airmessage.Constants;
+import me.tagavari.airmessage.util.Constants;
 
 public class HostnameEditTextPreference extends EditTextPreference {
 	public HostnameEditTextPreference(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
@@ -40,7 +36,7 @@ public class HostnameEditTextPreference extends EditTextPreference {
 	
 	public static class HostnameEditTextPreferenceDialog extends EditTextPreferenceDialogFragmentCompat {
 		private Button positiveButton;
-		private boolean buttonEnabled = false;
+		private boolean buttonEnabled = true;
 		
 		public static HostnameEditTextPreferenceDialog newInstance(String key) {
 			final HostnameEditTextPreferenceDialog fragment = new HostnameEditTextPreferenceDialog();

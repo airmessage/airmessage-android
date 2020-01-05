@@ -9,7 +9,7 @@
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
 		android:padding="20dp"
-		tools:context=".ServerSetup"
+		tools:context=".activity.ServerSetup"
 		android:clipToPadding="false">
 		<ImageView
 			android:id="@+id/image_header"

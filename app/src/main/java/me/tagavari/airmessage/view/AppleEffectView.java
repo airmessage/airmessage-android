@@ -16,7 +16,7 @@ import android.view.View;
 import java.util.Random;
 
 import androidx.annotation.Nullable;
-import me.tagavari.airmessage.ColorHelper;
+import me.tagavari.airmessage.util.ColorHelper;
 
 /**
  * Handles Apple's iMessage screen effects

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:id="@+id/content"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:focusable="true"
+	android:clickable="true"
+	android:foreground="?android:attr/selectableItemBackground">
+	<!-- Content -->
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="vertical">
+		<!-- Image preview -->
+		<me.tagavari.airmessage.view.RoundedFrameLayout
+			android:id="@+id/frame_header"
+			android:layout_width="match_parent"
+			android:layout_height="128dp">
+			<com.google.android.gms.maps.MapView
+				android:id="@+id/map_header"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				app:mapType="normal"
+				app:liteMode="true"
+				app:uiCompass="false"
+				android:clickable="false" />
+		</me.tagavari.airmessage.view.RoundedFrameLayout>
+
+		<!-- Link title -->
+		<TextView
+			android:id="@+id/label_title"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Link title"
+			android:textColor="?android:attr/textColorPrimary"
+			android:textSize="16sp"
+			android:maxLines="1"
+			android:layout_marginLeft="16dp"
+			android:layout_marginRight="16dp"
+			android:layout_marginTop="12dp" />
+
+		<!-- Link address -->
+		<LinearLayout
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginLeft="16dp"
+			android:layout_marginRight="16dp"
+			android:layout_marginTop="4dp"
+			android:layout_marginBottom="12dp"
+			android:orientation="horizontal"
+			android:gravity="center_vertical" >
+			<ImageView
+				android:layout_width="18dp"
+				android:layout_height="18dp"
+				android:src="@drawable/location_outline"
+				android:tint="?android:attr/textColorSecondary"
+				android:tintMode="src_in"
+				android:layout_marginEnd="4dp"/>
+			<TextView
+				android:id="@+id/label_address"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Link address"
+				android:textColor="?android:attr/textColorSecondary"
+				android:textSize="12sp"
+				android:maxLines="1" />
+		</LinearLayout>
+	</LinearLayout>
+
+	<!-- Border view, in order to render the border on top of all view content -->
+	<View
+		android:id="@+id/view_border"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:background="@drawable/rectangle_chatpreviewfull" />
+</FrameLayout>

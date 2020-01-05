@@ -43,3 +43,5 @@ ehthumbs.db
 # Other stuff
 projectFilesBackup/
 captures/
+app/google-services\.json
+app/src/debug/google-services.json

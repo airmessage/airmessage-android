@@ -9,43 +9,60 @@
 		<item name="android:windowBackground">@color/colorBackgroundLight</item>
 	</style> -->
 	
-	<style name="Base.DayNight" parent="@style/Theme.MaterialComponents.Light" />
-	<style name="Base.DayNight.NoActionBar" parent="@style/Theme.MaterialComponents.Light.NoActionBar" />
+	<style name="Base.DayNight" parent="@style/Theme.MaterialComponents.DayNight">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorPrimary</item>
+		<item name="android:colorBackground">@color/colorBackground</item>
+	</style>
+	<style name="Base.DayNight.NoActionBar" parent="@style/Theme.MaterialComponents.DayNight.NoActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorPrimary</item>
+		<item name="android:colorBackground">@color/colorBackground</item>
+	</style>
 	
 	<style name="Pass.DayNight" parent="@style/Base.DayNight" />
 	<style name="Pass.DayNight.NoActionBar" parent="@style/Base.DayNight.NoActionBar" />
 	
 	<style name="DayNight" parent="@style/Pass.DayNight">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-
 		<!-- <item name="android:statusBarColor">@color/colorBackgroundSurface</item>
 		<item name="android:windowLightStatusBar">true</item> -->
 		
 		<!--<item name="dialogTheme">@style/ThemeOverlay.MaterialComponents.Dialog</item>-->
 	</style>
 	
-	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-		
-		<item name="windowActionModeOverlay">true</item>
-		<item name="android:actionModeBackground">@android:color/transparent</item>
-		<item name="android:actionModeCloseDrawable">@drawable/close</item>
-		<item name="actionBarPopupTheme">@style/ActionModeOverflowMenu</item>
-		<!--<item name="android:statusBarColor">@color/colorBackgroundSurface</item>-->
-		<item name="android:statusBarColor">?android:attr/colorBackgroundFloating</item>
+	<style name="DayNight.Translucent" parent="@style/Pass.DayNight.NoActionBar">
+		<item name="android:windowTranslucentStatus">true</item>
+		<item name="android:windowTranslucentNavigation">true</item>
+	</style>
+
+	<style name="DayNight.Transparent" parent="@style/Pass.DayNight.NoActionBar">
+		<item name="android:statusBarColor">@android:color/transparent</item>
+		<!-- <item name="android:navigationBarColor">@android:color/transparent</item> -->
 		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
 	</style>
 
-	<style name="DayNight.NoActionbar.Unprotected" parent="@style/DayNight.NoActionBar">
+	<style name="ThemeBlack" parent="@style/Theme.MaterialComponents.NoActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="android:statusBarColor">@android:color/transparent</item>
+		<item name="android:navigationBarColor">@android:color/transparent</item>
+	</style>
+	
+	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">
+		<item name="windowActionModeOverlay">true</item>
+		<item name="android:actionModeBackground">@android:color/transparent</item>
+		<item name="android:actionModeCloseDrawable">@drawable/close_control</item>
+		<item name="actionBarPopupTheme">@style/ActionModeOverflowMenu</item>
+		<!--<item name="android:statusBarColor">@color/colorBackgroundSurface</item>-->
+		<item name="android:statusBarColor">@color/colorToolbar</item>
+		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
+	</style>
+
+	<style name="DayNight.NoActionBar.Protected" parent="@style/DayNight.NoActionBar">
 		<!--<item name="android:windowBackground">@color/colorBackgroundClean</item>-->
 		<!--<item name="android:navigationBarColor">@color/colorBackgroundClean</item>-->
 	</style>
-	
-	<style name="DayNight.NoActionBar.SolidNavigation" parent="DayNight.NoActionBar" />
 
 	<style name="SolidActionBar" parent="@style/ThemeOverlay.AppCompat.ActionBar">
 		<item name="android:colorControlNormal">@android:color/white</item>
@@ -78,10 +95,6 @@
 	
 	<style name="Pass.AppTheme.Setup" parent="Base.DayNight.NoActionBar" />
 	<style name="AppTheme.Setup" parent="@style/Pass.AppTheme.Setup">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorAccent</item>
-		
 		<item name="android:statusBarColor">?android:attr/colorBackground</item>
 		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
 	</style>
@@ -90,16 +103,23 @@
 		<item name="android:textColor">@android:color/primary_text_light</item>
 	</style>
 	
-	<style name="ActivityDialogTheme" parent="Theme.MaterialComponents.Light.Dialog"> <!-- @android:style/Theme.Material.Light.Dialog.NoActionBar -->
+	<style name="ActivityDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog"> <!-- @android:style/Theme.Material.Light.Dialog.NoActionBar -->
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item> -->
+		<item name="colorAccent">@color/colorPrimary</item>
+		<item name="android:colorBackground">@color/colorBackground</item>
 		<item name="windowNoTitle">true</item>
 		
 		<!-- <item name="android:statusBarColor">@android:color/transparent</item>
 		<item name="android:navigationBarColor">@android:color/transparent</item>
 		<item name="android:windowTranslucentStatus">true</item>
 		<item name="android:windowTranslucentNavigation">true</item> -->
+	</style>
+
+	<style name="CrashReport" parent="Theme.MaterialComponents.NoActionBar">
+		<item name="android:colorBackground">@color/colorError</item>
+		<item name="android:statusBarColor">@color/colorError</item>
+		<item name="android:navigationBarColor">@color/colorError</item>
 	</style>
 	
 	<style name="OverscrollNeutralizer" parent="@style/Base.DayNight">

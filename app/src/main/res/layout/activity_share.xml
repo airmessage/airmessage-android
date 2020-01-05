@@ -6,7 +6,7 @@
 	android:layout_height="match_parent"
 	android:maxWidth="280dp"
 	android:orientation="vertical"
-	tools:context=".ShareHandler">
+	tools:context=".activity.ShareHandler">
 	
 	<TextView
 		android:layout_width="match_parent"
