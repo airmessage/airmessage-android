@@ -1089,6 +1089,11 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 			}
 		}
+		
+		//Updating app shortcuts
+		if(viewModel.checkSetConversationAppearanceNeedsUpdate()) {
+			ConversationUtils.updateShortcuts(this, Collections.singletonList(viewModel.conversationInfo));
+		}
 	}
 	
 	@Override
@@ -5037,6 +5042,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		private int lastUnreadCount = 0;
 		
+		//When the conversation is modified (renamed, or participants changed), this flag is tripped to indicate that external links or representations of this conversation should be updated to match
+		private boolean conversationAppearanceNeedsUpdate = false;
+		
 		//Creating the conversation values
 		private String[] conversationParticipantsTarget;
 		private long conversationID;
@@ -5966,6 +5974,19 @@ public class Messaging extends AppCompatCompositeActivity {
 		boolean doFilesRequireCompression() {
 			return conversationInfo.getServiceHandler() != ConversationInfo.serviceHandlerAMBridge || !ConversationInfo.serviceTypeAppleMessage.equals(conversationInfo.getService());
 		}
+		
+		void tripConversationAppearanceNeedsUpdate() {
+			conversationAppearanceNeedsUpdate = true;
+		}
+		
+		boolean checkSetConversationAppearanceNeedsUpdate() {
+			if(conversationAppearanceNeedsUpdate) {
+				conversationAppearanceNeedsUpdate = false;
+				return true;
+			} else {
+				return false;
+			}
+		}
 	}
 	
 	public static class AudioPlaybackManager {
@@ -6447,6 +6468,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Building the conversation title
 			activity.viewModel.conversationInfo.buildTitle(activity, new ConversationTitleResultCallback(activity));
+			
+			//Marking the conversation as modified
+			activity.viewModel.tripConversationAppearanceNeedsUpdate();
 		}
 		
 		@Override
@@ -6467,6 +6491,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Adding the member
 			activity.addMemberView(member, index, true);
+			
+			//Marking the conversation as modified
+			activity.viewModel.tripConversationAppearanceNeedsUpdate();
 		}
 		
 		@Override
@@ -6477,6 +6504,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Removing the member
 			activity.removeMemberView(member);
+			
+			//Marking the conversation as modified
+			activity.viewModel.tripConversationAppearanceNeedsUpdate();
 		}
 		
 		@Override

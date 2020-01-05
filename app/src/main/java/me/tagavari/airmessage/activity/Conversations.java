@@ -262,6 +262,9 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Updating the "mark as read" control
 			updateMarkAllRead();
+			
+			//Rebuilding dynamic shortcuts
+			ConversationUtils.rebuildDynamicShortcuts(this);
 		});
 		editTextBarSearch.addTextChangedListener(searchTextWatcher);
 		buttonBarSearchClear.setOnClickListener(view -> editTextBarSearch.setText(""));
@@ -528,10 +531,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
-		
-		//Updating app shortcuts
-		ConversationUtils.rebuildDynamicShortcuts(this);
-		if(conversationsBasePlugin.conversations.isLoaded()) ConversationUtils.updateShortcuts(this, conversationsBasePlugin.conversations);
 	}
 	
 	@Override
