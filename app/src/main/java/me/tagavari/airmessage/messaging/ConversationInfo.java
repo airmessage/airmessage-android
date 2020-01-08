@@ -1286,6 +1286,11 @@ public class ConversationInfo implements Serializable {
 			//Deleting the conversation
 			DatabaseManager.getInstance().deleteConversation(conversationInfo);
 			
+			//Deleting the conversation from the external database
+			if(conversationInfo.getServiceHandler() == serviceHandlerSystemMessaging) {
+				ConversationUtils.deleteMMSSMSConversationSync(context, new HashSet<>(conversationInfo.getConversationMembersAsCollection()));
+			}
+			
 			//Returning
 			return null;
 		}
