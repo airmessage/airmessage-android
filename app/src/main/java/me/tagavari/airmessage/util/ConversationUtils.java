@@ -1,13 +1,16 @@
 package me.tagavari.airmessage.util;
 
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.content.res.Resources;
+import android.database.sqlite.SQLiteException;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
+import android.provider.Telephony;
 import android.view.View;
 import android.widget.TextView;
 
@@ -21,6 +24,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
@@ -780,6 +784,16 @@ public class ConversationUtils {
 		//Clearing the shortcuts
 		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
 		shortcutManager.removeAllDynamicShortcuts();
+	}
+	
+	public static void deleteMMSSMSConversationSync(Context context, Set<String> recipients) {
+		try {
+			long threadID = Telephony.Threads.getOrCreateThreadId(context, recipients);
+			context.getContentResolver().delete(ContentUris.withAppendedId(Telephony.Threads.CONTENT_URI, threadID), null, null);
+			context.getContentResolver().delete(Telephony.Threads.CONTENT_URI, Telephony.Mms._ID + " = ?", new String[]{Long.toString(threadID)});
+		} catch(SQLiteException exception) {
+			exception.printStackTrace();
+		}
 	}
 	
 	public static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, long fileSize) {

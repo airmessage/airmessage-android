@@ -2054,12 +2054,8 @@ public class Messaging extends AppCompatCompositeActivity {
 						.setMessage(R.string.message_confirm_deleteconversation_current)
 						.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
 						.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
-							//Removing the conversation from memory
-							ArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
-							if(conversations != null) conversations.remove(viewModel.conversationInfo);
-							
-							//Deleting the conversation from the database
-							DatabaseManager.getInstance().deleteConversation(viewModel.conversationInfo);
+							//Deleting the conversation
+							viewModel.conversationInfo.deleteSync(this);
 							
 							//Sending an update
 							LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
