@@ -770,7 +770,7 @@ public class ConversationUtils {
 		
 		//Disabling the shortcuts
 		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
-		shortcutManager.disableShortcuts(idList);
+		shortcutManager.enableShortcuts(idList);
 	}
 	
 	public static void clearDynamicShortcuts(Context context) {

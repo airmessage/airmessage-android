@@ -291,6 +291,10 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Restoring the state
 		restoreListingArchivedState();
 		restoreSearchState();
+		
+		//Updating app shortcuts
+		ConversationUtils.rebuildDynamicShortcuts(this);
+		if(conversationsBasePlugin.conversations.isLoaded()) ConversationUtils.updateShortcuts(this, conversationsBasePlugin.conversations);
 	}
 	
 	@Override

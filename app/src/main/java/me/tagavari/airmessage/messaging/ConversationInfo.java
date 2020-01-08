@@ -1241,7 +1241,7 @@ public class ConversationInfo implements Serializable {
 		new DeleteConversationTask(context, this).execute();
 		
 		//Removing the conversation shortcut
-		ConversationUtils.enableShortcuts(context, Collections.singletonList(this));
+		ConversationUtils.disableShortcuts(context, Collections.singletonList(this));
 	}
 	
 	private static class DeleteConversationTask extends AsyncTask<Void, Void, Void> {
