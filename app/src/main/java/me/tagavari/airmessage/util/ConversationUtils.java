@@ -713,7 +713,7 @@ public class ConversationUtils {
 		//Getting the top 3 conversations
 		MainApplication.LoadFlagArrayList<ConversationInfo> conversations = getConversations();
 		if(conversations == null || !conversations.isLoaded()) return;
-		List<ConversationInfo> topConversations = conversations.subList(0, Math.min(conversations.size(), 3));
+		List<ConversationInfo> topConversations = new ArrayList<>(conversations.subList(0, Math.min(conversations.size(), 3)));
 		
 		//Creating the shortcuts
 		generateShortcutInfo(context, topConversations, (wasTasked, shortcutList) -> {

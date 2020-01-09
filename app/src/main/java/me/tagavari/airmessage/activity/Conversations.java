@@ -499,6 +499,9 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+		//Returning if there are no results
+		if(grantResults.length == 0) return;
+		
 		//Checking if the request code is contacts access
 		if(requestCode == permissionRequestContacts) {
 			//Checking if the result is a success
