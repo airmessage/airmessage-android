@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
@@ -730,6 +731,37 @@ public class ConversationUtils {
 		return false;
 	}
 	
+	@RequiresApi(api = Build.VERSION_CODES.N_MR1)
+	private static List<ConversationInfo> getActiveShortcutConversations(List<ConversationInfo> conversationList, ShortcutManager shortcutManager) {
+		//Creating the list
+		List<ConversationInfo> list = new ArrayList<>();
+		
+		//Adding the shortcuts
+		ConversationInfo conversationInfo;
+		for(ShortcutInfo shortcut : shortcutManager.getDynamicShortcuts()) {
+			conversationInfo = conversationInfoFromShortcut(conversationList, shortcut);
+			if(conversationInfo != null) list.add(conversationInfo);
+		}
+		for(ShortcutInfo shortcut : shortcutManager.getPinnedShortcuts()) {
+			conversationInfo = conversationInfoFromShortcut(conversationList, shortcut);
+			if(conversationInfo != null) list.add(conversationInfo);
+		}
+		
+		//Returning the list
+		return list;
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.N_MR1)
+	private static ConversationInfo conversationInfoFromShortcut(List<ConversationInfo> conversationList, ShortcutInfo shortcutInfo) {
+		String shortcutID = shortcutInfo.getId();
+		if(!shortcutID.startsWith(shortcutPrefixConversation)) return null; //Not a conversation shortcut
+		String chatID = shortcutID.substring(shortcutPrefixConversation.length());
+		for(ConversationInfo conversationInfo : conversationList) {
+			if(chatID.equals(conversationInfo.getGuid())) return conversationInfo;
+		}
+		return null;
+	}
+	
 	public static void updateShortcuts(Context context, List<ConversationInfo> conversationList) {
 		//Shortcuts require Android 7.1 Nougat or above
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
@@ -738,11 +770,12 @@ public class ConversationUtils {
 		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
 		
 		//Filtering out conversations that aren't in any shortcuts
-		List<ConversationInfo> filteredList = new ArrayList<>();
+		/* List<ConversationInfo> filteredList = new ArrayList<>();
 		for(ConversationInfo conversation : conversationList) {
 			if(!isShortcutActive(shortcutManager, shortcutPrefixConversation + conversation.getGuid())) continue;
 			filteredList.add(conversation);
-		}
+		} */
+		List<ConversationInfo> filteredList = getActiveShortcutConversations(conversationList, shortcutManager);
 		
 		//Creating the shortcuts
 		generateShortcutInfo(context, filteredList, (wasTasked, shortcutList) -> {

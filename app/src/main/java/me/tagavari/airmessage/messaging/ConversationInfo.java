@@ -1574,7 +1574,7 @@ public class ConversationInfo implements Serializable {
 	
 	public void setTitle(Context context, String value) {
 		//Returning if the operation is invalid
-		if((title != null && title.equals(value))) return;
+		if(title != null && title.equals(value)) return;
 		
 		//Setting the new title
 		title = value;
