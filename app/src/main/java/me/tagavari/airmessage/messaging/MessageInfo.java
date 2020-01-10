@@ -774,19 +774,11 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 					//Setting the checksum
 					attachmentInfo.setFileChecksum(checksum);
 					
-					//Hiding the progress bar
-					ViewHolder newViewHolder = getViewHolder();
+					//Hiding the progress bar (this will be done once the file is read and sent to carrier servers)
+					/* ViewHolder newViewHolder = getViewHolder();
 					if(newViewHolder == null) return;
 					TransitionManager.beginDelayedTransition((ViewGroup) newViewHolder.itemView);
-					newViewHolder.progressSend.setVisibility(View.GONE);
-				};
-				request.getCallbacks().onUploadResponseReceived = () -> {
-					//Setting the message as not sending
-					isSending = false;
-					
-					//Getting the view
-					ViewHolder newViewHolder = getViewHolder();
-					if(newViewHolder == null) return;
+					newViewHolder.progressSend.setVisibility(View.GONE); */
 				};
 				request.getCallbacks().onFail = (resultCode, details) -> {
 					//Setting the error code
@@ -829,6 +821,9 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 						//Sending the message if all attachments have been processed
 						if(processedAttachmentsRemaining.value == 0) {
 							transaction.sendNewMessage(message, getConversationInfo().getExternalID());
+							
+							//Setting the message as not sending
+							isSending = false;
 							
 							//Hiding the progress bar
 							ViewHolder newViewHolder = getViewHolder();
