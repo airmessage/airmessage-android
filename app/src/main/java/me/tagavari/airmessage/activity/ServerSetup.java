@@ -134,6 +134,7 @@ public class ServerSetup extends AppCompatActivity {
 						if(connectionSnackbar == null || !connectionSnackbar.isShownOrQueued()) {
 							Snackbar snackbar = connectionSnackbar = Snackbar.make(findViewById(R.id.coordinator_snackbar), R.string.message_setup_connectionhelp, Snackbar.LENGTH_INDEFINITE);
 							snackbar.setAction(R.string.action_connectiontroubleshootingguide, view -> Constants.launchUri(ServerSetup.this, Constants.helpTopicConnectionTroubleshootingAddress));
+							snackbar.setActionTextColor(getResources().getColor(R.color.colorPrimary, null));
 							snackbar.getView().setBackgroundTintList(ColorStateList.valueOf(Constants.resolveColorAttr(ServerSetup.this, android.R.attr.colorBackgroundFloating)));
 							((TextView) snackbar.getView().findViewById(com.google.android.material.R.id.snackbar_text)).setTextColor(Constants.resolveColorAttr(ServerSetup.this, android.R.attr.textColorPrimary));
 							snackbar.show();
