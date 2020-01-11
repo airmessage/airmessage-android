@@ -109,6 +109,9 @@ public class MainApplication extends Application {
 			defaultUEH = Thread.getDefaultUncaughtExceptionHandler();
 			
 			Thread.setDefaultUncaughtExceptionHandler((thread, exception) -> {
+				//Printing the exception
+				exception.printStackTrace();
+				
 				//Getting the exception
 				StringWriter stringWriter = new StringWriter();
 				PrintWriter printWriter = new PrintWriter(stringWriter);

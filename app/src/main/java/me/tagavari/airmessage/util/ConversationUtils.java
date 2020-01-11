@@ -1,13 +1,16 @@
 package me.tagavari.airmessage.util;
 
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.content.res.Resources;
+import android.database.sqlite.SQLiteException;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
+import android.provider.Telephony;
 import android.view.View;
 import android.widget.TextView;
 
@@ -21,6 +24,8 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
@@ -709,7 +714,7 @@ public class ConversationUtils {
 		//Getting the top 3 conversations
 		MainApplication.LoadFlagArrayList<ConversationInfo> conversations = getConversations();
 		if(conversations == null || !conversations.isLoaded()) return;
-		List<ConversationInfo> topConversations = conversations.subList(0, Math.min(conversations.size(), 3));
+		List<ConversationInfo> topConversations = new ArrayList<>(conversations.subList(0, Math.min(conversations.size(), 3)));
 		
 		//Creating the shortcuts
 		generateShortcutInfo(context, topConversations, (wasTasked, shortcutList) -> {
@@ -726,6 +731,37 @@ public class ConversationUtils {
 		return false;
 	}
 	
+	@RequiresApi(api = Build.VERSION_CODES.N_MR1)
+	private static List<ConversationInfo> getActiveShortcutConversations(List<ConversationInfo> conversationList, ShortcutManager shortcutManager) {
+		//Creating the list
+		List<ConversationInfo> list = new ArrayList<>();
+		
+		//Adding the shortcuts
+		ConversationInfo conversationInfo;
+		for(ShortcutInfo shortcut : shortcutManager.getDynamicShortcuts()) {
+			conversationInfo = conversationInfoFromShortcut(conversationList, shortcut);
+			if(conversationInfo != null) list.add(conversationInfo);
+		}
+		for(ShortcutInfo shortcut : shortcutManager.getPinnedShortcuts()) {
+			conversationInfo = conversationInfoFromShortcut(conversationList, shortcut);
+			if(conversationInfo != null) list.add(conversationInfo);
+		}
+		
+		//Returning the list
+		return list;
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.N_MR1)
+	private static ConversationInfo conversationInfoFromShortcut(List<ConversationInfo> conversationList, ShortcutInfo shortcutInfo) {
+		String shortcutID = shortcutInfo.getId();
+		if(!shortcutID.startsWith(shortcutPrefixConversation)) return null; //Not a conversation shortcut
+		String chatID = shortcutID.substring(shortcutPrefixConversation.length());
+		for(ConversationInfo conversationInfo : conversationList) {
+			if(chatID.equals(conversationInfo.getGuid())) return conversationInfo;
+		}
+		return null;
+	}
+	
 	public static void updateShortcuts(Context context, List<ConversationInfo> conversationList) {
 		//Shortcuts require Android 7.1 Nougat or above
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
@@ -734,11 +770,12 @@ public class ConversationUtils {
 		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
 		
 		//Filtering out conversations that aren't in any shortcuts
-		List<ConversationInfo> filteredList = new ArrayList<>();
+		/* List<ConversationInfo> filteredList = new ArrayList<>();
 		for(ConversationInfo conversation : conversationList) {
 			if(!isShortcutActive(shortcutManager, shortcutPrefixConversation + conversation.getGuid())) continue;
 			filteredList.add(conversation);
-		}
+		} */
+		List<ConversationInfo> filteredList = getActiveShortcutConversations(conversationList, shortcutManager);
 		
 		//Creating the shortcuts
 		generateShortcutInfo(context, filteredList, (wasTasked, shortcutList) -> {
@@ -770,7 +807,7 @@ public class ConversationUtils {
 		
 		//Disabling the shortcuts
 		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
-		shortcutManager.disableShortcuts(idList);
+		shortcutManager.enableShortcuts(idList);
 	}
 	
 	public static void clearDynamicShortcuts(Context context) {
@@ -780,6 +817,16 @@ public class ConversationUtils {
 		//Clearing the shortcuts
 		ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
 		shortcutManager.removeAllDynamicShortcuts();
+	}
+	
+	public static void deleteMMSSMSConversationSync(Context context, Set<String> recipients) {
+		try {
+			long threadID = Telephony.Threads.getOrCreateThreadId(context, recipients);
+			context.getContentResolver().delete(ContentUris.withAppendedId(Telephony.Threads.CONTENT_URI, threadID), null, null);
+			context.getContentResolver().delete(Telephony.Threads.CONTENT_URI, Telephony.Mms._ID + " = ?", new String[]{Long.toString(threadID)});
+		} catch(SQLiteException exception) {
+			exception.printStackTrace();
+		}
 	}
 	
 	public static AttachmentInfo<?> createAttachmentInfoFromType(long fileID, String fileGuid, MessageInfo messageInfo, String fileName, String fileType, long fileSize) {

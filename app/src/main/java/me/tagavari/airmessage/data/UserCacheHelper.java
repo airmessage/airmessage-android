@@ -12,6 +12,7 @@ import android.widget.TextView;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,8 +23,8 @@ import me.tagavari.airmessage.MainApplication;
 public class UserCacheHelper {
 	//Creating the values
 	private final LruCache<String, UserInfo> userCache;
-	private final List<String> failedCache = new ArrayList<>();
-	private final Map<String, List<UserFetchResult>> callbackList = new HashMap<>();
+	private final List<String> failedCache = Collections.synchronizedList(new ArrayList<>());
+	private final Map<String, List<UserFetchResult>> callbackList = Collections.synchronizedMap(new HashMap<>());
 	
 	public UserCacheHelper() {
 		//Setting the user cache
@@ -117,10 +118,9 @@ public class UserCacheHelper {
 			userInfo = FetchUserInfoTask.getUserInfo(context, name);
 			
 			//Caching the user info
-			if(userInfo == null) synchronized(failedCache) {
+			if(userInfo == null) {
 				failedCache.add(name);
-			}
-			else if(userCache.get(name) == null) synchronized(userCache) {
+			} else if(userCache.get(name) == null) {
 				userCache.put(name, userInfo);
 			}
 			
@@ -223,10 +223,9 @@ public class UserCacheHelper {
 			if(superclass == null) return;
 			
 			//Caching the user info
-			if(userInfo == null) synchronized(superclass.failedCache) {
+			if(userInfo == null) {
 				superclass.failedCache.add(name);
-			}
-			else if(superclass.userCache.get(name) == null) synchronized(superclass.userCache) {
+			} else if(superclass.userCache.get(name) == null) {
 				superclass.userCache.put(name, userInfo);
 			}
 			

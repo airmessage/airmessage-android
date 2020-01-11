@@ -1,12 +1,14 @@
 package me.tagavari.airmessage.receiver;
 
 import android.content.BroadcastReceiver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.Telephony;
 import android.telephony.SmsMessage;
+import android.util.TimeUtils;
 
 import androidx.core.util.Consumer;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -30,12 +32,49 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 		Object[] pdus = (Object[]) bundle.get("pdus");
 		String format = bundle.getString("format");
 		
+		//Getting the message
+		Message message = new Message();
 		for(int i = 0; i < pdus.length; i++) {
-			//Getting the message
+			//Getting the SMS message
 			SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) pdus[i], format);
 			
-			//Saving the message
-			new GetAndroidThreadID(context, smsMessage.getOriginatingAddress(), threadID -> new SaveMessageTask(context, smsMessage, threadID, ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS)).execute()).execute();
+			//Appending the information
+			message.appendBody(smsMessage.getMessageBody());
+			message.setSender(smsMessage.getOriginatingAddress());
+			message.setTimestamp(smsMessage.getTimestampMillis());
+		}
+		
+		//Saving the message
+		new GetAndroidThreadID(context, message.getSender(), threadID -> new SaveMessageTask(context, message, threadID, ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS)).execute()).execute();
+	}
+	
+	private static class Message {
+		private StringBuilder body = new StringBuilder();
+		private String sender = null;
+		private long timestamp = -1;
+		
+		public String getBody() {
+			return body.toString();
+		}
+		
+		public void appendBody(String body) {
+			this.body.append(body);
+		}
+		
+		public String getSender() {
+			return sender;
+		}
+		
+		public void setSender(String sender) {
+			this.sender = sender;
+		}
+		
+		public long getTimestamp() {
+			return timestamp;
+		}
+		
+		public void setTimestamp(long timestamp) {
+			this.timestamp = timestamp;
 		}
 	}
 	
@@ -69,13 +108,13 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 	
 	private static class SaveMessageTask extends AsyncTask<Void, Void, SaveMessageTaskResult> {
 		private final WeakReference<Context> contextReference;
-		private final SmsMessage smsMessage;
+		private final Message message;
 		private long threadID;
 		private ConversationInfo conversationInfo;
 		
-		SaveMessageTask(Context context, SmsMessage smsMessage, long threadID, ConversationInfo conversationInfo) {
+		SaveMessageTask(Context context, Message message, long threadID, ConversationInfo conversationInfo) {
 			contextReference = new WeakReference<>(context);
-			this.smsMessage = smsMessage;
+			this.message = message;
 			this.threadID = threadID;
 			this.conversationInfo = conversationInfo;
 		}
@@ -94,10 +133,10 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 				//Creating a new conversation if no existing conversation was found
 				if(conversationInfo == null) {
 					//Creating the conversation
-					int conversationColor = ConversationInfo.getDefaultConversationColor(smsMessage.getTimestampMillis());
+					int conversationColor = ConversationInfo.getDefaultConversationColor(message.getTimestamp());
 					conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
 					conversationInfo.setExternalID(threadID);
-					conversationInfo.setConversationMembersCreateColors(new String[]{smsMessage.getOriginatingAddress()});
+					conversationInfo.setConversationMembersCreateColors(new String[]{message.getSender()});
 					
 					//Writing the conversation to disk
 					boolean result = DatabaseManager.getInstance().addReadyConversationInfo(conversationInfo);
@@ -108,8 +147,11 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 			}
 			
 			//Creating and saving the message
-			MessageInfo messageInfo = createMessageInfo(smsMessage, conversationInfo);
+			MessageInfo messageInfo = createMessageInfo(message, conversationInfo);
 			DatabaseManager.getInstance().addConversationItem(messageInfo, false);
+			
+			//Writing the conversation to Android's internal database
+			insertInternalSMS(context, message);
 			
 			//Returning the result
 			return new SaveMessageTaskResult(messageInfo, conversationNew ? conversationInfo : null);
@@ -179,7 +221,27 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 		}
 	}
 	
-	private static MessageInfo createMessageInfo(SmsMessage smsMessage, ConversationInfo conversation) {
-		return new MessageInfo(-1, -1, null, conversation, smsMessage.getOriginatingAddress(), smsMessage.getMessageBody(), null, false, smsMessage.getTimestampMillis(), Constants.messageStateCodeSent, Constants.messageErrorCodeOK, false, -1);
+	private static MessageInfo createMessageInfo(Message message, ConversationInfo conversation) {
+		return new MessageInfo(-1, -1, null, conversation, message.getSender(), message.getBody(), null, false, message.getTimestamp(), Constants.messageStateCodeSent, Constants.messageErrorCodeOK, false, -1);
+	}
+	
+	/**
+	 * Inserts a message into Android's internal SMS database
+	 * @param context The context to use
+	 * @param message The message to add
+	 */
+	private static void insertInternalSMS(Context context, Message message) {
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Telephony.Sms.ADDRESS, message.getSender());
+		contentValues.put(Telephony.Sms.BODY, message.getBody());
+		contentValues.put(Telephony.Sms.DATE, System.currentTimeMillis());
+		contentValues.put(Telephony.Sms.READ, "1");
+		contentValues.put(Telephony.Sms.DATE_SENT, message.getTimestamp());
+		
+		try {
+			context.getContentResolver().insert(Telephony.Sms.Inbox.CONTENT_URI, contentValues);
+		} catch(Exception exception) {
+			exception.printStackTrace();
+		}
 	}
 }

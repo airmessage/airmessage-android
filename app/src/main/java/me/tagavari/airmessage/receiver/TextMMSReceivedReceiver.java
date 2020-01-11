@@ -12,6 +12,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.klinker.android.send_message.MmsReceivedReceiver;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 
 import me.tagavari.airmessage.activity.ConversationsBase;
@@ -25,8 +26,12 @@ import me.tagavari.airmessage.util.NotificationUtils;
 public class TextMMSReceivedReceiver extends MmsReceivedReceiver {
 	@Override
 	public void onMessageReceived(Context context, Uri messageUri) {
+		//Getting the standard projection with the thread ID
+		String[] projection = Arrays.copyOf(SystemMessageImportService.mmsColumnProjection, SystemMessageImportService.mmsColumnProjection.length + 1);
+		projection[projection.length - 1] = Telephony.Mms.THREAD_ID;
+		
 		//Querying for message information
-		Cursor cursorMMS = context.getContentResolver().query(messageUri, null, null, null, null);
+		Cursor cursorMMS = context.getContentResolver().query(messageUri, projection, null, null, null);
 		
 		//Returning if there are no results
 		if(cursorMMS == null) return;

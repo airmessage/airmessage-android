@@ -30,9 +30,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 import me.tagavari.airmessage.activity.ConversationsBase;
 import me.tagavari.airmessage.activity.Preferences;
@@ -1232,16 +1234,34 @@ public class ConversationInfo implements Serializable {
 		if(itemView != null) updateView(itemView, context);
 	}
 	
-	public void delete(final Context context) {
+	private void deleteMemory(Context context) {
 		//Removing the conversation from memory
 		ArrayList<ConversationInfo> conversations = MainApplication.getInstance().getConversations();
 		if(conversations != null) conversations.remove(this);
 		
+		//Removing the conversation shortcut
+		ConversationUtils.disableShortcuts(context, Collections.singletonList(this));
+	}
+	
+	public void delete(Context context) {
+		//Removing the conversation from memory
+		deleteMemory(context);
+		
 		//Removing the conversation from the database
 		new DeleteConversationTask(context, this).execute();
+	}
+	
+	public void deleteSync(Context context) {
+		//Removing the conversation from memory
+		deleteMemory(context);
 		
-		//Removing the conversation shortcut
-		ConversationUtils.enableShortcuts(context, Collections.singletonList(this));
+		//Deleting the conversation from the database
+		DatabaseManager.getInstance().deleteConversation(this);
+		
+		//Deleting the conversation from the external database
+		if(serviceHandler == serviceHandlerSystemMessaging) {
+			ConversationUtils.deleteMMSSMSConversationSync(context, new HashSet<>(getConversationMembersAsCollection()));
+		}
 	}
 	
 	private static class DeleteConversationTask extends AsyncTask<Void, Void, Void> {
@@ -1265,6 +1285,11 @@ public class ConversationInfo implements Serializable {
 			
 			//Deleting the conversation
 			DatabaseManager.getInstance().deleteConversation(conversationInfo);
+			
+			//Deleting the conversation from the external database
+			if(conversationInfo.getServiceHandler() == serviceHandlerSystemMessaging) {
+				ConversationUtils.deleteMMSSMSConversationSync(context, new HashSet<>(conversationInfo.getConversationMembersAsCollection()));
+			}
 			
 			//Returning
 			return null;
@@ -1549,7 +1574,7 @@ public class ConversationInfo implements Serializable {
 	
 	public void setTitle(Context context, String value) {
 		//Returning if the operation is invalid
-		if((title != null && title.equals(value))) return;
+		if(title != null && title.equals(value)) return;
 		
 		//Setting the new title
 		title = value;

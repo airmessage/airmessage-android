@@ -262,6 +262,9 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Updating the "mark as read" control
 			updateMarkAllRead();
+			
+			//Rebuilding dynamic shortcuts
+			ConversationUtils.rebuildDynamicShortcuts(this);
 		});
 		editTextBarSearch.addTextChangedListener(searchTextWatcher);
 		buttonBarSearchClear.setOnClickListener(view -> editTextBarSearch.setText(""));
@@ -288,6 +291,10 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Restoring the state
 		restoreListingArchivedState();
 		restoreSearchState();
+		
+		//Updating app shortcuts
+		ConversationUtils.rebuildDynamicShortcuts(this);
+		if(conversationsBasePlugin.conversations.isLoaded()) ConversationUtils.updateShortcuts(this, conversationsBasePlugin.conversations);
 	}
 	
 	@Override
@@ -492,6 +499,9 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+		//Returning if there are no results
+		if(grantResults.length == 0) return;
+		
 		//Checking if the request code is contacts access
 		if(requestCode == permissionRequestContacts) {
 			//Checking if the result is a success
@@ -528,10 +538,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
-		
-		//Updating app shortcuts
-		ConversationUtils.rebuildDynamicShortcuts(this);
-		if(conversationsBasePlugin.conversations.isLoaded()) ConversationUtils.updateShortcuts(this, conversationsBasePlugin.conversations);
 	}
 	
 	@Override
