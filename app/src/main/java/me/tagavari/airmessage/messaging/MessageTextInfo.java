@@ -522,8 +522,9 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 				MemberInfo memberInfo = getMessageInfo().getConversationInfo().findConversationMember(getMessageInfo().getSender());
 				int targetColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 				//textColor = context.getResources().getServiceColor(R.color.colorTextWhite, null);
-				textColor = ColorHelper.modifyColorRaw(targetColor, Constants.isNightMode(context.getResources()) ? 1.3F : 0.75F);
-				backgroundColor = ColorUtils.setAlphaComponent(targetColor, 80);
+				//textColor = ColorHelper.modifyColorRaw(targetColor, Constants.isNightMode(context.getResources()) ? 1.5F : 0.75F);
+				textColor = ColorHelper.modifyColorMultiply(targetColor, Constants.isNightMode(context.getResources()) ? 1.5F : 0.7F);
+				backgroundColor = ColorUtils.setAlphaComponent(targetColor, 50);
 			} else {
 				backgroundColor = context.getResources().getColor(R.color.colorMessageOutgoing, null);
 				textColor = Constants.resolveColorAttr(context, android.R.attr.textColorPrimary);
