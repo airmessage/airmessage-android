@@ -89,7 +89,7 @@ public class ConnectionService extends Service {
 			
 			//Getting the current active network
 			NetworkInfo activeNetwork = intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK_INFO);
-			//NetworkInfo activeNetwork = ((ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
+			//NetworkInfo activeNetwork = context.getSystemService(ConnectivityManager.class).getActiveNetworkInfo();
 			//if(activeNetwork == null) return;
 			
 			if(activeNetwork.isConnected()) {

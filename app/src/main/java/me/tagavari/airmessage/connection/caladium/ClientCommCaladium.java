@@ -416,6 +416,7 @@ public class ClientCommCaladium extends CommunicationsManager {
 							sleep(ConnectionService.dropReconnectDelayMillis[reconnectionCount]);
 						} catch(InterruptedException interruptedException) {
 							interruptedException.printStackTrace();
+							return;
 						}
 						
 						//Attempting another connection
