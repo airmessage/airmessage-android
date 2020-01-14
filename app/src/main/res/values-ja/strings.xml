@@ -10,7 +10,7 @@
 	<string name="action_deletemessage">メッセージを削除</string>
 	<string name="action_reply">返信</string>
 	<string name="action_markread">既読にする</string>
-	<string name="action_retry">再送</string>
+	<string name="action_retry">再試行</string>
 	<string name="action_search">検索</string>
 	<string name="action_update">更新</string>
 	<string name="action_dismiss">閉じる</string>
@@ -315,15 +315,15 @@
 	</plurals>
 
 	<string-array name="preference_appearance_theme_entries_old">
-		<item>光</item>
-		<item>暗い</item>
+		<item>ライト</item>
+		<item>ダーク</item>
 		<item>バッテリーセーバーで設定</item>
 	</string-array>
 
 	<string-array name="preference_appearance_theme_entries_androidQ">
-		<item>光</item>
-		<item>暗い</item>
-		<item>システムに一致</item>
+		<item>ライト</item>
+		<item>ダーク</item>
+		<item>システムのデフォルト</item>
 	</string-array>
 
 	<string name="action_copy">コピー</string>
