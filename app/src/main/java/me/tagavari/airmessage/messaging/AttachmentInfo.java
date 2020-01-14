@@ -371,12 +371,15 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 		} else {
 			if(Preferences.getPreferenceAdvancedColor(context)) {
 				MemberInfo memberInfo = messageInfo.getConversationInfo().findConversationMember(messageInfo.getSender());
-				int bubbleColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
+				int targetColor = memberInfo == null ? ConversationInfo.backupUserColor : memberInfo.getColor();
 				
-				cslText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhite, null));
-				cslSecondaryText = ColorStateList.valueOf(context.getResources().getColor(R.color.colorTextWhiteSecondary, null));
-				cslBackground = ColorStateList.valueOf(bubbleColor);
-				cslAccent = ColorStateList.valueOf(ColorHelper.lightenColor(bubbleColor));
+				int textColor = ColorHelper.modifyColorMultiply(targetColor, Constants.isNightMode(context.getResources()) ? 1.5F : 0.7F);
+				int backgroundColor = ColorUtils.setAlphaComponent(targetColor, 50);
+				
+				cslText = ColorStateList.valueOf(textColor);
+				cslSecondaryText = ColorStateList.valueOf(ColorUtils.setAlphaComponent(textColor, 179));
+				cslBackground = ColorStateList.valueOf(backgroundColor);
+				cslAccent = ColorStateList.valueOf(targetColor);
 			} else {
 				cslText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorPrimary));
 				cslSecondaryText = ColorStateList.valueOf(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
