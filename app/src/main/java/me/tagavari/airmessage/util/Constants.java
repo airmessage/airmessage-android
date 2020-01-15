@@ -80,6 +80,7 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -627,13 +628,6 @@ public class Constants {
 	}
 	
 	public static class CustomTabsLinkTransformationMethod implements TransformationMethod {
-		//Creating the custom values
-		private final int color;
-		
-		public CustomTabsLinkTransformationMethod(int color) {
-			this.color = color;
-		}
-		
 		@Override
 		public CharSequence getTransformation(CharSequence source, View view) {
 			if(view instanceof TextView) {
@@ -649,7 +643,7 @@ public class Constants {
 					int end = text.getSpanEnd(oldSpan);
 					String url = oldSpan.getURL();
 					text.removeSpan(oldSpan);
-					text.setSpan(new CustomTabsURLSpan(url, color), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+					text.setSpan(new CustomTabsURLSpan(url), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 				}
 				return text;
 			}
@@ -663,17 +657,8 @@ public class Constants {
 	}
 	
 	public static class CustomTabsURLSpan extends URLSpan {
-		//Creating the custom values
-		private final int color;
-		
-		CustomTabsURLSpan(String url, int color) {
+		public CustomTabsURLSpan(String url) {
 			super(url);
-			this.color = color;
-		}
-		
-		CustomTabsURLSpan(Parcel src, int color) {
-			super(src);
-			this.color = color;
 		}
 		
 		@Override
@@ -681,10 +666,23 @@ public class Constants {
 			//Returning if the widget has disabled link clicking
 			if(!((TextView) widget).getLinksClickable()) return;
 			
+			//Getting the color scheme
+			int colorScheme;
+			switch(AppCompatDelegate.getDefaultNightMode()) {
+				case AppCompatDelegate.MODE_NIGHT_NO:
+					colorScheme = CustomTabsIntent.COLOR_SCHEME_LIGHT;
+					break;
+				case AppCompatDelegate.MODE_NIGHT_YES:
+					colorScheme = CustomTabsIntent.COLOR_SCHEME_DARK;
+					break;
+				default:
+					colorScheme = CustomTabsIntent.COLOR_SCHEME_SYSTEM;
+					break;
+			}
+			
 			//Launching the custom tab
 			new CustomTabsIntent.Builder()
-					.setToolbarColor(color)
-					.setSecondaryToolbarColor(color)
+					.setColorScheme(colorScheme)
 					.build()
 					.launchUrl(widget.getContext(), Uri.parse(getURL()));
 			//super.onClick(widget);

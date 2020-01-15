@@ -345,8 +345,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Recreating the activity
 			getActivity().recreate();
 			
-			
-			
 			//Accepting the change
 			return true;
 		};

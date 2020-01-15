@@ -211,7 +211,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 	private void addTextLinksLegacy(TextView textView) {
 		//Setting up the URL checker
 		Linkify.addLinks(textView, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES | Linkify.PHONE_NUMBERS);
-		textView.setTransformationMethod(new Constants.CustomTabsLinkTransformationMethod(0xFFFFFFFF));
+		textView.setTransformationMethod(new Constants.CustomTabsLinkTransformationMethod());
 		textView.setMovementMethod(LinkMovementMethod.getInstance());
 	}
 	
