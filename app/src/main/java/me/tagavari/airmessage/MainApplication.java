@@ -17,6 +17,7 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Process;
 import android.preference.PreferenceManager;
 import android.provider.ContactsContract;
@@ -117,14 +118,10 @@ public class MainApplication extends Application {
 				PrintWriter printWriter = new PrintWriter(stringWriter);
 				exception.printStackTrace(printWriter);
 				
-				//Pending the next activity start
+				//Launching the error activity
 				Intent activityIntent = new Intent(this, CrashReport.class).putExtra(CrashReport.PARAM_STACKTRACE, stringWriter.toString()).setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
-				PendingIntent pendingIntent = PendingIntent.getActivity(this, 1, activityIntent, PendingIntent.FLAG_ONE_SHOT);
-				((AlarmManager) getSystemService(Activity.ALARM_SERVICE)).set(AlarmManager.ELAPSED_REALTIME_WAKEUP, 0, pendingIntent);
-				
-				//Killing the process
-				System.exit(2);
-				defaultUEH.uncaughtException(thread, exception);
+				startActivity(activityIntent);
+				Process.killProcess(Process.myPid());
 			});
 		}
 	}

@@ -166,18 +166,18 @@
 		android:id="@+id/effect_foreground"
 		android:layout_width="0px"
 		android:layout_height="0px"
+		app:layout_constraintTop_toTopOf="parent"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/appbar" />
+		app:layout_constraintRight_toRightOf="parent" />
 
 	<!-- Konfetti view -->
 	<nl.dionsegijn.konfetti.KonfettiView
 		android:id="@+id/konfetti"
 		android:layout_width="0px"
 		android:layout_height="0px"
-		app:layout_constraintTop_toBottomOf="@id/appbar"
-		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		app:layout_constraintTop_toTopOf="parent"
+		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent" />
 
