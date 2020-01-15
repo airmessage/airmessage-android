@@ -45,6 +45,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.net.IDN;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Date;
@@ -169,6 +170,8 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 					//Skipping the URL if it has a custom scheme (the WEB_URL matcher will not include the scheme in the URL if it is unknown)
 					String schemeOutside = messageText.substring(0, matcher.start());
 					if(schemeOutside.matches("\\w(?:\\w|\\d|\\+|-|\\.)*:\\/\\/$")) continue; //https://regex101.com/r/hW5bOW/1
+					
+					if(urlString.contains("…")) continue; //Crashes okhttp for some reason
 					
 					if(!urlString.contains("://")) urlString = "https://" + urlString; //Adding the scheme if it doesn't have one
 					else if(urlString.startsWith("http://")) urlString = urlString.replaceFirst("http://", "https://"); //Replacing HTTP schemes with HTTPS schemes
