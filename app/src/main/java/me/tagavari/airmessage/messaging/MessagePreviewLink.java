@@ -5,6 +5,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -51,7 +52,11 @@ public class MessagePreviewLink extends MessagePreviewInfo<MessagePreviewLink.Vi
 		viewHolder.labelAddress.setText(getCaption());
 		
 		//Setting the click listener
-		viewHolder.viewRoot.setOnClickListener(view -> Constants.launchUri(context, Uri.parse(getTarget())));
+		viewHolder.viewRoot.setOnClickListener(view -> {
+			Uri targetUri = Uri.parse(getTarget());
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) Constants.launchUri(context, targetUri); //To keep consistent with standard Linkify
+			else Constants.launchCustomTabs(context, targetUri);
+		});
 	}
 	
 	public static class ViewHolder extends MessagePreviewInfo.ViewHolder {

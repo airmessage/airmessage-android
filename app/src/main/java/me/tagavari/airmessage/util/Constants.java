@@ -666,28 +666,33 @@ public class Constants {
 			//Returning if the widget has disabled link clicking
 			if(!((TextView) widget).getLinksClickable()) return;
 			
-			//Getting the color scheme
-			int colorScheme;
-			switch(AppCompatDelegate.getDefaultNightMode()) {
-				case AppCompatDelegate.MODE_NIGHT_NO:
-					colorScheme = CustomTabsIntent.COLOR_SCHEME_LIGHT;
-					break;
-				case AppCompatDelegate.MODE_NIGHT_YES:
-					colorScheme = CustomTabsIntent.COLOR_SCHEME_DARK;
-					break;
-				default:
-					colorScheme = CustomTabsIntent.COLOR_SCHEME_SYSTEM;
-					break;
-			}
-			
 			//Launching the custom tab
-			new CustomTabsIntent.Builder()
-					.setColorScheme(colorScheme)
-					.build()
-					.launchUrl(widget.getContext(), Uri.parse(getURL()));
+			launchCustomTabs(widget.getContext(), Uri.parse(getURL()));
 			//super.onClick(widget);
 			// attempt to open with custom tabs, if that fails, call super.onClick
 		}
+	}
+	
+	public static void launchCustomTabs(Context context, Uri uri) {
+		//Getting the color scheme
+		int colorScheme;
+		switch(AppCompatDelegate.getDefaultNightMode()) {
+			case AppCompatDelegate.MODE_NIGHT_NO:
+				colorScheme = CustomTabsIntent.COLOR_SCHEME_LIGHT;
+				break;
+			case AppCompatDelegate.MODE_NIGHT_YES:
+				colorScheme = CustomTabsIntent.COLOR_SCHEME_DARK;
+				break;
+			default:
+				colorScheme = CustomTabsIntent.COLOR_SCHEME_SYSTEM;
+				break;
+		}
+		
+		//Launching the custom tab
+		new CustomTabsIntent.Builder()
+				.setColorScheme(colorScheme)
+				.build()
+				.launchUrl(context, uri);
 	}
 	
 	public static boolean containsIgnoreCase(String str, String searchStr) {
