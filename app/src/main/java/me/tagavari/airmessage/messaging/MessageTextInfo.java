@@ -167,6 +167,10 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 					//Updating the offset
 					matchOffset = matcher.end();
 					
+					//Ignoring email addresses
+					int matchStart = matcher.start();
+					if(matchStart > 0 && messageText.charAt(matchStart - 1) == '@') continue;
+					
 					//Skipping the URL if it has a custom scheme (the WEB_URL matcher will not include the scheme in the URL if it is unknown)
 					String schemeOutside = messageText.substring(0, matcher.start());
 					if(schemeOutside.matches("\\w(?:\\w|\\d|\\+|-|\\.)*:\\/\\/$")) continue; //https://regex101.com/r/hW5bOW/1
