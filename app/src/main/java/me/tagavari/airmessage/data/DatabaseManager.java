@@ -116,6 +116,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS + " TEXT, " +
 			Contract.MessageEntry.COLUMN_NAME_DATEREAD + " INTEGER, " +
 			Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " TEXT, " +
+			Contract.MessageEntry.COLUMN_NAME_MESSAGESUBJECT + " TEXT, " +
 			Contract.MessageEntry.COLUMN_NAME_SENDSTYLE + " TEXT, " +
 			Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED + " INTEGER NOT NULL DEFAULT 0, " +
 			Contract.MessageEntry.COLUMN_NAME_CHAT + " INTEGER NOT NULL," +
@@ -500,6 +501,9 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				database.execSQL("ALTER TABLE messages ADD preview_state INTEGER DEFAULT 0;");
 				database.execSQL("ALTER TABLE messages ADD preview_id INTEGER;");
 				
+				//Adding the subject field column
+				database.execSQL("ALTER TABLE messages ADD message_subject TEXT;");
+				
 				//Adding the message preview table
 				database.execSQL("CREATE TABLE message_preview (" +
 						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE," +
@@ -547,6 +551,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			static final String COLUMN_NAME_ERRORDETAILS = "error_details";
 			static final String COLUMN_NAME_DATEREAD = "date_read";
 			static final String COLUMN_NAME_MESSAGETEXT = "message_text";
+			static final String COLUMN_NAME_MESSAGESUBJECT = "message_subject";
 			static final String COLUMN_NAME_SENDSTYLE = "send_style";
 			static final String COLUMN_NAME_SENDSTYLEVIEWED = "send_style_viewed";
 			static final String COLUMN_NAME_CHAT = "chat";

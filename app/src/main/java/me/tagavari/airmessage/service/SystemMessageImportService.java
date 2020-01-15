@@ -19,6 +19,10 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.google.android.mms.pdu_alt.EncodedStringValue;
+import com.google.android.mms.pdu_alt.PduHeaders;
+import com.google.android.mms.pdu_alt.PduPersister;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -51,6 +55,7 @@ public class SystemMessageImportService extends Service {
 	
 	private Thread currentThread = null;
 	
+	public static final String[] smsMixedColumnProjection = {Telephony.BaseMmsColumns._ID, Telephony.Mms.MESSAGE_BOX, Telephony.Sms.TYPE, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.ERROR_CODE, Telephony.Sms.STATUS};
 	public static final String[] smsColumnProjection = {Telephony.Sms.TYPE, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.ERROR_CODE, Telephony.Sms.STATUS};
 	public static final String[] mmsColumnProjection = {Telephony.Mms._ID, Telephony.Mms.DATE, Telephony.Mms.MESSAGE_BOX, Telephony.Mms.SUBJECT};
 	public static final String[] mmsPartColumnProjection = {Telephony.Mms.Part._ID, Telephony.Mms.Part.CONTENT_TYPE, Telephony.Mms.Part.FILENAME, Telephony.Mms.Part._DATA, Telephony.Mms.Part.TEXT};
@@ -168,19 +173,21 @@ public class SystemMessageImportService extends Service {
 					conversationInfoList.add(conversationInfo);
 					
 					//Querying for the conversation's messages
-					Cursor cursorMessage = context.getContentResolver().query(ContentUris.withAppendedId(Telephony.Threads.CONTENT_URI, threadID), new String[]{Telephony.BaseMmsColumns._ID, Telephony.BaseMmsColumns.CONTENT_TYPE}, null, null, null);
+					Cursor cursorMessage = context.getContentResolver().query(ContentUris.withAppendedId(Telephony.Threads.CONTENT_URI, threadID), smsMixedColumnProjection, null, null, null);
 					if(cursorMessage == null) continue;
 					
 					//Getting the messages columns
 					int mMessageID = cursorMessage.getColumnIndexOrThrow(Telephony.BaseMmsColumns._ID);
-					int mContentType = cursorMessage.getColumnIndexOrThrow(Telephony.BaseMmsColumns.CONTENT_TYPE);
+					int mMMSMessageBox = cursorMessage.getColumnIndexOrThrow(Telephony.Mms.MESSAGE_BOX);
 					
 					ConversationItem lastConversationItem = null;
 					while(cursorMessage.moveToNext()) {
 						long messageID = cursorMessage.getLong(mMessageID);
-						if("application/vnd.wap.multipart.related".equals(cursorMessage.getString(mContentType))) {
+						
+						//Used to discern if this is an MMS message or not
+						if(cursorMessage.getString(mMMSMessageBox) != null) {
 							//MMS message
-							try(Cursor cursorMMS = context.getContentResolver().query(Telephony.Mms.CONTENT_URI, mmsColumnProjection, Telephony.Mms._ID + " = ?", new String[]{Long.toString(messageID)}, null)) {
+							try(Cursor cursorMMS = context.getContentResolver().query(ContentUris.withAppendedId(Telephony.Mms.CONTENT_URI, messageID), mmsColumnProjection, null, null, null)) {
 								if(cursorMMS == null || !cursorMMS.moveToFirst()) continue;
 								
 								//Reading and saving the message
@@ -192,70 +199,66 @@ public class SystemMessageImportService extends Service {
 							}
 						} else {
 							//SMS message
-							try(Cursor cursorSMS = context.getContentResolver().query(Telephony.Sms.CONTENT_URI, smsColumnProjection, Telephony.Sms._ID + " = ?", new String[]{Long.toString(messageID)}, null)) {
-								if(cursorSMS == null || !cursorSMS.moveToFirst()) continue;
-								
-								//Getting the message status information
-								int type = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.TYPE));
-								int statusCode = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.STATUS));
-								
-								//Figuring out the message state (thanks to Pulse SMS)
-								int messageState;
-								boolean isOutgoing = true;
-								if(statusCode == Telephony.Sms.STATUS_NONE || type == Telephony.Sms.MESSAGE_TYPE_INBOX) {
-									switch(type) {
-										case Telephony.Sms.MESSAGE_TYPE_INBOX:
-											isOutgoing = false;
-											messageState = Constants.messageStateCodeSent;
-											break;
-										case Telephony.Sms.MESSAGE_TYPE_FAILED:
-										case Telephony.Sms.MESSAGE_TYPE_OUTBOX:
-											messageState = Constants.messageStateCodeGhost; //Sending
-											break;
-										case Telephony.Sms.MESSAGE_TYPE_SENT:
-										default:
-											messageState = Constants.messageStateCodeSent;
-											break;
-									}
-								} else {
-									switch(statusCode) {
-										case Telephony.Sms.STATUS_COMPLETE: {
-											messageState = Constants.messageStateCodeDelivered;
-											break;
-										}
-										case Telephony.Sms.STATUS_PENDING:
-										default:
-											messageState = Constants.messageStateCodeSent;
-											break;
-										case Telephony.Sms.STATUS_FAILED:
-											messageState = Constants.messageStateCodeGhost;
-											break;
-									}
+							
+							//Getting the message status information
+							int type = cursorMessage.getInt(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.TYPE));
+							int statusCode = cursorMessage.getInt(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.STATUS));
+							
+							//Figuring out the message state (thanks to Pulse SMS)
+							int messageState;
+							boolean isOutgoing = true;
+							if(statusCode == Telephony.Sms.STATUS_NONE || type == Telephony.Sms.MESSAGE_TYPE_INBOX) {
+								switch(type) {
+									case Telephony.Sms.MESSAGE_TYPE_INBOX:
+										isOutgoing = false;
+										messageState = Constants.messageStateCodeSent;
+										break;
+									case Telephony.Sms.MESSAGE_TYPE_FAILED:
+									case Telephony.Sms.MESSAGE_TYPE_OUTBOX:
+										messageState = Constants.messageStateCodeGhost; //Sending
+										break;
+									case Telephony.Sms.MESSAGE_TYPE_SENT:
+									default:
+										messageState = Constants.messageStateCodeSent;
+										break;
 								}
-								
-								String sender = isOutgoing ? null : cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
-								String message = cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.BODY));
-								long date = cursorSMS.getLong(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.DATE));
-								int errorCode = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ERROR_CODE));
-								
-								//Mapping the error code
-								int messageErrorCode = Constants.messageErrorCodeOK;
-								if(messageState == Constants.messageStateCodeGhost) {
-									messageErrorCode = Constants.messageErrorCodeServerUnknown;
+							} else {
+								switch(statusCode) {
+									case Telephony.Sms.STATUS_COMPLETE:
+										messageState = Constants.messageStateCodeDelivered;
+										break;
+									case Telephony.Sms.STATUS_PENDING:
+									default:
+										messageState = Constants.messageStateCodeSent;
+										break;
+									case Telephony.Sms.STATUS_FAILED:
+										messageState = Constants.messageStateCodeGhost;
+										break;
 								}
-								
-								//Creating the message
-								MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, false, date, messageState, messageErrorCode, false, -1);
-								if(messageErrorCode != Constants.messageErrorCodeOK) {
-									messageInfo.setErrorDetails("SMS error code " + errorCode);
-								}
-								
-								//Writing the message to disk
-								DatabaseManager.getInstance().addConversationItem(messageInfo, false);
-								
-								//Setting the last item
-								lastConversationItem = messageInfo;
 							}
+							
+							String sender = isOutgoing ? null : cursorMessage.getString(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+							String message = cursorMessage.getString(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.BODY));
+							long date = cursorMessage.getLong(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.DATE));
+							int errorCode = cursorMessage.getInt(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.ERROR_CODE));
+							
+							//Mapping the error code
+							int messageErrorCode = Constants.messageErrorCodeOK;
+							if(messageState == Constants.messageStateCodeGhost) {
+								messageErrorCode = Constants.messageErrorCodeServerUnknown;
+							}
+							
+							//Creating the message
+							MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, false, date, messageState, messageErrorCode, false, -1);
+							if(messageErrorCode != Constants.messageErrorCodeOK) {
+								messageInfo.setErrorDetails("SMS error code " + errorCode);
+							}
+							
+							//Writing the message to disk
+							DatabaseManager.getInstance().addConversationItem(messageInfo, false);
+							
+							//Setting the last item
+							lastConversationItem = messageInfo;
 						}
 					}
 					
@@ -453,6 +456,7 @@ public class SystemMessageImportService extends Service {
 			case Telephony.Mms.MESSAGE_BOX_FAILED:
 				messageState = Constants.messageStateCodeGhost;
 				messageErrorCode = Constants.messageErrorCodeServerUnknown;
+				break;
 			case Telephony.Mms.MESSAGE_BOX_OUTBOX:
 				messageState = Constants.messageStateCodeGhost; //Sending
 				break;
@@ -564,15 +568,20 @@ public class SystemMessageImportService extends Service {
 	private static String getMMSSender(Context context, long messageID) {
 		//Querying for the message information
 		try(Cursor cursor = context.getContentResolver().query(
-				Telephony.Mms.CONTENT_URI.buildUpon().appendPath(Long.toString(messageID)).appendPath("addr").build(), null,
-				//Telephony.Mms.Addr.MSG_ID + " = ?", new String[]{Long.toString(messageID)},
-				null, null,
-				null, null)) {
+				Telephony.Mms.CONTENT_URI.buildUpon().appendPath(Long.toString(messageID)).appendPath("addr").build(),
+				new String[]{Telephony.Mms.Addr.ADDRESS, Telephony.Mms.Addr.CHARSET},
+				Telephony.Mms.Addr.TYPE + " = " + PduHeaders.FROM, null, null, null)) {
 			//Returning immediately if the cursor couldn't be opened
 			if(cursor == null || !cursor.moveToFirst()) return null;
 			
-			//Returning the sender
-			return cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms.Addr.ADDRESS));
+			//Getting the raw sender
+			String sender = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms.Addr.ADDRESS));
+			if(sender == null || sender.isEmpty()) return null;
+			
+			//Re-encoding and returning the sender with the correct encoding
+			byte[] senderBytes = PduPersister.getBytes(sender);
+			int charset = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Mms.Addr.CHARSET));
+			return new EncodedStringValue(charset, senderBytes).getString();
 		}
 	}
 	

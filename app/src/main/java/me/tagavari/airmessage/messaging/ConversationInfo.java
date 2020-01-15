@@ -1288,7 +1288,7 @@ public class ConversationInfo implements Serializable {
 			
 			//Deleting the conversation from the external database
 			if(conversationInfo.getServiceHandler() == serviceHandlerSystemMessaging) {
-				ConversationUtils.deleteMMSSMSConversationSync(context, new HashSet<>(conversationInfo.getConversationMembersAsCollection()));
+				if(Preferences.isTextMessageIntegrationActive(context)) ConversationUtils.deleteMMSSMSConversationSync(context, new HashSet<>(conversationInfo.getConversationMembersAsCollection()));
 			}
 			
 			//Returning
