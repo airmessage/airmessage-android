@@ -58,7 +58,7 @@ public class SystemMessageImportService extends Service {
 	public static final String[] smsMixedColumnProjection = {Telephony.BaseMmsColumns._ID, Telephony.Mms.MESSAGE_BOX, Telephony.Sms.TYPE, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.ERROR_CODE, Telephony.Sms.STATUS};
 	public static final String[] smsColumnProjection = {Telephony.Sms.TYPE, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.ERROR_CODE, Telephony.Sms.STATUS};
 	public static final String[] mmsColumnProjection = {Telephony.Mms._ID, Telephony.Mms.DATE, Telephony.Mms.MESSAGE_BOX, Telephony.Mms.SUBJECT};
-	public static final String[] mmsPartColumnProjection = {Telephony.Mms.Part._ID, Telephony.Mms.Part.CONTENT_TYPE, Telephony.Mms.Part.FILENAME, Telephony.Mms.Part._DATA, Telephony.Mms.Part.TEXT};
+	public static final String[] mmsPartColumnProjection = {Telephony.Mms.Part._ID, Telephony.Mms.Part.CONTENT_TYPE, Telephony.Mms.Part.NAME, Telephony.Mms.Part._DATA, Telephony.Mms.Part.TEXT};
 	
 	public int onStartCommand(Intent intent, int flags, int startId) {
 		//Getting the intent action
@@ -475,7 +475,7 @@ public class SystemMessageImportService extends Service {
 				//Reading the part data
 				long partID = cursorMMSData.getLong(cursorMMSData.getColumnIndex(Telephony.Mms.Part._ID));
 				String contentType = cursorMMSData.getString(cursorMMSData.getColumnIndex(Telephony.Mms.Part.CONTENT_TYPE));
-				String fileName = cursorMMSData.getString(cursorMMSData.getColumnIndex(Telephony.Mms.Part.FILENAME));
+				String fileName = cursorMMSData.getString(cursorMMSData.getColumnIndex(Telephony.Mms.Part.NAME));
 				if(fileName == null) fileName = "unnamed_attachment";
 				
 				//Checking if the part is text
