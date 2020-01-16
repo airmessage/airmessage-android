@@ -130,9 +130,6 @@ public class SystemMessageImportService extends Service {
 			int conversationCount = cursorConversation.getCount();
 			long lastNotificationUpdateTime = System.currentTimeMillis();
 			
-			//Starting a database transaction
-			DatabaseManager.getInstance().getWritableDatabase().beginTransaction();
-			
 			try {
 				while(cursorConversation.moveToNext()) {
 					//Adding to the counter and updating the notification
@@ -270,14 +267,8 @@ public class SystemMessageImportService extends Service {
 				}
 				
 				cursorConversation.close();
-				
-				//Marking the transaction as successful
-				DatabaseManager.getInstance().getWritableDatabase().setTransactionSuccessful();
 			} catch(SQLiteException exception) {
 				exception.printStackTrace();
-			} finally {
-				//Finishing the transaction
-				DatabaseManager.getInstance().getWritableDatabase().endTransaction();
 			}
 			
 			//Running on the main thread
