@@ -286,6 +286,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	//Creating the view values
 	private View rootView;
 	private AppBarLayout appBar;
+	private View scrimStatusBar;
 	private TextView labelLoading;
 	private ViewGroup groupLoadFail;
 	private TextView labelLoadFail;
@@ -659,6 +660,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		rootView = findViewById(android.R.id.content);
 		appBar = findViewById(R.id.appbar);
 		
+		scrimStatusBar = findViewById(R.id.scrim_statusbar);
 		labelLoading = findViewById(R.id.loading_text);
 		groupLoadFail = findViewById(R.id.group_error);
 		labelLoadFail = findViewById(R.id.group_error_label);
@@ -695,6 +697,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			appBar.post(() -> {
 				messageList.setPadding(messageList.getPaddingLeft(), appBar.getHeight(), messageList.getPaddingRight(), messageList.getPaddingBottom());
 			});
+			scrimStatusBar.getLayoutParams().height = insets.getSystemWindowInsetTop();
 			
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 				//Adding padding to the bottom input bar
@@ -1339,7 +1342,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	void setDarkAMOLED() {
 		Constants.setActivityAMOLEDBase(this);
-		findViewById(R.id.appbar).setBackgroundColor(Constants.colorAMOLED);
+		appBar.setBackgroundColor(Constants.colorAMOLED);
 		
 		//Setting the input bar background color
 		inputBar.setBackgroundColor(Constants.colorAMOLED);
@@ -2756,6 +2759,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Hiding the app bar
 		appBar.setVisibility(View.GONE);
+		scrimStatusBar.setVisibility(View.VISIBLE);
 	}
 	
 	void showToolbar() {
@@ -2767,6 +2771,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Showing the app bar
 		appBar.setVisibility(View.VISIBLE);
+		scrimStatusBar.setVisibility(View.GONE);
 	}
 	
 	void setFABVisibility(boolean visible) {
