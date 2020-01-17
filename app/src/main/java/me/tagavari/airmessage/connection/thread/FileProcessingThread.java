@@ -177,7 +177,8 @@ public class FileProcessingThread extends Thread {
 							//if(fileName == null) fileName = Constants.defaultFileName;
 							
 							//Verifying the file size
-							if(pushRequest.getSendFile().length() > ConnectionManager.largestFileSize) {
+							long fileSize = pushRequest.getSendFile().length();
+							if(fileSize > ConnectionManager.largestFileSize) {
 								//Calling the fail method
 								pushRequest.setInProcessing(false);
 								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
@@ -519,13 +520,13 @@ public class FileProcessingThread extends Thread {
 				try(FileInputStream srcIS = new FileInputStream(pushRequest.getSendFile()); DigestInputStream inputStream = new DigestInputStream(srcIS, messageDigest)) {
 					//Preparing to read the file
 					long totalLength = inputStream.available();
-					byte[] buffer = new byte[DataTransformUtils.standardBuffer];
+					byte[] buffer = new byte[ConnectionManager.attachmentChunkSize];
 					int bytesRead;
 					long totalBytesRead = 0;
 					int requestIndex = 0;
 					
 					//Checking if the file size is too large to send
-					if(totalLength > ConnectionManager.largestFileSize) {
+					if(totalLength > ConnectionManager.largestFileSize || (pushRequest.getCompressionTarget() != -1 && totalLength > pushRequest.getCompressionTarget())) {
 						//Calling the fail method
 						pushRequest.setInProcessing(false);
 						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
@@ -534,23 +535,25 @@ public class FileProcessingThread extends Thread {
 						continue;
 					}
 					
-					//Creating the response manager
-					MessageResponseManager responseManager = new MessageResponseManager(new ConnectionManager.MessageResponseManagerDeregistrationListener(connectionManager)) {
-						//Forwarding the event to the callbacks
-						@Override
-						public void onSuccess() {
-							finalCallbacks.onUploadResponseReceived.run();
-						}
-						
-						@Override
-						public void onFail(int resultCode, String reason) {
-							finalCallbacks.onFail.accept(resultCode, reason);
-						}
-					};
+					MessageResponseManager responseManager;
 					
 					{
 						//Getting the connection service
 						connectionManager = ConnectionService.getConnectionManager();
+						
+						//Creating the response manager
+						responseManager = new MessageResponseManager(new ConnectionManager.MessageResponseManagerDeregistrationListener(connectionManager)) {
+							//Forwarding the event to the callbacks
+							@Override
+							public void onSuccess() {
+								finalCallbacks.onUploadResponseReceived.run();
+							}
+							
+							@Override
+							public void onFail(int resultCode, String reason) {
+								finalCallbacks.onFail.accept(resultCode, reason);
+							}
+						};
 						
 						//Checking if the service isn't ready
 						if(connectionManager == null || connectionManager.getCurrentState() != ConnectionManager.stateConnected) {

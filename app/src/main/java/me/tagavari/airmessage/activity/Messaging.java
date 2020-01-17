@@ -1451,8 +1451,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(activity == null) return;
 			
 			//Queuing the files
-			for(SimpleAttachmentInfo attachmentInfo : results)
-				activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
+			for(SimpleAttachmentInfo attachmentInfo : results) activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
 		}
 	}
 	
@@ -3642,8 +3641,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		listAttachmentQueue.getAdapter().notifyItemInserted(draftIndex);
 		
 		//Updating the listing
-		if(updateListing && item.file != null && item.getListAdapter() != null)
-			item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
+		if(updateListing && item.file != null && item.getListAdapter() != null) item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
 		
 		//Recording the current update time
 		long updateTime = System.currentTimeMillis();
@@ -3656,7 +3654,11 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Dequeuing the attachment
 			dequeueAttachment(item, true, false);
 			
-			//TODO notifying the user
+			//Getting the error display
+			Constants.Tuple2<String, Boolean> errorDisplay = MessageInfo.getErrorDisplay(this, viewModel.conversationInfo, result);
+			
+			//Displaying a toast
+			Toast.makeText(this, errorDisplay.item1, Toast.LENGTH_SHORT).show();
 		};
 		request.getCallbacks().onDraftPreparationFinished = (file, draftFile) -> {
 			//Setting the draft file

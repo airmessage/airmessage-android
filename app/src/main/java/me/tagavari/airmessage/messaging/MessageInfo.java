@@ -1268,145 +1268,15 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 						if(anotherNewContext != null) deleteMessage(anotherNewContext);
 					})
 					.setNegativeButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss());
-			boolean showRetryButton;
 			
-			switch(errorCode) {
-				case Constants.messageErrorCodeLocalUnknown:
-				default:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_unknownerror);
-					
-					//Enabling the retry button
-					showRetryButton = true;
-					
-					break;
-				
-				case Constants.messageErrorCodeLocalInvalidContent:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_invalidcontent);
-					
-					//Disabling the retry button
-					showRetryButton = false;
-					
-					break;
-				case Constants.messageErrorCodeLocalFileTooLarge:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_filetoolarge);
-					
-					//Disabling the retry button
-					showRetryButton = false;
-					
-					break;
-				case Constants.messageErrorCodeLocalIO:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_io);
-					
-					//Enabling the retry button
-					showRetryButton = true;
-					
-					break;
-				case Constants.messageErrorCodeLocalNetwork:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_network);
-					
-					//Enabling the retry button
-					showRetryButton = true;
-					
-					break;
-				case Constants.messageErrorCodeServerExternal:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_external);
-					
-					//Enabling the retry button
-					showRetryButton = true;
-					
-					break;
-				case Constants.messageErrorCodeLocalExpired:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_expired);
-					
-					//Enabling the retry button
-					showRetryButton = true;
-					
-					break;
-				case Constants.messageErrorCodeLocalReferences:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_references);
-					
-					//Enabling the retry button
-					showRetryButton = true;
-					
-					break;
-				case Constants.messageErrorCodeLocalInternal:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_internal);
-					
-					//Enabling the retry button
-					showRetryButton = true;
-					
-					break;
-				case Constants.messageErrorCodeServerBadRequest:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_badrequest);
-					
-					//Enabling the retry button
-					showRetryButton = true;
-					
-					break;
-				case Constants.messageErrorCodeServerUnauthorized:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_unauthorized);
-					
-					//Enabling the retry button
-					showRetryButton = true;
-					
-					break;
-				case Constants.messageErrorCodeServerNoConversation:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_noconversation);
-					
-					//Disabling the retry button
-					showRetryButton = false;
-					
-					break;
-				case Constants.messageErrorCodeServerRequestTimeout:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_serverexpired);
-					
-					//Disabling the retry button
-					showRetryButton = true;
-					
-					break;
-				case Constants.messageErrorCodeServerUnknown:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_air_externalunknown);
-					
-					//Disabling the retry button
-					showRetryButton = true;
-					
-					break;
-				case Constants.messageErrorCodeAppleNetwork:
-					//Setting the message
-					dialogBuilder.setMessage(R.string.message_messageerror_desc_apple_network);
-					
-					//Disabling the retry button
-					showRetryButton = false;
-					
-					break;
-				case Constants.messageErrorCodeAppleUnregistered:
-					//Setting the message
-					dialogBuilder.setMessage(getConversationInfo().getConversationMembers().isEmpty() ?
-							newContext.getResources().getString(R.string.message_messageerror_desc_apple_unregistered_generic) :
-							newContext.getResources().getString(R.string.message_messageerror_desc_apple_unregistered, getConversationInfo().getConversationMembers().get(0).getName()));
-					
-					//Disabling the retry button
-					showRetryButton = false;
-					
-					break;
-			}
+			//Getting the error display
+			Constants.Tuple2<String, Boolean> errorDisplay = getErrorDisplay(newContext, getConversationInfo(), errorCode);
+			
+			//Setting the message
+			dialogBuilder.setMessage(errorDisplay.item1);
 			
 			//Showing the retry button (if requested)
-			if(showRetryButton) {
+			if(errorDisplay.item2) {
 				dialogBuilder.setPositiveButton(R.string.action_retry, (dialog, which) -> {
 					Context anotherNewContext = contextReference.get();
 					if(anotherNewContext != null) sendMessage(anotherNewContext);
@@ -1434,6 +1304,156 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 			
 			return true;
 		});
+	}
+	
+	/**
+	 * Gets error details to display to the user from a contant error code
+	 * @param context The context to use
+	 * @param conversationInfo The conversation relevant to the error
+	 * @param errorCode The error code
+	 * @return A tuple, containing a String for the error message, and a Boolean for whether the error is recoverable
+	 */
+	public static Constants.Tuple2<String, Boolean> getErrorDisplay(Context context, ConversationInfo conversationInfo, int errorCode) {
+		String message;
+		boolean showRetryButton;
+		
+		switch(errorCode) {
+			case Constants.messageErrorCodeLocalUnknown:
+			default:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_unknownerror);
+				
+				//Enabling the retry button
+				showRetryButton = true;
+				
+				break;
+			
+			case Constants.messageErrorCodeLocalInvalidContent:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_invalidcontent);
+				
+				//Disabling the retry button
+				showRetryButton = false;
+				
+				break;
+			case Constants.messageErrorCodeLocalFileTooLarge:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_filetoolarge);
+				
+				//Disabling the retry button
+				showRetryButton = false;
+				
+				break;
+			case Constants.messageErrorCodeLocalIO:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_io);
+				
+				//Enabling the retry button
+				showRetryButton = true;
+				
+				break;
+			case Constants.messageErrorCodeLocalNetwork:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_network);
+				
+				//Enabling the retry button
+				showRetryButton = true;
+				
+				break;
+			case Constants.messageErrorCodeServerExternal:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_external);
+				
+				//Enabling the retry button
+				showRetryButton = true;
+				
+				break;
+			case Constants.messageErrorCodeLocalExpired:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_expired);
+				
+				//Enabling the retry button
+				showRetryButton = true;
+				
+				break;
+			case Constants.messageErrorCodeLocalReferences:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_references);
+				
+				//Enabling the retry button
+				showRetryButton = true;
+				
+				break;
+			case Constants.messageErrorCodeLocalInternal:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_internal);
+				
+				//Enabling the retry button
+				showRetryButton = true;
+				
+				break;
+			case Constants.messageErrorCodeServerBadRequest:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_badrequest);
+				
+				//Enabling the retry button
+				showRetryButton = true;
+				
+				break;
+			case Constants.messageErrorCodeServerUnauthorized:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_unauthorized);
+				
+				//Enabling the retry button
+				showRetryButton = true;
+				
+				break;
+			case Constants.messageErrorCodeServerNoConversation:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_noconversation);
+				
+				//Disabling the retry button
+				showRetryButton = false;
+				
+				break;
+			case Constants.messageErrorCodeServerRequestTimeout:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_serverexpired);
+				
+				//Disabling the retry button
+				showRetryButton = true;
+				
+				break;
+			case Constants.messageErrorCodeServerUnknown:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_air_externalunknown);
+				
+				//Disabling the retry button
+				showRetryButton = true;
+				
+				break;
+			case Constants.messageErrorCodeAppleNetwork:
+				//Setting the message
+				message = context.getResources().getString(R.string.message_messageerror_desc_apple_network);
+				
+				//Disabling the retry button
+				showRetryButton = false;
+				
+				break;
+			case Constants.messageErrorCodeAppleUnregistered:
+				//Setting the message
+				message = conversationInfo.getConversationMembers().isEmpty() ?
+						  context.getResources().getString(R.string.message_messageerror_desc_apple_unregistered_generic) :
+						  context.getResources().getString(R.string.message_messageerror_desc_apple_unregistered, conversationInfo.getConversationMembers().get(0).getName());
+				
+				//Disabling the retry button
+				showRetryButton = false;
+				
+				break;
+		}
+		
+		//Returning the information
+		return new Constants.Tuple2<>(message, showRetryButton);
 	}
 	
 	private static void displayErrorDialog(Context context, String details) {
