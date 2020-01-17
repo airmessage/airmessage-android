@@ -64,6 +64,7 @@ import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.data.BitmapCacheHelper;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.util.MMSSMSHelper;
 
 public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	//Creating the constants
@@ -567,7 +568,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 				request.setUploadRequested(true);
 			} else {
 				if(attachmentInfo.file == null) return false;
-				request = new FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, FilePushRequest.stateAttached, System.currentTimeMillis(), true, false);
+				request = new FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, FilePushRequest.stateAttached, System.currentTimeMillis(), true, -1);
 			}
 			request.getCallbacks().onStart = () -> {
 				//Updating the progress bar
@@ -733,7 +734,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 					request.setUploadRequested(true);
 				} else {
 					if(attachmentInfo.file == null) continue;
-					request = new FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, FilePushRequest.stateAttached, System.currentTimeMillis(), true, true);
+					request = new FilePushRequest(attachmentInfo.file, attachmentInfo.fileType, attachmentInfo.fileName, -1, getConversationInfo(), attachmentInfo.getLocalID(), -1, FilePushRequest.stateAttached, System.currentTimeMillis(), true, MMSSMSHelper.getMaxMessageSize(context));
 				}
 				request.getCallbacks().onStart = () -> {
 					//Updating the progress bar

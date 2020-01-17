@@ -6,7 +6,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
@@ -30,7 +29,7 @@ import java.util.Map;
 
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.util.ImageUtils;
+import me.tagavari.airmessage.util.DataTransformUtils;
 
 public class BitmapCacheHelper {
 	//Creating the reference values
@@ -476,7 +475,7 @@ public class BitmapCacheHelper {
 				if(bitmap == null) return null;
 				
 				//Rotating the bitmap
-				if(useExif) bitmap = ImageUtils.rotateBitmap(bitmap, exifOrientation);
+				if(useExif) bitmap = DataTransformUtils.rotateBitmap(bitmap, exifOrientation);
 				
 				//Returning the bitmap
 				return bitmap;

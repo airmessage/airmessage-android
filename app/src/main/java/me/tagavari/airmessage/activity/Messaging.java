@@ -222,6 +222,7 @@ import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.extension.MediaSharedElementCallback;
 import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
+import me.tagavari.airmessage.util.MMSSMSHelper;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.OverScrollScrollView;
 import me.tagavari.airmessage.view.VisualizerView;
@@ -547,7 +548,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							}
 							
 							//Creating a new request if there was no current request in the queue
-							if(currentRequest == null) currentRequest = new FilePushRequest(draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), FilePushRequest.stateQueued, 0, false, viewModel.doFilesRequireCompression());
+							if(currentRequest == null) currentRequest = new FilePushRequest(draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), FilePushRequest.stateQueued, 0, false, viewModel.getFileTargetCompression());
 							
 							//Assigning the request to the queued item
 							queuedItem.setFilePushRequest(currentRequest);
@@ -3649,8 +3650,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Creating the processing request
 		FilePushRequest request = item.getFile() != null ?
-													new FilePushRequest(item.getFile(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, FilePushRequest.stateLinked, updateTime, false, viewModel.doFilesRequireCompression()) :
-													new FilePushRequest(item.getUri(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, FilePushRequest.stateLinked, updateTime, false, viewModel.doFilesRequireCompression());
+													new FilePushRequest(item.getFile(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, FilePushRequest.stateLinked, updateTime, false, viewModel.getFileTargetCompression()) :
+													new FilePushRequest(item.getUri(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, FilePushRequest.stateLinked, updateTime, false, viewModel.getFileTargetCompression());
 		request.getCallbacks().onFail = (result, details) -> {
 			//Dequeuing the attachment
 			dequeueAttachment(item, true, false);
@@ -5974,6 +5975,23 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		boolean doFilesRequireCompression() {
 			return conversationInfo.getServiceHandler() != ConversationInfo.serviceHandlerAMBridge || !ConversationInfo.serviceTypeAppleMessage.equals(conversationInfo.getService());
+		}
+		
+		int getFileTargetCompression() {
+			//Apple continuity MMS messaging
+			if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge && ConversationInfo.serviceTypeAppleTextMessageForwarding.equals(conversationInfo.getService())) {
+				//Defaulting to 300 KB
+				return 300 * 1024;
+			}
+			
+			//Android system MMS messaging
+			if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging && ConversationInfo.serviceTypeSystemMMSSMS.equals(conversationInfo.getService())) {
+				//Returning the carrier-specific information
+				return MMSSMSHelper.getMaxMessageSize(getApplication());
+			}
+			
+			//No compression required
+			return -1;
 		}
 		
 		void tripConversationAppearanceNeedsUpdate() {

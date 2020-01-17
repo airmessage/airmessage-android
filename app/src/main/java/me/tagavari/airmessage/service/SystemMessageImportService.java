@@ -44,6 +44,7 @@ import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
+import me.tagavari.airmessage.util.DataTransformUtils;
 
 public class SystemMessageImportService extends Service {
 	public static final String selfIntentActionImport = "import";
@@ -534,13 +535,7 @@ public class SystemMessageImportService extends Service {
 			try(InputStream inputStream = context.getContentResolver().openInputStream(ContentUris.withAppendedId(Uri.parse("content://mms/part/"), mmsAttachmentInfo.getPartID()));
 				FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 				if(inputStream == null) throw new IOException("Input stream is null");
-				
-				byte[] buf = new byte[1024];
-				int len;
-				while((len = inputStream.read(buf)) > 0) {
-					outputStream.write(buf, 0, len);
-					totalSize += len;
-				}
+				totalSize = DataTransformUtils.copyStream(inputStream, outputStream);
 			} catch(IOException exception) {
 				exception.printStackTrace();
 				continue;

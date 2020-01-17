@@ -20,6 +20,7 @@ import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.FileUtils;
 import android.os.Message;
 import android.os.Parcel;
 import android.provider.OpenableColumns;
@@ -1008,10 +1009,7 @@ public class Constants {
 	public static byte[] decompressGZIP(byte[] data) throws IOException, OutOfMemoryError {
 		try(ByteArrayInputStream src = new ByteArrayInputStream(data); GZIPInputStream in = new GZIPInputStream(src);
 			ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-			byte[] buffer = new byte[1024];
-			int bytesRead;
-			while((bytesRead = in.read(buffer)) != -1) out.write(buffer, 0, bytesRead);
-			in.close();
+			DataTransformUtils.copyStream(in, out);
 			return out.toByteArray();
 		}
 	}

@@ -27,7 +27,7 @@ public class FilePushRequest extends FileProcessingRequest {
 	private long updateTime;
 	private long fileModificationDate = -1;
 	private boolean uploadRequested;
-	private boolean compressionRequested;
+	private int compressionTarget;
 	private int state;
 	
 	//Creating the conversation values
@@ -40,7 +40,7 @@ public class FilePushRequest extends FileProcessingRequest {
 	//Creating the handler values
 	private Consumer<FilePushRequest> customUploadHandler = null;
 	
-	private FilePushRequest(ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested, boolean compressionRequested) {
+	private FilePushRequest(ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested, int compressionTarget) {
 		//Setting the callbacks
 		//this.callbacks = callbacks;
 		
@@ -48,7 +48,7 @@ public class FilePushRequest extends FileProcessingRequest {
 		this.attachmentID = attachmentID;
 		this.draftID = draftID;
 		this.uploadRequested = uploadRequested;
-		this.compressionRequested = compressionRequested;
+		this.compressionTarget = compressionTarget;
 		this.state = state;
 		this.updateTime = updateTime;
 		
@@ -66,9 +66,9 @@ public class FilePushRequest extends FileProcessingRequest {
 		conversationID = conversationInfo.getLocalID();
 	}
 	
-	public FilePushRequest(@NonNull File file, String fileType, String fileName, long fileModificationDate, ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested, boolean compressionRequested) {
+	public FilePushRequest(@NonNull File file, String fileType, String fileName, long fileModificationDate, ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested, int compressionTarget) {
 		//Calling the main constructor
-		this(conversationInfo, attachmentID, draftID, state, updateTime, uploadRequested, compressionRequested);
+		this(conversationInfo, attachmentID, draftID, state, updateTime, uploadRequested, compressionTarget);
 		
 		if(file == null) throw new NullPointerException("File reference cannot be null");
 		
@@ -83,9 +83,9 @@ public class FilePushRequest extends FileProcessingRequest {
 		//if(Paths.get(sendFile.toURI()).startsWith(MainApplication.getDraftDirectory(MainApplication.getInstance()).getPath())) state = stateQueued;
 	}
 	
-	public FilePushRequest(@NonNull Uri uri, String fileType, String fileName, long fileModificationDate, ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested, boolean compressionRequested) {
+	public FilePushRequest(@NonNull Uri uri, String fileType, String fileName, long fileModificationDate, ConversationInfo conversationInfo, long attachmentID, long draftID, int state, long updateTime, boolean uploadRequested, int compressionTarget) {
 		//Calling the main constructor
-		this(conversationInfo, attachmentID, draftID, state, updateTime, uploadRequested, compressionRequested);
+		this(conversationInfo, attachmentID, draftID, state, updateTime, uploadRequested, compressionTarget);
 		
 		if(uri == null) throw new NullPointerException("URI reference cannot be null");
 		
@@ -149,12 +149,12 @@ public class FilePushRequest extends FileProcessingRequest {
 		return uploadRequested;
 	}
 	
-	public void setCompressionRequested(boolean compressionRequested) {
-		this.compressionRequested = compressionRequested;
+	public int getCompressionTarget() {
+		return compressionTarget;
 	}
 	
-	public boolean isCompressionRequested() {
-		return compressionRequested;
+	public void clearCompressionTarget() {
+		this.compressionTarget = -1;
 	}
 	
 	public void setState(int state) {

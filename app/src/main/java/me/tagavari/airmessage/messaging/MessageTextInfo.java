@@ -65,6 +65,7 @@ import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
 import me.tagavari.airmessage.util.ColorHelper;
 import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.util.DataTransformUtils;
 import me.tagavari.airmessage.view.InvisibleInkView;
 
 public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder> {
@@ -358,9 +359,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			if(downloadURL != null && !downloadURL.isEmpty()) {
 				try(BufferedInputStream in = new BufferedInputStream(new URL(downloadURL).openStream());
 					ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-					byte[] buffer = new byte[1024];
-					int bytesRead;
-					while((bytesRead = in.read(buffer)) != -1) out.write(buffer, 0, bytesRead);
+					DataTransformUtils.copyStream(in, out);
 					imageBytes = out.toByteArray();
 				} catch(FileNotFoundException exception) {
 					exception.printStackTrace();

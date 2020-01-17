@@ -15,8 +15,6 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.view.LayoutInflater;
@@ -35,7 +33,6 @@ import androidx.annotation.PluralsRes;
 import androidx.annotation.RequiresApi;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
-import androidx.core.content.ContextCompat;
 import androidx.core.util.Consumer;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
@@ -50,7 +47,6 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 import androidx.preference.PreferenceScreen;
 import androidx.preference.SwitchPreference;
-import androidx.preference.SwitchPreferenceCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -70,8 +66,8 @@ import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.receiver.StartBootReceiver;
+import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.service.SystemMessageImportService;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
@@ -356,7 +352,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			} else {
 				if(Constants.isDefaultMessagingApp(getContext())) {
 					//Requesting permissions
-					requestPermissions(new String[]{Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.RECEIVE_MMS}, permissionRequestSMS);
+					requestPermissions(new String[]{Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.RECEIVE_MMS, Manifest.permission.READ_PHONE_STATE}, permissionRequestSMS);
 				} else {
 					//Requesting to be the default messaging app
 					requestDefaultMessagingApp();
@@ -1124,6 +1120,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			   context.checkSelfPermission(Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
 			   context.checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
 			   context.checkSelfPermission(Manifest.permission.RECEIVE_MMS) == PackageManager.PERMISSION_GRANTED &&
+			   context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED &&
 			   getPreferenceTextMessageIntegration(context);
 	}
 }

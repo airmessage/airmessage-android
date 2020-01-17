@@ -12,19 +12,18 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.util.ConversationUtils;
-import me.tagavari.airmessage.util.Constants;
+import java.util.ArrayList;
+import java.util.List;
+
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
+import me.tagavari.airmessage.messaging.ConversationInfo;
+import me.tagavari.airmessage.util.Constants;
 
 public class ShareHandler extends AppCompatCompositeActivity {
 	//Creating the plugin values
@@ -44,6 +43,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 	public void onCreate(@Nullable Bundle savedInstanceState) {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
+		
 		//Getting the intent data
 		String intentAction = getIntent().getAction();
 		String intentType = getIntent().getType();

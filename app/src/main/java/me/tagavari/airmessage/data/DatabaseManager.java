@@ -50,6 +50,7 @@ import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
+import me.tagavari.airmessage.util.DataTransformUtils;
 
 public class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
@@ -277,7 +278,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 							Inflater inflater = new Inflater();
 							inflater.setInput(data);
 							ByteArrayOutputStream outputStream = new ByteArrayOutputStream(data.length);
-							byte[] buffer = new byte[1024];
+							byte[] buffer = new byte[DataTransformUtils.standardBuffer];
 							while (!inflater.finished()) {
 								int count = inflater.inflate(buffer);
 								outputStream.write(buffer, 0, count);

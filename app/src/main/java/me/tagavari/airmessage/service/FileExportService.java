@@ -19,6 +19,7 @@ import java.io.OutputStream;
 
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.util.DataTransformUtils;
 
 /**
  * A service used to export and save attachments to disk
@@ -45,9 +46,7 @@ public class FileExportService extends IntentService {
 		
 		//Writing the file
 		try(InputStream in = new FileInputStream(sourceFile); OutputStream out = new FileOutputStream(targetFile)) {
-			byte[] buf = new byte[1024];
-			int len;
-			while((len = in.read(buf)) > 0) out.write(buf, 0, len);
+			DataTransformUtils.copyStream(in, out);
 		} catch(IOException exception) {
 			exception.printStackTrace();
 			handler.post(() -> Toast.makeText(this, R.string.message_fileexport_fail, Toast.LENGTH_SHORT).show());

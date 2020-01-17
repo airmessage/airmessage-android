@@ -37,16 +37,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.snackbar.Snackbar;
-
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-
 import androidx.annotation.ColorRes;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
@@ -65,19 +55,29 @@ import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
-import me.tagavari.airmessage.data.BitmapCacheHelper;
-import me.tagavari.airmessage.data.UserCacheHelper;
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.util.ConversationUtils;
-import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.data.DatabaseManager;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.snackbar.Snackbar;
+
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
+import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
+import me.tagavari.airmessage.data.BitmapCacheHelper;
+import me.tagavari.airmessage.data.DatabaseManager;
+import me.tagavari.airmessage.data.UserCacheHelper;
+import me.tagavari.airmessage.messaging.ConversationInfo;
+import me.tagavari.airmessage.service.ConnectionService;
+import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.util.ConversationUtils;
 
 public class NewMessage extends AppCompatCompositeActivity {
 	//Creating the constants
