@@ -781,7 +781,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 					TransitionManager.beginDelayedTransition((ViewGroup) newViewHolder.itemView);
 					newViewHolder.progressSend.setVisibility(View.GONE); */
 				};
-				request.getCallbacks().onFail = (resultCode, details) -> {
+				request.getCallbacks().onFail = (errorCode, errorDetails) -> {
 					//Setting the error code
 					setErrorCode(errorCode);
 					setErrorDetails(errorDetails);
@@ -800,9 +800,12 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 					ViewHolder newViewHolder = getViewHolder();
 					if(newViewHolder == null) return;
 					newViewHolder.progressSend.setVisibility(View.GONE);
-					updateViewProgressState(viewHolder);
+					updateViewProgressState(newViewHolder);
 				};
 				request.setCustomUploadHandler(filePushRequest -> {
+					//Immediately completing the upload (as there is no standard upload process in this case; at least not one that's worth nicely displaying to the user)
+					handler.post(() -> filePushRequest.getCallbacks().onUploadFinished.accept(null));
+					
 					//Reading the file
 					File file = filePushRequest.getSendFile();
 					byte[] fileBytes = new byte[(int) file.length()];

@@ -151,7 +151,7 @@ public class Constants {
 	public static final String appleSendStyleScrnShootingStar = "com.apple.messages.effect.CKShootingStarEffect";
 	public static final String appleSendStyleScrnCelebration = "com.apple.messages.effect.CKSparklesEffect";
 	
-	public static final Uri defaultNotificationSound = Settings.System.DEFAULT_NOTIFICATION_URI;//"content://settings/system/notification_sound";
+	public static final Uri defaultNotificationSound = Settings.System.DEFAULT_NOTIFICATION_URI; //"content://settings/system/notification_sound";
 	
 	//Message state codes
 	public static final int messageStateCodeGhost = 0;

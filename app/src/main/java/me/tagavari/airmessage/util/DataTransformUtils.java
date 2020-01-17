@@ -21,7 +21,7 @@ public class DataTransformUtils {
 	public static final int standardBuffer = 8192; //8 kB
 	
 	private static final int bitmapQuality = 90; //90%
-	private static final List<String> compressableTypes = Collections.unmodifiableList(Arrays.asList("image/jpeg", "image/png", "image/webp", "image/gif"));
+	private static final List<String> compressableTypes = Collections.unmodifiableList(Arrays.asList("image/jpeg", "image/webp", "image/png"));
 	
 	public static boolean isCompressable(String mimeType) {
 		return compressableTypes.contains(mimeType);
@@ -34,12 +34,6 @@ public class DataTransformUtils {
 				return compressBitmapLossy(convertCorrectBitmap(fileBytes), "image/jpeg".equals(mimeType) ? Bitmap.CompressFormat.JPEG : Bitmap.CompressFormat.WEBP, maxBytes);
 			case "image/png":
 				return compressBitmapLossless(convertCorrectBitmap(fileBytes), maxBytes);
-			case "image/gif": {
-				return null;
-			}
-			case "video/mp4": {
-			
-			}
 			default:
 				throw new IllegalArgumentException("Unknown MIME type: " + mimeType);
 		}
