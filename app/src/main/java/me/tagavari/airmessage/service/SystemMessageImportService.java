@@ -12,7 +12,6 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.provider.ContactsContract;
 import android.provider.Telephony;
 
 import androidx.annotation.Nullable;
@@ -104,6 +103,9 @@ public class SystemMessageImportService extends Service {
 		ImportThread(SystemMessageImportService service, Context context) {
 			serviceReference = new WeakReference<>(service);
 			contextReference = new WeakReference<>(context);
+			
+			//Updating the shared preferences value
+			MainApplication.getInstance().getConnectivitySharedPrefs().edit().putBoolean(MainApplication.sharedPreferencesConnectivityKeyTextMessageConversationsInstalled, true).apply();
 		}
 		
 		@Override
@@ -318,6 +320,7 @@ public class SystemMessageImportService extends Service {
 	private static class DeleteThread extends Thread {
 		private final WeakReference<SystemMessageImportService> serviceReference;
 		private final WeakReference<Context> contextReference;
+		private boolean memoryClearSuccess;
 		
 		DeleteThread(SystemMessageImportService service, Context context) {
 			//Setting the references
@@ -325,17 +328,7 @@ public class SystemMessageImportService extends Service {
 			contextReference = new WeakReference<>(context);
 			
 			//Clearing relevant conversations from memory
-			ArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
-			if(conversations != null) {
-				for(ListIterator<ConversationInfo> iterator = conversations.listIterator(); iterator.hasNext();) {
-					ConversationInfo conversationInfo = iterator.next();
-					if(conversationInfo.getServiceHandler() != ConversationInfo.serviceHandlerSystemMessaging) continue;
-					iterator.remove();
-				}
-				
-				//Updating the conversation activity list
-				LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-			}
+			memoryClearSuccess = clearConversationsMemory(context);
 		}
 		
 		@Override
@@ -354,7 +347,36 @@ public class SystemMessageImportService extends Service {
 				if(service != null) {
 					service.onFinish();
 				}
+				
+				//Clearing conversations from memory (if we weren't able to before)
+				if(!memoryClearSuccess) {
+					clearConversationsMemory(contextReference.get());
+				}
 			});
+			
+			//Updating the shared preferences value
+			MainApplication.getInstance().getConnectivitySharedPrefs().edit().putBoolean(MainApplication.sharedPreferencesConnectivityKeyTextMessageConversationsInstalled, false).commit();
+		}
+		
+		private boolean clearConversationsMemory(Context context) {
+			if(context == null) return false;
+			
+			//Getting the conversations
+			MainApplication.LoadFlagArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
+			if(conversations == null || !conversations.isLoaded()) return false;
+			
+			//Removing messaging conversations
+			for(ListIterator<ConversationInfo> iterator = conversations.listIterator(); iterator.hasNext();) {
+				ConversationInfo conversationInfo = iterator.next();
+				if(conversationInfo.getServiceHandler() != ConversationInfo.serviceHandlerSystemMessaging) continue;
+				iterator.remove();
+			}
+			
+			//Updating the conversation activity list
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+			
+			//Returning true
+			return true;
 		}
 	}
 	
