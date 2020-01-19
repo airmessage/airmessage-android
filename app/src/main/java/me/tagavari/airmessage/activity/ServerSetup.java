@@ -202,7 +202,7 @@ public class ServerSetup extends AppCompatActivity {
 		{
 			TextView labelLinkServerGuide = findViewById(R.id.label_linkserverguide);
 			labelLinkServerGuide.setOnClickListener(view -> Constants.launchUri(this, Constants.serverSetupAddress));
-			if(BuildConfig.DEBUG) labelLinkServerGuide.setOnLongClickListener(view -> {
+			if(isRequired) labelLinkServerGuide.setOnLongClickListener(view -> {
 				//Filling in bogus data
 				ConnectionManager.hostname = "127.0.0.1";
 				ConnectionManager.password = "password";
