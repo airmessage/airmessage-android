@@ -87,7 +87,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 	
 	private static final MessageServiceDescription[] availableServiceArray = {
 			new MessageServiceDescription(R.drawable.message_push, R.string.title_imessage, false, -1, R.color.colorPrimary, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleMessage, true),
-			new MessageServiceDescription(R.drawable.message_bridge, R.string.title_textmessageforwarding, false, -1, R.color.colorMessageTextMessageForwarding, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleTextMessageForwarding, false),
+			//new MessageServiceDescription(R.drawable.message_bridge, R.string.title_textmessageforwarding, false, -1, R.color.colorMessageTextMessageForwarding, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleTextMessageForwarding, false),
 			new MessageServiceDescription(R.drawable.message_sms, R.string.title_textmessage, false, -1, R.color.colorMessageTextMessage, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, false),
 			//new MessageServiceDescription(R.drawable.message_plus, R.string.title_rcs, false, -1, R.color.colorMessageRCS, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemRCS, false),
 	};
