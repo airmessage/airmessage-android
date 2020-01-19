@@ -8,7 +8,7 @@ import androidx.core.util.Consumer;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.common.SharedValues;
+import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.data.UserCacheHelper;
 
 public class TapbackInfo {
@@ -65,21 +65,21 @@ public class TapbackInfo {
 	
 	public static int convertToPrivateCode(int publicCode) {
 		//Returning if the code is not in the 2000s
-		if(publicCode < SharedValues.TapbackModifierInfo.tapbackBaseAdd || publicCode >= SharedValues.TapbackModifierInfo.tapbackBaseRemove) return -1;
+		if(publicCode < Blocks.TapbackModifierInfo.tapbackBaseAdd || publicCode >= Blocks.TapbackModifierInfo.tapbackBaseRemove) return -1;
 		
 		//Returning the associated version
 		switch(publicCode) {
-			case SharedValues.TapbackModifierInfo.tapbackBaseAdd + SharedValues.TapbackModifierInfo.tapbackHeart:
+			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackLove:
 				return tapbackHeart;
-			case SharedValues.TapbackModifierInfo.tapbackBaseAdd + SharedValues.TapbackModifierInfo.tapbackLike:
+			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackLike:
 				return tapbackLike;
-			case SharedValues.TapbackModifierInfo.tapbackBaseAdd + SharedValues.TapbackModifierInfo.tapbackDislike:
+			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackDislike:
 				return tapbackDislike;
-			case SharedValues.TapbackModifierInfo.tapbackBaseAdd + SharedValues.TapbackModifierInfo.tapbackLaugh:
+			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackLaugh:
 				return tapbackLaugh;
-			case SharedValues.TapbackModifierInfo.tapbackBaseAdd + SharedValues.TapbackModifierInfo.tapbackExclamation:
+			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackEmphasis:
 				return tapbackExclamation;
-			case SharedValues.TapbackModifierInfo.tapbackBaseAdd + SharedValues.TapbackModifierInfo.tapbackQuestion:
+			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackQuestion:
 				return tapbackQuestion;
 			default:
 				return -1;

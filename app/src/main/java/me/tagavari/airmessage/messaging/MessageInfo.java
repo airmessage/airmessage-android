@@ -98,7 +98,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	//Creating the other values
 	private transient boolean playEffectRequested = false;
 	
-	public MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, ArrayList<AttachmentInfo> attachments, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, boolean errorDetailsAvailable, long dateRead) {
+	public MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String messageSubject, ArrayList<AttachmentInfo> attachments, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, boolean errorDetailsAvailable, long dateRead) {
 		//Calling the super constructor
 		super(localID, serverID, guid, date, conversationInfo);
 		
@@ -107,7 +107,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		
 		//Setting the values
 		this.sender = sender;
-		this.messageText = messageText == null ? null : new MessageTextInfo(localID, guid, this, messageText);
+		this.messageText = createMessageTextInfo(localID, guid, messageText, messageSubject);
 		this.attachments = attachments;
 		this.sendStyle = sendStyle;
 		this.sendStyleViewed = sendStyleViewed;
@@ -117,13 +117,13 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		this.dateRead = dateRead;
 	}
 	
-	public MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, boolean errorDetailsAvailable, long dateRead) {
+	public MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String messageSubject, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, boolean errorDetailsAvailable, long dateRead) {
 		//Calling the super constructor
 		super(localID, serverID, guid, date, conversationInfo);
 		
 		//Setting the values
 		this.sender = sender;
-		this.messageText = messageText == null ? null : new MessageTextInfo(localID, guid, this, messageText);
+		this.messageText = createMessageTextInfo(localID, guid, messageText, messageSubject);
 		this.sendStyle = sendStyle;
 		this.sendStyleViewed = sendStyleViewed;
 		this.attachments = new ArrayList<>();
@@ -131,6 +131,13 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		this.errorCode = errorCode;
 		this.errorDetailsAvailable = errorDetailsAvailable;
 		this.dateRead = dateRead;
+	}
+	
+	private MessageTextInfo createMessageTextInfo(long localID, String guid, String body, String subject) {
+		//No message text if there is no text to begin with
+		if(body == null && subject == null) return null;
+		
+		return new MessageTextInfo(localID, guid, this, body, subject);
 	}
 	
 	public void addAttachment(AttachmentInfo attachment) {
@@ -147,6 +154,10 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	
 	public String getMessageText() {
 		return messageText == null ? null : messageText.getText();
+	}
+	
+	public String getMessageSubject() {
+		return messageText == null ? null : messageText.getSubject();
 	}
 	
 	public MessageTextInfo getMessageTextInfo() {
@@ -694,7 +705,12 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		message.setAddresses(getConversationInfo().getNormalizedConversationMembersAsArray());
 		
 		//Setting the message text
-		if(getMessageText() != null) message.setText(getMessageText());
+		{
+			String messageText = getMessageText();
+			if(messageText != null) message.setText(messageText);
+			String messageSubject = getMessageSubject();
+			if(messageSubject!= null) message.setSubject(messageSubject);
+		}
 		
 		//Checking if there are any attachments
 		if(attachments.isEmpty()) {

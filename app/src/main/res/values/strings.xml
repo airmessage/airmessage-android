@@ -398,6 +398,7 @@
 	<string name="list_n_end">, and %s</string>
 
 	<string name="placeholder_title" translatable="false">Title</string>
+	<string name="placeholder_subject" translatable="false">Subject</string>
 	<string name="placeholder_message" translatable="false">Message</string>
 	<string name="placeholder_name" translatable="false">Name</string>
 	<string name="placeholder_address" translatable="false">Address</string>

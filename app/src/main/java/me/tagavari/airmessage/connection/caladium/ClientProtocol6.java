@@ -664,7 +664,7 @@ class ClientProtocol6 extends ProtocolManager {
 					int errorCode = convertCodeAppleError(in.readInt());
 					long dateRead = in.readLong();
 					
-					list.add(new Blocks.MessageInfo(serverID, guid, chatGuid, date, text, sender, attachments, stickers, tapbacks, sendEffect, stateCode, errorCode, dateRead));
+					list.add(new Blocks.MessageInfo(serverID, guid, chatGuid, date, text, null, sender, attachments, stickers, tapbacks, sendEffect, stateCode, errorCode, dateRead));
 					break;
 				}
 				case conversationItemTypeGroupAction: {

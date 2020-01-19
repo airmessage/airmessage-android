@@ -1520,16 +1520,17 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Getting the message details
 		String cleanMessageText = messageInputField.getText().toString().trim();
+		if(cleanMessageText.isEmpty()) cleanMessageText = null;
 		
 		//Returning if there is no data to send
-		if(cleanMessageText.isEmpty() && viewModel.draftQueueList.isEmpty()) return;
+		if(cleanMessageText == null && viewModel.draftQueueList.isEmpty()) return;
 		
 		//Checking if the current service handler is AirMessage bridge
 		if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
 			//Checking if the message box has text
 			if(!cleanMessageText.isEmpty()) {
 				//Creating a message
-				messageList.add(new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
+				messageList.add(new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
 				
 				//Clearing the message box
 				messageInputField.setText("");
@@ -1543,7 +1544,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Iterating over the drafts
 			for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
 				//Creating the message
-				MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+				MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 				
 				//Creating the attachment
 				SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
@@ -1562,7 +1563,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		} else {
 			//Creating the message
-			MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText.isEmpty() ? null : cleanMessageText, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+			MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 			
 			//Clearing the message box
 			if(!cleanMessageText.isEmpty()) {
@@ -4914,7 +4915,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						//newViewModel.smartReplyAvailable.setValue(false);
 						
 						//Creating a message
-						MessageInfo message = new MessageInfo(-1, -1, null, newViewModel.conversationInfo, null, conversationAction.getReplyString().toString(), null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+						MessageInfo message = new MessageInfo(-1, -1, null, newViewModel.conversationInfo, null, conversationAction.getReplyString().toString(), null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 						
 						//Writing the messages to the database
 						new AddGhostMessageTask(newViewModel.getApplication(), new GhostMessageFinishHandler()).execute(message);

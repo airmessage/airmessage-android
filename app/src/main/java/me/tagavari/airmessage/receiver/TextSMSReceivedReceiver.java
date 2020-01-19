@@ -222,7 +222,7 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 	}
 	
 	private static MessageInfo createMessageInfo(Message message, ConversationInfo conversation) {
-		return new MessageInfo(-1, -1, null, conversation, message.getSender(), message.getBody(), null, false, message.getTimestamp(), Constants.messageStateCodeSent, Constants.messageErrorCodeOK, false, -1);
+		return new MessageInfo(-1, -1, null, conversation, message.getSender(), message.getBody(), null, null, false, message.getTimestamp(), Constants.messageStateCodeSent, Constants.messageErrorCodeOK, false, -1);
 	}
 	
 	/**

@@ -249,7 +249,7 @@ public class SystemMessageImportService extends Service {
 							}
 							
 							//Creating the message
-							MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, false, date, messageState, messageErrorCode, false, -1);
+							MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, null, false, date, messageState, messageErrorCode, false, -1);
 							if(messageErrorCode != Constants.messageErrorCodeOK) {
 								messageInfo.setErrorDetails("SMS error code " + errorCode);
 							}
@@ -483,7 +483,7 @@ public class SystemMessageImportService extends Service {
 		//Reading the common message data
 		long messageID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms._ID));
 		long date = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000;
-		String subject = cursorMMS.getString(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.SUBJECT));
+		String messageSubject = cursorMMS.getString(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.SUBJECT));
 		String sender = isOutgoing ? null : getMMSSender(context, messageID);
 		//long threadID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.THREAD_ID));
 		
@@ -524,7 +524,7 @@ public class SystemMessageImportService extends Service {
 		String messageText = messageTextSB.length() > 0 ? messageTextSB.toString() : null;
 		
 		//Creating the message
-		MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, messageText, null, false, date, messageState, messageErrorCode, false, -1);
+		MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, messageText, messageSubject, null, false, date, messageState, messageErrorCode, false, -1);
 		
 		//Adding the attachments
 		for(ImportThread.MMSAttachmentInfo attachment : messageAttachments) {
