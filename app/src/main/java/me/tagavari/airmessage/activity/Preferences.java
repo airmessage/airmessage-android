@@ -222,6 +222,9 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 						List<ConversationInfo> conversations = ConversationUtils.getConversations();
 						if(conversations != null) {
 							for(ConversationInfo conversationInfo : conversations) {
+								//Ignoring non-AM bridge conversations
+								if(conversationInfo.getServiceHandler() != ConversationInfo.serviceHandlerAMBridge) continue;
+								
 								List<ConversationItem> conversationItems = conversationInfo.getConversationItems();
 								if(conversationItems == null) continue;
 								for(ConversationItem item : conversationItems) {
