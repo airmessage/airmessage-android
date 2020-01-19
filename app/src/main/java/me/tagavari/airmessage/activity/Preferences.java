@@ -44,6 +44,7 @@ import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceGroup;
 import androidx.preference.PreferenceManager;
 import androidx.preference.PreferenceScreen;
 import androidx.preference.SwitchPreference;
@@ -408,9 +409,16 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				});
 				amoledSwitch.setEnabled(!themePreference.getValue().equals(MainApplication.darkModeLight));
 				
-				//Updating the text message integration option
-				SwitchPreference textIntegrationSwitch = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
-				textIntegrationSwitch.setOnPreferenceChangeListener(textIntegrationChangeListener);
+				//Checking if the device doesn't support telephony
+				if(!getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEPHONY)) {
+					//Removing the text message preference group
+					PreferenceGroup preferenceGroup = findPreference(getResources().getString(R.string.preferencegroup_textmessage_key));
+					getPreferenceScreen().removePreference(preferenceGroup);
+				} else {
+					//Updating the text message integration option
+					SwitchPreference textIntegrationSwitch = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
+					textIntegrationSwitch.setOnPreferenceChangeListener(textIntegrationChangeListener);
+				}
 			}
 			
 			//Setting the intents
