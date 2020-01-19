@@ -5,7 +5,6 @@
 	android:id="@+id/content_text"
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content">
-	
 	<LinearLayout
 		android:id="@+id/container"
 		android:layout_width="wrap_content"
@@ -21,8 +20,10 @@
 				android:id="@+id/message"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:autoLink="all"
-				android:background="@drawable/rounded_rectangle"
+				app:layout_constraintLeft_toLeftOf="parent"
+				app:layout_constraintRight_toRightOf="parent"
+				app:layout_constraintTop_toTopOf="parent"
+				android:background="@drawable/rectangle_messagebubble"
 				android:backgroundTint="@color/colorMessageOutgoing"
 				android:gravity="center_vertical"
 				android:minHeight="@dimen/messagebubble_minheight"
@@ -34,6 +35,21 @@
 				android:text="@string/placeholder_message"
 				android:textColor="?android:attr/textColorPrimary"
 				android:textColorLink="?android:attr/colorBackgroundFloating" />
+
+			<FrameLayout
+				android:id="@+id/group_messagepreview"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				app:layout_constraintLeft_toLeftOf="parent"
+				app:layout_constraintRight_toRightOf="parent"
+				app:layout_constraintTop_toBottomOf="@id/message"
+				android:visibility="visible">
+				<ViewStub
+					android:id="@+id/viewstub_messagepreview_linklarge"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					android:layout="@layout/layout_messagepreview_linklarge" />
+			</FrameLayout>
 			
 			<me.tagavari.airmessage.view.InvisibleInkView
 				android:id="@+id/content_ink"

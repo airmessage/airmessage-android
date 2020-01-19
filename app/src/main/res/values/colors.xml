@@ -6,6 +6,16 @@
     <color name="colorAccent">@color/colorPrimary</color>
 	<color name="colorAccentDark">@color/colorPrimaryDark</color>
 
+	<color name="colorWarning">#FF6D00</color>
+
+	<color name="colorMessageTextMessageForwarding">#1ABC9C</color>
+	<color name="colorMessageTextMessage">#2ECC71</color>
+	<color name="colorMessageRCS">#FFAB00</color>
+	<color name="colorMessageDefault">#607D8B</color>
+
+	<color name="colorBackground">#FAFAFA</color>
+	<color name="colorToolbar">#FFFFFF</color>
+
 	<color name="colorTextPrimary">#DE000000</color>
 	
 	<color name="colorExperimental">#651FFF</color>
@@ -35,7 +45,8 @@
 	<color name="colorArchivedDark">#455A64</color>
 
 	<color name="colorError">#FF5252</color>
-	
+	<color name="colorErrorDark">#D50000</color>
+
 	<color name="colorContextualAppBar">#212121</color>
 	<color name="colorContextualAppBarDark">#000000</color>
 	
@@ -53,12 +64,15 @@
     
     <color name="colorNotification">#2196F3</color>
 	<color name="colorServerDisconnected">#F44336</color>
-
-    <color name="colorRecording">#FF5252</color>
+	
+	<color name="colorRecording">#FF5252</color>
+	<color name="colorContact">#8C9EFF</color>
+	<color name="colorLocation">#FFE57F</color>
 	
 	<color name="colorTextWhite">#FFFFFF</color>
 	<color name="colorTextWhiteSecondary">#B3FFFFFF</color>
-	
+	<color name="colorTextBlack">#000000</color>
+
 	<color name="imageDrawDrawer">#80212121</color>
 	<color name="drawColor_red">#F44336</color>
 	<color name="drawColor_orange">#FF9800</color>

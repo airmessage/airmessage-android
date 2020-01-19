@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	tools:context=".Messaging"
+	tools:context=".activity.Messaging"
 	android:clipChildren="false"
 	android:clipToPadding="false">
 	<!-- App bar -->
@@ -15,9 +16,10 @@
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent"
-		android:background="?android:attr/colorBackgroundFloating">
+		android:background="@color/colorToolbar"
+		android:alpha="0.97">
 		<!-- Toolbar -->
-		<androidx.appcompat.widget.Toolbar
+		<com.google.android.material.appbar.MaterialToolbar
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
 			android:layout_height="?android:attr/actionBarSize"
@@ -37,16 +39,6 @@
 			style="@style/Divider"
 			android:visibility="gone" />
 	</com.google.android.material.appbar.AppBarLayout>
-
-	<!-- Collapsed app bar shadow -->
-	<View
-		android:layout_width="0px"
-		android:layout_height="3dp"
-		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toTopOf="parent"
-		android:background="@drawable/appear_topshadow"
-		android:visibility="visible" />
 
 	<!-- Search result bar -->
 	<!-- <LinearLayout
@@ -138,11 +130,11 @@
 		android:paddingBottom="5dp"
 		android:clipToPadding="false"
 		android:theme="@style/OverscrollNeutralizer"
-		app:layoutManager=".Messaging$SpeedyLinearLayoutManager"
+		app:layoutManager="me.tagavari.airmessage.activity.Messaging$SpeedyLinearLayoutManager"
 		app:layout_constraintBottom_toTopOf="@id/inputbar"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/appbar"
+		app:layout_constraintTop_toTopOf="parent"
 		app:stackFromEnd="true" />
 
 	<!-- Loading label -->
@@ -164,18 +156,18 @@
 		android:id="@+id/effect_foreground"
 		android:layout_width="0px"
 		android:layout_height="0px"
+		app:layout_constraintTop_toTopOf="parent"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/appbar" />
+		app:layout_constraintRight_toRightOf="parent" />
 
 	<!-- Konfetti view -->
 	<nl.dionsegijn.konfetti.KonfettiView
 		android:id="@+id/konfetti"
 		android:layout_width="0px"
 		android:layout_height="0px"
-		app:layout_constraintTop_toBottomOf="@id/appbar"
-		app:layout_constraintBottom_toTopOf="@id/inputbar"
+		app:layout_constraintTop_toTopOf="parent"
+		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent" />
 
@@ -220,6 +212,7 @@
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:src="@drawable/add_rounded"
+					android:tint="?attr/colorOnPrimary"
 					android:layout_gravity="center" />
 			</FrameLayout>
 
@@ -257,7 +250,7 @@
 					android:clipToPadding="true"
 					android:theme="@style/OverscrollNeutralizer"
 					android:visibility="gone" />
-				<view class="me.tagavari.airmessage.Messaging$InsertionEditText"
+				<view class="me.tagavari.airmessage.activity.Messaging$InsertionEditText"
 					android:id="@+id/messagebox"
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
@@ -349,7 +342,7 @@
 		android:layout_margin="16dp"
 		android:src="@drawable/chevron_down_rounded"
 		android:visibility="gone"
-		app:backgroundTint="?android:attr/colorBackgroundFloating"
+		app:backgroundTint="@color/colorToolbar"
 		app:fabSize="mini"
 		app:layout_constraintBottom_toTopOf="@id/inputbar"
 		app:layout_constraintEnd_toEndOf="parent"
@@ -376,10 +369,10 @@
 		android:translationY="6dp"
 		android:translationZ="12dp"
 		android:visibility="gone"
-		app:layout_constraintBottom_toTopOf="@+id/fab_bottom"
-		app:layout_constraintEnd_toEndOf="@+id/fab_bottom"
-		app:layout_constraintStart_toEndOf="@+id/fab_bottom"
-		app:layout_constraintTop_toTopOf="@+id/fab_bottom" />
+		app:layout_constraintBottom_toTopOf="@id/fab_bottom"
+		app:layout_constraintEnd_toEndOf="@id/fab_bottom"
+		app:layout_constraintStart_toEndOf="@id/fab_bottom"
+		app:layout_constraintTop_toTopOf="@id/fab_bottom" />
 
 	<!-- FAB circular ripple effect view -->
 	<View
@@ -390,8 +383,22 @@
 		android:background="@drawable/circle"
 		android:backgroundTint="@color/colorPrimaryLight"
 		android:visibility="gone"
-		app:layout_constraintLeft_toLeftOf="@+id/fab_bottom"
-		app:layout_constraintTop_toTopOf="@+id/fab_bottom" />
+		app:layout_constraintLeft_toLeftOf="@id/fab_bottom"
+		app:layout_constraintRight_toRightOf="@id/fab_bottom"
+		app:layout_constraintTop_toTopOf="@id/fab_bottom"
+		app:layout_constraintBottom_toBottomOf="@id/fab_bottom" />
+
+	<!-- Status bar protection -->
+	<View
+		android:id="@+id/scrim_statusbar"
+		android:layout_width="0px"
+		android:layout_height="0px"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent"
+		android:background="@color/colorBackground"
+		android:visibility="gone"
+		android:alpha="0.97" />
 
 	<!-- Scrim -->
 	<View
@@ -407,23 +414,25 @@
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/appbar" />
+		app:layout_constraintTop_toTopOf="parent" />
 
 	<!-- Info page -->
-	<FrameLayout
+	<me.tagavari.airmessage.view.RoundedFrameLayout
 		android:id="@+id/panel_messaginginfo"
 		android:layout_width="0px"
 		android:layout_height="wrap_content"
-		android:background="?android:attr/colorBackgroundFloating"
+		android:background="@color/colorToolbar"
 		android:elevation="16dp"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/appbar">
+		app:layout_constraintTop_toBottomOf="@id/appbar"
+		app:radiusTop="8dp"
+		android:visibility="gone">
 		<ViewStub
 			android:id="@+id/viewstub_messaginginfo"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:layout="@layout/pane_messaginginfo" />
-	</FrameLayout>
+	</me.tagavari.airmessage.view.RoundedFrameLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

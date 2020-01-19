@@ -13,7 +13,7 @@ import android.view.View;
 import java.util.ArrayList;
 import java.util.List;
 
-import me.tagavari.airmessage.Constants;
+import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.R;
 
 public class VisualizerView extends View {

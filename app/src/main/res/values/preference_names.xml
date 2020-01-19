@@ -7,17 +7,20 @@
 	<string name="preferencegroup_appearance_title">Appearance</string>
 	<string name="preference_appearance_theme_key" translatable="false">pref_key_appearance_theme</string>
 	<string name="preference_appearance_theme_title">Theme</string>
-	<string-array name="preference_appearance_theme_entries">
-		<item>Follow system</item>
-		<item>Automatic</item>
-		<item>Always light</item>
-		<item>Always dark</item>
+	<string-array name="preference_appearance_theme_entries_old">
+		<item>Light</item>
+		<item>Dark</item>
+		<item>Set by Battery Saver</item>
+	</string-array>
+	<string-array name="preference_appearance_theme_entries_androidQ">
+		<item>Light</item>
+		<item>Dark</item>
+		<item>System default</item>
 	</string-array>
 	<string-array name="preference_appearance_theme_values" translatable="false">
-		<item>follow_system</item>
-		<item>auto</item>
 		<item>off</item>
 		<item>on</item>
+		<item>follow_system</item>
 	</string-array>
 	<string name="preference_appearance_location_key" translatable="false">pref_key_appearance_location</string>
 	<string name="preference_appearance_location_title">Enhanced night detection</string>
@@ -37,6 +40,11 @@
 	<string name="preference_features_replysuggestions_key" translatable="false">pref_key_features_replysuggestions</string>
 	<string name="preference_features_replysuggestions_title">Smart reply</string>
 	<string name="preference_features_replysuggestions_description">Show reply suggestions in conversations and message notifications when available</string>
+	<string name="preference_features_messagepreviews_key" translatable="false">pref_key_features_messagepreviews</string>
+	<string name="preference_features_messagepreviews_title">Message previews</string>
+	<string name="preference_features_messagepreviews_description">Display web link and location previews in chats</string>
+	<string name="preference_features_messagesounds_key" translatable="false">pref_key_features_messagesounds</string>
+	<string name="preference_features_messagesounds_title">In-app messaging sounds</string>
 
     <string name="preferencegroup_messagenotifications_key" translatable="false">pref_group_notifications</string>
     <string name="preferencegroup_messagenotifications_title">Notifications</string>
@@ -58,6 +66,16 @@
 	<string name="preference_server_downloadmessages_key" translatable="false">pref_key_server_resync</string>
 	<string name="preference_server_downloadmessages_title">Sync messages</string>
 	<string name="preference_server_downloadmessages_desc">Copy all messages from the server to this device</string>
+
+	<string name="preferencegroup_textmessage_key" translatable="false">pref_group_textmessage</string>
+	<string name="preferencegroup_textmessage_title">Text messaging</string>
+	<string name="preference_textmessage_enable_key" translatable="false">pref_key_textmessage_enable</string>
+	<string name="preference_textmessage_enable_title">Enable text message integration</string>
+	<!-- <string name="preference_textmessage_enable_desc">Use AirMessage to send and receive SMS and MMS messages</string> -->
+	<string name="preference_textmessage_enable_desc">WARNING: This feature may be changed or removed at any time</string>
+	<string name="preference_textmessage_deliveryreport_key" translatable="false">pref_key_textmessage_deliveryreport</string>
+	<string name="preference_textmessage_deliveryreport_title">SMS delivery reports</string>
+	<string name="preference_textmessage_deliveryreport_desc">Find out when an SMS message is delivered</string>
 
     <string name="preferencegroup_server_key" translatable="false">pref_group_server</string>
     <string name="preferencegroup_server_title">Server</string>

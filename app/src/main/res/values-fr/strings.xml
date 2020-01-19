@@ -74,8 +74,8 @@
 	<string name="action_sync">Synchroniser</string>
 	<string name="action_enable">Activer</string>
 	<string name="action_save">Enregistrer</string>
-	<string name="to">À</string>
-	<string name="you">"Vous"</string>
+	<string name="part_to">À</string>
+	<string name="part_you">"Vous"</string>
 	<string name="prefix_you">"Vous: %s"</string>
 	<string name="prefix_draft">"Broullion: %s"</string>
 	<string name="part_content_text">Texte</string>
@@ -106,6 +106,8 @@
 	<string name="message_setup_connect_serverguidelink">Lisez le manuel d\'installation</string>
 	<string name="message_setup_connect_connectionerror">La connexion a échoué</string>
 	<string name="message_setup_connect_password">Mot de passe</string>
+
+	<string name="message_generalloading">Veuillez patienter&#8230;</string>
 	
 	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages</string>
 	<string name="message_setup_sync_download_description">Copiez vos messages récents de votre ordinateur et reprenez là où vous l\'avez laissé.\n\nSi vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil.</string>
@@ -154,8 +156,10 @@
 	<string name="servicedesc_connectionservice">Crée et maintient une connexion au serveur AirMessage pour envoyer et recevoir des messages</string>
 	<string name="notificationchannel_message">Messages</string>
 	<string name="notificationchannel_message_desc">Concerne les notifications sur les messages entrants</string>
-	<string name="notificationchannel_status">Statut</string>
-	<string name="notificationchannel_status_desc">Concerne les notifications sur les messages d\'état, tels que la connectivité du serveur</string>
+	<string name="notificationchannel_status">Statut général</string>
+	<string name="notificationchannel_status_desc">Concerne les notifications sur les messages de statut, tels que la connectivité du serveur</string>
+	<string name="notificationchannel_statusimportant">Alertes de statut importantes</string>
+	<string name="notificationchannel_statusimportant_desc">Concerne les notifications sur les mises au point de statut importantes, telles que les connexions perdues et les temps d\'arrêt</string>
 	<string name="message_connectionerrror">N\'a pas pu se connecter au serveur</string>
 	<string name="message_permissiondetails_microphone_missing">L\'autorisation d\'enregistrer de l\'audio est manquante</string>
 	<string name="action_draw">Dessiner</string>
@@ -282,12 +286,17 @@
 		<item quantity="one">%d sélectionnée</item>
 		<item quantity="other">%d sélectionnées</item>
 	</plurals>
-	
-	<string-array name="preference_appearance_theme_entries">
+
+	<string-array name="preference_appearance_theme_entries_old">
+		<item>Lumineux</item>
+		<item>Sombre</item>
+		<item>Défini par l\'économie d\'énergie</item>
+	</string-array>
+
+	<string-array name="preference_appearance_theme_entries_androidQ">
+		<item>Lumineux</item>
+		<item>Sombre</item>
 		<item>Assortir le système</item>
-		<item>Automatique</item>
-		<item>Toujours lumineux</item>
-		<item>Toujours sombre</item>
 	</string-array>
 	
 	<string name="message_serverstatus_authfail">Le mot de passe a été rejeté</string>
@@ -334,7 +343,10 @@
 	<string name="message_messageerror_desc_air_unauthorized">AirMessage Server n\'est pas autorisé à envoyer des messages</string>
 	<string name="message_messageerror_desc_air_noconversation">Cette conversation n\'est pas disponible</string>
 	<string name="message_messageerror_desc_air_serverexpired">Ce message n\'a pas pu être envoyé correctement</string>
-	<string name="action_copytoclipboard">Copier</string>
+	<string name="action_copy">Copier</string>
+	<string name="action_copytoclipboard">Copier dans le presse-papier</string>
+	<string name="action_savetofile">Enregistrer dans un fichier</string>
+	<string name="action_relaunchapp">Relancer l\'application</string>
 	<string name="message_messageerror_details_title">Détails de l\'erreur</string>
 	<string name="message_messageerror_details_unavailable">Aucun détail d\'erreur disponible</string>
 	<string name="message_messageerror_details_loadfailed">Échec du chargement des détails d\'erreur</string>
@@ -362,4 +374,63 @@
 	<string name="preference_features_replysuggestions_description">Afficher les suggestions de réponse lorsqu\'elles sont disponibles</string>
 	<string name="action_connectiontroubleshootingguide">Consulter l\'aide</string>
 	<string name="message_setup_connectionhelp">Problème de connection?</string>
+	<string name="preference_features_messagepreviews_description">Afficher des prévisualisations de liens Web et d\'endroits dans les conversations</string>
+	<string name="preference_features_messagepreviews_title">Prévisualisations de message</string>
+	<string name="imperative_enablelocationservices">Appuyez sur pour activer les services de location</string>
+	<string name="message_locationaddress_unknown">Adresse inconnue</string>
+	<string name="message_locationtitle_unknown">Emplacement sans nom</string>
+	<string name="message_crashreport_title">Quelque chose a mal tourné&#8230;</string>
+	<string name="message_crashreport_subtitle">Rapport de crash de débogage d\'AirMessage</string>
+	<string name="message_notsupported">Cette fonctionnalité n\'est pas disponible</string>
+	<string name="part_content_location">Détails d\'emplacement</string>
+	<string name="part_content_contact">Informations de contact</string>
+	<string name="preference_textmessage_deliveryreport_title">Accusés de réception textos</string>
+	<string name="preference_textmessage_enable_title">Intégration des messages texte</string>
+	<string name="preferencegroup_textmessage_title">Messagerie texte</string>
+	<!-- <string name="preference_textmessage_enable_desc">Utiliser AirMessage pour envoyer et recevoir des SMS et des MMS</string> -->
+	<string name="preference_textmessage_enable_desc">AVERTISSEMENT: Cette fonctionnalité est susceptible d\'être modifiée ou supprimée</string>
+	<string name="preference_textmessage_deliveryreport_desc">Vérifier quand un message text est distribué</string>
+	<string name="servicedesc_systemmessageimport">Permet d\'importer et de gérer la fonctionnalité d\'intégration de messagerie texte d\'AirMessage</string>
+	<string name="progress_importtextmessages">Importation des messages texte&#8230;</string>
+	<string name="message_textmessageimport">Commencé à importer les messages texte</string>
+	<string name="title_textmessage">Message texte</string>
+	<string name="title_textmessageforwarding">Transfert de SMS</string>
+	<string name="title_rcs">Message chat</string>
+	<string name="part_via">Via</string>
+
+	<string name="message_tapback_add_heart">%1$s a ajouté un « J\’adore » à « %2$s »</string>
+	<string name="message_tapback_add_heart_you">Vous avez ajouté un « J\’adore » à « %s »</string>
+	<string name="message_tapback_remove_heart">%1$s a retiré son « J\’adore » de « %2$s »</string>
+	<string name="message_tapback_remove_heart_you">Vous avez retiré votre « J\’adore » de « %s »</string>
+	<string name="message_tapback_add_like">%1$s a ajouté un « J\’aime » à « %2$s »</string>
+	<string name="message_tapback_add_like_you">Vous avez ajouté un « J\’aime » à « %s »</string>
+	<string name="message_tapback_remove_like">%1$s a retiré son « J\’aime » de « %2$s »</string>
+	<string name="message_tapback_remove_like_you">Vous avez retiré votre « J\’aime » de « %s »</string>
+	<string name="message_tapback_add_dislike">%1$s a ajouté un « Je n\’aime pas » à « %2$s »</string>
+	<string name="message_tapback_add_dislike_you">Vous avez ajouté un « Je n\’aime pas » à « %s »</string>
+	<string name="message_tapback_remove_dislike">%1$s a retiré son « Je n\’aime pas » de « %2$s »</string>
+	<string name="message_tapback_remove_dislike_you">Vous avez retiré votre « Je n\’aime pas » de « %s »</string>
+	<string name="message_tapback_add_laugh">%1$s a ajouté un rire à « %2$s »</string>
+	<string name="message_tapback_add_laugh_you">Vous avez ajouté un rire à « %s »</string>
+	<string name="message_tapback_remove_laugh">%1$s a retiré son rire de « %2$s »</string>
+	<string name="message_tapback_remove_laugh_you">Vous avez retiré votre rire de « %s »</string>
+	<string name="message_tapback_add_exclamation">%1$s a ajouté des points d\’exclamation à « %2$s »</string>
+	<string name="message_tapback_add_exclamation_you">Vous avez ajouté des points d\’exclamation à « %s »</string>
+	<string name="message_tapback_remove_exclamation">%1$s a retiré ses points d\’exclamation de « %2$s »</string>
+	<string name="message_tapback_remove_exclamation_you">Vous avez retiré vos points d\’exclamation de « %s »</string>
+	<string name="message_tapback_add_question">%1$s a ajouté un point d\’interrogation à « %2$s »</string>
+	<string name="message_tapback_add_question_you">Vous avez ajouté un point d\’interrogation à « %s »</string>
+	<string name="message_tapback_remove_question">%1$s a retiré son point d\’interrogation de « %2$s »</string>
+	<string name="message_tapback_remove_question_you">Vous avez retiré votre point d\’interrogation de « %s »</string>
+
+	<string name="part_tapback_heart">J\'adore</string>
+	<string name="part_tapback_like">J\'aime</string>
+	<string name="part_tapback_dislike">Je n\'aime pas</string>
+	<string name="part_tapback_laugh">Rire</string>
+	<string name="part_tapback_exclamation">Points d\'exclamation</string>
+	<string name="part_tapback_question">Point d\'interrogation</string>
+	<string name="progress_cleantextmessages">Nettoyage des messages texte locaux&#8230;</string>
+	<string name="action_tapbackdetails">Afficher les détails Tapback</string>
+	<string name="message_appvaliditywarning">Cette installation de AirMessage ne peut pas être vérifiée. Vos données de messagerie peuvent être en danger. Veuillez installer AirMessage à partir du Play Store.</string>
+	<string name="preference_features_messagesounds_title">Sons de messagerie in-app</string>
 </resources>

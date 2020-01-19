@@ -2,4 +2,6 @@
 <resources>
 	<string name="tag_primarytint" translatable="false">primarytint</string>
 	<string name="tag_amoleddivider" translatable="false">amoled_divider</string>
+	<string name="tag_amoleddivider_bottom" translatable="false">amoled_divider_bottom</string>
+	<string name="tag_controlbar" translatable="false">controlbar</string>
 </resources>

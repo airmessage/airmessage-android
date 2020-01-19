@@ -5,28 +5,30 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:orientation="vertical"
-	tools:context=".NewMessage">
+	tools:context=".activity.NewMessage">
 	<!-- App bar -->
 	<com.google.android.material.appbar.AppBarLayout
 		android:id="@+id/appbar"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:background="?android:attr/colorBackgroundFloating">
+		android:background="@color/colorToolbar"
+		android:fitsSystemWindows="true">
 		<!-- Toolbar -->
-		<androidx.appcompat.widget.Toolbar
+		<com.google.android.material.appbar.MaterialToolbar
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
 			android:layout_height="?android:attr/actionBarSize"
 			android:theme="@style/SolidActionBarClear"
 			app:titleTextAppearance="@style/LightToolbarText">
-		</androidx.appcompat.widget.Toolbar>
+		</com.google.android.material.appbar.MaterialToolbar>
 
-		<!-- Recipient input -->
+		<!-- Custom views -->
 		<androidx.constraintlayout.widget.ConstraintLayout
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content">
+			<!-- Service input -->
 			<LinearLayout
-				android:id="@+id/user_input"
+				android:id="@+id/group_service"
 				android:layout_width="0px"
 				android:layout_height="wrap_content"
 				app:layout_constraintLeft_toLeftOf="parent"
@@ -36,13 +38,49 @@
 				<TextView
 					android:layout_width="72dp"
 					android:layout_height="45dp"
-					android:text="@string/to"
+					android:text="@string/part_via"
+					android:gravity="center"
+					android:textColor="?android:attr/textColorSecondary"
+					android:textSize="14sp" />
+
+				<HorizontalScrollView
+					android:layout_width="0dp"
+					android:layout_height="match_parent"
+					android:layout_weight="1"
+					android:scrollbars="none"
+					android:overScrollMode="never"
+					android:requiresFadingEdge="horizontal">
+					<LinearLayout
+						android:id="@+id/list_service"
+						android:layout_width="wrap_content"
+						android:layout_height="match_parent"
+						android:gravity="center"
+						android:orientation="horizontal"
+						android:showDividers="middle"
+						android:divider="@drawable/divider_replysuggestions"
+						android:paddingEnd="8dp" />
+				</HorizontalScrollView>
+			</LinearLayout>
+
+			<!-- Recipient input -->
+			<LinearLayout
+				android:id="@+id/group_recipients"
+				android:layout_width="0px"
+				android:layout_height="wrap_content"
+				app:layout_constraintLeft_toLeftOf="parent"
+				app:layout_constraintRight_toRightOf="parent"
+				app:layout_constraintTop_toBottomOf="@id/group_service"
+				android:orientation="horizontal">
+				<TextView
+					android:layout_width="72dp"
+					android:layout_height="45dp"
+					android:text="@string/part_to"
 					android:gravity="center"
 					android:textColor="?android:attr/textColorSecondary"
 					android:textSize="14sp" />
 
 				<com.google.android.flexbox.FlexboxLayout
-					android:id="@+id/viewgroup_recipients"
+					android:id="@+id/group_recipientlist"
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
 					android:layout_weight="1"
@@ -56,7 +94,7 @@
 					app:flexWrap="wrap" >
 
 					<EditText
-						android:id="@+id/recipients_input"
+						android:id="@+id/input_recipients"
 						android:layout_width="wrap_content"
 						android:layout_height="wrap_content"
 						android:background="@null"
@@ -71,7 +109,7 @@
 				</com.google.android.flexbox.FlexboxLayout>
 
 				<ImageButton
-					android:id="@+id/recipients_inputtoggle"
+					android:id="@+id/button_recipients"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:layout_alignParentEnd="true"
@@ -132,8 +170,8 @@
 			android:layout_height="match_parent"
 			android:scrollbars="vertical"
 			android:theme="@style/OverscrollNeutralizer"
-			android:visibility="visible"
-			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+			android:clipToPadding="false" />
 		<!-- Loading text -->
 		<!-- <TextView
 			android:id="@+id/message_loading"
@@ -198,16 +236,16 @@
 		</LinearLayout>
 
 		<!-- Bottom shadow -->
-		<View
+		<!-- <View
 			android:id="@+id/bottomshadow"
 			android:layout_width="match_parent"
 			android:layout_height="3dp"
 			android:background="@drawable/appear_bottomshadow"
-			android:layout_alignParentBottom="true" />
+			android:layout_alignParentBottom="true" /> -->
 
 		<!-- Bottom divider -->
 		<View
-			android:tag="@string/tag_amoleddivider"
+			android:tag="@string/tag_amoleddivider_bottom"
 			style="@style/Divider"
 			android:visibility="gone"
 			android:layout_alignParentBottom="true" />

@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+	<color name="colorPrimary">#82B1FF</color>
+
+	<color name="colorWarning">#FFD180</color>
+
+	<color name="colorMessageTextMessageForwarding">#62EFCD</color>
+	<color name="colorMessageTextMessage">#6EFFA0</color>
+	<color name="colorMessageRCS">#FFDD4B</color>
+	<color name="colorMessageDefault">#8EACBB</color>
+
+	<color name="colorBackground">#1E1E1E</color>
+	<color name="colorToolbar">#272727</color>
+
 	<color name="colorDivider">#1FFFFFFF</color>
 	
 	<color name="colorSubBackground">#1F1F1F</color>
@@ -15,7 +27,7 @@
 	
 	<color name="colorBGChip">#212121</color>
 	
-	<color name="colorMessageOutgoing">#424242</color>
+	<color name="colorMessageOutgoing">#393939</color>
 	<color name="colorMessageOutgoingAccent">#616161</color>
 
 	<color name="colorImageUnloaded">#424242</color>

@@ -22,7 +22,7 @@ public class RoundedImageView extends AppCompatImageView {
 		TypedArray typedArray = context.getTheme().obtainStyledAttributes(attrs, R.styleable.RoundedView, 0, 0);
 		
 		try {
-			float radius = typedArray.getDimensionPixelSize(R.styleable.RoundedView_radii, -1);
+			float radius = typedArray.getDimensionPixelSize(R.styleable.RoundedView_radius, -1);
 			if(radius != -1) {
 				for(int i = 0; i < radii.length; i++) radii[i] = radius;
 			} else {
@@ -42,6 +42,10 @@ public class RoundedImageView extends AppCompatImageView {
 				topRight, topRight,
 				bottomRight, bottomRight,
 				bottomLeft, bottomLeft};
+	}
+	
+	public float[] getRadiiRaw() {
+		return radii;
 	}
 	
 	private Path clipPath = new Path();

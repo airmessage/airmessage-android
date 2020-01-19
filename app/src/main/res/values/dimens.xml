@@ -10,7 +10,9 @@
 	<dimen name="messagebubble_padding_x">12dp</dimen> <!-- The horizontal padding of a message bubble -->
 	<dimen name="messagebubble_padding_y">8dp</dimen> <!-- The vertical padding of a message bubble -->
 	<dimen name="messagebubble_minheight">40dp</dimen> <!-- The vertical padding of a message bubble -->
-	
+	<dimen name="messagebubble_radius">20dp</dimen> <!-- The corner radius of a message bubble -->
+	<dimen name="messagebubble_radius_anchored">5dp</dimen> <!-- The corner radius of an anchored message bubble -->
+
 	<dimen name="conversationwindow_minheight">250dp</dimen> <!-- The minimum height of the conversation window before the app bar is hidden -->
     <dimen name="dialogwidth_max">500dp</dimen> <!-- The maximum width of floating app dialogs -->
 	<dimen name="contentwidth_max">1000dp</dimen> <!-- The maximum width of the screen content before side margins are added -->
