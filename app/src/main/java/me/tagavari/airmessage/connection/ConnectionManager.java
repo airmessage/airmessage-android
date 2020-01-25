@@ -93,7 +93,7 @@ public class ConnectionManager {
 	
 	//Creating the communications values
 	final List<Class> communicationsClassPriorityList = Collections.singletonList(ClientCommCaladium.class);
-	final List<ConnectionServiceSource> communicationsInstancePriorityList = Collections.singletonList(ClientCommCaladium::new);
+	final List<CommunicationsManagerSource> communicationsInstancePriorityList = Collections.singletonList(ClientCommCaladium::new);
 	
 	//Creating the file processing values
 	private final BlockingQueue<FileProcessingRequest> fileProcessingRequestQueue = new LinkedBlockingQueue<>();
@@ -935,7 +935,7 @@ public class ConnectionManager {
 		}
 	}
 	
-	interface ConnectionServiceSource {
+	interface CommunicationsManagerSource {
 		CommunicationsManager get(ConnectionManager connectionManager, Context context);
 	}
 	
