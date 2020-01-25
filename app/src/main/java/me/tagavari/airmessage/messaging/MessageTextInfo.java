@@ -49,9 +49,6 @@ import java.net.URL;
 import java.util.Date;
 import java.util.regex.Matcher;
 
-import io.github.ponnamkarthik.richlinkpreview.MetaData;
-import io.github.ponnamkarthik.richlinkpreview.ResponseListener;
-import io.github.ponnamkarthik.richlinkpreview.RichPreview;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Preferences;
@@ -61,6 +58,7 @@ import me.tagavari.airmessage.util.ColorHelper;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.DataTransformUtils;
+import me.tagavari.airmessage.util.RichPreview;
 import me.tagavari.airmessage.view.InvisibleInkView;
 
 public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder> {
@@ -244,7 +242,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 				if(targetUrl != null) {
 					//Fetching the data
 					setMessagePreviewLoading(true);
-					new RichPreview(new RichPreviewResponseListener(this, targetUrl)).getPreview(targetUrl);
+					RichPreview.getPreview(targetUrl, new RichPreviewResponseListener(this, targetUrl));
 				} else {
 					//Updating the preview
 					setMessagePreview(null);
@@ -349,7 +347,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		}
 	}
 	
-	private static class RichPreviewResponseListener implements ResponseListener {
+	private static class RichPreviewResponseListener implements RichPreview.ResponseListener {
 		private final WeakReference<MessageTextInfo> messageTextReference;
 		private final long messageTextID;
 		private final String originalURL;
@@ -362,11 +360,11 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		}
 		
 		@Override
-		public void onData(MetaData metaData) {
+		public void onData(RichPreview.Metadata metadata) {
 			//Getting the message
 			MessageTextInfo messageText = messageTextReference.get();
 			//Checking if there is no useful data
-			String title = metaData.getTitle();
+			String title = metadata.getTitle();
 			if(title == null || title.isEmpty()) {
 				//Updating the preview
 				if(messageText != null) messageText.setMessagePreview(null);
@@ -378,7 +376,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			}
 			
 			//Fetching the link preview
-			new LinkPreviewAsyncTask(messageTextReference, messageTextID, originalURL, metaData).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+			new LinkPreviewAsyncTask(messageTextReference, messageTextID, originalURL, metadata).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 		}
 		
 		@Override
@@ -393,15 +391,15 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		private final WeakReference<MessageTextInfo> messageTextReference;
 		private final long messageID;
 		private final String originalURL;
-		private final MetaData linkMetaData;
+		private final RichPreview.Metadata linkMetaData;
 		private final String downloadURL;
 		
-		LinkPreviewAsyncTask(WeakReference<MessageTextInfo> messageTextReference, long messageID, String originalURL, MetaData linkMetaData) {
+		LinkPreviewAsyncTask(WeakReference<MessageTextInfo> messageTextReference, long messageID, String originalURL, RichPreview.Metadata linkMetaData) {
 			this.messageTextReference = messageTextReference;
 			this.messageID = messageID;
 			this.originalURL = originalURL;
 			this.linkMetaData = linkMetaData;
-			this.downloadURL = linkMetaData.getImageurl();
+			this.downloadURL = linkMetaData.getImageURL();
 		}
 		
 		@Override
@@ -425,7 +423,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			
 			//Creating the message preview
 			String caption;
-			if(linkMetaData.getSitename() != null && !linkMetaData.getSitename().isEmpty()) caption = linkMetaData.getSitename();
+			if(linkMetaData.getSiteName() != null && !linkMetaData.getSiteName().isEmpty()) caption = linkMetaData.getSiteName();
 			else {
 				try {
 					caption = Constants.getDomainName(originalURL);
