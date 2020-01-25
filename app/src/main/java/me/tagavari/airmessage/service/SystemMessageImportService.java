@@ -237,7 +237,7 @@ public class SystemMessageImportService extends Service {
 								}
 							}
 							
-							String sender = isOutgoing ? null : cursorMessage.getString(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+							String sender = isOutgoing ? null : Constants.normalizeAddress(cursorMessage.getString(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)));
 							String message = cursorMessage.getString(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.BODY));
 							long date = cursorMessage.getLong(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.DATE));
 							int errorCode = cursorMessage.getInt(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.ERROR_CODE));
@@ -589,7 +589,7 @@ public class SystemMessageImportService extends Service {
 			//Re-encoding and returning the sender with the correct encoding
 			byte[] senderBytes = PduPersister.getBytes(sender);
 			int charset = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Mms.Addr.CHARSET));
-			return new EncodedStringValue(charset, senderBytes).getString();
+			return Constants.normalizeAddress(new EncodedStringValue(charset, senderBytes).getString());
 		}
 	}
 	
@@ -642,6 +642,7 @@ public class SystemMessageImportService extends Service {
 			
 			//Adding the address to the array
 			String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.CanonicalAddressesColumns.ADDRESS));
+			address = Constants.normalizeAddress(address);
 			recipientAddressArray[i] = address;
 			
 			cursor.close();

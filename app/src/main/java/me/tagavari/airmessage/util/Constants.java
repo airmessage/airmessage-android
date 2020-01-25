@@ -734,6 +734,14 @@ public class Constants {
 		return addresses;
 	}
 	
+	public static String[] normalizeAddresses(String[] addresses) {
+		//Normalizing the addresses
+		for(int i = 0; i < addresses.length; i++) addresses[i] = normalizeAddress(addresses[i]);
+		
+		//Returning the addresses
+		return addresses;
+	}
+	
 	public static boolean validateAddress(String address) {
 		return validateEmail(address) || validatePhoneNumber(address);
 	}

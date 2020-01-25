@@ -66,7 +66,8 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 		}
 		
 		public void setSender(String sender) {
-			this.sender = sender;
+			if(sender == null) this.sender = null;
+			else this.sender = Constants.normalizeAddress(sender);
 		}
 		
 		public long getTimestamp() {

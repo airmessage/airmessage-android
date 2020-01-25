@@ -737,15 +737,16 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Checking if the request is a send intent
 		if(Intent.ACTION_SEND.equals(getIntent().getAction()) || Intent.ACTION_SENDTO.equals(getIntent().getAction())) {
-			//Getting the recipient
-			String recipientData = getIntent().getDataString();
-			String recipient;
-			if(recipientData.startsWith("sms:")) recipient = recipientData.replaceFirst("sms:", "");
-			else if(recipientData.startsWith("smsto:")) recipient = recipientData.replaceFirst("smsto:", "");
-			else if(recipientData.startsWith("mms:")) recipient = recipientData.replaceFirst("mms:", "");
-			else if(recipientData.startsWith("mmsto:")) recipient = recipientData.replaceFirst("mmsto:", "");
-			else recipient = null;
-			//if(recipient.contains("%")) recipient = URLDecoder.decode(recipient, "UTF-8");
+			//Getting the recipients
+			String[] recipients = Uri.decode(getIntent().getDataString())
+					.replaceAll("sms:", "")
+					.replaceAll("smsto:", "")
+					.replaceAll("mms:", "")
+					.replaceAll("mmsto:", "")
+					.split(",");
+			
+			//Normalizing the recipients
+			Constants.normalizeAddresses(recipients);
 			
 			//Getting the message
 			String message;
@@ -771,7 +772,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				@NonNull
 				@Override
 				public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
-					return (T) new ActivityViewModel(getApplication(), new String[]{recipient});
+					return (T) new ActivityViewModel(getApplication(), recipients);
 				}
 			}).get(ActivityViewModel.class);
 		} else {

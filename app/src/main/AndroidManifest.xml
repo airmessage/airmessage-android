@@ -59,7 +59,6 @@
 
 		<!-- Messaging screen -->
 		<activity
-			android:exported="false"
 			android:name=".activity.Messaging"
 			android:parentActivityName=".activity.Conversations"
 			android:theme="@style/DayNight.NoActionBar"
