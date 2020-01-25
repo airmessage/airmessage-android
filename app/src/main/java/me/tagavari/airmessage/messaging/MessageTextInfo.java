@@ -102,6 +102,9 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			if(Constants.stringContainsOnlyEmoji(messageText)) {
 				//Increasing the text size
 				viewHolder.labelBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
+				
+				//Setting the message text
+				viewHolder.labelBody.setText(messageText);
 			} else {
 				//Resetting the text size
 				viewHolder.labelBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
