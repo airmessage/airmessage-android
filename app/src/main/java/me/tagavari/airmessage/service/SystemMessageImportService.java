@@ -3,6 +3,7 @@ package me.tagavari.airmessage.service;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
@@ -117,15 +118,16 @@ public class SystemMessageImportService extends Service {
 			//Indexing the conversations
 			List<ConversationInfo> conversationInfoList = new ArrayList<>();
 			
+			//Checking if the archived column can be used
 			Cursor cursorConversation = context.getContentResolver().query(
 					Uri.parse("content://mms-sms/conversations?simple=true"),
-					new String[]{Telephony.Threads._ID, Telephony.Threads.ARCHIVED, Telephony.Threads.RECIPIENT_IDS, Telephony.Threads.DATE, Telephony.Threads.MESSAGE_COUNT},
+					new String[]{Telephony.Threads._ID,/* Telephony.Threads.ARCHIVED,*/ Telephony.Threads.RECIPIENT_IDS, Telephony.Threads.DATE, Telephony.Threads.MESSAGE_COUNT},
 					null, null, null);
 			if(cursorConversation == null) return;
 			
 			//Getting the column indices
 			int iThreadID = cursorConversation.getColumnIndexOrThrow(Telephony.Threads._ID);
-			int iArchived = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.ARCHIVED);
+			//int iArchived = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.ARCHIVED);
 			int iRecipientIDs = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.RECIPIENT_IDS);
 			int iDate = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.DATE);
 			int iMessageCount = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.MESSAGE_COUNT);
@@ -153,7 +155,7 @@ public class SystemMessageImportService extends Service {
 					ConversationInfo conversationInfo;
 					{
 						//Getting the conversation data
-						boolean archived = cursorConversation.getInt(iArchived) == 1;
+						boolean archived = false;//cursorConversation.getInt(iArchived) == 1;
 						String recipientIDs = cursorConversation.getString(iRecipientIDs);
 						long date = cursorConversation.getLong(iDate);
 						int conversationColor = ConversationInfo.getDefaultConversationColor(date);
