@@ -1326,7 +1326,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	}
 	
 	/**
-	 * Gets error details to display to the user from a contant error code
+	 * Gets error details to display to the user from a constant error code
 	 * @param context The context to use
 	 * @param conversationInfo The conversation relevant to the error
 	 * @param errorCode The error code

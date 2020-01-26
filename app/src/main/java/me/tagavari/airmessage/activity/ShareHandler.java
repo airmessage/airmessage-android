@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.activity;
 
+import android.content.ClipData;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.net.Uri;
@@ -112,15 +113,15 @@ public class ShareHandler extends AppCompatCompositeActivity {
 	
 	public void createNewConversation(View view) {
 		//Creating the intent
-		Intent intent = new Intent(getIntent()); //Required to pass URI permissions on to next activity
-		intent.setClass(this, NewMessage.class);
-		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+		Intent intent = new Intent(this, NewMessage.class);
+		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
 		
 		//Setting the fill data
 		if(targetText != null) intent.putExtra(Constants.intentParamDataText, targetText);
-		else intent.removeExtra(Constants.intentParamDataText);
-		if(targetUris != null) intent.putExtra(Constants.intentParamDataFile, targetUris);
-		else intent.removeExtra(Constants.intentParamDataFile);
+		if(targetUris != null) {
+			intent.putExtra(Constants.intentParamDataFile, true);
+			intent.setClipData(uriArrayToClipData(targetUris));
+		}
 		
 		//Starting the activity
 		startActivity(intent);
@@ -173,18 +174,21 @@ public class ShareHandler extends AppCompatCompositeActivity {
 			//Setting the view's click listeners
 			holder.itemView.setOnClickListener(view -> {
 				//Creating the intent
-				Intent launchMessaging = new Intent(ShareHandler.this, Messaging.class);
-				launchMessaging.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+				Intent intent = new Intent(ShareHandler.this, Messaging.class);
+				intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
 				
 				//Setting the target conversation
-				launchMessaging.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
+				intent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
 				
 				//Setting the fill data
-				if(targetText != null) launchMessaging.putExtra(Constants.intentParamDataText, targetText);
-				if(targetUris != null) launchMessaging.putExtra(Constants.intentParamDataFile, targetUris);
+				if(targetText != null) intent.putExtra(Constants.intentParamDataText, targetText);
+				if(targetUris != null) {
+					intent.putExtra(Constants.intentParamDataFile, true);
+					intent.setClipData(uriArrayToClipData(targetUris));
+				}
 				
-				//Launching the activity
-				startActivity(launchMessaging);
+				//Starting the activity
+				startActivity(intent);
 			});
 		}
 		
@@ -220,5 +224,11 @@ public class ShareHandler extends AppCompatCompositeActivity {
 		boolean isListEmpty() {
 			return filteredItems.isEmpty();
 		}
+	}
+	
+	private static ClipData uriArrayToClipData(Uri[] uriArray) {
+		ClipData clipData = ClipData.newRawUri(null, uriArray[0]);
+		for(int i = 1; i < uriArray.length; i++) clipData.addItem(new ClipData.Item(uriArray[i]));
+		return clipData;
 	}
 }

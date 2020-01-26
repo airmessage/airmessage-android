@@ -13,6 +13,7 @@ import android.app.PendingIntent;
 import android.app.RemoteAction;
 import android.app.SharedElementCallback;
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.ContentUris;
 import android.content.Context;
@@ -792,9 +793,10 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && getIntent().hasExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)) fillerText = getIntent().getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT); //Notification inline reply text (only supported on Android P and above)
 			else if(getIntent().hasExtra(Constants.intentParamDataText)) fillerText = getIntent().getStringExtra(Constants.intentParamDataText); //Shared text from activity
 			
-			if(getIntent().hasExtra(Constants.intentParamDataFile)) {
-				Parcelable[] parcelableArray = getIntent().getParcelableArrayExtra(Constants.intentParamDataFile);
-				fillerFiles = Arrays.copyOf(parcelableArray, parcelableArray.length, Uri[].class);
+			if(getIntent().getBooleanExtra(Constants.intentParamDataFile, false)) {
+				ClipData clipData = getIntent().getClipData();
+				fillerFiles = new Uri[clipData.getItemCount()];
+				for(int i = 0; i < clipData.getItemCount(); i++) fillerFiles[i] = clipData.getItemAt(i).getUri();
 			}
 		}
 		
