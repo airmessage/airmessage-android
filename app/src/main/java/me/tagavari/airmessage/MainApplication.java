@@ -206,25 +206,21 @@ public class MainApplication extends Application {
 		//Registering the content observer
 		if(canUseContacts(this)) registerContactsListener();
 		
-		//Checking if text message integration is not permitted
-		if(!Preferences.isTextMessageIntegrationActive(this)) {
-			//Checking if the text message integration toggle is enabled (creating an invalid state)
-			if(Preferences.getPreferenceTextMessageIntegration(this)) {
-				//Disabling text message integration
-				Preferences.setPreferenceTextMessageIntegration(this, false);
-				
-				//Clearing the database of text messages
-				Intent serviceIntent = new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete);
-				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
-				else startService(serviceIntent);
-			} else {
-				//Clearing the database of text messages if there are still text messages in the database (in the case that the application is killed before it can clear all its messages)
-				if(getConnectivitySharedPrefs().getBoolean(sharedPreferencesConnectivityKeyTextMessageConversationsInstalled, false)) {
-					Intent serviceIntent = new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete);
-					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
-					else startService(serviceIntent);
-				}
-			}
+		//Checking if text message integration is not permitted, but the toggle is enabled (creating an invalid state)
+		if(!Preferences.isTextMessageIntegrationActive(this) && Preferences.getPreferenceTextMessageIntegration(this)) {
+			//Disabling text message integration
+			Preferences.setPreferenceTextMessageIntegration(this, false);
+			
+			//Clearing the database of text messages
+			Intent serviceIntent = new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete);
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
+			else startService(serviceIntent);
+		}
+		//Clearing the database of text messages if there are still text messages in the database (in the case that the application is killed before it can clear all its messages)
+		else if(getConnectivitySharedPrefs().getBoolean(sharedPreferencesConnectivityKeyTextMessageConversationsInstalled, false)) {
+			Intent serviceIntent = new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete);
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
+			else startService(serviceIntent);
 		}
 	}
 	
