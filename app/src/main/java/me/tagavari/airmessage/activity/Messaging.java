@@ -5835,7 +5835,11 @@ public class Messaging extends AppCompatCompositeActivity {
 								//File file = new File(cursor.getString(iData));
 								String fileType = cursor.getString(iType);
 								if(fileType == null) fileType = "application/octet-stream";
-								String fileName = Constants.cleanFileName(cursor.getString(iDisplayName));
+								String fileName;
+								{
+									String originalFileName = cursor.getString(iDisplayName);
+									fileName = originalFileName == null ? "file" : Constants.cleanFileName(originalFileName);
+								}
 								long fileSize = cursor.getLong(iSize);
 								long modificationDate = cursor.getLong(iModificationDate);
 								//list.add(new SimpleAttachmentInfo(file, fileType, fileName, fileSize, modificationDate));
