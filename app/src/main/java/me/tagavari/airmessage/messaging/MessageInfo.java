@@ -626,9 +626,6 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 				newViewHolder.progressSend.setProgress(1);
 			};
 			request.getCallbacks().onUploadResponseReceived = () -> {
-				//Forwarding the event to the response manager
-				messageResponseManager.onSuccess();
-				
 				//Setting the message as not sending
 				isSending = false;
 				

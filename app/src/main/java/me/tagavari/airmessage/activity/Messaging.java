@@ -1531,7 +1531,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Checking if the current service handler is AirMessage bridge
 		if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
 			//Checking if the message box has text
-			if(!cleanMessageText.isEmpty()) {
+			if(cleanMessageText != null) {
 				//Creating a message
 				messageList.add(new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
 				
@@ -1600,7 +1600,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewModel.conversationInfo.clearDraftsUpdate(this);
 		
 		//Writing the messages to the database
-		new AddGhostMessageTask(getApplicationContext(), new GhostMessageFinishHandler()).execute(messageList.toArray(new MessageInfo[0]));
+		new AddGhostMessageTask(getApplicationContext(), viewModel.conversationInfo, new GhostMessageFinishHandler()).execute(messageList.toArray(new MessageInfo[0]));
 		
 		//Scrolling to the bottom of the chat
 		messageListAdapter.scrollToBottom();
@@ -4921,7 +4921,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						MessageInfo message = new MessageInfo(-1, -1, null, newViewModel.conversationInfo, null, conversationAction.getReplyString().toString(), null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 						
 						//Writing the messages to the database
-						new AddGhostMessageTask(newViewModel.getApplication(), new GhostMessageFinishHandler()).execute(message);
+						new AddGhostMessageTask(newViewModel.getApplication(), newViewModel.conversationInfo, new GhostMessageFinishHandler()).execute(message);
 					});
 				} else {
 					//Getting the remote action
@@ -6299,13 +6299,15 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private static class AddGhostMessageTask extends AsyncTask<MessageInfo, MessageInfo, Void> {
 		private final WeakReference<Context> contextReference;
+		private final ConversationInfo conversationInfo;
 		private final Consumer<MessageInfo> onFinishListener;
 		
-		AddGhostMessageTask(Context context, Consumer<MessageInfo> onFinishListener) {
+		AddGhostMessageTask(Context context, ConversationInfo conversationInfo, Consumer<MessageInfo> onFinishListener) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
 			
 			//Setting the other values
+			this.conversationInfo = conversationInfo;
 			this.onFinishListener = onFinishListener;
 		}
 		
@@ -6328,6 +6330,19 @@ public class Messaging extends AppCompatCompositeActivity {
 		@Override
 		protected void onProgressUpdate(MessageInfo... messages) {
 			for(MessageInfo message : messages) onFinishListener.accept(message);
+		}
+		
+		@Override
+		protected void onPostExecute(Void aVoid) {
+			//Getting the context
+			Context context = contextReference.get();
+			if(context == null) return;
+			
+			//Re-sorting this conversation
+			ConversationUtils.sortConversation(conversationInfo);
+			
+			//Updating the conversation activity list
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 		}
 	}
 	
