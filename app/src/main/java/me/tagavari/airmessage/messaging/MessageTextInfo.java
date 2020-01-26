@@ -363,6 +363,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		public void onData(RichPreview.Metadata metadata) {
 			//Getting the message
 			MessageTextInfo messageText = messageTextReference.get();
+			
 			//Checking if there is no useful data
 			String title = metadata.getTitle();
 			if(title == null || title.isEmpty()) {

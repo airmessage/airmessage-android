@@ -143,6 +143,9 @@ public class RichPreview {
 		
 		@Override
 		protected void onPostExecute(Metadata metadata) {
+			//Returning if the task failed
+			if(metadata == null) return;
+			
 			//Calling the response listener
 			ResponseListener responseListener = responseListenerReference.get();
 			if(responseListener != null) responseListener.onData(metadata);
