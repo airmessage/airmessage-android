@@ -2018,10 +2018,13 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Getting the views
 			Switch notificationsSwitch = inflated.findViewById(R.id.switch_getnotifications);
+			MaterialButton archiveButton = inflated.findViewById(R.id.button_archive);
 			//Switch pinnedSwitch = inflated.findViewById(R.id.switch_pinconversation);
 			
 			//Restoring the elements' states
 			notificationsSwitch.setChecked(!viewModel.conversationInfo.isMuted());
+			archiveButton.setText(viewModel.conversationInfo.isArchived() ? R.string.action_unarchive : R.string.action_archive);
+			archiveButton.setIconResource(viewModel.conversationInfo.isArchived() ? R.drawable.unarchive_outlined : R.drawable.archive_outlined);
 			//pinnedSwitch.setChecked(viewModel.conversationInfo.isPinned());
 			
 			//Setting the listeners
@@ -2038,7 +2041,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			else buttonChangeColor.setVisibility(View.GONE);
 			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
 			
-			findViewById(R.id.button_archive).setOnClickListener(view -> {
+			archiveButton.setOnClickListener(view -> {
 				//Toggling the archive state
 				boolean newState = !viewModel.conversationInfo.isArchived();
 				viewModel.conversationInfo.setArchived(newState);
@@ -2055,7 +2058,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				buttonView.setIconResource(newState ? R.drawable.unarchive_outlined : R.drawable.archive_outlined);
 			});
 			
-			findViewById(R.id.button_delete).setOnClickListener(view -> {
+			inflated.findViewById(R.id.button_delete).setOnClickListener(view -> {
 				//Creating a dialog
 				AlertDialog dialog = new MaterialAlertDialogBuilder(this)
 						.setMessage(R.string.message_confirm_deleteconversation_current)
