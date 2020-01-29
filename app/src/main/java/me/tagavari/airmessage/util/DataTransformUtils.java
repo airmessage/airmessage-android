@@ -112,7 +112,7 @@ public class DataTransformUtils {
 			while(bytes > maxBytes) {
 				double scale = Math.sqrt((double) maxBytes / unscaledBytes) * (1 - attempts * 0.1);
 				outputStream.reset();
-				Bitmap.createScaledBitmap(bitmap, (int) (width * scale), (int) (height * scale), true);
+				Bitmap.createScaledBitmap(bitmap, (int) (width * scale), (int) (height * scale), true).compress(Bitmap.CompressFormat.PNG, bitmapQuality, outputStream);;
 				attempts++;
 				bytes = outputStream.size();
 			}

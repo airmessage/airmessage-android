@@ -381,6 +381,10 @@ public class FileProcessingThread extends Thread {
 						//Replacing the input stream
 						inputStream.close();
 						inputStream = new ByteArrayInputStream(compressedBytes);
+					} else {
+						//Resetting the input stream with the data in memory
+						inputStream.close();
+						inputStream = new ByteArrayInputStream(fileBytes);
 					}
 				}
 				
