@@ -1569,7 +1569,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 			
 			//Clearing the message box
-			if(!cleanMessageText.isEmpty()) {
+			if(cleanMessageText != null) {
 				messageInputField.setText("");
 				messageInputField.requestLayout(); //Height of input field doesn't update otherwise
 			}

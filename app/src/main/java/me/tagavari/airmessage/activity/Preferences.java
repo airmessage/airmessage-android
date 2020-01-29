@@ -348,11 +348,14 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Accepting the change
 			return true;
 		};
+		@RequiresApi(api = Build.VERSION_CODES.N)
 		Preference.OnPreferenceChangeListener textIntegrationChangeListener = (preference, newValue) -> {
 			//Checking if the preference is enabled
 			if(((SwitchPreference) preference).isChecked()) {
 				//Launching the app details screen
-				startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())));
+				Intent intent = new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS); //Manage default apps
+				if(intent.resolveActivity(getContext().getPackageManager()) == null) intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())); //App details page (fallback)
+				startActivity(intent);
 			} else {
 				if(Constants.isDefaultMessagingApp(getContext())) {
 					//Requesting permissions
@@ -412,8 +415,8 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				});
 				amoledSwitch.setEnabled(!themePreference.getValue().equals(MainApplication.darkModeLight));
 				
-				//Checking if the device doesn't support telephony
-				if(!getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEPHONY)) {
+				//Checking if the device is running below Android 7.0 (API 24), or doesn't support telephony
+				if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N || !getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEPHONY)) {
 					//Removing the text message preference group
 					PreferenceGroup preferenceGroup = findPreference(getResources().getString(R.string.preferencegroup_textmessage_key));
 					getPreferenceScreen().removePreference(preferenceGroup);
@@ -508,8 +511,8 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					SwitchPreference preference = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
 					preference.setChecked(true);
 					
-					//Starting the import service
-					getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
+					//Starting the import service (started automatically by broadcast listener DefaultMessagingAppChangedReceiver)
+					//getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
 					
 					//Showing a snackbar
 					Snackbar.make(getView(), R.string.message_textmessageimport, Snackbar.LENGTH_LONG).show();
@@ -549,8 +552,8 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				SwitchPreference preference = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
 				preference.setChecked(true);
 				
-				//Starting the import service
-				getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
+				//Starting the import service (started automatically by broadcast listener DefaultMessagingAppChangedReceiver)
+				//getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
 				
 				//Showing a snackbar
 				Snackbar.make(getView(), R.string.message_textmessageimport, Snackbar.LENGTH_LONG).show();
