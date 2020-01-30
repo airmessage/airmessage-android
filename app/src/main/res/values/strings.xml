@@ -5,6 +5,7 @@
 
 	<string name="prefix_you">You: %s</string>
 	<string name="prefix_draft">Draft: %s</string>
+	<string name="prefix_wild">%1$s : %2$s</string>
 
 	<string name="action_send">Send</string>
 	<string name="action_next">Next</string>

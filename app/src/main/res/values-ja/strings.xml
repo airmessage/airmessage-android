@@ -252,6 +252,7 @@
 	<string name="action_refresh">更新</string>
 	<string name="prefix_you">あなた：%s</string>
 	<string name="prefix_draft">下書き：%s</string>
+	<string name="prefix_wild">%1$s：%2$s</string>
 	<string name="action_takephoto">写真を撮る</string>
 	<string name="action_choosefile">ファイルを選択</string>
 	<string name="action_recordaudio">録音</string>

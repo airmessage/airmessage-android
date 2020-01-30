@@ -1637,7 +1637,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		for(AttachmentInfo attachment : attachments) attachmentStringRes.add(ConversationUtils.getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 		
 		//Returning the summary
-		callback.onResult(false, getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes));
+		callback.onResult(false, getSummary(context, isOutgoing(), getMessageText(), getMessageSubject(), sendStyle, attachmentStringRes));
 	}
 	
 	public String getSummary(Context context) {
@@ -1646,17 +1646,24 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		for(AttachmentInfo attachment : attachments) attachmentStringRes.add(ConversationUtils.getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 		
 		//Returning the result of the static method
-		return getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes);
+		return getSummary(context, isOutgoing(), getMessageText(), getMessageSubject(), sendStyle, attachmentStringRes);
 	}
 	
-	public static String getSummary(Context context, boolean isFromMe, String messageText, String sendStyle, List<Integer> attachmentStringRes) {
+	public static String getSummary(Context context, boolean isFromMe, String messageText, String messageSubject, String sendStyle, List<Integer> attachmentStringRes) {
 		//Creating the message variable
 		String message;
 		
 		//Applying invisible ink
 		if(Constants.appleSendStyleBubbleInvisibleInk.equals(sendStyle)) message = context.getString(R.string.message_messageeffect_invisibleink);
 		//Otherwise assigning the message to the message text (without line breaks)
-		else if(messageText != null) message = messageText.replace('\n', ' ');
+		else if(messageText != null || messageSubject != null) {
+			//Only text
+			if(messageSubject == null) message = messageText.replace('\n', ' ');
+			//Only subject
+			else if(messageText == null) message = messageSubject.replace('\n', ' ');
+			//Both text and subject
+			else message = context.getResources().getString(R.string.prefix_wild, messageSubject.replace('\n', ' '), messageText.replace('\n', ' '));
+		}
 		//Setting the attachments if there are attachments
 		else if(attachmentStringRes.size() == 1) message = context.getResources().getString(attachmentStringRes.get(0));
 		else if(attachmentStringRes.size() > 1) message = context.getResources().getQuantityString(R.plurals.message_multipleattachments, attachmentStringRes.size(), attachmentStringRes.size());
@@ -1703,7 +1710,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 			attachmentStringRes.add(ConversationUtils.getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 		
 		//Returning the summary
-		return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes), getDate(), getLocalID(), getServerID());
+		return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), getMessageSubject(), sendStyle, attachmentStringRes), getDate(), getLocalID(), getServerID());
 	}
 	
 	public void addSticker(StickerInfo sticker) {

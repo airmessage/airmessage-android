@@ -1694,7 +1694,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			case MessageInfo.itemType: //Message
 				//Retrieving the message data
 				cursor = database.query(Contract.MessageEntry.TABLE_NAME,
-						new String[]{Contract.MessageEntry.COLUMN_NAME_SENDER, Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT, Contract.MessageEntry.COLUMN_NAME_SENDSTYLE},
+						new String[]{Contract.MessageEntry.COLUMN_NAME_SENDER, Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT, Contract.MessageEntry.COLUMN_NAME_MESSAGESUBJECT, Contract.MessageEntry.COLUMN_NAME_SENDSTYLE},
 						Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(lastItemID)},
 						null, null, null);
 				
@@ -1710,6 +1710,9 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				currentIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
 				String message = cursor.isNull(currentIndex) ? null : cursor.getString(currentIndex);
 				
+				currentIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGESUBJECT);
+				String subject = cursor.isNull(currentIndex) ? null : cursor.getString(currentIndex);
+				
 				currentIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
 				String sendStyle = cursor.isNull(currentIndex) ? null : cursor.getString(currentIndex);
 				
@@ -1719,7 +1722,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				//Checking if the message is valid
 				if(message != null) {
 					//Returning the light message info (without the attachments)
-					return new LightConversationItem(MessageInfo.getSummary(context, sender == null, message, sendStyle, new ArrayList<>()), date, lastItemID, -1);
+					return new LightConversationItem(MessageInfo.getSummary(context, sender == null, message, subject, sendStyle, new ArrayList<>()), date, lastItemID, -1);
 				}
 				
 				//Retrieving the attachments
@@ -1745,7 +1748,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				cursor.close();
 				
 				//Returning the light message info (without the message)
-				return new LightConversationItem(MessageInfo.getSummary(context, sender == null, null, sendStyle, attachmentStringRes), date, lastItemID, -1);
+				return new LightConversationItem(MessageInfo.getSummary(context, sender == null, null, null, sendStyle, attachmentStringRes), date, lastItemID, -1);
 			case GroupActionInfo.itemType: //Group action
 			{
 				//Retrieving the action data
