@@ -1604,6 +1604,12 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Scrolling to the bottom of the chat
 		messageListAdapter.scrollToBottom();
+		
+		//Unarchiving the conversation
+		if(viewModel.conversationInfo.isArchived()) {
+			viewModel.conversationInfo.setArchived(false);
+			DatabaseManager.getInstance().updateConversationArchived(viewModel.conversationInfo.getLocalID(), false);
+		}
 	}
 	
 	private void openAttachmentsPanel(boolean restore, boolean animate) {

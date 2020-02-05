@@ -125,7 +125,7 @@ public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 				if(parentConversation.getState() == ConversationInfo.ConversationState.READY) {
 					completeConversations.add(parentConversation);
 					
-					//Unarchiving the conversation if it is archvied
+					//Unarchiving the conversation if it is archived
 					if(parentConversation.isArchived()) DatabaseManager.getInstance().updateConversationArchived(parentConversation.getLocalID(), false);
 				}
 				else if(parentConversation.getState() == ConversationInfo.ConversationState.INCOMPLETE_SERVER) incompleteServerConversations.add(parentConversation);

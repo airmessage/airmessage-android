@@ -177,6 +177,19 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			//Displaying the context menu
 			displayContextMenu(newContext, viewHolder.groupMessage);
 			
+			//Returning
+			return true;
+		});
+		viewHolder.labelBody.setOnLongClickListener(clickedView -> {
+			//Getting the context
+			Context newContext = clickedView.getContext();
+			
+			//Returning if the view is not an activity
+			if(!(newContext instanceof Activity)) return false;
+			
+			//Displaying the context menu
+			displayContextMenu(newContext, viewHolder.groupMessage);
+			
 			//Disabling link clicks
 			viewHolder.labelBody.setLinksClickable(false);
 			
