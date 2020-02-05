@@ -860,7 +860,7 @@ public class ConnectionManager {
 			ConnectionManager manager = getManager();
 			if(manager != null) {
 				int index = manager.chatCreationRequests.indexOfValue(item);
-				if(index != -1) manager.messageSendRequests.removeAt(index);
+				if(index != -1) manager.chatCreationRequests.removeAt(index);
 			}
 		}
 	}
