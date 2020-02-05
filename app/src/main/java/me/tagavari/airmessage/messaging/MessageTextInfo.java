@@ -311,6 +311,8 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		
 		@Override
 		protected Spannable doInBackground(Void... voids) {
+			if(messageText.length() > textClassifier.getMaxGenerateLinksTextLength()) return null;
+			
 			Spannable spannable = new SpannableString(messageText);
 			TextLinks textLinks = textClassifier.generateLinks(new TextLinks.Request.Builder(messageText).build());
 			textLinks.apply(spannable, TextLinks.APPLY_STRATEGY_REPLACE, null);
@@ -339,6 +341,8 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		
 		@Override
 		protected void onPostExecute(Spannable spannable) {
+			if(spannable == null) return;
+			
 			MessageTextInfo messageTextInfo = messageReference.get();
 			if(messageTextInfo != null) messageTextInfo.updateTextLinks(spannable);
 		}
