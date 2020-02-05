@@ -4835,6 +4835,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					
 					//Parsing the file
 					VCard vcard = Ezvcard.parse(fileStream).first();
+					if(vcard == null) return;
 					String name = null;
 					Bitmap bitmap = null;
 					
