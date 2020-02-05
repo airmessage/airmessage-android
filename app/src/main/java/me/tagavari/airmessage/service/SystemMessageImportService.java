@@ -638,16 +638,20 @@ public class SystemMessageImportService extends Service {
 		//Iterating over each recipient
 		for(int i = 0; i < recipientIDArray.length; i++) {
 			//Querying for the recipient data
-			Cursor cursor = context.getContentResolver().query(ContentUris.withAppendedId(addressUri, Long.parseLong(recipientIDArray[i])), new String[]{Telephony.CanonicalAddressesColumns.ADDRESS}, null, null, null);
-			//Ignoring invalid or empty results
-			if(cursor == null || !cursor.moveToNext()) continue;
-			
-			//Adding the address to the array
-			String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.CanonicalAddressesColumns.ADDRESS));
-			address = Constants.normalizeAddress(address);
-			recipientAddressArray[i] = address;
-			
-			cursor.close();
+			try(Cursor cursor = context.getContentResolver().query(ContentUris.withAppendedId(addressUri, Long.parseLong(recipientIDArray[i])), new String[]{Telephony.CanonicalAddressesColumns.ADDRESS}, null, null, null)) {
+				//Ignoring invalid or empty results
+				if(cursor == null || !cursor.moveToNext()) {
+					recipientAddressArray[i] = "0";
+					continue;
+				}
+				
+				//Adding the address to the array
+				String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.CanonicalAddressesColumns.ADDRESS));
+				recipientAddressArray[i] = address;
+			} catch(RuntimeException exception) {
+				recipientAddressArray[i] = "0";
+				exception.printStackTrace();
+			}
 		}
 		
 		//Returning the array
