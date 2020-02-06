@@ -51,6 +51,7 @@ public class DataTransformUtils {
 		
 		//Getting the bitmap from the image
 		Bitmap bitmap = BitmapFactory.decodeByteArray(fileBytes, 0, fileBytes.length);
+		if(bitmap == null) return null;
 		
 		//Fixing the bitmap orientation
 		if(exif != null) bitmap = DataTransformUtils.rotateBitmap(bitmap, exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL));
@@ -62,6 +63,8 @@ public class DataTransformUtils {
 	//Based off of QKSMS's ImageUtils
 	//https://github.com/moezbhatti/qksms/blob/b7f5cd2fa271efe7c419cd9dc78df57ac6e1f33c/data/src/main/java/com/moez/QKSMS/util/ImageUtils.kt
 	private static byte[] compressBitmapLossy(Bitmap bitmap, Bitmap.CompressFormat compressFormat, int maxBytes) {
+		if(bitmap == null) return null;
+		
 		//Getting the bitmap dimensions
 		int width = bitmap.getWidth();
 		int height = bitmap.getHeight();
@@ -94,6 +97,8 @@ public class DataTransformUtils {
 	}
 	
 	private static byte[] compressBitmapLossless(Bitmap bitmap, int maxBytes) {
+		if(bitmap == null) return null;
+		
 		//Getting the bitmap dimensions
 		int width = bitmap.getWidth();
 		int height = bitmap.getHeight();

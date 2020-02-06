@@ -65,6 +65,8 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 	//Creating the reference values
 	static final int itemViewType = MessageComponent.getNextItemViewType();
 	
+	private static final int previewImageMaxSize = 128 * 1024; //128 KB
+	
 	//Creating the component values
 	private String messageText;
 	private String messageSubject;
@@ -430,6 +432,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 					ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 					DataTransformUtils.copyStream(in, out);
 					imageBytes = out.toByteArray();
+					if(imageBytes.length > previewImageMaxSize) imageBytes = DataTransformUtils.compressFile(imageBytes, "image/webp", previewImageMaxSize);
 				} catch(FileNotFoundException exception) {
 					exception.printStackTrace();
 					//Not returning, as the preview should simply be displayed without an image if the URI 404'd
