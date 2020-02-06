@@ -66,6 +66,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
+import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
@@ -86,7 +87,12 @@ public class NewMessage extends AppCompatCompositeActivity {
 	
 	private static final int permissionRequestContacts = 0;
 	
-	private static final MessageServiceDescription[] availableServiceArray = {
+	private static final MessageServiceDescription[] availableServiceArray = BuildConfig.DEBUG ? new MessageServiceDescription[]{
+			new MessageServiceDescription(R.drawable.message_push, R.string.title_imessage, false, -1, R.color.colorPrimary, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleMessage, true),
+			new MessageServiceDescription(R.drawable.message_bridge, R.string.title_textmessageforwarding, false, -1, R.color.colorMessageTextMessageForwarding, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleTextMessageForwarding, false),
+			new MessageServiceDescription(R.drawable.message_sms, R.string.title_textmessage, false, -1, R.color.colorMessageTextMessage, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, false),
+			//new MessageServiceDescription(R.drawable.message_plus, R.string.title_rcs, false, -1, R.color.colorMessageRCS, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemRCS, false),
+	} : new MessageServiceDescription[]{
 			new MessageServiceDescription(R.drawable.message_push, R.string.title_imessage, false, -1, R.color.colorPrimary, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleMessage, true),
 			//new MessageServiceDescription(R.drawable.message_bridge, R.string.title_textmessageforwarding, false, -1, R.color.colorMessageTextMessageForwarding, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleTextMessageForwarding, false),
 			new MessageServiceDescription(R.drawable.message_sms, R.string.title_textmessage, false, -1, R.color.colorMessageTextMessage, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, false),
