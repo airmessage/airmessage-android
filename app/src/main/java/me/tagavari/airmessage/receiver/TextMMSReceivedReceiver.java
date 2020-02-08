@@ -91,6 +91,9 @@ public class TextMMSReceivedReceiver extends MmsReceivedReceiver {
 				cursorMMS.close();
 				if(messageInfo == null) return;
 				
+				//Unarchiving the conversation if it is archived
+				if(conversationInfo.isArchived()) DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), false);
+				
 				//Running on the main thread
 				final SaveMessageTaskResult result = new SaveMessageTaskResult(messageInfo, conversationNew ? conversationInfo : null);
 				new Handler(context.getMainLooper()).post(new Runnable() {
@@ -110,6 +113,9 @@ public class TextMMSReceivedReceiver extends MmsReceivedReceiver {
 							conversationInfo.setUnreadMessageCount(conversationInfo.getUnreadMessageCount() + 1);
 							conversationInfo.updateUnreadStatus(context);
 						}
+						
+						//Unarchiving the conversation if it is archived
+						if(conversationInfo.isArchived()) conversationInfo.setArchived(false);
 						
 						//Checking if there is a new conversation to be added
 						if(result.getNewConversationInfo() != null) {
