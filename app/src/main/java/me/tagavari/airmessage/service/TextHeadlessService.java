@@ -146,7 +146,7 @@ public class TextHeadlessService extends IntentService {
 			}
 			
 			//Creating and saving the message
-			MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, null, message, null, false, messageDate, Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+			MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, null, message, null, null, false, messageDate, Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 			DatabaseManager.getInstance().addConversationItem(messageInfo, false);
 			
 			//Returning the result

@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.messaging.ConversationInfo;
@@ -77,7 +76,7 @@ public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 				Blocks.TapbackModifierInfo tapbackModifierInfo = (Blocks.TapbackModifierInfo) modifierInfo;
 				
 				//Checking if the tapback is negative
-				if(tapbackModifierInfo.code >= SharedValues.TapbackModifierInfo.tapbackBaseRemove) {
+				if(tapbackModifierInfo.code >= Blocks.TapbackModifierInfo.tapbackBaseRemove) {
 					//Deleting the modifier in the database
 					DatabaseManager.getInstance().removeMessageTapback(tapbackModifierInfo);
 					tapbackRemovals.add(new TapbackRemovalStruct(tapbackModifierInfo.sender, tapbackModifierInfo.message, tapbackModifierInfo.messageIndex));

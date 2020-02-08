@@ -35,8 +35,8 @@ import me.tagavari.airmessage.util.Constants;
 public class ClientCommCaladium extends CommunicationsManager {
 	//Creating the connection values
 	private ProtocolManager protocolManager = null;
-	private int currentState = ConnectionManager.stateDisconnected;
 	ConnectionThread connectionThread = null;
+	private int currentState = ConnectionManager.stateDisconnected;
 	
 	private static final int socketTimeout = 1000 * 10; //10 seconds
 	private static final long handshakeExpiryTime = 1000 * 10; //10 seconds
@@ -516,6 +516,7 @@ public class ClientCommCaladium extends CommunicationsManager {
 			handler.postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
 			
 			//Reading from the input stream
+			readLoop:
 			while(!isInterrupted()) {
 				try {
 					//Reading the header data
@@ -542,7 +543,7 @@ public class ClientCommCaladium extends CommunicationsManager {
 							readCount = inputStream.read(content, offset, bytesRemaining);
 							if(readCount == -1) { //No data read, stream is closed
 								closeConnection(ConnectionManager.intentResultCodeConnection, !connectionEstablished);
-								return;
+								break readLoop;
 							}
 							
 							offset += readCount;

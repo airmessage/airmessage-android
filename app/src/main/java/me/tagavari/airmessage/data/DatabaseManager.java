@@ -1005,9 +1005,9 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	}
 	
 	private static class ConversationItemIndices {
-		final int iLocalID, iServerID, iGuid, iSender, iItemType, iDate, iState, iError, iErrorDetails, iDateRead, iSendStyle, iSendStyleViewed, iPreviewState, iPreviewID, iMessageText, iOther;
+		final int iLocalID, iServerID, iGuid, iSender, iItemType, iDate, iState, iError, iErrorDetails, iDateRead, iSendStyle, iSendStyleViewed, iPreviewState, iPreviewID, iMessageText, iMessageSubject, iOther;
 		
-		ConversationItemIndices(int iLocalID, int iServerID, int iGuid, int iSender, int iItemType, int iDate, int iState, int iError, int iErrorDetails, int iDateRead, int iSendStyle, int iSendStyleViewed, int iPreviewState, int iPreviewID, int iMessageText, int iOther) {
+		ConversationItemIndices(int iLocalID, int iServerID, int iGuid, int iSender, int iItemType, int iDate, int iState, int iError, int iErrorDetails, int iDateRead, int iSendStyle, int iSendStyleViewed, int iPreviewState, int iPreviewID, int iMessageText, int iMessageSubject, int iOther) {
 			this.iLocalID = iLocalID;
 			this.iServerID = iServerID;
 			this.iGuid = iGuid;
@@ -1023,6 +1023,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			this.iPreviewState = iPreviewState;
 			this.iPreviewID = iPreviewID;
 			this.iMessageText = iMessageText;
+			this.iMessageSubject = iMessageSubject;
 			this.iOther = iOther;
 		}
 	}
@@ -1043,9 +1044,10 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		int iPreviewState = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_PREVIEW_STATE);
 		int iPreviewID = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_PREVIEW_ID);
 		int iMessageText = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
+		int iMessageSubject = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGESUBJECT);
 		int iOther = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER);
 		
-		return new ConversationItemIndices(iLocalID, iServerID, iGuid, iSender, iItemType, iDate, iState, iError, iErrorDetails, iDateRead, iSendStyle, iSendStyleViewed, iPreviewState, iPreviewID, iMessageText, iOther);
+		return new ConversationItemIndices(iLocalID, iServerID, iGuid, iSender, iItemType, iDate, iState, iError, iErrorDetails, iDateRead, iSendStyle, iSendStyleViewed, iPreviewState, iPreviewID, iMessageText, iMessageSubject, iOther);
 	}
 	
 	private static ConversationItem loadConversationItem(ConversationItemIndices indices, Cursor cursor, SQLiteDatabase database, ConversationInfo conversationInfo) {
@@ -1066,11 +1068,12 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			long dateRead = cursor.getLong(indices.iDateRead);
 			String sendStyle = cursor.getString(indices.iSendStyle);
 			boolean sendStyleViewed = cursor.getInt(indices.iSendStyleViewed) != 0;
-			String message = cursor.getString(indices.iMessageText);
+			String messageText = cursor.getString(indices.iMessageText);
+			String messageSubject = cursor.getString(indices.iMessageSubject);
 			int previewState = cursor.getInt(indices.iPreviewState);
 			
 			//Creating the conversation item
-			MessageInfo messageInfo = new MessageInfo(localID, serverID, guid, conversationInfo, sender, message, sendStyle, sendStyleViewed, date, stateCode, errorCode, errorDetailsAvailable, dateRead);
+			MessageInfo messageInfo = new MessageInfo(localID, serverID, guid, conversationInfo, sender, messageText, messageSubject, sendStyle, sendStyleViewed, date, stateCode, errorCode, errorDetailsAvailable, dateRead);
 			
 			{
 				//Querying the database for attachments
@@ -1686,11 +1689,12 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//Closing the cursor
 		cursor.close();
 		
+		//TODO account for subject lines
 		switch(itemType) {
 			case MessageInfo.itemType: //Message
 				//Retrieving the message data
 				cursor = database.query(Contract.MessageEntry.TABLE_NAME,
-						new String[]{Contract.MessageEntry.COLUMN_NAME_SENDER, Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT, Contract.MessageEntry.COLUMN_NAME_SENDSTYLE},
+						new String[]{Contract.MessageEntry.COLUMN_NAME_SENDER, Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT, Contract.MessageEntry.COLUMN_NAME_MESSAGESUBJECT, Contract.MessageEntry.COLUMN_NAME_SENDSTYLE},
 						Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(lastItemID)},
 						null, null, null);
 				
@@ -1706,6 +1710,9 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				currentIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
 				String message = cursor.isNull(currentIndex) ? null : cursor.getString(currentIndex);
 				
+				currentIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGESUBJECT);
+				String subject = cursor.isNull(currentIndex) ? null : cursor.getString(currentIndex);
+				
 				currentIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
 				String sendStyle = cursor.isNull(currentIndex) ? null : cursor.getString(currentIndex);
 				
@@ -1715,7 +1722,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				//Checking if the message is valid
 				if(message != null) {
 					//Returning the light message info (without the attachments)
-					return new LightConversationItem(MessageInfo.getSummary(context, sender == null, message, sendStyle, new ArrayList<>()), date, lastItemID, -1);
+					return new LightConversationItem(MessageInfo.getSummary(context, sender == null, message, subject, sendStyle, new ArrayList<>()), date, lastItemID, -1);
 				}
 				
 				//Retrieving the attachments
@@ -1741,7 +1748,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				cursor.close();
 				
 				//Returning the light message info (without the message)
-				return new LightConversationItem(MessageInfo.getSummary(context, sender == null, null, sendStyle, attachmentStringRes), date, lastItemID, -1);
+				return new LightConversationItem(MessageInfo.getSummary(context, sender == null, null, null, sendStyle, attachmentStringRes), date, lastItemID, -1);
 			case GroupActionInfo.itemType: //Group action
 			{
 				//Retrieving the action data
@@ -2405,7 +2412,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 							boolean sendStyleViewed = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED)) != 0;
 							
 							//Creating and returning the message
-							MessageInfo messageInfo = new MessageInfo(messageID, messageStruct.serverID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, false, messageStruct.dateRead);
+							MessageInfo messageInfo = new MessageInfo(messageID, messageStruct.serverID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, messageStruct.subject, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, false, messageStruct.dateRead);
 							for(StickerInfo sticker : stickers) messageInfo.addSticker(sticker);
 							for(TapbackInfo tapback : tapbacks) messageInfo.addTapback(tapback);
 							return messageInfo;
@@ -2477,7 +2484,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 								}
 								
 								//Creating the message
-								sharedMessageInfo = new MessageInfo(messageID, messageStruct.serverID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, false, messageStruct.dateRead);
+								sharedMessageInfo = new MessageInfo(messageID, messageStruct.serverID, messageStruct.guid, conversationInfo, messageStruct.sender, messageStruct.text, messageStruct.subject, new ArrayList<>(), messageStruct.sendEffect, sendStyleViewed, messageStruct.date, messageStruct.stateCode, messageStruct.errorCode, false, messageStruct.dateRead);
 								
 								//Adding the unmatched attachments
 								for(Blocks.AttachmentInfo unmatchedAttachment : unmatchedAttachments) {
@@ -2799,6 +2806,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDER, messageInfoStruct.sender);
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, MessageInfo.itemType);
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT, messageInfoStruct.text);
+			contentValues.put(Contract.MessageEntry.COLUMN_NAME_MESSAGESUBJECT, messageInfoStruct.subject);
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, messageInfoStruct.stateCode);
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, messageInfoStruct.errorCode);
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, messageInfoStruct.dateRead);
@@ -2821,7 +2829,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			List<TapbackInfo> tapbacks = addMessageTapbacks(messageLocalID, messageInfoStruct.tapbacks);
 			
 			//Creating the message info
-			MessageInfo messageInfo = new MessageInfo(messageLocalID, messageInfoStruct.serverID, messageInfoStruct.guid, conversationInfo, messageInfoStruct.sender, messageInfoStruct.text, new ArrayList<>(), messageInfoStruct.sendEffect, false, messageInfoStruct.date, messageInfoStruct.stateCode, messageInfoStruct.errorCode, false, messageInfoStruct.dateRead);
+			MessageInfo messageInfo = new MessageInfo(messageLocalID, messageInfoStruct.serverID, messageInfoStruct.guid, conversationInfo, messageInfoStruct.sender, messageInfoStruct.text, messageInfoStruct.subject, new ArrayList<>(), messageInfoStruct.sendEffect, false, messageInfoStruct.date, messageInfoStruct.stateCode, messageInfoStruct.errorCode, false, messageInfoStruct.dateRead);
 			for(StickerInfo sticker : stickers) messageInfo.addSticker(sticker);
 			for(TapbackInfo tapback : tapbacks) messageInfo.addTapback(tapback);
 			
@@ -2932,6 +2940,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDER, messageInfo.getSender());
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_ITEMTYPE, MessageInfo.itemType);
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT, messageInfo.getMessageText());
+			contentValues.put(Contract.MessageEntry.COLUMN_NAME_MESSAGESUBJECT, messageInfo.getMessageSubject());
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, messageInfo.getMessageState());
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, messageInfo.getErrorCode());
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS, messageInfo.getErrorDetails());

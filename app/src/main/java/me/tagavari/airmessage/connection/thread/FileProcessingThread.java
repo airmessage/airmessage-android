@@ -127,6 +127,14 @@ public class FileProcessingThread extends Thread {
 				try(FileInputStream fileInputStream = new FileInputStream(request.getSendFile())) {
 					byte[] compressedData = compressFileInputStream(fileInputStream, request.getFileType(), request.getCompressionTarget());
 					fileInputStream.close();
+					if(compressedData == null) {
+						//Calling the fail method
+						request.setInProcessing(false);
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
+						
+						//Returning
+						return;
+					}
 					try(FileOutputStream fileOutputStream = new FileOutputStream(request.getSendFile(), false)) {
 						fileOutputStream.write(compressedData);
 					}
@@ -287,6 +295,14 @@ public class FileProcessingThread extends Thread {
 						try(FileInputStream fileInputStream = new FileInputStream(request.getSendFile())) {
 							byte[] compressedData = compressFileInputStream(fileInputStream, request.getFileType(), request.getCompressionTarget());
 							fileInputStream.close();
+							if(compressedData == null) {
+								//Calling the fail method
+								request.setInProcessing(false);
+								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
+								
+								//Returning
+								return false;
+							}
 							try(FileOutputStream fileOutputStream = new FileOutputStream(request.getSendFile(), false)) {
 								fileOutputStream.write(compressedData);
 							}
@@ -361,6 +377,7 @@ public class FileProcessingThread extends Thread {
 					//Reading the file data
 					ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 					DataTransformUtils.copyStream(inputStream, byteArrayOutputStream);
+					inputStream.close();
 					byte[] fileBytes = byteArrayOutputStream.toByteArray();
 					
 					//Checking if the file needs to be compressed
@@ -377,10 +394,20 @@ public class FileProcessingThread extends Thread {
 						
 						//Compressing the file
 						byte[] compressedBytes = DataTransformUtils.compressFile(fileBytes, request.getFileType(), request.getCompressionTarget());
+						if(compressedBytes == null) {
+							//Calling the fail method
+							request.setInProcessing(false);
+							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
+							
+							//Returning
+							return false;
+						}
 						
 						//Replacing the input stream
-						inputStream.close();
 						inputStream = new ByteArrayInputStream(compressedBytes);
+					} else {
+						//Resetting the input stream with the data in memory
+						inputStream = new ByteArrayInputStream(fileBytes);
 					}
 				}
 				

@@ -144,6 +144,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		}
 	};
 	
+	//Creating the state values
+	private boolean isActionMode = false;
+	
 	public Conversations() {
 		//Setting the plugins
 		addPlugin(conversationsBasePlugin = new ConversationsBase(() -> new RecyclerAdapter(conversationsBasePlugin.conversations)));
@@ -760,7 +763,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			}).withEndAction(() -> groupBarSearch.setClickable(true));
 			
 			//Hiding the FAB
-			if(updateContext) floatingActionButton.hide();
+			if(updateContext) updateFAB();
 		} else {
 			//Showing the toolbar
 			if(updateContext) toolbar.animate().alpha(1).setDuration(duration).withStartAction(() -> toolbar.setVisibility(View.VISIBLE));
@@ -774,7 +777,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			}).withEndAction(() -> groupBarSearch.setVisibility(View.GONE));
 			
 			//Showing the FAB
-			if(updateContext) floatingActionButton.show();
+			if(updateContext) updateFAB();
 			
 			//Clearing the search query
 			updateSearchFilter("");
@@ -800,7 +803,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		buttonBarSearchClear.setVisibility(editTextBarSearch.getText().length() > 0 ? View.VISIBLE : View.GONE);
 		
 		//Hiding the FAB
-		floatingActionButton.hide();
+		updateFAB();
 	}
 	
 	void updateMarkAllRead() {
@@ -837,6 +840,11 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Setting the search group state
 		groupSearch.setVisibility(queryAvailable ? View.VISIBLE : View.GONE);
 		conversationsBasePlugin.recyclerView.setVisibility(queryAvailable ? View.INVISIBLE : View.VISIBLE);
+	}
+	
+	private void updateFAB() {
+		if(viewModel.isSearching || viewModel.listingArchived || isActionMode) floatingActionButton.hide();
+		else floatingActionButton.show();
 	}
 	
 	private class SearchRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
@@ -1038,8 +1046,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		}
 		
 		//Setting the fab
-		if(state) floatingActionButton.hide();
-		else floatingActionButton.show();
+		updateFAB();
 		
 		//Updating the list adapter
 		conversationsBasePlugin.updateList(false);
@@ -1116,7 +1123,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		if(menuItemSearch != null) menuItemSearch.setVisible(false);
 		
 		//Hiding the FAB
-		floatingActionButton.hide();
+		updateFAB();
 	}
 	
 	void setDarkAMOLED() {
@@ -1253,6 +1260,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		@Override
 		public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
+			//Updating the action mode state
+			isActionMode = true;
+			
 			//Inflating the menu
 			MenuInflater inflater = actionMode.getMenuInflater();
 			inflater.inflate(R.menu.menu_conversation_actionmode, menu);
@@ -1269,7 +1279,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			animateAppBarColor(toolbarColor, statusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime)); */
 			
 			//Hiding the FAB
-			floatingActionButton.hide();
+			updateFAB();
 			
 			//Returning true
 			return true;
@@ -1277,6 +1287,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		@Override
 		public void onDestroyActionMode(ActionMode actionMode) {
+			//Updating the action mode state
+			isActionMode = false;
+			
 			//Invalidating the action mode
 			Conversations.this.actionMode = null;
 			
@@ -1299,7 +1312,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			//animateAppBarColor(oldToolbarColor, oldStatusBarColor, getResources().getInteger(android.R.integer.config_mediumAnimTime));
 			
 			//Showing the FAB
-			floatingActionButton.show();
+			updateFAB();
 		}
 		
 		@Override

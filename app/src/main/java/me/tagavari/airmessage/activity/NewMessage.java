@@ -3,6 +3,7 @@ package me.tagavari.airmessage.activity;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
+import android.content.ClipData;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -65,6 +66,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
+import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
@@ -85,7 +87,12 @@ public class NewMessage extends AppCompatCompositeActivity {
 	
 	private static final int permissionRequestContacts = 0;
 	
-	private static final MessageServiceDescription[] availableServiceArray = {
+	private static final MessageServiceDescription[] availableServiceArray = BuildConfig.DEBUG ? new MessageServiceDescription[]{
+			new MessageServiceDescription(R.drawable.message_push, R.string.title_imessage, false, -1, R.color.colorPrimary, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleMessage, true),
+			new MessageServiceDescription(R.drawable.message_bridge, R.string.title_textmessageforwarding, false, -1, R.color.colorMessageTextMessageForwarding, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleTextMessageForwarding, false),
+			new MessageServiceDescription(R.drawable.message_sms, R.string.title_textmessage, false, -1, R.color.colorMessageTextMessage, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, false),
+			//new MessageServiceDescription(R.drawable.message_plus, R.string.title_rcs, false, -1, R.color.colorMessageRCS, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemRCS, false),
+	} : new MessageServiceDescription[]{
 			new MessageServiceDescription(R.drawable.message_push, R.string.title_imessage, false, -1, R.color.colorPrimary, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleMessage, true),
 			//new MessageServiceDescription(R.drawable.message_bridge, R.string.title_textmessageforwarding, false, -1, R.color.colorMessageTextMessageForwarding, ConversationInfo.serviceHandlerAMBridge, ConversationInfo.serviceTypeAppleTextMessageForwarding, false),
 			new MessageServiceDescription(R.drawable.message_sms, R.string.title_textmessage, false, -1, R.color.colorMessageTextMessage, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, false),
@@ -246,12 +253,12 @@ public class NewMessage extends AppCompatCompositeActivity {
 		super.onCreate(savedInstanceState);
 		
 		//Reading the launch arguments
-		String targetText;
+		final String targetText;
 		if(getIntent().hasExtra(Constants.intentParamDataText)) targetText = getIntent().getStringExtra(Constants.intentParamDataText);
 		else targetText = null;
-		Parcelable[] targetParcelables;
-		if(getIntent().hasExtra(Constants.intentParamDataFile)) targetParcelables = getIntent().getParcelableArrayExtra(Constants.intentParamDataFile);
-		else targetParcelables = null;
+		final ClipData targetClipData;
+		if(getIntent().getBooleanExtra(Constants.intentParamDataFile, false)) targetClipData = getIntent().getClipData();
+		else targetClipData = null;
 		
 		//Setting the content view
 		setContentView(R.layout.activity_newmessage);
@@ -302,7 +309,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 			@NonNull
 			@Override
 			public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
-				return (T) new ActivityViewModel(getApplication(), targetText, targetParcelables);
+				return (T) new ActivityViewModel(getApplication(), targetText, targetClipData);
 			}
 		}).get(ActivityViewModel.class);
 		viewModel.setActivityReference(this);
@@ -1332,7 +1339,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 		
 		//Creating the fill values
 		private final String targetText;
-		private final Parcelable[] targetParcelables;
+		private final ClipData targetClipData;
 		
 		//Creating the other values
 		MessageServiceDescription currentService = availableServiceArray[0];
@@ -1341,12 +1348,12 @@ public class NewMessage extends AppCompatCompositeActivity {
 		
 		private WeakReference<NewMessage> activityReference = null;
 		
-		public ActivityViewModel(@NonNull Application application, String targetText, Parcelable[] targetParcelables) {
+		public ActivityViewModel(@NonNull Application application, String targetText, ClipData targetClipData) {
 			super(application);
 			
 			//Setting the fill values
 			this.targetText = targetText;
-			this.targetParcelables = targetParcelables;
+			this.targetClipData = targetClipData;
 			
 			//Loading the data
 			loadContacts();
@@ -1647,10 +1654,14 @@ public class NewMessage extends AppCompatCompositeActivity {
 			//Creating the intent
 			Intent intent = new Intent(activity, Messaging.class);
 			intent.putExtra(Constants.intentParamTargetID, identifier);
+			intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 			
 			//Setting the fill data
 			if(targetText != null) intent.putExtra(Constants.intentParamDataText, targetText);
-			if(targetParcelables != null) intent.putExtra(Constants.intentParamDataFile, targetParcelables);
+			if(targetClipData != null) {
+				intent.putExtra(Constants.intentParamDataFile, true);
+				intent.setClipData(targetClipData);
+			}
 			
 			//Launching the activity
 			activity.startActivity(intent);

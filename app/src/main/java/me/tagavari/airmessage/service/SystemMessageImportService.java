@@ -3,6 +3,7 @@ package me.tagavari.airmessage.service;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
@@ -117,15 +118,16 @@ public class SystemMessageImportService extends Service {
 			//Indexing the conversations
 			List<ConversationInfo> conversationInfoList = new ArrayList<>();
 			
+			//Checking if the archived column can be used
 			Cursor cursorConversation = context.getContentResolver().query(
 					Uri.parse("content://mms-sms/conversations?simple=true"),
-					new String[]{Telephony.Threads._ID, Telephony.Threads.ARCHIVED, Telephony.Threads.RECIPIENT_IDS, Telephony.Threads.DATE, Telephony.Threads.MESSAGE_COUNT},
+					new String[]{Telephony.Threads._ID,/* Telephony.Threads.ARCHIVED,*/ Telephony.Threads.RECIPIENT_IDS, Telephony.Threads.DATE, Telephony.Threads.MESSAGE_COUNT},
 					null, null, null);
 			if(cursorConversation == null) return;
 			
 			//Getting the column indices
 			int iThreadID = cursorConversation.getColumnIndexOrThrow(Telephony.Threads._ID);
-			int iArchived = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.ARCHIVED);
+			//int iArchived = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.ARCHIVED);
 			int iRecipientIDs = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.RECIPIENT_IDS);
 			int iDate = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.DATE);
 			int iMessageCount = cursorConversation.getColumnIndexOrThrow(Telephony.Threads.MESSAGE_COUNT);
@@ -153,7 +155,7 @@ public class SystemMessageImportService extends Service {
 					ConversationInfo conversationInfo;
 					{
 						//Getting the conversation data
-						boolean archived = cursorConversation.getInt(iArchived) == 1;
+						boolean archived = false;//cursorConversation.getInt(iArchived) == 1;
 						String recipientIDs = cursorConversation.getString(iRecipientIDs);
 						long date = cursorConversation.getLong(iDate);
 						int conversationColor = ConversationInfo.getDefaultConversationColor(date);
@@ -237,7 +239,7 @@ public class SystemMessageImportService extends Service {
 								}
 							}
 							
-							String sender = isOutgoing ? null : cursorMessage.getString(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+							String sender = isOutgoing ? null : Constants.normalizeAddress(cursorMessage.getString(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)));
 							String message = cursorMessage.getString(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.BODY));
 							long date = cursorMessage.getLong(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.DATE));
 							int errorCode = cursorMessage.getInt(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.ERROR_CODE));
@@ -249,7 +251,7 @@ public class SystemMessageImportService extends Service {
 							}
 							
 							//Creating the message
-							MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, false, date, messageState, messageErrorCode, false, -1);
+							MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, null, false, date, messageState, messageErrorCode, false, -1);
 							if(messageErrorCode != Constants.messageErrorCodeOK) {
 								messageInfo.setErrorDetails("SMS error code " + errorCode);
 							}
@@ -483,7 +485,7 @@ public class SystemMessageImportService extends Service {
 		//Reading the common message data
 		long messageID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms._ID));
 		long date = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000;
-		String subject = cursorMMS.getString(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.SUBJECT));
+		String messageSubject = cursorMMS.getString(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.SUBJECT));
 		String sender = isOutgoing ? null : getMMSSender(context, messageID);
 		//long threadID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.THREAD_ID));
 		
@@ -524,7 +526,7 @@ public class SystemMessageImportService extends Service {
 		String messageText = messageTextSB.length() > 0 ? messageTextSB.toString() : null;
 		
 		//Creating the message
-		MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, messageText, null, false, date, messageState, messageErrorCode, false, -1);
+		MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, messageText, messageSubject, null, false, date, messageState, messageErrorCode, false, -1);
 		
 		//Adding the attachments
 		for(ImportThread.MMSAttachmentInfo attachment : messageAttachments) {
@@ -589,7 +591,7 @@ public class SystemMessageImportService extends Service {
 			//Re-encoding and returning the sender with the correct encoding
 			byte[] senderBytes = PduPersister.getBytes(sender);
 			int charset = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Mms.Addr.CHARSET));
-			return new EncodedStringValue(charset, senderBytes).getString();
+			return Constants.normalizeAddress(new EncodedStringValue(charset, senderBytes).getString());
 		}
 	}
 	
@@ -636,15 +638,20 @@ public class SystemMessageImportService extends Service {
 		//Iterating over each recipient
 		for(int i = 0; i < recipientIDArray.length; i++) {
 			//Querying for the recipient data
-			Cursor cursor = context.getContentResolver().query(ContentUris.withAppendedId(addressUri, Long.parseLong(recipientIDArray[i])), new String[]{Telephony.CanonicalAddressesColumns.ADDRESS}, null, null, null);
-			//Ignoring invalid or empty results
-			if(cursor == null || !cursor.moveToNext()) continue;
-			
-			//Adding the address to the array
-			String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.CanonicalAddressesColumns.ADDRESS));
-			recipientAddressArray[i] = address;
-			
-			cursor.close();
+			try(Cursor cursor = context.getContentResolver().query(ContentUris.withAppendedId(addressUri, Long.parseLong(recipientIDArray[i])), new String[]{Telephony.CanonicalAddressesColumns.ADDRESS}, null, null, null)) {
+				//Ignoring invalid or empty results
+				if(cursor == null || !cursor.moveToNext()) {
+					recipientAddressArray[i] = "0";
+					continue;
+				}
+				
+				//Adding the address to the array
+				String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.CanonicalAddressesColumns.ADDRESS));
+				recipientAddressArray[i] = address;
+			} catch(RuntimeException exception) {
+				recipientAddressArray[i] = "0";
+				exception.printStackTrace();
+			}
 		}
 		
 		//Returning the array

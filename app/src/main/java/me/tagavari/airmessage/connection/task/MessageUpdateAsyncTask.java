@@ -122,7 +122,12 @@ public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 				//if(conversationInfo == null) continue;
 				
 				//Sorting the conversation
-				if(parentConversation.getState() == ConversationInfo.ConversationState.READY) completeConversations.add(parentConversation);
+				if(parentConversation.getState() == ConversationInfo.ConversationState.READY) {
+					completeConversations.add(parentConversation);
+					
+					//Unarchiving the conversation if it is archived
+					if(parentConversation.isArchived()) DatabaseManager.getInstance().updateConversationArchived(parentConversation.getLocalID(), false);
+				}
 				else if(parentConversation.getState() == ConversationInfo.ConversationState.INCOMPLETE_SERVER) incompleteServerConversations.add(parentConversation);
 			}
 			
@@ -254,8 +259,7 @@ public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 							}
 						} else if(groupActionInfo.getActionType() == Constants.groupActionLeave) {
 							//Removing the member in memory
-							if(member != null && parentConversation.getConversationMembers().contains(member))
-								parentConversation.removeConversationMember(member);
+							if(member != null && parentConversation.getConversationMembers().contains(member)) parentConversation.removeConversationMember(member);
 						}
 					}
 				}
@@ -273,10 +277,16 @@ public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 			}
 		}
 		
-		//Re-inserting the modified conversations
+		//Updating modified conversations
 		for(ConversationInfo conversationInfo : completeConversations) {
 			conversationInfo = ConversationUtils.findConversationInfo(conversationInfo.getLocalID());
-			if(conversationInfo != null) ConversationUtils.sortConversation(conversationInfo);
+			if(conversationInfo != null) {
+				//Re-sorting the modified conversations
+				ConversationUtils.sortConversation(conversationInfo);
+				
+				//Unarchiving the conversation
+				if(conversationInfo.isArchived()) conversationInfo.setArchived(false);
+			}
 		}
 		
 		//Updating the conversation activity list

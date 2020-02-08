@@ -13,6 +13,7 @@ import android.app.PendingIntent;
 import android.app.RemoteAction;
 import android.app.SharedElementCallback;
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.ContentUris;
 import android.content.Context;
@@ -737,15 +738,16 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Checking if the request is a send intent
 		if(Intent.ACTION_SEND.equals(getIntent().getAction()) || Intent.ACTION_SENDTO.equals(getIntent().getAction())) {
-			//Getting the recipient
-			String recipientData = getIntent().getDataString();
-			String recipient;
-			if(recipientData.startsWith("sms:")) recipient = recipientData.replaceFirst("sms:", "");
-			else if(recipientData.startsWith("smsto:")) recipient = recipientData.replaceFirst("smsto:", "");
-			else if(recipientData.startsWith("mms:")) recipient = recipientData.replaceFirst("mms:", "");
-			else if(recipientData.startsWith("mmsto:")) recipient = recipientData.replaceFirst("mmsto:", "");
-			else recipient = null;
-			//if(recipient.contains("%")) recipient = URLDecoder.decode(recipient, "UTF-8");
+			//Getting the recipients
+			String[] recipients = Uri.decode(getIntent().getDataString())
+					.replaceAll("sms:", "")
+					.replaceAll("smsto:", "")
+					.replaceAll("mms:", "")
+					.replaceAll("mmsto:", "")
+					.split(",");
+			
+			//Normalizing the recipients
+			Constants.normalizeAddresses(recipients);
 			
 			//Getting the message
 			String message;
@@ -771,7 +773,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				@NonNull
 				@Override
 				public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
-					return (T) new ActivityViewModel(getApplication(), new String[]{recipient});
+					return (T) new ActivityViewModel(getApplication(), recipients);
 				}
 			}).get(ActivityViewModel.class);
 		} else {
@@ -791,9 +793,10 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && getIntent().hasExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)) fillerText = getIntent().getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT); //Notification inline reply text (only supported on Android P and above)
 			else if(getIntent().hasExtra(Constants.intentParamDataText)) fillerText = getIntent().getStringExtra(Constants.intentParamDataText); //Shared text from activity
 			
-			if(getIntent().hasExtra(Constants.intentParamDataFile)) {
-				Parcelable[] parcelableArray = getIntent().getParcelableArrayExtra(Constants.intentParamDataFile);
-				fillerFiles = Arrays.copyOf(parcelableArray, parcelableArray.length, Uri[].class);
+			if(getIntent().getBooleanExtra(Constants.intentParamDataFile, false)) {
+				ClipData clipData = getIntent().getClipData();
+				fillerFiles = new Uri[clipData.getItemCount()];
+				for(int i = 0; i < clipData.getItemCount(); i++) fillerFiles[i] = clipData.getItemAt(i).getUri();
 			}
 		}
 		
@@ -1520,16 +1523,17 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Getting the message details
 		String cleanMessageText = messageInputField.getText().toString().trim();
+		if(cleanMessageText.isEmpty()) cleanMessageText = null;
 		
 		//Returning if there is no data to send
-		if(cleanMessageText.isEmpty() && viewModel.draftQueueList.isEmpty()) return;
+		if(cleanMessageText == null && viewModel.draftQueueList.isEmpty()) return;
 		
 		//Checking if the current service handler is AirMessage bridge
 		if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
 			//Checking if the message box has text
-			if(!cleanMessageText.isEmpty()) {
+			if(cleanMessageText != null) {
 				//Creating a message
-				messageList.add(new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
+				messageList.add(new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
 				
 				//Clearing the message box
 				messageInputField.setText("");
@@ -1543,7 +1547,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Iterating over the drafts
 			for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
 				//Creating the message
-				MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+				MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 				
 				//Creating the attachment
 				SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
@@ -1562,10 +1566,10 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 		} else {
 			//Creating the message
-			MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText.isEmpty() ? null : cleanMessageText, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+			MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 			
 			//Clearing the message box
-			if(!cleanMessageText.isEmpty()) {
+			if(cleanMessageText != null) {
 				messageInputField.setText("");
 				messageInputField.requestLayout(); //Height of input field doesn't update otherwise
 			}
@@ -1596,10 +1600,16 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewModel.conversationInfo.clearDraftsUpdate(this);
 		
 		//Writing the messages to the database
-		new AddGhostMessageTask(getApplicationContext(), new GhostMessageFinishHandler()).execute(messageList.toArray(new MessageInfo[0]));
+		new AddGhostMessageTask(getApplicationContext(), viewModel.conversationInfo, new GhostMessageFinishHandler()).execute(messageList.toArray(new MessageInfo[0]));
 		
 		//Scrolling to the bottom of the chat
 		messageListAdapter.scrollToBottom();
+		
+		//Unarchiving the conversation
+		if(viewModel.conversationInfo.isArchived()) {
+			viewModel.conversationInfo.setArchived(false);
+			DatabaseManager.getInstance().updateConversationArchived(viewModel.conversationInfo.getLocalID(), false);
+		}
 	}
 	
 	private void openAttachmentsPanel(boolean restore, boolean animate) {
@@ -2014,10 +2024,13 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Getting the views
 			Switch notificationsSwitch = inflated.findViewById(R.id.switch_getnotifications);
+			MaterialButton archiveButton = inflated.findViewById(R.id.button_archive);
 			//Switch pinnedSwitch = inflated.findViewById(R.id.switch_pinconversation);
 			
 			//Restoring the elements' states
 			notificationsSwitch.setChecked(!viewModel.conversationInfo.isMuted());
+			archiveButton.setText(viewModel.conversationInfo.isArchived() ? R.string.action_unarchive : R.string.action_archive);
+			archiveButton.setIconResource(viewModel.conversationInfo.isArchived() ? R.drawable.unarchive_outlined : R.drawable.archive_outlined);
 			//pinnedSwitch.setChecked(viewModel.conversationInfo.isPinned());
 			
 			//Setting the listeners
@@ -2034,7 +2047,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			else buttonChangeColor.setVisibility(View.GONE);
 			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
 			
-			findViewById(R.id.button_archive).setOnClickListener(view -> {
+			archiveButton.setOnClickListener(view -> {
 				//Toggling the archive state
 				boolean newState = !viewModel.conversationInfo.isArchived();
 				viewModel.conversationInfo.setArchived(newState);
@@ -2051,7 +2064,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				buttonView.setIconResource(newState ? R.drawable.unarchive_outlined : R.drawable.archive_outlined);
 			});
 			
-			findViewById(R.id.button_delete).setOnClickListener(view -> {
+			inflated.findViewById(R.id.button_delete).setOnClickListener(view -> {
 				//Creating a dialog
 				AlertDialog dialog = new MaterialAlertDialogBuilder(this)
 						.setMessage(R.string.message_confirm_deleteconversation_current)
@@ -4822,6 +4835,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					
 					//Parsing the file
 					VCard vcard = Ezvcard.parse(fileStream).first();
+					if(vcard == null) return;
 					String name = null;
 					Bitmap bitmap = null;
 					
@@ -4914,10 +4928,10 @@ public class Messaging extends AppCompatCompositeActivity {
 						//newViewModel.smartReplyAvailable.setValue(false);
 						
 						//Creating a message
-						MessageInfo message = new MessageInfo(-1, -1, null, newViewModel.conversationInfo, null, conversationAction.getReplyString().toString(), null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+						MessageInfo message = new MessageInfo(-1, -1, null, newViewModel.conversationInfo, null, conversationAction.getReplyString().toString(), null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 						
 						//Writing the messages to the database
-						new AddGhostMessageTask(newViewModel.getApplication(), new GhostMessageFinishHandler()).execute(message);
+						new AddGhostMessageTask(newViewModel.getApplication(), newViewModel.conversationInfo, new GhostMessageFinishHandler()).execute(message);
 					});
 				} else {
 					//Getting the remote action
@@ -5831,7 +5845,11 @@ public class Messaging extends AppCompatCompositeActivity {
 								//File file = new File(cursor.getString(iData));
 								String fileType = cursor.getString(iType);
 								if(fileType == null) fileType = "application/octet-stream";
-								String fileName = Constants.cleanFileName(cursor.getString(iDisplayName));
+								String fileName;
+								{
+									String originalFileName = cursor.getString(iDisplayName);
+									fileName = originalFileName == null ? "file" : Constants.cleanFileName(originalFileName);
+								}
 								long fileSize = cursor.getLong(iSize);
 								long modificationDate = cursor.getLong(iModificationDate);
 								//list.add(new SimpleAttachmentInfo(file, fileType, fileName, fileSize, modificationDate));
@@ -6291,13 +6309,15 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private static class AddGhostMessageTask extends AsyncTask<MessageInfo, MessageInfo, Void> {
 		private final WeakReference<Context> contextReference;
+		private final ConversationInfo conversationInfo;
 		private final Consumer<MessageInfo> onFinishListener;
 		
-		AddGhostMessageTask(Context context, Consumer<MessageInfo> onFinishListener) {
+		AddGhostMessageTask(Context context, ConversationInfo conversationInfo, Consumer<MessageInfo> onFinishListener) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
 			
 			//Setting the other values
+			this.conversationInfo = conversationInfo;
 			this.onFinishListener = onFinishListener;
 		}
 		
@@ -6320,6 +6340,19 @@ public class Messaging extends AppCompatCompositeActivity {
 		@Override
 		protected void onProgressUpdate(MessageInfo... messages) {
 			for(MessageInfo message : messages) onFinishListener.accept(message);
+		}
+		
+		@Override
+		protected void onPostExecute(Void aVoid) {
+			//Getting the context
+			Context context = contextReference.get();
+			if(context == null) return;
+			
+			//Re-sorting this conversation
+			ConversationUtils.sortConversation(conversationInfo);
+			
+			//Updating the conversation activity list
+			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 		}
 	}
 	

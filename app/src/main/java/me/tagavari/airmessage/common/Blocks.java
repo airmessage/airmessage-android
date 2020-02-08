@@ -18,11 +18,7 @@ import javax.crypto.spec.SecretKeySpec;
 import me.tagavari.airmessage.MainApplication;
 
 public class Blocks {
-	public interface Block {
-		void writeObject(ObjectOutputStream stream) throws IOException;
-	}
-	
-	public static class ConversationInfo implements Block {
+	public static class ConversationInfo {
 		public String guid;
 		public boolean available;
 		public String service;
@@ -48,23 +44,9 @@ public class Blocks {
 			this.name = name;
 			this.members = members;
 		}
-		
-		@Override
-		public void writeObject(ObjectOutputStream stream) throws IOException {
-			//Writing the fields
-			stream.writeUTF(guid);
-			stream.writeBoolean(available);
-			if(available) {
-				stream.writeUTF(service);
-				stream.writeBoolean(name != null);
-				if(name != null) stream.writeUTF(name);
-				stream.writeInt(members.length);
-				for(String member : members) stream.writeUTF(member);
-			}
-		}
 	}
 	
-	public static abstract class ConversationItem implements Block {
+	public static abstract class ConversationItem {
 		public long serverID;
 		public String guid;
 		public String chatGuid;
@@ -76,18 +58,6 @@ public class Blocks {
 			this.chatGuid = chatGuid;
 			this.date = date;
 		}
-		
-		@Override
-		public void writeObject(ObjectOutputStream stream) throws IOException {
-			stream.writeInt(getItemType());
-			
-			stream.writeLong(serverID);
-			stream.writeUTF(guid);
-			stream.writeUTF(chatGuid);
-			stream.writeLong(date);
-		}
-		
-		abstract int getItemType();
 	}
 	
 	public static class MessageInfo extends ConversationItem {
@@ -100,6 +70,7 @@ public class Blocks {
 		public static final int stateCodeRead = 4;
 		
 		public String text;
+		public String subject;
 		public String sender;
 		public List<AttachmentInfo> attachments;
 		public List<StickerModifierInfo> stickers;
@@ -109,7 +80,7 @@ public class Blocks {
 		public int errorCode;
 		public long dateRead;
 		
-		public MessageInfo(long serverID, String guid, String chatGuid, long date, String text, String sender, List<AttachmentInfo> attachments, List<StickerModifierInfo> stickers, List<TapbackModifierInfo> tapbacks, String sendEffect, int stateCode, int errorCode, long dateRead) {
+		public MessageInfo(long serverID, String guid, String chatGuid, long date, String text, String subject, String sender, List<AttachmentInfo> attachments, List<StickerModifierInfo> stickers, List<TapbackModifierInfo> tapbacks, String sendEffect, int stateCode, int errorCode, long dateRead) {
 			//Calling the super constructor
 			super(serverID, guid, chatGuid, date);
 			
@@ -123,33 +94,6 @@ public class Blocks {
 			this.stateCode = stateCode;
 			this.errorCode = errorCode;
 			this.dateRead = dateRead;
-		}
-		
-		@Override
-		public void writeObject(ObjectOutputStream stream) throws IOException {
-			//Writing the fields
-			super.writeObject(stream);
-			
-			stream.writeBoolean(text != null);
-			if(text != null) stream.writeUTF(text);
-			stream.writeBoolean(sender != null);
-			if(sender != null) stream.writeUTF(sender);
-			stream.writeInt(attachments.size());
-			for(AttachmentInfo item : attachments) item.writeObject(stream);
-			stream.writeInt(stickers.size());
-			for(StickerModifierInfo item : stickers) item.writeObject(stream);
-			stream.writeInt(tapbacks.size());
-			for(TapbackModifierInfo item : tapbacks) item.writeObject(stream);
-			stream.writeBoolean(sendEffect != null);
-			if(sendEffect != null) stream.writeUTF(sendEffect);
-			stream.writeInt(stateCode);
-			stream.writeInt(errorCode);
-			stream.writeLong(dateRead);
-		}
-		
-		@Override
-		int getItemType() {
-			return itemType;
 		}
 	}
 	
@@ -169,23 +113,6 @@ public class Blocks {
 			this.other = other;
 			this.groupActionType = groupActionType;
 		}
-		
-		@Override
-		public void writeObject(ObjectOutputStream stream) throws IOException {
-			//Writing the fields
-			super.writeObject(stream);
-			
-			stream.writeBoolean(agent != null);
-			if(agent != null) stream.writeUTF(agent);
-			stream.writeBoolean(other != null);
-			if(other != null) stream.writeUTF(other);
-			stream.writeInt(groupActionType);
-		}
-		
-		@Override
-		int getItemType() {
-			return itemType;
-		}
 	}
 	
 	public static class ChatRenameActionInfo extends ConversationItem {
@@ -202,25 +129,9 @@ public class Blocks {
 			this.agent = agent;
 			this.newChatName = newChatName;
 		}
-		
-		@Override
-		public void writeObject(ObjectOutputStream stream) throws IOException {
-			//Writing the fields
-			super.writeObject(stream);
-			
-			stream.writeBoolean(agent != null);
-			if(agent != null) stream.writeUTF(agent);
-			stream.writeBoolean(newChatName != null);
-			if(newChatName != null) stream.writeUTF(newChatName);
-		}
-		
-		@Override
-		int getItemType() {
-			return itemType;
-		}
 	}
 	
-	public static class AttachmentInfo implements Block {
+	public static class AttachmentInfo {
 		public String guid;
 		public String name;
 		public String type;
@@ -235,37 +146,14 @@ public class Blocks {
 			this.size = size;
 			this.checksum = checksum;
 		}
-		
-		@Override
-		public void writeObject(ObjectOutputStream stream) throws IOException {
-			stream.writeUTF(guid);
-			stream.writeUTF(name);
-			stream.writeBoolean(type != null);
-			if(type != null) stream.writeUTF(type);
-			stream.writeLong(size);
-			stream.writeBoolean(checksum != null);
-			if(checksum != null) {
-				stream.writeInt(checksum.length);
-				stream.write(checksum);
-			}
-		}
 	}
 	
-	public static abstract class ModifierInfo implements Block {
+	public static abstract class ModifierInfo {
 		public String message;
 		
 		public ModifierInfo(String message) {
 			this.message = message;
 		}
-		
-		@Override
-		public void writeObject(ObjectOutputStream stream) throws IOException {
-			stream.writeInt(getItemType());
-			
-			stream.writeUTF(message);
-		}
-		
-		abstract int getItemType();
 	}
 	
 	public static class ActivityStatusModifierInfo extends ModifierInfo {
@@ -281,19 +169,6 @@ public class Blocks {
 			//Setting the values
 			this.state = state;
 			this.dateRead = dateRead;
-		}
-		
-		public void writeObject(ObjectOutputStream stream) throws IOException {
-			//Writing the fields
-			super.writeObject(stream);
-			
-			stream.writeInt(state);
-			stream.writeLong(dateRead);
-		}
-		
-		@Override
-		int getItemType() {
-			return itemType;
 		}
 	}
 	
@@ -316,25 +191,6 @@ public class Blocks {
 			this.sender = sender;
 			this.date = date;
 			this.image = image;
-		}
-		
-		@Override
-		public void writeObject(ObjectOutputStream stream) throws IOException {
-			//Writing the fields
-			super.writeObject(stream);
-			
-			stream.writeInt(messageIndex);
-			stream.writeUTF(fileGuid);
-			stream.writeBoolean(sender != null);
-			if(sender != null) stream.writeUTF(sender);
-			stream.writeLong(date);
-			stream.writeInt(image.length);
-			stream.write(image);
-		}
-		
-		@Override
-		int getItemType() {
-			return itemType;
 		}
 	}
 	
@@ -364,157 +220,5 @@ public class Blocks {
 			this.sender = sender;
 			this.code = code;
 		}
-		
-		@Override
-		public void writeObject(ObjectOutputStream stream) throws IOException {
-			//Writing the fields
-			super.writeObject(stream);
-			
-			stream.writeInt(messageIndex);
-			stream.writeBoolean(sender != null);
-			if(sender != null) stream.writeUTF(sender);
-			stream.writeInt(code);
-		}
-		
-		@Override
-		int getItemType() {
-			return itemType;
-		}
 	}
-	
-	/* public static class EncryptableData implements Block {
-		//Creating the reference values
-		private static final int saltLen = 8; //8 bytes
-		private static final int ivLen = 12; //12 bytes (instead of 16 because of GCM)
-		private static final String keyFactoryAlgorithm = "PBKDF2WithHmacSHA256";
-		private static final String keyAlgorithm = "AES";
-		private static final String cipherTransformation = "AES/GCM/NoPadding";
-		private static final int keyIterationCount = 10000;
-		private static final int keyLength = 128; //128 bits
-		
-		//private static final long serialVersionUID = 0;
-		public byte[] salt;
-		public byte[] iv;
-		public byte[] data;
-		private transient boolean dataEncrypted;
-		
-		public EncryptableData(byte[] data) {
-			this.data = data;
-			this.salt = null;
-			this.iv = null;
-			dataEncrypted = false;
-		}
-		
-		public EncryptableData(byte[] salt, byte[] iv, byte[] data) {
-			this.salt = salt;
-			this.iv = iv;
-			this.data = data;
-			dataEncrypted = true;
-		}
-		
-		public EncryptableData encrypt(String password) throws ClassCastException, GeneralSecurityException {
-			//Returning if the data is already encrypted
-			if(dataEncrypted) return this;
-			
-			//Creating a secure random
-			SecureRandom random = new SecureRandom();
-			
-			//Generating a salt
-			salt = new byte[saltLen];
-			random.nextBytes(salt);
-			
-			//Creating the key
-			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(keyFactoryAlgorithm, MainApplication.getSecurityProvider());
-			KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, keyIterationCount, keyLength);
-			SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
-			SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), keyAlgorithm);
-			
-			//Generating the IV
-			iv = new byte[ivLen];
-			random.nextBytes(iv);
-			GCMParameterSpec gcmSpec = new GCMParameterSpec(keyLength, iv);
-			
-			Cipher cipher = Cipher.getInstance(cipherTransformation, MainApplication.getSecurityProvider());
-			cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, gcmSpec);
-			
-			//Encrypting the data
-			data = cipher.doFinal(data);
-			dataEncrypted = true;
-			
-			//Returning the object
-			return this;
-		}
-		
-		public EncryptableData decrypt(String password) throws ClassCastException, GeneralSecurityException {
-			//Returning if the data is not encrypted
-			if(!dataEncrypted) return this;
-			
-			//Creating the key
-			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(keyFactoryAlgorithm, MainApplication.getSecurityProvider());
-			KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, keyIterationCount, keyLength);
-			SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
-			SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), keyAlgorithm);
-			
-			//Creating the IV
-			GCMParameterSpec gcmSpec = new GCMParameterSpec(keyLength, iv);
-			
-			//Creating the cipher
-			Cipher cipher = Cipher.getInstance(cipherTransformation, MainApplication.getSecurityProvider());
-			cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, gcmSpec);
-			
-			//Deciphering the data
-			data = cipher.doFinal(data);
-			dataEncrypted = false;
-			
-			//Invalidating the encryption information
-			salt = null;
-			iv = null;
-			
-			//Returning the object
-			return this;
-		}
-		
-		@Override
-		public void writeObject(ObjectOutputStream stream) throws IOException {
-			//Throwing an exception if the data isn't encrypted
-			if(!dataEncrypted) throw new RuntimeException("Data serialization attempt before encryption!");
-			
-			//Writing the data
-			stream.write(salt);
-			stream.write(iv);
-			stream.writeInt(data.length);
-			stream.write(data);
-		}
-		
-		/* private void readObject(ObjectInputStream stream) throws IOException {
-			//Reading the data
-			salt = new byte[saltLen];
-			stream.readFully(salt);
-			
-			iv = new byte[ivLen];
-			stream.readFully(iv);
-			
-			data = new byte[stream.readInt()];
-			stream.readFully(data);
-		}
-		
-		public static EncryptableData readObject(ObjectInputStream stream) throws IOException {
-			//Reading the data
-			byte[] salt = new byte[saltLen];
-			stream.readFully(salt);
-			
-			byte[] iv = new byte[ivLen];
-			stream.readFully(iv);
-			
-			byte[] data = new byte[stream.readInt()];
-			stream.readFully(data);
-			
-			//Returning the data
-			return new EncryptableData(salt, iv, data);
-		}
-		
-		public boolean isEncrypted() {
-			return dataEncrypted;
-		}
-	} */
 }

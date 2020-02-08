@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -651,6 +652,10 @@ public class ConversationUtils {
 	
 	@RequiresApi(api = Build.VERSION_CODES.N_MR1)
 	private static void generateShortcutInfo(Context context, List<ConversationInfo> conversationList, Constants.ResultCallback<List<ShortcutInfo>> result) {
+		//Removing invalid conversations
+		for(ListIterator<ConversationInfo> iterator = conversationList.listIterator(); iterator.hasNext();) {
+			if(iterator.next().getConversationMembers().isEmpty()) iterator.remove();
+		}
 		//Creating the shortcuts
 		List<ShortcutInfo> shortcutList = new ArrayList<>(conversationList.size());
 		LongSparseArray<String> titleMap = new LongSparseArray<>();

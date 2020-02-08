@@ -28,7 +28,6 @@ import java.util.regex.Pattern;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.common.SharedValues;
 import me.tagavari.airmessage.connection.caladium.ClientCommCaladium;
 import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
@@ -94,7 +93,7 @@ public class ConnectionManager {
 	
 	//Creating the communications values
 	final List<Class> communicationsClassPriorityList = Collections.singletonList(ClientCommCaladium.class);
-	final List<ConnectionServiceSource> communicationsInstancePriorityList = Collections.singletonList(ClientCommCaladium::new);
+	final List<CommunicationsManagerSource> communicationsInstancePriorityList = Collections.singletonList(ClientCommCaladium::new);
 	
 	//Creating the file processing values
 	private final BlockingQueue<FileProcessingRequest> fileProcessingRequestQueue = new LinkedBlockingQueue<>();
@@ -759,30 +758,6 @@ public class ConnectionManager {
 		return true;
 	}
 	
-	private ArrayList<String> structConversationItemsToUsers(List<SharedValues.ConversationItem> structConversationItems) {
-		//Creating the users list
-		ArrayList<String> users = new ArrayList<>();
-		
-		//Iterating over the struct conversation items
-		for(SharedValues.ConversationItem structConversationItem : structConversationItems) {
-			//Getting the users
-			String[] usersInStruct;
-			if(structConversationItem instanceof SharedValues.MessageInfo)
-				usersInStruct = new String[]{((SharedValues.MessageInfo) structConversationItem).sender};
-			else if(structConversationItem instanceof SharedValues.GroupActionInfo)
-				usersInStruct = new String[]{((SharedValues.GroupActionInfo) structConversationItem).agent, ((SharedValues.GroupActionInfo) structConversationItem).other};
-			else if(structConversationItem instanceof SharedValues.ChatRenameActionInfo)
-				usersInStruct = new String[]{((SharedValues.ChatRenameActionInfo) structConversationItem).agent};
-			else continue;
-			
-			//Adding the user to the list if they're valid
-			for(String user : usersInStruct) if(user != null) users.add(user);
-		}
-		
-		//Returning the users list
-		return users;
-	}
-	
 	public static class TransferConversationStruct {
 		private final String guid;
 		private final ConversationInfo.ConversationState state;
@@ -885,7 +860,7 @@ public class ConnectionManager {
 			ConnectionManager manager = getManager();
 			if(manager != null) {
 				int index = manager.chatCreationRequests.indexOfValue(item);
-				if(index != -1) manager.messageSendRequests.removeAt(index);
+				if(index != -1) manager.chatCreationRequests.removeAt(index);
 			}
 		}
 	}
@@ -960,7 +935,7 @@ public class ConnectionManager {
 		}
 	}
 	
-	interface ConnectionServiceSource {
+	interface CommunicationsManagerSource {
 		CommunicationsManager get(ConnectionManager connectionManager, Context context);
 	}
 	

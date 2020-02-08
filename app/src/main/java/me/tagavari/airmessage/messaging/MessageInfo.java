@@ -98,7 +98,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	//Creating the other values
 	private transient boolean playEffectRequested = false;
 	
-	public MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, ArrayList<AttachmentInfo> attachments, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, boolean errorDetailsAvailable, long dateRead) {
+	public MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String messageSubject, ArrayList<AttachmentInfo> attachments, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, boolean errorDetailsAvailable, long dateRead) {
 		//Calling the super constructor
 		super(localID, serverID, guid, date, conversationInfo);
 		
@@ -107,7 +107,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		
 		//Setting the values
 		this.sender = sender;
-		this.messageText = messageText == null ? null : new MessageTextInfo(localID, guid, this, messageText);
+		this.messageText = createMessageTextInfo(localID, guid, messageText, messageSubject);
 		this.attachments = attachments;
 		this.sendStyle = sendStyle;
 		this.sendStyleViewed = sendStyleViewed;
@@ -117,13 +117,13 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		this.dateRead = dateRead;
 	}
 	
-	public MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, boolean errorDetailsAvailable, long dateRead) {
+	public MessageInfo(long localID, long serverID, String guid, ConversationInfo conversationInfo, String sender, String messageText, String messageSubject, String sendStyle, boolean sendStyleViewed, long date, int messageState, int errorCode, boolean errorDetailsAvailable, long dateRead) {
 		//Calling the super constructor
 		super(localID, serverID, guid, date, conversationInfo);
 		
 		//Setting the values
 		this.sender = sender;
-		this.messageText = messageText == null ? null : new MessageTextInfo(localID, guid, this, messageText);
+		this.messageText = createMessageTextInfo(localID, guid, messageText, messageSubject);
 		this.sendStyle = sendStyle;
 		this.sendStyleViewed = sendStyleViewed;
 		this.attachments = new ArrayList<>();
@@ -131,6 +131,13 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		this.errorCode = errorCode;
 		this.errorDetailsAvailable = errorDetailsAvailable;
 		this.dateRead = dateRead;
+	}
+	
+	private MessageTextInfo createMessageTextInfo(long localID, String guid, String body, String subject) {
+		//No message text if there is no text to begin with
+		if(body == null && subject == null) return null;
+		
+		return new MessageTextInfo(localID, guid, this, body, subject);
 	}
 	
 	public void addAttachment(AttachmentInfo attachment) {
@@ -147,6 +154,10 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	
 	public String getMessageText() {
 		return messageText == null ? null : messageText.getText();
+	}
+	
+	public String getMessageSubject() {
+		return messageText == null ? null : messageText.getSubject();
 	}
 	
 	public MessageTextInfo getMessageTextInfo() {
@@ -615,9 +626,6 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 				newViewHolder.progressSend.setProgress(1);
 			};
 			request.getCallbacks().onUploadResponseReceived = () -> {
-				//Forwarding the event to the response manager
-				messageResponseManager.onSuccess();
-				
 				//Setting the message as not sending
 				isSending = false;
 				
@@ -694,7 +702,12 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		message.setAddresses(getConversationInfo().getNormalizedConversationMembersAsArray());
 		
 		//Setting the message text
-		if(getMessageText() != null) message.setText(getMessageText());
+		{
+			String messageText = getMessageText();
+			if(messageText != null) message.setText(messageText);
+			String messageSubject = getMessageSubject();
+			if(messageSubject!= null) message.setSubject(messageSubject);
+		}
 		
 		//Checking if there are any attachments
 		if(attachments.isEmpty()) {
@@ -1310,7 +1323,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	}
 	
 	/**
-	 * Gets error details to display to the user from a contant error code
+	 * Gets error details to display to the user from a constant error code
 	 * @param context The context to use
 	 * @param conversationInfo The conversation relevant to the error
 	 * @param errorCode The error code
@@ -1624,7 +1637,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		for(AttachmentInfo attachment : attachments) attachmentStringRes.add(ConversationUtils.getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 		
 		//Returning the summary
-		callback.onResult(false, getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes));
+		callback.onResult(false, getSummary(context, isOutgoing(), getMessageText(), getMessageSubject(), sendStyle, attachmentStringRes));
 	}
 	
 	public String getSummary(Context context) {
@@ -1633,17 +1646,24 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		for(AttachmentInfo attachment : attachments) attachmentStringRes.add(ConversationUtils.getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 		
 		//Returning the result of the static method
-		return getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes);
+		return getSummary(context, isOutgoing(), getMessageText(), getMessageSubject(), sendStyle, attachmentStringRes);
 	}
 	
-	public static String getSummary(Context context, boolean isFromMe, String messageText, String sendStyle, List<Integer> attachmentStringRes) {
+	public static String getSummary(Context context, boolean isFromMe, String messageText, String messageSubject, String sendStyle, List<Integer> attachmentStringRes) {
 		//Creating the message variable
 		String message;
 		
 		//Applying invisible ink
 		if(Constants.appleSendStyleBubbleInvisibleInk.equals(sendStyle)) message = context.getString(R.string.message_messageeffect_invisibleink);
 		//Otherwise assigning the message to the message text (without line breaks)
-		else if(messageText != null) message = messageText.replace('\n', ' ');
+		else if(messageText != null || messageSubject != null) {
+			//Only text
+			if(messageSubject == null) message = messageText.replace('\n', ' ');
+			//Only subject
+			else if(messageText == null) message = messageSubject.replace('\n', ' ');
+			//Both text and subject
+			else message = context.getResources().getString(R.string.prefix_wild, messageSubject.replace('\n', ' '), messageText.replace('\n', ' '));
+		}
 		//Setting the attachments if there are attachments
 		else if(attachmentStringRes.size() == 1) message = context.getResources().getString(attachmentStringRes.get(0));
 		else if(attachmentStringRes.size() > 1) message = context.getResources().getQuantityString(R.plurals.message_multipleattachments, attachmentStringRes.size(), attachmentStringRes.size());
@@ -1690,7 +1710,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 			attachmentStringRes.add(ConversationUtils.getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 		
 		//Returning the summary
-		return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), sendStyle, attachmentStringRes), getDate(), getLocalID(), getServerID());
+		return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), getMessageSubject(), sendStyle, attachmentStringRes), getDate(), getLocalID(), getServerID());
 	}
 	
 	public void addSticker(StickerInfo sticker) {

@@ -480,7 +480,7 @@ public class NotificationUtils {
 		
 		private void sendMessageSMS(Context context, ConversationInfo conversationInfo, String responseMessage) {
 			//Creating the message
-			MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, null, responseMessage, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
+			MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, null, responseMessage, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
 			
 			//Saving the message to disk and sending it
 			new SaveSendMessage(context, messageInfo, result -> {

@@ -7,7 +7,6 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -45,19 +44,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.net.IDN;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Date;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.regex.Matcher;
 
-import io.github.ponnamkarthik.richlinkpreview.MetaData;
-import io.github.ponnamkarthik.richlinkpreview.ResponseListener;
-import io.github.ponnamkarthik.richlinkpreview.RichPreview;
-import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Preferences;
@@ -65,79 +56,154 @@ import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
 import me.tagavari.airmessage.util.ColorHelper;
 import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.DataTransformUtils;
+import me.tagavari.airmessage.util.RichPreview;
 import me.tagavari.airmessage.view.InvisibleInkView;
 
 public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder> {
 	//Creating the reference values
 	static final int itemViewType = MessageComponent.getNextItemViewType();
 	
+	private static final int previewImageMaxSize = 128 * 1024; //128 KB
+	
 	//Creating the component values
 	private String messageText;
+	private String messageSubject;
 	private boolean messageTextSpannableLoading = false;
 	private Spannable messageTextSpannable = null;
 	
-	public MessageTextInfo(long localID, String guid, MessageInfo message, String messageText) {
+	public MessageTextInfo(long localID, String guid, MessageInfo message, String messageText, String messageSubject) {
 		//Calling the super constructor
 		super(localID, guid, message);
 		
 		//Setting the text
 		this.messageText = messageText;
+		this.messageSubject = messageSubject;
 	}
 	
 	public String getText() {
 		return messageText;
 	}
 	
+	public String getSubject() {
+		return messageSubject;
+	}
+	
+	@SuppressLint("ClickableViewAccessibility")
 	@Override
 	public void bindView(ViewHolder viewHolder, Context context) {
-		//Checking if the device can use Smart Linkify (Android 9.0 Pie, API 28 and above)
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-			//Setting the text
-			if(messageTextSpannable != null) {
-				viewHolder.labelMessage.setMovementMethod(LinkMovementMethod.getInstance());
-				viewHolder.labelMessage.setText(messageTextSpannable);
+		//Checking if there is body text
+		if(messageText != null) {
+			//Showing the body label
+			viewHolder.labelBody.setVisibility(View.VISIBLE);
+			
+			//Checking if the string consists exclusively of emoji characters
+			if(Constants.stringContainsOnlyEmoji(messageText)) {
+				//Increasing the text size
+				viewHolder.labelBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
+				
+				//Setting the message text
+				viewHolder.labelBody.setText(messageText);
 			} else {
-				//Requesting the text to be processed
-				if(!messageTextSpannableLoading) {
-					new TextLinksAsyncTask(context, this).execute();
-					messageTextSpannableLoading = true;
+				//Resetting the text size
+				viewHolder.labelBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+				
+				//Checking if the device can use Smart Linkify (Android 9.0 Pie, API 28 and above)
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+					//Setting the text
+					if(messageTextSpannable != null) {
+						viewHolder.labelBody.setMovementMethod(LinkMovementMethod.getInstance());
+						viewHolder.labelBody.setText(messageTextSpannable);
+					} else {
+						//Requesting the text to be processed
+						if(!messageTextSpannableLoading) {
+							new TextLinksAsyncTask(context, this).execute();
+							messageTextSpannableLoading = true;
+						}
+						
+						//Setting the message without links for now
+						viewHolder.labelBody.setText(messageText);
+					}
+				} else {
+					//Setting the message text
+					viewHolder.labelBody.setText(messageText);
+					
+					//Defaulting to standard Linkify
+					addTextLinksLegacy(viewHolder.labelBody);
+				}
+			}
+			
+			//Setting the body text touch listener
+			viewHolder.labelBody.setOnTouchListener((View view, MotionEvent event) -> {
+				if(event.getAction() == MotionEvent.ACTION_DOWN) {
+					ViewHolder newViewHolder = getViewHolder();
+					if(newViewHolder != null) newViewHolder.inkView.reveal();
+				} else if(event.getAction() == MotionEvent.ACTION_UP) {
+					new Handler(Looper.getMainLooper()).postDelayed(() -> ((TextView) view).setLinksClickable(true), 0);
 				}
 				
-				//Setting the message without links for now
-				viewHolder.labelMessage.setText(messageText);
-			}
+				return view.onTouchEvent(event);
+			});
 		} else {
-			//Setting the message text
-			viewHolder.labelMessage.setText(messageText);
+			//Hiding the body label
+			viewHolder.labelBody.setVisibility(View.GONE);
+		}
+		
+		//Checking if there is subject text
+		if(messageSubject != null) {
+			//Showing the subject label
+			viewHolder.labelSubject.setVisibility(View.VISIBLE);
 			
-			//Defaulting to standard Linkify
-			addTextLinksLegacy(viewHolder.labelMessage);
+			//Setting the subject text
+			viewHolder.labelSubject.setText(messageSubject);
+		} else {
+			//Hiding the subject label
+			viewHolder.labelSubject.setVisibility(View.GONE);
 		}
 		
 		//Setting the message alignment
 		((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (getMessageInfo().isOutgoing() ? Gravity.END : Gravity.START);
 		
-		//Checking if the string consists exclusively of emoji characters
-		if(Constants.stringContainsOnlyEmoji(messageText)) {
-			//Increasing the text size
-			viewHolder.labelMessage.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
-		} else {
-			//Resetting the text size
-			viewHolder.labelMessage.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-		}
-		
 		//Updating the view color
 		updateViewColor(viewHolder, context);
 		
-		//Assigning the interaction listeners
-		//assignInteractionListeners(viewHolder);
-		assignInteractionListenersLegacy(viewHolder.labelMessage);
+		//Setting the long click listener
+		viewHolder.groupMessage.setOnLongClickListener(clickedView -> {
+			//Getting the context
+			Context newContext = clickedView.getContext();
+			
+			//Returning if the view is not an activity
+			if(!(newContext instanceof Activity)) return false;
+			
+			//Displaying the context menu
+			displayContextMenu(newContext, viewHolder.groupMessage);
+			
+			//Returning
+			return true;
+		});
+		viewHolder.labelBody.setOnLongClickListener(clickedView -> {
+			//Getting the context
+			Context newContext = clickedView.getContext();
+			
+			//Returning if the view is not an activity
+			if(!(newContext instanceof Activity)) return false;
+			
+			//Displaying the context menu
+			displayContextMenu(newContext, viewHolder.groupMessage);
+			
+			//Disabling link clicks
+			viewHolder.labelBody.setLinksClickable(false);
+			
+			//Returning
+			return true;
+		});
 		
 		//Enforcing the maximum content width
 		{
 			int maxWidth = ConversationUtils.getMaxMessageWidth(context.getResources());
-			viewHolder.labelMessage.setMaxWidth(maxWidth);
+			viewHolder.labelBody.setMaxWidth(maxWidth);
+			viewHolder.labelSubject.setMaxWidth(maxWidth);
 			viewHolder.messagePreviewContainer.getLayoutParams().width = maxWidth;
 		}
 		
@@ -155,7 +221,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 				}
 			}
 			//Checking if a message preview should be fetched
-			else if(getMessagePreviewState() == MessagePreviewInfo.stateNotTried && !isMessagePreviewLoading()) {
+			else if(getMessagePreviewState() == MessagePreviewInfo.stateNotTried && !isMessagePreviewLoading() && messageText != null) {
 				//Finding any URL spans
 				Matcher matcher = Patterns.WEB_URL.matcher(messageText);
 				int matchOffset = 0;
@@ -191,7 +257,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 				if(targetUrl != null) {
 					//Fetching the data
 					setMessagePreviewLoading(true);
-					new RichPreview(new RichPreviewResponseListener(this, targetUrl)).getPreview(targetUrl);
+					RichPreview.getPreview(targetUrl, new RichPreviewResponseListener(this, targetUrl));
 				} else {
 					//Updating the preview
 					setMessagePreview(null);
@@ -228,8 +294,8 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		//Updating the message label, if it is available
 		ViewHolder viewHolder = getViewHolder();
 		if(viewHolder != null) {
-			viewHolder.labelMessage.setMovementMethod(LinkMovementMethod.getInstance());
-			viewHolder.labelMessage.setText(spannable);
+			viewHolder.labelBody.setMovementMethod(LinkMovementMethod.getInstance());
+			viewHolder.labelBody.setText(spannable);
 		}
 	}
 	
@@ -247,6 +313,8 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		
 		@Override
 		protected Spannable doInBackground(Void... voids) {
+			if(messageText.length() > textClassifier.getMaxGenerateLinksTextLength()) return null;
+			
 			Spannable spannable = new SpannableString(messageText);
 			TextLinks textLinks = textClassifier.generateLinks(new TextLinks.Request.Builder(messageText).build());
 			textLinks.apply(spannable, TextLinks.APPLY_STRATEGY_REPLACE, null);
@@ -275,6 +343,8 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		
 		@Override
 		protected void onPostExecute(Spannable spannable) {
+			if(spannable == null) return;
+			
 			MessageTextInfo messageTextInfo = messageReference.get();
 			if(messageTextInfo != null) messageTextInfo.updateTextLinks(spannable);
 		}
@@ -296,7 +366,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		}
 	}
 	
-	private static class RichPreviewResponseListener implements ResponseListener {
+	private static class RichPreviewResponseListener implements RichPreview.ResponseListener {
 		private final WeakReference<MessageTextInfo> messageTextReference;
 		private final long messageTextID;
 		private final String originalURL;
@@ -309,11 +379,12 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		}
 		
 		@Override
-		public void onData(MetaData metaData) {
+		public void onData(RichPreview.Metadata metadata) {
 			//Getting the message
 			MessageTextInfo messageText = messageTextReference.get();
+			
 			//Checking if there is no useful data
-			String title = metaData.getTitle();
+			String title = metadata.getTitle();
 			if(title == null || title.isEmpty()) {
 				//Updating the preview
 				if(messageText != null) messageText.setMessagePreview(null);
@@ -325,7 +396,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			}
 			
 			//Fetching the link preview
-			new LinkPreviewAsyncTask(messageTextReference, messageTextID, originalURL, metaData).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+			new LinkPreviewAsyncTask(messageTextReference, messageTextID, originalURL, metadata).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 		}
 		
 		@Override
@@ -340,15 +411,15 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		private final WeakReference<MessageTextInfo> messageTextReference;
 		private final long messageID;
 		private final String originalURL;
-		private final MetaData linkMetaData;
+		private final RichPreview.Metadata linkMetaData;
 		private final String downloadURL;
 		
-		LinkPreviewAsyncTask(WeakReference<MessageTextInfo> messageTextReference, long messageID, String originalURL, MetaData linkMetaData) {
+		LinkPreviewAsyncTask(WeakReference<MessageTextInfo> messageTextReference, long messageID, String originalURL, RichPreview.Metadata linkMetaData) {
 			this.messageTextReference = messageTextReference;
 			this.messageID = messageID;
 			this.originalURL = originalURL;
 			this.linkMetaData = linkMetaData;
-			this.downloadURL = linkMetaData.getImageurl();
+			this.downloadURL = linkMetaData.getImageURL();
 		}
 		
 		@Override
@@ -361,6 +432,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 					ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 					DataTransformUtils.copyStream(in, out);
 					imageBytes = out.toByteArray();
+					if(imageBytes.length > previewImageMaxSize) imageBytes = DataTransformUtils.compressFile(imageBytes, "image/webp", previewImageMaxSize);
 				} catch(FileNotFoundException exception) {
 					exception.printStackTrace();
 					//Not returning, as the preview should simply be displayed without an image if the URI 404'd
@@ -372,7 +444,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			
 			//Creating the message preview
 			String caption;
-			if(linkMetaData.getSitename() != null && !linkMetaData.getSitename().isEmpty()) caption = linkMetaData.getSitename();
+			if(linkMetaData.getSiteName() != null && !linkMetaData.getSiteName().isEmpty()) caption = linkMetaData.getSiteName();
 			else {
 				try {
 					caption = Constants.getDomainName(originalURL);
@@ -437,39 +509,6 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		});
 	} */
 	
-	@SuppressLint("ClickableViewAccessibility")
-	private void assignInteractionListenersLegacy(TextView textView) {
-		//Setting the long click listener
-		textView.setOnLongClickListener(clickedView -> {
-			//Getting the context
-			Context context = clickedView.getContext();
-			
-			//Returning if the view is not an activity
-			if(!(context instanceof Activity)) return false;
-			
-			//Displaying the context menu
-			displayContextMenu(context, textView);
-			
-			//Disabling link clicks
-			((TextView) clickedView).setLinksClickable(false);
-			
-			//Returning
-			return true;
-		});
-		
-		//Setting the touch listener
-		textView.setOnTouchListener((View view, MotionEvent event) -> {
-			if(event.getAction() == MotionEvent.ACTION_DOWN) {
-				ViewHolder newViewHolder = getViewHolder();
-				if(newViewHolder != null) newViewHolder.inkView.reveal();
-			} else if(event.getAction() == MotionEvent.ACTION_UP) {
-				new Handler(Looper.getMainLooper()).postDelayed(() -> ((TextView) view).setLinksClickable(true), 0);
-			}
-			
-			return view.onTouchEvent(event);
-		});
-	}
-	
 	@Override
 	public void addMessagePreviewView(MessagePreviewInfo preview) {
 		ViewHolder viewHolder = getViewHolder();
@@ -492,16 +531,16 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		//Setting the current preview view holder
 		viewHolder.setCurrentPreviewVH(messagePreviewVH);
 		
-		//Expanding the text to match the view
-		viewHolder.labelMessage.getLayoutParams().width = 0;
+		//Expanding the message text bubble to match the view
+		viewHolder.groupMessage.getLayoutParams().width = 0;
 		
 		//Updating the view edges
 		getMessageInfo().updateViewEdges(context.getResources().getBoolean(R.bool.is_left_to_right));
 	}
 	
 	private void clearMessagePreviewView(ViewHolder viewHolder) {
-		//Resetting the text's width to its default
-		viewHolder.labelMessage.getLayoutParams().width = ViewGroup.LayoutParams.WRAP_CONTENT;
+		//Resetting the message text bubble's width to its default
+		viewHolder.groupMessage.getLayoutParams().width = ViewGroup.LayoutParams.WRAP_CONTENT;
 		
 		//Removing the current preview view
 		viewHolder.setCurrentPreviewVH(null);
@@ -536,9 +575,10 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		}
 		
 		//Assigning the colors
-		viewHolder.labelMessage.setTextColor(textColor);
-		viewHolder.labelMessage.setLinkTextColor(textColor);
-		viewHolder.labelMessage.setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
+		viewHolder.labelBody.setTextColor(textColor);
+		viewHolder.labelBody.setLinkTextColor(textColor);
+		viewHolder.labelSubject.setTextColor(textColor);
+		viewHolder.groupMessage.setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
 		
 		viewHolder.inkView.setBackgroundColor(backgroundColor);
 	}
@@ -547,8 +587,8 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 	public void updateViewEdges(ViewHolder viewHolder, boolean anchoredTop, boolean anchoredBottom, boolean alignToRight, int pxCornerAnchored, int pxCornerUnanchored) {
 		//Checking if there is not a message preview active
 		if(viewHolder.getCurrentPreviewVH() == null) {
-			//Updating the text view's background
-			viewHolder.labelMessage.setBackground(Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
+			//Updating the message text bubble's background
+			viewHolder.groupMessage.setBackground(Constants.createRoundedDrawable(anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
 			
 			//Updating the ink view's background
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
@@ -557,8 +597,8 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			if(alignToRight) viewHolder.inkView.setRadii(pxCornerUnanchored, radiusTop, radiusBottom, pxCornerUnanchored);
 			else viewHolder.inkView.setRadii(radiusTop, pxCornerUnanchored, pxCornerUnanchored, radiusBottom);
 		} else {
-			//Updating the text view's background
-			viewHolder.labelMessage.setBackground(Constants.createRoundedDrawableTop(new GradientDrawable(), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
+			//Updating the message text bubble's background
+			viewHolder.groupMessage.setBackground(Constants.createRoundedDrawableTop(new GradientDrawable(), anchoredTop, anchoredBottom, alignToRight, pxCornerUnanchored, pxCornerAnchored));
 			
 			//Updating the ink view's background
 			int radiusTop = anchoredTop ? pxCornerAnchored : pxCornerUnanchored;
@@ -588,6 +628,12 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		Menu menu = popupMenu.getMenu();
 		menu.removeItem(R.id.action_save);
 		menu.removeItem(R.id.action_deletedata);
+		
+		//Removing the copy message and share option if there is no message
+		if(messageText == null) {
+			menu.removeItem(R.id.action_copytext);
+			menu.removeItem(R.id.action_share);
+		}
 		
 		//Removing the tapback info option if there are no tapbacks
 		if(tapbacks.isEmpty()) menu.removeItem(R.id.action_tapbackdetails);
@@ -712,7 +758,9 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 	
 	public static class ViewHolder extends MessageComponent.ViewHolder {
 		final ViewGroup content;
-		final TextView labelMessage;
+		final ViewGroup groupMessage;
+		final TextView labelBody;
+		final TextView labelSubject;
 		final InvisibleInkView inkView;
 		
 		private MessagePreviewLink.ViewHolder messagePreviewLinkVH = null;
@@ -721,7 +769,9 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			super(view);
 			
 			content = view.findViewById(R.id.content);
-			labelMessage = content.findViewById(R.id.message);
+			groupMessage = content.findViewById(R.id.group_message);
+			labelBody = groupMessage.findViewById(R.id.label_body);
+			labelSubject = groupMessage.findViewById(R.id.label_subject);
 			inkView = content.findViewById(R.id.content_ink);
 		}
 		
