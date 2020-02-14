@@ -1,21 +1,33 @@
 package me.tagavari.airmessage.messaging;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.PaintDrawable;
 import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
+
+import androidx.annotation.Nullable;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestBuilder;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.Target;
 
 import java.io.File;
 
 import jp.wasabeef.glide.transformations.BlurTransformation;
+import me.tagavari.airmessage.util.ColorHelper;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Messaging;
@@ -68,11 +80,28 @@ public class VideoAttachmentInfo extends AttachmentInfo<VideoAttachmentInfo.View
 		//Setting the bitmap
 		((ImageView) content.findViewById(R.id.content_view)).setImageBitmap(null); */
 		
+		//Resetting the icon color
+		viewHolder.iconPlay.setImageTintList(ColorStateList.valueOf(0xFFFFFFFF));
+		
 		//Requesting a Glide image load
 		if(Constants.validateContext(context)) {
 			viewHolder.imageContent.layout(0, 0, 0, 0);
 			RequestBuilder<Drawable> requestBuilder = Glide.with(context)
 					.load(file)
+					.listener(new RequestListener<Drawable>() {
+						@Override
+						public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+							return false;
+						}
+						
+						@Override
+						public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+							Bitmap bitmap = ((BitmapDrawable) resource).getBitmap();
+							boolean isLight = ColorHelper.calculateBrightness(bitmap, bitmap.getWidth() / 16) > 200;
+							viewHolder.iconPlay.setImageTintList(isLight ? ColorStateList.valueOf(0xFFFFFFFF) : ColorStateList.valueOf(0xFF212121));
+							return false;
+						}
+					})
 					.transition(DrawableTransitionOptions.withCrossFade());
 					//.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getServiceColor(R.color.colorImageUnloaded, null))));
 			if(Constants.appleSendStyleBubbleInvisibleInk.equals(getMessageInfo().getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(ConversationUtils.invisibleInkBlurRadius, ConversationUtils.invisibleInkBlurSampling)));
@@ -214,6 +243,7 @@ public class VideoAttachmentInfo extends AttachmentInfo<VideoAttachmentInfo.View
 		final ViewGroup groupContent;
 		final RoundedImageView imageContent;
 		final InvisibleInkView inkView;
+		final ImageView iconPlay;
 		final View backgroundView;
 		
 		public ViewHolder(View view) {
@@ -222,6 +252,7 @@ public class VideoAttachmentInfo extends AttachmentInfo<VideoAttachmentInfo.View
 			groupContent = groupContentFrame.findViewById(R.id.content);
 			imageContent = groupContent.findViewById(R.id.content_view);
 			inkView = groupContent.findViewById(R.id.content_ink);
+			iconPlay = groupContent.findViewById(R.id.icon_play);
 			backgroundView = groupContent.findViewById(R.id.content_background);
 		}
 		

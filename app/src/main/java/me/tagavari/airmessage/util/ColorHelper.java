@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.util;
 
+import android.graphics.Bitmap;
 import android.graphics.Color;
 
 import androidx.core.graphics.ColorUtils;
@@ -66,7 +67,25 @@ public class ColorHelper {
 	private static float clamp(float value, float min, float max) {
 		return Math.max(Math.min(value, max), min);
 	}
+	
 	private static int clamp(int value, int min, int max) {
 		return Math.max(Math.min(value, max), min);
+	}
+	
+	public static int calculateBrightness(Bitmap bitmap, int skipPixel) {
+		int R = 0; int G = 0; int B = 0;
+		int height = bitmap.getHeight();
+		int width = bitmap.getWidth();
+		int n = 0;
+		int[] pixels = new int[width * height];
+		bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
+		for (int i = 0; i < pixels.length; i += skipPixel) {
+			int color = pixels[i];
+			R += Color.red(color);
+			G += Color.green(color);
+			B += Color.blue(color);
+			n++;
+		}
+		return (R + B + G) / (n * 3);
 	}
 }
