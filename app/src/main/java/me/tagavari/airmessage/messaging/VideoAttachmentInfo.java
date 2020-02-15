@@ -96,9 +96,17 @@ public class VideoAttachmentInfo extends AttachmentInfo<VideoAttachmentInfo.View
 						
 						@Override
 						public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+							//Getting the view holder
+							ViewHolder newViewHolder = getViewHolder();
+							if(newViewHolder == null) return false;
+							
+							//Computing the image brightness
 							Bitmap bitmap = ((BitmapDrawable) resource).getBitmap();
 							boolean isLight = ColorHelper.calculateBrightness(bitmap, bitmap.getWidth() / 16) > 200;
-							viewHolder.iconPlay.setImageTintList(isLight ? ColorStateList.valueOf(0xFFFFFFFF) : ColorStateList.valueOf(0xFF212121));
+							
+							//Updating the play icon color
+							newViewHolder.iconPlay.setImageTintList(isLight ? ColorStateList.valueOf(0xFF212121) : ColorStateList.valueOf(0xFFFFFFFF));
+							
 							return false;
 						}
 					})
