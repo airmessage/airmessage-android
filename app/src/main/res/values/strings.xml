@@ -388,6 +388,19 @@
 	<string name="part_tapback_exclamation">Exclamation</string>
 	<string name="part_tapback_question">Question mark</string>
 
+	<string name="label_email_home">Home</string>
+	<string name="label_email_work">Work</string>
+	<string name="label_email_other">Other</string>
+	<string name="label_phone_mobile">Mobile</string>
+	<string name="label_phone_work">Work</string>
+	<string name="label_phone_home">Home</string>
+	<string name="label_phone_main">Main</string>
+	<string name="label_phone_workfax">Work fax</string>
+	<string name="label_phone_homefax">Home fax</string>
+	<string name="label_phone_pager">Pager</string>
+	<string name="label_phone_other">Other</string>
+	<string name="label_addressdetails">%1$s - %2$s</string>
+
 	<string name="state_sent">Sent</string>
 	<string name="state_delivered">Delivered</string>
 	<string name="state_read">Read</string>

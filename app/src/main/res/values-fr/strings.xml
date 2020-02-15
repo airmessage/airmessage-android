@@ -434,4 +434,17 @@
 	<string name="action_tapbackdetails">Afficher les détails Tapback</string>
 	<string name="message_appvaliditywarning">Cette installation de AirMessage ne peut pas être vérifiée. Vos données de messagerie peuvent être en danger. Veuillez installer AirMessage à partir du Play Store.</string>
 	<string name="preference_features_messagesounds_title">Sons de messagerie in-app</string>
+
+	<string name="label_email_home">Domicile</string>
+	<string name="label_email_work">Bureau</string>
+	<string name="label_email_other">Autre</string>
+	<string name="label_phone_mobile">Mobile</string>
+	<string name="label_phone_work">Bureau</string>
+	<string name="label_phone_home">Domicile</string>
+	<string name="label_phone_main">Principal</string>
+	<string name="label_phone_workfax">Fax travail</string>
+	<string name="label_phone_homefax">Fax domicile</string>
+	<string name="label_phone_pager">Bipeur</string>
+	<string name="label_phone_other">Autre</string>
+	<string name="label_addressdetails">%1$s - %2$s</string>
 </resources>

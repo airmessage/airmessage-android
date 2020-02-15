@@ -8,13 +8,13 @@ import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Parcelable;
 import android.provider.ContactsContract;
 import android.provider.Telephony;
 import android.text.Editable;
@@ -65,6 +65,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 
 import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.MainApplication;
@@ -80,6 +81,7 @@ import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
+import me.tagavari.airmessage.util.MMSSMSHelper;
 
 public class NewMessage extends AppCompatCompositeActivity {
 	//Creating the constants
@@ -933,8 +935,8 @@ public class NewMessage extends AppCompatCompositeActivity {
 					//Populating the view
 					itemVH.contactName.setText(contactInfo.name);
 					
-					int addressCount = contactInfo.addresses.size();
-					String firstAddress = contactInfo.addresses.get(0);
+					int addressCount = contactInfo.getAddresses().size();
+					String firstAddress = contactInfo.getAddresses().get(0).getAddress();
 					if(addressCount == 1) itemVH.contactAddress.setText(firstAddress);
 					else itemVH.contactAddress.setText(getResources().getQuantityString(R.plurals.message_multipledestinations, addressCount, firstAddress, addressCount - 1));
 					
@@ -992,9 +994,9 @@ public class NewMessage extends AppCompatCompositeActivity {
 					//Setting the click listener
 					itemVH.contentArea.setOnClickListener(clickView -> {
 						//Checking if there is only one label
-						if(contactInfo.addresses.size() == 1) {
+						if(contactInfo.getAddresses().size() == 1) {
 							//Adding the chip
-							addChip(new Chip(contactInfo.addresses.get(0)));
+							addChip(new Chip(contactInfo.getAddresses().get(0).getAddress()));
 							
 							//Clearing the text
 							recipientInput.setText("");
@@ -1002,9 +1004,9 @@ public class NewMessage extends AppCompatCompositeActivity {
 							//Creating the dialog
 							AlertDialog dialog = new MaterialAlertDialogBuilder(NewMessage.this)
 									.setTitle(R.string.imperative_selectdestination)
-									.setItems(contactInfo.addresses.toArray(new String[0]), ((dialogInterface, index) -> {
+									.setItems(contactInfo.getAddressDisplayArray(getResources()), ((dialogInterface, index) -> {
 										//Adding the selected chip
-										addChip(new Chip(contactInfo.addresses.get(index)));
+										addChip(new Chip(contactInfo.getAddresses().get(index).getAddress()));
 										
 										//Clearing the text
 										recipientInput.setText("");
@@ -1016,11 +1018,12 @@ public class NewMessage extends AppCompatCompositeActivity {
 								dialog.getListView().setOnHierarchyChangeListener(new ViewGroup.OnHierarchyChangeListener() {
 									@Override
 									public void onChildViewAdded(View parent, View child) {
-										//Getting the text
-										String text = ((AppCompatTextView) child).getText().toString();
+										//Getting the item
+										int index = ((ViewGroup) parent).indexOfChild(child);
+										AddressInfo addressInfo = contactInfo.getAddresses().get(index);
 										
-										//Validating the text
-										boolean enabled = Constants.validatePhoneNumber(text);
+										//Validating the address
+										boolean enabled = Constants.validatePhoneNumber(addressInfo.getNormalizedAddress());
 										
 										//Updating the child's status
 										if(!enabled) {
@@ -1211,8 +1214,8 @@ public class NewMessage extends AppCompatCompositeActivity {
 				//Filtering out contacts without phone numbers (if required)
 				if(filterPhoneOnly) {
 					boolean addressFound = false;
-					for(String address : contactInfo.normalizedAddresses) {
-						if(Constants.validatePhoneNumber(address)) {
+					for(AddressInfo address : contactInfo.getAddresses()) {
+						if(Constants.validatePhoneNumber(address.getNormalizedAddress())) {
 							addressFound = true;
 							break;
 						}
@@ -1229,13 +1232,13 @@ public class NewMessage extends AppCompatCompositeActivity {
 						filteredItems.add(contactInfo);
 					} else {
 						//Adding the item if any of the contact's addresses match the filter
-						for(String address : contactInfo.normalizedAddresses) {
-							if(address.startsWith(normalizedFilter)) {
+						for(AddressInfo address : contactInfo.getAddresses()) {
+							if(address.getNormalizedAddress().startsWith(normalizedFilter)) {
 								filteredItems.add(contactInfo);
 								break;
 							} else {
 								//Checking if the address is a phone number
-								if(strippedFilter != null && Constants.validatePhoneNumber(address) && Constants.stripPhoneNumber(address).startsWith(strippedFilter)) {
+								if(strippedFilter != null && Constants.validatePhoneNumber(address.getNormalizedAddress()) && Constants.stripPhoneNumber(address.getNormalizedAddress()).startsWith(strippedFilter)) {
 									filteredItems.add(contactInfo);
 									break;
 								}
@@ -1292,32 +1295,60 @@ public class NewMessage extends AppCompatCompositeActivity {
 	private static class ContactInfo {
 		private final long identifier;
 		private final String name;
-		private final ArrayList<String> addresses;
-		private final ArrayList<String> normalizedAddresses;
+		private final ArrayList<AddressInfo> addresses;
 		
-		ContactInfo(long identifier, String name, ArrayList<String> addresses) {
+		public ContactInfo(long identifier, String name, ArrayList<AddressInfo> addresses) {
 			this.identifier = identifier;
 			this.name = name;
 			this.addresses = addresses;
-			normalizedAddresses = new ArrayList<>();
-			for(String address : addresses) normalizedAddresses.add(Constants.normalizeAddress(address));
 		}
 		
-		private ContactInfo(long identifier, String name, ArrayList<String> addresses, ArrayList<String> normalizedAddresses) {
-			this.identifier = identifier;
-			this.name = name;
-			this.addresses = addresses;
-			this.normalizedAddresses = normalizedAddresses;
-		}
-		
-		void addAddress(String address) {
+		public void addAddress(AddressInfo address) {
 			addresses.add(address);
-			normalizedAddresses.add(Constants.normalizeAddress(address));
+		}
+		
+		public List<AddressInfo> getAddresses() {
+			return addresses;
+		}
+		
+		public String[] getAddressDisplayArray(Resources resources) {
+			String[] displayArray = new String[addresses.size()];
+			for(ListIterator<AddressInfo> iterator = addresses.listIterator(); iterator.hasNext();) {
+				displayArray[iterator.nextIndex()] = iterator.next().getDisplay(resources);
+			}
+			return displayArray;
 		}
 		
 		@Override
 		protected ContactInfo clone() {
-			return new ContactInfo(identifier, name, new ArrayList<>(addresses), new ArrayList<>(normalizedAddresses));
+			return new ContactInfo(identifier, name, new ArrayList<>(addresses));
+		}
+	}
+	
+	private static class AddressInfo {
+		private final String address, normalizedAddress, addressLabel;
+		
+		public AddressInfo(String address, String addressLabel) {
+			this.address = address;
+			this.normalizedAddress = Constants.normalizeAddress(address);
+			this.addressLabel = addressLabel;
+		}
+		
+		public String getAddress() {
+			return address;
+		}
+		
+		public String getNormalizedAddress() {
+			return normalizedAddress;
+		}
+		
+		public String getAddressLabel() {
+			return addressLabel;
+		}
+		
+		public String getDisplay(Resources resources) {
+			if(addressLabel == null) return address;
+			else return resources.getString(R.string.label_addressdetails, addressLabel, address);
 		}
 	}
 	
@@ -1384,7 +1415,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 					//Querying the database
 					Cursor cursor = contentResolver.query(
 							ContactsContract.Data.CONTENT_URI,
-							new String[]{ContactsContract.Data.CONTACT_ID, ContactsContract.Data.DISPLAY_NAME, ContactsContract.Data.DATA1},
+							new String[]{ContactsContract.Data.CONTACT_ID, ContactsContract.Data.MIMETYPE, ContactsContract.Data.DISPLAY_NAME, ContactsContract.Data.DATA1, ContactsContract.Data.DATA2, ContactsContract.Data.DATA3},
 							ContactsContract.Data.MIMETYPE + " = ? OR (" + ContactsContract.Data.HAS_PHONE_NUMBER + "!= 0 AND " + ContactsContract.Data.MIMETYPE + " = ?)",
 							new String[]{ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE},
 							ContactsContract.Data.DISPLAY_NAME + " ASC");
@@ -1395,8 +1426,11 @@ public class NewMessage extends AppCompatCompositeActivity {
 					//Reading the data
 					ArrayList<ContactInfo> contactList = new ArrayList<>();
 					int indexContactID = cursor.getColumnIndexOrThrow(ContactsContract.Data.CONTACT_ID);
+					int indexMimeType = cursor.getColumnIndexOrThrow(ContactsContract.Data.MIMETYPE);
 					int indexDisplayName = cursor.getColumnIndexOrThrow(ContactsContract.Data.DISPLAY_NAME);
-					int indexAddress = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA1);
+					int indexAddress = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA1); //The address itself (email or phone number)
+					int indexAddressType = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA2); //The label ID for this address
+					int indexAddressLabel = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA3); //The custom user-assigned label for this address
 					
 					userIterator:
 					while(cursor.moveToNext()) {
@@ -1408,22 +1442,28 @@ public class NewMessage extends AppCompatCompositeActivity {
 						long contactID = cursor.getLong(indexContactID);
 						String contactName = cursor.getString(indexDisplayName);
 						if(contactName != null && contactName.isEmpty()) contactName = null;
+						String addressLabel = null;
+						if(!cursor.isNull(indexAddressType)) {
+							int addressType = cursor.getInt(indexAddressType);
+							if(addressType == ContactsContract.CommonDataKinds.BaseTypes.TYPE_CUSTOM) addressLabel = cursor.getString(indexAddressLabel);
+							else addressLabel = MMSSMSHelper.getAddressLabel(getApplication().getResources(), cursor.getString(indexMimeType), addressType);
+						}
+						AddressInfo addressInfo = new AddressInfo(address, addressLabel);
 						
 						//Checking if there is a user with a matching contact ID
-						String normalizedAddress = Constants.normalizeAddress(address);
 						for(ContactInfo contactInfo : contactList) {
 							if(contactInfo.identifier == contactID) {
-								for(String contactAddresses : contactInfo.normalizedAddresses)
-									if(contactAddresses.equals(normalizedAddress))
-										continue userIterator;
-								contactInfo.addAddress(address);
+								for(AddressInfo allAddressInfo : contactInfo.getAddresses()) {
+									if(allAddressInfo.getNormalizedAddress().equals(addressInfo.getNormalizedAddress())) continue userIterator;
+								}
+								contactInfo.addAddress(addressInfo);
 								continue userIterator;
 							}
 						}
 						
 						//Adding the user to the list
-						ArrayList<String> contactAddresses = new ArrayList<>();
-						contactAddresses.add(address);
+						ArrayList<AddressInfo> contactAddresses = new ArrayList<>();
+						contactAddresses.add(addressInfo);
 						ContactInfo contactInfo = new ContactInfo(contactID, contactName, contactAddresses);
 						contactList.add(contactInfo);
 						
