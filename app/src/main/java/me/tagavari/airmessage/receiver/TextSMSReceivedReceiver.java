@@ -42,7 +42,6 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 			message.appendBody(smsMessage.getMessageBody());
 			message.setSender(smsMessage.getOriginatingAddress());
 			message.setTimestamp(smsMessage.getTimestampMillis());
-			System.out.println("Message timestamp: " + System.currentTimeMillis() + " / " + smsMessage.getTimestampMillis());
 		}
 		
 		//Saving the message
