@@ -769,7 +769,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			fillerFiles = sendFiles.toArray(new Uri[0]);
 			
 			//Getting the view model
-			viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
+			viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
 				@NonNull
 				@Override
 				public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
@@ -781,7 +781,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			long conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
 			
 			//Getting the view model
-			viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
+			viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
 				@NonNull
 				@Override
 				public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {

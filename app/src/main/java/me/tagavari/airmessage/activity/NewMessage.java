@@ -307,7 +307,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 		recipientInput.requestFocus();
 		
 		//Getting the view model
-		viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
+		viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
 			@NonNull
 			@Override
 			public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {

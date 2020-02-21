@@ -1415,6 +1415,7 @@ public class Constants {
 	public static com.klinker.android.send_message.Transaction getMMSSMSTransaction(Context context, long messageLocalID) {
 		com.klinker.android.send_message.Settings settings = new com.klinker.android.send_message.Settings();
 		settings.setUseSystemSending(true);
+		settings.setGroup(true);
 		settings.setDeliveryReports(Preferences.getPreferenceSMSDeliveryReports(MainApplication.getInstance()));
 		com.klinker.android.send_message.Transaction transaction = new com.klinker.android.send_message.Transaction(context, settings);
 		

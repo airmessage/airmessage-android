@@ -18,26 +18,25 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.util.List;
-
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModel;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 
-import me.tagavari.airmessage.BuildConfig;
+import java.util.List;
+
+import me.tagavari.airmessage.MainApplication;
+import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.util.ConversationUtils;
 
 public class ServerSetup extends AppCompatActivity {
 	//Creating the reference values
@@ -190,7 +189,7 @@ public class ServerSetup extends AppCompatActivity {
 		}
 		
 		//Getting the view models
-		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
+		viewModel = new ViewModelProvider(this).get(ActivityViewModel.class);
 		
 		//Getting if the change is required
 		isRequired = getIntent().getBooleanExtra(intentExtraRequired, false);

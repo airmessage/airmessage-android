@@ -47,6 +47,7 @@ import androidx.appcompat.view.ActionMode;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -188,7 +189,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		getSupportActionBar().setTitle(getTitleSpannable());
 		
 		//Getting the view model
-		viewModel = ViewModelProviders.of(this).get(ActivityViewModel.class);
+		viewModel = new ViewModelProvider(this).get(ActivityViewModel.class);
 		
 		//Getting the views
 		appBarLayout = findViewById(R.id.appbar);
