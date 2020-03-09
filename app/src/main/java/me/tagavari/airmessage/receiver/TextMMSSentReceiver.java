@@ -6,14 +6,8 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.Telephony;
 
 import com.klinker.android.send_message.MmsSentReceiver;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
 
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.SMSIDParcelable;
