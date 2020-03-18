@@ -2325,8 +2325,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		View memberEntry = inflater.inflate(R.layout.listitem_member, membersLayout, false);
 		
+		String displayAddress = Constants.formatAddress(member.getName());
+		
 		//Setting the default information
-		((TextView) memberEntry.findViewById(R.id.label_member)).setText(member.getName());
+		((TextView) memberEntry.findViewById(R.id.label_member)).setText(displayAddress);
 		((ImageView) memberEntry.findViewById(R.id.profile_default)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
 		
 		//Filling in the information
@@ -2350,7 +2352,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Setting the member's name
 				((TextView) memberEntry.findViewById(R.id.label_member)).setText(userInfo.getContactName());
 				TextView addressView = memberEntry.findViewById(R.id.label_address);
-				addressView.setText(member.getName());
+				addressView.setText(displayAddress);
 				addressView.setVisibility(View.VISIBLE);
 			}
 		});

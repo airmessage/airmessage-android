@@ -710,6 +710,30 @@ public class Constants {
 		return false;
 	}
 	
+	/**
+	 * Format an address to be user-friendly
+	 * @param address The address to format
+	 * @return The user-friendly String representation of the address
+	 */
+	public static String formatAddress(String address) {
+		//Returning the E-Mail if the address is one (can't be formatted)
+		if(address.contains("@")) return address;
+		
+		//Returning the stripped phone number if the address is one
+		if(PhoneNumberUtils.isWellFormedSmsAddress(address)) {
+			String formattedNumber = PhoneNumberUtils.formatNumber(address, "US");
+			if(formattedNumber != null) return formattedNumber;
+		}
+		
+		//Returning the address directly (unknown type)
+		return address;
+	}
+	
+	/**
+	 * Normalize an address for storage or comparison purposes
+	 * @param address The address to normalize
+	 * @return The normalized String representation of the address
+	 */
 	public static String normalizeAddress(String address) {
 		//Returning the E-Mail if the address is one (can't be normalized)
 		if(address.contains("@")) return address;

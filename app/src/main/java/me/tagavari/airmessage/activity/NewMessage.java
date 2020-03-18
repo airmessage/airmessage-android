@@ -43,7 +43,6 @@ import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.widget.AppCompatTextView;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -52,7 +51,6 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -230,7 +228,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 				//Checking if the string passes validation
 				if(Constants.validateAddress(cleanString)) {
 					//Adding a chip
-					addChip(new Chip(cleanString));
+					addChip(new Chip(cleanString, Constants.normalizeAddress(cleanString)));
 					
 					//Clearing the text input
 					recipientInput.setText("");
@@ -580,7 +578,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 		//getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 		
 		//Passing the event to the view model
-		viewModel.confirmParticipants(getRecipientList());
+		viewModel.confirmParticipants(getRecipientAddressList());
 	}
 	
 	public void onClickRequestContacts(View view) {
@@ -592,10 +590,10 @@ public class NewMessage extends AppCompatCompositeActivity {
 		if(viewModel.contactState.getValue() == ActivityViewModel.contactStateFailed) viewModel.loadContacts();
 	}
 	
-	private ArrayList<String> getRecipientList() {
+	private ArrayList<String> getRecipientAddressList() {
 		//Converting the user chips to a string list
 		ArrayList<String> recipients = new ArrayList<>();
-		for(Chip chip : viewModel.userChips) recipients.add(chip.getName());
+		for(Chip chip : viewModel.userChips) recipients.add(chip.getAddress());
 		
 		//Sorting the list
 		Collections.sort(recipients);
@@ -643,8 +641,8 @@ public class NewMessage extends AppCompatCompositeActivity {
 	
 	private void addChip(Chip chip) {
 		//Validating the chip
-		String chipName = Constants.normalizeAddress(chip.name);
-		for(Chip existingChips : viewModel.userChips) if(Constants.normalizeAddress(existingChips.getName()).equals(chipName)) return;
+		String chipName = Constants.normalizeAddress(chip.display);
+		for(Chip existingChips : viewModel.userChips) if(Constants.normalizeAddress(existingChips.getDisplay()).equals(chipName)) return;
 		
 		//Removing the hint from the recipient input if this is the first chip
 		if(viewModel.userChips.isEmpty()) recipientInput.setHint("");
@@ -685,7 +683,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 		}
 		
 		//Checking if the service selector is available. and an email address is being removed
-		if(serviceSelectorAvailable && Constants.validateEmail(chip.name)) {
+		if(serviceSelectorAvailable && Constants.validateEmail(chip.display)) {
 			//Taking from the email count
 			viewModel.participantsEmailCount--;
 			
@@ -695,18 +693,20 @@ public class NewMessage extends AppCompatCompositeActivity {
 	}
 	
 	private class Chip {
-		private final String name;
+		private final String display;
+		private final String address;
 		private final View view;
 		
-		Chip(final String name) {
-			//Setting the name
-			this.name = name;
+		Chip(String display, String address) {
+			//Setting the data
+			this.display = display;
+			this.address = address;
 			
 			//Setting the view
 			view = getLayoutInflater().inflate(R.layout.chip_user, null);
 			
 			//Setting the name
-			((TextView) view.findViewById(R.id.text)).setText(name);
+			((TextView) view.findViewById(R.id.text)).setText(display);
 			
 			//Setting the view's click listener
 			view.setOnClickListener(click -> {
@@ -715,11 +715,11 @@ public class NewMessage extends AppCompatCompositeActivity {
 				
 				//Setting the default information
 				TextView labelView = popupView.findViewById(R.id.label_member);
-				labelView.setText(name);
+				labelView.setText(display);
 				((ImageView) popupView.findViewById(R.id.profile_default)).setColorFilter(getResources().getColor(R.color.colorPrimary, null), android.graphics.PorterDuff.Mode.MULTIPLY);
 				
 				//Filling in the information
-				MainApplication.getInstance().getUserCacheHelper().getUserInfo(NewMessage.this, name, new UserCacheHelper.UserFetchResult() {
+				MainApplication.getInstance().getUserCacheHelper().getUserInfo(NewMessage.this, display, new UserCacheHelper.UserFetchResult() {
 					@Override
 					public void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
 						//Returning if the user info is invalid
@@ -728,13 +728,13 @@ public class NewMessage extends AppCompatCompositeActivity {
 						//Updating the text
 						labelView.setText(userInfo.getContactName());
 						TextView addressView = popupView.findViewById(R.id.label_address);
-						addressView.setText(name);
+						addressView.setText(display);
 						addressView.setVisibility(View.VISIBLE);
 						
 					}
 				});
-				MainApplication.getInstance().getUserCacheHelper().assignUserInfo(getApplicationContext(), name, labelView);
-				MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(getApplicationContext(), name, (View) popupView.findViewById(R.id.profile_image));
+				MainApplication.getInstance().getUserCacheHelper().assignUserInfo(getApplicationContext(), display, labelView);
+				MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(getApplicationContext(), display, (View) popupView.findViewById(R.id.profile_image));
 				
 				//Creating the window
 				final PopupWindow popupWindow = new PopupWindow(popupView, Constants.dpToPx(300), Constants.dpToPx(56));
@@ -763,8 +763,12 @@ public class NewMessage extends AppCompatCompositeActivity {
 			});
 		}
 		
-		String getName() {
-			return name;
+		String getDisplay() {
+			return display;
+		}
+		
+		String getAddress() {
+			return address;
 		}
 		
 		View getView() {
@@ -915,8 +919,9 @@ public class NewMessage extends AppCompatCompositeActivity {
 					
 					//Setting the click listener
 					itemVH.itemView.setOnClickListener(view -> {
+						String cleanString = lastFilterText.trim();
 						//Adding the chip
-						addChip(new Chip(lastFilterText.trim()));
+						addChip(new Chip(lastFilterText, Constants.normalizeAddress(cleanString)));
 						
 						//Clearing the text
 						recipientInput.setText("");
@@ -996,7 +1001,8 @@ public class NewMessage extends AppCompatCompositeActivity {
 						//Checking if there is only one label
 						if(contactInfo.getAddresses().size() == 1) {
 							//Adding the chip
-							addChip(new Chip(contactInfo.getAddresses().get(0).getAddress()));
+							AddressInfo address = contactInfo.getAddresses().get(0);
+							addChip(new Chip(address.getAddress(), address.getNormalizedAddress()));
 							
 							//Clearing the text
 							recipientInput.setText("");
@@ -1006,7 +1012,8 @@ public class NewMessage extends AppCompatCompositeActivity {
 									.setTitle(R.string.imperative_selectdestination)
 									.setItems(contactInfo.getAddressDisplayArray(getResources()), ((dialogInterface, index) -> {
 										//Adding the selected chip
-										addChip(new Chip(contactInfo.getAddresses().get(index).getAddress()));
+										AddressInfo address = contactInfo.getAddresses().get(index);
+										addChip(new Chip(address.getAddress(), address.getNormalizedAddress()));
 										
 										//Clearing the text
 										recipientInput.setText("");
