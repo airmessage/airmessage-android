@@ -1694,7 +1694,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			case MessageInfo.itemType: //Message
 				//Retrieving the message data
 				cursor = database.query(Contract.MessageEntry.TABLE_NAME,
-						new String[]{Contract.MessageEntry.COLUMN_NAME_SENDER, Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT, Contract.MessageEntry.COLUMN_NAME_MESSAGESUBJECT, Contract.MessageEntry.COLUMN_NAME_SENDSTYLE},
+						new String[]{Contract.MessageEntry.COLUMN_NAME_SENDER, Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT, Contract.MessageEntry.COLUMN_NAME_MESSAGESUBJECT, Contract.MessageEntry.COLUMN_NAME_SENDSTYLE, Contract.MessageEntry.COLUMN_NAME_ERROR},
 						Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(lastItemID)},
 						null, null, null);
 				
@@ -1716,13 +1716,15 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				currentIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
 				String sendStyle = cursor.isNull(currentIndex) ? null : cursor.getString(currentIndex);
 				
+				boolean hasError = cursor.getInt(cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_ERROR)) != Constants.messageErrorCodeOK;
+				
 				//Closing the cursor
 				cursor.close();
 				
 				//Checking if the message is valid
 				if(message != null) {
 					//Returning the light message info (without the attachments)
-					return new LightConversationItem(MessageInfo.getSummary(context, sender == null, message, subject, sendStyle, new ArrayList<>()), date, lastItemID, -1);
+					return new LightConversationItem(MessageInfo.getSummary(context, sender == null, message, subject, sendStyle, new ArrayList<>()), date, lastItemID, -1, hasError);
 				}
 				
 				//Retrieving the attachments
@@ -1734,7 +1736,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				//Closing the cursor and returning if an empty item there are no results
 				if(!cursor.moveToNext()) {
 					cursor.close();
-					return new LightConversationItem(context.getResources().getString(R.string.part_unknown), date, lastItemID, -1);
+					return new LightConversationItem(context.getResources().getString(R.string.part_unknown), date, lastItemID, -1, hasError);
 				}
 				
 				//Getting the attachment string resources
@@ -1748,7 +1750,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				cursor.close();
 				
 				//Returning the light message info (without the message)
-				return new LightConversationItem(MessageInfo.getSummary(context, sender == null, null, null, sendStyle, attachmentStringRes), date, lastItemID, -1);
+				return new LightConversationItem(MessageInfo.getSummary(context, sender == null, null, null, sendStyle, attachmentStringRes), date, lastItemID, -1, hasError);
 			case GroupActionInfo.itemType: //Group action
 			{
 				//Retrieving the action data
@@ -1787,7 +1789,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				cursor.close();
 				
 				//Returning the light message info
-				return new LightConversationItem(summary, date, lastItemID, -1);
+				return new LightConversationItem(summary, date, lastItemID, -1, false);
 			}
 			case ChatRenameActionInfo.itemType: //Chat rename
 				//Retrieving the action data
@@ -1821,14 +1823,14 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				cursor.close();
 				
 				//Returning the light conversation item
-				return new LightConversationItem(summary, date, lastItemID, -1);
+				return new LightConversationItem(summary, date, lastItemID, -1, false);
 			case ChatCreationMessage.itemType: //Chat creation
 				//Returning the light conversation item
-				return new LightConversationItem(context.getString(R.string.message_conversationcreated), date, lastItemID, -1);
+				return new LightConversationItem(context.getString(R.string.message_conversationcreated), date, lastItemID, -1, false);
 		}
 		
 		//Returning the light message info
-		return new LightConversationItem("", date, lastItemID, -1);
+		return new LightConversationItem("", date, lastItemID, -1, false);
 
 		/* //Getting the indexes
 		int senderColumnIndex = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDER);

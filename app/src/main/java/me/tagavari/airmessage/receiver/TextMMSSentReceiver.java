@@ -7,8 +7,11 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.klinker.android.send_message.MmsSentReceiver;
 
+import me.tagavari.airmessage.activity.ConversationsBase;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.SMSIDParcelable;
 import me.tagavari.airmessage.messaging.ConversationInfo;
@@ -49,6 +52,10 @@ public class TextMMSSentReceiver extends MmsSentReceiver {
 					
 					//Sending a notification
 					NotificationUtils.sendErrorNotification(context, messageInfo.getConversationInfo());
+					
+					//Updating the last item
+					messageInfo.getConversationInfo().trySetLastItemUpdate(context, messageInfo, false);
+					LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 				}
 				
 				messageInfo.updateViewProgressState();

@@ -1021,7 +1021,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		foregroundConversations.add(new WeakReference<>(this));
 		
 		//Clearing the notifications
-		((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(NotificationUtils.notificationTagMessage, (int) viewModel.conversationID);
+		NotificationManager notificationManager = ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE));
+		notificationManager.cancel(NotificationUtils.notificationTagMessage, (int) viewModel.conversationID);
+		notificationManager.cancel(NotificationUtils.notificationTagMessageError, (int) viewModel.conversationID);
 		
 		//Updating the server warning bar state
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();

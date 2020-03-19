@@ -4,6 +4,7 @@ import android.animation.ValueAnimator;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.os.AsyncTask;
@@ -27,6 +28,7 @@ import android.widget.Toast;
 
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.util.Consumer;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.TransitionManager;
 
@@ -48,6 +50,7 @@ import java.util.List;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.activity.ConversationsBase;
 import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.connection.ConnectionManager;
@@ -182,6 +185,10 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	
 	public void setErrorCode(int errorCode) {
 		this.errorCode = errorCode;
+	}
+	
+	public boolean hasError() {
+		return getErrorCode() != Constants.messageErrorCodeOK;
 	}
 	
 	public String getErrorDetails() {
@@ -534,6 +541,10 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 				
 				//Sending a notification
 				NotificationUtils.sendErrorNotification(MainApplication.getInstance(), getConversationInfo());
+				
+				//Updating the last item
+				getConversationInfo().trySetLastItemUpdate(MainApplication.getInstance(), MessageInfo.this, false);
+				LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 			}
 		};
 		
@@ -734,6 +745,10 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 				//Sending a notification
 				NotificationUtils.sendErrorNotification(MainApplication.getInstance(), getConversationInfo());
 				
+				//Updating the last item
+				getConversationInfo().trySetLastItemUpdate(MainApplication.getInstance(), MessageInfo.this, false);
+				LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+				
 				//Returning
 				return false;
 			}
@@ -795,7 +810,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 					TransitionManager.beginDelayedTransition((ViewGroup) newViewHolder.itemView);
 					newViewHolder.progressSend.setVisibility(View.GONE); */
 				};
-				 final BiConsumer<Integer, String> failConsumer = request.getCallbacks().onFail = (errorCode, errorDetails) -> {
+				final BiConsumer<Integer, String> failConsumer = request.getCallbacks().onFail = (errorCode, errorDetails) -> {
 					//Setting the error code
 					setErrorCode(errorCode);
 					setErrorDetails(errorDetails);
@@ -818,6 +833,10 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 					
 					//Sending a notification
 					NotificationUtils.sendErrorNotification(MainApplication.getInstance(), getConversationInfo());
+					
+					//Updating the last item
+					getConversationInfo().trySetLastItemUpdate(MainApplication.getInstance(), MessageInfo.this, false);
+					LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 				};
 				request.setCustomUploadHandler(filePushRequest -> {
 					//Immediately completing the upload (as there is no standard upload process in this case; at least not one that's worth nicely displaying to the user)

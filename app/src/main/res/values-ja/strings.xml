@@ -439,4 +439,8 @@
 	<string name="label_phone_pager">ポケベル</string>
 	<string name="label_phone_other">その他</string>
 	<string name="label_addressdetails">%1$s - %2$s</string>
+
+	<string name="message_senderrornotify">メッセージを送信できませんでした</string>
+	<string name="message_senderrornotify_desc">%sへのメッセージを送信できませんでした</string>
+	<string name="message_senderror">送信失敗</string>
 </resources>

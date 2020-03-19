@@ -447,4 +447,8 @@
 	<string name="label_phone_pager">Bipeur</string>
 	<string name="label_phone_other">Autre</string>
 	<string name="label_addressdetails">%1$s - %2$s</string>
+
+	<string name="message_senderrornotify">Un message n\'a pas été envoyé</string>
+	<string name="message_senderrornotify_desc">Votre message à %s n\'a pas pu être envoyé</string>
+	<string name="message_senderror">Non envoyé</string>
 </resources>

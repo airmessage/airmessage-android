@@ -149,7 +149,7 @@ public class GroupActionInfo extends ConversationItem<ConversationUtils.ActionLi
 	
 	@Override
 	public void toLightConversationItem(Context context, Constants.ResultCallback<LightConversationItem> callback) {
-		getSummary(context, (wasTasked, result) -> callback.onResult(wasTasked, new LightConversationItem(result, getDate(), getLocalID(), getServerID())));
+		getSummary(context, (wasTasked, result) -> callback.onResult(wasTasked, new LightConversationItem(result, getDate(), getLocalID(), getServerID(), false)));
 	}
 	
 	@Override
@@ -171,6 +171,6 @@ public class GroupActionInfo extends ConversationItem<ConversationUtils.ActionLi
 		}
 		
 		//Returning the light conversation item
-		return new LightConversationItem(getDirectSummary(context, titledAgent, titledOther, actionType), getDate(), getLocalID(), getServerID());
+		return new LightConversationItem(getDirectSummary(context, titledAgent, titledOther, actionType), getDate(), getLocalID(), getServerID(), false);
 	}
 }

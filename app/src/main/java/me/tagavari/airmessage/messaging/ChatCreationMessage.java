@@ -43,11 +43,11 @@ public class ChatCreationMessage extends ConversationItem<ConversationUtils.Acti
 	
 	@Override
 	public void toLightConversationItem(Context context, Constants.ResultCallback<LightConversationItem> callback) {
-		callback.onResult(false, new LightConversationItem(getDirectSummary(context), getDate(), getLocalID(), getServerID()));
+		callback.onResult(false, new LightConversationItem(getDirectSummary(context), getDate(), getLocalID(), getServerID(), false));
 	}
 	
 	@Override
 	public LightConversationItem toLightConversationItemSync(Context context) {
-		return new LightConversationItem(getDirectSummary(context), getDate(), getLocalID(), getServerID());
+		return new LightConversationItem(getDirectSummary(context), getDate(), getLocalID(), getServerID(), false);
 	}
 }
