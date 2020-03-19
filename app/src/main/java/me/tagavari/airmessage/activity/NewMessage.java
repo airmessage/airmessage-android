@@ -641,8 +641,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 	
 	private void addChip(Chip chip) {
 		//Validating the chip
-		String chipName = Constants.normalizeAddress(chip.display);
-		for(Chip existingChips : viewModel.userChips) if(Constants.normalizeAddress(existingChips.getDisplay()).equals(chipName)) return;
+		for(Chip existingChips : viewModel.userChips) if(existingChips.getAddress().equals(chip.getAddress())) return;
 		
 		//Removing the hint from the recipient input if this is the first chip
 		if(viewModel.userChips.isEmpty()) recipientInput.setHint("");
@@ -656,8 +655,8 @@ public class NewMessage extends AppCompatCompositeActivity {
 		//Setting the confirm button as visible
 		confirmMenuItem.setVisible(true);
 		
-		//Checking if the service selector is available, and a phone number is being added
-		if(serviceSelectorAvailable && Constants.validateEmail(chipName)) {
+		//Checking if the service selector is available, and an email address is being added
+		if(serviceSelectorAvailable && Constants.validateEmail(chip.getAddress())) {
 			//Disabling relevant services
 			if(viewModel.participantsEmailCount == 0) setPhoneServiceState(false);
 			
@@ -683,7 +682,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 		}
 		
 		//Checking if the service selector is available. and an email address is being removed
-		if(serviceSelectorAvailable && Constants.validateEmail(chip.display)) {
+		if(serviceSelectorAvailable && Constants.validateEmail(chip.getAddress())) {
 			//Taking from the email count
 			viewModel.participantsEmailCount--;
 			
