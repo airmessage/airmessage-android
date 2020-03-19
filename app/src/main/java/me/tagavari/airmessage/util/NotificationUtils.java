@@ -29,6 +29,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.Person;
@@ -52,6 +53,10 @@ import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.MessageInfo;
 
 public class NotificationUtils {
+	public static final String notificationTagMessage = "message";
+	public static final String notificationTagMessageAlert = "message_alert";
+	//public static final String notificationTagStatus = "status";
+	
 	/**
 	 * Sends a notification concerning a new message
 	 * @param context The context to use
@@ -351,7 +356,7 @@ public class NotificationUtils {
 		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 		
 		//Getting the existing notification
-		Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
+		Notification existingNotification = getNotification(notificationManager, notificationTagMessage, (int) conversationInfo.getLocalID());
 		NotificationCompat.MessagingStyle messagingStyle = null;
 		
 		if(existingNotification != null) {
@@ -388,7 +393,7 @@ public class NotificationUtils {
 		}
 		
 		//Sending the notification
-		notificationManager.notify((int) conversationInfo.getLocalID(), notification.build());
+		notificationManager.notify(notificationTagMessage, (int) conversationInfo.getLocalID(), notification.build());
 	}
 	
 	public static class NotificationBroadcastReceiver extends BroadcastReceiver {
@@ -420,8 +425,8 @@ public class NotificationUtils {
 			if(responseMessage == null) {
 				//Refreshing the notification
 				NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-				Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
-				if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
+				Notification existingNotification = getNotification(notificationManager, notificationTagMessage, (int) conversationInfo.getLocalID());
+				if(existingNotification != null) notificationManager.notify(notificationTagMessage, (int) conversationInfo.getLocalID(), existingNotification);
 				
 				//Returning
 				return;
@@ -451,8 +456,8 @@ public class NotificationUtils {
 				
 				//Refreshing the notification
 				NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-				Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
-				if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
+				Notification existingNotification = getNotification(notificationManager, notificationTagMessage, (int) conversationInfo.getLocalID());
+				if(existingNotification != null) notificationManager.notify(notificationTagMessage, (int) conversationInfo.getLocalID(), existingNotification);
 				
 				//Returning
 				return;
@@ -472,8 +477,8 @@ public class NotificationUtils {
 				@Override
 				public void onFail(int responseCode, String details) {
 					//Refreshing the notification
-					Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
-					if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
+					Notification existingNotification = getNotification(notificationManager, notificationTagMessage, (int) conversationInfo.getLocalID());
+					if(existingNotification != null) notificationManager.notify(notificationTagMessage, (int) conversationInfo.getLocalID(), existingNotification);
 				}
 			});
 		}
@@ -490,8 +495,8 @@ public class NotificationUtils {
 				} else {
 					//Refreshing the notification
 					NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
-					Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
-					if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
+					Notification existingNotification = getNotification(notificationManager, notificationTagMessage, (int) conversationInfo.getLocalID());
+					if(existingNotification != null) notificationManager.notify(notificationTagMessage, (int) conversationInfo.getLocalID(), existingNotification);
 				}
 			}).execute();
 		}
@@ -567,7 +572,7 @@ public class NotificationUtils {
 			//Dismissing the notification
 			if(dismissNotification) {
 				NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-				notificationManager.cancel((int) conversationID);
+				notificationManager.cancel(notificationTagMessage, (int) conversationID);
 			}
 		}
 		
@@ -586,12 +591,12 @@ public class NotificationUtils {
 		}
 	}
 	
-	private static Notification getNotification(NotificationManager notificationManager, int identifier) {
+	private static Notification getNotification(NotificationManager notificationManager, String tag, int identifier) {
 		try {
 			//Getting the existing notification
 			for(StatusBarNotification statusBarNotification : notificationManager.getActiveNotifications()) {
-				//Skipping the remainder of the iteration if the ID does not match
-				if(statusBarNotification.getId() != identifier) continue;
+				//Skipping the remainder of the iteration if the tag or ID does not match
+				if(!Objects.equals(statusBarNotification.getTag(), tag) || statusBarNotification.getId() != identifier) continue;
 				
 				//Returning the notification
 				return statusBarNotification.getNotification();

@@ -224,6 +224,7 @@ import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.extension.MediaSharedElementCallback;
 import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
 import me.tagavari.airmessage.util.MMSSMSHelper;
+import me.tagavari.airmessage.util.NotificationUtils;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.OverScrollScrollView;
 import me.tagavari.airmessage.view.VisualizerView;
@@ -1020,7 +1021,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		foregroundConversations.add(new WeakReference<>(this));
 		
 		//Clearing the notifications
-		((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel((int) viewModel.conversationID);
+		((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(NotificationUtils.notificationTagMessage, (int) viewModel.conversationID);
 		
 		//Updating the server warning bar state
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
