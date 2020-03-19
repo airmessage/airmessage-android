@@ -39,8 +39,11 @@ public class TextSMSSentReceiver extends SentReceiver {
 			for(ConversationInfo loadedConversation : ConversationUtils.getLoadedConversations()) {
 				ConversationItem conversationItem = loadedConversation.findConversationItem(parcelData.getMessageID());
 				if(conversationItem == null) continue;
-				if(!(conversationItem instanceof MessageInfo)) break;
-				messageInfo = (MessageInfo) conversationItem;
+				
+				if(conversationItem instanceof MessageInfo) {
+					messageInfo = (MessageInfo) conversationItem;
+				}
+				
 				break;
 			}
 			
@@ -54,6 +57,7 @@ public class TextSMSSentReceiver extends SentReceiver {
 				}
 				
 				messageInfo.updateViewProgressState();
+				messageInfo.animateGhostStateChanges();
 			}
 			
 			//Calling the listener

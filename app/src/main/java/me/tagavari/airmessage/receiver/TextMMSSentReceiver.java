@@ -48,6 +48,7 @@ public class TextMMSSentReceiver extends MmsSentReceiver {
 				}
 				
 				messageInfo.updateViewProgressState();
+				messageInfo.animateGhostStateChanges();
 			}
 		});
 		

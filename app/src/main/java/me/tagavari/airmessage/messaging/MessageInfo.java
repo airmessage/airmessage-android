@@ -1490,8 +1490,10 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		ViewHolder viewHolder = getViewHolder();
 		if(viewHolder == null) return;
 		
-		viewHolder.containerMessagePart.setAlpha(ghostAlpha);
-		viewHolder.containerMessagePart.animate().alpha(1).start();
+		if(messageState != Constants.messageStateCodeGhost) {
+			viewHolder.containerMessagePart.setAlpha(ghostAlpha);
+			viewHolder.containerMessagePart.animate().alpha(1).start();
+		}
 	}
 	
 	private void restoreUploadState(ViewHolder viewHolder) {

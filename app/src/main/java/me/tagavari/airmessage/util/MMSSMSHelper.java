@@ -14,7 +14,8 @@ public class MMSSMSHelper {
 	 * @return The maximum file size in bytes
 	 */
 	public static int getMaxMessageSize(Context context) {
-		return context.getSystemService(CarrierConfigManager.class).getConfig().getInt(CarrierConfigManager.KEY_MMS_MAX_MESSAGE_SIZE_INT);
+		return 300 * 1024;
+		//return context.getSystemService(CarrierConfigManager.class).getConfig().getInt(CarrierConfigManager.KEY_MMS_MAX_MESSAGE_SIZE_INT);
 	}
 	
 	/**
@@ -22,7 +23,7 @@ public class MMSSMSHelper {
 	 * @param resources The resources to use to retrieve the string
 	 * @param mimeType The MIME type of this contact entry
 	 * @param addressType The address type ID of this entry
-	 * @return
+	 * @return The label for this address type
 	 */
 	public static String getAddressLabel(Resources resources, String mimeType, int addressType) {
 		if(mimeType.equals(ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)) {
@@ -65,6 +66,7 @@ public class MMSSMSHelper {
 					break;
 				case ContactsContract.CommonDataKinds.Phone.TYPE_PAGER:
 					resourceID = R.string.label_phone_pager;
+					break;
 				case ContactsContract.CommonDataKinds.Phone.TYPE_OTHER:
 					resourceID = R.string.label_phone_other;
 					break;

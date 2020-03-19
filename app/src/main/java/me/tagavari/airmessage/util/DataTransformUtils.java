@@ -60,8 +60,6 @@ public class DataTransformUtils {
 		return bitmap;
 	}
 	
-	//Based off of QKSMS's ImageUtils
-	//https://github.com/moezbhatti/qksms/blob/b7f5cd2fa271efe7c419cd9dc78df57ac6e1f33c/data/src/main/java/com/moez/QKSMS/util/ImageUtils.kt
 	private static byte[] compressBitmapLossy(Bitmap bitmap, Bitmap.CompressFormat compressFormat, int maxBytes) {
 		if(bitmap == null) return null;
 		
@@ -117,7 +115,7 @@ public class DataTransformUtils {
 			while(bytes > maxBytes) {
 				double scale = Math.sqrt((double) maxBytes / unscaledBytes) * (1 - attempts * 0.1);
 				outputStream.reset();
-				Bitmap.createScaledBitmap(bitmap, (int) (width * scale), (int) (height * scale), true).compress(Bitmap.CompressFormat.PNG, bitmapQuality, outputStream);;
+				Bitmap.createScaledBitmap(bitmap, (int) (width * scale), (int) (height * scale), true).compress(Bitmap.CompressFormat.PNG, bitmapQuality, outputStream);
 				attempts++;
 				bytes = outputStream.size();
 			}
