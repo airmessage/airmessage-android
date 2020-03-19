@@ -30,6 +30,7 @@ import androidx.core.util.Consumer;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.TransitionManager;
 
+import com.google.android.gms.common.util.BiConsumer;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.klinker.android.send_message.Message;
 import com.klinker.android.send_message.Transaction;
@@ -58,6 +59,7 @@ import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.MMSSMSHelper;
+import me.tagavari.airmessage.util.NotificationUtils;
 
 public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	//Creating the constants
@@ -529,6 +531,9 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 				//Updating the view
 				ViewHolder viewHolder = getViewHolder();
 				if(viewHolder != null) updateViewProgressState(viewHolder);
+				
+				//Sending a notification
+				NotificationUtils.sendErrorNotification(MainApplication.getInstance(), getConversationInfo());
 			}
 		};
 		
@@ -726,6 +731,9 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 				//Updating the view
 				if(viewHolder != null) updateViewProgressState(viewHolder);
 				
+				//Sending a notification
+				NotificationUtils.sendErrorNotification(MainApplication.getInstance(), getConversationInfo());
+				
 				//Returning
 				return false;
 			}
@@ -787,7 +795,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 					TransitionManager.beginDelayedTransition((ViewGroup) newViewHolder.itemView);
 					newViewHolder.progressSend.setVisibility(View.GONE); */
 				};
-				request.getCallbacks().onFail = (errorCode, errorDetails) -> {
+				 final BiConsumer<Integer, String> failConsumer = request.getCallbacks().onFail = (errorCode, errorDetails) -> {
 					//Setting the error code
 					setErrorCode(errorCode);
 					setErrorDetails(errorDetails);
@@ -807,6 +815,9 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 					if(newViewHolder == null) return;
 					newViewHolder.progressSend.setVisibility(View.GONE);
 					updateViewProgressState(newViewHolder);
+					
+					//Sending a notification
+					NotificationUtils.sendErrorNotification(MainApplication.getInstance(), getConversationInfo());
 				};
 				request.setCustomUploadHandler(filePushRequest -> {
 					//Immediately completing the upload (as there is no standard upload process in this case; at least not one that's worth nicely displaying to the user)
@@ -819,6 +830,11 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 						inputStream.readFully(fileBytes);
 					} catch(IOException exception) {
 						exception.printStackTrace();
+						
+						//Failing the request
+						handler.post(() -> failConsumer.accept(Constants.messageErrorCodeLocalIO, null));
+						
+						return;
 					}
 					
 					handler.post(() -> {
@@ -1694,7 +1710,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	
 	@Override
 	public void toLightConversationItem(Context context, Constants.ResultCallback<LightConversationItem> callback) {
-		getSummary(context, (wasTasked, result) -> callback.onResult(wasTasked, new LightConversationItem(result, getDate(), getLocalID(), getServerID())));
+		getSummary(context, (wasTasked, result) -> callback.onResult(wasTasked, new LightConversationItem(result, getDate(), getLocalID(), getServerID(), hasError())));
 	}
 	
 	@Override
@@ -1705,7 +1721,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 			attachmentStringRes.add(ConversationUtils.getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 		
 		//Returning the summary
-		return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), getMessageSubject(), sendStyle, attachmentStringRes), getDate(), getLocalID(), getServerID());
+		return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), getMessageSubject(), sendStyle, attachmentStringRes), getDate(), getLocalID(), getServerID(), hasError());
 	}
 	
 	public void addSticker(StickerInfo sticker) {

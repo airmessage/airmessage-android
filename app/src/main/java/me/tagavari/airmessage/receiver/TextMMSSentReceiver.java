@@ -16,6 +16,7 @@ import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
+import me.tagavari.airmessage.util.NotificationUtils;
 
 public class TextMMSSentReceiver extends MmsSentReceiver {
 	@Override
@@ -45,6 +46,9 @@ public class TextMMSSentReceiver extends MmsSentReceiver {
 					messageInfo.setErrorCode(Constants.messageErrorCodeOK);
 				} else {
 					messageInfo.setErrorCode(Constants.messageErrorCodeLocalUnknown);
+					
+					//Sending a notification
+					NotificationUtils.sendErrorNotification(context, messageInfo.getConversationInfo());
 				}
 				
 				messageInfo.updateViewProgressState();

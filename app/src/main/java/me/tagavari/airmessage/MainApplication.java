@@ -56,6 +56,7 @@ import me.tagavari.airmessage.util.Constants;
 public class MainApplication extends Application {
 	//Creating the reference values
 	public static final String notificationChannelMessage = "message";
+	public static final String notificationChannelMessageError = "message_error";
 	public static final String notificationChannelStatus = "status";
 	public static final String notificationChannelStatusImportant = "status_important";
 	
@@ -161,6 +162,15 @@ public class MainApplication extends Application {
 								.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
 								.setLegacyStreamType(AudioManager.STREAM_NOTIFICATION)
 								.build());
+				//messageChannel.setGroup(notificationGroupMessage);
+				notificationManager.createNotificationChannel(channel);
+			}
+			{
+				NotificationChannel channel = new NotificationChannel(notificationChannelMessageError, getResources().getString(R.string.notificationchannel_messageerror), NotificationManager.IMPORTANCE_HIGH);
+				channel.setDescription(getString(R.string.notificationchannel_messageerror_desc));
+				channel.enableVibration(true);
+				channel.setShowBadge(true);
+				channel.enableLights(true);
 				//messageChannel.setGroup(notificationGroupMessage);
 				notificationManager.createNotificationChannel(channel);
 			}

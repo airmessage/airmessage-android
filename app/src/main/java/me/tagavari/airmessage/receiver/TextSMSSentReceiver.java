@@ -20,6 +20,7 @@ import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
+import me.tagavari.airmessage.util.NotificationUtils;
 
 public class TextSMSSentReceiver extends SentReceiver {
 	private static final List<SMSSentListener> sentListenerList = new ArrayList<>();
@@ -54,6 +55,9 @@ public class TextSMSSentReceiver extends SentReceiver {
 					messageInfo.setErrorCode(Constants.messageErrorCodeOK);
 				} else {
 					messageInfo.setErrorCode(Constants.messageErrorCodeLocalUnknown);
+					
+					//Sending a notification
+					NotificationUtils.sendErrorNotification(context, messageInfo.getConversationInfo());
 				}
 				
 				messageInfo.updateViewProgressState();
