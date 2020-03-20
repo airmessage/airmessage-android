@@ -211,6 +211,10 @@
 	<string name="list_n_middle">と%s</string>
 	<string name="list_n_end">と%s</string>
 	<string name="notificationchannel_message">メッセージ</string>
+
+	<string name="notificationchannel_messageerror">送信の失敗</string>
+	<string name="notificationchannel_messageerror_desc">失敗したメッセージに関する通知</string>
+
 	<string name="notificationchannel_status">一般的なステータス</string>
 	<string name="notificationchannel_status_desc">サーバー接続などのステータス通知</string>
 	<string name="notificationchannel_statusimportant">重要なステータスアラート</string>

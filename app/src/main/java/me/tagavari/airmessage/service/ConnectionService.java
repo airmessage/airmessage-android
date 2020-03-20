@@ -44,8 +44,8 @@ public class ConnectionService extends Service {
 	private static final String BCPingTimer = "me.tagavari.airmessage.connection.ConnectionService-StartPing";
 	private static final String BCReconnectTimer = "me.tagavari.airmessage.connection.ConnectionService-StartReconnect";
 	
-	private static final int notificationID = 0;
-	private static final int notificationAlertID = 1;
+	private static final int notificationID = -1;
+	private static final int notificationAlertID = -2;
 	
 	//Creating the access values
 	private static WeakReference<ConnectionService> serviceReference = null;
