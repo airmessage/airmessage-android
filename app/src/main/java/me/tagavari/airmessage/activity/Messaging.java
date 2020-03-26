@@ -2739,6 +2739,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				infoBarConnection.setButton(R.string.action_reconfigure, view -> startActivity(new Intent(Messaging.this, ServerSetup.class)));
 				break;
 			case ConnectionManager.intentResultCodeConnection:
+			case -1: //Service not started
 				infoBarConnection.setText(R.string.message_serverstatus_noconnection);
 				infoBarConnection.setButton(R.string.action_retry, view -> reconnectService());
 				break;
