@@ -710,6 +710,30 @@ public class Constants {
 		return false;
 	}
 	
+	/**
+	 * Format an address to be user-friendly
+	 * @param address The address to format
+	 * @return The user-friendly String representation of the address
+	 */
+	public static String formatAddress(String address) {
+		//Returning the E-Mail if the address is one (can't be formatted)
+		if(address.contains("@")) return address;
+		
+		//Returning the stripped phone number if the address is one
+		if(PhoneNumberUtils.isWellFormedSmsAddress(address)) {
+			String formattedNumber = PhoneNumberUtils.formatNumber(address, "US");
+			if(formattedNumber != null) return formattedNumber;
+		}
+		
+		//Returning the address directly (unknown type)
+		return address;
+	}
+	
+	/**
+	 * Normalize an address for storage or comparison purposes
+	 * @param address The address to normalize
+	 * @return The normalized String representation of the address
+	 */
 	public static String normalizeAddress(String address) {
 		//Returning the E-Mail if the address is one (can't be normalized)
 		if(address.contains("@")) return address;
@@ -1414,7 +1438,6 @@ public class Constants {
 	
 	public static com.klinker.android.send_message.Transaction getMMSSMSTransaction(Context context, long messageLocalID) {
 		com.klinker.android.send_message.Settings settings = new com.klinker.android.send_message.Settings();
-		settings.setUseSystemSending(true);
 		settings.setDeliveryReports(Preferences.getPreferenceSMSDeliveryReports(MainApplication.getInstance()));
 		com.klinker.android.send_message.Transaction transaction = new com.klinker.android.send_message.Transaction(context, settings);
 		
@@ -1426,17 +1449,17 @@ public class Constants {
 		bundle.putParcelable(Constants.intentParamData, parcelData);
 		
 		{
-			Intent intent = new Intent(MainApplication.getInstance(), TextMMSSentReceiver.class);
+			Intent intent = new Intent(context, TextMMSSentReceiver.class);
 			intent.putExtra(Constants.intentParamData, bundle);
 			transaction.setExplicitBroadcastForSentMms(intent);
 		}
 		{
-			Intent intent = new Intent(MainApplication.getInstance(), TextSMSSentReceiver.class);
+			Intent intent = new Intent(context, TextSMSSentReceiver.class);
 			intent.putExtra(Constants.intentParamData, bundle);
 			transaction.setExplicitBroadcastForSentSms(intent);
 		}
 		{
-			Intent intent = new Intent(MainApplication.getInstance(), TextSMSDeliveredReceiver.class);
+			Intent intent = new Intent(context, TextSMSDeliveredReceiver.class);
 			intent.putExtra(Constants.intentParamData, bundle);
 			transaction.setExplicitBroadcastForDeliveredSms(intent);
 		}

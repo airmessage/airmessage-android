@@ -154,6 +154,9 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 			//Writing the conversation to Android's internal database
 			insertInternalSMS(context, message);
 			
+			//Unarchiving the conversation if it is archived
+			if(conversationInfo.isArchived()) DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), false);
+			
 			//Returning the result
 			return new SaveMessageTaskResult(messageInfo, conversationNew ? conversationInfo : null);
 		}
@@ -181,6 +184,9 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 				conversationInfo.setUnreadMessageCount(conversationInfo.getUnreadMessageCount() + 1);
 				conversationInfo.updateUnreadStatus(context);
 			}
+			
+			//Unarchiving the conversation if it is archived
+			if(conversationInfo.isArchived()) conversationInfo.setArchived(false);
 			
 			//Checking if there is a new conversation to be added
 			if(result.getNewConversationInfo() != null) {

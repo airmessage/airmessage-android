@@ -231,7 +231,7 @@ public class ClientCommCaladium extends CommunicationsManager {
 		//Cancelling an active mass retrieval
 		new Handler(Looper.getMainLooper()).post(() -> connectionManager.cancelMassRetrieval(context));
 		
-		//Attempting to connect via a legacy method
+		//Attempting to connect via a legacy method, and checking for a non-pass
 		if(!forwardRequest || !forwardRequest(launchID, true)) {
 			new Handler(Looper.getMainLooper()).post(() -> {
 				//Checking if this is the most recent launch
@@ -482,15 +482,9 @@ public class ClientCommCaladium extends CommunicationsManager {
 					try {
 						socket.close();
 					} catch(IOException exception) {
-						//Printing the stack trace
 						exception.printStackTrace();
-						
-						//Updating the state
-						closeConnection(ConnectionManager.intentResultCodeConnection, !(exception instanceof ConnectException) && !(exception instanceof SocketTimeoutException));
-						
-						//Returning
-						return;
 					}
+					
 					return;
 				}
 				
@@ -606,7 +600,7 @@ public class ClientCommCaladium extends CommunicationsManager {
 			interrupt();
 			
 			//Updating the state
-			updateStateDisconnected(reason, forwardRequest);
+			updateStateDisconnected(reason, forwardRequest && !isInterrupted());
 		}
 		
 		synchronized boolean sendDataSync(int messageType, byte[] data, boolean flush) {

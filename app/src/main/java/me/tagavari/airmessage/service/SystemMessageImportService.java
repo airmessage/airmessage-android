@@ -31,6 +31,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -45,6 +46,7 @@ import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.DataTransformUtils;
+import me.tagavari.airmessage.util.NotificationUtils;
 
 public class SystemMessageImportService extends Service {
 	public static final String selfIntentActionImport = "import";
@@ -56,8 +58,8 @@ public class SystemMessageImportService extends Service {
 	
 	private Thread currentThread = null;
 	
-	public static final String[] smsMixedColumnProjection = {Telephony.BaseMmsColumns._ID, Telephony.Mms.MESSAGE_BOX, Telephony.Sms.TYPE, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.ERROR_CODE, Telephony.Sms.STATUS};
-	public static final String[] smsColumnProjection = {Telephony.Sms.TYPE, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.ERROR_CODE, Telephony.Sms.STATUS};
+	public static final String[] smsMixedColumnProjection = {Telephony.BaseMmsColumns._ID, Telephony.Mms.MESSAGE_BOX, Telephony.Sms.TYPE, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.ERROR_CODE, Telephony.Sms.STATUS, Telephony.Mms.SUBJECT};
+	public static final String[] smsColumnProjection = {Telephony.Sms._ID, Telephony.Sms.TYPE, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.ERROR_CODE, Telephony.Sms.STATUS};
 	public static final String[] mmsColumnProjection = {Telephony.Mms._ID, Telephony.Mms.DATE, Telephony.Mms.MESSAGE_BOX, Telephony.Mms.SUBJECT};
 	public static final String[] mmsPartColumnProjection = {Telephony.Mms.Part._ID, Telephony.Mms.Part.CONTENT_TYPE, Telephony.Mms.Part.NAME, Telephony.Mms.Part._DATA, Telephony.Mms.Part.TEXT};
 	
@@ -179,88 +181,21 @@ public class SystemMessageImportService extends Service {
 					if(cursorMessage == null) continue;
 					
 					//Getting the messages columns
-					int mMessageID = cursorMessage.getColumnIndexOrThrow(Telephony.BaseMmsColumns._ID);
 					int mMMSMessageBox = cursorMessage.getColumnIndexOrThrow(Telephony.Mms.MESSAGE_BOX);
 					
 					ConversationItem lastConversationItem = null;
 					while(cursorMessage.moveToNext()) {
-						long messageID = cursorMessage.getLong(mMessageID);
-						
 						//Used to discern if this is an MMS message or not
-						if(cursorMessage.getString(mMMSMessageBox) != null) {
-							//MMS message
-							try(Cursor cursorMMS = context.getContentResolver().query(ContentUris.withAppendedId(Telephony.Mms.CONTENT_URI, messageID), mmsColumnProjection, null, null, null)) {
-								if(cursorMMS == null || !cursorMMS.moveToFirst()) continue;
-								
-								//Reading and saving the message
-								MessageInfo messageInfo = readSaveMMSMessage(cursorMMS, context, conversationInfo);
-								if(messageInfo == null) continue;
-								
-								//Setting the last item
-								lastConversationItem = messageInfo;
-							}
-						} else {
-							//SMS message
-							
-							//Getting the message status information
-							int type = cursorMessage.getInt(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.TYPE));
-							int statusCode = cursorMessage.getInt(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.STATUS));
-							
-							//Figuring out the message state (thanks to Pulse SMS)
-							int messageState;
-							boolean isOutgoing = true;
-							if(statusCode == Telephony.Sms.STATUS_NONE || type == Telephony.Sms.MESSAGE_TYPE_INBOX) {
-								switch(type) {
-									case Telephony.Sms.MESSAGE_TYPE_INBOX:
-										isOutgoing = false;
-										messageState = Constants.messageStateCodeSent;
-										break;
-									case Telephony.Sms.MESSAGE_TYPE_FAILED:
-									case Telephony.Sms.MESSAGE_TYPE_OUTBOX:
-										messageState = Constants.messageStateCodeGhost; //Sending
-										break;
-									case Telephony.Sms.MESSAGE_TYPE_SENT:
-									default:
-										messageState = Constants.messageStateCodeSent;
-										break;
-								}
-							} else {
-								switch(statusCode) {
-									case Telephony.Sms.STATUS_COMPLETE:
-										messageState = Constants.messageStateCodeDelivered;
-										break;
-									case Telephony.Sms.STATUS_PENDING:
-									default:
-										messageState = Constants.messageStateCodeSent;
-										break;
-									case Telephony.Sms.STATUS_FAILED:
-										messageState = Constants.messageStateCodeGhost;
-										break;
-								}
-							}
-							
-							String sender = isOutgoing ? null : Constants.normalizeAddress(cursorMessage.getString(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)));
-							String message = cursorMessage.getString(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.BODY));
-							long date = cursorMessage.getLong(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.DATE));
-							int errorCode = cursorMessage.getInt(cursorMessage.getColumnIndexOrThrow(Telephony.Sms.ERROR_CODE));
-							
-							//Mapping the error code
-							int messageErrorCode = Constants.messageErrorCodeOK;
-							if(messageState == Constants.messageStateCodeGhost) {
-								messageErrorCode = Constants.messageErrorCodeServerUnknown;
-							}
-							
-							//Creating the message
-							MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, null, false, date, messageState, messageErrorCode, false, -1);
-							if(messageErrorCode != Constants.messageErrorCodeOK) {
-								messageInfo.setErrorDetails("SMS error code " + errorCode);
-							}
-							
-							//Writing the message to disk
-							DatabaseManager.getInstance().addConversationItem(messageInfo, false);
+						if(cursorMessage.getString(mMMSMessageBox) != null) { //MMS message
+							//Reading and saving the message
+							MessageInfo messageInfo = readSaveMMSMessage(cursorMessage, context, conversationInfo);
+							if(messageInfo == null) continue;
 							
 							//Setting the last item
 							lastConversationItem = messageInfo;
+						} else { //SMS message
+							//Reading and saving the message, setting the message as the last item
+							lastConversationItem = readSaveSMSMessage(cursorMessage, conversationInfo);
 						}
 					}
 					
@@ -456,6 +391,96 @@ public class SystemMessageImportService extends Service {
 		return notification;
 	}
 	
+	/**
+	 * Handles conversation thread management, disk storage, memory updates, and notifications for new message updates
+	 * @param context The context to use
+	 * @param threadID The Android-provided message's thread ID
+	 */
+	public static void handleNewMessage(Context context, long threadID, CursorMessageMapper mapper) {
+		//Searching for the conversation in memory
+		final ConversationInfo conversationInfoMem = ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
+		
+		//Returning to a worker thread
+		new Thread(() -> {
+			ConversationInfo conversationInfo = conversationInfoMem;
+			boolean conversationNew = false;
+			//Fetching a matching conversation (if one was not found in memory)
+			if(conversationInfo == null) {
+				conversationInfo = DatabaseManager.getInstance().findConversationByExternalID(context, threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
+				
+				//Creating a new conversation if no existing conversation was found
+				if(conversationInfo == null) {
+					//Getting the conversation participants
+					String recipientIDs;
+					try(Cursor cursorConversation = context.getContentResolver().query(Uri.parse("content://mms-sms/conversations?simple=true"), new String[]{"*"},
+							Telephony.Threads._ID + " = ?", new String[]{Long.toString(threadID)},
+							null)) {
+						if(cursorConversation == null || !cursorConversation.moveToFirst()) return;
+						
+						recipientIDs = cursorConversation.getString(cursorConversation.getColumnIndexOrThrow(Telephony.Threads.RECIPIENT_IDS));
+					}
+					
+					//Creating the conversation
+					int conversationColor = ConversationInfo.getDefaultConversationColor(threadID);
+					conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
+					conversationInfo.setExternalID(threadID);
+					conversationInfo.setConversationMembersCreateColors(SystemMessageImportService.getAddressFromRecipientID(context, recipientIDs));
+					
+					//Writing the conversation to disk
+					boolean result = DatabaseManager.getInstance().addReadyConversationInfo(conversationInfo);
+					if(!result) {
+						mapper.close();
+						return;
+					}
+					
+					conversationNew = true;
+				}
+			}
+			
+			//Reading and saving the message
+			MessageInfo messageInfo = mapper.map(context, conversationInfo);
+			mapper.close();
+			if(messageInfo == null) return;
+			
+			//Unarchiving the conversation if it is archived
+			if(conversationInfo.isArchived()) DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), false);
+			
+			//Running on the main thread
+			final boolean conversationNewFinal = conversationNew;
+			final ConversationInfo conversationInfoFinal = conversationInfo;
+			new Handler(context.getMainLooper()).post(() -> {
+				//Adding the message to the conversation in memory
+				boolean addItemResult = conversationInfoFinal.addConversationItems(context, Collections.singletonList(messageInfo));
+				//Setting the last item if the conversation items couldn't be added
+				if(!addItemResult) conversationInfoFinal.trySetLastItemUpdate(context, messageInfo, false);
+				
+				//Incrementing the conversation's unread count
+				if(!messageInfo.isOutgoing()) {
+					conversationInfoFinal.setUnreadMessageCount(conversationInfoFinal.getUnreadMessageCount() + 1);
+					conversationInfoFinal.updateUnreadStatus(context);
+				}
+				
+				//Unarchiving the conversation if it is archived
+				if(conversationInfoFinal.isArchived()) conversationInfoFinal.setArchived(false);
+				
+				//Checking if there is a new conversation to be added
+				if(conversationNewFinal) {
+					//Adding the conversation in memory
+					ConversationUtils.addConversation(conversationInfoFinal);
+				} else {
+					//Re-sorting the conversation
+					ConversationUtils.sortConversation(conversationInfoFinal);
+				}
+				
+				//Updating the conversation activity list
+				LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
+				
+				//Sending a notification
+				if(!messageInfo.isOutgoing()) NotificationUtils.sendNotification(context, messageInfo);
+			});
+		}).start();
+	}
+	
 	public static MessageInfo readSaveMMSMessage(Cursor cursorMMS, Context context, ConversationInfo conversationInfo) {
 		//Getting the message type
 		int messageBox = cursorMMS.getInt(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.MESSAGE_BOX));
@@ -575,6 +600,68 @@ public class SystemMessageImportService extends Service {
 		return messageInfo;
 	}
 	
+	public static MessageInfo readSaveSMSMessage(Cursor cursorSMS, ConversationInfo conversationInfo) {
+		//Getting the message status information
+		int type = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.TYPE));
+		int statusCode = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.STATUS));
+		
+		//Figuring out the message state (thanks to Pulse SMS)
+		int messageState;
+		boolean isOutgoing = true;
+		if(statusCode == Telephony.Sms.STATUS_NONE || type == Telephony.Sms.MESSAGE_TYPE_INBOX) {
+			switch(type) {
+				case Telephony.Sms.MESSAGE_TYPE_INBOX:
+					isOutgoing = false;
+					messageState = Constants.messageStateCodeSent;
+					break;
+				case Telephony.Sms.MESSAGE_TYPE_FAILED:
+				case Telephony.Sms.MESSAGE_TYPE_OUTBOX:
+					messageState = Constants.messageStateCodeGhost; //Sending
+					break;
+				case Telephony.Sms.MESSAGE_TYPE_SENT:
+				default:
+					messageState = Constants.messageStateCodeSent;
+					break;
+			}
+		} else {
+			switch(statusCode) {
+				case Telephony.Sms.STATUS_COMPLETE:
+					messageState = Constants.messageStateCodeDelivered;
+					break;
+				case Telephony.Sms.STATUS_PENDING:
+				default:
+					messageState = Constants.messageStateCodeSent;
+					break;
+				case Telephony.Sms.STATUS_FAILED:
+					messageState = Constants.messageStateCodeGhost;
+					break;
+			}
+		}
+		
+		String sender = isOutgoing ? null : Constants.normalizeAddress(cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)));
+		String message = cursorSMS.getString(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.BODY));
+		long date = cursorSMS.getLong(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.DATE));
+		int errorCode = cursorSMS.getInt(cursorSMS.getColumnIndexOrThrow(Telephony.Sms.ERROR_CODE));
+		
+		//Mapping the error code
+		int messageErrorCode = Constants.messageErrorCodeOK;
+		if(messageState == Constants.messageStateCodeGhost) {
+			messageErrorCode = Constants.messageErrorCodeServerUnknown;
+		}
+		
+		//Creating the message
+		MessageInfo messageInfo = new MessageInfo(-1, -1, null, conversationInfo, sender, message, null, null, false, date, messageState, messageErrorCode, false, -1);
+		if(messageErrorCode != Constants.messageErrorCodeOK) {
+			messageInfo.setErrorDetails("SMS error code " + errorCode);
+		}
+		
+		//Writing the message to disk
+		DatabaseManager.getInstance().addConversationItem(messageInfo, false);
+		
+		//Returning the message
+		return messageInfo;
+	}
+	
 	private static String getMMSSender(Context context, long messageID) {
 		//Querying for the message information
 		try(Cursor cursor = context.getContentResolver().query(
@@ -656,5 +743,24 @@ public class SystemMessageImportService extends Service {
 		
 		//Returning the array
 		return recipientAddressArray;
+	}
+	
+	public static abstract class CursorMessageMapper implements AutoCloseable {
+		private final Cursor cursor;
+		
+		public CursorMessageMapper(Cursor cursor) {
+			this.cursor = cursor;
+		}
+		
+		public abstract MessageInfo map(Context context, ConversationInfo conversationInfo);
+		
+		public Cursor getCursor() {
+			return cursor;
+		}
+		
+		@Override
+		public void close() {
+			cursor.close();
+		}
 	}
 }

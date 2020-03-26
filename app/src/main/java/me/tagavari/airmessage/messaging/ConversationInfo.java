@@ -348,26 +348,14 @@ public class ConversationInfo implements Serializable {
 			if(viewHolder == null) return;
 			viewHolder.conversationTitle.setText(title);
 		});
-			
-			/*if(draftMessage != null) {
-				itemView.conversationMessage.setText(context.getResources().getString(R.string.prefix_draft, draftMessage));
-				itemView.conversationTime.setText("");
-			} else if(!draftFiles.isEmpty()) {
-				//Converting the draft list to a string resource list
-				ArrayList<Integer> draftStringRes = new ArrayList<>();
-				for(DraftFile draft : draftFiles) draftStringRes.add(getNameFromContentType(draft.getFileType()));
-				
-				String summary;
-				if(draftStringRes.size() == 1) summary = context.getResources().getString(draftStringRes.get(0));
-				else summary = context.getResources().getQuantityString(R.plurals.message_multipleattachments, draftStringRes.size(), draftStringRes.size());
-				itemView.conversationMessage.setText(context.getResources().getString(R.string.prefix_draft, summary));
-				itemView.conversationTime.setText("");
-			} else */if(lastItem != null) {
+		
+		if(lastItem != null) {
 			itemView.conversationMessage.setText(lastItem.getMessage());
 			updateTime(context, itemView);
 		} else {
 			itemView.conversationMessage.setText(R.string.part_unknown);
 			itemView.conversationTime.setText(R.string.part_unknown);
+			itemView.conversationTime.setTextColor(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
 		}
 	}
 	
@@ -411,12 +399,15 @@ public class ConversationInfo implements Serializable {
 			return;
 		}
 		
-		//Setting the time
-			/* itemView.conversationTime.setText(
-					System.currentTimeMillis() - lastItem.getDate() < conversationJustNowTimeMillis ?
-							context.getResources().getString(R.string.time_now) :
-							DateUtils.getRelativeTimeSpanString(lastItem.getDate(), System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_ALL).toString()); */
-		itemView.conversationTime.setText(getLastUpdateStatusTime(context, lastItem.getDate()));
+		if(lastItem.isError()) {
+			//Setting "not sent"
+			itemView.conversationTime.setText(R.string.message_senderror);
+			itemView.conversationTime.setTextColor(context.getResources().getColor(R.color.colorError, null));
+		} else {
+			//Setting the time
+			itemView.conversationTime.setText(getLastUpdateStatusTime(context, lastItem.getDate()));
+			itemView.conversationTime.setTextColor(Constants.resolveColorAttr(context, android.R.attr.textColorSecondary));
+		}
 	}
 	
 	private static String getLastUpdateStatusTime(Context context, long date) {
@@ -812,15 +803,19 @@ public class ConversationInfo implements Serializable {
 	}
 	
 	public boolean trySetLastItem(LightConversationItem item, boolean force) {
-		if(force || lastItem == null || (ConversationUtils.compareConversationItems(lastItem, item) < 0 && !lastItem.isPinned())) {
+		if(force || lastItem == null || (ConversationUtils.compareConversationItems(lastItem, item) <= 0 && !lastItem.isPinned())) {
 			lastItem = item;
 			return true;
 		} else return false;
 	}
 	
+	private static boolean checkError(ConversationItem conversationItem) {
+		return conversationItem instanceof MessageInfo && ((MessageInfo) conversationItem).hasError();
+	}
+	
 	public void trySetLastItemUpdate(Context context, ConversationItem lastConversationItem, boolean force) {
 		//Setting the last item
-		LightConversationItem item = new LightConversationItem("", lastConversationItem.getDate(), lastConversationItem.getLocalID(), lastConversationItem.getDate());
+		LightConversationItem item = new LightConversationItem("", lastConversationItem.getDate(), lastConversationItem.getLocalID(), lastConversationItem.getDate(), checkError(lastConversationItem));
 		if(trySetLastItem(item, force)) lastConversationItem.getSummary(context, (wasTasked, result) -> item.setMessage((String) result));
 	}
 	
@@ -855,7 +850,7 @@ public class ConversationInfo implements Serializable {
 			}
 		} else {
 			//Setting the last conversation item
-			lastItem = new LightConversationItem("", lastConversationItem.getDate(), lastConversationItem.getLocalID(), lastConversationItem.getServerID());
+			lastItem = new LightConversationItem("", lastConversationItem.getDate(), lastConversationItem.getLocalID(), lastConversationItem.getServerID(), checkError(lastConversationItem));
 			lastConversationItem.getSummary(context, new Constants.ResultCallback<String>() {
 				@Override
 				public void onResult(boolean wasTasked, String result) {

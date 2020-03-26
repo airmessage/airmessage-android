@@ -4,11 +4,10 @@ import android.animation.ValueAnimator;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.res.ColorStateList;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Handler;
 import android.text.format.DateFormat;
 import android.util.SparseArray;
@@ -23,16 +22,17 @@ import android.view.animation.AnimationUtils;
 import android.view.animation.BounceInterpolator;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.TextSwitcher;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.util.Consumer;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.transition.TransitionManager;
 
+import com.google.android.gms.common.util.BiConsumer;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.klinker.android.send_message.Message;
 import com.klinker.android.send_message.Transaction;
@@ -44,27 +44,25 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import id.zelory.compressor.Compressor;
+import me.tagavari.airmessage.MainApplication;
+import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.activity.ConversationsBase;
+import me.tagavari.airmessage.activity.Messaging;
+import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.request.FilePushRequest;
 import me.tagavari.airmessage.connection.request.MessageResponseManager;
-import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.util.ConversationUtils;
-import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.activity.Messaging;
-import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.data.BitmapCacheHelper;
 import me.tagavari.airmessage.data.DatabaseManager;
+import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.MMSSMSHelper;
+import me.tagavari.airmessage.util.NotificationUtils;
 
 public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	//Creating the constants
@@ -187,6 +185,10 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	
 	public void setErrorCode(int errorCode) {
 		this.errorCode = errorCode;
+	}
+	
+	public boolean hasError() {
+		return getErrorCode() != Constants.messageErrorCodeOK;
 	}
 	
 	public String getErrorDetails() {
@@ -536,6 +538,13 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 				//Updating the view
 				ViewHolder viewHolder = getViewHolder();
 				if(viewHolder != null) updateViewProgressState(viewHolder);
+				
+				//Sending a notification
+				NotificationUtils.sendErrorNotification(MainApplication.getInstance(), getConversationInfo());
+				
+				//Updating the last item
+				getConversationInfo().trySetLastItemUpdate(MainApplication.getInstance(), MessageInfo.this, false);
+				LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 			}
 		};
 		
@@ -693,7 +702,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		}
 		
 		//Configuring the message settings
-		Transaction transaction = Constants.getMMSSMSTransaction(MainApplication.getInstance(), getLocalID());
+		Transaction transaction = Constants.getMMSSMSTransaction(context, getLocalID());
 		
 		//Creating the message
 		Message message = new Message();
@@ -732,6 +741,13 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 				
 				//Updating the view
 				if(viewHolder != null) updateViewProgressState(viewHolder);
+				
+				//Sending a notification
+				NotificationUtils.sendErrorNotification(MainApplication.getInstance(), getConversationInfo());
+				
+				//Updating the last item
+				getConversationInfo().trySetLastItemUpdate(MainApplication.getInstance(), MessageInfo.this, false);
+				LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 				
 				//Returning
 				return false;
@@ -794,7 +810,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 					TransitionManager.beginDelayedTransition((ViewGroup) newViewHolder.itemView);
 					newViewHolder.progressSend.setVisibility(View.GONE); */
 				};
-				request.getCallbacks().onFail = (errorCode, errorDetails) -> {
+				final BiConsumer<Integer, String> failConsumer = request.getCallbacks().onFail = (errorCode, errorDetails) -> {
 					//Setting the error code
 					setErrorCode(errorCode);
 					setErrorDetails(errorDetails);
@@ -814,6 +830,13 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 					if(newViewHolder == null) return;
 					newViewHolder.progressSend.setVisibility(View.GONE);
 					updateViewProgressState(newViewHolder);
+					
+					//Sending a notification
+					NotificationUtils.sendErrorNotification(MainApplication.getInstance(), getConversationInfo());
+					
+					//Updating the last item
+					getConversationInfo().trySetLastItemUpdate(MainApplication.getInstance(), MessageInfo.this, false);
+					LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 				};
 				request.setCustomUploadHandler(filePushRequest -> {
 					//Immediately completing the upload (as there is no standard upload process in this case; at least not one that's worth nicely displaying to the user)
@@ -826,6 +849,11 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 						inputStream.readFully(fileBytes);
 					} catch(IOException exception) {
 						exception.printStackTrace();
+						
+						//Failing the request
+						handler.post(() -> failConsumer.accept(Constants.messageErrorCodeLocalIO, null));
+						
+						return;
 					}
 					
 					handler.post(() -> {
@@ -1497,8 +1525,10 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		ViewHolder viewHolder = getViewHolder();
 		if(viewHolder == null) return;
 		
-		viewHolder.containerMessagePart.setAlpha(ghostAlpha);
-		viewHolder.containerMessagePart.animate().alpha(1).start();
+		if(messageState != Constants.messageStateCodeGhost) {
+			viewHolder.containerMessagePart.setAlpha(ghostAlpha);
+			viewHolder.containerMessagePart.animate().alpha(1).start();
+		}
 	}
 	
 	private void restoreUploadState(ViewHolder viewHolder) {
@@ -1699,7 +1729,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 	
 	@Override
 	public void toLightConversationItem(Context context, Constants.ResultCallback<LightConversationItem> callback) {
-		getSummary(context, (wasTasked, result) -> callback.onResult(wasTasked, new LightConversationItem(result, getDate(), getLocalID(), getServerID())));
+		getSummary(context, (wasTasked, result) -> callback.onResult(wasTasked, new LightConversationItem(result, getDate(), getLocalID(), getServerID(), hasError())));
 	}
 	
 	@Override
@@ -1710,7 +1740,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 			attachmentStringRes.add(ConversationUtils.getNameFromContent(attachment.getContentType(), attachment.getFileName()));
 		
 		//Returning the summary
-		return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), getMessageSubject(), sendStyle, attachmentStringRes), getDate(), getLocalID(), getServerID());
+		return new LightConversationItem(getSummary(context, isOutgoing(), getMessageText(), getMessageSubject(), sendStyle, attachmentStringRes), getDate(), getLocalID(), getServerID(), hasError());
 	}
 	
 	public void addSticker(StickerInfo sticker) {

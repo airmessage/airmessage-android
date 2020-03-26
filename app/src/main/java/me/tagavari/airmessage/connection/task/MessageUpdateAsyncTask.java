@@ -268,7 +268,14 @@ public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 		
 		for(ConversationItem conversationItem : newCompleteConversationItems) {
 			//Sending notifications
-			if(conversationItem instanceof MessageInfo) NotificationUtils.sendNotification(context, (MessageInfo) conversationItem);
+			if(conversationItem instanceof MessageInfo) {
+				MessageInfo messageInfo = (MessageInfo) conversationItem;
+				if(messageInfo.isOutgoing()) {
+					if(messageInfo.getErrorCode() != Constants.messageErrorCodeOK) NotificationUtils.sendErrorNotification(context, messageInfo.getConversationInfo());
+				} else {
+					NotificationUtils.sendNotification(context, messageInfo);
+				}
+			}
 			
 			//Downloading the items automatically (if requested)
 			if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_storage_autodownload_key), false) && conversationItem instanceof MessageInfo) {

@@ -27,6 +27,7 @@ import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Conversations;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.util.NotificationUtils;
 
 public class ConnectionService extends Service {
 	//Creating the constants
@@ -225,7 +226,7 @@ public class ConnectionService extends Service {
 		reconnectPendingIntent = PendingIntent.getBroadcast(this, 1, new Intent(BCReconnectTimer), PendingIntent.FLAG_UPDATE_CURRENT);
 		
 		//Starting the service as a foreground service (if enabled in the preferences)
-		if(foregroundServiceRequested()) startForeground(-1, getBackgroundNotification(false, false));
+		if(foregroundServiceRequested()) startForeground(notificationID, getBackgroundNotification(false, false));
 	}
 	
 	@Override
@@ -377,7 +378,7 @@ public class ConnectionService extends Service {
 				//Showing the offline notification
 				if(PreferenceManager.getDefaultSharedPreferences(ConnectionService.this).getBoolean(getResources().getString(R.string.preference_server_disconnectionnotification_key), true)) {
 					NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-					notificationManager.notify(-1, getOfflineNotification());
+					notificationManager.notify(NotificationUtils.notificationTagStatus, -1, getOfflineNotification());
 				}
 				
 				//Stopping the service

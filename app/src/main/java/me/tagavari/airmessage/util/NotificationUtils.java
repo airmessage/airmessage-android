@@ -13,7 +13,6 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -26,9 +25,9 @@ import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
 
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.Person;
@@ -42,7 +41,6 @@ import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.request.MessageResponseManager;
-import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.receiver.TextSMSSentReceiver;
 import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.data.BitmapCacheHelper;
@@ -52,14 +50,18 @@ import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.MessageInfo;
 
 public class NotificationUtils {
+	public static final String notificationTagMessage = "message";
+	public static final String notificationTagMessageError = "message_error";
+	//public static final String notificationTagStatus = "status";
+	
 	/**
 	 * Sends a notification concerning a new message
 	 * @param context The context to use
 	 * @param messageInfo The message to notify the user about
 	 */
 	public static void sendNotification(Context context, MessageInfo messageInfo) {
-		//Returning message is outgoing or the message's conversation is loaded
-		if(messageInfo.isOutgoing() || Messaging.getForegroundConversations().contains(messageInfo.getConversationInfo().getLocalID()) || ConnectionService.getConnectionManager() != null && ConnectionService.getConnectionManager().isMassRetrievalInProgress()) return;
+		//Returning if the message is outgoing or the message's conversation is loaded
+		if(messageInfo.isOutgoing() || Messaging.getForegroundConversations().contains(messageInfo.getConversationInfo().getLocalID()) || (ConnectionService.getConnectionManager() != null && ConnectionService.getConnectionManager().isMassRetrievalInProgress())) return;
 		
 		//Returning if notifications are disabled or the conversation is muted
 		if((Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_getnotifications_key), false)) || messageInfo.getConversationInfo().isMuted()) return;
@@ -78,13 +80,52 @@ public class NotificationUtils {
 	 */
 	public static void sendNotification(Context context, String message, String sender, long timestamp, ConversationInfo conversationInfo) {
 		//Returning message is outgoing or the message's conversation is loaded
-		if(sender == null || Messaging.getForegroundConversations().contains(conversationInfo.getLocalID()) || ConnectionService.getConnectionManager() != null && ConnectionService.getConnectionManager().isMassRetrievalInProgress()) return;
+		if(sender == null || Messaging.getForegroundConversations().contains(conversationInfo.getLocalID()) || (ConnectionService.getConnectionManager() != null && ConnectionService.getConnectionManager().isMassRetrievalInProgress())) return;
 		
 		//Returning if notifications are disabled or the conversation is muted
 		if((Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_getnotifications_key), false)) || conversationInfo.isMuted()) return;
 		
 		//Adding the message
 		addMessageToNotification(context, conversationInfo, message, sender, timestamp, null);
+	}
+	
+	public static void sendErrorNotification(Context context, ConversationInfo conversationInfo) {
+		//Returning if the message's conversation is loaded
+		if(Messaging.getForegroundConversations().contains(conversationInfo.getLocalID())) return;
+		
+		//Building the conversation title
+		conversationInfo.buildTitle(context, (title, wasTasked) -> {
+			//Getting the notification manager
+			NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+			
+			//Creating the click intent
+			Intent clickIntent = new Intent(context, Messaging.class);
+			clickIntent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
+			
+			//Creating the task stack builder
+			TaskStackBuilder clickStackBuilder = TaskStackBuilder.create(context);
+			
+			//Adding the back stack
+			clickStackBuilder.addParentStack(Messaging.class);
+			
+			//Setting the result intent
+			clickStackBuilder.addNextIntent(clickIntent);
+			
+			//Getting the pending intent
+			PendingIntent clickPendingIntent = clickStackBuilder.getPendingIntent((int) conversationInfo.getLocalID(), 0);
+			
+			//Creating the notification
+			Notification notification = new NotificationCompat.Builder(context, MainApplication.notificationChannelMessageError)
+					.setSmallIcon(R.drawable.message_alert)
+					.setContentTitle(context.getResources().getString(R.string.message_senderrornotify))
+					.setContentText(context.getResources().getString(R.string.message_senderrornotify_desc, title))
+					.setContentIntent(clickPendingIntent)
+					.setColor(context.getResources().getColor(R.color.colorError, null))
+					.setCategory(Notification.CATEGORY_ERROR).build();
+			
+			//Sending the notification
+			notificationManager.notify(notificationTagMessageError, (int) conversationInfo.getLocalID(), notification);
+		});
 	}
 	
 	/* private static Notification getSummaryNotification(Context context) {
@@ -351,7 +392,7 @@ public class NotificationUtils {
 		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 		
 		//Getting the existing notification
-		Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
+		Notification existingNotification = getNotification(notificationManager, notificationTagMessage, (int) conversationInfo.getLocalID());
 		NotificationCompat.MessagingStyle messagingStyle = null;
 		
 		if(existingNotification != null) {
@@ -388,7 +429,7 @@ public class NotificationUtils {
 		}
 		
 		//Sending the notification
-		notificationManager.notify((int) conversationInfo.getLocalID(), notification.build());
+		notificationManager.notify(notificationTagMessage, (int) conversationInfo.getLocalID(), notification.build());
 	}
 	
 	public static class NotificationBroadcastReceiver extends BroadcastReceiver {
@@ -420,8 +461,8 @@ public class NotificationUtils {
 			if(responseMessage == null) {
 				//Refreshing the notification
 				NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-				Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
-				if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
+				Notification existingNotification = getNotification(notificationManager, notificationTagMessage, (int) conversationInfo.getLocalID());
+				if(existingNotification != null) notificationManager.notify(notificationTagMessage, (int) conversationInfo.getLocalID(), existingNotification);
 				
 				//Returning
 				return;
@@ -451,8 +492,8 @@ public class NotificationUtils {
 				
 				//Refreshing the notification
 				NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-				Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
-				if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
+				Notification existingNotification = getNotification(notificationManager, notificationTagMessage, (int) conversationInfo.getLocalID());
+				if(existingNotification != null) notificationManager.notify(notificationTagMessage, (int) conversationInfo.getLocalID(), existingNotification);
 				
 				//Returning
 				return;
@@ -472,8 +513,8 @@ public class NotificationUtils {
 				@Override
 				public void onFail(int responseCode, String details) {
 					//Refreshing the notification
-					Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
-					if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
+					Notification existingNotification = getNotification(notificationManager, notificationTagMessage, (int) conversationInfo.getLocalID());
+					if(existingNotification != null) notificationManager.notify(notificationTagMessage, (int) conversationInfo.getLocalID(), existingNotification);
 				}
 			});
 		}
@@ -490,8 +531,8 @@ public class NotificationUtils {
 				} else {
 					//Refreshing the notification
 					NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
-					Notification existingNotification = getNotification(notificationManager, (int) conversationInfo.getLocalID());
-					if(existingNotification != null) notificationManager.notify((int) conversationInfo.getLocalID(), existingNotification);
+					Notification existingNotification = getNotification(notificationManager, notificationTagMessage, (int) conversationInfo.getLocalID());
+					if(existingNotification != null) notificationManager.notify(notificationTagMessage, (int) conversationInfo.getLocalID(), existingNotification);
 				}
 			}).execute();
 		}
@@ -567,7 +608,7 @@ public class NotificationUtils {
 			//Dismissing the notification
 			if(dismissNotification) {
 				NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-				notificationManager.cancel((int) conversationID);
+				notificationManager.cancel(notificationTagMessage, (int) conversationID);
 			}
 		}
 		
@@ -586,12 +627,12 @@ public class NotificationUtils {
 		}
 	}
 	
-	private static Notification getNotification(NotificationManager notificationManager, int identifier) {
+	private static Notification getNotification(NotificationManager notificationManager, String tag, int identifier) {
 		try {
 			//Getting the existing notification
 			for(StatusBarNotification statusBarNotification : notificationManager.getActiveNotifications()) {
-				//Skipping the remainder of the iteration if the ID does not match
-				if(statusBarNotification.getId() != identifier) continue;
+				//Skipping the remainder of the iteration if the tag or ID does not match
+				if(!Objects.equals(statusBarNotification.getTag(), tag) || statusBarNotification.getId() != identifier) continue;
 				
 				//Returning the notification
 				return statusBarNotification.getNotification();

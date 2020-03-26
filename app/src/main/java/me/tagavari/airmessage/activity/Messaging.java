@@ -224,6 +224,7 @@ import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.extension.MediaSharedElementCallback;
 import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
 import me.tagavari.airmessage.util.MMSSMSHelper;
+import me.tagavari.airmessage.util.NotificationUtils;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.OverScrollScrollView;
 import me.tagavari.airmessage.view.VisualizerView;
@@ -248,7 +249,6 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final String mimeTypeVideo = "video/*";
 	private static final String mimeTypeAudio = "audio/*";
 	private static final String mimeTypeGIF = "image/gif";
-	private static final String mimeTypeVCard = "text/vcard";
 	private static final String mimeTypeVLocation = "text/x-vlocation";
 	
 	private static final long confettiDuration = 1000;
@@ -769,7 +769,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			fillerFiles = sendFiles.toArray(new Uri[0]);
 			
 			//Getting the view model
-			viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
+			viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
 				@NonNull
 				@Override
 				public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
@@ -781,7 +781,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			long conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
 			
 			//Getting the view model
-			viewModel = ViewModelProviders.of(this, new ViewModelProvider.Factory() {
+			viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
 				@NonNull
 				@Override
 				public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
@@ -1020,7 +1020,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		foregroundConversations.add(new WeakReference<>(this));
 		
 		//Clearing the notifications
-		((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel((int) viewModel.conversationID);
+		NotificationManager notificationManager = ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE));
+		notificationManager.cancel(NotificationUtils.notificationTagMessage, (int) viewModel.conversationID);
+		notificationManager.cancel(NotificationUtils.notificationTagMessageError, (int) viewModel.conversationID);
 		
 		//Updating the server warning bar state
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
@@ -2325,8 +2327,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		View memberEntry = inflater.inflate(R.layout.listitem_member, membersLayout, false);
 		
+		String displayAddress = Constants.formatAddress(member.getName());
+		
 		//Setting the default information
-		((TextView) memberEntry.findViewById(R.id.label_member)).setText(member.getName());
+		((TextView) memberEntry.findViewById(R.id.label_member)).setText(displayAddress);
 		((ImageView) memberEntry.findViewById(R.id.profile_default)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
 		
 		//Filling in the information
@@ -2350,7 +2354,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Setting the member's name
 				((TextView) memberEntry.findViewById(R.id.label_member)).setText(userInfo.getContactName());
 				TextView addressView = memberEntry.findViewById(R.id.label_address);
-				addressView.setText(member.getName());
+				addressView.setText(displayAddress);
 				addressView.setVisibility(View.VISIBLE);
 			}
 		});
@@ -2567,6 +2571,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private void updateSendButton(boolean restore) {
+		//Returning if the conversation isn't ready
+		if(viewModel.conversationInfo == null) return;
+		
 		//Getting the send button state
 		boolean state = !messageInputField.getText().toString().trim().isEmpty() || !viewModel.draftQueueList.isEmpty();
 		if(currentSendButtonState == state && !restore) return;
@@ -2732,6 +2739,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				infoBarConnection.setButton(R.string.action_reconfigure, view -> startActivity(new Intent(Messaging.this, ServerSetup.class)));
 				break;
 			case ConnectionManager.intentResultCodeConnection:
+			case -1: //Service not started
 				infoBarConnection.setText(R.string.message_serverstatus_noconnection);
 				infoBarConnection.setButton(R.string.action_retry, view -> reconnectService());
 				break;
@@ -3085,7 +3093,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						.setSpeed(4F, 8F)
 						.setFadeOutEnabled(true)
 						.setTimeToLive(5000L)
-						.addShapes(Shape.RECT, Shape.CIRCLE)
+						.addShapes(Shape.Square.INSTANCE, Shape.Circle.INSTANCE)
 						.addSizes(new Size(12, 5), new Size(16, 6))
 						.setPosition(-50F, konfettiView.getWidth() + 50F, -50F, -50F)
 						.streamFor(300, confettiDuration);
@@ -5190,6 +5198,8 @@ public class Messaging extends AppCompatCompositeActivity {
 					conversationInfo = ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
 					
 					if(conversationInfo != null) {
+						conversationID = conversationInfo.getLocalID();
+						
 						new AsyncTask<Void, Void, DatabaseManager.ConversationLazyLoader>() {
 							@Override
 							protected DatabaseManager.ConversationLazyLoader doInBackground(Void... voids) {
@@ -5245,6 +5255,7 @@ public class Messaging extends AppCompatCompositeActivity {
 								else {
 									//Setting the conversation details
 									conversationInfo = result.item1;
+									conversationID = conversationInfo.getLocalID();
 									boolean conversationNew = result.item2;
 									conversationLazyLoader = result.item3;
 									
@@ -5277,6 +5288,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Loading the conversation
 			conversationInfo = ConversationUtils.findConversationInfo(conversationID);
 			if(conversationInfo != null) {
+				conversationID = conversationInfo.getLocalID();
+				
 				new AsyncTask<Void, Void, DatabaseManager.ConversationLazyLoader>() {
 					@Override
 					protected DatabaseManager.ConversationLazyLoader doInBackground(Void... voids) {
@@ -5314,6 +5327,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						else {
 							//Setting the conversation details
 							conversationInfo = result.item1;
+							conversationID = conversationInfo.getLocalID();
 							conversationLazyLoader = result.item2;
 							
 							//Loading the conversation's messages
@@ -5393,6 +5407,11 @@ public class Messaging extends AppCompatCompositeActivity {
 						
 						//Updating the conversation's shortcut usage
 						ConversationUtils.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
+						
+						//Adding the conversation to the conversation list (for temporary usage, so that the conversation can be found for certain operations even if the conversations activity hasn't been launched yet)
+						if(ConversationUtils.getConversations() != null && !ConversationUtils.getConversations().isLoaded()) {
+							ConversationUtils.getConversations().add(conversationInfo);
+						}
 					}
 				}.execute();
 			}

@@ -295,6 +295,13 @@
 			</intent-filter>
 		</receiver>
 
+		<!-- External messaging provider change receiver (when another app sends an SMS and MMS message, and this app must be updated) -->
+		<receiver android:name=".receiver.ExternalMessagingProviderChangedReceiver">
+			<intent-filter>
+				<action android:name="android.provider.action.EXTERNAL_PROVIDER_CHANGE" />
+			</intent-filter>
+		</receiver>
+
 		<!-- Disables automatic Crashlytics initialization -->
 		<meta-data
 			android:name="firebase_crashlytics_collection_enabled"

@@ -93,7 +93,7 @@ public class ChatRenameActionInfo extends ConversationItem<ConversationUtils.Act
 	@Override
 	public void toLightConversationItem(Context context, Constants.ResultCallback<LightConversationItem> callback) {
 		getSummary(context, (wasTasked, result) -> {
-			callback.onResult(wasTasked, new LightConversationItem(result, getDate(), getLocalID(), getServerID()));
+			callback.onResult(wasTasked, new LightConversationItem(result, getDate(), getLocalID(), getServerID(), false));
 		});
 	}
 	
@@ -118,6 +118,6 @@ public class ChatRenameActionInfo extends ConversationItem<ConversationUtils.Act
 		}
 		
 		//Returning the light conversation item
-		return new LightConversationItem(summary, getDate(), getLocalID(), getServerID());
+		return new LightConversationItem(summary, getDate(), getLocalID(), getServerID(), false);
 	}
 }

@@ -211,6 +211,10 @@
 	<string name="list_n_middle">と%s</string>
 	<string name="list_n_end">と%s</string>
 	<string name="notificationchannel_message">メッセージ</string>
+
+	<string name="notificationchannel_messageerror">送信の失敗</string>
+	<string name="notificationchannel_messageerror_desc">失敗したメッセージに関する通知</string>
+
 	<string name="notificationchannel_status">一般的なステータス</string>
 	<string name="notificationchannel_status_desc">サーバー接続などのステータス通知</string>
 	<string name="notificationchannel_statusimportant">重要なステータスアラート</string>
@@ -426,4 +430,21 @@
 	<string name="action_tapbackdetails">Tapback の詳細を表示</string>
 	<string name="message_appvaliditywarning">この AirMessage のインストールは確認できません。メッセージングデータが危険にさらされている可能性があります。Play ストアで AirMessage をインストールしてください。</string>
 	<string name="preference_features_messagesounds_title">アプリ内メッセージ音</string>
+
+	<string name="label_email_home">自宅</string>
+	<string name="label_email_work">勤務先</string>
+	<string name="label_email_other">その他</string>
+	<string name="label_phone_mobile">携帯</string>
+	<string name="label_phone_work">勤務先</string>
+	<string name="label_phone_home">自宅</string>
+	<string name="label_phone_main">メイン</string>
+	<string name="label_phone_workfax">FAX（勤務先）</string>
+	<string name="label_phone_homefax">FAX（自宅）</string>
+	<string name="label_phone_pager">ポケベル</string>
+	<string name="label_phone_other">その他</string>
+	<string name="label_addressdetails">%1$s - %2$s</string>
+
+	<string name="message_senderrornotify">メッセージを送信できませんでした</string>
+	<string name="message_senderrornotify_desc">%sへのメッセージを送信できませんでした</string>
+	<string name="message_senderror">送信失敗</string>
 </resources>

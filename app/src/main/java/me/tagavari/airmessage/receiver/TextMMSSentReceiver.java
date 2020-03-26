@@ -7,13 +7,11 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.klinker.android.send_message.MmsSentReceiver;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-
+import me.tagavari.airmessage.activity.ConversationsBase;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.SMSIDParcelable;
 import me.tagavari.airmessage.messaging.ConversationInfo;
@@ -21,6 +19,7 @@ import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
+import me.tagavari.airmessage.util.NotificationUtils;
 
 public class TextMMSSentReceiver extends MmsSentReceiver {
 	@Override
@@ -50,9 +49,17 @@ public class TextMMSSentReceiver extends MmsSentReceiver {
 					messageInfo.setErrorCode(Constants.messageErrorCodeOK);
 				} else {
 					messageInfo.setErrorCode(Constants.messageErrorCodeLocalUnknown);
+					
+					//Sending a notification
+					NotificationUtils.sendErrorNotification(context, messageInfo.getConversationInfo());
+					
+					//Updating the last item
+					messageInfo.getConversationInfo().trySetLastItemUpdate(context, messageInfo, false);
+					LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
 				}
 				
 				messageInfo.updateViewProgressState();
+				messageInfo.animateGhostStateChanges();
 			}
 		});
 		
