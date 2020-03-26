@@ -3093,7 +3093,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						.setSpeed(4F, 8F)
 						.setFadeOutEnabled(true)
 						.setTimeToLive(5000L)
-						.addShapes(Shape.RECT, Shape.CIRCLE)
+						.addShapes(Shape.Square.INSTANCE, Shape.Circle.INSTANCE)
 						.addSizes(new Size(12, 5), new Size(16, 6))
 						.setPosition(-50F, konfettiView.getWidth() + 50F, -50F, -50F)
 						.streamFor(300, confettiDuration);
