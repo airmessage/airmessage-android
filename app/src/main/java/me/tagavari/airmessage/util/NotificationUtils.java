@@ -115,16 +115,22 @@ public class NotificationUtils {
 			PendingIntent clickPendingIntent = clickStackBuilder.getPendingIntent((int) conversationInfo.getLocalID(), 0);
 			
 			//Creating the notification
-			Notification notification = new NotificationCompat.Builder(context, MainApplication.notificationChannelMessageError)
+			NotificationCompat.Builder builder = new NotificationCompat.Builder(context, MainApplication.notificationChannelMessageError)
 					.setSmallIcon(R.drawable.message_alert)
 					.setContentTitle(context.getResources().getString(R.string.message_senderrornotify))
 					.setContentText(context.getResources().getString(R.string.message_senderrornotify_desc, title))
 					.setContentIntent(clickPendingIntent)
 					.setColor(context.getResources().getColor(R.color.colorError, null))
-					.setCategory(Notification.CATEGORY_ERROR).build();
+					.setCategory(Notification.CATEGORY_ERROR);
+			
+			//Checking if the Android version is below Oreo (on API 26 and above, notification alert details are handled by the system's notification channels)
+			if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+				builder.setDefaults(Notification.DEFAULT_SOUND);
+				builder.setPriority(Notification.PRIORITY_HIGH);
+			}
 			
 			//Sending the notification
-			notificationManager.notify(notificationTagMessageError, (int) conversationInfo.getLocalID(), notification);
+			notificationManager.notify(notificationTagMessageError, (int) conversationInfo.getLocalID(), builder.build());
 		});
 	}
 	
