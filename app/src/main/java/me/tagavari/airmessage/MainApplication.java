@@ -95,7 +95,7 @@ public class MainApplication extends Application {
 	//Creating the cache helpers
 	private BitmapCacheHelper bitmapCacheHelper;
 	private UserCacheHelper userCacheHelper;
-	private SoftReference<LoadFlagArrayList<ConversationInfo>> conversationReference = null;
+	private SoftReference<LoadFlagArrayList<ConversationInfo>> conversationReference = new SoftReference<>(new LoadFlagArrayList<>(false));
 	
 	//Creating the references
 	private static WeakReference<MainApplication> instanceReference = null;

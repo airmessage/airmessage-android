@@ -702,7 +702,7 @@ public class MessageInfo extends ConversationItem<MessageInfo.ViewHolder> {
 		}
 		
 		//Configuring the message settings
-		Transaction transaction = Constants.getMMSSMSTransaction(MainApplication.getInstance(), getLocalID());
+		Transaction transaction = Constants.getMMSSMSTransaction(context, getLocalID());
 		
 		//Creating the message
 		Message message = new Message();

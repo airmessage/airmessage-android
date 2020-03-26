@@ -249,7 +249,6 @@ public class Messaging extends AppCompatCompositeActivity {
 	private static final String mimeTypeVideo = "video/*";
 	private static final String mimeTypeAudio = "audio/*";
 	private static final String mimeTypeGIF = "image/gif";
-	private static final String mimeTypeVCard = "text/vcard";
 	private static final String mimeTypeVLocation = "text/x-vlocation";
 	
 	private static final long confettiDuration = 1000;
@@ -5250,6 +5249,7 @@ public class Messaging extends AppCompatCompositeActivity {
 								else {
 									//Setting the conversation details
 									conversationInfo = result.item1;
+									conversationID = conversationInfo.getLocalID();
 									boolean conversationNew = result.item2;
 									conversationLazyLoader = result.item3;
 									
@@ -5398,6 +5398,11 @@ public class Messaging extends AppCompatCompositeActivity {
 						
 						//Updating the conversation's shortcut usage
 						ConversationUtils.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
+						
+						//Adding the conversation to the conversation list (for temporary usage, so that the conversation can be found for certain operations even if the conversations activity hasn't been launched yet)
+						if(ConversationUtils.getConversations() != null && !ConversationUtils.getConversations().isLoaded()) {
+							ConversationUtils.getConversations().add(conversationInfo);
+						}
 					}
 				}.execute();
 			}

@@ -1449,17 +1449,17 @@ public class Constants {
 		bundle.putParcelable(Constants.intentParamData, parcelData);
 		
 		{
-			Intent intent = new Intent(MainApplication.getInstance(), TextMMSSentReceiver.class);
+			Intent intent = new Intent(context, TextMMSSentReceiver.class);
 			intent.putExtra(Constants.intentParamData, bundle);
 			transaction.setExplicitBroadcastForSentMms(intent);
 		}
 		{
-			Intent intent = new Intent(MainApplication.getInstance(), TextSMSSentReceiver.class);
+			Intent intent = new Intent(context, TextSMSSentReceiver.class);
 			intent.putExtra(Constants.intentParamData, bundle);
 			transaction.setExplicitBroadcastForSentSms(intent);
 		}
 		{
-			Intent intent = new Intent(MainApplication.getInstance(), TextSMSDeliveredReceiver.class);
+			Intent intent = new Intent(context, TextSMSDeliveredReceiver.class);
 			intent.putExtra(Constants.intentParamData, bundle);
 			transaction.setExplicitBroadcastForDeliveredSms(intent);
 		}
