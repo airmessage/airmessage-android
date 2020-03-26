@@ -2139,7 +2139,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							TextInputLayout newInput = inputReference.get();
 							if(newInput != null) {
 								newInput.setHint(title);
-								newInput.setHintEnabled(false);
+								newInput.getEditText().setHint(title);
 							}
 						});
 						
