@@ -78,7 +78,7 @@ public class ConversationInfo implements Serializable {
 	public static final int serviceHandlerSystemMessaging = 1; //SMS and MMS
 	
 	public static final String serviceTypeAppleMessage = "iMessage";
-	public static final String serviceTypeAppleTextMessageForwarding= "SMS";
+	public static final String serviceTypeAppleTextMessageForwarding = "SMS";
 	
 	public static final String serviceTypeSystemMMSSMS = "MMSSMS"; //MMS and SMS
 	public static final String serviceTypeSystemRCS= "RCS"; //Rich communication services, Google Chat
@@ -1567,9 +1567,9 @@ public class ConversationInfo implements Serializable {
 		return title;
 	}
 	
-	public void setTitle(Context context, String value) {
+	public boolean setTitle(Context context, String value) {
 		//Returning if the operation is invalid
-		if(title != null && title.equals(value)) return;
+		if(title != null && title.equals(value)) return false;
 		
 		//Setting the new title
 		title = value;
@@ -1589,6 +1589,9 @@ public class ConversationInfo implements Serializable {
 				viewHolder.conversationTitle.setText(title);
 			});
 		}
+		
+		//Returning true
+		return true;
 	}
 	
 	private boolean getSelected() {

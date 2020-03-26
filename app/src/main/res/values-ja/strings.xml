@@ -447,4 +447,7 @@
 	<string name="message_senderrornotify">メッセージを送信できませんでした</string>
 	<string name="message_senderrornotify_desc">%sへのメッセージを送信できませんでした</string>
 	<string name="message_senderror">送信失敗</string>
+	<string name="title_conversation_name">グループ名</string>
+	<string name="action_renamegroup">このグループ名を変更する</string>
+	<string name="message_renamegroup_onlyyouvisibility">このグループ名はあなたにだけ表示されます</string>
 </resources>

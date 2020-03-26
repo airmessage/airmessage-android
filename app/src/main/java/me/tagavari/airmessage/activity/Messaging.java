@@ -7,6 +7,7 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
+import android.app.Dialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -17,6 +18,7 @@ import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.ContentUris;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentSender;
@@ -49,6 +51,7 @@ import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.provider.Telephony;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
@@ -70,6 +73,7 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.ViewStub;
 import android.view.ViewTreeObserver;
+import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
@@ -170,6 +174,7 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
 
@@ -2038,17 +2043,20 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Setting the listeners
 			inflated.findViewById(R.id.group_getnotifications).setOnClickListener(view -> notificationsSwitch.setChecked(!notificationsSwitch.isChecked()));
+			
+			//inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
+			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
+			
 			notificationsSwitch.setOnCheckedChangeListener((view, isChecked) -> {
 				//Updating the conversation
 				boolean isMuted = !isChecked;
 				viewModel.conversationInfo.setMuted(isMuted);
 				DatabaseManager.getInstance().updateConversationMuted(viewModel.conversationInfo.getLocalID(), isMuted);
 			});
-			//inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
+			
 			Button buttonChangeColor = inflated.findViewById(R.id.button_changecolor);
 			if(Preferences.getPreferenceAdvancedColor(this)) buttonChangeColor.setOnClickListener(view -> showColorDialog(null, viewModel.conversationInfo.getConversationColor()));
 			else buttonChangeColor.setVisibility(View.GONE);
-			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
 			
 			archiveButton.setOnClickListener(view -> {
 				//Toggling the archive state
@@ -2105,6 +2113,83 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Adding the conversation members
 			detailsBuildConversationMembers(new ArrayList<>(viewModel.conversationInfo.getConversationMembers()));
+			
+			//Checking if this group can be renamed
+			if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging && ConversationInfo.serviceTypeSystemMMSSMS.equals(viewModel.conversationInfo.getService()) && viewModel.conversationInfo.isGroupChat()) {
+				ViewStub viewStubChatRename = findViewById(R.id.viewstub_groupname);
+				if(viewStubChatRename != null) {
+					View inflatedChatRename = viewStubChatRename.inflate();
+					
+					ViewGroup groupGroupName = inflatedChatRename.findViewById(R.id.group_groupname);
+					TextView labelGroupName = groupGroupName.findViewById(R.id.label_groupname);
+					
+					groupGroupName.setOnClickListener(view -> {
+						//Creating the view
+						View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_renamechat, null);
+						TextInputLayout input = dialogView.findViewById(R.id.input);
+						input.getEditText().setText(viewModel.conversationInfo.getStaticTitle());
+						input.setHelperText(getResources().getString(R.string.message_renamegroup_onlyyouvisibility));
+						input.setHelperTextEnabled(true);
+						input.setHintEnabled(false);
+						getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
+						
+						//Updating the hint
+						WeakReference<TextInputLayout> inputReference = new WeakReference<>(input);
+						ConversationInfo.buildTitle(this, null, viewModel.conversationInfo.getConversationMembersAsArray(), (title, wasTasked) -> {
+							TextInputLayout newInput = inputReference.get();
+							if(newInput != null) {
+								newInput.setHint(title);
+								newInput.setHintEnabled(false);
+							}
+						});
+						
+						//Showing the dialog
+						Dialog groupDialog = new MaterialAlertDialogBuilder(this)
+								.setView(dialogView)
+								.setTitle(R.string.action_renamegroup)
+								.setOnDismissListener(dialog -> {
+									//Hiding the keyboard
+									((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0);
+									new Handler(Looper.getMainLooper()).postDelayed(() -> {
+										getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+									}, 100);
+								})
+								.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+									//Setting the conversation title
+									String title = input.getEditText().getText().toString();
+									if(title.isEmpty()) title = null;
+									boolean result = viewModel.conversationInfo.setTitle(this, title);
+									
+									//Saving the new title to disk
+									if(result) {
+										DatabaseManager.getInstance().updateConversationTitle(viewModel.conversationInfo.getLocalID(), title);
+									}
+									
+									//Dismissing the dialog
+									dialog.dismiss();
+								})
+								.setNegativeButton(android.R.string.cancel, null)
+								.create();
+						
+						groupDialog.setOnShowListener(dialog -> {
+							//Focusing the text view
+							input.requestFocus();
+							((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
+						});
+						groupDialog.show();
+					});
+					{
+						//Setting the conversation title
+						labelGroupName.setText(viewModel.conversationInfo.getStaticTitle());
+						
+						WeakReference<TextView> labelReference = new WeakReference<>(labelGroupName);
+						viewModel.conversationInfo.buildTitle(this, (title, wasTasked) -> {
+							TextView label = labelReference.get();
+							if(label != null) label.setText(title);
+						});
+					}
+				}
+			}
 			
 			//Setting the panel position
 			bottomDetailsPanel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -2317,6 +2402,11 @@ public class Messaging extends AppCompatCompositeActivity {
 			membersLayout.addView(memberEntry);
 			memberListViews.put(member.getName(), memberEntry);
 		} */
+	}
+	
+	private void detailsUpdateConversationTitle(String title) {
+		TextView label = findViewById(R.id.label_groupname);
+		if(label != null) label.setText(title);
 	}
 	
 	private void addMemberView(MemberInfo member, int index, boolean showColor) {
@@ -6675,6 +6765,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			Messaging activity = activityReference.get();
 			if(activity == null) return;
 			activity.setActionBarTitle(result);
+			activity.detailsUpdateConversationTitle(result);
 		}
 	}
 	

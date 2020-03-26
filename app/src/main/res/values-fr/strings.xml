@@ -455,4 +455,7 @@
 	<string name="message_senderrornotify">Un message n\'a pas été envoyé</string>
 	<string name="message_senderrornotify_desc">Votre message à %s n\'a pas pu être envoyé</string>
 	<string name="message_senderror">Non envoyé</string>
+	<string name="message_renamegroup_onlyyouvisibility">Vous êtes la seule personne qui puisse voir ce nom</string>
+	<string name="title_conversation_name">Nom du groupe</string>
+	<string name="action_renamegroup">Renommer ce groupe</string>
 </resources>

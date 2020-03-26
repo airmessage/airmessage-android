@@ -149,7 +149,7 @@ public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 				}
 			} else if(conversationItem instanceof ChatRenameActionInfo) {
 				//Writing the new title to the database
-				DatabaseManager.getInstance().updateConversationTitle(((ChatRenameActionInfo) conversationItem).getTitle(), parentConversation.getLocalID());
+				DatabaseManager.getInstance().updateConversationTitle(parentConversation.getLocalID(), ((ChatRenameActionInfo) conversationItem).getTitle());
 			}
 			
 			//Checking if the conversation is complete
