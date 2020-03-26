@@ -5194,6 +5194,8 @@ public class Messaging extends AppCompatCompositeActivity {
 					conversationInfo = ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
 					
 					if(conversationInfo != null) {
+						conversationID = conversationInfo.getLocalID();
+						
 						new AsyncTask<Void, Void, DatabaseManager.ConversationLazyLoader>() {
 							@Override
 							protected DatabaseManager.ConversationLazyLoader doInBackground(Void... voids) {
@@ -5282,6 +5284,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Loading the conversation
 			conversationInfo = ConversationUtils.findConversationInfo(conversationID);
 			if(conversationInfo != null) {
+				conversationID = conversationInfo.getLocalID();
+				
 				new AsyncTask<Void, Void, DatabaseManager.ConversationLazyLoader>() {
 					@Override
 					protected DatabaseManager.ConversationLazyLoader doInBackground(Void... voids) {
@@ -5319,6 +5323,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						else {
 							//Setting the conversation details
 							conversationInfo = result.item1;
+							conversationID = conversationInfo.getLocalID();
 							conversationLazyLoader = result.item2;
 							
 							//Loading the conversation's messages
