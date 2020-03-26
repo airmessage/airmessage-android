@@ -1246,8 +1246,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		}
 		
 		private static boolean checkFingerprint(String fingerprint) {
-			return "f8:15:22:84:65:57:87:bd:0b:79:97:29:5e:d6:d2:40:bf:74:e7:f3".equals(fingerprint) || //Debug fingerprint
-				   "78:29:b4:4f:d8:15:9d:3c:ca:42:79:a4:9b:8c:7b:17:70:5b:2c:0f".equals(fingerprint); //Release fingerprint (Google Play app signing)
+			return "78:29:b4:4f:d8:15:9d:3c:ca:42:79:a4:9b:8c:7b:17:70:5b:2c:0f".equals(fingerprint) || //Release fingerprint (Google Play app signing)
+				   "08:34:4c:b2:14:4c:98:eb:97:5a:8a:57:f6:0d:4a:e2:54:b4:68:0d".equals(fingerprint) || //Release fingerprint (local)
+				   "f8:15:22:84:65:57:87:bd:0b:79:97:29:5e:d6:d2:40:bf:74:e7:f3".equals(fingerprint); //Debug fingerprint
 		}
 	}
 	
