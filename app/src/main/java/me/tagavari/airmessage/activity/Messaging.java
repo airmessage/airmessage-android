@@ -2571,6 +2571,9 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private void updateSendButton(boolean restore) {
+		//Returning if the conversation isn't ready
+		if(viewModel.conversationInfo == null) return;
+		
 		//Getting the send button state
 		boolean state = !messageInputField.getText().toString().trim().isEmpty() || !viewModel.draftQueueList.isEmpty();
 		if(currentSendButtonState == state && !restore) return;
