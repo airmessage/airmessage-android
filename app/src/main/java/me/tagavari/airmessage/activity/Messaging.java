@@ -1599,7 +1599,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(messageList.isEmpty()) return;
 		
 		//Clearing the conversation's drafts
-		viewModel.conversationInfo.clearDraftsUpdate(this);
+		viewModel.clearDraftMessage();
 		
 		//Writing the messages to the database
 		new AddGhostMessageTask(getApplicationContext(), viewModel.conversationInfo, new GhostMessageFinishHandler()).execute(messageList.toArray(new MessageInfo[0]));
@@ -5484,6 +5484,21 @@ public class Messaging extends AppCompatCompositeActivity {
 				@Override
 				protected Void doInBackground(Void... params) {
 					DatabaseManager.getInstance().updateConversationDraftMessage(conversationID, finalMessage, updateTime);
+					return null;
+				}
+			}.execute();
+		}
+		
+		@SuppressLint("StaticFieldLeak")
+		void clearDraftMessage() {
+			//Clearing the conversation's drafts in memory
+			if(conversationInfo != null) conversationInfo.clearDraftsUpdate(getApplication());
+			
+			//Clearing the draft message on disk
+			new AsyncTask<Void, Void, Void>() {
+				@Override
+				protected Void doInBackground(Void... params) {
+					DatabaseManager.getInstance().updateConversationDraftMessage(conversationID, null, -1);
 					return null;
 				}
 			}.execute();
