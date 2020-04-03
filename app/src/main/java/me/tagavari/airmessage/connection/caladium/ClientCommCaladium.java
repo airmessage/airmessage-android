@@ -60,6 +60,11 @@ public class ClientCommCaladium extends CommunicationsManager {
 	}
 	
 	@Override
+	public void initiateClose() {
+		queuePacket(new ConnectionManager.PacketStruct(nhtClose, new byte[0], () -> dataProxy.stop(ConnectionManager.intentResultCodeConnection)));
+	}
+	
+	@Override
 	public void onOpen() {
 		//Calling the super method
 		super.onOpen();

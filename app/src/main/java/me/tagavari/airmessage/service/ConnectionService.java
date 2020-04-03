@@ -299,7 +299,7 @@ public class ConnectionService extends Service {
 			postDisconnectedNotification(true);
 		}
 		//Reconnecting the client if requested
-		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) connectionManager.connect(this);
+		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) connectionManager.reconnect(this, intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : connectionManager.getNextLaunchID());
 		
 		//Calling the listeners
 		//for(ServiceStartCallback callback : startCallbacks) callback.onServiceStarted(this);

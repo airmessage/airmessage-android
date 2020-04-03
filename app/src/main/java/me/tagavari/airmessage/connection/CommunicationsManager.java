@@ -13,9 +13,6 @@ public abstract class CommunicationsManager implements DataProxyListener {
 	protected final DataProxy dataProxy;
 	protected final Context context;
 	
-	//Creating the request values
-	public byte launchID;
-	
 	public CommunicationsManager(ConnectionManager connectionManager, DataProxy dataProxy, Context context) {
 		this.connectionManager = connectionManager;
 		this.dataProxy = dataProxy;
@@ -23,14 +20,14 @@ public abstract class CommunicationsManager implements DataProxyListener {
 	}
 	
 	/**
-	 * Connects to the server
-	 *
-	 * @param launchID an ID to represent and track this connection
+	 * Cleanly closes the connection between the server and this client
 	 */
-	public final void connect(byte launchID) {
-		//Recording the launch ID
-		this.launchID = launchID;
-		
+	public abstract void initiateClose();
+	
+	/**
+	 * Connects to the server
+	 */
+	public final void connect() {
 		//Connecting the proxy
 		dataProxy.start();
 	}

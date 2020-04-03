@@ -1,15 +1,15 @@
 package me.tagavari.airmessage.connection.proxy;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import com.crashlytics.android.Crashlytics;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
@@ -67,8 +67,11 @@ public class ProxyCustomTCP extends DataProxy {
 		if(!isRunning) return;
 		
 		//Closing the connection thread
-		connectionThread.closeConnection(code);
+		connectionThread.interrupt();
 		connectionThread = null;
+		
+		//Calling the listener
+		onClose(code);
 		
 		//Updating the running state
 		isRunning = false;
@@ -246,7 +249,12 @@ public class ProxyCustomTCP extends DataProxy {
 			interrupt();
 			
 			//Updating the state
-			onClose(reason);
+			new Handler(Looper.getMainLooper()).post(() -> {
+				if(isRunning) {
+					onClose(reason);
+					isRunning = false;
+				}
+			});
 		}
 		
 		synchronized boolean sendDataSync(int messageType, byte[] data, boolean flush) {

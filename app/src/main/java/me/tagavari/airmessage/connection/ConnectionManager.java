@@ -233,7 +233,7 @@ public class ConnectionManager {
 				//Connecting via the next communications manager
 				int targetIndex = communicationsClassPriorityList.indexOf(communicationsManager.getClass()) + 1;
 				if(targetIndex < communicationsInstancePriorityList.size()) {
-					communicationsInstancePriorityList.get(targetIndex).get(this, getDataProxy(getContext()), getContext()).connect(getCurrentLaunchID());
+					communicationsInstancePriorityList.get(targetIndex).get(this, getDataProxy(getContext()), getContext()).connect();
 					return;
 				}
 			}
@@ -290,17 +290,24 @@ public class ConnectionManager {
 	}
 	
 	public boolean reconnect(Context context) {
+		//Disconnecting the old connection
+		if(isConnected()) disconnect();
 		return connect(context);
 	}
 	
+	public boolean reconnect(Context context, byte launchID) {
+		//Disconnecting the old connection
+		if(isConnected()) disconnect();
+		return connect(context, launchID);
+	}
+	
 	public boolean connect(Context context) {
-		//Returning if a connection is already running
-		if(currentState != stateDisconnected) return false;
+		return connect(context, getNextLaunchID());
+	}
+	
+	public boolean connect(Context context, byte launchID) {
 		//Closing the current connection if it exists
 		if(getCurrentState() != stateDisconnected) disconnect();
-		
-		//Advancing the launch ID
-		byte launchID = getNextLaunchID();
 		
 		//Returning if there is no connection
 		{
@@ -325,18 +332,18 @@ public class ConnectionManager {
 			return false;
 		}
 		
-		//Notifying the connection listeners
-		broadcastState(context, stateConnecting, 0, launchID);
+		//Notifying the state
+		updateState(context, stateConnecting, 0, launchID);
 		
 		//Connecting through the top of the priority queue
-		communicationsInstancePriorityList.get(0).get(this, proxy, context).connect(launchID);
+		communicationsInstancePriorityList.get(0).get(this, proxy, context).connect();
 		
 		//Return true
 		return true;
 	}
 	
 	public void disconnect() {
-		if(currentCommunicationsManager != null) currentCommunicationsManager.disconnect();
+		if(currentCommunicationsManager != null) currentCommunicationsManager.initiateClose();
 	}
 	
 	public void ping() {
