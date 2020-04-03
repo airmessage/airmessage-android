@@ -281,7 +281,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		Preference.OnPreferenceClickListener syncMessagesClickListener = preference -> {
 			//Checking if the connection manager
 			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-			if(connectionManager == null || connectionManager.getCurrentState() != ConnectionManager.stateConnected) {
+			if(connectionManager == null || !connectionManager.isConnected()) {
 				//Displaying a snackbar
 				Snackbar.make(getView(), R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
 				

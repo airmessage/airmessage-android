@@ -419,7 +419,7 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 		
 		//Checking if the service isn't running
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-		if(connectionManager == null || connectionManager.getCurrentState() != ConnectionManager.stateConnected) {
+		if(connectionManager == null || !connectionManager.isConnected()) {
 			//Showing a toast
 			Toast.makeText(context, R.string.message_connectionerrror, Toast.LENGTH_SHORT).show();
 			

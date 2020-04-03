@@ -92,7 +92,7 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 							.setAction(R.string.action_retry, view -> {
 								//Getting the connection manager
 								ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-								if(connectionManager == null || connectionManager.getCurrentState() != ConnectionManager.stateConnected) return;
+								if(connectionManager == null || !connectionManager.isConnected()) return;
 								
 								//Requesting another mass retrieval
 								connectionManager.requestMassRetrieval();

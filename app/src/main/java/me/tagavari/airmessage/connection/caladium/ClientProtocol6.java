@@ -31,11 +31,11 @@ import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
+import me.tagavari.airmessage.connection.proxy.DataProxy;
 import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
 import me.tagavari.airmessage.connection.request.FileDownloadRequest;
 import me.tagavari.airmessage.connection.request.MessageResponseManager;
-import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.Constants;
 
 //Improved error messages, chat creation requests
@@ -122,12 +122,9 @@ class ClientProtocol6 extends ProtocolManager {
 	
 	@Override
 	void processData(int messageType, byte[] data) {
-		//Notifying the super connection manager of a message
-		communicationsManager.onMessage();
-		
 		switch(messageType) {
 			case ClientCommCaladium.nhtClose:
-				communicationsManager.connectionThread.closeConnection(ConnectionManager.intentResultCodeConnection, false);
+				communicationsManager.disconnect(ConnectionManager.intentResultCodeConnection);
 				break;
 			case ClientCommCaladium.nhtPing:
 				communicationsManager.queuePacket(new ConnectionManager.PacketStruct(ClientCommCaladium.nhtPong, new byte[0]));
@@ -158,9 +155,9 @@ class ClientProtocol6 extends ProtocolManager {
 				}
 				
 				//Finishing the connection establishment if the handshake was successful
-				if(resultCode == ConnectionManager.intentResultCodeSuccess) communicationsManager.updateStateConnected();
+				if(resultCode == ConnectionManager.intentResultCodeSuccess) communicationsManager.onHandshakeCompleted();
 					//Otherwise terminating the connection
-				else communicationsManager.connectionThread.closeConnection(resultCode, resultCode == ConnectionManager.intentResultCodeBadRequest); //Only forward the request if the request couldn't be processed (an unauthorized response means that the server could understand the request)
+				else communicationsManager.disconnect(resultCode);
 				
 				break;
 			}
@@ -250,7 +247,7 @@ class ClientProtocol6 extends ProtocolManager {
 							Logger.getGlobal().log(Level.WARNING, "Rejecting large byte chunk (type: " + messageType + " - size: " + contentLen + ")");
 							
 							//Closing the connection
-							communicationsManager.connectionThread.closeConnection(ConnectionManager.intentResultCodeConnection, false);
+							communicationsManager.disconnect(ConnectionManager.intentResultCodeConnection);
 							break;
 						}
 						compressedBytes = new byte[contentLen];
@@ -461,7 +458,7 @@ class ClientProtocol6 extends ProtocolManager {
 	@Override
 	boolean requestChatCreation(short requestID, String[] chatMembers, String service) {
 		//Returning false if there is no connection thread
-		if(communicationsManager.connectionThread == null) return false;
+		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		byte[] packetData;
 		try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
@@ -488,7 +485,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.connectionThread.queuePacket(new ConnectionManager.PacketStruct(nhtCreateChat, packetData));
+		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtCreateChat, packetData));
 		
 		//Returning true
 		return true;
@@ -497,7 +494,7 @@ class ClientProtocol6 extends ProtocolManager {
 	@Override
 	boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
 		//Returning false if there is no connection thread
-		if(communicationsManager.connectionThread == null) return false;
+		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		//Building the data
 		byte[] packetData;
@@ -763,7 +760,7 @@ class ClientProtocol6 extends ProtocolManager {
 	@Override
 	boolean sendAuthenticationRequest() {
 		//Returning false if there is no connection thread
-		if(communicationsManager.connectionThread == null) return false;
+		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		byte[] packetData;
 		try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt)) {
@@ -777,14 +774,14 @@ class ClientProtocol6 extends ProtocolManager {
 			Crashlytics.logException(exception);
 			
 			//Closing the connection
-			communicationsManager.connectionThread.closeConnection(ConnectionManager.intentResultCodeInternalException, false);
+			communicationsManager.disconnect(ConnectionManager.intentResultCodeInternalException);
 			
 			//Returning false
 			return false;
 		}
 		
 		//Sending the message
-		communicationsManager.connectionThread.queuePacket(new ConnectionManager.PacketStruct(nhtAuthentication, packetData));
+		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtAuthentication, packetData));
 		
 		//Returning true
 		return true;
@@ -793,7 +790,7 @@ class ClientProtocol6 extends ProtocolManager {
 	@Override
 	boolean sendMessage(short requestID, String chatGUID, String message) {
 		//Returning false if there is no connection thread
-		if(communicationsManager.connectionThread == null) return false;
+		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		byte[] packetData;
 		try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
@@ -820,7 +817,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.connectionThread.queuePacket(new ConnectionManager.PacketStruct(nhtSendTextExisting, packetData));
+		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtSendTextExisting, packetData));
 		
 		//Returning true
 		return true;
@@ -829,7 +826,7 @@ class ClientProtocol6 extends ProtocolManager {
 	@Override
 	boolean sendMessage(short requestID, String[] chatMembers, String message, String service) {
 		//Returning false if there is no connection thread
-		if(communicationsManager.connectionThread == null) return false;
+		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		byte[] packetData;
 		try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
@@ -857,7 +854,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.connectionThread.queuePacket(new ConnectionManager.PacketStruct(nhtSendTextNew, packetData));
+		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtSendTextNew, packetData));
 		
 		//Returning true
 		return true;
@@ -894,7 +891,7 @@ class ClientProtocol6 extends ProtocolManager {
 	@Override
 	boolean sendConversationInfoRequest(List<ConversationInfoRequest> list) {
 		//Returning false if there is no connection thread
-		if(communicationsManager.connectionThread == null) return false;
+		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		//Creating the guid list
 		ArrayList<String> guidList;
@@ -922,7 +919,7 @@ class ClientProtocol6 extends ProtocolManager {
 			out.flush();
 			
 			//Sending the message
-			communicationsManager.connectionThread.queuePacket(new ConnectionManager.PacketStruct(nhtConversationUpdate, trgt.toByteArray()));
+			communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtConversationUpdate, trgt.toByteArray()));
 		} catch(IOException | GeneralSecurityException exception) {
 			//Logging the exception
 			exception.printStackTrace();
@@ -939,7 +936,7 @@ class ClientProtocol6 extends ProtocolManager {
 	@Override
 	boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast) {
 		//Returning false if there is no connection thread
-		if(communicationsManager.connectionThread == null) return false;
+		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		//Adding the data
 		byte[] packetData;
@@ -970,7 +967,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.connectionThread.sendDataSync(nhtSendFileExisting, packetData, true);
+		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtSendFileExisting, packetData));
 		
 		//Returning true
 		return true;
@@ -979,7 +976,7 @@ class ClientProtocol6 extends ProtocolManager {
 	@Override
 	boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast) {
 		//Returning false if there is no connection thread
-		if(communicationsManager.connectionThread == null) return false;
+		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		//Adding the data
 		byte[] packetData;
@@ -1014,7 +1011,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.connectionThread.sendDataSync(nhtSendFileNew, packetData, true);
+		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtSendFileNew, packetData));
 		
 		//Returning true
 		return true;
@@ -1023,10 +1020,10 @@ class ClientProtocol6 extends ProtocolManager {
 	@Override
 	boolean requestRetrievalTime(long timeLower, long timeUpper) {
 		//Returning false if there is no connection thread
-		if(communicationsManager.connectionThread == null) return false;
+		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		//Sending the message
-		communicationsManager.connectionThread.queuePacket(new ConnectionManager.PacketStruct(nhtTimeRetrieval, ByteBuffer.allocate(Long.SIZE / 8 * 2).putLong(timeLower).putLong(timeUpper).array()));
+		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtTimeRetrieval, ByteBuffer.allocate(Long.SIZE / 8 * 2).putLong(timeLower).putLong(timeUpper).array()));
 		
 		//Returning true
 		return true;

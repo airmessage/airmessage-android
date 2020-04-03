@@ -1,31 +1,24 @@
 package me.tagavari.airmessage.connection;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.os.Handler;
-import android.os.Looper;
 
 import java.util.List;
 
-import me.tagavari.airmessage.MainApplication;
+import me.tagavari.airmessage.connection.proxy.DataProxy;
+import me.tagavari.airmessage.connection.proxy.DataProxyListener;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
 
-public abstract class CommunicationsManager {
-	//Creating the reference values
-	private static final long pingExpiryTime = 20 * 1000; //20 seconds
-	
-	protected ConnectionManager connectionManager;
+public abstract class CommunicationsManager implements DataProxyListener {
+	protected final ConnectionManager connectionManager;
+	protected final DataProxy dataProxy;
 	protected final Context context;
 	
 	//Creating the request values
 	public byte launchID;
 	
-	//Creating the connection values
-	private final Handler handler = new Handler();
-	private final Runnable pingExpiryRunnable = this::disconnectReconnect;
-	
-	public CommunicationsManager(ConnectionManager connectionManager, Context context) {
+	public CommunicationsManager(ConnectionManager connectionManager, DataProxy dataProxy, Context context) {
 		this.connectionManager = connectionManager;
+		this.dataProxy = dataProxy;
 		this.context = context;
 	}
 	
@@ -33,87 +26,47 @@ public abstract class CommunicationsManager {
 	 * Connects to the server
 	 *
 	 * @param launchID an ID to represent and track this connection
-	 * @return whether or not the request was successful
 	 */
-	public boolean connect(byte launchID) {
-		connectionManager.updateCommunicationsManager(this);
+	public final void connect(byte launchID) {
+		//Recording the launch ID
 		this.launchID = launchID;
 		
-		//Stopping the passive reconnection timer
-		connectionManager.getServiceCallbacks().cancelSchedulePassiveReconnection();
-		
-		return false;
+		//Connecting the proxy
+		dataProxy.start();
 	}
-	
-	/**
-	 * Connects to the server with multiple attempts, (eg. after a network switch)
-	 */
-	public abstract void disconnectReconnect();
 	
 	/**
 	 * Disconnects the connection manager from the server
 	 */
-	public void disconnect() {
-		//Clearing the reconnect flag
-		connectionManager.setFlagDropReconnect(false);
+	public final void disconnect() {
+		//Disconnecting the proxy
+		dataProxy.stop(ConnectionManager.intentResultCodeConnection);
 	}
 	
-	/**
-	 * Cleans up timers after a disconnection occurs
-	 */
-	public void handleDisconnection() {
-		//Cancelling the keepalive timer
-		connectionManager.getServiceCallbacks().cancelSchedulePing();
-		
-		//Cancelling the expiry timer
-		handler.removeCallbacks(pingExpiryRunnable);
-		
-		//Starting the passive reconnection timer
-		connectionManager.getServiceCallbacks().schedulePassiveReconnection();
+	@Override
+	public void onOpen() {
+		connectionManager.onConnect(this);
 	}
 	
-	/**
-	 * Get the current state of the connection manager
-	 *
-	 * @return an integer representing the state
-	 */
-	public abstract int getState();
+	@Override
+	public void onClose(int reason) {
+		connectionManager.onDisconnect(this, reason);
+	}
+	
+	@Override
+	public void onMessage(int type, byte[] content) {
+		connectionManager.onPacket(this);
+	}
+	
+	public void onHandshakeCompleted() {
+		connectionManager.onHandshakeCompleted(this);
+	}
 	
 	/**
 	 * Get whether or not the server is connected via the fallback address
 	 * @return fallback
 	 */
 	public abstract boolean isConnectedFallback();
-	
-	/**
-	 * Sends a ping packet to the server
-	 *
-	 * @return whether or not the message was successfully sent
-	 */
-	public boolean sendPing() {
-		//Starting the ping timer
-		handler.postDelayed(pingExpiryRunnable, pingExpiryTime);
-		
-		return false;
-	}
-	
-	/**
-	 * Notifies the connection manager of a message, cancelling the ping expiry timer
-	 */
-	public void onMessage() {
-		//Cancelling the ping timer
-		handler.removeCallbacks(pingExpiryRunnable);
-		
-		//Updating the scheduled ping
-		connectionManager.getServiceCallbacks().schedulePing();
-		
-		//Updating the last connection time
-		if(connectionManager.getFlagMarkEndTime()) {
-			SharedPreferences.Editor editor = MainApplication.getInstance().getConnectivitySharedPrefs().edit();
-			editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
-			editor.apply();
-		}
-	}
 	
 	/**
 	 * Gets a packager for processing transferable data via this protocol version
@@ -128,6 +81,13 @@ public abstract class CommunicationsManager {
 	 * @return the hash algorithm
 	 */
 	public abstract String getHashAlgorithm();
+	
+	/**
+	 * Sends a ping packet to the server
+	 *
+	 * @return whether or not the message was successfully sent
+	 */
+	public abstract boolean sendPing();
 	
 	/**
 	 * Requests a message to be sent to the specified conversation
@@ -229,24 +189,6 @@ public abstract class CommunicationsManager {
 	 * @return 0 if the version is applicable, -1 if the version is too old, 1 if the version is too new
 	 */
 	public abstract int checkCommVerApplicability(int version);
-	
-	/**
-	 * Forwards a request to the next connection manager
-	 *
-	 * @param launchID an ID used to identify connection attempts
-	 * @param thread whether or not to use a new thread
-	 * @return if the request was forwarded
-	 */
-	public boolean forwardRequest(byte launchID, boolean thread) {
-		int targetIndex = connectionManager.communicationsClassPriorityList.indexOf(getClass()) + 1;
-		if(targetIndex == connectionManager.communicationsInstancePriorityList.size()) return false;
-		if(thread) {
-			new Handler(Looper.getMainLooper()).post(() -> {
-				if(ConnectionManager.getCurrentLaunchID() == launchID) connectionManager.communicationsInstancePriorityList.get(targetIndex).get(connectionManager, context).connect(launchID);
-			});
-		} else connectionManager.communicationsInstancePriorityList.get(targetIndex).get(connectionManager, context).connect(launchID);
-		return true;
-	}
 	
 	/**
 	 * Checks if the specified feature is supported by the current protocol

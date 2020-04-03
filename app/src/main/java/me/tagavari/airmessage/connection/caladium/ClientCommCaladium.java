@@ -28,6 +28,8 @@ import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.connection.CommunicationsManager;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
+import me.tagavari.airmessage.connection.proxy.DataProxy;
+import me.tagavari.airmessage.connection.proxy.DataProxyListener;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
 import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.Constants;
@@ -35,10 +37,7 @@ import me.tagavari.airmessage.util.Constants;
 public class ClientCommCaladium extends CommunicationsManager {
 	//Creating the connection values
 	private ProtocolManager protocolManager = null;
-	ConnectionThread connectionThread = null;
-	private int currentState = ConnectionManager.stateDisconnected;
 	
-	private static final int socketTimeout = 1000 * 10; //10 seconds
 	private static final long handshakeExpiryTime = 1000 * 10; //10 seconds
 	final Handler handler = new Handler();
 	
@@ -48,87 +47,58 @@ public class ClientCommCaladium extends CommunicationsManager {
 	static final int nhtPong = -3;
 	static final int nhtInformation = 0;
 
-	//Creating the other values
-	private boolean connectionEstablished = false;
-
-	final Runnable handshakeExpiryRunnable = () -> {
-		if(connectionThread != null) connectionThread.closeConnection(ConnectionManager.intentResultCodeConnection, true);
-	};
+	final Runnable handshakeExpiryRunnable = () -> dataProxy.stop(ConnectionManager.intentResultCodeConnection);
 	
-	public ClientCommCaladium(ConnectionManager connectionManager, Context context) {
-		super(connectionManager, context);
+	//Creating the state values
+	private boolean connectionOpened = false;
+	
+	public ClientCommCaladium(ConnectionManager connectionManager, DataProxy dataProxy, Context context) {
+		super(connectionManager, dataProxy, context);
+		
+		//Hooking into the data proxy
+		dataProxy.addDataListener(this);
 	}
 	
 	@Override
-	public boolean connect(byte launchID) {
+	public void onOpen() {
 		//Calling the super method
-		super.connect(launchID);
+		super.onOpen();
 		
-		//Parsing the hostname
-		String cleanHostname = ConnectionManager.hostname;
-		int port = Constants.defaultPort;
-		if(ConnectionManager.regExValidPort.matcher(cleanHostname).find()) {
-			String[] targetDetails = ConnectionManager.hostname.split(":");
-			cleanHostname = targetDetails[0];
-			port = Integer.parseInt(targetDetails[1]);
-		}
+		//Starting the handshake expiry timer
+		handler.postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
 		
-		String cleanHostnameFallback = null;
-		int portFallback = -1;
-		
-		if(ConnectionManager.hostnameFallback != null) {
-			cleanHostnameFallback = ConnectionManager.hostnameFallback;
-			portFallback = Constants.defaultPort;
-			
-			if(ConnectionManager.regExValidPort.matcher(cleanHostnameFallback).find()) {
-				String[] targetDetails = ConnectionManager.hostnameFallback.split(":");
-				cleanHostnameFallback = targetDetails[0];
-				portFallback = Integer.parseInt(targetDetails[1]);
-			}
-		}
-		
-		//Setting the state as connecting
-		currentState = ConnectionManager.stateConnecting;
-		
-		//Starting the connection
-		connectionThread = new ConnectionThread(cleanHostname, port, cleanHostnameFallback, portFallback);
-		connectionThread.start();
-		
-		//Returning true
-		return true;
+		//Setting the state
+		connectionOpened = true;
 	}
 	
 	@Override
-	public void disconnectReconnect() {
-		//Keeps the connection drop reconnect flag enabled
-		connectionThread.initiateClose(ConnectionManager.intentResultCodeConnection, false);
+	public void onClose(int reason) {
+		//Calling the super method
+		super.onClose(reason);
+		
+		//Cancelling the handshake expiry timer
+		handler.removeCallbacks(handshakeExpiryRunnable);
 	}
 	
 	@Override
-	public void disconnect() {
-		super.disconnect();
-		connectionThread.initiateClose(ConnectionManager.intentResultCodeConnection, false);
-	}
-	
-	@Override
-	public int getState() {
-		return currentState;
+	public void onMessage(int type, byte[] content) {
+		//Calling the super method
+		super.onMessage(type, content);
+		
+		//Processing the data
+		if(protocolManager == null) processFloatingData(type, content);
+		else protocolManager.processData(type, content);
 	}
 	
 	@Override
 	public boolean isConnectedFallback() {
-		if(connectionThread == null) return false;
-		return connectionThread.isUsingFallback();
-	}
-	
-	public boolean queuePacket(ConnectionManager.PacketStruct packet) {
-		return connectionThread != null && connectionThread.queuePacket(packet);
+		//if(connectionThread == null) return false;
+		//return connectionThread.isUsingFallback();
+		return false;
 	}
 	
 	@Override
 	public boolean sendPing() {
-		super.sendPing();
-		
 		if(protocolManager == null) return false;
 		else return protocolManager.sendPing();
 	}
@@ -204,120 +174,22 @@ public class ClientCommCaladium extends CommunicationsManager {
 		return Integer.compare(version, 4);
 	}
 	
-	private void updateStateDisconnected(int reason, boolean forwardRequest) {
-		//Returning if the state is already disconnected
-		if(currentState == ConnectionManager.stateDisconnected) return;
-		
-		//Cleaning up from the base connection manager
-		super.handleDisconnection();
-		
-		//Setting the state
-		currentState = ConnectionManager.stateDisconnected;
-		
-		//Setting the connection established flag
-		connectionEstablished = false;
-		
-		//Stopping the timers
-		handler.removeCallbacks(handshakeExpiryRunnable);
-		
-		//Invalidating the protocol manager
-		protocolManager = null;
-		
-		//Cancelling an active mass retrieval
-		new Handler(Looper.getMainLooper()).post(() -> connectionManager.cancelMassRetrieval(context));
-		
-		//Attempting to connect via a legacy method, and checking for a non-pass
-		if(!forwardRequest || !forwardRequest(launchID, true)) {
-			new Handler(Looper.getMainLooper()).post(() -> {
-				//Checking if this is the most recent launch
-				if(ConnectionManager.getCurrentLaunchID() == launchID) {
-					//Setting the last connection result
-					connectionManager.setLastConnectionResult(reason);
-					
-					//Checking if the service is expected to shut down
-					if(connectionManager.getFlagShutdownRequested()) {
-						//Notifying the connection listeners
-						connectionManager.broadcastState(context, ConnectionManager.stateDisconnected, reason, launchID);
-					} else {
-						//Checking if a connection existed for reconnection and the preference is enabled
-						if(connectionManager.getFlagDropReconnect() && false/* && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)*/) {
-							//Updating the notification
-							//connectionService.postConnectedNotification(false, false);
-							
-							/* //Notifying the connection listeners
-							connectionManager.broadcastState(context, ConnectionManager.stateConnecting, 0, launchID);
-							
-							//Reconnecting
-							connect(connectionManager.getNextLaunchID(), true); */
-						} else {
-							//Updating the notification
-							//connectionService.postDisconnectedNotification(false);
-							
-							//Notifying the connection listeners
-							connectionManager.broadcastState(context, ConnectionManager.stateDisconnected, reason, launchID);
-						}
-					}
-					
-					//Clearing the flags
-					connectionManager.setFlagMarkEndTime(false);
-					connectionManager.setFlagDropReconnect(false);
-				} else {
-					//Notifying the connection listeners
-					connectionManager.broadcastState(context, ConnectionManager.stateDisconnected, reason, launchID);
-				}
-			});
-		}
+	public boolean isConnectionOpened() {
+		return connectionOpened;
 	}
 	
-	void updateStateConnected() {
-		//Setting the connection established flag
-		connectionEstablished = true;
-		
-		//Reading the shared preferences connectivity information
-		SharedPreferences sharedPrefs = MainApplication.getInstance().getConnectivitySharedPrefs();
-		String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
-		long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
-		
-		//Updating the shared preferences connectivity information
-		SharedPreferences.Editor sharedPrefsEditor = sharedPrefs.edit();
-		if(!ConnectionManager.hostname.equals(lastConnectionHostname)) sharedPrefsEditor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, ConnectionManager.hostname);
-		sharedPrefsEditor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
-		sharedPrefsEditor.apply();
-		
-		//Running on the main thread
-		new Handler(Looper.getMainLooper()).post(() -> {
-			//Checking if this is the most recent launch
-			if(ConnectionManager.getCurrentLaunchID() == launchID) {
-				//Setting the last connection result
-				connectionManager.setLastConnectionResult(ConnectionManager.intentResultCodeSuccess);
-				
-				//Setting the state
-				currentState = ConnectionManager.stateConnected;
-				
-				//Retrieving the pending conversation info
-				sendConversationInfoRequest(connectionManager.getPendingConversations());
-				
-				//Setting the flags
-				connectionManager.setFlagMarkEndTime(true);
-				connectionManager.setFlagDropReconnect(true);
-				
-				//Checking if the last connection is the same as the current one
-				if(ConnectionManager.hostname.equals(lastConnectionHostname)) {
-					//Fetching the messages since the last connection time
-					connectionManager.retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
-				}
-			}
-		});
-		
-		//Notifying the connection listeners
-		connectionManager.broadcastState(context, ConnectionManager.stateConnected, -1, launchID);
-		
-		//Updating the notification
-		//if(connectionService.foregroundServiceRequested()) connectionService.postConnectedNotification(true, connectionThread.isUsingFallback());
-		//else connectionService.clearNotification();
-		
-		//Scheduling the ping
-		connectionManager.getServiceCallbacks().schedulePing();
+	boolean queuePacket(ConnectionManager.PacketStruct packet) {
+		return dataProxy.send(packet);
+	}
+	
+	/**
+	 * Disconnects the connection manager from the server with a custom error code
+	 *
+	 * @param code The error code to disconnect with
+	 */
+	void disconnect(int code) {
+		//Disconnecting the proxy
+		dataProxy.stop(code);
 	}
 	
 	/**
@@ -334,23 +206,23 @@ public class ClientCommCaladium extends CommunicationsManager {
 			int communicationsVersion = dataBuffer.getInt();
 			int communicationsSubVersion = dataBuffer.getInt();
 			
-			//Checking if the client can't handle the communications version
+			//Checking if the client can't handle this communications version
 			int verApplicability = checkCommVerApplicability(communicationsVersion);
 			if(verApplicability != 0) {
 				//Terminating the connection
-				connectionThread.closeConnection(verApplicability < 0 ? ConnectionManager.intentResultCodeServerOutdated : ConnectionManager.intentResultCodeClientOutdated, verApplicability < 0);
+				dataProxy.stop(verApplicability < 0 ? ConnectionManager.intentResultCodeServerOutdated : ConnectionManager.intentResultCodeClientOutdated);
 				return;
 			}
 			
 			//Communications subversions 1-5 are no longer supported
 			if(communicationsSubVersion <= 5) {
-				connectionThread.closeConnection(ConnectionManager.intentResultCodeServerOutdated, false);
+				dataProxy.stop(ConnectionManager.intentResultCodeServerOutdated);
 				return;
 			}
 			
 			protocolManager = findProtocolManager(communicationsSubVersion);
 			if(protocolManager == null) {
-				connectionThread.closeConnection(ConnectionManager.intentResultCodeClientOutdated, false);
+				dataProxy.stop(ConnectionManager.intentResultCodeClientOutdated);
 				return;
 			}
 			

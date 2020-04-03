@@ -584,7 +584,7 @@ public class FileProcessingThread extends Thread {
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
 		
 		//Checking if the service isn't ready
-		if(connectionManager == null || connectionManager.getCurrentState() != ConnectionManager.stateConnected) {
+		if(connectionManager == null || !connectionManager.isConnected()) {
 			//Calling the fail method
 			request.setInProcessing(false);
 			handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalNetwork, null));
@@ -656,7 +656,7 @@ public class FileProcessingThread extends Thread {
 				};
 				
 				//Checking if the service isn't ready
-				if(connectionManager == null || connectionManager.getCurrentState() != ConnectionManager.stateConnected) {
+				if(connectionManager == null || !connectionManager.isConnected()) {
 					//Calling the fail method
 					request.setInProcessing(false);
 					handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalNetwork, null));

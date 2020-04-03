@@ -65,14 +65,7 @@ public class ConnectionService extends Service {
 	private final BroadcastReceiver pingBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			//Ignoring if there is no connection
-			if(connectionManager.getCurrentState() != ConnectionManager.stateConnected) return;
-			
-			//Pinging the server
-			connectionManager.getCurrentCommunicationsManager().sendPing();
-			
-			//Rescheduling the ping
-			schedulePing();
+			connectionManager.ping();
 		}
 	};
 	private final Runnable connectRunnable = new Runnable() {
@@ -90,11 +83,8 @@ public class ConnectionService extends Service {
 	private final BroadcastReceiver reconnectionBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			//Returning if there is already a connection in progress
-			if(connectionManager.getCurrentState() != ConnectionManager.stateDisconnected) return;
-			
 			//Connecting to the server
-			connectionManager.connect(context, ConnectionManager.getNextLaunchID());
+			connectionManager.connect(context);
 		}
 	};
 	private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
@@ -286,7 +276,7 @@ public class ConnectionService extends Service {
 		//Checking if a stop has been requested
 		if(selfIntentActionStop.equals(intentAction)) {
 			//Setting the service as shutting down
-			connectionManager.setFlagShutdownRequested(true);
+			connectionManager.setFlagShutdownRequested();
 			
 			//Disconnecting
 			connectionManager.disconnect();
@@ -300,7 +290,7 @@ public class ConnectionService extends Service {
 		//Checking if a disconnection has been requested
 		else if(selfIntentActionDisconnect.equals(intentAction)) {
 			//Removing the reconnection flag
-			connectionManager.setFlagDropReconnect(false);
+			connectionManager.setFlagShutdownRequested();
 			
 			//Disconnecting
 			connectionManager.disconnect();
@@ -309,12 +299,7 @@ public class ConnectionService extends Service {
 			postDisconnectedNotification(true);
 		}
 		//Reconnecting the client if requested
-		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) {
-			connectionManager.connect(this, intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : ConnectionManager.getNextLaunchID());
-		}
-		
-		//Setting the service as not shutting down
-		connectionManager.setFlagShutdownRequested(false);
+		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) connectionManager.connect(this);
 		
 		//Calling the listeners
 		//for(ServiceStartCallback callback : startCallbacks) callback.onServiceStarted(this);

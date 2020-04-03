@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.SparseArray;
 
 import androidx.core.util.Consumer;
@@ -29,6 +31,8 @@ import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.caladium.ClientCommCaladium;
+import me.tagavari.airmessage.connection.proxy.DataProxy;
+import me.tagavari.airmessage.connection.proxy.ProxyCustomTCP;
 import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
 import me.tagavari.airmessage.connection.request.FileDownloadRequest;
@@ -86,6 +90,8 @@ public class ConnectionManager {
 	public static final int largestFileSize = 1024 * 1024 * 100; //100 MB
 	public static final int attachmentChunkSize = 1024 * 1024; //1 MiB
 	
+	private static final long pingExpiryTime = 40 * 1000; //40 seconds
+	
 	public static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
 	
 	//Creating the service values
@@ -117,13 +123,13 @@ public class ConnectionManager {
 	public static String hostnameFallback = null;
 	public static String password = null;
 	
+	private int currentState = stateDisconnected;
 	private CommunicationsManager currentCommunicationsManager = null;
 	private static byte currentLaunchID = 0;
 	private static byte nextLaunchID = 0;
 	private int lastConnectionResult = -1;
+	private boolean connectionEstablished = false;
 	
-	private boolean flagMarkEndTime = false; //Marks the time that the connection is closed, so that missed messages can be fetched since that time when reconnecting
-	private boolean flagDropReconnect = false; //Automatically starts a new connection when the connection is closed
 	private boolean flagShutdownRequested = false; //Disables forwarding when disconnecting
 	
 	private int activeCommunicationsVersion = -1;
@@ -134,15 +140,15 @@ public class ConnectionManager {
 	private final SparseArray<ChatCreationResponseManager> chatCreationRequests = new SparseArray<>();
 	private short currentRequestID = 0;
 	
+	//Creating the handler values
+	private final Handler handler = new Handler();
+	private final Runnable pingExpiryRunnable = this::disconnect;
+	
 	private final ArrayList<ConversationInfoRequest> pendingConversations = new ArrayList<>();
 	
 	public ConnectionManager(ServiceCallbacks serviceCallbacks) {
 		//Setting the service information
 		this.serviceCallbacks = serviceCallbacks;
-	}
-	
-	public ServiceCallbacks getServiceCallbacks() {
-		return serviceCallbacks;
 	}
 	
 	public void init(Context context) {
@@ -172,28 +178,101 @@ public class ConnectionManager {
 		}
 	}
 	
-	public boolean connect(Context context, byte launchID) {
-		//Returning if a connection is already running
-		if(getCurrentState() != stateDisconnected) return false;
+	public void onConnect(CommunicationsManager communicationsManager) {
+		//Setting the current connections manager
+		currentCommunicationsManager = communicationsManager;
+	}
+	
+	public void onHandshakeCompleted(CommunicationsManager communicationsManager) {
+		//Setting the connection as established
+		connectionEstablished = true;
 		
-		//Updating the launch ID
-		currentLaunchID = launchID;
+		//Updating the state
+		updateState(getContext(), stateConnected, 0, getCurrentLaunchID());
 		
-		//Returning if there is no internet connection
-		{
-			NetworkInfo activeNetwork = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
-			boolean isConnected = activeNetwork != null && activeNetwork.isConnected();
-			if(!isConnected) {
-				//Updating the notification
-				//postDisconnectedNotification(true);
-				
-				//Notifying the connection listeners
-				broadcastState(context, stateDisconnected, intentResultCodeConnection, launchID);
-				
-				return false;
+		//Scheduling the ping
+		serviceCallbacks.schedulePing();
+		
+		//Stopping the passive reconnection timer
+		serviceCallbacks.cancelSchedulePassiveReconnection();
+		
+		//Reading the shared preferences connectivity information
+		SharedPreferences sharedPrefs = MainApplication.getInstance().getConnectivitySharedPrefs();
+		String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
+		long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+		
+		//Updating the shared preferences connectivity information
+		SharedPreferences.Editor sharedPrefsEditor = sharedPrefs.edit();
+		if(!hostname.equals(lastConnectionHostname)) sharedPrefsEditor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, ConnectionManager.hostname);
+		sharedPrefsEditor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+		sharedPrefsEditor.apply();
+		
+		//Setting the last connection result
+		setLastConnectionResult(ConnectionManager.intentResultCodeSuccess);
+		
+		//Retrieving the pending conversation info
+		communicationsManager.sendConversationInfoRequest(pendingConversations);
+		
+		//Checking if the last connection is the same as the current one
+		if(hostname.equals(lastConnectionHostname)) {
+			//Fetching the messages since the last connection time
+			retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
+		}
+	}
+	
+	public void onDisconnect(CommunicationsManager communicationsManager, int code) {
+		//Checking if there was an established connection
+		if(connectionEstablished) {
+			//Recording the end time
+			SharedPreferences.Editor editor = MainApplication.getInstance().getConnectivitySharedPrefs().edit();
+			editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+			editor.apply();
+		} else {
+			//Checking if no shutdown was requested
+			if(!flagShutdownRequested) {
+				//Connecting via the next communications manager
+				int targetIndex = communicationsClassPriorityList.indexOf(communicationsManager.getClass()) + 1;
+				if(targetIndex < communicationsInstancePriorityList.size()) {
+					communicationsInstancePriorityList.get(targetIndex).get(this, getDataProxy(getContext()), getContext()).connect(getCurrentLaunchID());
+					return;
+				}
 			}
 		}
 		
+		//Updating the state
+		updateState(getContext(), stateDisconnected, code, getCurrentLaunchID());
+		
+		//Cancelling the keepalive timer
+		serviceCallbacks.cancelSchedulePing();
+		
+		//Starting the passive reconnection timer
+		serviceCallbacks.schedulePassiveReconnection();
+		
+		//Resetting the flags
+		connectionEstablished = false;
+		flagShutdownRequested = false;
+	}
+	
+	public void onPacket(CommunicationsManager communicationsManager) {
+		//Cancelling the ping timer
+		handler.removeCallbacks(pingExpiryRunnable);
+		
+		//Scheduling a new ping
+		serviceCallbacks.schedulePing();
+		
+		//Updating the last connection time
+		if(connectionEstablished) {
+			SharedPreferences.Editor editor = MainApplication.getInstance().getConnectivitySharedPrefs().edit();
+			editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+			editor.apply();
+		}
+	}
+	
+	private Context getContext() {
+		return MainApplication.getInstance();
+	}
+	
+	private DataProxy getDataProxy(Context context) {
 		//Checking if there is no hostname
 		if(hostname == null) {
 			//Retrieving the data from the shared preferences
@@ -204,75 +283,83 @@ public class ConnectionManager {
 		}
 		
 		//Checking if the hostname is invalid (nothing was found in memory or on disk)
-		if(hostname == null) {
-			//Updating the notification
-			//postDisconnectedNotification(true);
-			
+		if(hostname == null) return null;
+		
+		//Creating a new direct TCP proxy
+		return new ProxyCustomTCP();
+	}
+	
+	public boolean reconnect(Context context) {
+		return connect(context);
+	}
+	
+	public boolean connect(Context context) {
+		//Returning if a connection is already running
+		if(currentState != stateDisconnected) return false;
+		//Closing the current connection if it exists
+		if(getCurrentState() != stateDisconnected) disconnect();
+		
+		//Advancing the launch ID
+		byte launchID = getNextLaunchID();
+		
+		//Returning if there is no connection
+		{
+			NetworkInfo activeNetwork = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
+			boolean isConnected = activeNetwork != null && activeNetwork.isConnected();
+			if(!isConnected) {
+				//Notifying the connection listeners
+				broadcastState(context, stateDisconnected, intentResultCodeConnection, launchID);
+				
+				return false;
+			}
+		}
+		
+		//Getting the proxy
+		DataProxy proxy = getDataProxy(context);
+		
+		//Checking if the proxy is invalid
+		if(proxy == null) {
 			//Notifying the connection listeners
 			broadcastState(context, stateDisconnected, intentResultCodeConnection, launchID);
 			
 			return false;
 		}
 		
+		//Notifying the connection listeners
+		broadcastState(context, stateConnecting, 0, launchID);
+		
 		//Connecting through the top of the priority queue
-		boolean result = communicationsInstancePriorityList.get(0).get(this, context).connect(launchID);
+		communicationsInstancePriorityList.get(0).get(this, proxy, context).connect(launchID);
 		
-		if(result) {
-			//Updating the notification
-			//postConnectedNotification(false, false);
-			
-			//Notifying the connection listeners
-			broadcastState(context, stateConnecting, 0, launchID);
-		} else {
-			//Updating the notification
-			//postDisconnectedNotification(false);
-			
-			//Notifying the connection listeners
-			broadcastState(context, stateDisconnected, intentResultCodeInternalException, launchID);
-		}
-		
-		//Returning the result
-		return result;
+		//Return true
+		return true;
 	}
 	
 	public void disconnect() {
 		if(currentCommunicationsManager != null) currentCommunicationsManager.disconnect();
 	}
 	
-	public void reconnect(Context context) {
-		connect(context, getNextLaunchID());
-	}
-	
-	void updateCommunicationsManager(CommunicationsManager communicationsManager) {
-		//Disconnecting the current communications manager
-		if(currentCommunicationsManager != null && currentCommunicationsManager.getState() != stateDisconnected) currentCommunicationsManager.disconnect();
+	public void ping() {
+		//Returning if there is no connection
+		if(currentState != stateConnected) return;
 		
-		//Updating the communications manager information
-		currentCommunicationsManager = communicationsManager;
+		//Sending a ping
+		currentCommunicationsManager.sendPing();
+		
+		//Starting the ping timer
+		handler.postDelayed(pingExpiryRunnable, pingExpiryTime);
 	}
 	
-	public boolean getFlagMarkEndTime() {
-		return flagMarkEndTime;
+	public void setFlagShutdownRequested() {
+		flagShutdownRequested = true;
 	}
 	
-	public void setFlagMarkEndTime(boolean flagMarkEndTime) {
-		this.flagMarkEndTime = flagMarkEndTime;
+	public boolean isConnected() {
+		return currentState == stateConnected;
 	}
 	
-	public boolean getFlagDropReconnect() {
-		return flagDropReconnect;
-	}
-	
-	public void setFlagDropReconnect(boolean flagDropReconnect) {
-		this.flagDropReconnect = flagDropReconnect;
-	}
-	
-	public boolean getFlagShutdownRequested() {
-		return flagShutdownRequested;
-	}
-	
-	public void setFlagShutdownRequested(boolean flagShutdownRequested) {
-		this.flagShutdownRequested = flagShutdownRequested;
+	public int getCurrentState() {
+		return currentState;
 	}
 	
 	public boolean isConnectedFallback() {
@@ -282,11 +369,6 @@ public class ConnectionManager {
 	
 	public CommunicationsManager getCurrentCommunicationsManager() {
 		return currentCommunicationsManager;
-	}
-	
-	public int getCurrentState() {
-		if(currentCommunicationsManager == null) return stateDisconnected;
-		else return currentCommunicationsManager.getState();
 	}
 	
 	public void setActiveCommunicationsInfo(int version, int subversion) {
@@ -324,7 +406,11 @@ public class ConnectionManager {
 	}
 	
 	public static byte getNextLaunchID() {
-		return ++nextLaunchID;
+		return ++currentLaunchID;
+	}
+	
+	public void setCurrentLaunchID(byte currentLaunchID) {
+		this.currentLaunchID = currentLaunchID;
 	}
 	
 	public int getLastConnectionResult() {
@@ -403,6 +489,14 @@ public class ConnectionManager {
 		DatabaseManager.getInstance().removeDraftReference(draftFile.getLocalID(), updateTime);
 	}
 	
+	private void updateState(Context context, int state, int code, byte launchID) {
+		//Updating the current state
+		currentState = state;
+		
+		//Broadcasting the state
+		broadcastState(context, state, code, launchID);
+	}
+	
 	/**
 	 * Sends a broadcast to the listeners
 	 *
@@ -410,7 +504,7 @@ public class ConnectionManager {
 	 * @param code the error code, if the state is disconnected
 	 * @param launchID the launch ID of the connection
 	 */
-	public void broadcastState(Context context, int state, int code, byte launchID) {
+	private void broadcastState(Context context, int state, int code, byte launchID) {
 		//Notifying the connection listeners
 		LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCStateUpdate)
 				.putExtra(Constants.intentParamState, state)
@@ -511,7 +605,7 @@ public class ConnectionManager {
 	
 	public boolean retrievePendingConversationInfo() {
 		//Returning if the connection is not ready
-		if(getCurrentState() != stateConnected) return false;
+		if(currentState != stateConnected) return false;
 		
 		//Sending a request and returning the result
 		return currentCommunicationsManager.sendConversationInfoRequest(pendingConversations);
@@ -541,7 +635,7 @@ public class ConnectionManager {
 	
 	public boolean requestMassRetrieval() {
 		//Returning false if the client isn't ready or a mass retrieval is already in progress
-		if((massRetrievalThread != null && massRetrievalThread.isInProgress()) || getCurrentState() != stateConnected || currentMassRetrievalParams == null) return false;
+		if((massRetrievalThread != null && massRetrievalThread.isInProgress()) || currentState != stateConnected || currentMassRetrievalParams == null) return false;
 		
 		//Picking the next request ID
 		short requestID = getNextRequestID();
@@ -582,7 +676,7 @@ public class ConnectionManager {
 		short requestID = getNextRequestID();
 		
 		//Returning if there is no connection
-		if(currentCommunicationsManager == null || currentCommunicationsManager.getState() != stateConnected) return false;
+		if(currentCommunicationsManager == null || currentState != stateConnected) return false;
 		
 		//Building the tracking request
 		FileDownloadRequest request = new FileDownloadRequest(callbacks, new FileDownloadRequestDeregistrationListener(this), requestID, attachmentID, attachmentGUID, attachmentName);
@@ -619,7 +713,7 @@ public class ConnectionManager {
 	
 	public boolean sendMessage(String chatGUID, String message, MessageResponseManager responseListener) {
 		//Checking if the client isn't ready
-		if(getCurrentState() != stateConnected) {
+		if(currentState != stateConnected) {
 			//Telling the response listener
 			responseListener.onFail(Constants.messageErrorCodeLocalNetwork, null);
 			
@@ -654,7 +748,7 @@ public class ConnectionManager {
 	
 	public boolean sendMessage(String[] chatRecipients, String message, String service, MessageResponseManager responseListener) {
 		//Checking if the client isn't ready
-		if(getCurrentState() != stateConnected) {
+		if(currentState != stateConnected) {
 			//Telling the response listener
 			responseListener.onFail(Constants.messageErrorCodeLocalNetwork, null);
 			
@@ -715,7 +809,7 @@ public class ConnectionManager {
 	
 	public boolean retrieveMessagesSince(long timeLower, long timeUpper) {
 		//Returning false if the connection isn't ready
-		if(getCurrentState() != stateConnected) return false;
+		if(currentState != stateConnected) return false;
 		
 		//Sending the request
 		return currentCommunicationsManager.requestRetrievalTime(timeLower, timeUpper);
@@ -723,7 +817,7 @@ public class ConnectionManager {
 	
 	public boolean createChat(String[] members, String service, ChatCreationResponseManager responseListener) {
 		//Checking if the client isn't ready
-		if(getCurrentState() != stateConnected) {
+		if(currentState != stateConnected) {
 			//Telling the response listener
 			//responseListener.onFail(Constants.messageErrorCodeLocalNetwork, null);
 			responseListener.onFail();
@@ -936,7 +1030,7 @@ public class ConnectionManager {
 	}
 	
 	interface CommunicationsManagerSource {
-		CommunicationsManager get(ConnectionManager connectionManager, Context context);
+		CommunicationsManager get(ConnectionManager connectionManager, DataProxy proxy, Context context);
 	}
 	
 	public static class PacketStruct {
