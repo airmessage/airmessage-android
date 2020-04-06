@@ -88,14 +88,14 @@
 				android:clickable="false" />
 		</LinearLayout> -->
 
+		<View style="@style/Divider"  />
+
 		<!-- Rename conversation -->
 		<ViewStub
 			android:id="@+id/viewstub_groupname"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:layout="@layout/layout_conversationdetailsrename" />
-
-		<!-- <View style="@style/Divider" /> -->
 
 		<!-- Conversation members -->
 		<TextView
