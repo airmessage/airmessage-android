@@ -41,8 +41,11 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 			//Appending the information
 			message.appendBody(smsMessage.getMessageBody());
 			message.setSender(smsMessage.getOriginatingAddress());
-			message.setTimestamp(smsMessage.getTimestampMillis());
+			//message.setTimestamp(smsMessage.getTimestampMillis());
 		}
+		
+		//Overriding the message timestamp (inaccurate on certain devices)
+		message.setTimestamp(System.currentTimeMillis());
 		
 		//Saving the message
 		new GetAndroidThreadID(context, message.getSender(), threadID -> new SaveMessageTask(context, message, threadID, ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS)).execute()).execute();
