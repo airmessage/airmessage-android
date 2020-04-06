@@ -40,7 +40,7 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 			
 			//Appending the information
 			message.appendBody(smsMessage.getMessageBody());
-			message.setSender(smsMessage.getOriginatingAddress());
+			if(smsMessage.getOriginatingAddress() != null) message.setSender(Constants.normalizeAddress(smsMessage.getOriginatingAddress()));
 			//message.setTimestamp(smsMessage.getTimestampMillis());
 		}
 		

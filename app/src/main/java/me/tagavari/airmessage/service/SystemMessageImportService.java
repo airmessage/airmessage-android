@@ -734,7 +734,7 @@ public class SystemMessageImportService extends Service {
 				
 				//Adding the address to the array
 				String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.CanonicalAddressesColumns.ADDRESS));
-				recipientAddressArray[i] = address;
+				recipientAddressArray[i] = Constants.normalizeAddress(address);
 			} catch(RuntimeException exception) {
 				recipientAddressArray[i] = "0";
 				exception.printStackTrace();
