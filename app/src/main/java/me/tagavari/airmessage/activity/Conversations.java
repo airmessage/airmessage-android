@@ -171,10 +171,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Checking if there is no hostname
 		if(!((MainApplication) getApplication()).isServerConfigured()) {
 			//Creating the intent
-			Intent launchServerSetup = new Intent(this, ServerSetup.class);
-			
-			//Setting the change as required
-			launchServerSetup.putExtra(ServerSetup.intentExtraRequired, true);
+			Intent launchServerSetup = new Intent(this, Onboarding.class);
 			
 			//Launching the intent
 			startActivity(launchServerSetup);
@@ -751,7 +748,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			startService(new Intent(Conversations.this, ConnectionService.class));
 		} else {
 			//Reconnecting
-			connectionManager.reconnect(this);
+			connectionManager.connect(this);
 			
 			//Hiding the bar
 			hideServerWarning();

@@ -61,7 +61,13 @@ public class ClientCommCaladium extends CommunicationsManager {
 	
 	@Override
 	public void initiateClose() {
-		queuePacket(new ConnectionManager.PacketStruct(nhtClose, new byte[0], () -> dataProxy.stop(ConnectionManager.intentResultCodeConnection)));
+		if(connectionOpened) {
+			//Notifying the server before disconnecting
+			queuePacket(new ConnectionManager.PacketStruct(nhtClose, new byte[0], () -> dataProxy.stop(ConnectionManager.intentResultCodeConnection)));
+		} else {
+			//The server isn't connected, disconnect right away
+			dataProxy.stop(ConnectionManager.intentResultCodeConnection);
+		}
 	}
 	
 	@Override

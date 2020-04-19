@@ -9,6 +9,7 @@
 
 	<string name="action_send">Send</string>
 	<string name="action_next">Next</string>
+	<string name="action_done">Done</string>
 	<string name="action_back">Back</string>
 	<string name="action_skip">Skip</string>
 	<string name="action_delete">Delete</string>
@@ -69,6 +70,11 @@
 	<string name="action_connectiontroubleshootingguide">View help</string>
 	<string name="action_tapbackdetails">View tapback details</string>
 	<string name="action_renamegroup">Rename this group</string>
+	<string name="action_manualconfiguration">Use manual configuration</string>
+	<string name="action_signin_google">Sign in with Google</string>
+	<string name="action_signin_email">Sign in with email</string>
+	<string name="action_signout">Sign out</string>
+	<string name="action_checkconnection">Check connection</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -82,6 +88,7 @@
 	<string name="screen_newconversation">New conversation</string>
 	<string name="screen_conversationdetails">Conversation details</string>
 	<string name="screen_newmessage">New message</string>
+	<string name="screen_manualconfiguration">Manual configuration</string>
 
 	<string name="title_conversation_name">Group name</string>
 	<string name="title_conversation_members">People in this conversation</string>
@@ -90,6 +97,8 @@
 	<string name="dialog_feedback_message">Have a bug to report, a feature to suggest, or anything else to say? Contact us or discuss with others using the links below.</string>
 	<string name="dialog_feedback_email">Send E-Mail</string>
 	<string name="dialog_feedback_community">Open community subreddit</string>
+
+	<string name="dialog_signout_message">Are you sure you want to sign out?</string>
 
 	<string name="message_blankstate_conversations">Once you start a new conversation, you\'ll see it listed here</string>
 	<string name="message_blankstate_conversations_archived">Archived conversations appear here</string>
@@ -104,6 +113,9 @@
 	<string name="message_loaderror_messages">Failed to load messages</string>
 	<string name="message_loaderror_contacts">Failed to load contacts</string>
 	<string name="message_loaderror_blocked">Failed to load blocked addresses</string>
+
+	<string name="message_nointernet">No internet connection</string>
+	<string name="message_signinerror">Sign-in error</string>
 
 	<string name="message_loaderror_gallery">Failed to load gallery images</string>
 	<string name="message_loaderror_documents">Failed to load documents</string>
@@ -152,7 +164,7 @@
 	<string name="message_senderrornotify_desc">Your message to %s failed to send</string>
 	<string name="message_senderror">Not sent</string>
 
-	<string name="message_connectionerrror">Couldn\'t connect to server</string>
+	<string name="message_connectionerror">Couldn\'t connect to server</string>
 
 	<string name="message_permissionrejected">Permission request rejected</string>
 	<string name="message_permissiondetails_contacts_listing">Allow access to contacts to show names and pictures</string>
@@ -217,6 +229,7 @@
 	<string name="message_tapback_remove_question_you">You removed a question mark from \"%s\"</string>
 
 	<string name="message_setup_connect_address">Server address</string>
+	<string name="message_setup_connect_fallbackaddress">Fallback address (optional)</string>
 	<string name="message_setup_connect_noserver">Don\'t have a server?</string>
 	<string name="message_setup_connect_serverguidelink">Take a look at the install guide</string>
 	<string name="message_setup_connect_connectionerror">Connection failed</string>
@@ -333,6 +346,12 @@
 		<item quantity="other">%d years</item>
 	</plurals>
 
+	<string name="message_onboardinginstructions_title">Get started in 2 easy steps:</string>
+	<string name="message_onboardinginstructions_macmini_title">Set up your server</string>
+	<string name="message_onboardinginstructions_macmini_desc">A server installed on a Mac computer is required to route your messages for you.\n\nVisit airmessage.org on your computer to download.</string>
+	<string name="message_onboardinginstructions_airmessage_title">Connect your account</string>
+	<string name="message_onboardinginstructions_airmessage_desc">Log in with your account to get your messages on this device.</string>
+
 	<plurals name="message_newmessages">
 		<item quantity="one">%d new message</item>
 		<item quantity="other">%d new messages</item>
@@ -349,6 +368,7 @@
 	<string name="progress_connectingtoserver">Connecting to server&#8230;</string>
 	<string name="progress_importtextmessages">Importing text messages&#8230;</string>
 	<string name="progress_cleantextmessages">Cleaning up local text messages&#8230;</string>
+	<string name="progress_connectionverification">Checking your connection&#8230;</string>
 
 	<string name="time_now">Just now</string>
 	<string name="time_minutes">%d min</string>
@@ -402,6 +422,9 @@
 	<string name="part_tapback_laugh">Laugh</string>
 	<string name="part_tapback_exclamation">Exclamation</string>
 	<string name="part_tapback_question">Question mark</string>
+
+	<string name="part_invalidaddress">Invalid address</string>
+	<string name="part_manualconfigurationstatus">Manual configuration in progress</string>
 
 	<string name="label_email_home">Home</string>
 	<string name="label_email_work">Work</string>

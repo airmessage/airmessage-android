@@ -111,6 +111,22 @@
 			android:exported="false"
 			android:name=".ImageDraw"
 			android:theme="@style/AppTheme.ImageDraw" /> -->
+
+		<!-- Onboarding -->
+		<activity
+			android:exported="false"
+			android:name=".activity.Onboarding"
+			android:theme="@style/AppTheme.Onboarding">
+			<!--
+            <intent-filter>
+				<action android:name="me.tagavari.airmessage.activity.ServerSetup" />
+				<category android:name="android.intent.category.DEFAULT" />
+			</intent-filter>
+            -->
+
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
 		<!-- Server setup -->
 		<activity
 			android:exported="false"

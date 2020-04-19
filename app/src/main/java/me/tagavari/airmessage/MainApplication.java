@@ -1,11 +1,8 @@
 package me.tagavari.airmessage;
 
-import android.app.Activity;
-import android.app.AlarmManager;
 import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -17,10 +14,14 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Process;
-import android.preference.PreferenceManager;
 import android.provider.ContactsContract;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.content.ContextCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.preference.PreferenceManager;
 
 import com.crashlytics.android.Crashlytics;
 import com.crashlytics.android.core.CrashlyticsCore;
@@ -35,21 +36,16 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatDelegate;
-import androidx.core.content.ContextCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
 import io.fabric.sdk.android.Fabric;
 import me.tagavari.airmessage.activity.CrashReport;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.data.BitmapCacheHelper;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.receiver.StartBootReceiver;
+import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.service.SystemMessageImportService;
 import me.tagavari.airmessage.util.Constants;
 
@@ -72,7 +68,10 @@ public class MainApplication extends Application {
 	public static final String dirNameDraft = "draft";
 	
 	private static final String sharedPreferencesConnectivityFile = "connectivity";
+	public static final String sharedPreferencesConnectivityKeyAccountType = "account_type"; //The account type that the user is logged in with (direct connection or AM Connect)
+	public static final String sharedPreferencesConnectivityKeyConnectServerConfirmed = "connect_server_confirmed"; //TRUE if this account has confirmed its connection with the server
 	public static final String sharedPreferencesConnectivityKeyHostname = "hostname";
+	public static final String sharedPreferencesConnectivityKeyHostnameFallback = "hostname_fallback";
 	public static final String sharedPreferencesConnectivityKeyPassword = "password";
 	public static final String sharedPreferencesConnectivityKeyLastConnectionTime = "last_connection_time";
 	public static final String sharedPreferencesConnectivityKeyLastConnectionHostname = "last_connection_hostname";
@@ -151,6 +150,9 @@ public class MainApplication extends Application {
 		//Setting the instance
 		instanceReference = new WeakReference<>(this);
 		
+		//Upgrading shared preferences data
+		upgradeSharedPreferences();
+		
 		//Checking if the device is running Android Oreo (API 26)
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 			//Initializing the notification channels
@@ -191,8 +193,8 @@ public class MainApplication extends Application {
 				NotificationChannel channel = new NotificationChannel(notificationChannelStatusImportant, getResources().getString(R.string.notificationchannel_statusimportant), NotificationManager.IMPORTANCE_LOW);
 				channel.setDescription(getString(R.string.notificationchannel_statusimportant_desc));
 				channel.enableVibration(true);
-				channel.setShowBadge(true);
-				channel.enableLights(true);
+				channel.setShowBadge(false);
+				channel.enableLights(false);
 				notificationManager.createNotificationChannel(channel);
 			}
 		}
@@ -200,7 +202,7 @@ public class MainApplication extends Application {
 		//Getting the connection service information
 		SharedPreferences sharedPrefs = getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE);
 		ConnectionManager.hostname = sharedPrefs.getString(sharedPreferencesConnectivityKeyHostname, null);
-		ConnectionManager.hostnameFallback = Preferences.getPreferenceFallbackServer(this);
+		ConnectionManager.hostnameFallback = sharedPrefs.getString(sharedPreferencesConnectivityKeyHostnameFallback, null);
 		ConnectionManager.password = sharedPrefs.getString(sharedPreferencesConnectivityKeyPassword, null);
 		
 		//Creating the cache helpers
@@ -406,7 +408,7 @@ public class MainApplication extends Application {
 	}
 	
 	public boolean isServerConfigured() {
-		return !getConnectivitySharedPrefs().getString(sharedPreferencesConnectivityKeyHostname, "").isEmpty();
+		return getConnectivitySharedPrefs().getBoolean(sharedPreferencesConnectivityKeyConnectServerConfirmed, false);
 	}
 	
 	public void startConnectionService() {
@@ -449,6 +451,24 @@ public class MainApplication extends Application {
 			case darkModeDark: //Always dark
 				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
 				break;
+		}
+	}
+	
+	private void upgradeSharedPreferences() {
+		//To version 0.6
+		{
+			//Migrate the fallback address from "preferences" shared preferences to "connectivity" shared preferences
+			String fallbackKey = "pref_key_server_fallbackaddress";
+			if(PreferenceManager.getDefaultSharedPreferences(this).contains(fallbackKey)) {
+				//Getting the fallback
+				String fallback = PreferenceManager.getDefaultSharedPreferences(this).getString(fallbackKey, null);
+				
+				//Removing the fallback from "preferences" shared preferences
+				PreferenceManager.getDefaultSharedPreferences(this).edit().remove(fallbackKey).apply();
+				
+				//Adding the fallback to "connectivity" shared preferences
+				getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE).edit().putString(sharedPreferencesConnectivityKeyHostnameFallback, fallback).commit();
+			}
 		}
 	}
 }

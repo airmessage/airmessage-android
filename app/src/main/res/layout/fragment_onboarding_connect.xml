@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content">
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="vertical">
+		<!-- Toolbar -->
+		<com.google.android.material.appbar.MaterialToolbar
+			android:id="@+id/toolbar"
+			android:layout_width="match_parent"
+			android:layout_height="?android:attr/actionBarSize"
+			android:theme="@style/SolidActionBarClear"
+			app:titleTextAppearance="@style/LightToolbarText" />
+		
+		<!-- Icon -->
+		<ImageView
+			android:layout_width="48dp"
+			android:layout_height="48dp"
+			android:layout_gravity="center"
+			android:src="@drawable/web"
+			android:tint="?android:textColorPrimary"
+			android:layout_marginTop="20dp" />
+
+		<TextView
+			style="@style/TextAppearance.MaterialComponents.Body1"
+			android:id="@+id/label_status"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="20dp"
+			android:layout_marginLeft="20dp"
+			android:layout_marginRight="20dp"
+			android:textAlignment="center"
+			android:layout_gravity="center"
+			android:text="@string/progress_connectionverification"
+			android:textStyle="bold"
+			android:textColor="?android:textColorPrimary" />
+
+		<!-- Progress bar -->
+		<ProgressBar
+			style="?android:attr/progressBarStyleHorizontal"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:indeterminate="true"
+			android:layout_marginLeft="40dp"
+			android:layout_marginRight="40dp"
+			android:layout_marginTop="20dp" />
+
+		<!-- Error description -->
+		<TextView
+			style="@style/TextAppearance.MaterialComponents.Body1"
+			android:id="@+id/label_description"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="20dp"
+			android:layout_marginLeft="20dp"
+			android:layout_marginRight="20dp"
+			android:text="Something went wrong!"
+			android:textColor="?android:textColorSecondary" />
+
+		<!-- Retry button -->
+		<com.google.android.material.button.MaterialButton
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginLeft="20dp"
+			android:layout_marginRight="20dp"
+			android:layout_marginTop="30dp"
+			android:layout_marginBottom="20dp"
+			android:layout_gravity="end"
+			android:text="@string/action_retry" />
+	</LinearLayout>
+</ScrollView>

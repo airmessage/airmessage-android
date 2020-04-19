@@ -110,9 +110,11 @@ dependencies {
 	implementation "com.google.firebase:firebase-core:17.4.3"
 	implementation "com.google.firebase:firebase-ml-natural-language:22.0.0"
 	implementation "com.google.firebase:firebase-ml-natural-language-smart-reply-model:20.0.7"
+	implementation "com.google.firebase:firebase-auth:19.3.0"
 	implementation "com.crashlytics.sdk.android:crashlytics:2.10.1"
 	implementation "com.google.android.gms:play-services-maps:17.0.0"
 	implementation "com.google.android.gms:play-services-location:17.0.0"
+	implementation "com.google.android.gms:play-services-auth:18.0.0"
 
 	//Tools
 	implementation "com.googlecode.ez-vcard:ez-vcard:0.10.6"
@@ -131,6 +133,7 @@ dependencies {
 	implementation "org.jsoup:jsoup:1.13.1"
 
 	implementation "com.klinkerapps:android-smsmms:5.2.6"
+	implementation "org.jetbrains:annotations:15.0"
 
 	implementation "com.otaliastudios:transcoder:0.9.1"
 }

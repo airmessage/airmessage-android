@@ -90,11 +90,16 @@
 	</style>
 	
 	<style name="LightToolbarText" parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Title">
-		<item name="android:fontFamily">sans-serif"</item>
+		<item name="android:fontFamily">sans-serif</item>
 	</style>
-	
+
 	<style name="Pass.AppTheme.Setup" parent="Base.DayNight.NoActionBar" />
 	<style name="AppTheme.Setup" parent="@style/Pass.AppTheme.Setup">
+		<item name="android:statusBarColor">?android:attr/colorBackground</item>
+		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
+	</style>
+
+	<style name="AppTheme.Onboarding" parent="@style/DayNight.NoActionBar">
 		<item name="android:statusBarColor">?android:attr/colorBackground</item>
 		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
 	</style>
@@ -140,5 +145,14 @@
 
 	<style name="SelectableItemPrimary">
 		<item name="colorControlHighlight">@color/colorPrimary</item>
+	</style>
+
+	<style name="CardViewFeature" parent="Widget.MaterialComponents.CardView">
+		<item name="shapeAppearance">@style/ShapeAppearanceFeature</item>
+	</style>
+
+	<style name="ShapeAppearanceFeature" parent="ShapeAppearance.MaterialComponents.MediumComponent">
+		<item name="cornerFamily">rounded</item>
+		<item name="cornerSize">16dp</item>
 	</style>
 </resources>

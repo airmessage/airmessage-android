@@ -3,7 +3,6 @@
 	android:interpolator="@android:anim/accelerate_interpolator"
 	android:zAdjustment="top">
 	<translate
-		xmlns:android="http://schemas.android.com/apk/res/android"
 		android:duration="@android:integer/config_shortAnimTime"
 		android:fromYDelta="0%"
 		android:toYDelta="-100%" >

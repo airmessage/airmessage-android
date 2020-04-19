@@ -7,6 +7,7 @@
 	<color name="colorAccentDark">@color/colorPrimaryDark</color>
 
 	<color name="colorWarning">#FF6D00</color>
+	<color name="colorSuccess">#00c853</color>
 
 	<color name="colorMessageTextMessageForwarding">#1ABC9C</color>
 	<color name="colorMessageTextMessage">#2ECC71</color>

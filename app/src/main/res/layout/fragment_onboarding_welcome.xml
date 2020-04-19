@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content">
+
+	<androidx.constraintlayout.widget.ConstraintLayout
+		android:id="@+id/addressinput"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		android:padding="20dp"
+		android:clipToPadding="false">
+		<!-- Header image -->
+		<ImageView
+			android:id="@+id/image_header"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:adjustViewBounds="true"
+			android:src="@drawable/promo_logo"
+			android:layout_marginTop="30dp"
+			app:layout_constraintLeft_toLeftOf="parent"
+			app:layout_constraintRight_toRightOf="parent"
+			app:layout_constraintTop_toTopOf="parent" />
+
+		<!-- Get started -->
+		<TextView
+			style="@style/TextAppearance.MaterialComponents.Headline6"
+			android:id="@+id/label_intro"
+			android:layout_width="0px"
+			android:layout_height="wrap_content"
+			android:text="@string/message_onboardinginstructions_title"
+			android:textColor="?android:textColorSecondary"
+			android:layout_marginTop="50dp"
+			app:layout_constraintLeft_toLeftOf="parent"
+			app:layout_constraintRight_toRightOf="parent"
+			app:layout_constraintTop_toBottomOf="@id/image_header" />
+
+		<!-- Set up your server -->
+		<com.google.android.material.card.MaterialCardView
+			android:id="@+id/icon_macmini"
+			android:layout_width="72dp"
+			android:layout_height="72dp"
+			style="@style/CardViewFeature"
+			app:layout_constraintTop_toBottomOf="@id/label_intro"
+			app:layout_constraintStart_toStartOf="parent"
+			android:layout_marginTop="30dp">
+			<ImageView
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:src="@drawable/ic_feature_macmini_square" />
+		</com.google.android.material.card.MaterialCardView>
+
+		<TextView
+			style="@style/TextAppearance.MaterialComponents.Body1"
+			android:id="@+id/label_macmini_title"
+			android:layout_width="0px"
+			android:layout_height="wrap_content"
+			app:layout_constraintStart_toEndOf="@+id/icon_macmini"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintTop_toTopOf="@id/icon_macmini"
+			android:layout_marginStart="30dp"
+			android:text="@string/message_onboardinginstructions_macmini_title"
+			android:textColor="?android:attr/textColorPrimary"
+			android:textSize="18sp" />
+
+		<TextView
+			style="@style/TextAppearance.MaterialComponents.Body2"
+			android:id="@+id/label_macmini_desc"
+			android:layout_width="0px"
+			android:layout_height="wrap_content"
+			app:layout_constraintStart_toEndOf="@+id/icon_macmini"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintTop_toBottomOf="@id/label_macmini_title"
+			android:layout_marginStart="30dp"
+			android:layout_marginTop="10dp"
+			android:text="@string/message_onboardinginstructions_macmini_desc"
+			android:autoLink="web"
+			android:textColor="?android:attr/textColorSecondary" />
+
+		<androidx.constraintlayout.widget.Barrier
+			android:id="@+id/barrier_macmini"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			app:barrierDirection="bottom"
+			app:constraint_referenced_ids="icon_macmini,label_macmini_desc" />
+
+		<!-- Connect your account -->
+		<com.google.android.material.card.MaterialCardView
+			android:id="@+id/icon_airmessage"
+			android:layout_width="72dp"
+			android:layout_height="72dp"
+			style="@style/CardViewFeature"
+			app:layout_constraintTop_toBottomOf="@id/barrier_macmini"
+			app:layout_constraintStart_toStartOf="parent"
+			android:layout_marginTop="30dp">
+			<ImageView
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:src="@drawable/ic_feature_airmessage_square" />
+		</com.google.android.material.card.MaterialCardView>
+
+		<TextView
+			style="@style/TextAppearance.MaterialComponents.Body1"
+			android:id="@+id/label_airmessage_title"
+			android:layout_width="0px"
+			android:layout_height="wrap_content"
+			app:layout_constraintStart_toEndOf="@+id/icon_airmessage"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintTop_toTopOf="@id/icon_airmessage"
+			android:layout_marginStart="30dp"
+			android:text="@string/message_onboardinginstructions_airmessage_title"
+			android:textColor="?android:attr/textColorPrimary"
+			android:textSize="18sp" />
+
+		<TextView
+			style="@style/TextAppearance.MaterialComponents.Body2"
+			android:id="@+id/label_airmessage_desc"
+			android:layout_width="0px"
+			android:layout_height="wrap_content"
+			app:layout_constraintStart_toEndOf="@+id/icon_airmessage"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintTop_toBottomOf="@id/label_airmessage_title"
+			android:layout_marginStart="30dp"
+			android:layout_marginTop="10dp"
+			android:text="@string/message_onboardinginstructions_airmessage_desc"
+			android:textColor="?android:attr/textColorSecondary" />
+
+		<androidx.constraintlayout.widget.Barrier
+			android:id="@+id/barrier_airmessage"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			app:barrierDirection="bottom"
+			app:constraint_referenced_ids="icon_airmessage,label_airmessage_desc" />
+
+		<!-- Sign in with Google -->
+		<com.google.android.material.button.MaterialButton
+			style="@style/Widget.MaterialComponents.Button.Icon"
+			android:id="@+id/button_connect_google"
+			android:layout_width="0px"
+			android:layout_height="70dp"
+			android:clipChildren="false"
+			android:clipToPadding="false"
+			app:layout_constraintLeft_toLeftOf="parent"
+			app:layout_constraintRight_toRightOf="parent"
+			app:layout_constraintTop_toBottomOf="@id/barrier_airmessage"
+			android:layout_marginTop="30dp"
+			app:icon="@drawable/ic_google"
+			app:iconSize="28dp"
+			app:iconTint="@null"
+			app:iconPadding="24dp"
+			android:fontFamily="sans-serif-medium"
+			android:letterSpacing="0"
+			android:textSize="16sp"
+			app:backgroundTint="@android:color/white"
+			android:textColor="#8A000000"
+			android:gravity="start|center_vertical"
+			android:textAllCaps="false"
+			android:text="@string/action_signin_google"
+			android:layout_marginBottom="24dp"
+			app:rippleColor="#15000000" />
+
+		<!-- Sign in with email -->
+		<com.google.android.material.button.MaterialButton
+			style="@style/Widget.MaterialComponents.Button.Icon"
+			android:id="@+id/button_connect_email"
+			android:layout_width="0px"
+			android:layout_height="70dp"
+			android:clipChildren="false"
+			android:clipToPadding="false"
+			app:layout_constraintLeft_toLeftOf="parent"
+			app:layout_constraintRight_toRightOf="parent"
+			app:layout_constraintTop_toBottomOf="@id/button_connect_google"
+			android:layout_marginTop="10dp"
+			app:icon="@drawable/email"
+			app:iconSize="28dp"
+			app:iconTint="@android:color/black"
+			app:iconPadding="24dp"
+			android:fontFamily="sans-serif-medium"
+			android:letterSpacing="0"
+			android:textSize="16sp"
+			app:backgroundTint="@android:color/white"
+			android:textColor="#8A000000"
+			android:gravity="start|center_vertical"
+			android:textAllCaps="false"
+			android:text="@string/action_signin_email"
+			android:layout_marginBottom="24dp"
+			app:rippleColor="#15000000" />
+
+		<!-- Manual configuration -->
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/button_manual"
+			style="@style/Widget.MaterialComponents.Button.TextButton"
+			android:layout_width="0px"
+			android:layout_height="wrap_content"
+			app:layout_constraintLeft_toLeftOf="parent"
+			app:layout_constraintRight_toRightOf="parent"
+			app:layout_constraintTop_toBottomOf="@id/button_connect_email"
+			android:layout_marginTop="10dp"
+			app:icon="@drawable/ethernetcable"
+			android:textAllCaps="false"
+			android:gravity="start|center_vertical"
+			android:text="@string/action_manualconfiguration"
+			android:textColor="?android:attr/textColorPrimary"
+			app:iconTint="?android:attr/textColorPrimary" />
+	</androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

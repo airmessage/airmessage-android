@@ -15,7 +15,7 @@
 		android:layout_height="24dp"
 		android:layout_marginLeft="10dp"
 		android:layout_marginRight="10dp"
-		android:tint="?android:colorControlNormal"/>
+		android:tint="?android:colorControlNormal" />
 	
 	<TextView
 		android:id="@+id/text"

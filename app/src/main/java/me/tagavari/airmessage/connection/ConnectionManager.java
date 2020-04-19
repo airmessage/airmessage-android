@@ -278,7 +278,7 @@ public class ConnectionManager {
 			//Retrieving the data from the shared preferences
 			SharedPreferences sharedPrefs = MainApplication.getInstance().getConnectivitySharedPrefs();
 			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null);
-			hostnameFallback = Preferences.getPreferenceFallbackServer(context);
+			hostnameFallback = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostnameFallback, null);
 			password = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, null);
 		}
 		
@@ -289,18 +289,6 @@ public class ConnectionManager {
 		return new ProxyCustomTCP();
 	}
 	
-	public boolean reconnect(Context context) {
-		//Disconnecting the old connection
-		if(isConnected()) disconnect();
-		return connect(context);
-	}
-	
-	public boolean reconnect(Context context, byte launchID) {
-		//Disconnecting the old connection
-		if(isConnected()) disconnect();
-		return connect(context, launchID);
-	}
-	
 	public boolean connect(Context context) {
 		return connect(context, getNextLaunchID());
 	}
@@ -308,6 +296,9 @@ public class ConnectionManager {
 	public boolean connect(Context context, byte launchID) {
 		//Closing the current connection if it exists
 		if(getCurrentState() != stateDisconnected) disconnect();
+		
+		//Setting the current launch ID
+		currentLaunchID = launchID;
 		
 		//Returning if there is no connection
 		{
@@ -413,11 +404,7 @@ public class ConnectionManager {
 	}
 	
 	public static byte getNextLaunchID() {
-		return ++currentLaunchID;
-	}
-	
-	public void setCurrentLaunchID(byte currentLaunchID) {
-		this.currentLaunchID = currentLaunchID;
+		return (byte) (currentLaunchID + 1);
 	}
 	
 	public int getLastConnectionResult() {

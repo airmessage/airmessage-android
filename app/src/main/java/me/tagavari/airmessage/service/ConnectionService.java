@@ -16,6 +16,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -40,6 +41,8 @@ public class ConnectionService extends Service {
 	public static final String selfIntentActionDisconnect = "disconnect";
 	public static final String selfIntentActionStop = "stop";
 	
+	public static final String selfIntentExtraConfig = "configuration_mode";
+	
 	private static final String BCPingTimer = "me.tagavari.airmessage.connection.ConnectionService-StartPing";
 	private static final String BCReconnectTimer = "me.tagavari.airmessage.connection.ConnectionService-StartReconnect";
 	
@@ -48,6 +51,9 @@ public class ConnectionService extends Service {
 	
 	//Creating the access values
 	private static WeakReference<ConnectionService> serviceReference = null;
+	
+	//Creating the state values
+	private boolean configurationMode = true;
 	
 	//Creating the intent values
 	private PendingIntent pingPendingIntent;
@@ -84,7 +90,10 @@ public class ConnectionService extends Service {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Connecting to the server
-			connectionManager.connect(context);
+			if(!configurationMode) connectionManager.connect(context);
+			
+			//Scheduling the next reconnection
+			scheduleReconnection();
 		}
 	};
 	private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
@@ -92,6 +101,7 @@ public class ConnectionService extends Service {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Returning if automatic reconnects are disabled
+			if(configurationMode) return;
 			//if(!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_networkreconnect_key), false)) return;
 			
 			//Getting the current active network
@@ -141,12 +151,12 @@ public class ConnectionService extends Service {
 	private final ConnectionManager connectionManager = new ConnectionManager(new ConnectionManager.ServiceCallbacks() {
 		@Override
 		public void schedulePing() {
-		ConnectionService.this.schedulePing();
+			ConnectionService.this.schedulePing();
 		}
 		
 		@Override
 		public void cancelSchedulePing() {
-		ConnectionService.this.cancelSchedulePing();
+			ConnectionService.this.cancelSchedulePing();
 		}
 		
 		@Override
@@ -269,9 +279,12 @@ public class ConnectionService extends Service {
 	}
 	
 	@Override
-	public int onStartCommand(Intent intent, int flags, int startId) {
+	public int onStartCommand(@NonNull Intent intent, int flags, int startId) {
+		//Updating configuration mode
+		if(intent.hasExtra(selfIntentExtraConfig)) setConfigurationMode(intent.getBooleanExtra(selfIntentExtraConfig, false));
+		
 		//Getting the intent action
-		String intentAction = intent == null ? null : intent.getAction();
+		String intentAction = intent.getAction();
 		
 		//Checking if a stop has been requested
 		if(selfIntentActionStop.equals(intentAction)) {
@@ -299,7 +312,7 @@ public class ConnectionService extends Service {
 			postDisconnectedNotification(true);
 		}
 		//Reconnecting the client if requested
-		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) connectionManager.reconnect(this, intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : connectionManager.getNextLaunchID());
+		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) connectionManager.connect(this, intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : ConnectionManager.getNextLaunchID());
 		
 		//Calling the listeners
 		//for(ServiceStartCallback callback : startCallbacks) callback.onServiceStarted(this);
@@ -330,6 +343,14 @@ public class ConnectionService extends Service {
 		
 		//Clearing the instance
 		serviceReference = null;
+	}
+	
+	public void setConfigurationMode(boolean configurationMode) {
+		//Updating the value
+		this.configurationMode = configurationMode;
+		
+		//Rebuilding notifications
+		updateNotification();
 	}
 	
 	/* void setForegroundState(boolean foregroundState) {
@@ -391,6 +412,15 @@ public class ConnectionService extends Service {
 		if(!silent) disconnectedSoundSinceReconnect = true;
 	}
 	
+	//Silently rebuild and update the current notification
+	private void updateNotification() {
+		int state = connectionManager.getCurrentState();
+		
+		if(state == ConnectionManager.stateConnected) postConnectedNotification(true, connectionManager.isConnectedFallback());
+		else if(state == ConnectionManager.stateConnecting) postConnectedNotification(false, false);
+		else if(state == ConnectionManager.stateDisconnected) postDisconnectedNotification(true);
+	}
+	
 	private void clearNotification() {
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		notificationManager.cancel(notificationID);
@@ -433,12 +463,19 @@ public class ConnectionService extends Service {
 		//Building the notification
 		NotificationCompat.Builder builder = new NotificationCompat.Builder(this, MainApplication.notificationChannelStatus)
 				.setSmallIcon(R.drawable.push)
-				.setContentTitle(getResources().getString(isConnected ? (isFallback ? R.string.message_connection_connectedfallback : R.string.message_connection_connected) : R.string.progress_connectingtoserver))
-				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
-				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT));
+				.setContentTitle(getResources().getString(isConnected ? (isFallback ? R.string.message_connection_connectedfallback : R.string.message_connection_connected) : R.string.progress_connectingtoserver));
 		
-		//Disconnect (only available in debug)
-		if(BuildConfig.DEBUG) builder.addAction(R.drawable.wifi_off, getResources().getString(R.string.action_disconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionDisconnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT));
+		if(configurationMode) {
+			//Setting the builder text as "manual configuration status"
+			builder.setContentText(getResources().getString(R.string.part_manualconfigurationstatus));
+		} else {
+			//Setting the helper text as "tap to open the app"
+			builder.setContentText(getResources().getString(R.string.imperative_tapopenapp))
+					.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT));
+			
+			//Disconnect (only available in debug)
+			if(BuildConfig.DEBUG) builder.addAction(R.drawable.wifi_off, getResources().getString(R.string.action_disconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionDisconnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT));
+		}
 		
 		Notification notification = builder
 				.addAction(R.drawable.close_circle, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
@@ -455,14 +492,28 @@ public class ConnectionService extends Service {
 	}
 	
 	private Notification getOfflineNotification(boolean silent, String channelID) {
-		//Building and returning the notification
-		return new NotificationCompat.Builder(this, channelID)
+		//Building the notification
+		NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelID)
 				.setSmallIcon(R.drawable.warning)
 				.setContentTitle(getResources().getString(R.string.message_connection_disconnected))
 				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
-				.setColor(getResources().getColor(R.color.colorServerDisconnected, null))
-				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT))
-				.addAction(R.drawable.wifi, getResources().getString(R.string.action_reconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
+				.setColor(getResources().getColor(R.color.colorServerDisconnected, null));
+		
+		//Configuring configuration mode-specific changes
+		if(configurationMode) {
+			//Setting the builder text as "manual configuration status"
+			builder.setContentText(getResources().getString(R.string.part_manualconfigurationstatus));
+		} else {
+			//Setting the helper text as "tap to open the app"
+			builder.setContentText(getResources().getString(R.string.imperative_tapopenapp))
+					.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT));
+			
+			//Adding the reconnect action
+			builder.addAction(R.drawable.wifi, getResources().getString(R.string.action_reconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT));
+		}
+		
+		//Completing and returning the notification
+		return builder
 				.addAction(R.drawable.close_circle, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
 				.setShowWhen(false)
 				.setPriority(NotificationCompat.PRIORITY_HIGH)

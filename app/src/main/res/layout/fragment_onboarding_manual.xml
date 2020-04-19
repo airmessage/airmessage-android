@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:clipChildren="false"
+	android:clipToPadding="false">
+	<LinearLayout
+		android:id="@+id/content"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		android:clipChildren="false"
+		android:clipToPadding="false">
+		<!-- Toolbar -->
+		<com.google.android.material.appbar.MaterialToolbar
+			android:id="@+id/toolbar"
+			android:layout_width="match_parent"
+			android:layout_height="?android:attr/actionBarSize"
+			android:theme="@style/SolidActionBarClear" />
+
+		<!-- Server address -->
+		<com.google.android.material.textfield.TextInputLayout
+			android:id="@+id/input_address"
+			style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:hint="@string/message_setup_connect_address"
+			android:layout_marginLeft="20dp"
+			android:layout_marginRight="20dp"
+			android:layout_marginTop="20dp"
+			app:errorEnabled="true">
+			<com.google.android.material.textfield.TextInputEditText
+				android:id="@+id/input_edittext_address"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:imeOptions="actionNext|flagNoExtractUi"
+				android:inputType="textNoSuggestions|textVisiblePassword"
+				android:maxLines="1" />
+		</com.google.android.material.textfield.TextInputLayout>
+
+		<!-- Fallback server address -->
+		<com.google.android.material.textfield.TextInputLayout
+			android:id="@+id/input_fallbackaddress"
+			style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:hint="@string/message_setup_connect_fallbackaddress"
+			android:layout_marginLeft="20dp"
+			android:layout_marginRight="20dp"
+			android:layout_marginTop="20dp"
+			app:errorEnabled="true">
+			<com.google.android.material.textfield.TextInputEditText
+				android:id="@+id/input_edittext_fallbackaddress"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:imeOptions="actionNext|flagNoExtractUi"
+				android:inputType="textNoSuggestions|textVisiblePassword"
+				android:maxLines="1" />
+		</com.google.android.material.textfield.TextInputLayout>
+
+		<com.google.android.material.textfield.TextInputLayout
+			android:id="@+id/input_password"
+			style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginLeft="20dp"
+			android:layout_marginRight="20dp"
+			android:layout_marginTop="20dp"
+			android:hint="@string/message_setup_connect_password"
+			app:passwordToggleEnabled="true">
+
+			<com.google.android.material.textfield.TextInputEditText
+				android:id="@+id/input_edittext_password"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:imeOptions="actionGo|flagNoExtractUi"
+				android:inputType="textPassword"
+				android:maxLines="1" />
+		</com.google.android.material.textfield.TextInputLayout>
+
+		<!-- Connection progress -->
+		<LinearLayout
+			android:id="@+id/group_progress"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginLeft="20dp"
+			android:layout_marginRight="20dp"
+			android:layout_marginTop="30dp"
+			android:orientation="vertical">
+			<TextView
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="@string/progress_connectionverification" />
+			<ProgressBar
+				style="@style/Base.Widget.AppCompat.ProgressBar.Horizontal"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:indeterminate="true" />
+		</LinearLayout>
+
+		<!-- Error information -->
+		<com.google.android.material.card.MaterialCardView
+			android:id="@+id/group_error"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginLeft="20dp"
+			android:layout_marginRight="20dp"
+			android:layout_marginTop="30dp"
+			app:strokeWidth="1dp"
+			app:strokeColor="@drawable/stroke_color"
+			app:cardElevation="0dp"
+			app:contentPadding="16dp">
+			<LinearLayout
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:orientation="vertical">
+				<TextView
+					style="@style/TextAppearance.MaterialComponents.Body1"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:gravity="center_vertical"
+					android:text="@string/message_setup_connect_connectionerror"
+					android:drawableStart="@drawable/disconnection"
+					android:drawableTint="?android:attr/textColorPrimary"
+					android:drawablePadding="8dp" />
+				<TextView
+					android:id="@+id/label_error"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="@android:string/unknownName"
+					android:layout_marginTop="4dp" />
+				<com.google.android.material.button.MaterialButton
+					android:id="@+id/button_error"
+					style="@style/Widget.MaterialComponents.Button.TextButton"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_gravity="end"
+					android:text="@android:string/unknownName" />
+			</LinearLayout>
+		</com.google.android.material.card.MaterialCardView>
+
+		<!-- Connected information -->
+		<com.google.android.material.card.MaterialCardView
+			android:id="@+id/group_connected"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginLeft="20dp"
+			android:layout_marginRight="20dp"
+			android:layout_marginTop="30dp"
+			app:strokeWidth="1dp"
+			app:strokeColor="@drawable/stroke_color"
+			app:cardElevation="0dp"
+			app:contentPadding="16dp">
+			<TextView
+				style="@style/TextAppearance.MaterialComponents.Body1"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:gravity="center_vertical"
+				android:text="@string/message_connection_connected"
+				android:drawableStart="@drawable/check_circle_outline"
+				android:textColor="@color/colorSuccess"
+				android:drawableTint="@color/colorSuccess"
+				android:drawablePadding="8dp" />
+		</com.google.android.material.card.MaterialCardView>
+
+		<!-- Done button -->
+		<LinearLayout
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="horizontal"
+			android:layout_marginLeft="20dp"
+			android:layout_marginRight="20dp"
+			android:layout_marginTop="30dp"
+			android:layout_marginBottom="20dp"
+			android:gravity="end"
+			android:clipChildren="false"
+			android:clipToPadding="false">
+			<com.google.android.material.button.MaterialButton
+				style="@style/Widget.MaterialComponents.Button.TextButton"
+				android:id="@+id/button_cancel"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginEnd="20dp"
+				android:text="@string/action_back" />
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/button_done"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="@string/action_done" />
+
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/button_next"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="@string/action_checkconnection" />
+		</LinearLayout>
+	</LinearLayout>
+</ScrollView>

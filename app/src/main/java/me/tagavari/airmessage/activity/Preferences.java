@@ -37,7 +37,6 @@ import androidx.core.util.Consumer;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.EditTextPreference;
@@ -69,10 +68,8 @@ import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.receiver.StartBootReceiver;
 import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.service.SystemMessageImportService;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
-import me.tagavari.airmessage.view.HostnameEditTextPreference;
 
 public class Preferences extends AppCompatCompositeActivity implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
 	//Creating the reference values
@@ -369,20 +366,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Returning false (to prevent the system from changing the option)
 			return false;
 		};
-		Preference.OnPreferenceChangeListener fallbackServerChangeListener = (preference, newValue) -> {
-			//Setting the value
-			String newValueString = (String) newValue;
-			if(newValueString.isEmpty()) {
-				ConnectionManager.hostnameFallback = null;
-				preference.setSummary(R.string.preference_server_serverfallback_description);
-			} else {
-				ConnectionManager.hostnameFallback = newValueString;
-				preference.setSummary(newValueString);
-			}
-			
-			//Accepting the change
-			return true;
-		};
 		
 		@Override
 		public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -445,12 +428,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
 			findPreference(getResources().getString(R.string.preference_server_downloadmessages_key)).setOnPreferenceClickListener(syncMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener(themeChangeListener);
-			{
-				EditTextPreference fallbackServerPref = findPreference(getResources().getString(R.string.preference_server_serverfallback_key));
-				fallbackServerPref.setOnPreferenceChangeListener(fallbackServerChangeListener);
-				String text = fallbackServerPref.getText();
-				fallbackServerPref.setSummary(text == null || text.isEmpty() ? getResources().getString(R.string.preference_server_serverfallback_description) : text);
-			}
 		}
 		
 		@Override
@@ -567,42 +544,11 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Calling the super method
 			super.onResume();
 			
-			//Registering the listener
-			//PreferenceManager.getDefaultSharedPreferences(getActivity()).registerOnSharedPreferenceChangeListener(sharedPreferenceListener);
-			
 			//Updating the server URL
 			updateServerURL(findPreference(getResources().getString(R.string.preference_server_serverdetails_key)));
 			
 			//Updating the notification preference
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) updateMessageNotificationPreference(findPreference(getResources().getString(R.string.preference_messagenotifications_key)));
-		}
-		
-		@Override
-		public void onStop() {
-			//Calling the super method
-			super.onStop();
-			
-			//Unregistering the listener
-			//PreferenceManager.getDefaultSharedPreferences(getActivity()).unregisterOnSharedPreferenceChangeListener(sharedPreferenceListener);
-		}
-		
-		@Override
-		public void onDisplayPreferenceDialog(Preference preference) {
-			//Creating the custom dialog fragment if a custom preference was selected
-			DialogFragment dialogFragment = null;
-			if(preference instanceof HostnameEditTextPreference) {
-				dialogFragment = HostnameEditTextPreference.HostnameEditTextPreferenceDialog.newInstance(preference.getKey());
-			}
-			
-			//Displaying the fragment
-			if(dialogFragment != null) {
-				dialogFragment.setTargetFragment(this, 0);
-				dialogFragment.show(getFragmentManager(), null);
-				return;
-			}
-			
-			//Passing the request on to the superclass
-			super.onDisplayPreferenceDialog(preference);
 		}
 		
 		@RequiresApi(api = Build.VERSION_CODES.O)
@@ -1111,11 +1057,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	
 	public static boolean getPreferenceSMSDeliveryReports(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_textmessage_deliveryreport_key), false);
-	}
-	
-	public static String getPreferenceFallbackServer(Context context) {
-		String value = PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_server_serverfallback_key), null);
-		return value != null && value.isEmpty() ? null : value;
 	}
 	
 	public static boolean getPreferenceTextMessageIntegration(Context context) {

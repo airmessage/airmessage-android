@@ -305,8 +305,12 @@ public class ServerSetup extends AppCompatActivity {
 			ConnectionManager.hostnameFallback = viewModel.originalHostnameFallback;
 			ConnectionManager.password = viewModel.originalPassword;
 			
-			//Reconnecting
-			startService(new Intent(this, ConnectionService.class).setAction(ConnectionService.selfIntentActionConnect));
+			//Starting the connection
+			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
+			if(connectionManager != null) {
+				if(connectionManager.isConnected()) connectionManager.disconnect();
+				connectionManager.connect(this);
+			}
 		}
 	}
 	
@@ -521,7 +525,7 @@ public class ServerSetup extends AppCompatActivity {
 			case ConnectionManager.intentResultCodeConnection: //Connection failed
 				alertDialog = new MaterialAlertDialogBuilder(this)
 						.setTitle(R.string.message_setup_connect_connectionerror)
-						.setMessage(R.string.message_connectionerrror)
+						.setMessage(R.string.message_connectionerror)
 						.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
 						.create();
 				break;

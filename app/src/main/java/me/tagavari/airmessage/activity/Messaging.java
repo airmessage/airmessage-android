@@ -2878,7 +2878,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			startService(new Intent(Messaging.this, ConnectionService.class));
 		} else {
 			//Reconnecting
-			connectionManager.reconnect(this);
+			connectionManager.connect(this);
 			
 			//Hiding the bar
 			hideServerWarning();

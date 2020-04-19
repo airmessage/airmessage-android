@@ -58,6 +58,7 @@
 	<string name="state_delivered">Distribué</string>
 	<string name="action_send">Envoyer</string>
 	<string name="action_next">Suivant</string>
+	<string name="action_done">OK</string>
 	<string name="action_back">Retour</string>
 	<string name="action_skip">Passer</string>
 	<string name="action_delete">Supprimer</string>
@@ -103,6 +104,7 @@
 	<string name="message_eventtype_unknown">Événement inconnu</string>
 	<string name="message_messageeffect_invisibleink">Message envoyé avec une encre invisible</string>
 	<string name="message_setup_connect_address">L\'Adresse du serveur</string>
+	<string name="message_setup_connect_fallbackaddress">Addresse alternative (facultatif)</string>
 	<string name="message_setup_connect_noserver">N\'avez-vous pas de serveur?</string>
 	<string name="message_setup_connect_serverguidelink">Lisez le manuel d\'installation</string>
 	<string name="message_setup_connect_connectionerror">La connexion a échoué</string>
@@ -165,7 +167,7 @@
 	<string name="notificationchannel_messageerror">Défauts de livraison</string>
 	<string name="notificationchannel_messageerror_desc">Notifications concernant les messages en échec</string>
 
-	<string name="message_connectionerrror">N\'a pas pu se connecter au serveur</string>
+	<string name="message_connectionerror">N\'a pas pu se connecter au serveur</string>
 	<string name="message_permissiondetails_microphone_missing">L\'autorisation d\'enregistrer de l\'audio est manquante</string>
 	<string name="action_draw">Dessiner</string>
 	<string name="action_addtext">Ajouter du texte</string>
@@ -303,7 +305,19 @@
 		<item>Sombre</item>
 		<item>Assortir le système</item>
 	</string-array>
-	
+
+	<string name="message_onboardinginstructions_title">Commencer en 2 étapes faciles:</string>
+	<string name="message_onboardinginstructions_macmini_title">Configurer votre serveur</string>
+	<string name="message_onboardinginstructions_macmini_desc">Une application installée sur un ordinateur Mac est nécessaire pour acheminer vos messages pour vous.\n\nVisitez airmessage.org sur votre ordinateur pour télécharger l\'application.</string>
+	<string name="message_onboardinginstructions_airmessage_title">Se connecter</string>
+	<string name="message_onboardinginstructions_airmessage_desc">Connectez-vous avec votre compte pour recevoir vos messages sur cet appareil.</string>
+
+	<string name="action_signin_google">Se connecter avec Google</string>
+	<string name="action_signin_email">Se connecter avec une address e-mail</string>
+	<string name="screen_manualconfiguration">Configuration manuelle</string>
+	<string name="action_manualconfiguration">Utiliser la configuration manuelle</string>
+	<string name="action_checkconnection">Vérifier la connexion</string>
+
 	<string name="message_serverstatus_authfail">Le mot de passe a été rejeté</string>
 	<string name="message_serverupdate">Une mise à jour de serveur est disponible</string>
 	<string name="action_reconfigure">Reconfigurer</string>
@@ -365,8 +379,6 @@
 	<string name="message_attachmentreqerror_server_notsaved">Pièce jointe non trouvée</string>
 	<string name="message_attachmentreqerror_server_unreadable">Pièce jointe illisible</string>
 	<string name="message_attachmentreqerror_server_io">Erreur externe (I/O)</string>
-	<string name="preference_server_serverfallback_title">Addresse alternative</string>
-	<string name="preference_server_serverfallback_description">Si vous utilisez un routeur qui ne supporte pas le hairpinning, vous pouvez utiliser cette option</string>
 	<string name="preference_appearance_amoled_title">Thème noir</string>
 	<string name="preference_appearance_amoled_description">Activer un thème noir compatible avec AMOLED</string>
 	<string name="action_markallread">Tout marquer comme lu</string>
@@ -434,6 +446,7 @@
 	<string name="part_tapback_exclamation">Points d\'exclamation</string>
 	<string name="part_tapback_question">Point d\'interrogation</string>
 	<string name="progress_cleantextmessages">Nettoyage des messages texte locaux&#8230;</string>
+	<string name="progress_connectionverification">Vérification de votre connexion&#8230;</string>
 	<string name="action_tapbackdetails">Afficher les détails Tapback</string>
 	<string name="message_appvaliditywarning">Cette installation de AirMessage ne peut pas être vérifiée. Vos données de messagerie peuvent être en danger. Veuillez installer AirMessage à partir du Play Store.</string>
 	<string name="preference_features_messagesounds_title">Sons de messagerie in-app</string>
@@ -457,6 +470,8 @@
 	<string name="message_renamegroup_onlyyouvisibility">Vous êtes la seule personne qui puisse voir ce nom</string>
 	<string name="title_conversation_name">Nom du groupe</string>
 	<string name="action_renamegroup">Renommer ce groupe</string>
+	<string name="part_invalidaddress">Adresse invalide</string>
+	<string name="part_manualconfigurationstatus">Configuration manuelle en cours</string>
 
 	<plurals name="message_newmessages">
 		<item quantity="one">%d nouveaux messages</item>

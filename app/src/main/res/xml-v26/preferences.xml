@@ -124,12 +124,6 @@
 				android:targetClass="me.tagavari.airmessage.activity.ServerSetup" />
 		</androidx.preference.Preference>
 
-		<me.tagavari.airmessage.view.HostnameEditTextPreference
-			android:key="@string/preference_server_serverfallback_key"
-			android:title="@string/preference_server_serverfallback_title"
-			android:summary="@string/preference_server_serverfallback_description"
-			app:iconSpaceReserved="false" />
-
 		<!-- <androidx.preference.SwitchPreference
 			android:key="@string/preference_server_foregroundservice_key"
 			android:title="@string/preference_server_foregroundservice_title"
