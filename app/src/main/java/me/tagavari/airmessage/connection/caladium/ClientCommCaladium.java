@@ -604,6 +604,8 @@ public class ClientCommCaladium extends CommunicationsManager {
 		}
 		
 		synchronized boolean sendDataSync(int messageType, byte[] data, boolean flush) {
+			if(outputStream == null) return false;
+			
 			try {
 				//Writing the message
 				outputStream.writeInt(messageType);

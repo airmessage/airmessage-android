@@ -159,9 +159,9 @@ public class RichPreview {
 					URI baseURI = new URI(url);
 					baseURI = baseURI.resolve(part);
 					return baseURI.toString();
-				} catch(URISyntaxException exception) {
+				} catch(URISyntaxException | IllegalArgumentException exception) {
 					exception.printStackTrace();
-					return null;
+					return "";
 				}
 			}
 		}
