@@ -333,6 +333,13 @@
 		<item quantity="other">%d years</item>
 	</plurals>
 
+	<plurals name="message_newmessages">
+		<item quantity="one">%d new message</item>
+		<item quantity="other">%d new messages</item>
+	</plurals>
+
+	<string name="message_newmessages_nocount">New messages</string>
+
 	<string name="message_generalloading">Please wait&#8230;</string>
 	<string name="message_notsupported">This feature is unavailable</string>
 

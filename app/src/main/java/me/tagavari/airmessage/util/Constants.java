@@ -719,7 +719,7 @@ public class Constants {
 		//Returning the E-Mail if the address is one (can't be formatted)
 		if(address.contains("@")) return address;
 		
-		//Returning the stripped phone number if the address is one
+		//Returning the formatted phone number if the address is one
 		if(PhoneNumberUtils.isWellFormedSmsAddress(address)) {
 			String formattedNumber = PhoneNumberUtils.formatNumber(address, "US");
 			if(formattedNumber != null) return formattedNumber;

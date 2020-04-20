@@ -18,7 +18,6 @@ import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.ContentUris;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentSender;
@@ -37,7 +36,6 @@ import android.graphics.drawable.ColorDrawable;
 import android.location.Location;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.media.SoundPool;
 import android.net.Uri;
@@ -46,12 +44,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Parcelable;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.provider.Telephony;
 import android.text.Editable;
-import android.text.InputType;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
@@ -59,7 +55,6 @@ import android.transition.Transition;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.SparseArray;
 import android.view.InputDevice;
 import android.view.KeyEvent;
@@ -98,7 +93,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.cardview.widget.CardView;
@@ -121,7 +115,6 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -133,27 +126,14 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.signature.MediaStoreSignature;
 import com.crashlytics.android.Crashlytics;
-import com.google.android.exoplayer2.DefaultLoadControl;
-import com.google.android.exoplayer2.DefaultRenderersFactory;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.Renderer;
-import com.google.android.exoplayer2.RenderersFactory;
 import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.audio.AudioProcessor;
-import com.google.android.exoplayer2.audio.AudioRendererEventListener;
-import com.google.android.exoplayer2.drm.DrmSessionManager;
-import com.google.android.exoplayer2.drm.FrameworkMediaCrypto;
-import com.google.android.exoplayer2.mediacodec.MediaCodecSelector;
-import com.google.android.exoplayer2.metadata.MetadataOutput;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.text.TextOutput;
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
-import com.google.android.exoplayer2.video.VideoRendererEventListener;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.common.util.BiConsumer;
@@ -201,14 +181,20 @@ import ezvcard.io.text.VCardWriter;
 import ezvcard.property.Photo;
 import ezvcard.property.RawProperty;
 import ezvcard.property.Url;
+import me.tagavari.airmessage.MainApplication;
+import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
+import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.request.FileProcessingRequest;
 import me.tagavari.airmessage.connection.request.FilePushRequest;
 import me.tagavari.airmessage.connection.request.FileRemovalRequest;
-import me.tagavari.airmessage.messaging.AMConversationAction;
-import me.tagavari.airmessage.messaging.ContactAttachmentInfo;
-import me.tagavari.airmessage.service.ConnectionService;
+import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
+import me.tagavari.airmessage.extension.MediaSharedElementCallback;
+import me.tagavari.airmessage.messaging.AMConversationAction;
+import me.tagavari.airmessage.messaging.AttachmentInfo;
+import me.tagavari.airmessage.messaging.ContactAttachmentInfo;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.DraftFile;
@@ -218,16 +204,10 @@ import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.messaging.VLocationAttachmentInfo;
-import me.tagavari.airmessage.util.ConversationUtils;
-import me.tagavari.airmessage.messaging.AttachmentInfo;
+import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.ColorHelper;
 import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.data.DatabaseManager;
-import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
-import me.tagavari.airmessage.extension.MediaSharedElementCallback;
-import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
+import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.MMSSMSHelper;
 import me.tagavari.airmessage.util.NotificationUtils;
 import me.tagavari.airmessage.view.AppleEffectView;
@@ -236,9 +216,6 @@ import me.tagavari.airmessage.view.VisualizerView;
 import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
-
-import static android.provider.Settings.System.canWrite;
-import static android.provider.Settings.System.getInt;
 
 public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
@@ -1026,8 +1003,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Clearing the notifications
 		NotificationManager notificationManager = ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE));
-		notificationManager.cancel(NotificationUtils.notificationTagMessage, (int) viewModel.conversationID);
-		notificationManager.cancel(NotificationUtils.notificationTagMessageError, (int) viewModel.conversationID);
+		int notificationID = (int) viewModel.conversationID;
+		NotificationUtils.cancelMessageNotification(notificationManager, notificationID);
+		notificationManager.cancel(NotificationUtils.notificationTagMessageError, notificationID);
 		
 		//Updating the server warning bar state
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
@@ -1054,7 +1032,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		super.onPause();
 		
 		//Iterating over the foreground conversations
-		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext(); ) {
+		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext();) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			

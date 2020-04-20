@@ -449,4 +449,10 @@
 	<string name="title_conversation_name">グループ名</string>
 	<string name="action_renamegroup">このグループ名を変更する</string>
 	<string name="message_renamegroup_onlyyouvisibility">このグループ名はあなたにだけ表示されます</string>
+
+	<plurals name="message_newmessages">
+		<item quantity="other">%d件の新しいメッセージ</item>
+	</plurals>
+
+	<string name="message_newmessages_nocount">新しいメッセージ</string>
 </resources>

@@ -54,7 +54,7 @@ public class SystemMessageImportService extends Service {
 	
 	private static final long notificationProgressMinUpdateInterval = 1000;
 	
-	private static final int notificationID = -3;
+	private static final int notificationID = MainApplication.notificationIDMessageImport;
 	
 	private Thread currentThread = null;
 	

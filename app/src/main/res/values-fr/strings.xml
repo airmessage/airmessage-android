@@ -457,4 +457,11 @@
 	<string name="message_renamegroup_onlyyouvisibility">Vous êtes la seule personne qui puisse voir ce nom</string>
 	<string name="title_conversation_name">Nom du groupe</string>
 	<string name="action_renamegroup">Renommer ce groupe</string>
+
+	<plurals name="message_newmessages">
+		<item quantity="one">%d nouveaux messages</item>
+		<item quantity="other">%d nouveau message</item>
+	</plurals>
+
+	<string name="message_newmessages_nocount">Nouveaux messages</string>
 </resources>
