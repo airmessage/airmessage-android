@@ -1415,6 +1415,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					if(iDisplayName != -1) {
 						String rawFileName = cursor.getString(iDisplayName);
 						if(rawFileName != null) fileName = Constants.cleanFileName(rawFileName);
+						else fileName = "file";
 					}
 					String fileType = context.getContentResolver().getType(uri); //iType == -1 ? null : cursor.getString(iType);
 					if(fileType == null) {
