@@ -60,7 +60,12 @@ public class MainApplication extends Application {
 	public static final String notificationChannelStatus = "status";
 	public static final String notificationChannelStatusImportant = "status_important";
 	
-	public static final String notificationGroupMessage = "message";
+	public static final String notificationGroupMessage = "me.tagavari.airmessage.NOTIFICATION_GROUP_MESSAGE";
+	
+	public static final int notificationIDConnectionService = -1;
+	public static final int notificationIDConnectionServiceAlert = -2;
+	public static final int notificationIDMessageImport = -3;
+	public static final int notificationIDMessageSummary = -4;
 	
 	public static final String dirNameDownload = "downloads";
 	public static final String dirNameUpload = "uploads";

@@ -18,16 +18,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.service.notification.StatusBarNotification;
-
-import com.crashlytics.android.Crashlytics;
-import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
-import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
-import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
-
-import java.lang.ref.WeakReference;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
+import android.text.style.StyleSpan;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.Person;
@@ -35,24 +28,43 @@ import androidx.core.app.RemoteInput;
 import androidx.core.graphics.drawable.IconCompat;
 import androidx.core.util.Consumer;
 
+import com.crashlytics.android.Crashlytics;
+import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
+import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
+import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
+
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Objects;
+
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.activity.Conversations;
 import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.request.MessageResponseManager;
-import me.tagavari.airmessage.receiver.TextSMSSentReceiver;
-import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.data.BitmapCacheHelper;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.MessageInfo;
+import me.tagavari.airmessage.receiver.TextSMSSentReceiver;
+import me.tagavari.airmessage.service.ConnectionService;
 
 public class NotificationUtils {
 	public static final String notificationTagMessage = "message";
 	public static final String notificationTagMessageError = "message_error";
 	//public static final String notificationTagStatus = "status";
+	
+	private static final String notificationMessageSummaryExtrasCount = "messagesummary_count";
+	private static final String notificationMessageSummaryExtrasDescMapKey = "messagesummary_descmap_key";
+	private static final String notificationMessageSummaryExtrasDescMapSender = "messagesummary_descmap_sender";
+	private static final String notificationMessageSummaryExtrasDescMapBody = "messagesummary_descmap_text";
 	
 	/**
 	 * Sends a notification concerning a new message
@@ -61,7 +73,7 @@ public class NotificationUtils {
 	 */
 	public static void sendNotification(Context context, MessageInfo messageInfo) {
 		//Returning if the message is outgoing or the message's conversation is loaded
-		if(messageInfo.isOutgoing() || Messaging.getForegroundConversations().contains(messageInfo.getConversationInfo().getLocalID()) || (ConnectionService.getConnectionManager() != null && ConnectionService.getConnectionManager().isMassRetrievalInProgress())) return;
+		if(messageInfo.isOutgoing() || Conversations.isForeground() || Messaging.getForegroundConversations().contains(messageInfo.getConversationInfo().getLocalID()) || (ConnectionService.getConnectionManager() != null && ConnectionService.getConnectionManager().isMassRetrievalInProgress())) return;
 		
 		//Returning if notifications are disabled or the conversation is muted
 		if((Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_getnotifications_key), false)) || messageInfo.getConversationInfo().isMuted()) return;
@@ -115,20 +127,34 @@ public class NotificationUtils {
 			PendingIntent clickPendingIntent = clickStackBuilder.getPendingIntent((int) conversationInfo.getLocalID(), 0);
 			
 			//Creating the notification
-			Notification notification = new NotificationCompat.Builder(context, MainApplication.notificationChannelMessageError)
+			NotificationCompat.Builder builder = new NotificationCompat.Builder(context, MainApplication.notificationChannelMessageError)
 					.setSmallIcon(R.drawable.message_alert)
 					.setContentTitle(context.getResources().getString(R.string.message_senderrornotify))
 					.setContentText(context.getResources().getString(R.string.message_senderrornotify_desc, title))
 					.setContentIntent(clickPendingIntent)
 					.setColor(context.getResources().getColor(R.color.colorError, null))
-					.setCategory(Notification.CATEGORY_ERROR).build();
+					.setCategory(Notification.CATEGORY_ERROR);
+			
+			//Checking if the Android version is below Oreo (on API 26 and above, notification alert details are handled by the system's notification channels)
+			if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+				builder.setDefaults(Notification.DEFAULT_SOUND);
+				builder.setPriority(Notification.PRIORITY_HIGH);
+			}
 			
 			//Sending the notification
-			notificationManager.notify(notificationTagMessageError, (int) conversationInfo.getLocalID(), notification);
+			notificationManager.notify(notificationTagMessageError, (int) conversationInfo.getLocalID(), builder.build());
 		});
 	}
 	
-	/* private static Notification getSummaryNotification(Context context) {
+	/**
+	 * Get a summary notification for legacy system versions that don't bundle notifications by default (below Android 7)
+	 * @param context The context to use
+	 * @param newConversationID The conversation ID of this latest message
+	 * @param newMessageConversation The conversation title of this latest message
+	 * @param newMessageText The body of this latest message
+	 * @return The notification to display
+	 */
+	private static Notification getSummaryNotificationLegacy(Context context, int newConversationID, String newMessageConversation, String newMessageText) {
 		//Creating the click intent
 		Intent clickIntent = new Intent(context, Conversations.class);
 		
@@ -136,22 +162,151 @@ public class NotificationUtils {
 		PendingIntent clickPendingIntent = PendingIntent.getActivity(context, 0, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 		
 		//Creating the notification builder
-		return new NotificationCompat.Builder(context, MainApplication.notificationChannelMessage)
-				//Setting the icon
-				.setSmallIcon(R.drawable.message)
-				//Setting the color
-				.setColor(Color.GREEN)
-				//Setting the click intent
+		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, MainApplication.notificationChannelMessage)
+				.setSmallIcon(R.drawable.message_push_group)
+				.setColor(context.getResources().getColor(R.color.colorPrimary, null))
 				.setContentIntent(clickPendingIntent)
 				//Setting the group
 				.setGroup(MainApplication.notificationGroupMessage)
-				//Setting the message as the group summary
 				.setGroupSummary(true)
-				//Setting the importance as high
-				.setPriority(Notification.PRIORITY_HIGH)
-				//Building the notification
-				.build();
-	} */
+				//Setting the sound
+				.setSound(Preferences.getNotificationSound(context))
+				//Setting the priority
+				.setPriority(Notification.PRIORITY_HIGH);
+		
+		//Adding vibration if it is enabled in the preferences
+		if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_messagenotifications_vibrate_key), false)) notificationBuilder.setVibrate(new long[]{0, 250, 250, 250});
+		
+		//Getting the notification manager
+		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+		
+		//Preparing notification data
+		NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
+		int messageCount;
+		LinkedHashMap<Integer, SummaryMessage> descMap;
+		
+		//Attempting to find an existing summary notification
+		Notification notification = getNotification(notificationManager, null, MainApplication.notificationIDMessageSummary);
+		if(notification == null) {
+			//Setting the values to empty
+			messageCount = 0;
+			descMap = new LinkedHashMap<>();
+			
+			//Counting existing messages
+			for(StatusBarNotification statusBarNotification : notificationManager.getActiveNotifications()) {
+				//Skipping the remainder of the iteration if the notification is not a message notification
+				if(!Objects.equals(statusBarNotification.getTag(), notificationTagMessage)) continue;
+				
+				NotificationCompat.MessagingStyle messagingStyle = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(statusBarNotification.getNotification());
+				if(messagingStyle != null && !messagingStyle.getMessages().isEmpty()) {
+					//Adding the message count
+					messageCount += messagingStyle.getMessages().size();
+					
+					//Adding the last message
+					NotificationCompat.MessagingStyle.Message message = messagingStyle.getMessages().get(messagingStyle.getMessages().size() - 1);
+					String title = (String) messagingStyle.getConversationTitle();
+					if(title == null) title = (String) message.getPerson().getName();
+					descMap.put(statusBarNotification.getId(), new SummaryMessage(title, message.getText().toString()));
+				}
+			}
+		} else {
+			//Reading in existing notification metadata
+			messageCount = notification.extras.getInt(notificationMessageSummaryExtrasCount);
+			List<Integer> descMapKeys = (List<Integer>) notification.extras.getSerializable(notificationMessageSummaryExtrasDescMapKey);
+			List<String> descMapSenders = (List<String>) notification.extras.getSerializable(notificationMessageSummaryExtrasDescMapSender);
+			List<String> descMapBodies = (List<String>) notification.extras.getSerializable(notificationMessageSummaryExtrasDescMapBody);
+			descMap = new LinkedHashMap<>(descMapKeys.size());
+			for(ListIterator<Integer> iterator = descMapKeys.listIterator(); iterator.hasNext();) {
+				int index = iterator.nextIndex();
+				descMap.put(iterator.next(), new SummaryMessage(descMapSenders.get(index), descMapBodies.get(index)));
+			}
+		}
+		
+		//Adding the new message
+		messageCount++;
+		descMap.remove(newConversationID); //If the conversation doesn't exist, this does nothing. If it does exist, it will be removed, and the new item will be added to the bottom of the list.
+		descMap.put(newConversationID, new SummaryMessage(newMessageConversation, newMessageText));
+		
+		//Setting the title
+		if(messageCount > 0) notificationBuilder.setContentTitle(context.getResources().getQuantityString(R.plurals.message_newmessages, messageCount, messageCount));
+		else notificationBuilder.setContentTitle(context.getResources().getString(R.string.message_newmessages_nocount));
+		
+		//Setting the description
+		{
+			//Getting the recipients
+			String[] recipients = new String[descMap.size()];
+			for(ListIterator<SummaryMessage> iterator = new ArrayList<>(descMap.values()).listIterator(descMap.size()); iterator.hasPrevious();) {
+				int index = iterator.previousIndex();
+				recipients[recipients.length - 1 - index] = iterator.previous().getConversation();
+			}
+			
+			//Creating a list with the recipients
+			String list = Constants.createLocalizedList(recipients, context.getResources());
+			
+			//Setting the notification description
+			notificationBuilder.setContentText(list);
+		}
+		
+		//Building the items
+		for(ListIterator<SummaryMessage> iterator = new ArrayList<>(descMap.values()).listIterator(descMap.size()); iterator.hasPrevious();) {
+			SummaryMessage message = iterator.previous();
+			
+			SpannableStringBuilder spannableStringBuilder = new SpannableStringBuilder();
+			{
+				SpannableString title = new SpannableString(message.getConversation());
+				title.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), 0, title.length(),0);
+				spannableStringBuilder.append(title);
+			}
+			spannableStringBuilder.append(' ');
+			spannableStringBuilder.append(message.getBody());
+			inboxStyle.addLine(spannableStringBuilder);
+		}
+		
+		//Setting the notification style
+		notificationBuilder.setStyle(inboxStyle);
+		
+		//Writing notification metadata
+		{
+			Bundle bundle = new Bundle();
+			bundle.putInt(notificationMessageSummaryExtrasCount, messageCount);
+			bundle.putSerializable(notificationMessageSummaryExtrasDescMapKey, new ArrayList<>(descMap.keySet()));
+			ArrayList<String> senderList = new ArrayList<>(descMap.size());
+			ArrayList<String> bodyList = new ArrayList<>(descMap.size());
+			for(SummaryMessage summaryMessage : descMap.values()) {
+				senderList.add(summaryMessage.getConversation());
+				bodyList.add(summaryMessage.getBody());
+			}
+			bundle.putSerializable(notificationMessageSummaryExtrasDescMapSender, senderList);
+			bundle.putSerializable(notificationMessageSummaryExtrasDescMapBody, bodyList);
+			
+			notificationBuilder.addExtras(bundle);
+		}
+		
+		//Returning the notification
+		return notificationBuilder.build();
+	}
+	
+	private static Notification getSummaryNotification(Context context) {
+		//Creating the click intent
+		Intent clickIntent = new Intent(context, Conversations.class);
+		
+		//Getting the pending intent
+		PendingIntent clickPendingIntent = PendingIntent.getActivity(context, 0, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+		
+		//Creating the notification builder
+		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, MainApplication.notificationChannelMessage)
+				.setSmallIcon(R.drawable.message_push_group)
+				.setColor(context.getResources().getColor(R.color.colorPrimary, null))
+				.setContentIntent(clickPendingIntent)
+				//Setting the group
+				.setGroup(MainApplication.notificationGroupMessage)
+				.setGroupSummary(true)
+				//Disabling group notifications
+				.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN);
+		
+		//Returning the notification
+		return notificationBuilder.build();
+	}
 	
 	private static Bitmap getCroppedBitmap(Bitmap bitmap) {
 		Bitmap output = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
@@ -319,7 +474,7 @@ public class NotificationUtils {
 						@Override
 						public void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
 							//Sending the notification without user information if the user is invalid
-							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, displayMessage, null, null, sender, timestamp, suggestions);
+							if(userInfo == null) addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, displayMessage, null, null, Constants.formatAddress(sender), timestamp, suggestions);
 								//Otherwise fetching the user's icon
 							else MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, sender, sender, new BitmapCacheHelper.ImageDecodeResult() {
 								@Override
@@ -328,7 +483,7 @@ public class NotificationUtils {
 								@Override
 								public void onImageDecoded(Bitmap result, boolean wasTasked) {
 									//Sending the notification
-									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, displayMessage, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), userInfo.getContactName() == null ? sender : userInfo.getContactName(), timestamp, suggestions);
+									addMessageToNotificationPrepared(context, conversationInfo, conversationTitle, displayMessage, result == null ? null : getCroppedBitmap(result), userInfo.getContactLookupUri().toString(), userInfo.getContactName() == null ? Constants.formatAddress(sender) : userInfo.getContactName(), timestamp, suggestions);
 								}
 							});
 						}
@@ -382,6 +537,41 @@ public class NotificationUtils {
 	}
 	
 	private static void addMessageToNotificationPrepared(Context context, ConversationInfo conversationInfo, String conversationTitle, String messageText, Bitmap chatUserIcon, String chatUserUri, String senderName, long timestamp, String[] replySuggestions) {
+		//Getting the notification manager
+		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+		
+		//Getting the notification ID
+		int notificationID = (int) conversationInfo.getLocalID();
+		
+		//Checking if the summary notification requires app control
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+			boolean shouldUseSummary = false;
+			for(StatusBarNotification statusBarNotification : notificationManager.getActiveNotifications()) {
+				//There are 2 cases for when a summary notification should be used
+				if((Objects.equals(statusBarNotification.getTag(), notificationTagMessage) && statusBarNotification.getId() != notificationID) || //1: A notification from a different conversation already exists - both will be bundled into the summary
+						statusBarNotification.getId() == MainApplication.notificationIDMessageSummary) { //2: The summary notification already exists - it will be updated with the new message
+					shouldUseSummary = true;
+					break;
+				}
+			}
+			
+			if(shouldUseSummary) {
+				//Updating the summary notification
+				notificationManager.notify(MainApplication.notificationIDMessageSummary, getSummaryNotificationLegacy(context, notificationID, conversationTitle != null ? conversationTitle : senderName, messageText));
+			} else {
+				//Sending the notification
+				sendUpdateMessageNotification(context, conversationInfo, conversationTitle, messageText, chatUserIcon, chatUserUri, senderName, timestamp, replySuggestions);
+			}
+		} else {
+			//Sending the notification
+			sendUpdateMessageNotification(context, conversationInfo, conversationTitle, messageText, chatUserIcon, chatUserUri, senderName, timestamp, replySuggestions);
+			
+			//The system will handle hiding the summary notification automatically
+			notificationManager.notify(MainApplication.notificationIDMessageSummary, getSummaryNotification(context));
+		}
+	}
+	
+	private static void sendUpdateMessageNotification(Context context, ConversationInfo conversationInfo, String conversationTitle, String messageText, Bitmap chatUserIcon, String chatUserUri, String senderName, long timestamp, String[] replySuggestions) {
 		//Creating the base notification
 		NotificationCompat.Builder notification = getBaseMessageNotification(context, conversationInfo, chatUserUri, chatUserIcon, senderName == null, replySuggestions);
 		
@@ -607,8 +797,7 @@ public class NotificationUtils {
 			
 			//Dismissing the notification
 			if(dismissNotification) {
-				NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-				notificationManager.cancel(notificationTagMessage, (int) conversationID);
+				cancelMessageNotification((NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE), (int) conversationID);
 			}
 		}
 		
@@ -645,20 +834,38 @@ public class NotificationUtils {
 		return null;
 	}
 	
-	/* public static class IntentResponse extends Activity {
-		@Override
-		protected void onCreate(Bundle savedInstanceState) {
-			//Calling the super method
-			super.onCreate(savedInstanceState);
-			
-			//Getting the intent
-			Intent intent = getIntent();
-			
-			//Returning if the intent is not the send intent
-			if(!intent.getAction().equals(Intent.ACTION_SENDTO)) return;
-			
-			//Getting the message
-			String message = intent.getStringExtra(Intent.EXTRA_TEXT);
+	public static void cancelMessageNotification(NotificationManager notificationManager, int notificationID) {
+		//Cancelling the notification
+		System.out.println("Cancelling notification: " + notificationTagMessage + " (" + notificationID + ")");
+		notificationManager.cancel(notificationTagMessage, notificationID);
+		
+		//Returning if there are any more message notifications left
+		for(StatusBarNotification statusBarNotification : notificationManager.getActiveNotifications()) {
+			System.out.println("Evaluating active tag: " + statusBarNotification.getTag() + " (" + statusBarNotification.getId() + ")");
+			if(notificationTagMessage.equals(statusBarNotification.getTag()) && statusBarNotification.getId() != notificationID) {
+				return;
+			}
 		}
-	} */
+		
+		//Dismissing the group notification
+		notificationManager.cancel(MainApplication.notificationIDMessageSummary);
+	}
+	
+	public static class SummaryMessage {
+		private final String conversation;
+		private final String body;
+		
+		SummaryMessage(String conversation, String body) {
+			this.conversation = conversation;
+			this.body = body;
+		}
+		
+		String getConversation() {
+			return conversation;
+		}
+		
+		String getBody() {
+			return body;
+		}
+	}
 }

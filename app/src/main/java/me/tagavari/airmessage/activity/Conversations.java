@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.activity;
 
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -11,6 +12,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.service.notification.StatusBarNotification;
 import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -38,6 +40,7 @@ import java.lang.ref.WeakReference;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -69,10 +72,14 @@ import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
 import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
 import me.tagavari.airmessage.compositeplugin.PluginThemeUpdater;
+import me.tagavari.airmessage.util.NotificationUtils;
 
 public class Conversations extends AppCompatCompositeActivity {
 	//Creating the constants
 	private static final int permissionRequestContacts = 0;
+	
+	//Creating the static values
+	private static final List<WeakReference<Conversations>> foregroundActivities = new ArrayList<>();
 	
 	//Creating the plugin values
 	private ConversationsBase conversationsBasePlugin;
@@ -302,9 +309,25 @@ public class Conversations extends AppCompatCompositeActivity {
 	}
 	
 	@Override
+	public void onStart() {
+		//Calling the super method
+		super.onStart();
+		
+		//Adding the broadcast listeners
+		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
+		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
+		
+		//Starting the service
+		startService(new Intent(Conversations.this, ConnectionService.class));
+	}
+	
+	@Override
 	public void onResume() {
 		//Calling the super method
 		super.onResume();
+		
+		//Adding the phantom reference
+		foregroundActivities.add(new WeakReference<>(this));
 		
 		//Showing the server warning if necessary
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
@@ -325,19 +348,46 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Updating the "mark as read" control
 		updateMarkAllRead();
+		
+		//Clearing all message notifications
+		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		for(StatusBarNotification notification : notificationManager.getActiveNotifications()) {
+			//Cancelling notifications with the 'notification' tag
+			if(NotificationUtils.notificationTagMessage.equals(notification.getTag()) || MainApplication.notificationIDMessageSummary == notification.getId()) {
+				notificationManager.cancel(notification.getTag(), notification.getId());
+			}
+		}
+		/* if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			for(StatusBarNotification notification : notificationManager.getActiveNotifications()) {
+				if(!MainApplication.notificationChannelMessage.equals(notification.getNotification().getChannelId())) continue;
+				notificationManager.cancel(notification.getId());
+			}
+		} */
 	}
 	
 	@Override
-	public void onStart() {
-		//Calling the super method
-		super.onStart();
+	protected void onPause() {
+		super.onPause();
 		
-		//Adding the broadcast listeners
-		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
-		
-		//Starting the service
-		startService(new Intent(Conversations.this, ConnectionService.class));
+		//Iterating over the foreground conversations
+		for(Iterator<WeakReference<Conversations>> iterator = foregroundActivities.iterator(); iterator.hasNext();) {
+			//Getting the referenced activity
+			Conversations activity = iterator.next().get();
+			
+			//Removing the reference if it is invalid
+			if(activity == null) {
+				iterator.remove();
+				continue;
+			}
+			//Skipping the remainder of the iteration if the activity isn't this one
+			else if(activity != this) continue;
+			
+			//Removing the reference (to this activity)
+			iterator.remove();
+			
+			//Breaking from the loop
+			break;
+		}
 	}
 	
 	@Override
@@ -1146,6 +1196,14 @@ public class Conversations extends AppCompatCompositeActivity {
 		listSearch.setBackgroundResource(R.drawable.background_amoledsamsung);
 		listSearch.setClipToOutline(true);
 		listSearch.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+	}
+	
+	/**
+	 * Returns true if there is a foreground instance of this activity running
+	 * @return True if there is a foreground instance of this activity running
+	 */
+	public static boolean isForeground() {
+		return !foregroundActivities.isEmpty();
 	}
 	
 	/**

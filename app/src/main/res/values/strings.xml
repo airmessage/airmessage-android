@@ -68,6 +68,7 @@
 	<string name="action_newconversation">New conversation</string>
 	<string name="action_connectiontroubleshootingguide">View help</string>
 	<string name="action_tapbackdetails">View tapback details</string>
+	<string name="action_renamegroup">Rename this group</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -82,6 +83,7 @@
 	<string name="screen_conversationdetails">Conversation details</string>
 	<string name="screen_newmessage">New message</string>
 
+	<string name="title_conversation_name">Group name</string>
 	<string name="title_conversation_members">People in this conversation</string>
 	<string name="title_conversation_files">Files in this conversation</string>
 
@@ -225,6 +227,8 @@
 	<string name="message_setup_sync_warning_title">Skip clearing messages?</string>
 	<string name="message_setup_sync_description">Only use this if you are connecting to the same computer and Apple account that was previously being used.\n\nRetaining your old conversations may cause them to merge with your new conversations or lose functionality.</string>
 
+	<string name="message_renamegroup_onlyyouvisibility">Only you can see this group name</string>
+
 	<string name="message_messageeffect_invisibleink">Message sent with Invisible Ink</string>
 
 	<string name="message_confirm_deletemessages">Delete all messages?</string>
@@ -328,6 +332,13 @@
 		<item quantity="one">%d year</item>
 		<item quantity="other">%d years</item>
 	</plurals>
+
+	<plurals name="message_newmessages">
+		<item quantity="one">%d new message</item>
+		<item quantity="other">%d new messages</item>
+	</plurals>
+
+	<string name="message_newmessages_nocount">New messages</string>
 
 	<string name="message_generalloading">Please wait&#8230;</string>
 	<string name="message_notsupported">This feature is unavailable</string>

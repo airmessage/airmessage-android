@@ -583,15 +583,15 @@ public class ClientCommCaladium extends CommunicationsManager {
 			//Updating the state
 			updateStateDisconnected(resultCode, forwardRequest);
 			
-			//Sending a message and finishing the threads
+			//Ending the writer thread after notifying the connected server
 			if(writerThread == null) {
-				interrupt();
-			} else {
 				queuePacket(new ConnectionManager.PacketStruct(nhtClose, new byte[0], () -> {
-					interrupt();
 					writerThread.interrupt();
 				}));
 			}
+			
+			//Interrupting this thread immediately
+			interrupt();
 		}
 		
 		void closeConnection(int reason, boolean forwardRequest) {
@@ -604,6 +604,8 @@ public class ClientCommCaladium extends CommunicationsManager {
 		}
 		
 		synchronized boolean sendDataSync(int messageType, byte[] data, boolean flush) {
+			if(outputStream == null) return false;
+			
 			try {
 				//Writing the message
 				outputStream.writeInt(messageType);

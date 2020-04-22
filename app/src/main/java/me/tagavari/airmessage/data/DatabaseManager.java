@@ -3293,7 +3293,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
-	public void updateConversationTitle(String title, long conversationID) {
+	public void updateConversationTitle(long conversationID, String title) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.ConversationEntry.COLUMN_NAME_NAME, title);

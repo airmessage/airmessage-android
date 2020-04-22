@@ -7,6 +7,7 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
+import android.app.Dialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -35,7 +36,6 @@ import android.graphics.drawable.ColorDrawable;
 import android.location.Location;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.media.SoundPool;
 import android.net.Uri;
@@ -44,7 +44,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Parcelable;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.provider.Telephony;
@@ -56,7 +55,6 @@ import android.transition.Transition;
 import android.transition.TransitionManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.SparseArray;
 import android.view.InputDevice;
 import android.view.KeyEvent;
@@ -70,6 +68,7 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.ViewStub;
 import android.view.ViewTreeObserver;
+import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
@@ -94,7 +93,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.cardview.widget.CardView;
@@ -117,7 +115,6 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -129,27 +126,14 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.signature.MediaStoreSignature;
 import com.crashlytics.android.Crashlytics;
-import com.google.android.exoplayer2.DefaultLoadControl;
-import com.google.android.exoplayer2.DefaultRenderersFactory;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.Renderer;
-import com.google.android.exoplayer2.RenderersFactory;
 import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.audio.AudioProcessor;
-import com.google.android.exoplayer2.audio.AudioRendererEventListener;
-import com.google.android.exoplayer2.drm.DrmSessionManager;
-import com.google.android.exoplayer2.drm.FrameworkMediaCrypto;
-import com.google.android.exoplayer2.mediacodec.MediaCodecSelector;
-import com.google.android.exoplayer2.metadata.MetadataOutput;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.text.TextOutput;
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
-import com.google.android.exoplayer2.video.VideoRendererEventListener;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.common.util.BiConsumer;
@@ -170,6 +154,7 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
 
@@ -196,14 +181,20 @@ import ezvcard.io.text.VCardWriter;
 import ezvcard.property.Photo;
 import ezvcard.property.RawProperty;
 import ezvcard.property.Url;
+import me.tagavari.airmessage.MainApplication;
+import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
+import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.request.FileProcessingRequest;
 import me.tagavari.airmessage.connection.request.FilePushRequest;
 import me.tagavari.airmessage.connection.request.FileRemovalRequest;
-import me.tagavari.airmessage.messaging.AMConversationAction;
-import me.tagavari.airmessage.messaging.ContactAttachmentInfo;
-import me.tagavari.airmessage.service.ConnectionService;
+import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
+import me.tagavari.airmessage.extension.MediaSharedElementCallback;
+import me.tagavari.airmessage.messaging.AMConversationAction;
+import me.tagavari.airmessage.messaging.AttachmentInfo;
+import me.tagavari.airmessage.messaging.ContactAttachmentInfo;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.DraftFile;
@@ -213,16 +204,10 @@ import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.messaging.VLocationAttachmentInfo;
-import me.tagavari.airmessage.util.ConversationUtils;
-import me.tagavari.airmessage.messaging.AttachmentInfo;
+import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.ColorHelper;
 import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.data.DatabaseManager;
-import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
-import me.tagavari.airmessage.extension.MediaSharedElementCallback;
-import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
+import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.MMSSMSHelper;
 import me.tagavari.airmessage.util.NotificationUtils;
 import me.tagavari.airmessage.view.AppleEffectView;
@@ -231,9 +216,6 @@ import me.tagavari.airmessage.view.VisualizerView;
 import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
-
-import static android.provider.Settings.System.canWrite;
-import static android.provider.Settings.System.getInt;
 
 public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
@@ -1021,8 +1003,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Clearing the notifications
 		NotificationManager notificationManager = ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE));
-		notificationManager.cancel(NotificationUtils.notificationTagMessage, (int) viewModel.conversationID);
-		notificationManager.cancel(NotificationUtils.notificationTagMessageError, (int) viewModel.conversationID);
+		int notificationID = (int) viewModel.conversationID;
+		NotificationUtils.cancelMessageNotification(notificationManager, notificationID);
+		notificationManager.cancel(NotificationUtils.notificationTagMessageError, notificationID);
 		
 		//Updating the server warning bar state
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
@@ -1049,7 +1032,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		super.onPause();
 		
 		//Iterating over the foreground conversations
-		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext(); ) {
+		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext();) {
 			//Getting the referenced activity
 			Messaging activity = iterator.next().get();
 			
@@ -1418,9 +1401,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				if(uri == null) continue;
 				
 				//Querying the file data
-				try(Cursor cursor = context.getContentResolver().query(uri, new String[]{MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.DATE_MODIFIED}, null, null, null)) {
+				try(Cursor cursor = context.getContentResolver().query(uri, new String[]{/*MediaStore.Files.FileColumns.MIME_TYPE, */MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.DATE_MODIFIED}, null, null, null)) {
 					if(cursor == null) continue;
-					int iType = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE);
+					//int iType = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE);
 					int iDisplayName = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME);
 					int iSize = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE);
 					int iModificationDate = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED);
@@ -1428,8 +1411,13 @@ public class Messaging extends AppCompatCompositeActivity {
 					if(!cursor.moveToFirst()) continue;
 					
 					//Getting the file information
-					String fileName = iDisplayName == -1 ? null : Constants.cleanFileName(cursor.getString(iDisplayName));
-					String fileType = iType == -1 ? null : cursor.getString(iType);
+					String fileName = null;
+					if(iDisplayName != -1) {
+						String rawFileName = cursor.getString(iDisplayName);
+						if(rawFileName != null) fileName = Constants.cleanFileName(rawFileName);
+						else fileName = "file";
+					}
+					String fileType = context.getContentResolver().getType(uri); //iType == -1 ? null : cursor.getString(iType);
 					if(fileType == null) {
 						if(fileName != null) fileType = Constants.getMimeType(context, uri);
 						if(fileType == null) fileType = "application/octet-stream";
@@ -1599,7 +1587,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(messageList.isEmpty()) return;
 		
 		//Clearing the conversation's drafts
-		viewModel.conversationInfo.clearDraftsUpdate(this);
+		viewModel.clearDraftMessage();
 		
 		//Writing the messages to the database
 		new AddGhostMessageTask(getApplicationContext(), viewModel.conversationInfo, new GhostMessageFinishHandler()).execute(messageList.toArray(new MessageInfo[0]));
@@ -2037,17 +2025,20 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Setting the listeners
 			inflated.findViewById(R.id.group_getnotifications).setOnClickListener(view -> notificationsSwitch.setChecked(!notificationsSwitch.isChecked()));
+			
+			//inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
+			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
+			
 			notificationsSwitch.setOnCheckedChangeListener((view, isChecked) -> {
 				//Updating the conversation
 				boolean isMuted = !isChecked;
 				viewModel.conversationInfo.setMuted(isMuted);
 				DatabaseManager.getInstance().updateConversationMuted(viewModel.conversationInfo.getLocalID(), isMuted);
 			});
-			//inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
+			
 			Button buttonChangeColor = inflated.findViewById(R.id.button_changecolor);
 			if(Preferences.getPreferenceAdvancedColor(this)) buttonChangeColor.setOnClickListener(view -> showColorDialog(null, viewModel.conversationInfo.getConversationColor()));
 			else buttonChangeColor.setVisibility(View.GONE);
-			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
 			
 			archiveButton.setOnClickListener(view -> {
 				//Toggling the archive state
@@ -2104,6 +2095,83 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Adding the conversation members
 			detailsBuildConversationMembers(new ArrayList<>(viewModel.conversationInfo.getConversationMembers()));
+			
+			//Checking if this group can be renamed
+			if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging && ConversationInfo.serviceTypeSystemMMSSMS.equals(viewModel.conversationInfo.getService()) && viewModel.conversationInfo.isGroupChat()) {
+				ViewStub viewStubChatRename = findViewById(R.id.viewstub_groupname);
+				if(viewStubChatRename != null) {
+					View inflatedChatRename = viewStubChatRename.inflate();
+					
+					ViewGroup groupGroupName = inflatedChatRename.findViewById(R.id.group_groupname);
+					TextView labelGroupName = groupGroupName.findViewById(R.id.label_groupname);
+					
+					groupGroupName.setOnClickListener(view -> {
+						//Creating the view
+						View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_renamechat, null);
+						TextInputLayout input = dialogView.findViewById(R.id.input);
+						input.getEditText().setText(viewModel.conversationInfo.getStaticTitle());
+						input.setHelperText(getResources().getString(R.string.message_renamegroup_onlyyouvisibility));
+						input.setHelperTextEnabled(true);
+						input.setHintEnabled(false);
+						getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
+						
+						//Updating the hint
+						WeakReference<TextInputLayout> inputReference = new WeakReference<>(input);
+						ConversationInfo.buildTitle(this, null, viewModel.conversationInfo.getConversationMembersAsArray(), (title, wasTasked) -> {
+							TextInputLayout newInput = inputReference.get();
+							if(newInput != null) {
+								newInput.setHint(title);
+								newInput.getEditText().setHint(title);
+							}
+						});
+						
+						//Showing the dialog
+						Dialog groupDialog = new MaterialAlertDialogBuilder(this)
+								.setView(dialogView)
+								.setTitle(R.string.action_renamegroup)
+								.setOnDismissListener(dialog -> {
+									//Hiding the keyboard
+									((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0);
+									new Handler(Looper.getMainLooper()).postDelayed(() -> {
+										getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+									}, 100);
+								})
+								.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+									//Setting the conversation title
+									String title = input.getEditText().getText().toString();
+									if(title.isEmpty()) title = null;
+									boolean result = viewModel.conversationInfo.setTitle(this, title);
+									
+									//Saving the new title to disk
+									if(result) {
+										DatabaseManager.getInstance().updateConversationTitle(viewModel.conversationInfo.getLocalID(), title);
+									}
+									
+									//Dismissing the dialog
+									dialog.dismiss();
+								})
+								.setNegativeButton(android.R.string.cancel, null)
+								.create();
+						
+						groupDialog.setOnShowListener(dialog -> {
+							//Focusing the text view
+							input.requestFocus();
+							((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
+						});
+						groupDialog.show();
+					});
+					{
+						//Setting the conversation title
+						labelGroupName.setText(viewModel.conversationInfo.getStaticTitle());
+						
+						WeakReference<TextView> labelReference = new WeakReference<>(labelGroupName);
+						viewModel.conversationInfo.buildTitle(this, (title, wasTasked) -> {
+							TextView label = labelReference.get();
+							if(label != null) label.setText(title);
+						});
+					}
+				}
+			}
 			
 			//Setting the panel position
 			bottomDetailsPanel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -2316,6 +2384,11 @@ public class Messaging extends AppCompatCompositeActivity {
 			membersLayout.addView(memberEntry);
 			memberListViews.put(member.getName(), memberEntry);
 		} */
+	}
+	
+	private void detailsUpdateConversationTitle(String title) {
+		TextView label = findViewById(R.id.label_groupname);
+		if(label != null) label.setText(title);
 	}
 	
 	private void addMemberView(MemberInfo member, int index, boolean showColor) {
@@ -5489,6 +5562,21 @@ public class Messaging extends AppCompatCompositeActivity {
 			}.execute();
 		}
 		
+		@SuppressLint("StaticFieldLeak")
+		void clearDraftMessage() {
+			//Clearing the conversation's drafts in memory
+			if(conversationInfo != null) conversationInfo.clearDraftsUpdate(getApplication());
+			
+			//Clearing the draft message on disk
+			new AsyncTask<Void, Void, Void>() {
+				@Override
+				protected Void doInBackground(Void... params) {
+					DatabaseManager.getInstance().updateConversationDraftMessage(conversationID, null, -1);
+					return null;
+				}
+			}.execute();
+		}
+		
 		boolean isProgressiveLoadInProgress() {
 			Boolean value = progressiveLoadInProgress.getValue();
 			return value == null ? false : value;
@@ -6689,6 +6777,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			Messaging activity = activityReference.get();
 			if(activity == null) return;
 			activity.setActionBarTitle(result);
+			activity.detailsUpdateConversationTitle(result);
 		}
 	}
 	

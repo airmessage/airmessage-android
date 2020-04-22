@@ -78,7 +78,7 @@ public class ConversationInfo implements Serializable {
 	public static final int serviceHandlerSystemMessaging = 1; //SMS and MMS
 	
 	public static final String serviceTypeAppleMessage = "iMessage";
-	public static final String serviceTypeAppleTextMessageForwarding= "SMS";
+	public static final String serviceTypeAppleTextMessageForwarding = "SMS";
 	
 	public static final String serviceTypeSystemMMSSMS = "MMSSMS"; //MMS and SMS
 	public static final String serviceTypeSystemRCS= "RCS"; //Rich communication services, Google Chat
@@ -1515,7 +1515,7 @@ public class ConversationInfo implements Serializable {
 				@Override
 				public void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
 					//Returning the user's name
-					resultCallback.onResult(userInfo != null ? userInfo.getContactName() : members[0], wasTasked);
+					resultCallback.onResult(userInfo != null ? userInfo.getContactName() : Constants.formatAddress(members[0]), wasTasked);
 				}
 			});
 			
@@ -1530,13 +1530,13 @@ public class ConversationInfo implements Serializable {
 		final WeakReference<Context> contextReference = new WeakReference<>(context);
 		
 		//Converting the list to named members
-		for(String username : members) {
+		for(String member : members) {
 			//Getting the user info
-			MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, username, new UserCacheHelper.UserFetchResult() {
+			MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, member, new UserCacheHelper.UserFetchResult() {
 				@Override
 				public void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
 					//Adding the name
-					namedConversationMembers.add(userInfo != null ? userInfo.getContactName() : username);
+					namedConversationMembers.add(userInfo != null ? userInfo.getContactName() : Constants.formatAddress(member));
 					
 					//Returning if the names have not all been added
 					if(members.length != namedConversationMembers.size()) return;
@@ -1567,9 +1567,9 @@ public class ConversationInfo implements Serializable {
 		return title;
 	}
 	
-	public void setTitle(Context context, String value) {
+	public boolean setTitle(Context context, String value) {
 		//Returning if the operation is invalid
-		if(title != null && title.equals(value)) return;
+		if(title != null && title.equals(value)) return false;
 		
 		//Setting the new title
 		title = value;
@@ -1589,6 +1589,9 @@ public class ConversationInfo implements Serializable {
 				viewHolder.conversationTitle.setText(title);
 			});
 		}
+		
+		//Returning true
+		return true;
 	}
 	
 	private boolean getSelected() {

@@ -392,8 +392,7 @@
 	<string name="preference_textmessage_deliveryreport_title">Accusés de réception textos</string>
 	<string name="preference_textmessage_enable_title">Intégration des messages texte</string>
 	<string name="preferencegroup_textmessage_title">Messagerie texte</string>
-	<!-- <string name="preference_textmessage_enable_desc">Utiliser AirMessage pour envoyer et recevoir des SMS et des MMS</string> -->
-	<string name="preference_textmessage_enable_desc">AVERTISSEMENT: Cette fonctionnalité est susceptible d\'être modifiée ou supprimée</string>
+	<string name="preference_textmessage_enable_desc">Utiliser AirMessage pour envoyer et recevoir des SMS et des MMS</string>
 	<string name="preference_textmessage_deliveryreport_desc">Vérifier quand un message text est distribué</string>
 	<string name="servicedesc_systemmessageimport">Permet d\'importer et de gérer la fonctionnalité d\'intégration de messagerie texte d\'AirMessage</string>
 	<string name="progress_importtextmessages">Importation des messages texte&#8230;</string>
@@ -455,4 +454,14 @@
 	<string name="message_senderrornotify">Un message n\'a pas été envoyé</string>
 	<string name="message_senderrornotify_desc">Votre message à %s n\'a pas pu être envoyé</string>
 	<string name="message_senderror">Non envoyé</string>
+	<string name="message_renamegroup_onlyyouvisibility">Vous êtes la seule personne qui puisse voir ce nom</string>
+	<string name="title_conversation_name">Nom du groupe</string>
+	<string name="action_renamegroup">Renommer ce groupe</string>
+
+	<plurals name="message_newmessages">
+		<item quantity="one">%d nouveaux messages</item>
+		<item quantity="other">%d nouveau message</item>
+	</plurals>
+
+	<string name="message_newmessages_nocount">Nouveaux messages</string>
 </resources>

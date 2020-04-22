@@ -54,7 +54,7 @@ public class SystemMessageImportService extends Service {
 	
 	private static final long notificationProgressMinUpdateInterval = 1000;
 	
-	private static final int notificationID = -3;
+	private static final int notificationID = MainApplication.notificationIDMessageImport;
 	
 	private Thread currentThread = null;
 	
@@ -734,7 +734,7 @@ public class SystemMessageImportService extends Service {
 				
 				//Adding the address to the array
 				String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.CanonicalAddressesColumns.ADDRESS));
-				recipientAddressArray[i] = address;
+				recipientAddressArray[i] = Constants.normalizeAddress(address);
 			} catch(RuntimeException exception) {
 				recipientAddressArray[i] = "0";
 				exception.printStackTrace();
