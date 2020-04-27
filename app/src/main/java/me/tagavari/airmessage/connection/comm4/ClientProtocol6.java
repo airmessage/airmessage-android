@@ -1,4 +1,4 @@
-package me.tagavari.airmessage.connection.caladium;
+package me.tagavari.airmessage.connection.comm4;
 
 import android.content.Context;
 import android.os.Handler;
@@ -31,7 +31,6 @@ import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.connection.proxy.DataProxy;
 import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
 import me.tagavari.airmessage.connection.request.FileDownloadRequest;
@@ -111,23 +110,23 @@ class ClientProtocol6 extends ProtocolManager {
 	private static final int modifierTypeSticker = 1;
 	private static final int modifierTypeTapback = 2;
 	
-	ClientProtocol6(Context context, ConnectionManager connectionManager, ClientCommCaladium communicationsManager) {
+	ClientProtocol6(Context context, ConnectionManager connectionManager, ClientComm4 communicationsManager) {
 		super(context, connectionManager, communicationsManager);
 	}
 	
 	@Override
 	boolean sendPing() {
-		return communicationsManager.queuePacket(new ConnectionManager.PacketStruct(ClientCommCaladium.nhtPing, new byte[0]));
+		return communicationsManager.queuePacket(new PacketStructOut(ClientComm4.nhtPing, new byte[0]));
 	}
 	
 	@Override
 	void processData(int messageType, byte[] data) {
 		switch(messageType) {
-			case ClientCommCaladium.nhtClose:
+			case ClientComm4.nhtClose:
 				communicationsManager.disconnect(ConnectionManager.intentResultCodeConnection);
 				break;
-			case ClientCommCaladium.nhtPing:
-				communicationsManager.queuePacket(new ConnectionManager.PacketStruct(ClientCommCaladium.nhtPong, new byte[0]));
+			case ClientComm4.nhtPing:
+				communicationsManager.queuePacket(new PacketStructOut(ClientComm4.nhtPong, new byte[0]));
 				break;
 			case nhtAuthentication: {
 				//Stopping the authentication timer
@@ -155,7 +154,7 @@ class ClientProtocol6 extends ProtocolManager {
 				}
 				
 				//Finishing the connection establishment if the handshake was successful
-				if(resultCode == ConnectionManager.intentResultCodeSuccess) communicationsManager.onHandshakeCompleted();
+				if(resultCode == ConnectionManager.intentResultCodeSuccess) communicationsManager.onHandshakeCompleted(null, null, null, null);
 					//Otherwise terminating the connection
 				else communicationsManager.disconnect(resultCode);
 				
@@ -485,7 +484,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtCreateChat, packetData));
+		communicationsManager.queuePacket(new PacketStructOut(nhtCreateChat, packetData));
 		
 		//Returning true
 		return true;
@@ -531,7 +530,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Queuing the packet
-		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtMassRetrieval, packetData));
+		communicationsManager.queuePacket(new PacketStructOut(nhtMassRetrieval, packetData));
 		
 		//Returning true
 		return true;
@@ -781,7 +780,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtAuthentication, packetData));
+		communicationsManager.queuePacket(new PacketStructOut(nhtAuthentication, packetData));
 		
 		//Returning true
 		return true;
@@ -817,7 +816,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtSendTextExisting, packetData));
+		communicationsManager.queuePacket(new PacketStructOut(nhtSendTextExisting, packetData));
 		
 		//Returning true
 		return true;
@@ -854,7 +853,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtSendTextNew, packetData));
+		communicationsManager.queuePacket(new PacketStructOut(nhtSendTextNew, packetData));
 		
 		//Returning true
 		return true;
@@ -877,7 +876,7 @@ class ClientProtocol6 extends ProtocolManager {
 			out.flush();
 			
 			//Sending the message
-			return communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtAttachmentReq, trgt.toByteArray(), sentRunnable));
+			return communicationsManager.queuePacket(new PacketStructOut(nhtAttachmentReq, trgt.toByteArray(), sentRunnable));
 		} catch(IOException | GeneralSecurityException exception) {
 			//Printing the stack trace
 			exception.printStackTrace();
@@ -919,7 +918,7 @@ class ClientProtocol6 extends ProtocolManager {
 			out.flush();
 			
 			//Sending the message
-			communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtConversationUpdate, trgt.toByteArray()));
+			communicationsManager.queuePacket(new PacketStructOut(nhtConversationUpdate, trgt.toByteArray()));
 		} catch(IOException | GeneralSecurityException exception) {
 			//Logging the exception
 			exception.printStackTrace();
@@ -967,7 +966,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtSendFileExisting, packetData));
+		communicationsManager.queuePacket(new PacketStructOut(nhtSendFileExisting, packetData));
 		
 		//Returning true
 		return true;
@@ -1011,7 +1010,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtSendFileNew, packetData));
+		communicationsManager.queuePacket(new PacketStructOut(nhtSendFileNew, packetData));
 		
 		//Returning true
 		return true;
@@ -1023,7 +1022,7 @@ class ClientProtocol6 extends ProtocolManager {
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		//Sending the message
-		communicationsManager.queuePacket(new ConnectionManager.PacketStruct(nhtTimeRetrieval, ByteBuffer.allocate(Long.SIZE / 8 * 2).putLong(timeLower).putLong(timeUpper).array()));
+		communicationsManager.queuePacket(new PacketStructOut(nhtTimeRetrieval, ByteBuffer.allocate(Long.SIZE / 8 * 2).putLong(timeLower).putLong(timeUpper).array()));
 		
 		//Returning true
 		return true;
@@ -1067,8 +1066,7 @@ class ClientProtocol6 extends ProtocolManager {
 	}
 	
 	void writeEncrypted(byte[] block, ObjectOutputStream stream, String password) throws IOException, GeneralSecurityException {
-		//Creating a secure random
-		SecureRandom random = new SecureRandom();
+		SecureRandom random = ConnectionManager.getSecureRandom();
 		
 		//Generating a salt
 		byte[] salt = new byte[encryptionSaltLen];

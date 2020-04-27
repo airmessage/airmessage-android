@@ -1,4 +1,4 @@
-package me.tagavari.airmessage.connection.proxy;
+package me.tagavari.airmessage.connection.comm4;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -18,9 +18,10 @@ import java.util.logging.Logger;
 import javax.net.ssl.SSLHandshakeException;
 
 import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.util.Constants;
 
-public class ProxyCustomTCP extends DataProxy {
+class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 	//Creating the state values
 	private boolean isRunning = false;
 	private ConnectionThread connectionThread;
@@ -63,25 +64,32 @@ public class ProxyCustomTCP extends DataProxy {
 	
 	@Override
 	public void stop(int code) {
-		//Returning if this proxy is not running
-		if(!isRunning) return;
-		
-		//Closing the connection thread
-		connectionThread.interrupt();
-		connectionThread = null;
-		
-		//Calling the listener
-		onClose(code);
-		
-		//Updating the running state
-		isRunning = false;
+		//Running on the main thread
+		new Handler(Looper.getMainLooper()).post(() -> {
+			//Returning if this proxy is not running
+			if(!isRunning) return;
+			
+			//Closing the connection thread
+			connectionThread.interrupt();
+			connectionThread = null;
+			
+			//Calling the listener
+			onClose(code);
+			
+			//Updating the running state
+			isRunning = false;
+		});
 	}
 	
 	@Override
-	public boolean send(ConnectionManager.PacketStruct packet) {
+	public boolean send(PacketStructOut packet) {
 		//Queuing the packet
 		if(connectionThread == null) return false;
 		return connectionThread.queuePacket(packet);
+	}
+	
+	public boolean isUsingFallback() {
+		return connectionThread != null && connectionThread.isUsingFallback();
 	}
 	
 	protected class ConnectionThread extends Thread {
@@ -205,7 +213,7 @@ public class ProxyCustomTCP extends DataProxy {
 					}
 					
 					//Processing the data
-					onMessage(messageType, content);
+					onMessage(new PacketStructIn(messageType, content));
 				} catch(SSLHandshakeException exception) {
 					//Closing the connection
 					exception.printStackTrace();
@@ -231,7 +239,7 @@ public class ProxyCustomTCP extends DataProxy {
 			}
 		}
 		
-		boolean queuePacket(ConnectionManager.PacketStruct packet) {
+		boolean queuePacket(PacketStructOut packet) {
 			if(writerThread == null) return false;
 			writerThread.uploadQueue.add(packet);
 			return true;
@@ -289,11 +297,11 @@ public class ProxyCustomTCP extends DataProxy {
 		
 		class WriterThread extends Thread {
 			//Creating the queue
-			final BlockingQueue<ConnectionManager.PacketStruct> uploadQueue = new LinkedBlockingQueue<>();
+			final BlockingQueue<PacketStructOut> uploadQueue = new LinkedBlockingQueue<>();
 			
 			@Override
 			public void run() {
-				ConnectionManager.PacketStruct packet;
+				PacketStructOut packet;
 				
 				try {
 					while(!isInterrupted()) {

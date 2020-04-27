@@ -17,6 +17,8 @@ import com.google.android.material.snackbar.Snackbar;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -646,13 +648,72 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 		}
 	}
 	
-	static class SyncMessagesTask extends AsyncTask<Void, Void, Void> {
+	public static class DeleteAMMessagesTask extends AsyncTask<Void, Void, Void> {
+		//Creating the values
+		private final WeakReference<Context> contextReference;
+		
+		public DeleteAMMessagesTask(Context context) {
+			//Setting the references
+			contextReference = new WeakReference<>(context);
+		}
+		
+		@Override
+		protected void onPreExecute() {
+			//Getting context
+			Context context = contextReference.get();
+			
+			//Clearing dynamic shortcuts
+			//if(context != null) ConversationUtils.clearDynamicShortcuts(context);
+			
+			//Getting the conversations
+			ArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
+			if(conversations != null) {
+				//Clearing AM bridge conversations in memory
+				Collection<ConversationInfo> removedConversations = new HashSet<>();
+				for(ListIterator<ConversationInfo> iterator = conversations.listIterator(); iterator.hasNext();) {
+					ConversationInfo conversationInfo = iterator.next();
+					if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
+						iterator.remove();
+						removedConversations.add(conversationInfo);
+					}
+				}
+				
+				//Disabling other shortcuts
+				if(context != null) ConversationUtils.disableShortcuts(context, removedConversations);
+			}
+			
+			//Updating the conversation activity list
+			if(context != null) LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCConversationUpdate));
+			
+			//Cancelling all running tasks
+			ConnectionManager manager  = ConnectionService.getConnectionManager();
+			if(manager != null) manager.cancelCurrentTasks();
+		}
+		
+		@Override
+		protected Void doInBackground(Void... parameters) {
+			//Getting the context
+			Context context = contextReference.get();
+			if(context == null) return null;
+			
+			//Removing the messages from the database
+			DatabaseManager.getInstance().deleteEverythingAMBridge();
+			
+			//Clearing the attachments directory
+			//MainApplication.clearAttachmentsDirectory(context);
+			
+			//Returning
+			return null;
+		}
+	}
+	
+	public static class SyncMessagesTask extends AsyncTask<Void, Void, Void> {
 		//Creating the values
 		private final WeakReference<Context> contextReference;
 		private final WeakReference<View> snackbarParentReference;
 		private final MassRetrievalParams massRetrievalParams;
 		
-		SyncMessagesTask(Context context, View snackbarParent, MassRetrievalParams massRetrievalParams) {
+		public SyncMessagesTask(Context context, View snackbarParent, MassRetrievalParams massRetrievalParams) {
 			//Setting the references
 			contextReference = new WeakReference<>(context);
 			snackbarParentReference = new WeakReference<>(snackbarParent);
@@ -665,19 +726,23 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 			Context context = contextReference.get();
 			
 			//Clearing dynamic shortcuts
-			if(context != null) ConversationUtils.clearDynamicShortcuts(context);
+			//if(context != null) ConversationUtils.clearDynamicShortcuts(context);
 			
 			//Getting the conversations
 			ArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
 			if(conversations != null) {
-				//Disabling other shortcuts
-				if(context != null) ConversationUtils.disableShortcuts(context, conversations);
-				
 				//Clearing AM bridge conversations in memory
+				Collection<ConversationInfo> removedConversations = new HashSet<>();
 				for(ListIterator<ConversationInfo> iterator = conversations.listIterator(); iterator.hasNext();) {
 					ConversationInfo conversationInfo = iterator.next();
-					if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) iterator.remove();
+					if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
+						iterator.remove();
+						removedConversations.add(conversationInfo);
+					}
 				}
+				
+				//Disabling other shortcuts
+				if(context != null) ConversationUtils.disableShortcuts(context, removedConversations);
 			}
 			
 			//Updating the conversation activity list

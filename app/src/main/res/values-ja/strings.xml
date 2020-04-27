@@ -131,7 +131,7 @@
 	<string name="message_confirm_deletemessages_started">すべてのメッセージを削除しました</string>
 	<string name="message_confirm_deleteattachments">すべてのダウンロードした添付を削除しますか？</string>
 	<string name="message_confirm_deleteattachments_started">すべてのダウンロードした添付を削除しました</string>
-	<string name="message_setup_sync_download_description">コンピュータから最近のメッセージをコピーします。\n\nしない場合、このデバイスには新しいメッセージのみが表示されます。</string>
+	<string name="message_setup_sync_download_description">これで <b>%s</b> に接続されました。最近のメッセージをパソコンからこのデバイスにコピーしますか？</string>
 	<string name="message_setup_sync_delete_description">あるいは、再発足してこのデバイスから古いメッセージを消去します</string>
 	<string name="message_setup_sync_warning_title">メッセージの削除をスキップしますか？</string>
 	<string name="message_confirm_resyncmessages">最近のメッセージを同時しますか？</string>
@@ -145,6 +145,7 @@
 	<string name="message_shareable_text_you">%1$sの%2$s、私：%3$s</string>
 	<string name="message_connection_connected">サーバーに接続しています</string>
 	<string name="message_connection_connectedfallback">代替経由でサーバーに接続しています</string>
+	<string name="message_connection_connectedcomputer">%s に接続しています</string>
 	<string name="message_connection_disconnected">サーバーから切断されています</string>
 	<string name="message_conversation_archived">会話をアーカイブしました</string>
 	<string name="message_conversation_unarchived">会話のアーカイブを解除しました</string>
@@ -277,7 +278,7 @@
 	<string name="servicedesc_connectionservice">AirMessage サーバーの接続を作成し維持してメッセージを送受信します</string>
 	<string name="message_messageeffect_invisibleink">見えないインクのメッセージ</string>
 	<string name="message_setup_sync_description">同じコンピューと Apple アカウントに接続の以外、スキップしないでください。\n\n古い会話を保持すると、新しい会話と結合したり機能が失われたりする可能性があります。</string>
-	<string name="dialog_feedback_message">報告するべきバグし、提案したい機能し、何か言いたい事がありますか？下記のリンクを使用して私達に連絡するか他の人と話し合ってください。</string>
+	<string name="dialog_feedback_message">報告したいバグ、提案したい機能、または他に言いたいことがありますか？下記のリンクを使用して、私たちに連絡したり、他の人と話し合ったりしてください。</string>
 
 	<string name="dateformat_withinyear">M月d日</string>
 	<string name="dateformat_withinyear_weekday">M月d日EEEE</string>

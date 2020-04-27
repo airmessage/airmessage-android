@@ -86,6 +86,7 @@ public class Blocks {
 			
 			//Setting the variables
 			this.text = text;
+			this.subject = subject;
 			this.sender = sender;
 			this.attachments = attachments;
 			this.stickers = stickers;

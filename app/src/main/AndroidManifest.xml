@@ -138,7 +138,15 @@
 				<category android:name="android.intent.category.DEFAULT" />
 			</intent-filter>
             -->
-			
+
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
+		<!-- Server configuration -->
+		<activity
+			android:exported="false"
+			android:name=".activity.ServerConfigStandalone"
+			android:theme="@style/AppTheme.Onboarding">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 

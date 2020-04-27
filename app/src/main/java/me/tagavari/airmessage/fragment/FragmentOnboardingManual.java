@@ -28,6 +28,7 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.connection.CommunicationsManager;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.extension.FragmentCommunicationSwap;
 import me.tagavari.airmessage.service.ConnectionService;
@@ -46,6 +47,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 	private Button buttonNext, buttonDone, buttonCancel;
 	private ViewGroup groupProgress, groupError, groupConnected;
 	private TextView labelError;
+	private TextView labelConnected;
 	private Button buttonError;
 	
 	//Creating the fragment values
@@ -204,7 +206,8 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		groupError = groupContent.findViewById(R.id.group_error);
 		groupConnected = groupContent.findViewById(R.id.group_connected);
 		
-		labelError = groupContent.findViewById(R.id.label_error);
+		labelError = groupError.findViewById(R.id.label_error);
+		labelConnected = groupConnected.findViewById(R.id.label_connected);
 		
 		buttonError = groupContent.findViewById(R.id.button_error);
 		
@@ -326,7 +329,15 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		applyErrorDetails(currentState == stateIdle ? errorDetails : null);
 		
 		//Connected info
-		groupConnected.setVisibility(currentState == stateConnected ? View.VISIBLE : View.GONE);
+		if(currentState == stateConnected) {
+			groupConnected.setVisibility(View.VISIBLE);
+			
+			String serverDeviceName = ConnectionService.getConnectionManager().getServerDeviceName();
+			if(serverDeviceName != null) labelConnected.setText(getResources().getString(R.string.message_connection_connectedcomputer, serverDeviceName));
+			else labelConnected.setText(getResources().getString(R.string.message_connection_connected));
+		} else {
+			groupConnected.setVisibility(View.GONE);
+		}
 		
 		//Next button
 		buttonNext.setVisibility(currentState == stateIdle ? View.VISIBLE : View.GONE);

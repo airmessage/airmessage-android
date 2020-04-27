@@ -138,7 +138,7 @@
 			<intent
 				android:action="android.intent.action.VIEW"
 				android:targetPackage="@string/applicationId"
-				android:targetClass="me.tagavari.airmessage.activity.ServerSetup" />
+				android:targetClass="me.tagavari.airmessage.activity.ServerConfigStandalone" />
         </androidx.preference.Preference>
 		<!-- <androidx.preference.SwitchPreference
 			android:key="@string/preference_server_foregroundservice_key"

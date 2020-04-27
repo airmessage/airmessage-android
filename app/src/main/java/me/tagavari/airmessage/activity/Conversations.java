@@ -59,6 +59,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
+import me.tagavari.airmessage.fragment.FragmentSync;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.MemberInfo;
 import me.tagavari.airmessage.messaging.MessageInfo;
@@ -77,6 +78,7 @@ import me.tagavari.airmessage.util.NotificationUtils;
 public class Conversations extends AppCompatCompositeActivity {
 	//Creating the constants
 	private static final int permissionRequestContacts = 0;
+	private static final String keyFragmentSync = "fragment_sync";
 	
 	//Creating the static values
 	private static final List<WeakReference<Conversations>> foregroundActivities = new ArrayList<>();
@@ -149,6 +151,14 @@ public class Conversations extends AppCompatCompositeActivity {
 					else infoBarSystemUpdate.hide();
 				}
 			}
+		}
+	};
+	private final BroadcastReceiver syncNeededBroadcastReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			String name = intent.getStringExtra(Constants.intentParamName);
+			String installationID = intent.getStringExtra(Constants.intentParamInstallationID);
+			promptSync(name, installationID);
 		}
 	};
 	
@@ -366,6 +376,20 @@ public class Conversations extends AppCompatCompositeActivity {
 	protected void onPause() {
 		super.onPause();
 		
+		//Adding the broadcast listeners
+		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
+		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
+		localBroadcastManager.registerReceiver(syncNeededBroadcastReceiver, new IntentFilter(ConnectionManager.localBCSyncNeeded));
+		
+		//Starting the service
+		startService(new Intent(Conversations.this, ConnectionService.class));
+		
+		//Checking if a sync is due
+		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
+		if(connectionManager != null && connectionManager.isConnected() && connectionManager.isServerSyncNeeded()) {
+			//Showing the sync screen
+			promptSync(connectionManager.getServerDeviceName(), connectionManager.getServerInstallationID());
+		}
 		//Iterating over the foreground conversations
 		for(Iterator<WeakReference<Conversations>> iterator = foregroundActivities.iterator(); iterator.hasNext();) {
 			//Getting the referenced activity
@@ -589,6 +613,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Removing the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
+		localBroadcastManager.unregisterReceiver(syncNeededBroadcastReceiver);
 	}
 	
 	@Override
@@ -644,7 +669,22 @@ public class Conversations extends AppCompatCompositeActivity {
 				
 				//Returning true
 				return true;
-			case R.id.action_feedback: //Send feedback
+			case R.id.action_feedback: { //Send feedback
+				String currentCommunicationsVersion;
+				String serverSystemVersion;
+				String serverSoftwareVersion;
+				
+				ConnectionManager connectionManager = ConnectionService.getConnectionManager();
+				if(connectionManager != null && connectionManager.isConnected()) {
+					currentCommunicationsVersion = connectionManager.getActiveCommunicationsVersion() + "." + connectionManager.getActiveCommunicationsSubVersion();
+					serverSystemVersion = connectionManager.getServerSystemVersion() == null ? "(none)" : connectionManager.getServerSystemVersion();
+					serverSoftwareVersion = connectionManager.getServerSoftwareVersion() == null ? "(none)" : connectionManager.getServerSoftwareVersion();
+				} else {
+					currentCommunicationsVersion = "(none)";
+					serverSystemVersion = "(none)";
+					serverSoftwareVersion = "(none)";
+				}
+				
 				//Showing a dialog
 				new MaterialAlertDialogBuilder(this)
 						.setTitle(R.string.action_sendfeedback)
@@ -661,9 +701,10 @@ public class Conversations extends AppCompatCompositeActivity {
 															   "Device model: " + Build.MODEL + "\r\n" +
 															   "Android version: " + Build.VERSION.RELEASE + "\r\n" +
 															   "Client version: " + BuildConfig.VERSION_NAME + "\r\n" +
-															   "AM current communications version: " + (ConnectionService.getStaticActiveCommunicationsVersion() == -1 ? "(none)" : (ConnectionService.getStaticActiveCommunicationsVersion() + "." + ConnectionService.getStaticActiveCommunicationsSubVersion())) + "\r\n" +
-															   "AM target communications version: " + ConnectionManager.mmCommunicationsVersion + "." + ConnectionManager.mmCommunicationsSubVersion);
-							//intent.setType("message/rfc822");
+															   "AM current communications version: " + currentCommunicationsVersion + "\r\n" +
+															   "AM target communications version: " + ConnectionManager.mmCommunicationsVersion + "." + ConnectionManager.mmCommunicationsSubVersion + "\r\n" +
+															   "Server system version: " + serverSystemVersion + "\r\n" +
+															   "Server software version: " + serverSoftwareVersion);
 							
 							//Launching the intent
 							if(intent.resolveActivity(getPackageManager()) != null) startActivity(intent);
@@ -682,6 +723,7 @@ public class Conversations extends AppCompatCompositeActivity {
 				
 				//Returning true
 				return true;
+			}
 		}
 		
 		//Returning false
@@ -870,6 +912,16 @@ public class Conversations extends AppCompatCompositeActivity {
 		}
 		
 		menuItemMarkAllRead.setVisible(unreadConversationFound);
+	}
+	
+	private void promptSync(String serverName, String serverInstallationID) {
+		//Returning if the fragment already exists
+		if(getSupportFragmentManager().findFragmentByTag(keyFragmentSync) != null) return;
+		
+		//Creating and showing a new fragment
+		FragmentSync fragmentSync = new FragmentSync(serverName, serverInstallationID);
+		fragmentSync.setCancelable(false);
+		fragmentSync.show(getSupportFragmentManager(), keyFragmentSync);
 	}
 	
 	public void onCloseSearchClicked(View view) {

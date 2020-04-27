@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content">
+	<LinearLayout
+		android:id="@+id/content"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		android:padding="20dp"
+		android:clipToPadding="false">
+		<ImageView
+			android:id="@+id/image_header"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:adjustViewBounds="true"
+			android:src="@drawable/onboarding_download_tall"
+			android:layout_marginTop="20dp"
+			android:layout_marginBottom="40dp" />
+
+		<TextView
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:textColor="?android:attr/textColorPrimary"
+			android:text="@string/message_setup_sync_download_title"
+			android:textAlignment="center"
+			android:layout_gravity="center"
+			android:fontFamily="sans-serif-medium"
+			android:textSize="22sp" />
+
+		<TextView
+			android:id="@+id/label_sync"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="10dp"
+			android:text="@string/message_setup_sync_download_description"
+			android:textColor="?android:textColorSecondary"
+			android:layout_gravity="center"
+			android:textSize="18sp" />
+
+		<com.google.android.material.button.MaterialButton
+			style="@style/Widget.MaterialComponents.Button"
+			android:id="@+id/button_sync"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_gravity="start"
+			android:layout_marginTop="10dp"
+			android:text="@string/action_downloadmessages" />
+
+		<TextView
+			android:id="@+id/label_delete"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="20dp"
+			android:text="@string/message_setup_sync_delete_description"
+			android:textColor="?android:textColorSecondary"
+			android:textSize="18sp" />
+
+		<com.google.android.material.button.MaterialButton
+			style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+			android:id="@+id/button_delete"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_gravity="start"
+			android:layout_marginTop="10dp"
+			android:text="@string/action_deletemessages" />
+	</LinearLayout>
+</ScrollView>

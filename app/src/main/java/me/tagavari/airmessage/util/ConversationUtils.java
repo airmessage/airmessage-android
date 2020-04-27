@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -789,7 +790,7 @@ public class ConversationUtils {
 		});
 	}
 	
-	public static void disableShortcuts(Context context, List<ConversationInfo> conversationList) {
+	public static void disableShortcuts(Context context, Collection<ConversationInfo> conversationList) {
 		//Shortcuts require Android 7.1 Nougat or above
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
 		

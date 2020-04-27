@@ -1,4 +1,4 @@
-package me.tagavari.airmessage.connection.caladium;
+package me.tagavari.airmessage.connection.comm4;
 
 import android.content.Context;
 
@@ -11,14 +11,14 @@ import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
 abstract class ProtocolManager {
 	final Context context;
 	final ConnectionManager connectionManager;
-	final ClientCommCaladium communicationsManager;
+	final ClientComm4 communicationsManager;
 	
 	/**
 	 * Constructor
 	 * @param connectionManager The connections manager instance
 	 * @param communicationsManager The communications manager instance
 	 */
-	ProtocolManager(Context context, ConnectionManager connectionManager, ClientCommCaladium communicationsManager) {
+	ProtocolManager(Context context, ConnectionManager connectionManager, ClientComm4 communicationsManager) {
 		this.context = context;
 		this.connectionManager = connectionManager;
 		this.communicationsManager = communicationsManager;

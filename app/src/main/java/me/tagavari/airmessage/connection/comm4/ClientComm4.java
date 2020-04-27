@@ -1,40 +1,19 @@
-package me.tagavari.airmessage.connection.caladium;
+package me.tagavari.airmessage.connection.comm4;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.crashlytics.android.Crashlytics;
-
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.ConnectException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-import javax.net.ssl.SSLHandshakeException;
-
-import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.connection.CommunicationsManager;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.connection.proxy.DataProxy;
-import me.tagavari.airmessage.connection.proxy.DataProxyListener;
+import me.tagavari.airmessage.connection.ProxyNoOp;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
-import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.util.Constants;
 
-public class ClientCommCaladium extends CommunicationsManager {
+public class ClientComm4 extends CommunicationsManager<PacketStructIn, PacketStructOut> {
 	//Creating the connection values
 	private ProtocolManager protocolManager = null;
 	
@@ -52,8 +31,12 @@ public class ClientCommCaladium extends CommunicationsManager {
 	//Creating the state values
 	private boolean connectionOpened = false;
 	
-	public ClientCommCaladium(ConnectionManager connectionManager, DataProxy dataProxy, Context context) {
-		super(connectionManager, dataProxy, context);
+	public ClientComm4(ConnectionManager connectionManager, int proxyType, Context context) {
+		super(connectionManager, context);
+		
+		//Assigning the proxy
+		if(proxyType == ConnectionManager.proxyTypeDirect) setProxy(new ProxyDirectTCP());
+		else setProxy(new ProxyNoOp<>());
 		
 		//Hooking into the data proxy
 		dataProxy.addDataListener(this);
@@ -63,7 +46,7 @@ public class ClientCommCaladium extends CommunicationsManager {
 	public void initiateClose() {
 		if(connectionOpened) {
 			//Notifying the server before disconnecting
-			queuePacket(new ConnectionManager.PacketStruct(nhtClose, new byte[0], () -> dataProxy.stop(ConnectionManager.intentResultCodeConnection)));
+			queuePacket(new PacketStructOut(nhtClose, new byte[0], () -> dataProxy.stop(ConnectionManager.intentResultCodeConnection)));
 		} else {
 			//The server isn't connected, disconnect right away
 			dataProxy.stop(ConnectionManager.intentResultCodeConnection);
@@ -92,20 +75,19 @@ public class ClientCommCaladium extends CommunicationsManager {
 	}
 	
 	@Override
-	public void onMessage(int type, byte[] content) {
+	public void onMessage(PacketStructIn message) {
 		//Calling the super method
-		super.onMessage(type, content);
+		super.onMessage(message);
 		
 		//Processing the data
-		if(protocolManager == null) processFloatingData(type, content);
-		else protocolManager.processData(type, content);
+		if(protocolManager == null) processFloatingData(message.getHeader(), message.getData());
+		else protocolManager.processData(message.getHeader(), message.getData());
 	}
 	
 	@Override
 	public boolean isConnectedFallback() {
-		//if(connectionThread == null) return false;
-		//return connectionThread.isUsingFallback();
-		return false;
+		if(dataProxy instanceof ProxyDirectTCP) return ((ProxyDirectTCP) dataProxy).isUsingFallback();
+		else return false;
 	}
 	
 	@Override
@@ -189,7 +171,7 @@ public class ClientCommCaladium extends CommunicationsManager {
 		return connectionOpened;
 	}
 	
-	boolean queuePacket(ConnectionManager.PacketStruct packet) {
+	boolean queuePacket(PacketStructOut packet) {
 		return dataProxy.send(packet);
 	}
 	

@@ -113,7 +113,7 @@
 	<string name="message_generalloading">Veuillez patienter&#8230;</string>
 	
 	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages</string>
-	<string name="message_setup_sync_download_description">Copiez vos messages récents de votre ordinateur et reprenez là où vous l\'avez laissé.\n\nSi vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil.</string>
+	<string name="message_setup_sync_download_description">Vous êtes maintenant connecté à <b>%s</b>. Voulez-vous copier vos messages récents de votre ordinateur vers cet appareil?</string>
 	<string name="action_downloadmessages">Télécharger les messages</string>
 	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages de cet appareil</string>
 	<string name="action_deletemessages">Supprimer les messages</string>
@@ -180,6 +180,7 @@
 	<string name="progress_connectingtoserver">Connexion au serveur&#8230;</string>
 	<string name="message_connection_connected">Connecté au serveur</string>
 	<string name="message_connection_connectedfallback">Connecté au serveur par addresse alternative</string>
+	<string name="message_connection_connectedcomputer">Connecté à %s</string>
 	<string name="message_connection_disconnected">La connexion est perdue</string>
 	<string name="imperative_tapopenapp">Appuyez pour ouvrir l\'appli</string>
 	<string name="part_unknown">Inconnu</string>

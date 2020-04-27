@@ -14,12 +14,14 @@
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorBackground">@color/colorBackground</item>
+		<item name="bottomSheetDialogTheme">@style/BottomSheetStyle</item>
 	</style>
 	<style name="Base.DayNight.NoActionBar" parent="@style/Theme.MaterialComponents.DayNight.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorBackground">@color/colorBackground</item>
+		<item name="bottomSheetDialogTheme">@style/BottomSheetStyle</item>
 	</style>
 	
 	<style name="Pass.DayNight" parent="@style/Base.DayNight" />
@@ -147,12 +149,30 @@
 		<item name="colorControlHighlight">@color/colorPrimary</item>
 	</style>
 
-	<style name="CardViewFeature" parent="Widget.MaterialComponents.CardView">
+	<style name="CardViewFeature" parent="@style/Widget.MaterialComponents.CardView">
 		<item name="shapeAppearance">@style/ShapeAppearanceFeature</item>
 	</style>
 
-	<style name="ShapeAppearanceFeature" parent="ShapeAppearance.MaterialComponents.MediumComponent">
+	<style name="ShapeAppearanceFeature" parent="@style/ShapeAppearance.MaterialComponents.MediumComponent">
 		<item name="cornerFamily">rounded</item>
 		<item name="cornerSize">16dp</item>
+	</style>
+
+	<style name="BottomSheetStyle" parent="@style/ThemeOverlay.MaterialComponents.BottomSheetDialog">
+		<item name="bottomSheetStyle">@style/BottomSheetRounded</item>
+	</style>
+
+	<style name="BottomSheetRounded" parent="@style/Widget.Design.BottomSheet.Modal">
+		<!-- <item name="shapeAppearance">@style/ShapeAppearanceBottomSheet</item> -->
+		<!-- <item name="shapeAppearanceOverlay">@style/ShapeAppearanceBottomSheet</item> -->
+		<item name="android:background">@drawable/dialog_bottomsheet</item>
+	</style>
+
+	<style name="ShapeAppearanceBottomSheet" parent="">
+		<item name="cornerFamily">rounded</item>
+		<item name="cornerSizeTopRight">16dp</item>
+		<item name="cornerSizeTopLeft">16dp</item>
+		<item name="cornerSizeBottomRight">0dp</item>
+		<item name="cornerSizeBottomLeft">0dp</item>
 	</style>
 </resources>

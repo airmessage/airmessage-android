@@ -4,19 +4,25 @@ import android.content.Context;
 
 import java.util.List;
 
-import me.tagavari.airmessage.connection.proxy.DataProxy;
-import me.tagavari.airmessage.connection.proxy.DataProxyListener;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
 
-public abstract class CommunicationsManager implements DataProxyListener {
+public abstract class CommunicationsManager<D, P> implements DataProxyListener<D> {
 	protected final ConnectionManager connectionManager;
-	protected final DataProxy dataProxy;
+	protected DataProxy<D, P> dataProxy;
 	protected final Context context;
 	
-	public CommunicationsManager(ConnectionManager connectionManager, DataProxy dataProxy, Context context) {
+	public CommunicationsManager(ConnectionManager connectionManager, Context context) {
 		this.connectionManager = connectionManager;
-		this.dataProxy = dataProxy;
 		this.context = context;
+	}
+	
+	/**
+	 * Assigns the data proxy for this communications manager
+	 * Must be called in the constructor extending this class
+	 * @param dataProxy The data proxy to use
+	 */
+	protected void setProxy(DataProxy<D, P> dataProxy) {
+		this.dataProxy = dataProxy;
 	}
 	
 	/**
@@ -51,12 +57,12 @@ public abstract class CommunicationsManager implements DataProxyListener {
 	}
 	
 	@Override
-	public void onMessage(int type, byte[] content) {
+	public void onMessage(D data) {
 		connectionManager.onPacket(this);
 	}
 	
-	public void onHandshakeCompleted() {
-		connectionManager.onHandshakeCompleted(this);
+	public void onHandshakeCompleted(String installationID, String deviceName, String systemVersion, String softwareVersion) {
+		connectionManager.onHandshakeCompleted(this, installationID, deviceName, systemVersion, softwareVersion);
 	}
 	
 	/**

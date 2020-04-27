@@ -35,6 +35,7 @@ import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.UUID;
 
 import io.fabric.sdk.android.Fabric;
 import me.tagavari.airmessage.activity.CrashReport;
@@ -70,12 +71,18 @@ public class MainApplication extends Application {
 	private static final String sharedPreferencesConnectivityFile = "connectivity";
 	public static final String sharedPreferencesConnectivityKeyAccountType = "account_type"; //The account type that the user is logged in with (direct connection or AM Connect)
 	public static final String sharedPreferencesConnectivityKeyConnectServerConfirmed = "connect_server_confirmed"; //TRUE if this account has confirmed its connection with the server
+	public static final String sharedPreferencesConnectivityKeyLastSyncInstallationID = "last_sync_installation_id"; //The installation ID recorded when messages were last synced (or cleared), used for tracking when the user should be prompted to re-sync their messages
 	public static final String sharedPreferencesConnectivityKeyHostname = "hostname";
 	public static final String sharedPreferencesConnectivityKeyHostnameFallback = "hostname_fallback";
 	public static final String sharedPreferencesConnectivityKeyPassword = "password";
 	public static final String sharedPreferencesConnectivityKeyLastConnectionTime = "last_connection_time";
-	public static final String sharedPreferencesConnectivityKeyLastConnectionHostname = "last_connection_hostname";
+	public static final String sharedPreferencesConnectivityKeyLastConnectionInstallationID = "last_connection_installation_id";
+	public static final String sharedPreferencesConnectivityKeyLastConnectionHostname = "last_connection_hostname"; //Legacy, protocol 4
 	public static final String sharedPreferencesConnectivityKeyTextMessageConversationsInstalled = "text_message_conversations_installed";
+	
+	private static final int sharedPreferencesSchemaVersion = 2;
+	public static final String sharedPreferencesDefaultKeySchemaVersion = "default_schemaversion";
+	public static final String sharedPreferencesDefaultKeyInstallationID = "default_installationID";
 	
 	public static final String localBCContactUpdate = "LocalMSG-Main-ContactUpdate";
 	
@@ -455,20 +462,71 @@ public class MainApplication extends Application {
 	}
 	
 	private void upgradeSharedPreferences() {
-		//To version 0.6
-		{
+		//Reading the current schema version
+		SharedPreferences defaultSP = PreferenceManager.getDefaultSharedPreferences(this);
+		int schemaVer = defaultSP.getInt(sharedPreferencesDefaultKeySchemaVersion, -1);
+		
+		//Fresh installation or upgrade from pre-0.6
+		if(schemaVer == -1) {
+			//Editing the shared preferences
+			SharedPreferences.Editor defaultEditor = defaultSP.edit();
+			
 			//Migrate the fallback address from "preferences" shared preferences to "connectivity" shared preferences
 			String fallbackKey = "pref_key_server_fallbackaddress";
 			if(PreferenceManager.getDefaultSharedPreferences(this).contains(fallbackKey)) {
 				//Getting the fallback
-				String fallback = PreferenceManager.getDefaultSharedPreferences(this).getString(fallbackKey, null);
+				String fallback = defaultSP.getString(fallbackKey, null);
 				
 				//Removing the fallback from "preferences" shared preferences
-				PreferenceManager.getDefaultSharedPreferences(this).edit().remove(fallbackKey).apply();
+				defaultEditor.remove(fallbackKey);
 				
 				//Adding the fallback to "connectivity" shared preferences
-				getSharedPreferences(sharedPreferencesConnectivityFile, Context.MODE_PRIVATE).edit().putString(sharedPreferencesConnectivityKeyHostnameFallback, fallback).commit();
+				getConnectivitySharedPrefs().edit().putString(sharedPreferencesConnectivityKeyHostnameFallback, fallback).commit();
+			}
+			
+			//Setting a notrigger hostname to prevent the sync prompt from showing up after updating
+			if(getConnectivitySharedPrefs().contains(sharedPreferencesConnectivityKeyLastConnectionHostname)) {
+				getConnectivitySharedPrefs().edit()
+						.putString(sharedPreferencesConnectivityKeyLastSyncInstallationID, "notrigger")
+						.commit();
+			}
+			
+			//Saving the new schema version
+			defaultEditor.putInt(sharedPreferencesDefaultKeySchemaVersion, sharedPreferencesSchemaVersion);
+			defaultEditor.commit();
+			return;
+		}
+		
+		/* //Returning if the schema doesn't need to be updated
+		if(schemaVer >= sharedPreferencesSchemaVersion) return;
+		
+		//Editing the shared preferences
+		SharedPreferences.Editor defaultEditor = defaultSP.edit();
+		
+		switch(schemaVer) {
+			case 1: {
+			
 			}
 		}
+		
+		//Updating the new shared preferences version
+		defaultEditor.putInt(sharedPreferencesDefaultKeySchemaVersion, sharedPreferencesSchemaVersion);
+		
+		defaultEditor.commit(); */
+	}
+	
+	public String getInstallationID() {
+		SharedPreferences defaultSP = PreferenceManager.getDefaultSharedPreferences(this);
+		
+		//Reading and returning the UUID
+		String installationID = defaultSP.getString(sharedPreferencesDefaultKeyInstallationID, null);
+		if(installationID != null) return installationID;
+		
+		//Generating, saving and returning a new UUID if an existing one doesn't exist
+		installationID = UUID.randomUUID().toString();
+		defaultSP.edit()
+				.putString(sharedPreferencesDefaultKeyInstallationID, installationID)
+				.apply();
+		return installationID;
 	}
 }

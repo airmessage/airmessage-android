@@ -235,7 +235,7 @@
 	<string name="message_setup_connect_connectionerror">Connection failed</string>
 	<string name="message_setup_connect_password">Password</string>
 	<string name="message_setup_sync_download_title">Download message history</string>
-	<string name="message_setup_sync_download_description">Copy your recent messages from your computer and continue right where you left off.\n\nIf you choose not to, only new messages will appear on this device.</string>
+	<string name="message_setup_sync_download_description">You\'re now connected to <b>%s</b>.\n\nWould you like to copy your recent messages from your computer to this device?</string>
 	<string name="message_setup_sync_delete_description">Alternatively, you can start fresh and simply clear away your old messages from this device</string>
 	<string name="message_setup_sync_warning_title">Skip clearing messages?</string>
 	<string name="message_setup_sync_description">Only use this if you are connecting to the same computer and Apple account that was previously being used.\n\nRetaining your old conversations may cause them to merge with your new conversations or lose functionality.</string>
@@ -280,6 +280,7 @@
 
 	<string name="message_connection_connected">Connected to server</string>
 	<string name="message_connection_connectedfallback">Connected to server via fallback</string>
+	<string name="message_connection_connectedcomputer">Connected to %s</string>
 	<string name="message_connection_disconnected">Connection lost</string>
 
 	<string name="message_conversation_archived">Conversation archived</string>

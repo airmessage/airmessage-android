@@ -53,7 +53,7 @@ public class ConnectionService extends Service {
 	private static WeakReference<ConnectionService> serviceReference = null;
 	
 	//Creating the state values
-	private boolean configurationMode = true;
+	private boolean configurationMode = false;
 	
 	//Creating the intent values
 	private PendingIntent pingPendingIntent;

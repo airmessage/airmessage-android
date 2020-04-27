@@ -6,7 +6,6 @@ import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Handler;
-import android.os.Looper;
 import android.util.SparseArray;
 
 import androidx.core.util.Consumer;
@@ -16,7 +15,9 @@ import com.crashlytics.android.Crashlytics;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -28,11 +29,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.connection.caladium.ClientCommCaladium;
-import me.tagavari.airmessage.connection.proxy.DataProxy;
-import me.tagavari.airmessage.connection.proxy.ProxyCustomTCP;
+import me.tagavari.airmessage.connection.comm4.ClientComm4;
+import me.tagavari.airmessage.connection.comm5.ClientComm5;
 import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
 import me.tagavari.airmessage.connection.request.FileDownloadRequest;
@@ -61,14 +60,16 @@ public class ConnectionManager {
 	 *  2 - Serialization changes
 	 *  3 - Original rework without WS layer
 	 *  4 - Better stability and security, with sub-version support
+	 *  5 - MessagePack serialization, encrypt everything
 	 */
-	public static final int mmCommunicationsVersion = 4;
-	public static final int mmCommunicationsSubVersion = 6;
+	public static final int mmCommunicationsVersion = 5;
+	public static final int mmCommunicationsSubVersion = 1;
 	
 	public static final int maxPacketAllocation = 50 * 1024 * 1024; //50 MB
 	
 	public static final String localBCStateUpdate = "LocalMSG-ConnectionService-State";
 	public static final String localBCMassRetrieval = "LocalMSG-ConnectionService-MassRetrievalProgress";
+	public static final String localBCSyncNeeded = "LocalMSG-ConnectionService-SyncNeeded";
 	
 	public static final int intentResultCodeSuccess = 0;
 	public static final int intentResultCodeInternalException = 1;
@@ -87,6 +88,9 @@ public class ConnectionManager {
 	public static final int stateConnecting = 1;
 	public static final int stateConnected = 2;
 	
+	public static final int proxyTypeDirect = 0;
+	public static final int proxyTypeConnect = 1;
+	
 	public static final int largestFileSize = 1024 * 1024 * 100; //100 MB
 	public static final int attachmentChunkSize = 1024 * 1024; //1 MiB
 	
@@ -94,12 +98,14 @@ public class ConnectionManager {
 	
 	public static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
 	
+	private static final SecureRandom secureRandom = new SecureRandom();
+	
 	//Creating the service values
 	private final ServiceCallbacks serviceCallbacks;
 	
 	//Creating the communications values
-	final List<Class<?>> communicationsClassPriorityList = Collections.singletonList(ClientCommCaladium.class);
-	final List<CommunicationsManagerSource> communicationsInstancePriorityList = Collections.singletonList(ClientCommCaladium::new);
+	private static final List<Class> communicationsClassPriorityList = Arrays.asList(ClientComm5.class);
+	private static final List<CommunicationsManagerSource> communicationsInstancePriorityList = Arrays.asList(ClientComm5::new);
 	
 	//Creating the file processing values
 	private final BlockingQueue<FileProcessingRequest> fileProcessingRequestQueue = new LinkedBlockingQueue<>();
@@ -119,6 +125,8 @@ public class ConnectionManager {
 	private final ArrayList<FileDownloadRequest> fileDownloadRequests = new ArrayList<>();
 	
 	//Creating the connection values
+	public static int proxyType = proxyTypeDirect;
+	
 	public static String hostname = null;
 	public static String hostnameFallback = null;
 	public static String password = null;
@@ -134,6 +142,11 @@ public class ConnectionManager {
 	
 	private int activeCommunicationsVersion = -1;
 	private int activeCommunicationsSubVersion = -1;
+	private boolean serverSyncNeeded;
+	private String serverInstallationID;
+	private String serverDeviceName;
+	private String serverSystemVersion;
+	private String serverSoftwareVersion;
 	
 	//Creating the quick request variables
 	private final SparseArray<MessageResponseManager> messageSendRequests = new SparseArray<>();
@@ -183,7 +196,7 @@ public class ConnectionManager {
 		currentCommunicationsManager = communicationsManager;
 	}
 	
-	public void onHandshakeCompleted(CommunicationsManager communicationsManager) {
+	public void onHandshakeCompleted(CommunicationsManager communicationsManager, String installationID, String deviceName, String systemVersion, String softwareVersion) {
 		//Setting the connection as established
 		connectionEstablished = true;
 		
@@ -196,15 +209,53 @@ public class ConnectionManager {
 		//Stopping the passive reconnection timer
 		serviceCallbacks.cancelSchedulePassiveReconnection();
 		
-		//Reading the shared preferences connectivity information
+		//Updating shared preferences
 		SharedPreferences sharedPrefs = MainApplication.getInstance().getConnectivitySharedPrefs();
-		String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
+		
 		long lastConnectionTime = sharedPrefs.getLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
 		
-		//Updating the shared preferences connectivity information
 		SharedPreferences.Editor sharedPrefsEditor = sharedPrefs.edit();
-		if(!hostname.equals(lastConnectionHostname)) sharedPrefsEditor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, ConnectionManager.hostname);
 		sharedPrefsEditor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
+		
+		//Checking if an installation ID was provided
+		boolean isNewServer; //Is this server different from the one we connected to last time?
+		boolean isNewServerSinceSync; //Is this server different from the one we connected to last time, since we last synced our messages?
+		if(installationID != null) {
+			//Getting the last installation ID
+			String lastInstallationID = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionInstallationID, null);
+			String lastInstallationIDSinceSync = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastSyncInstallationID, null);
+			
+			//If the installation ID changed, we are connected to a new server
+			isNewServer = !installationID.equals(lastInstallationID);
+			
+			//Updating the saved value
+			if(isNewServer) sharedPrefsEditor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionInstallationID, installationID);
+			
+			//"notrigger" is assigned to this value when upgrading from 0.5.X to prevent sync prompts after upgrading
+			if("notrigger".equals(lastInstallationIDSinceSync)) {
+				//Don't sync messages
+				isNewServerSinceSync = false;
+				
+				//Update the saved value for next time
+				sharedPrefsEditor.putString(MainApplication.sharedPreferencesConnectivityKeyLastSyncInstallationID, installationID);
+			} else {
+				isNewServerSinceSync = !installationID.equals(lastInstallationIDSinceSync);
+			}
+		} else {
+			//Getting the last hostname
+			String lastConnectionHostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, null);
+			
+			//If the hostname changed, assume we are connected to a new server
+			isNewServer = !hostname.equals(lastConnectionHostname);
+			
+			//Updating the saved value
+			if(isNewServer) sharedPrefsEditor.putString(MainApplication.sharedPreferencesConnectivityKeyLastConnectionHostname, ConnectionManager.hostname);
+			
+			//No way to tell
+			isNewServerSinceSync = false;
+		}
+		
+		//Applying shared preferences changes
 		sharedPrefsEditor.apply();
 		
 		//Setting the last connection result
@@ -213,11 +264,28 @@ public class ConnectionManager {
 		//Retrieving the pending conversation info
 		communicationsManager.sendConversationInfoRequest(pendingConversations);
 		
-		//Checking if the last connection is the same as the current one
-		if(hostname.equals(lastConnectionHostname)) {
+		//Checking if we are still connected to the same server
+		if(!isNewServer) {
 			//Fetching the messages since the last connection time
 			retrieveMessagesSince(lastConnectionTime, System.currentTimeMillis());
 		}
+		
+		//Checking if we are connected to a new server since syncing (and thus should prompt the user to sync)
+		serverSyncNeeded = isNewServerSinceSync;
+		if(isNewServerSinceSync) {
+			//Sending a broadcast
+			LocalBroadcastManager.getInstance(getContext()).sendBroadcast(
+					new Intent(localBCSyncNeeded)
+							.putExtra(Constants.intentParamInstallationID, installationID)
+							.putExtra(Constants.intentParamName, deviceName)
+					);
+		}
+		
+		//Recording the server information
+		serverInstallationID = installationID;
+		serverDeviceName = deviceName;
+		serverSystemVersion = systemVersion;
+		serverSoftwareVersion = softwareVersion;
 	}
 	
 	public void onDisconnect(CommunicationsManager communicationsManager, int code) {
@@ -227,15 +295,14 @@ public class ConnectionManager {
 			SharedPreferences.Editor editor = MainApplication.getInstance().getConnectivitySharedPrefs().edit();
 			editor.putLong(MainApplication.sharedPreferencesConnectivityKeyLastConnectionTime, System.currentTimeMillis());
 			editor.apply();
-		} else {
-			//Checking if no shutdown was requested
-			if(!flagShutdownRequested) {
-				//Connecting via the next communications manager
-				int targetIndex = communicationsClassPriorityList.indexOf(communicationsManager.getClass()) + 1;
-				if(targetIndex < communicationsInstancePriorityList.size()) {
-					communicationsInstancePriorityList.get(targetIndex).get(this, getDataProxy(getContext()), getContext()).connect();
-					return;
-				}
+		}
+		//Checking if no shutdown was requested and the code is an error
+		else if(!flagShutdownRequested && code != intentResultCodeUnauthorized) {
+			//Connecting via the next communications manager
+			int targetIndex = communicationsClassPriorityList.indexOf(communicationsManager.getClass()) + 1;
+			if(targetIndex < communicationsInstancePriorityList.size()) {
+				communicationsInstancePriorityList.get(targetIndex).get(this, proxyType, getContext()).connect();
+				return;
 			}
 		}
 		
@@ -272,23 +339,6 @@ public class ConnectionManager {
 		return MainApplication.getInstance();
 	}
 	
-	private DataProxy getDataProxy(Context context) {
-		//Checking if there is no hostname
-		if(hostname == null) {
-			//Retrieving the data from the shared preferences
-			SharedPreferences sharedPrefs = MainApplication.getInstance().getConnectivitySharedPrefs();
-			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null);
-			hostnameFallback = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostnameFallback, null);
-			password = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, null);
-		}
-		
-		//Checking if the hostname is invalid (nothing was found in memory or on disk)
-		if(hostname == null) return null;
-		
-		//Creating a new direct TCP proxy
-		return new ProxyCustomTCP();
-	}
-	
 	public boolean connect(Context context) {
 		return connect(context, getNextLaunchID());
 	}
@@ -312,7 +362,7 @@ public class ConnectionManager {
 			}
 		}
 		
-		//Getting the proxy
+		/* //Getting the proxy
 		DataProxy proxy = getDataProxy(context);
 		
 		//Checking if the proxy is invalid
@@ -321,13 +371,13 @@ public class ConnectionManager {
 			broadcastState(context, stateDisconnected, intentResultCodeConnection, launchID);
 			
 			return false;
-		}
+		} */
 		
 		//Notifying the state
 		updateState(context, stateConnecting, 0, launchID);
 		
 		//Connecting through the top of the priority queue
-		communicationsInstancePriorityList.get(0).get(this, proxy, context).connect();
+		communicationsInstancePriorityList.get(0).get(this, proxyType, context).connect();
 		
 		//Return true
 		return true;
@@ -380,6 +430,30 @@ public class ConnectionManager {
 	
 	public int getActiveCommunicationsSubVersion() {
 		return activeCommunicationsSubVersion;
+	}
+	
+	public boolean isServerSyncNeeded() {
+		return serverSyncNeeded;
+	}
+	
+	public void clearServerSyncNeeded() {
+		serverSyncNeeded = false;
+	}
+	
+	public String getServerInstallationID() {
+		return serverInstallationID;
+	}
+	
+	public String getServerDeviceName() {
+		return serverDeviceName;
+	}
+	
+	public String getServerSystemVersion() {
+		return serverSystemVersion;
+	}
+	
+	public String getServerSoftwareVersion() {
+		return serverSoftwareVersion;
 	}
 	
 	public boolean checkSupportsFeature(String feature) {
@@ -911,6 +985,10 @@ public class ConnectionManager {
 		return count;
 	}
 	
+	public static SecureRandom getSecureRandom() {
+		return secureRandom;
+	}
+	
 	public static class FileDownloadRequestDeregistrationListener extends StaticInterfaceListener implements Consumer<FileDownloadRequest> {
 		public FileDownloadRequestDeregistrationListener(ConnectionManager manager) {
 			super(manager);
@@ -1024,23 +1102,7 @@ public class ConnectionManager {
 	}
 	
 	interface CommunicationsManagerSource {
-		CommunicationsManager get(ConnectionManager connectionManager, DataProxy proxy, Context context);
-	}
-	
-	public static class PacketStruct {
-		public final int type;
-		public final byte[] content;
-		public Runnable sentRunnable;
-		
-		public PacketStruct(int type, byte[] content) {
-			this.type = type;
-			this.content = content;
-		}
-		
-		public PacketStruct(int type, byte[] content, Runnable sentRunnable) {
-			this(type, content);
-			this.sentRunnable = sentRunnable;
-		}
+		CommunicationsManager get(ConnectionManager connectionManager, int proxyType, Context context);
 	}
 	
 	private static class StaticInterfaceListener {
