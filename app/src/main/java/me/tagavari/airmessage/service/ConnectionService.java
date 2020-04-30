@@ -31,9 +31,9 @@ import me.tagavari.airmessage.util.Constants;
 
 public class ConnectionService extends Service {
 	//Creating the constants
-	public static final long keepAliveMillis = 10 * 60 * 1000; //30 * 60 * 1000; //10 minutes
+	public static final long keepAliveMillis = 20 * 60 * 1000; //30 * 60 * 1000; //20 minutes
 	public static final long keepAliveWindowMillis = 5 * 60 * 1000; //5 minutes
-	public static final long[] dropReconnectDelayMillis = {1000, 5 * 1000, 10 * 1000, 30 * 1000}; //1 second, 5 seconds, 10 seconds, 30 seconds
+	public static final long[] dropReconnectDelayMillis = {1000, 10 * 1000, 30 * 1000}; //1 second, 10 seconds, 30 seconds
 	public static final long passiveReconnectFrequencyMillis = 20 * 60 * 1000; //20 minutes
 	public static final long passiveReconnectWindowMillis = 5 * 60 * 1000; //5 minutes
 	
@@ -54,6 +54,8 @@ public class ConnectionService extends Service {
 	
 	//Creating the state values
 	private boolean configurationMode = false;
+	private int dropReconnectIndex = 0;
+	
 	
 	//Creating the intent values
 	private PendingIntent pingPendingIntent;
@@ -79,8 +81,8 @@ public class ConnectionService extends Service {
 		public void run() {
 			dropReconnectRunning = false;
 			
-			//Returning if the service isn't running
-			if(getInstance() == null) return;
+			//Returning if the service isn't running or we're in configuration mode
+			if(getInstance() == null || configurationMode) return;
 			
 			//Connecting to the server
 			connectionManager.connect(MainApplication.getInstance(), ConnectionManager.getNextLaunchID());
@@ -93,7 +95,7 @@ public class ConnectionService extends Service {
 			if(!configurationMode) connectionManager.connect(context);
 			
 			//Scheduling the next reconnection
-			scheduleReconnection();
+			reschedulePassiveReconnection();
 		}
 	};
 	private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
