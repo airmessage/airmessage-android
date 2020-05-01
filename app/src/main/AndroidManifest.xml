@@ -340,7 +340,7 @@
 		<!-- Google Maps API -->
 		<meta-data
 			android:name="com.google.android.geo.API_KEY"
-			android:value="AIzaSyCuqxy6XwkYtc1H3s-vealUkfyUBxSb45w" />
+			android:value="AIzaSyBokl_A-bqfpChMhBFbh6YTCrPgS-DuIso" />
 
 		<!-- Android Auto integration -->
 		<meta-data
