@@ -23,8 +23,7 @@ import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 
-import com.crashlytics.android.Crashlytics;
-import com.crashlytics.android.core.CrashlyticsCore;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -37,7 +36,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.UUID;
 
-import io.fabric.sdk.android.Fabric;
 import me.tagavari.airmessage.activity.CrashReport;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.connection.ConnectionManager;
@@ -256,10 +254,8 @@ public class MainApplication extends Application {
 	}
 	
 	private void configureCrashReporting() {
-		//Initializing crashlytics, disabled in debug mode
-		//CrashlyticsCore core = new CrashlyticsCore.Builder().build();
-		CrashlyticsCore core = new CrashlyticsCore.Builder().disabled(BuildConfig.DEBUG).build();
-		Fabric.with(this, new Crashlytics.Builder().core(core).build());
+		//Disable Crashlytics in debug mode
+		FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG);
 	}
 	
 	/* private static final String oldSharedPrefsName = "me.tagavari.airmessage.MAIN_PREFERENCES";

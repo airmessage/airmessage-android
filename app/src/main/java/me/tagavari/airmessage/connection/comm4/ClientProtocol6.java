@@ -4,7 +4,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.crashlytics.android.Crashlytics;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -770,7 +770,7 @@ class ClientProtocol6 extends ProtocolManager {
 		} catch(IOException | GeneralSecurityException exception) {
 			//Logging the error
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			
 			//Closing the connection
 			communicationsManager.disconnect(ConnectionManager.intentResultCodeInternalException);
@@ -809,7 +809,7 @@ class ClientProtocol6 extends ProtocolManager {
 		} catch(IOException | GeneralSecurityException exception) {
 			//Printing the stack trace
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			
 			//Returning false
 			return false;
@@ -880,7 +880,7 @@ class ClientProtocol6 extends ProtocolManager {
 		} catch(IOException | GeneralSecurityException exception) {
 			//Printing the stack trace
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			
 			//Returning false
 			return false;
@@ -922,7 +922,7 @@ class ClientProtocol6 extends ProtocolManager {
 		} catch(IOException | GeneralSecurityException exception) {
 			//Logging the exception
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			
 			//Returning false
 			return false;
@@ -959,7 +959,7 @@ class ClientProtocol6 extends ProtocolManager {
 		} catch(IOException | GeneralSecurityException exception) {
 			//Logging the exception
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			
 			//Returning false
 			return false;
@@ -1003,7 +1003,7 @@ class ClientProtocol6 extends ProtocolManager {
 		} catch(IOException | GeneralSecurityException exception) {
 			//Logging the exception
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			
 			//Returning false
 			return false;

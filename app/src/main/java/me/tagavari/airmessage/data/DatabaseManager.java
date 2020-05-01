@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.data;
 
-import android.app.DownloadManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -14,7 +13,7 @@ import android.provider.BaseColumns;
 import android.util.Base64;
 import android.util.LongSparseArray;
 
-import com.crashlytics.android.Crashlytics;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
 
 import java.io.ByteArrayOutputStream;
@@ -778,9 +777,9 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		//Logging the operation
-		Crashlytics.log("Table rebuild requested.\n" +
-				"Column target: " + columnSelection + '\n' +
-				"Creation command: " + creationCommand);
+		FirebaseCrashlytics.getInstance().log("Table rebuild requested.\n" +
+											  "Column target: " + columnSelection + '\n' +
+											  "Creation command: " + creationCommand);
 		
 		//Starting the operation
 		if(useTransaction) writableDatabase.beginTransaction();

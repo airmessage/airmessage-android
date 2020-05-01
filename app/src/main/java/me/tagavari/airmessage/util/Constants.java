@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.util;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Person;
 import android.content.Context;
@@ -20,9 +19,6 @@ import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.FileUtils;
-import android.os.Message;
-import android.os.Parcel;
 import android.provider.OpenableColumns;
 import android.provider.Settings;
 import android.provider.Telephony;
@@ -43,10 +39,21 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Toolbar;
 
-import com.android.mms.transaction.Transaction;
-import com.crashlytics.android.Crashlytics;
+import androidx.annotation.AttrRes;
+import androidx.annotation.ColorInt;
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.util.Consumer;
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.google.android.gms.common.util.BiConsumer;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
 
 import java.io.ByteArrayInputStream;
@@ -60,7 +67,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -75,18 +81,6 @@ import java.util.Random;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
-
-import androidx.annotation.AttrRes;
-import androidx.annotation.ColorInt;
-import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
-import androidx.browser.customtabs.CustomTabsIntent;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.core.util.Consumer;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
@@ -1135,7 +1129,7 @@ public class Constants {
 	public static boolean compareMimeTypes(String one, String two) {
 		if(one.equals("*/*") || two.equals("*/*")) return true;
 		if(!one.contains("/") || !two.contains("/")) {
-			Crashlytics.logException(new IllegalArgumentException("Couldn't compare MIME types. Attempting to compare " + one + " and " + two));
+			FirebaseCrashlytics.getInstance().recordException(new IllegalArgumentException("Couldn't compare MIME types. Attempting to compare " + one + " and " + two));
 			return false;
 		}
 		String[] oneComponents = one.split("/");

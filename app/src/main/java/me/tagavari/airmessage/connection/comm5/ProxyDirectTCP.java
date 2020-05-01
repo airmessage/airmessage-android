@@ -3,7 +3,7 @@ package me.tagavari.airmessage.connection.comm5;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.crashlytics.android.Crashlytics;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -14,8 +14,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import javax.net.ssl.SSLHandshakeException;
 
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.DataProxy;
@@ -276,7 +274,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 				if(socket.isConnected()) {
 					closeConnection(ConnectionManager.intentResultCodeConnection);
 				} else {
-					Crashlytics.logException(exception);
+					FirebaseCrashlytics.getInstance().recordException(exception);
 				}
 				
 				//Returning false
@@ -322,7 +320,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 							if(socket.isConnected()) {
 								closeConnection(ConnectionManager.intentResultCodeConnection);
 							} else {
-								Crashlytics.logException(exception);
+								FirebaseCrashlytics.getInstance().recordException(exception);
 							}
 						}
 					}

@@ -11,14 +11,13 @@ import android.util.SparseArray;
 import androidx.core.util.Consumer;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import com.crashlytics.android.Crashlytics;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -30,7 +29,6 @@ import java.util.regex.Pattern;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.connection.comm4.ClientComm4;
 import me.tagavari.airmessage.connection.comm5.ClientComm5;
 import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
@@ -661,7 +659,7 @@ public class ConnectionManager {
 		} catch(IOException | NotYetConnectedException exception) {
 			//Printing the stack trace
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			
 			//Returning false
 			return false;
@@ -1083,7 +1081,7 @@ public class ConnectionManager {
 				return Constants.compressGZIP(data, length);
 			} catch(IOException exception) {
 				exception.printStackTrace();
-				Crashlytics.logException(exception);
+				FirebaseCrashlytics.getInstance().recordException(exception);
 				
 				return null;
 			}

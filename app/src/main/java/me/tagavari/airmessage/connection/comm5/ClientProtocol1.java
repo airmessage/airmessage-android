@@ -5,8 +5,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.crashlytics.android.Crashlytics;
-import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
@@ -17,9 +16,7 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.common.Blocks;
@@ -469,7 +466,7 @@ class ClientProtocol1 extends ProtocolManager {
 			return true;
 		} catch(IOException exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -505,7 +502,7 @@ class ClientProtocol1 extends ProtocolManager {
 			return true;
 		} catch(IOException exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -784,7 +781,7 @@ class ClientProtocol1 extends ProtocolManager {
 			return true;
 		} catch(IOException | GeneralSecurityException exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -806,7 +803,7 @@ class ClientProtocol1 extends ProtocolManager {
 			return true;
 		} catch(IOException exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -830,7 +827,7 @@ class ClientProtocol1 extends ProtocolManager {
 			return true;
 		} catch(IOException exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -851,7 +848,7 @@ class ClientProtocol1 extends ProtocolManager {
 			return true;
 		} catch(IOException exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -886,7 +883,7 @@ class ClientProtocol1 extends ProtocolManager {
 			return true;
 		} catch(IOException exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -912,7 +909,7 @@ class ClientProtocol1 extends ProtocolManager {
 			return true;
 		} catch(IOException exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -942,7 +939,7 @@ class ClientProtocol1 extends ProtocolManager {
 			return true;
 		} catch(IOException exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -962,7 +959,7 @@ class ClientProtocol1 extends ProtocolManager {
 			return true;
 		} catch(IOException exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}

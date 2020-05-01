@@ -16,7 +16,10 @@ import android.util.AttributeSet;
 import android.view.TextureView;
 import android.view.View;
 
-import com.crashlytics.android.Crashlytics;
+import androidx.annotation.Nullable;
+import androidx.core.graphics.ColorUtils;
+
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -24,8 +27,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import androidx.annotation.Nullable;
-import androidx.core.graphics.ColorUtils;
 import me.tagavari.airmessage.R;
 
 public class InvisibleInkView extends TextureView implements Runnable {
@@ -254,7 +255,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 			}
 		} catch(Exception exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 		} finally {
 			stop();
 		}

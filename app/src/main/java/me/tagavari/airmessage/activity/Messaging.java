@@ -156,6 +156,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
 
@@ -6019,7 +6020,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					} catch(SQLiteException exception) {
 						//Logging the exception
 						exception.printStackTrace();
-						Crashlytics.logException(exception);
+						FirebaseCrashlytics.getInstance().recordException(exception);
 						
 						//Returning null
 						return null;

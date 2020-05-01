@@ -173,7 +173,7 @@ public class ImageAttachmentInfo extends AttachmentInfo<ImageAttachmentInfo.View
 					} catch(IOException exception) {
 						//Logging the exception
 						exception.printStackTrace();
-						Crashlytics.logException(exception);
+						FirebaseCrashlytics.getInstance().recordException(exception);
 					}
 					
 					//Updating the ink view

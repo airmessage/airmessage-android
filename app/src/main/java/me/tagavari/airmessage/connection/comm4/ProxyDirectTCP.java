@@ -3,7 +3,7 @@ package me.tagavari.airmessage.connection.comm4;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.crashlytics.android.Crashlytics;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -283,7 +283,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 				if(socket.isConnected()) {
 					closeConnection(ConnectionManager.intentResultCodeConnection);
 				} else {
-					Crashlytics.logException(exception);
+					FirebaseCrashlytics.getInstance().recordException(exception);
 				}
 				
 				//Returning false
@@ -329,7 +329,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 							if(socket.isConnected()) {
 								closeConnection(ConnectionManager.intentResultCodeConnection);
 							} else {
-								Crashlytics.logException(exception);
+								FirebaseCrashlytics.getInstance().recordException(exception);
 							}
 						}
 					}

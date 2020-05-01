@@ -28,7 +28,13 @@ import androidx.core.app.RemoteInput;
 import androidx.core.graphics.drawable.IconCompat;
 import androidx.core.util.Consumer;
 
-import com.crashlytics.android.Crashlytics;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.Person;
+import androidx.core.app.RemoteInput;
+import androidx.core.graphics.drawable.IconCompat;
+import androidx.core.util.Consumer;
+
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
 import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
 import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
@@ -592,7 +598,7 @@ public class NotificationUtils {
 				messagingStyle = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(existingNotification);
 			} catch(RuntimeException exception) {
 				exception.printStackTrace();
-				Crashlytics.logException(exception);
+				FirebaseCrashlytics.getInstance().recordException(exception);
 			}
 		}
 		

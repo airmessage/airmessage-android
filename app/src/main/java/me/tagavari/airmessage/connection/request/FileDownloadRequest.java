@@ -6,7 +6,7 @@ import android.os.Looper;
 
 import androidx.core.util.Consumer;
 
-import com.crashlytics.android.Crashlytics;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -19,7 +19,6 @@ import java.util.concurrent.TimeUnit;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.util.Constants;
 
@@ -265,7 +264,7 @@ public class FileDownloadRequest {
 			} catch(IOException | OutOfMemoryError exception) {
 				//Printing the stack trace
 				exception.printStackTrace();
-				Crashlytics.logException(exception);
+				FirebaseCrashlytics.getInstance().recordException(exception);
 				
 				//Failing the download
 				new Handler(Looper.getMainLooper()).post(() -> failDownload(Callbacks.errorCodeIO));

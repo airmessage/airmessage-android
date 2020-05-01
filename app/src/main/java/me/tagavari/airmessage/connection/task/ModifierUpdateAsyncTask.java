@@ -2,7 +2,7 @@ package me.tagavari.airmessage.connection.task;
 
 import android.content.Context;
 
-import com.crashlytics.android.Crashlytics;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -67,7 +67,7 @@ public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 					if(sticker != null) stickerModifiers.add(sticker);
 				} catch(OutOfMemoryError exception) {
 					exception.printStackTrace();
-					Crashlytics.logException(exception);
+					FirebaseCrashlytics.getInstance().recordException(exception);
 				}
 			}
 			//Otherwise checking if the modifier is a tapback update
