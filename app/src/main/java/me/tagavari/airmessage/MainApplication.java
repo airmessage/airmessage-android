@@ -254,6 +254,9 @@ public class MainApplication extends Application {
 	}
 	
 	private void configureCrashReporting() {
+		//Setting the user identifier
+		FirebaseCrashlytics.getInstance().setUserId(getInstallationID());
+		
 		//Disable Crashlytics in debug mode
 		FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG);
 	}
