@@ -28,7 +28,6 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.connection.CommunicationsManager;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.extension.FragmentCommunicationSwap;
 import me.tagavari.airmessage.service.ConnectionService;
@@ -230,6 +229,11 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		
 		//Updating the state
 		applyState();
+	}
+	
+	@Override
+	public void onCreate(@Nullable Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
 		
 		//Registering the receiver
 		LocalBroadcastManager.getInstance(requireContext()).registerReceiver(serviceBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
@@ -239,11 +243,13 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 	public void onStart() {
 		super.onStart();
 		
-		//Disabling existing connections
+		//Enabling configuration mode
 		ConnectionService connectionService = ConnectionService.getInstance();
 		if(connectionService != null) {
 			connectionService.setConfigurationMode(true);
 		}
+		
+		//Terminating existing connections
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
 		if(connectionManager != null) {
 			if(connectionManager.isConnected()) connectionManager.disconnect();
@@ -256,7 +262,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		
 		//Disabling configuration mode
 		ConnectionService connectionService = ConnectionService.getInstance();
-		if(connectionService != null) {
+		if(connectionService != null && !requireActivity().isChangingConfigurations()) {
 			connectionService.setConfigurationMode(false);
 		}
 		
@@ -399,6 +405,9 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		ConnectionManager.hostname = viewModel.currentHostname;
 		ConnectionManager.hostnameFallback = viewModel.currentHostnameFallback;
 		ConnectionManager.password = viewModel.currentPassword;
+		
+		//Setting the proxy type
+		ConnectionManager.proxyType = ConnectionManager.proxyTypeDirect;
 		
 		//Telling the service to connect
 		requireActivity().startService(new Intent(requireContext(), ConnectionService.class)

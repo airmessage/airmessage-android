@@ -167,7 +167,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 				exception.printStackTrace();
 				
 				//Updating the state
-				closeConnection(ConnectionManager.intentResultCodeConnection);
+				closeConnection(ConnectionManager.connResultConnection);
 				
 				//Returning
 				return;
@@ -190,7 +190,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 						Logger.getGlobal().log(Level.WARNING, "Rejecting large packet (type: " + messageType + " - size: " + contentLen + ")");
 						
 						//Closing the connection
-						closeConnection(ConnectionManager.intentResultCodeConnection);
+						closeConnection(ConnectionManager.connResultConnection);
 						break;
 					}
 					
@@ -203,7 +203,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 						while(bytesRemaining > 0) {
 							readCount = inputStream.read(content, offset, bytesRemaining);
 							if(readCount == -1) { //No data read, stream is closed
-								closeConnection(ConnectionManager.intentResultCodeConnection);
+								closeConnection(ConnectionManager.connResultConnection);
 								break readLoop;
 							}
 							
@@ -217,14 +217,14 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 				} catch(SSLHandshakeException exception) {
 					//Closing the connection
 					exception.printStackTrace();
-					closeConnection(ConnectionManager.intentResultCodeConnection);
+					closeConnection(ConnectionManager.connResultConnection);
 					
 					//Breaking
 					break;
 				} catch(IOException | RuntimeException exception) {
 					//Closing the connection
 					exception.printStackTrace();
-					closeConnection(ConnectionManager.intentResultCodeConnection);
+					closeConnection(ConnectionManager.connResultConnection);
 					
 					//Breaking
 					break;
@@ -281,7 +281,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 				
 				//Closing the connection
 				if(socket.isConnected()) {
-					closeConnection(ConnectionManager.intentResultCodeConnection);
+					closeConnection(ConnectionManager.connResultConnection);
 				} else {
 					FirebaseCrashlytics.getInstance().recordException(exception);
 				}
@@ -327,7 +327,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 							exception.printStackTrace();
 							
 							if(socket.isConnected()) {
-								closeConnection(ConnectionManager.intentResultCodeConnection);
+								closeConnection(ConnectionManager.connResultConnection);
 							} else {
 								FirebaseCrashlytics.getInstance().recordException(exception);
 							}

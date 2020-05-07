@@ -95,12 +95,6 @@
 		<item name="android:fontFamily">sans-serif</item>
 	</style>
 
-	<style name="Pass.AppTheme.Setup" parent="Base.DayNight.NoActionBar" />
-	<style name="AppTheme.Setup" parent="@style/Pass.AppTheme.Setup">
-		<item name="android:statusBarColor">?android:attr/colorBackground</item>
-		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
-	</style>
-
 	<style name="AppTheme.Onboarding" parent="@style/DayNight.NoActionBar">
 		<item name="android:statusBarColor">?android:attr/colorBackground</item>
 		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>

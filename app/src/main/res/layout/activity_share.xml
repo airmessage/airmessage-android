@@ -124,36 +124,6 @@
 				android:layout_gravity="center"
 				android:text="@string/action_retry" />
 		</LinearLayout>
-		<!-- Connection view -->
-		<!-- <LinearLayout
-			android:id="@+id/serverwarning"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_centerInParent="true"
-			android:orientation="vertical"
-			android:visibility="gone">
-			
-			<TextView
-				android:id="@+id/serverwarning_message"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center"
-				android:layout_marginBottom="12dp"
-				android:layout_marginLeft="16dp"
-				android:layout_marginRight="16dp"
-				android:layout_marginTop="12dp"
-				android:text="@string/message_serverstatus_noconnection"
-				android:textAlignment="center"
-				android:textColor="?android:attr/textColorSecondary" />
-			
-			<com.google.android.material.button.MaterialButton
-				android:id="@+id/serverwarning_button"
-				style="@style/Widget.MaterialComponents.Button.TextButton"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center"
-				android:text="@string/action_retry" />
-		</LinearLayout> -->
 	</RelativeLayout>
 
 	<View style="@style/Divider" />

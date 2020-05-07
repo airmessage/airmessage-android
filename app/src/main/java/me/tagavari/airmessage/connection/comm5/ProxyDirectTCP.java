@@ -19,7 +19,7 @@ import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.util.Constants;
 
-class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
+class ProxyDirectTCP extends DataProxy5 {
 	//Creating the state values
 	private boolean isRunning = false;
 	private ConnectionThread connectionThread;
@@ -86,7 +86,12 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 		return connectionThread.queuePacket(packet);
 	}
 	
-	public boolean isUsingFallback() {
+	@Override
+	public boolean requiresAuthentication() {
+		return true;
+	}
+	
+	boolean isUsingFallback() {
 		return connectionThread != null && connectionThread.isUsingFallback();
 	}
 	
@@ -165,7 +170,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 				exception.printStackTrace();
 				
 				//Updating the state
-				closeConnection(ConnectionManager.intentResultCodeConnection);
+				closeConnection(ConnectionManager.connResultConnection);
 				
 				//Returning
 				return;
@@ -188,7 +193,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 						Logger.getGlobal().log(Level.WARNING, "Rejecting large packet (size: " + contentLen + ")");
 						
 						//Closing the connection
-						closeConnection(ConnectionManager.intentResultCodeConnection);
+						closeConnection(ConnectionManager.connResultConnection);
 						break;
 					}
 					
@@ -201,7 +206,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 						while(bytesRemaining > 0) {
 							readCount = inputStream.read(content, offset, bytesRemaining);
 							if(readCount == -1) { //No data read, stream is closed
-								closeConnection(ConnectionManager.intentResultCodeConnection);
+								closeConnection(ConnectionManager.connResultConnection);
 								break readLoop;
 							}
 							
@@ -215,7 +220,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 				} catch(IOException | RuntimeException exception) {
 					//Closing the connection
 					exception.printStackTrace();
-					closeConnection(ConnectionManager.intentResultCodeConnection);
+					closeConnection(ConnectionManager.connResultConnection);
 					
 					//Breaking
 					break;
@@ -272,7 +277,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 				
 				//Closing the connection
 				if(socket.isConnected()) {
-					closeConnection(ConnectionManager.intentResultCodeConnection);
+					closeConnection(ConnectionManager.connResultConnection);
 				} else {
 					FirebaseCrashlytics.getInstance().recordException(exception);
 				}
@@ -318,7 +323,7 @@ class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
 							exception.printStackTrace();
 							
 							if(socket.isConnected()) {
-								closeConnection(ConnectionManager.intentResultCodeConnection);
+								closeConnection(ConnectionManager.connResultConnection);
 							} else {
 								FirebaseCrashlytics.getInstance().recordException(exception);
 							}

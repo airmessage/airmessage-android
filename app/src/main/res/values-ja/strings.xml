@@ -53,7 +53,7 @@
 	<string name="screen_details">詳細</string>
 	<string name="screen_settings">設定</string>
 	<string name="screen_help">ヘルプ</string>
-	<string name="screen_blockedcontacts">ブロック住</string>
+	<string name="screen_blockedcontacts">ブロックされた連絡先</string>
 	<string name="screen_newconversation">新しい会話</string>
 	<string name="screen_conversationdetails">会話の詳細</string>
 	<string name="screen_newmessage">新しいメッセージ</string>
@@ -101,7 +101,7 @@
 	<string name="message_serverstatus_noconnection">サーバーから切断されています</string>
 	<string name="message_serverstatus_clientoutdated">アプリが古くなっています</string>
 	<string name="message_serverstatus_serveroutdated">サーバーが古くなっています</string>
-	<string name="message_serverstatus_authfail">サーバーにログインできませんでした</string>
+	<string name="message_serverstatus_authfail">入力したパスワードが間違っています</string>
 	<string name="message_serverstatus_unknown">不明なエラーが発生しました</string>
 	<string name="message_serverupdate">サーバーのアップデートが入手可能です</string>
 	<string name="message_searchnoresults">結果がありません</string>
@@ -387,6 +387,7 @@
 	<string name="message_crashreport_title">何かがうまくいきませんでした&#8230;</string>
 	<string name="message_crashreport_subtitle">AirMessage デバッグクラッシュレポート</string>
 	<string name="message_notsupported">この機能は利用できません</string>
+	<string name="message_connecterror">サーバーに到達できませんでした</string>
 	<string name="part_content_location">場所の詳細</string>
 	<string name="part_content_contact">連絡先</string>
 	<string name="preference_textmessage_deliveryreport_title">SMS 受取確認通知</string>
@@ -471,4 +472,13 @@
 	</plurals>
 
 	<string name="message_newmessages_nocount">新しいメッセージ</string>
+	<string name="dialog_signout_message">ログアウトしてもよろしいですか？</string>
+	<string name="message_signinerror">サインインエラー</string>
+	<string name="message_serverstatus_externalexception">外部エラーが発生しました</string>
+	<string name="message_serverstatus_nogroup">パーソナルサーバーが接続されていません</string>
+	<string name="message_serverstatus_nocapacity">接続デバイスの制限に達しました</string>
+	<string name="message_serverstatus_accoutvalidation">接続されたアカウントは使用できません</string>
+	<string name="message_serverstatus_nosubscription">接続されたアカウントは登録されていません</string>
+	<string name="message_serverstatus_otherlocation">サーバーコンピュータが交換されました</string>
+	<string name="message_serverstatus_nointernet">インターネットに接続できません</string>
 </resources>

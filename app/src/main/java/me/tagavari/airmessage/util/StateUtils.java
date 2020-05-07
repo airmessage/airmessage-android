@@ -8,7 +8,7 @@ import androidx.annotation.StringRes;
 import androidx.core.util.Consumer;
 
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.activity.ServerSetup;
+import me.tagavari.airmessage.activity.ServerConfigStandalone;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.service.ConnectionService;
 
@@ -24,29 +24,57 @@ public class StateUtils {
 		ErrorDetails.Button button = null;
 		
 		switch(errorCode) {
-			case ConnectionManager.intentResultCodeInternalException:
+			case ConnectionManager.connResultConnection:
+				labelRes = onlyConfig ? R.string.message_connectionerror : R.string.message_serverstatus_noconnection;
+				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_reconnect, StateUtils::reconnectService);
+				break;
+			case ConnectionManager.connResultInternet:
+				labelRes = R.string.message_serverstatus_nointernet;
+				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
+				break;
+			case ConnectionManager.connResultInternalError:
 				labelRes = R.string.message_serverstatus_internalexception;
 				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
 				break;
-			case ConnectionManager.intentResultCodeBadRequest:
+			case ConnectionManager.connResultExternalError:
+				labelRes = R.string.message_serverstatus_externalexception;
+				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
+				break;
+			case ConnectionManager.connResultBadRequest:
 				labelRes = R.string.message_serverstatus_badrequest;
 				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
 				break;
-			case ConnectionManager.intentResultCodeClientOutdated:
+			case ConnectionManager.connResultClientOutdated:
 				labelRes = R.string.message_serverstatus_clientoutdated;
 				button = new ErrorDetails.Button(R.string.action_update, activity -> activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + activity.getPackageName()))));
 				break;
-			case ConnectionManager.intentResultCodeServerOutdated:
+			case ConnectionManager.connResultServerOutdated:
 				labelRes = R.string.message_serverstatus_serveroutdated;
 				button = new ErrorDetails.Button(R.string.screen_help, activity -> activity.startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)));
 				break;
-			case ConnectionManager.intentResultCodeUnauthorized:
+			case ConnectionManager.connResultDirectUnauthorized:
 				labelRes = R.string.message_serverstatus_authfail;
-				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_reconfigure, activity -> activity.startActivity(new Intent(activity, ServerSetup.class)));
+				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_reconfigure, activity -> activity.startActivity(new Intent(activity, ServerConfigStandalone.class)));
 				break;
-			case ConnectionManager.intentResultCodeConnection:
-				labelRes = onlyConfig ? R.string.message_connectionerror : R.string.message_serverstatus_noconnection;
-				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_reconnect, StateUtils::reconnectService);
+			case ConnectionManager.connResultConnectNoGroup:
+				labelRes = R.string.message_serverstatus_nogroup;
+				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
+				break;
+			case ConnectionManager.connResultConnectNoCapacity:
+				labelRes = R.string.message_serverstatus_nocapacity;
+				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
+				break;
+			case ConnectionManager.connResultConnectAccountValidation:
+				labelRes = R.string.message_serverstatus_accoutvalidation;
+				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
+				break;
+			case ConnectionManager.connResultConnectNoSubscription:
+				labelRes = R.string.message_serverstatus_nosubscription;
+				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
+				break;
+			case ConnectionManager.connResultConnectOtherLocation:
+				labelRes = R.string.message_serverstatus_otherlocation;
+				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
 				break;
 			default:
 				labelRes = R.string.message_serverstatus_unknown;

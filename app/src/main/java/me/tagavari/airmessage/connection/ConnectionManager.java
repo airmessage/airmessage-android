@@ -69,13 +69,27 @@ public class ConnectionManager {
 	public static final String localBCMassRetrieval = "LocalMSG-ConnectionService-MassRetrievalProgress";
 	public static final String localBCSyncNeeded = "LocalMSG-ConnectionService-SyncNeeded";
 	
-	public static final int intentResultCodeSuccess = 0;
-	public static final int intentResultCodeInternalException = 1;
-	public static final int intentResultCodeBadRequest = 2;
-	public static final int intentResultCodeClientOutdated = 3;
-	public static final int intentResultCodeServerOutdated = 4;
-	public static final int intentResultCodeUnauthorized = 5;
-	public static final int intentResultCodeConnection = 6;
+	//Standard result codes
+	public static final int connResultSuccess = 0;
+	public static final int connResultConnection = 1;
+	public static final int connResultInternet = 2;
+	public static final int connResultInternalError = 3;
+	public static final int connResultExternalError = 4;
+	
+	//Proxy shared
+	public static final int connResultBadRequest = 100;
+	public static final int connResultClientOutdated = 101;
+	public static final int connResultServerOutdated = 102;
+	
+	//Proxy direct
+	public static final int connResultDirectUnauthorized = 200;
+	
+	//Proxy connect
+	public static final int connResultConnectNoGroup = 300;
+	public static final int connResultConnectNoCapacity = 301;
+	public static final int connResultConnectAccountValidation = 302;
+	public static final int connResultConnectNoSubscription = 303;
+	public static final int connResultConnectOtherLocation = 304;
 	
 	public static final int intentExtraStateMassRetrievalStarted = 0;
 	public static final int intentExtraStateMassRetrievalProgress = 1;
@@ -257,7 +271,7 @@ public class ConnectionManager {
 		sharedPrefsEditor.apply();
 		
 		//Setting the last connection result
-		setLastConnectionResult(ConnectionManager.intentResultCodeSuccess);
+		setLastConnectionResult(ConnectionManager.connResultSuccess);
 		
 		//Retrieving the pending conversation info
 		communicationsManager.sendConversationInfoRequest(pendingConversations);
@@ -295,7 +309,7 @@ public class ConnectionManager {
 			editor.apply();
 		}
 		//Checking if no shutdown was requested and the code is an error
-		else if(!flagShutdownRequested && code != intentResultCodeUnauthorized) {
+		else if(!flagShutdownRequested && code != connResultDirectUnauthorized) {
 			//Connecting via the next communications manager
 			int targetIndex = communicationsClassPriorityList.indexOf(communicationsManager.getClass()) + 1;
 			if(targetIndex < communicationsInstancePriorityList.size()) {
@@ -354,7 +368,7 @@ public class ConnectionManager {
 			boolean isConnected = activeNetwork != null && activeNetwork.isConnected();
 			if(!isConnected) {
 				//Notifying the connection listeners
-				broadcastState(context, stateDisconnected, intentResultCodeConnection, launchID);
+				broadcastState(context, stateDisconnected, connResultConnection, launchID);
 				
 				return false;
 			}

@@ -19,11 +19,6 @@
 		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
 		<item name="android:navigationBarColor">@color/navbarBackground</item>
 	</style>
-	
-	<style name="Pass.AppTheme.Setup" parent="Base.DayNight.NoActionBar">
-		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
-		<item name="android:navigationBarColor">@color/colorToolbar</item>
-	</style>
 
 	<style name="ThemeBlack" parent="@style/Theme.MaterialComponents.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>

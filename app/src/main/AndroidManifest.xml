@@ -117,28 +117,6 @@
 			android:exported="false"
 			android:name=".activity.Onboarding"
 			android:theme="@style/AppTheme.Onboarding">
-			<!--
-            <intent-filter>
-				<action android:name="me.tagavari.airmessage.activity.ServerSetup" />
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
-            -->
-
-			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
-		</activity>
-
-		<!-- Server setup -->
-		<activity
-			android:exported="false"
-			android:name=".activity.ServerSetup"
-			android:theme="@style/AppTheme.Setup">
-			<!--
-            <intent-filter>
-				<action android:name="me.tagavari.airmessage.activity.ServerSetup" />
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
-            -->
-
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 

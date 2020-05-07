@@ -43,7 +43,7 @@ public abstract class CommunicationsManager<D, P> implements DataProxyListener<D
 	 */
 	public final void disconnect() {
 		//Disconnecting the proxy
-		dataProxy.stop(ConnectionManager.intentResultCodeConnection);
+		dataProxy.stop(ConnectionManager.connResultConnection);
 	}
 	
 	@Override

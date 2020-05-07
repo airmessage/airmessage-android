@@ -176,7 +176,7 @@ class ClientProtocol1 extends ProtocolManager {
 		switch(messageType) {
 			case nhtClose:
 				//Closing the connection
-				communicationsManager.disconnect(ConnectionManager.intentResultCodeConnection);
+				communicationsManager.disconnect(ConnectionManager.connResultConnection);
 				break;
 			case nhtPing:
 				//Replying with a pong
@@ -256,18 +256,18 @@ class ClientProtocol1 extends ProtocolManager {
 		//Translating the result code to a local value
 		switch(resultCode) {
 			case nstAuthenticationOK:
-				resultCode = ConnectionManager.intentResultCodeSuccess;
+				resultCode = ConnectionManager.connResultSuccess;
 				break;
 			case nstAuthenticationUnauthorized:
-				resultCode = ConnectionManager.intentResultCodeUnauthorized;
+				resultCode = ConnectionManager.connResultDirectUnauthorized;
 				break;
 			case nstAuthenticationBadRequest:
-				resultCode = ConnectionManager.intentResultCodeBadRequest;
+				resultCode = ConnectionManager.connResultBadRequest;
 				break;
 		}
 		
 		//Checking if the result was successful
-		if(resultCode == ConnectionManager.intentResultCodeSuccess) {
+		if(resultCode == ConnectionManager.connResultSuccess) {
 			//Reading the server's information
 			String installationID = unpacker.unpackString();
 			String deviceName = unpacker.unpackString();
@@ -743,46 +743,64 @@ class ClientProtocol1 extends ProtocolManager {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
-		//Reading the transmission check
-		byte[] transmissionCheck;
-		try {
-			transmissionCheck = unpacker.readPayload(unpacker.unpackBinaryHeader());
-		} catch(BufferUnderflowException exception) {
-			exception.printStackTrace();
-			return false;
-		}
-		
-		//Getting the device information
+		//Assembling the device information
 		String installationID = MainApplication.getInstance().getInstallationID();
 		String clientName = Build.MANUFACTURER + ' ' + Build.MODEL;
 		String platformID = ClientProtocol1.platformID;
 		
-		//Writing back the transmission check and information about this device
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
-			packer.packInt(nhtAuthentication);
-			
-			byte[] secureData;
-			try(MessageBufferPacker securePacker = MessagePack.newDefaultBufferPacker()) {
-				securePacker.addPayload(transmissionCheck); //Transmission check
-				securePacker.packString(installationID); //Installation ID
-				securePacker.packString(clientName); //Client name
-				securePacker.packString(platformID); //Platform ID
-				
-				//Encrypting the data
-				EncryptionManager encryptionManager = communicationsManager.getEncryptionManager();
-				if(encryptionManager == null) return false;
-				secureData = encryptionManager.encrypt(securePacker.toByteArray());
+		//Checking if the current protocol requires authentication
+		if(communicationsManager.requiresAuthentication()) {
+			//Reading the transmission check
+			byte[] transmissionCheck;
+			try {
+				transmissionCheck = unpacker.readPayload(unpacker.unpackBinaryHeader());
+			} catch(BufferUnderflowException exception) {
+				exception.printStackTrace();
+				return false;
 			}
 			
-			packer.packBinaryHeader(secureData.length);
-			packer.addPayload(secureData);
-			
-			communicationsManager.queuePacket(packer.toByteArray(), false);
-			return true;
-		} catch(IOException | GeneralSecurityException exception) {
-			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
-			return false;
+			//Writing back the transmission check and information about this device
+			try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+				packer.packInt(nhtAuthentication);
+				
+				byte[] secureData;
+				try(MessageBufferPacker securePacker = MessagePack.newDefaultBufferPacker()) {
+					securePacker.addPayload(transmissionCheck); //Transmission check
+					securePacker.packString(installationID); //Installation ID
+					securePacker.packString(clientName); //Client name
+					securePacker.packString(platformID); //Platform ID
+					
+					//Encrypting the data
+					EncryptionManager encryptionManager = communicationsManager.getEncryptionManager();
+					if(encryptionManager == null) return false;
+					secureData = encryptionManager.encrypt(securePacker.toByteArray());
+				}
+				
+				packer.packBinaryHeader(secureData.length);
+				packer.addPayload(secureData);
+				
+				communicationsManager.queuePacket(packer.toByteArray(), false);
+				return true;
+			} catch(IOException | GeneralSecurityException exception) {
+				exception.printStackTrace();
+				FirebaseCrashlytics.getInstance().recordException(exception);
+				return false;
+			}
+		} else {
+			//Writing back the device information
+			try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+				packer.packInt(nhtAuthentication);
+				packer.packString(installationID); //Installation ID
+				packer.packString(clientName); //Client name
+				packer.packString(platformID); //Platform ID
+				
+				communicationsManager.queuePacket(packer.toByteArray(), false);
+				return true;
+			} catch(IOException exception) {
+				exception.printStackTrace();
+				FirebaseCrashlytics.getInstance().recordException(exception);
+				return false;
+			}
 		}
 	}
 	

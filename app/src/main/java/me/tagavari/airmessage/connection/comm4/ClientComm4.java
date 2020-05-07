@@ -26,7 +26,7 @@ public class ClientComm4 extends CommunicationsManager<PacketStructIn, PacketStr
 	static final int nhtPong = -3;
 	static final int nhtInformation = 0;
 
-	final Runnable handshakeExpiryRunnable = () -> dataProxy.stop(ConnectionManager.intentResultCodeConnection);
+	final Runnable handshakeExpiryRunnable = () -> dataProxy.stop(ConnectionManager.connResultConnection);
 	
 	//Creating the state values
 	private boolean connectionOpened = false;
@@ -46,10 +46,10 @@ public class ClientComm4 extends CommunicationsManager<PacketStructIn, PacketStr
 	public void initiateClose() {
 		if(connectionOpened) {
 			//Notifying the server before disconnecting
-			queuePacket(new PacketStructOut(nhtClose, new byte[0], () -> dataProxy.stop(ConnectionManager.intentResultCodeConnection)));
+			queuePacket(new PacketStructOut(nhtClose, new byte[0], () -> dataProxy.stop(ConnectionManager.connResultConnection)));
 		} else {
 			//The server isn't connected, disconnect right away
-			dataProxy.stop(ConnectionManager.intentResultCodeConnection);
+			dataProxy.stop(ConnectionManager.connResultConnection);
 		}
 	}
 	
@@ -203,19 +203,19 @@ public class ClientComm4 extends CommunicationsManager<PacketStructIn, PacketStr
 			int verApplicability = checkCommVerApplicability(communicationsVersion);
 			if(verApplicability != 0) {
 				//Terminating the connection
-				dataProxy.stop(verApplicability < 0 ? ConnectionManager.intentResultCodeServerOutdated : ConnectionManager.intentResultCodeClientOutdated);
+				dataProxy.stop(verApplicability < 0 ? ConnectionManager.connResultServerOutdated : ConnectionManager.connResultClientOutdated);
 				return;
 			}
 			
 			//Communications subversions 1-5 are no longer supported
 			if(communicationsSubVersion <= 5) {
-				dataProxy.stop(ConnectionManager.intentResultCodeServerOutdated);
+				dataProxy.stop(ConnectionManager.connResultServerOutdated);
 				return;
 			}
 			
 			protocolManager = findProtocolManager(communicationsSubVersion);
 			if(protocolManager == null) {
-				dataProxy.stop(ConnectionManager.intentResultCodeClientOutdated);
+				dataProxy.stop(ConnectionManager.connResultClientOutdated);
 				return;
 			}
 			

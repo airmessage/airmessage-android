@@ -123,7 +123,7 @@ class ClientProtocol6 extends ProtocolManager {
 	void processData(int messageType, byte[] data) {
 		switch(messageType) {
 			case ClientComm4.nhtClose:
-				communicationsManager.disconnect(ConnectionManager.intentResultCodeConnection);
+				communicationsManager.disconnect(ConnectionManager.connResultConnection);
 				break;
 			case ClientComm4.nhtPing:
 				communicationsManager.queuePacket(new PacketStructOut(ClientComm4.nhtPong, new byte[0]));
@@ -139,13 +139,13 @@ class ClientProtocol6 extends ProtocolManager {
 				//Translating the result code to a local value
 				switch(resultCode) {
 					case nstAuthenticationOK:
-						resultCode = ConnectionManager.intentResultCodeSuccess;
+						resultCode = ConnectionManager.connResultSuccess;
 						break;
 					case nstAuthenticationUnauthorized:
-						resultCode = ConnectionManager.intentResultCodeUnauthorized;
+						resultCode = ConnectionManager.connResultDirectUnauthorized;
 						break;
 					case nstAuthenticationBadRequest:
-						resultCode = ConnectionManager.intentResultCodeBadRequest;
+						resultCode = ConnectionManager.connResultBadRequest;
 						break;
 							/* case nhtAuthenticationVersionMismatch:
 								if(SharedValues.mmCommunicationsVersion > communicationsVersion) result = intentResultCodeServerOutdated;
@@ -154,7 +154,7 @@ class ClientProtocol6 extends ProtocolManager {
 				}
 				
 				//Finishing the connection establishment if the handshake was successful
-				if(resultCode == ConnectionManager.intentResultCodeSuccess) communicationsManager.onHandshakeCompleted(null, null, null, null);
+				if(resultCode == ConnectionManager.connResultSuccess) communicationsManager.onHandshakeCompleted(null, null, null, null);
 					//Otherwise terminating the connection
 				else communicationsManager.disconnect(resultCode);
 				
@@ -246,7 +246,7 @@ class ClientProtocol6 extends ProtocolManager {
 							Logger.getGlobal().log(Level.WARNING, "Rejecting large byte chunk (type: " + messageType + " - size: " + contentLen + ")");
 							
 							//Closing the connection
-							communicationsManager.disconnect(ConnectionManager.intentResultCodeConnection);
+							communicationsManager.disconnect(ConnectionManager.connResultConnection);
 							break;
 						}
 						compressedBytes = new byte[contentLen];
@@ -773,7 +773,7 @@ class ClientProtocol6 extends ProtocolManager {
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			
 			//Closing the connection
-			communicationsManager.disconnect(ConnectionManager.intentResultCodeInternalException);
+			communicationsManager.disconnect(ConnectionManager.connResultInternalError);
 			
 			//Returning false
 			return false;

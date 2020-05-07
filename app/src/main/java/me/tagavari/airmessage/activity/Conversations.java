@@ -51,7 +51,6 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -74,6 +73,7 @@ import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
 import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
 import me.tagavari.airmessage.compositeplugin.PluginThemeUpdater;
 import me.tagavari.airmessage.util.NotificationUtils;
+import me.tagavari.airmessage.util.StateUtils;
 
 public class Conversations extends AppCompatCompositeActivity {
 	//Creating the constants
@@ -181,10 +181,10 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Checking if there is no hostname
 		if(!((MainApplication) getApplication()).isServerConfigured()) {
 			//Creating the intent
-			Intent launchServerSetup = new Intent(this, Onboarding.class);
+			Intent launchOnboarding = new Intent(this, Onboarding.class);
 			
 			//Launching the intent
-			startActivity(launchServerSetup);
+			startActivity(launchOnboarding);
 			
 			//Finishing the current activity
 			finish();
@@ -338,7 +338,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Showing the server warning if necessary
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-		if(connectionManager == null) showServerWarning(ConnectionManager.intentResultCodeConnection);
+		if(connectionManager == null) showServerWarning(ConnectionManager.connResultConnection);
 		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected && connectionManager.getLastConnectionResult() != -1) showServerWarning(connectionManager.getLastConnectionResult());
 		else {
 			hideServerWarning();
@@ -748,35 +748,16 @@ public class Conversations extends AppCompatCompositeActivity {
 	}
 	
 	void showServerWarning(int reason) {
-		switch(reason) {
-			case ConnectionManager.intentResultCodeInternalException:
-				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_internalexception)));
-				infoBarConnection.setButton(R.string.action_retry, view -> reconnectService());
-				break;
-			case ConnectionManager.intentResultCodeBadRequest:
-				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_badrequest)));
-				infoBarConnection.setButton(R.string.action_retry, view -> reconnectService());
-				break;
-			case ConnectionManager.intentResultCodeClientOutdated:
-				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_clientoutdated)));
-				infoBarConnection.setButton(R.string.action_update, view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))));
-				break;
-			case ConnectionManager.intentResultCodeServerOutdated:
-				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_serveroutdated)));
-				infoBarConnection.setButton(R.string.screen_help, view -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)));
-				break;
-			case ConnectionManager.intentResultCodeUnauthorized:
-				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_authfail)));
-				infoBarConnection.setButton(R.string.action_reconfigure, view -> startActivity(new Intent(Conversations.this, ServerSetup.class)));
-				break;
-			case ConnectionManager.intentResultCodeConnection:
-				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_noconnection)));
-				infoBarConnection.setButton(R.string.action_reconnect, view -> reconnectService());
-				break;
-			default:
-				infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(R.string.message_serverstatus_unknown)));
-				infoBarConnection.setButton(R.string.action_retry, view -> reconnectService());
-				break;
+		//Getting the error details
+		StateUtils.ErrorDetails details = StateUtils.getErrorDetails(reason, false);
+		StateUtils.ErrorDetails.Button button = details.getButton();
+		
+		//Applying the error details to the info bar
+		infoBarConnection.setText(getResources().getString(R.string.message_serverstatus_limitedfunctionality, getResources().getString(details.getLabel())));
+		if(button == null) {
+			infoBarConnection.removeButton();
+		} else {
+			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().accept(this));
 		}
 		
 		//Showing the info bar
@@ -1355,7 +1336,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		private static boolean checkFingerprint(String fingerprint) {
 			return "78:29:b4:4f:d8:15:9d:3c:ca:42:79:a4:9b:8c:7b:17:70:5b:2c:0f".equals(fingerprint) || //Release fingerprint (Google Play app signing)
 				   "08:34:4c:b2:14:4c:98:eb:97:5a:8a:57:f6:0d:4a:e2:54:b4:68:0d".equals(fingerprint) || //Release fingerprint (local)
-				   "f8:15:22:84:65:57:87:bd:0b:79:97:29:5e:d6:d2:40:bf:74:e7:f3".equals(fingerprint); //Debug fingerprint
+				   "ce:2b:0c:13:f9:59:98:4d:87:f2:1e:4d:f2:34:7b:98:d8:1f:a0:26".equals(fingerprint); //Debug fingerprint
 		}
 	}
 	

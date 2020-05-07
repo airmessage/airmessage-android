@@ -114,7 +114,6 @@
 	<string name="message_loaderror_contacts">Failed to load contacts</string>
 	<string name="message_loaderror_blocked">Failed to load blocked addresses</string>
 
-	<string name="message_nointernet">No internet connection</string>
 	<string name="message_signinerror">Sign-in error</string>
 
 	<string name="message_loaderror_gallery">Failed to load gallery images</string>
@@ -175,12 +174,19 @@
 	<string name="message_textmessageimport">Started importing text messages</string>
 
 	<string name="message_serverstatus_limitedfunctionality">%s. Functionality will be limited.</string>
-	<string name="message_serverstatus_internalexception">An internal error occurred</string>
-	<string name="message_serverstatus_badrequest">A connection compatibility error occurred</string>
 	<string name="message_serverstatus_noconnection">No connection to server</string>
+	<string name="message_serverstatus_nointernet">No internet connection</string>
+	<string name="message_serverstatus_internalexception">An internal error occurred</string>
+	<string name="message_serverstatus_externalexception">An external error occurred</string>
+	<string name="message_serverstatus_badrequest">A connection compatibility error occurred</string>
 	<string name="message_serverstatus_clientoutdated">App is out-of-date</string>
 	<string name="message_serverstatus_serveroutdated">Server is out-of-date</string>
-	<string name="message_serverstatus_authfail">Couldn\'t log in to server</string>
+	<string name="message_serverstatus_authfail">Password not accepted</string>
+	<string name="message_serverstatus_nogroup">Personal server not available</string>
+	<string name="message_serverstatus_nocapacity">Connected device limit reached</string>
+	<string name="message_serverstatus_accoutvalidation">Connected account can\'t be used</string>
+	<string name="message_serverstatus_nosubscription">Connected account isn\'t subscribed</string>
+	<string name="message_serverstatus_otherlocation">Server computer swapped</string>
 	<string name="message_serverstatus_unknown">An unknown error occurred</string>
 
 	<string name="message_serverupdate">A server update is available</string>
@@ -362,6 +368,8 @@
 
 	<string name="message_generalloading">Please wait&#8230;</string>
 	<string name="message_notsupported">This feature is unavailable</string>
+
+	<string name="message_connecterror">Your server couldn\'t be reached</string>
 
 	<string name="progress_loadingmessages">Loading messages&#8230;</string>
 	<string name="progress_loading">Loading&#8230;</string>

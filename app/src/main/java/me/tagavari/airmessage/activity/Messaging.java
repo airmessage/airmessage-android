@@ -214,6 +214,7 @@ import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.MMSSMSHelper;
 import me.tagavari.airmessage.util.NotificationUtils;
+import me.tagavari.airmessage.util.StateUtils;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.OverScrollScrollView;
 import me.tagavari.airmessage.view.VisualizerView;
@@ -2836,36 +2837,16 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	void showServerWarning(int reason) {
-		switch(reason) {
-			case ConnectionManager.intentResultCodeInternalException:
-				infoBarConnection.setText(R.string.message_serverstatus_internalexception);
-				infoBarConnection.setButton(R.string.action_retry, view -> reconnectService());
-				break;
-			case ConnectionManager.intentResultCodeBadRequest:
-				infoBarConnection.setText(R.string.message_serverstatus_badrequest);
-				infoBarConnection.setButton(R.string.action_retry, view -> reconnectService());
-				break;
-			case ConnectionManager.intentResultCodeClientOutdated:
-				infoBarConnection.setText(R.string.message_serverstatus_clientoutdated);
-				infoBarConnection.setButton(R.string.action_update, view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + getPackageName()))));
-				break;
-			case ConnectionManager.intentResultCodeServerOutdated:
-				infoBarConnection.setText(R.string.message_serverstatus_serveroutdated);
-				infoBarConnection.setButton(R.string.screen_help, view -> startActivity(new Intent(Intent.ACTION_VIEW, Constants.serverUpdateAddress)));
-				break;
-			case ConnectionManager.intentResultCodeUnauthorized:
-				infoBarConnection.setText(R.string.message_serverstatus_authfail);
-				infoBarConnection.setButton(R.string.action_reconfigure, view -> startActivity(new Intent(Messaging.this, ServerSetup.class)));
-				break;
-			case ConnectionManager.intentResultCodeConnection:
-			case -1: //Service not started
-				infoBarConnection.setText(R.string.message_serverstatus_noconnection);
-				infoBarConnection.setButton(R.string.action_retry, view -> reconnectService());
-				break;
-			default:
-				infoBarConnection.setText(R.string.message_serverstatus_unknown);
-				infoBarConnection.setButton(R.string.action_retry, view -> reconnectService());
-				break;
+		//Getting the error details
+		StateUtils.ErrorDetails details = StateUtils.getErrorDetails(reason, false);
+		StateUtils.ErrorDetails.Button button = details.getButton();
+		
+		//Applying the error details to the info bar
+		infoBarConnection.setText(getResources().getString(details.getLabel()));
+		if(button == null) {
+			infoBarConnection.removeButton();
+		} else {
+			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().accept(this));
 		}
 		
 		//Showing the info bar

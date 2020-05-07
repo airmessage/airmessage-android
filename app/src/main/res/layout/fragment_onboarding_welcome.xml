@@ -186,7 +186,8 @@
 			android:textAllCaps="false"
 			android:text="@string/action_signin_email"
 			android:layout_marginBottom="24dp"
-			app:rippleColor="#15000000" />
+			app:rippleColor="#15000000"
+			android:visibility="gone" />
 
 		<!-- Manual configuration -->
 		<com.google.android.material.button.MaterialButton

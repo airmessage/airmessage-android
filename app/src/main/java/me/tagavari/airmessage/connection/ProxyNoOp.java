@@ -3,7 +3,7 @@ package me.tagavari.airmessage.connection;
 public final class ProxyNoOp<D, P> extends DataProxy<D, P> {
 	@Override
 	public void start() {
-		onClose(ConnectionManager.intentResultCodeBadRequest);
+		onClose(ConnectionManager.connResultBadRequest);
 	}
 	
 	@Override

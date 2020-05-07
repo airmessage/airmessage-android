@@ -136,6 +136,7 @@ dependencies {
 	implementation "org.jetbrains:annotations:15.0"
 
 	implementation "com.otaliastudios:transcoder:0.9.1"
+	implementation "org.java-websocket:Java-WebSocket:1.4.1"
 }
 
 repositories {

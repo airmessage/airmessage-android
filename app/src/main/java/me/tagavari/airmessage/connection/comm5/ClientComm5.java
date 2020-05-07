@@ -4,7 +4,6 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
-import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessagePackException;
 import org.msgpack.core.MessageUnpacker;
@@ -12,7 +11,6 @@ import org.msgpack.core.MessageUnpacker;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.List;
-import java.util.logging.Level;
 
 import me.tagavari.airmessage.connection.CommunicationsManager;
 import me.tagavari.airmessage.connection.ConnectionManager;
@@ -22,6 +20,7 @@ import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
 public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStructOut> {
 	//Creating the connection values
 	private ProtocolManager protocolManager = null;
+	private boolean protocolRequiresAuthentication;
 	private EncryptionManager encryptionManager = null;
 	
 	private static final long handshakeExpiryTime = 1000 * 10; //10 seconds
@@ -30,7 +29,7 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 	//Creating the transmission values
 	private static final int nhtInformation = 0;
 
-	final Runnable handshakeExpiryRunnable = () -> dataProxy.stop(ConnectionManager.intentResultCodeConnection);
+	final Runnable handshakeExpiryRunnable = () -> dataProxy.stop(ConnectionManager.connResultConnection);
 	
 	//Creating the state values
 	private boolean connectionOpened = false;
@@ -39,8 +38,13 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 		super(connectionManager, context);
 		
 		//Assigning the proxy
-		if(proxyType == ConnectionManager.proxyTypeDirect) setProxy(new ProxyDirectTCP());
-		else if(proxyType == ConnectionManager.proxyTypeConnect) setProxy(new ProxyConnect());
+		DataProxy5 dataProxy;
+		if(proxyType == ConnectionManager.proxyTypeDirect) dataProxy = new ProxyDirectTCP();
+		else if(proxyType == ConnectionManager.proxyTypeConnect) dataProxy = new ProxyConnect();
+		else throw new IllegalArgumentException("Unknown proxy type " + proxyType);
+		
+		protocolRequiresAuthentication = dataProxy.requiresAuthentication();
+		setProxy(dataProxy);
 		
 		//Hooking into the data proxy
 		dataProxy.addDataListener(this);
@@ -50,10 +54,10 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 	public void initiateClose() {
 		if(connectionOpened && protocolManager != null) {
 			//Notifying the server before disconnecting
-			protocolManager.sendConnectionClose(() -> dataProxy.stop(ConnectionManager.intentResultCodeConnection));
+			protocolManager.sendConnectionClose(() -> dataProxy.stop(ConnectionManager.connResultConnection));
 		} else {
 			//The server isn't connected, disconnect right away
-			dataProxy.stop(ConnectionManager.intentResultCodeConnection);
+			dataProxy.stop(ConnectionManager.connResultConnection);
 		}
 	}
 	
@@ -106,10 +110,8 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 	
 	@Override
 	public boolean isConnectedFallback() {
-		//TODO re-implement fallback connections
-		//if(connectionThread == null) return false;
-		//return connectionThread.isUsingFallback();
-		return false;
+		if(dataProxy instanceof ProxyDirectTCP) return ((ProxyDirectTCP) dataProxy).isUsingFallback();
+		else return false;
 	}
 	
 	@Override
@@ -132,6 +134,10 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 	
 	EncryptionManager getEncryptionManager() {
 		return encryptionManager;
+	}
+	
+	boolean requiresAuthentication() {
+		return protocolRequiresAuthentication;
 	}
 	
 	@Override
@@ -268,13 +274,13 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 		int verApplicability = checkCommVerApplicability(communicationsVersion);
 		if(verApplicability != 0) {
 			//Terminating the connection
-			dataProxy.stop(verApplicability < 0 ? ConnectionManager.intentResultCodeServerOutdated : ConnectionManager.intentResultCodeClientOutdated);
+			dataProxy.stop(verApplicability < 0 ? ConnectionManager.connResultServerOutdated : ConnectionManager.connResultClientOutdated);
 			return;
 		}
 		
 		protocolManager = findProtocolManager(communicationsSubVersion);
 		if(protocolManager == null) {
-			dataProxy.stop(ConnectionManager.intentResultCodeClientOutdated);
+			dataProxy.stop(ConnectionManager.connResultClientOutdated);
 			return;
 		}
 		
