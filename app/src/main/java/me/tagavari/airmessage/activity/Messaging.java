@@ -48,6 +48,7 @@ import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.provider.Telephony;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
@@ -173,6 +174,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import ezvcard.Ezvcard;
 import ezvcard.VCard;
@@ -219,6 +222,13 @@ import nl.dionsegijn.konfetti.models.Size;
 
 public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
+	
+	//List of pure urls (matches "https://google.com gmail.com youtube.com")
+	private static final Pattern urlGroupPattern = Pattern.compile("^((?:https?:\\/\\/)?(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&//=]*)\\s*){2,}$");
+	
+	//Any well-formed URL with protocol (matches "text https://google.com text")
+	private static final Pattern urlPattern = Pattern.compile("^((?:.|\\n)*)(https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&//=]*))((?:.|\\n)*)$");
+	
 	public static final int messageChunkSize = 20;
 	public static final int progressiveLoadThreshold = 10;
 	
@@ -1522,8 +1532,43 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
 			//Checking if the message box has text
 			if(cleanMessageText != null) {
-				//Creating a message
-				messageList.add(new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
+				List<String> messageTextList = new ArrayList<>();
+				
+				//Checking for a straight line of pure URLS
+				Matcher matcher = urlGroupPattern.matcher(cleanMessageText);
+				if(matcher.find()) {
+					//Adding the URLs
+					messageTextList.addAll(Arrays.asList(cleanMessageText.split("\\s")));
+				} else {
+					//Checking for a single URL
+					matcher = urlPattern.matcher(cleanMessageText);
+					if(matcher.find()) {
+						String prefix = matcher.group(1);
+						if(prefix != null) prefix = prefix.trim();
+						boolean prefixOK = !TextUtils.isEmpty(prefix);
+						String url = matcher.group(2);
+						String suffix = matcher.group(3);
+						if(suffix != null) suffix = suffix.trim();
+						boolean suffixOK = !TextUtils.isEmpty(suffix);
+						
+						if(prefixOK && suffixOK) {
+							//Just add the entire message if there is both a prefix and a suffix, Apple Messages doesn't do anything special in this case
+							messageTextList.add(cleanMessageText);
+						} else {
+							//Add each message part separately
+							if(prefixOK) messageTextList.add(prefix.trim());
+							messageTextList.add(url);
+							if(suffixOK) messageTextList.add(suffix.trim());
+						}
+					} else {
+						messageTextList.add(cleanMessageText);
+					}
+				}
+				
+				//Adding the messages
+				for(String message : messageTextList) {
+					messageList.add(new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, message, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
+				}
 				
 				//Clearing the message box
 				messageInputField.setText("");
