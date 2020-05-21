@@ -78,7 +78,7 @@ public class ConnectionService extends Service {
 			if(connectionManager.getCurrentState() != ConnectionManager.stateDisconnected) return;
 			
 			//Connecting to the server
-			connectionManager.connect(context, connectionManager.getNextLaunchID());
+			connectionManager.connect(context, ConnectionManager.getNextLaunchID());
 		}
 	};
 	private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
