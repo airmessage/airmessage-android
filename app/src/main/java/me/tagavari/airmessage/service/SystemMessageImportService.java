@@ -578,9 +578,7 @@ public class SystemMessageImportService extends Service {
 			File targetFile = new File(targetFileDir, attachmentInfo.getFileName());
 			
 			//Writing to the file
-			long totalSize = 0;
-			
-			//Checking if the file type is an image
+			long totalSize;
 			try(InputStream inputStream = context.getContentResolver().openInputStream(ContentUris.withAppendedId(Uri.parse("content://mms/part/"), mmsAttachmentInfo.getPartID()));
 				FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 				if(inputStream == null) throw new IOException("Input stream is null");

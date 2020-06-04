@@ -43,7 +43,6 @@
 	<string name="preference_server_connectionboot_title">Connexion automatique au démarrage de l\'appareil</string>
 	<string name="preference_server_networkreconnect_title">Reconnexion de changement de réseau</string>
 	<string name="preference_server_networkreconnect_description">Essayer de vous reconnecter lorsque l\'appareil se connecte à un nouveau réseau (par exemple: Wi-Fi à cellulaire)</string>
-	<string name="preference_server_help_title">Visiter le site de support</string>
 	<string name="message_serverstatus_limitedfunctionality">%s. La fonctionnalité sera limitée.</string>
 	<string name="message_serverstatus_internalexception">Une erreur interne s’est produite</string>
 	<string name="message_serverstatus_badrequest">Une erreur de compatibilité de connexion a eu lieu</string>
@@ -491,4 +490,11 @@
 	<string name="message_signinerror">Erreur de connexion</string>
 	<string name="action_signout">Déconnecter</string>
 	<string name="dialog_signout_message">Êtes-vous certain de vouloir vous déconnecter?</string>
+	<string name="preferencegroup_account_title">Compte</string>
+	<string name="preference_server_reset_title">Utiliser un compte</string>
+	<string name="preference_account_accountdetails_title">Compte connecté</string>
+	<string name="preference_account_reset_title">Déconnexion</string>
+	<string name="action_switchtoaccount">Utiliser un compte</string>
+	<string name="message_reset_direct">Utiliser un compte pour accéder à AirMessage?</string>
+	<string name="message_reset_connect">Vous déconnecter d\'AirMessage?</string>
 </resources>

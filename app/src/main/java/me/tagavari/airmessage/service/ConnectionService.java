@@ -19,8 +19,11 @@ import android.os.SystemClock;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.preference.PreferenceManager;
 
 import java.lang.ref.WeakReference;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.MainApplication;
@@ -36,12 +39,14 @@ public class ConnectionService extends Service {
 	public static final long[] dropReconnectDelayMillis = {1 * 1000, 10 * 1000, 30 * 1000}; //1 second, 10 seconds, 30 seconds
 	public static final long passiveReconnectFrequencyMillis = 20 * 60 * 1000; //20 minutes
 	public static final long passiveReconnectWindowMillis = 5 * 60 * 1000; //5 minutes
+	public static final long temporaryModeExpiry = 15 * 1000; //15 seconds
 	
 	public static final String selfIntentActionConnect = "connect";
 	public static final String selfIntentActionDisconnect = "disconnect";
 	public static final String selfIntentActionStop = "stop";
 	
 	public static final String selfIntentExtraConfig = "configuration_mode";
+	public static final String selfIntentExtraTemporary = "temporary_mode";
 	
 	private static final String BCPingTimer = "me.tagavari.airmessage.connection.ConnectionService-StartPing";
 	private static final String BCReconnectTimer = "me.tagavari.airmessage.connection.ConnectionService-StartReconnect";
@@ -53,9 +58,11 @@ public class ConnectionService extends Service {
 	private static WeakReference<ConnectionService> serviceReference = null;
 	
 	//Creating the state values
+	private boolean isFirstLaunch = true;
 	private boolean configurationMode = false;
+	private boolean temporaryMode = false;
+	private Timer temporaryModeTimer = null;
 	private int dropReconnectIndex = 0;
-	
 	
 	//Creating the intent values
 	private PendingIntent pingPendingIntent;
@@ -129,20 +136,49 @@ public class ConnectionService extends Service {
 	private final BroadcastReceiver serverConnectionStateChangeBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
+			//Getting the state
 			int state = intent.getIntExtra(Constants.intentParamState, -1);
 			if(state == -1) return;
 			
 			if(state == ConnectionManager.stateConnected) {
+				//Updating the notification
 				postConnectedNotification(true, connectionManager.isConnectedFallback());
+                
+                //Also reset drop reconnect
+                dropReconnectIndex = 0;
+                disconnectedSoundSinceReconnect = false;
 				
-				//Also reset drop reconnect
-				dropReconnectIndex = 0;
-				disconnectedSoundSinceReconnect = false;
-			}
-			else if(state == ConnectionManager.stateConnecting) postConnectedNotification(false, false);
-			else if(state == ConnectionManager.stateDisconnected) {
-				//Only play a sound if we haven't played one since reconnecting, and we've failed drop reconnect
-				postDisconnectedNotification(disconnectedSoundSinceReconnect || dropReconnectIndex < dropReconnectDelayMillis.length);
+				//Checking if we are in temporary mode
+				if(temporaryMode) {
+					//Scheduling a shutdown
+					if(temporaryModeTimer != null) temporaryModeTimer.cancel();
+					temporaryModeTimer = new Timer();
+					temporaryModeTimer.schedule(new TimerTask() {
+						@Override
+						public void run() {
+							//Disabling temporary mode
+							disableTemporaryMode();
+							
+							//Shutting down the connection service
+							shutDownService();
+						}
+					}, temporaryModeExpiry);
+				}
+			} else if(state == ConnectionManager.stateConnecting) {
+				//Updating the notification
+				postConnectedNotification(false, false);
+			} else if(state == ConnectionManager.stateDisconnected) {
+				//Checking if we are in temporary mode
+				if(temporaryMode) {
+					//Disabling temporary mode
+					disableTemporaryMode();
+					
+					//Shutting down the connection service
+					shutDownService();
+				} else {
+					//Updating the notification
+					postDisconnectedNotification(connectionManager.getLastConnectionResult() != ConnectionManager.connResultSuccess);
+				}
 			}
 		}
 	};
@@ -281,23 +317,29 @@ public class ConnectionService extends Service {
 	}
 	
 	@Override
-	public int onStartCommand(@NonNull Intent intent, int flags, int startId) {
-		//Updating configuration mode
-		if(intent.hasExtra(selfIntentExtraConfig)) setConfigurationMode(intent.getBooleanExtra(selfIntentExtraConfig, false));
+	public int onStartCommand(Intent intent, int flags, int startId) {
+		if(intent != null) {
+			//Updating configuration mode
+			if(intent.hasExtra(selfIntentExtraConfig)) setConfigurationMode(intent.getBooleanExtra(selfIntentExtraConfig, false));
+			
+			//Updating temporary mode
+			if(intent.hasExtra(selfIntentExtraTemporary)) {
+				//Don't enable temporary mode if the service is already running
+				//for example, if the user is running the app in the foreground and they receive a message
+				if(isFirstLaunch) {
+					enableTemporaryMode();
+				}
+			}
+			else disableTemporaryMode();
+		}
 		
 		//Getting the intent action
-		String intentAction = intent.getAction();
+		String intentAction = intent != null ? intent.getAction() : null;
 		
 		//Checking if a stop has been requested
 		if(selfIntentActionStop.equals(intentAction)) {
-			//Setting the service as shutting down
-			connectionManager.setFlagShutdownRequested();
-			
-			//Disconnecting
-			connectionManager.disconnect();
-			
-			//Stopping the service
-			stopSelf();
+			//Shutting down the connection service
+			shutDownService();
 			
 			//Returning not sticky
 			return START_NOT_STICKY;
@@ -314,11 +356,23 @@ public class ConnectionService extends Service {
 			postDisconnectedNotification(true);
 		}
 		//Reconnecting the client if requested
-		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) connectionManager.connect(this, intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : ConnectionManager.getNextLaunchID());
+		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) {
+			byte launchID;
+			if(intent != null && intent.hasExtra(Constants.intentParamLaunchID)) {
+				launchID = intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0);
+			} else {
+				launchID = ConnectionManager.getNextLaunchID();
+			}
+			
+			connectionManager.connect(this, launchID);
+		}
 		
 		//Calling the listeners
 		//for(ServiceStartCallback callback : startCallbacks) callback.onServiceStarted(this);
 		//startCallbacks.clear();
+		
+		//Clearing the first launch flag
+		isFirstLaunch = false;
 		
 		//Returning sticky service
 		return START_STICKY;
@@ -326,7 +380,8 @@ public class ConnectionService extends Service {
 	
 	@Override
 	public void onDestroy() {
-		super.onDestroy();
+		//Removing the instance
+		serviceReference = null;
 		
 		//Disconnecting
 		connectionManager.disconnect();
@@ -347,12 +402,47 @@ public class ConnectionService extends Service {
 		serviceReference = null;
 	}
 	
+	@Override
+	public void onTaskRemoved(Intent rootIntent) {
+		//Stopping the service if it isn't required to be running
+		if(!connectionManager.requiresPersistence()) {
+			shutDownService();
+		}
+	}
+	
+	public void shutDownService() {
+		//Setting the service as shutting down
+		connectionManager.setFlagShutdownRequested();
+		
+		//Disconnecting
+		connectionManager.disconnect();
+		
+		//Stopping the service
+		stopSelf();
+	}
+	
 	public void setConfigurationMode(boolean configurationMode) {
 		//Updating the value
 		this.configurationMode = configurationMode;
 		
 		//Rebuilding notifications
 		updateNotification();
+	}
+	
+	public void enableTemporaryMode() {
+		//Updating the value
+		temporaryMode = true;
+	}
+	
+	public void disableTemporaryMode() {
+		//Updating the value
+		temporaryMode = false;
+		
+		//Resetting the timer
+		if(temporaryModeTimer != null) {
+			temporaryModeTimer.cancel();
+			temporaryModeTimer = null;
+		}
 	}
 	
 	/* void setForegroundState(boolean foregroundState) {
@@ -378,11 +468,13 @@ public class ConnectionService extends Service {
 	private boolean foregroundServiceRequested() {
 		return true;
 		//return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_foregroundservice_key), false);
+		//return connectionManager.requiresPersistence();
 	}
 	
 	private boolean disconnectedNotificationRequested() {
 		return true;
 		//return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_disconnectionnotification_key), true);
+		//return connectionManager.requiresPersistence();
 	}
 	
 	private void postConnectedNotification(boolean isConnected, boolean isFallback) {

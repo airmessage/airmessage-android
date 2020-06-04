@@ -91,6 +91,11 @@ class ProxyDirectTCP extends DataProxy5 {
 		return true;
 	}
 	
+	@Override
+	public boolean requiresKeepalive() {
+		return true;
+	}
+	
 	boolean isUsingFallback() {
 		return connectionThread != null && connectionThread.isUsingFallback();
 	}

@@ -196,34 +196,34 @@
 
 		<!-- Server connection manager service -->
 		<service
-			android:description="@string/servicedesc_connectionservice"
+			android:name=".service.ConnectionService"
 			android:exported="false"
-			android:name=".service.ConnectionService" />
+			android:description="@string/servicedesc_connectionservice" />
 
 		<!-- Server connection manager service -->
 		<service
-			android:description="@string/servicedesc_systemmessageimport"
+			android:name=".service.SystemMessageImportService"
 			android:exported="false"
-			android:name=".service.SystemMessageImportService" />
+			android:description="@string/servicedesc_systemmessageimport" />
 
 		<!-- File export service -->
 		<service
-			android:description="@string/servicedesc_fileexportservice"
+			android:name=".service.FileExportService"
 			android:exported="false"
-			android:name=".service.FileExportService" />
+			android:description="@string/servicedesc_fileexportservice" />
 
 		<!-- File-URI export service -->
 		<service
-			android:description="@string/servicedesc_fileexportservice"
+			android:name=".service.UriExportService"
 			android:exported="false"
-			android:name=".service.UriExportService" />
+			android:description="@string/servicedesc_fileexportservice" />
 
 		<!-- File provider -->
 		<provider
-			android:authorities="${applicationId}.fileprovider"
+			android:name="androidx.core.content.FileProvider"
 			android:exported="false"
-			android:grantUriPermissions="true"
-			android:name="androidx.core.content.FileProvider">
+			android:authorities="${applicationId}.fileprovider"
+			android:grantUriPermissions="true">
 			<meta-data
 				android:name="android.support.FILE_PROVIDER_PATHS"
 				android:resource="@xml/provider_paths" />
@@ -231,9 +231,9 @@
 
 		<!-- Start service on boot -->
 		<receiver
-			android:enabled="true"
+			android:name=".receiver.StartBootReceiver"
 			android:exported="false"
-			android:name=".receiver.StartBootReceiver">
+			android:enabled="false">
 			<intent-filter>
 				<action android:name="android.intent.action.BOOT_COMPLETED" />
 			</intent-filter>
@@ -309,6 +309,15 @@
 				<action android:name="android.provider.action.EXTERNAL_PROVIDER_CHANGE" />
 			</intent-filter>
 		</receiver>
+
+		<!-- FCM listener service -->
+		<service
+			android:name=".service.FCMService"
+			android:exported="false">
+			<intent-filter>
+				<action android:name="com.google.firebase.MESSAGING_EVENT" />
+			</intent-filter>
+		</service>
 
 		<!-- Disables automatic Crashlytics initialization -->
 		<meta-data

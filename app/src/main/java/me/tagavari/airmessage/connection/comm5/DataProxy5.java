@@ -8,4 +8,10 @@ public abstract class DataProxy5 extends DataProxy<PacketStructIn, PacketStructO
 	 * @return TRUE if this proxy requires authentication
 	 */
 	public abstract boolean requiresAuthentication();
+	
+	/**
+	 * Called to check whether this data proxy requires keepalive pings
+	 * @return TRUE if this proxy requires keepalive pings
+	 */
+	public abstract boolean requiresKeepalive();
 }

@@ -240,7 +240,6 @@
 	<string name="preference_server_connectionboot_title">起動時に自動的に接続</string>
 	<string name="preference_server_networkreconnect_title">ネットワークを切り替える時に再接続</string>
 	<string name="preference_server_networkreconnect_description">デバイスが新しいネットワークに接続した時に再接続を試みます（例えば：Wi-Fi から Cellular へ）</string>
-	<string name="preference_server_help_title">サポートサイトにアクセス</string>
 	<string name="message_messageerror_desc_apple_unregistered_generic">受信者が iMessage に登録されていません</string>
 	<string name="preference_server_dropreconnect_description">接続を切断された直後に再接続を試みます</string>
 	<string name="preference_server_dropreconnect_title">接続を切断の時に再接続</string>
@@ -481,4 +480,12 @@
 	<string name="message_serverstatus_nosubscription">接続されたアカウントは登録されていません</string>
 	<string name="message_serverstatus_otherlocation">サーバーコンピュータが交換されました</string>
 	<string name="message_serverstatus_nointernet">インターネットに接続できません</string>
+	<string name="message_reset_connect">AirMessage からログアウトしますか？</string>
+	<string name="message_reset_direct">アカウントで AirMessage にアクセスしますか？</string>
+	<string name="action_switchtoaccount">アカウントに切り替える</string>
+	<string name="action_signout">ログアウト</string>
+	<string name="preference_account_reset_title">ログアウト</string>
+	<string name="preference_account_accountdetails_title">接続されたアカウント</string>
+	<string name="preferencegroup_account_title">アカウント</string>
+	<string name="preference_server_reset_title">アカウントに交換</string>
 </resources>

@@ -62,8 +62,8 @@ public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 				//Updating the modifier in the database
 				Blocks.StickerModifierInfo stickerInfo = (Blocks.StickerModifierInfo) modifierInfo;
 				try {
-					stickerInfo.image = packager.unpackageData(stickerInfo.image);
-					StickerInfo sticker = DatabaseManager.getInstance().addMessageSticker(stickerInfo);
+					stickerInfo.data = packager.unpackageData(stickerInfo.data);
+					StickerInfo sticker = DatabaseManager.getInstance().addMessageSticker(context, stickerInfo);
 					if(sticker != null) stickerModifiers.add(sticker);
 				} catch(OutOfMemoryError exception) {
 					exception.printStackTrace();

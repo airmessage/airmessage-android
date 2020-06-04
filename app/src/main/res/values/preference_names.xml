@@ -94,6 +94,13 @@
 	<string name="preference_server_networkreconnect_key" translatable="false">pref_key_server_networkreconnect</string>
 	<string name="preference_server_networkreconnect_title">Network switch reconnect</string>
 	<string name="preference_server_networkreconnect_description">Attempt to reconnect when the device connects to a new network (ex. Wi-Fi to Cellular)</string>
-    <string name="preference_server_help_key" translatable="false">pref_key_server_help</string>
-    <string name="preference_server_help_title">Visit support site</string>
+	<string name="preference_server_reset_key" translatable="false">pref_key_server_reset</string>
+	<string name="preference_server_reset_title">Switch to account</string>
+
+	<string name="preferencegroup_account_key" translatable="false">pref_group_account</string>
+	<string name="preferencegroup_account_title">Account</string>
+	<string name="preference_account_accountdetails_key" translatable="false">pref_key_account_details</string>
+	<string name="preference_account_accountdetails_title">Connected account</string>
+	<string name="preference_account_reset_key" translatable="false">pref_key_account_reset</string>
+	<string name="preference_account_reset_title">Sign out</string>
 </resources>

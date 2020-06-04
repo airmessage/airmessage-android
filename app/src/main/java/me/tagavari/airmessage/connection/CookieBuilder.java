@@ -29,10 +29,10 @@ public class CookieBuilder {
 	}
 	
 	public CookieBuilder with(String key, String value) {
-		if(cookieAdded) stringBuilder.append(',');
+		if(cookieAdded) stringBuilder.append("; ");
 		else cookieAdded = true;
 		
-		stringBuilder.append(key).append(':').append(value);
+		stringBuilder.append(key).append('=').append(value);
 		
 		return this;
 	}

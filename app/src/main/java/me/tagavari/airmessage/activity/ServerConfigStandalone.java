@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.activity;
 
+import android.os.Build;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -7,9 +8,11 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
+import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.extension.FragmentCommunicationSwap;
 import me.tagavari.airmessage.fragment.FragmentCommunication;
 import me.tagavari.airmessage.fragment.FragmentOnboardingManual;
+import me.tagavari.airmessage.util.Constants;
 
 public class ServerConfigStandalone extends AppCompatActivity implements FragmentCommunicationSwap {
 	private static final String keyFragment = "fragment";
@@ -28,6 +31,9 @@ public class ServerConfigStandalone extends AppCompatActivity implements Fragmen
 			//Restoring the fragment
 			currentFragment = (FragmentOnboardingManual) getSupportFragmentManager().getFragment(savedInstanceState, keyFragment);
 		}
+		
+		//Configuring the AMOLED theme
+		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
 	}
 	
 	@Override
@@ -59,5 +65,11 @@ public class ServerConfigStandalone extends AppCompatActivity implements Fragmen
 	@Override
 	public void launchConversations() {
 		finish();
+	}
+	
+	void setDarkAMOLED() {
+		findViewById(android.R.id.content).getRootView().setBackgroundColor(Constants.colorAMOLED);
+		getWindow().setStatusBarColor(Constants.colorAMOLED);
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) getWindow().setNavigationBarColor(Constants.colorAMOLED); //Leaving the transparent navigation bar on Android 10
 	}
 }

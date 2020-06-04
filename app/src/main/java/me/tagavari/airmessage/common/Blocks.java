@@ -1,21 +1,6 @@
 package me.tagavari.airmessage.common;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
-import java.security.spec.KeySpec;
 import java.util.List;
-
-import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.SecretKeySpec;
-
-import me.tagavari.airmessage.MainApplication;
 
 public class Blocks {
 	public static class ConversationInfo {
@@ -180,9 +165,10 @@ public class Blocks {
 		public String fileGuid;
 		public String sender;
 		public long date;
-		public byte[] image;
+		public byte[] data;
+		public String type;
 		
-		public StickerModifierInfo(String message, int messageIndex, String fileGuid, String sender, long date, byte[] image) {
+		public StickerModifierInfo(String message, int messageIndex, String fileGuid, String sender, long date, byte[] data, String type) {
 			//Calling the super constructor
 			super(message);
 			
@@ -191,7 +177,8 @@ public class Blocks {
 			this.fileGuid = fileGuid;
 			this.sender = sender;
 			this.date = date;
-			this.image = image;
+			this.data = data;
+			this.type = type;
 		}
 	}
 	

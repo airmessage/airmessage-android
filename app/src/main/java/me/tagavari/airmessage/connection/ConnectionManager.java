@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.common.Blocks;
+import me.tagavari.airmessage.connection.comm4.ClientComm4;
 import me.tagavari.airmessage.connection.comm5.ClientComm5;
 import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
@@ -116,8 +117,8 @@ public class ConnectionManager {
 	private final ServiceCallbacks serviceCallbacks;
 	
 	//Creating the communications values
-	private static final List<Class> communicationsClassPriorityList = Arrays.asList(ClientComm5.class);
-	private static final List<CommunicationsManagerSource> communicationsInstancePriorityList = Arrays.asList(ClientComm5::new);
+	private static final List<Class<?>> communicationsClassPriorityList = Arrays.asList(ClientComm4.class, ClientComm5.class);
+	private static final List<CommunicationsManagerSource> communicationsInstancePriorityList = Arrays.asList(ClientComm4::new, ClientComm5::new);
 	
 	//Creating the file processing values
 	private final BlockingQueue<FileProcessingRequest> fileProcessingRequestQueue = new LinkedBlockingQueue<>();
@@ -144,7 +145,7 @@ public class ConnectionManager {
 	public static String password = null;
 	
 	private int currentState = stateDisconnected;
-	private CommunicationsManager currentCommunicationsManager = null;
+	private CommunicationsManager<?, ?> currentCommunicationsManager = null;
 	private static byte currentLaunchID = 0;
 	private static byte nextLaunchID = 0;
 	private int lastConnectionResult = -1;
@@ -170,6 +171,19 @@ public class ConnectionManager {
 	private final Runnable pingExpiryRunnable = this::disconnect;
 	
 	private final ArrayList<ConversationInfoRequest> pendingConversations = new ArrayList<>();
+	
+	static {
+		//Reading the proxy type from disk
+		int accountType = MainApplication.getInstance().getConnectivitySharedPrefs().getInt(MainApplication.sharedPreferencesConnectivityKeyAccountType, Constants.connectivityAccountTypeConnect);
+		switch(accountType) {
+			case Constants.connectivityAccountTypeDirect:
+				proxyType = proxyTypeDirect;
+				break;
+			case Constants.connectivityAccountTypeConnect:
+				proxyType = proxyTypeConnect;
+				break;
+		}
+	}
 	
 	public ConnectionManager(ServiceCallbacks serviceCallbacks) {
 		//Setting the service information
@@ -212,11 +226,17 @@ public class ConnectionManager {
 		//Setting the connection as established
 		connectionEstablished = true;
 		
+		//Recording the server information
+		serverInstallationID = installationID;
+		serverDeviceName = deviceName;
+		serverSystemVersion = systemVersion;
+		serverSoftwareVersion = softwareVersion;
+		
 		//Updating the state
 		updateState(getContext(), stateConnected, 0, getCurrentLaunchID());
 		
 		//Scheduling the ping
-		serviceCallbacks.schedulePing();
+		if(communicationsManager.requiresPersistence()) serviceCallbacks.schedulePing();
 		
 		//Stopping the passive reconnection timer
 		serviceCallbacks.cancelSchedulePassiveReconnection();
@@ -292,12 +312,6 @@ public class ConnectionManager {
 							.putExtra(Constants.intentParamName, deviceName)
 					);
 		}
-		
-		//Recording the server information
-		serverInstallationID = installationID;
-		serverDeviceName = deviceName;
-		serverSystemVersion = systemVersion;
-		serverSoftwareVersion = softwareVersion;
 	}
 	
 	public void onDisconnect(CommunicationsManager communicationsManager, int code) {
@@ -322,7 +336,7 @@ public class ConnectionManager {
 		updateState(getContext(), stateDisconnected, code, getCurrentLaunchID());
 		
 		//Cancelling the keepalive timer
-		serviceCallbacks.cancelSchedulePing();
+		if(communicationsManager.requiresPersistence()) serviceCallbacks.cancelSchedulePing();
 		
 		//Starting the passive reconnection timer
 		serviceCallbacks.schedulePassiveReconnection();
@@ -337,7 +351,7 @@ public class ConnectionManager {
 		handler.removeCallbacks(pingExpiryRunnable);
 		
 		//Scheduling a new ping
-		serviceCallbacks.schedulePing();
+		if(communicationsManager.requiresPersistence()) serviceCallbacks.schedulePing();
 		
 		//Updating the last connection time
 		if(connectionEstablished) {
@@ -471,6 +485,11 @@ public class ConnectionManager {
 	public boolean checkSupportsFeature(String feature) {
 		if(currentCommunicationsManager == null) return false;
 		return currentCommunicationsManager.checkSupportsFeature(feature);
+	}
+	
+	public boolean requiresPersistence() {
+		if(currentCommunicationsManager == null) return false;
+		else return currentCommunicationsManager.requiresPersistence();
 	}
 	
 	public short getCurrentRequestID() {
@@ -859,6 +878,14 @@ public class ConnectionManager {
 		
 		//Returning true
 		return true;
+	}
+	
+	public void sendPushToken(String token) {
+		//Returning if the client isn't ready
+		if(currentState != stateConnected) return;
+		
+		//Sending the token
+		currentCommunicationsManager.sendPushToken(token);
 	}
 	
 	public void cancelCurrentTasks() {

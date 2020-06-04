@@ -2,18 +2,28 @@ package me.tagavari.airmessage.connection.comm5;
 
 import android.os.Handler;
 
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GetTokenResult;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
 
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.handshake.ServerHandshake;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import me.tagavari.airmessage.MainApplication;
@@ -34,35 +44,63 @@ class ProxyConnect extends DataProxy5 {
 	
 	@Override
 	public void start() {
-		//Fetching the user's ID token
+		//Checking if the user is logged in
 		FirebaseUser mUser = FirebaseAuth.getInstance().getCurrentUser();
 		if(mUser == null) {
 			//User isn't logged in
 			onClose(ConnectionManager.connResultDirectUnauthorized);
 			return;
 		}
-		mUser.getIdToken(false).addOnCompleteListener(task -> {
-			if(task.isSuccessful()) {
-				String idToken = task.getResult().getToken();
-				
-				//Constructing the headers
-				Map<String, String> headers = new HashMap<>();
+		
+		//Fetching the user's ID token and FCM token
+		Tasks.whenAllComplete(mUser.getIdToken(false), FirebaseInstanceId.getInstance().getInstanceId()).addOnCompleteListener(task -> {
+			List<Task<?>> tasks = task.getResult();
+			Task<GetTokenResult> accountIDTask = (Task<GetTokenResult>) tasks.get(0);
+			Task<InstanceIdResult> firebaseIDTask = (Task<InstanceIdResult>) tasks.get(1);
+			
+			//Getting the results
+			String idToken;
+			String fcmToken;
+			if(accountIDTask.isSuccessful()) {
+				idToken = accountIDTask.getResult().getToken();
+			} else {
+				//Error
+				accountIDTask.getException().printStackTrace();
+				FirebaseCrashlytics.getInstance().recordException(accountIDTask.getException());
+				onClose(ConnectionManager.connResultInternalError);
+				return;
+			}
+			if(firebaseIDTask.isSuccessful()) {
+				fcmToken = firebaseIDTask.getResult().getToken();
+			} else {
+				//Error
+				firebaseIDTask.getException().printStackTrace();
+				FirebaseCrashlytics.getInstance().recordException(firebaseIDTask.getException());
+				onClose(ConnectionManager.connResultInternalError);
+				return;
+			}
+			
+			//Constructing the headers
+			Map<String, String> headers = new HashMap<>();
+			try {
 				headers.put("Cookie", new CookieBuilder()
 						.with("communications", NHT.commVer)
 						.with("isServer", false)
 						.with("installationID", MainApplication.getInstance().getInstallationID())
-						.with("idToken", idToken)
+						.with("idToken", URLEncoder.encode(idToken, "UTF-8"))
+						.with("fcmToken", URLEncoder.encode(fcmToken, "UTF-8"))
 						.toString()
 				);
-				
-				//Starting the server
-				client = new WSClient(connectHostname, headers);
-				client.connect();
-			} else {
+			} catch(Exception exception) {
 				//Error
-				task.getException().printStackTrace();
+				exception.printStackTrace();
+				FirebaseCrashlytics.getInstance().recordException(exception);
 				onClose(ConnectionManager.connResultInternalError);
 			}
+			
+			//Starting the server
+			client = new WSClient(connectHostname, headers);
+			client.connect();
 		});
 	}
 	
@@ -134,8 +172,39 @@ class ProxyConnect extends DataProxy5 {
 		return false;
 	}
 	
+	public void sendTokenAdd(String token) {
+		//Converting the token to bytes
+		byte[] tokenBytes = token.getBytes(StandardCharsets.ISO_8859_1);
+		
+		//Constructing and sending the message
+		ByteBuffer byteBuffer = ByteBuffer.allocate((Integer.SIZE / Byte.SIZE) + tokenBytes.length);
+		byteBuffer.putInt(NHT.nhtClientAddFCMToken);
+		byteBuffer.put(tokenBytes);
+		
+		//Sending the data
+		client.send(byteBuffer.array());
+	}
+	
+	public void sendTokenRemove(String token) {
+		//Converting the token to bytes
+		byte[] tokenBytes = token.getBytes(StandardCharsets.ISO_8859_1);
+		
+		//Constructing and sending the message
+		ByteBuffer byteBuffer = ByteBuffer.allocate((Integer.SIZE / Byte.SIZE) + tokenBytes.length);
+		byteBuffer.putInt(NHT.nhtClientRemoveFCMToken);
+		byteBuffer.put(tokenBytes);
+		
+		//Sending the data
+		client.send(byteBuffer.array());
+	}
+	
 	@Override
 	public boolean requiresAuthentication() {
+		return false;
+	}
+	
+	@Override
+	public boolean requiresKeepalive() {
 		return false;
 	}
 	
@@ -204,58 +273,70 @@ class ProxyConnect extends DataProxy5 {
 		
 		//Shared het header types
 		/*
-		The connected device has been connected successfully
+		 * The connected device has been connected successfully
 		 */
 		static final int nhtConnectionOK = 0;
 		
 		//Client-only net header types
 		
 		/*
-		Proxy the message to the server (client -> connect)
-		
-		payload - data
+		 * Proxy the message to the server (client -> connect)
+		 *
+		 * payload - data
 		 */
 		static final int nhtClientProxy = 100;
+		
+		/*
+		 * Add an item to the list of FCM tokens (client -> connect)
+		 *
+		 * string - registration token
+		 */
+		static final int nhtClientAddFCMToken = 110;
+		
+		/*
+		 * Remove an item from the list of FCM tokens (client -> connect)
+		 *
+		 * string - registration token
+		 */
+		static final int nhtClientRemoveFCMToken = 111;
 		
 		//Server-only net header types
 		
 		/*
-		Notify a new client connection (connect -> server)
-		
-		int - connection ID
+		 * Notify a new client connection (connect -> server)
+		 *
+		 * int - connection ID
 		 */
 		static final int nhtServerOpen = 200;
 		
 		/*
-		Close a connected client (server -> connect)
-		Notify a closed connection (connect -> server)
-		
-		int - connection ID
+		 * Close a connected client (server -> connect)
+		 * Notify a closed connection (connect -> server)
+		 *
+		 * int - connection ID
 		 */
 		static final int nhtServerClose = 201;
 		
 		/*
-		Proxy the message to the client (server -> connect)
-		Receive data from a connected client (connect -> server)
-		
-		int - connection ID
-		payload - data
+		 * Proxy the message to the client (server -> connect)
+		 * Receive data from a connected client (connect -> server)
+		 *
+		 * int - connection ID
+		 * payload - data
 		 */
 		static final int nhtServerProxy = 210;
 		
 		/*
-		Proxy the message to all connected clients (server -> connect)
-		
-		payload - data
+		 * Proxy the message to all connected clients (server -> connect)
+		 *
+		 * payload - data
 		 */
 		static final int nhtServerProxyBroadcast = 211;
 		
-		/*
-		Notify a client over FCM (server -> connect)
-		
-		int - connection ID
+		/**
+		 * Notify offline clients of a new message
 		 */
-		static final int nhtServerNotify = 211;
+		static final int nhtServerNotifyPush = 212;
 		
 		//Disconnection codes
 		static final int closeCodeNoGroup = 4000; //There is no active group with a matching ID

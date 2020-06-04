@@ -3,7 +3,9 @@ package me.tagavari.airmessage.connection.comm4;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.webkit.MimeTypeMap;
 
+import com.google.android.exoplayer2.util.MimeTypes;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.io.ByteArrayInputStream;
@@ -11,6 +13,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
@@ -737,8 +740,8 @@ class ClientProtocol6 extends ProtocolManager {
 					long date = in.readLong();
 					byte[] image = new byte[in.readInt()];
 					in.readFully(image);
-					
-					list.add(new Blocks.StickerModifierInfo(message, messageIndex, fileGuid, sender, date, image));
+					String fileType = URLConnection.guessContentTypeFromStream(new ByteArrayInputStream(image));
+					list.add(new Blocks.StickerModifierInfo(message, messageIndex, fileGuid, sender, date, image, fileType));
 					break;
 				}
 				case modifierTypeTapback: {

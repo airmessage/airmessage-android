@@ -570,7 +570,7 @@ public class BitmapCacheHelper {
 			if(context == null) return null;
 			
 			//Fetching the bytes from the database
-			byte[] imageBlob = DatabaseManager.getInstance().getStickerBlob(parameters[0]);
+			byte[] imageBlob = DatabaseManager.getInstance().getStickerData(context, parameters[0]);
 			if(imageBlob == null) return null;
 			
 			//Returning the bitmap

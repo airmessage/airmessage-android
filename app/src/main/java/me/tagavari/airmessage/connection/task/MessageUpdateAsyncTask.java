@@ -132,7 +132,7 @@ public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 			}
 			
 			//Adding the conversation item to the database
-			ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItemReplaceGhost(conversationItemStruct, parentConversation);
+			ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItemReplaceGhost(context, conversationItemStruct, parentConversation);
 			
 			//Skipping the remainder of the iteration if the conversation item is invalid
 			if(conversationItem == null) continue;

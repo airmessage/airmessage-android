@@ -74,6 +74,7 @@
 	<string name="action_signin_google">Sign in with Google</string>
 	<string name="action_signin_email">Sign in with email</string>
 	<string name="action_signout">Sign out</string>
+	<string name="action_switchtoaccount">Switch to account</string>
 	<string name="action_checkconnection">Check connection</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
@@ -353,7 +354,7 @@
 		<item quantity="other">%d years</item>
 	</plurals>
 
-	<string name="message_onboardinginstructions_title">Get started in 2 easy steps:</string>
+	<string name="message_onboardinginstructions_title">Get started in 2 easy steps</string>
 	<string name="message_onboardinginstructions_macmini_title">Set up your server</string>
 	<string name="message_onboardinginstructions_macmini_desc">A server installed on a Mac computer is required to route your messages for you.\n\nVisit airmessage.org on your computer to download.</string>
 	<string name="message_onboardinginstructions_airmessage_title">Connect your account</string>
@@ -365,6 +366,9 @@
 	</plurals>
 
 	<string name="message_newmessages_nocount">New messages</string>
+
+	<string name="message_reset_direct">Switch to account-based access?</string>
+	<string name="message_reset_connect">Sign out of AirMessage?</string>
 
 	<string name="message_generalloading">Please wait&#8230;</string>
 	<string name="message_notsupported">This feature is unavailable</string>

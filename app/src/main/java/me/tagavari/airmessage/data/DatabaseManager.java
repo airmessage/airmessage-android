@@ -12,13 +12,18 @@ import android.net.Uri;
 import android.provider.BaseColumns;
 import android.util.Base64;
 import android.util.LongSparseArray;
+import android.webkit.MimeTypeMap;
 
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.ml.naturallanguage.smartreply.FirebaseTextMessage;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,7 +59,7 @@ import me.tagavari.airmessage.util.DataTransformUtils;
 public class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
 	private static final String DATABASE_NAME = "messages.db";
-	private static final int DATABASE_VERSION = 10;
+	private static final int DATABASE_VERSION = 11;
 	
 	//Creating the fetch statements
 	/* private static final String SQL_FETCH_CONVERSATIONS = "SELECT * FROM (" +
@@ -182,7 +187,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX + " INTEGER NOT NULL," +
 			Contract.StickerEntry.COLUMN_NAME_SENDER + " TEXT," +
 			Contract.StickerEntry.COLUMN_NAME_DATE + " INTEGER NOT NULL," +
-			Contract.StickerEntry.COLUMN_NAME_DATA + " BLOB NOT NULL" +
+			Contract.StickerEntry.COLUMN_NAME_FILEPATH + " TEXT" +
 			");";
 	private static final String SQL_CREATE_TABLE_TAPBACK = "CREATE TABLE " + Contract.TapbackEntry.TABLE_NAME + " (" +
 			Contract.TapbackEntry._ID + " INTEGER PRIMARY KEY UNIQUE, " +
@@ -517,6 +522,18 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				
 				//Adding the original URI to the drafts table
 				database.execSQL("ALTER TABLE draft_files ADD original_uri TEXT;");
+			case 10:
+				//Clearing and rebuilding the stickers table
+				database.execSQL("DROP TABLE sticker");
+				database.execSQL("CREATE TABLE sticker (" +
+								 BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+								 "guid TEXT UNIQUE," +
+								 "message INTEGER NOT NULL," +
+								 "message_index INTEGER NOT NULL," +
+								 "sender TEXT," +
+								 "date INTEGER NOT NULL," +
+								 "path TEXT NOT NULL" +
+								 ");");
 		}
 	}
 	
@@ -624,7 +641,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			static final String COLUMN_NAME_MESSAGEINDEX = "message_index";
 			static final String COLUMN_NAME_SENDER = "sender";
 			static final String COLUMN_NAME_DATE = "date";
-			static final String COLUMN_NAME_DATA = "data";
+			static final String COLUMN_NAME_FILEPATH = "path";
 		}
 		
 		static class TapbackEntry implements BaseColumns {
@@ -2357,7 +2374,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		return draftFiles;
 	}
 	
-	public ConversationItem addConversationItemReplaceGhost(Blocks.ConversationItem conversationItem, ConversationInfo conversationInfo) {
+	public ConversationItem addConversationItemReplaceGhost(Context context, Blocks.ConversationItem conversationItem, ConversationInfo conversationInfo) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
@@ -2406,7 +2423,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 							}
 							
 							//Adding the associations
-							List<StickerInfo> stickers = addMessageStickers(messageID, messageStruct.stickers);
+							List<StickerInfo> stickers = addMessageStickers(context, messageID, messageStruct.stickers);
 							List<TapbackInfo> tapbacks = addMessageTapbacks(messageID, messageStruct.tapbacks);
 							
 							//Getting the client-relevant message information
@@ -2538,7 +2555,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 						}
 						
 						//Adding the associations
-						List<StickerInfo> stickers = addMessageStickers(sharedMessageInfo.getLocalID(), messageStruct.stickers);
+						List<StickerInfo> stickers = addMessageStickers(context, sharedMessageInfo.getLocalID(), messageStruct.stickers);
 						List<TapbackInfo> tapbacks = addMessageTapbacks(sharedMessageInfo.getLocalID(), messageStruct.tapbacks);
 						
 						for(StickerInfo sticker : stickers) sharedMessageInfo.addSticker(sticker);
@@ -2552,7 +2569,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		//Adding the conversation item normally
-		return addConversationItem(conversationItem, conversationInfo);
+		return addConversationItem(context, conversationItem, conversationInfo);
 	}
 	
 	public void transferConversationItemReplaceGhost(ConversationItem conversationItem, ConversationInfo conversationInfo) {
@@ -2771,7 +2788,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
-	public ConversationItem addConversationItem(Blocks.ConversationItem conversationItem, ConversationInfo conversationInfo) {
+	public ConversationItem addConversationItem(Context context, Blocks.ConversationItem conversationItem, ConversationInfo conversationInfo) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
@@ -2826,7 +2843,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			}
 			
 			//Adding the associations
-			List<StickerInfo> stickers = addMessageStickers(messageLocalID, messageInfoStruct.stickers);
+			List<StickerInfo> stickers = addMessageStickers(context, messageLocalID, messageInfoStruct.stickers);
 			List<TapbackInfo> tapbacks = addMessageTapbacks(messageLocalID, messageInfoStruct.tapbacks);
 			
 			//Creating the message info
@@ -3109,7 +3126,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		getWritableDatabase().execSQL("UPDATE " + Contract.ConversationEntry.TABLE_NAME + " SET " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " = " + Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT + " + 1 WHERE " + Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(conversationID)});
 	}
 	
-	private List<StickerInfo> addMessageStickers(long messageID, List<Blocks.StickerModifierInfo> stickers) {
+	private List<StickerInfo> addMessageStickers(Context context, long messageID, List<Blocks.StickerModifierInfo> stickers) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
@@ -3126,19 +3143,31 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			contentValues.put(Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX, sticker.messageIndex);
 			contentValues.put(Contract.StickerEntry.COLUMN_NAME_SENDER, sticker.sender);
 			contentValues.put(Contract.StickerEntry.COLUMN_NAME_DATE, sticker.date);
-			contentValues.put(Contract.StickerEntry.COLUMN_NAME_DATA, sticker.image);
 			
 			//Inserting the entry
 			long rowID;
 			try {
 				rowID = database.insert(Contract.StickerEntry.TABLE_NAME, null, contentValues);
 			} catch(SQLiteConstraintException exception) {
-				//Printing the stack trace
 				exception.printStackTrace();
-				
-				//Skipping the remainder of the iteration
 				continue;
 			}
+			
+			//Saving the sticker data to disk
+			String extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(sticker.type);
+			File targetFile = new File(MainApplication.getStickerDirectory(context), rowID + (extension != null ? '.' + extension : ""));
+			
+			try(FileOutputStream outputStream = new FileOutputStream(targetFile, false)) {
+				outputStream.write(sticker.data);
+			} catch(IOException exception) {
+				exception.printStackTrace();
+				continue;
+			}
+			
+			//Updating the sticker's file path
+			contentValues = new ContentValues();
+			contentValues.put(Contract.StickerEntry.COLUMN_NAME_FILEPATH, AttachmentInfo.getRelativePath(context, targetFile));
+			database.update(Contract.StickerEntry.TABLE_NAME, contentValues, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(rowID)});
 			
 			//Adding the sticker to the list
 			list.add(new StickerInfo(rowID, sticker.fileGuid, messageID, sticker.messageIndex, sticker.sender, sticker.date));
@@ -3533,7 +3562,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		getWritableDatabase().update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry.COLUMN_NAME_GUID + " = ?", new String[]{guid});
 	}
 	
-	public StickerInfo addMessageSticker(Blocks.StickerModifierInfo sticker) {
+	public StickerInfo addMessageSticker(Context context, Blocks.StickerModifierInfo sticker) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
@@ -3559,7 +3588,6 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		contentValues.put(Contract.StickerEntry.COLUMN_NAME_MESSAGEINDEX, sticker.messageIndex);
 		contentValues.put(Contract.StickerEntry.COLUMN_NAME_SENDER, sticker.sender);
 		contentValues.put(Contract.StickerEntry.COLUMN_NAME_DATE, sticker.date);
-		contentValues.put(Contract.StickerEntry.COLUMN_NAME_DATA, sticker.image);
 		
 		long localID;
 		try {
@@ -3572,14 +3600,40 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			return null;
 		}
 		
+		//Saving the sticker data to disk
+		String extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(sticker.type);
+		File targetFile = new File(MainApplication.getStickerDirectory(context), localID + (extension != null ? '.' + extension : ""));
+		
+		try(FileOutputStream outputStream = new FileOutputStream(targetFile, false)) {
+			outputStream.write(sticker.data);
+		} catch(IOException exception) {
+			exception.printStackTrace();
+			return null;
+		}
+		
+		//Updating the sticker's file path
+		contentValues = new ContentValues();
+		contentValues.put(Contract.StickerEntry.COLUMN_NAME_FILEPATH, AttachmentInfo.getRelativePath(context, targetFile));
+		database.update(Contract.StickerEntry.TABLE_NAME, contentValues, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(localID)});
+		
 		//Returning the sticker info
 		return new StickerInfo(localID, sticker.fileGuid, messageID, sticker.messageIndex, sticker.sender, sticker.date);
 	}
 	
-	public byte[] getStickerBlob(long identifier) {
-		try(Cursor cursor = getReadableDatabase().query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry.COLUMN_NAME_DATA}, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(identifier)}, null, null, null, "1")) {
-			if(cursor.moveToNext()) return cursor.getBlob(cursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_DATA));
-			return null;
+	public byte[] getStickerData(Context context, long identifier) {
+		try(Cursor cursor = getReadableDatabase().query(Contract.StickerEntry.TABLE_NAME, new String[]{Contract.StickerEntry.COLUMN_NAME_FILEPATH}, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(identifier)}, null, null, null, "1")) {
+			if(!cursor.moveToNext()) return null;
+			String path = cursor.getString(cursor.getColumnIndexOrThrow(Contract.StickerEntry.COLUMN_NAME_FILEPATH));
+			if(path == null) return null;
+			File file = AttachmentInfo.getAbsolutePath(context, path);
+			byte[] fileBytes = new byte[(int) file.length()];
+			try(InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
+				inputStream.read(fileBytes, 0, fileBytes.length);
+			} catch(IOException exception) {
+				exception.printStackTrace();
+				return null;
+			}
+			return fileBytes;
 		}
 	}
 	

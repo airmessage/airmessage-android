@@ -64,6 +64,7 @@ public class MainApplication extends Application {
 	
 	public static final String dirNameDownload = "downloads";
 	public static final String dirNameUpload = "uploads";
+	public static final String dirNameSticker = "stickers";
 	public static final String dirNameDraft = "draft";
 	
 	private static final String sharedPreferencesConnectivityFile = "connectivity";
@@ -299,6 +300,7 @@ public class MainApplication extends Application {
 		//Preparing the subdirectories
 		prepareDirectory(new File(file, dirNameDownload));
 		prepareDirectory(new File(file, dirNameUpload));
+		prepareDirectory(new File(file, dirNameSticker));
 		prepareDirectory(new File(file, dirNameDraft));
 		
 		//Returning the media directory
@@ -311,6 +313,10 @@ public class MainApplication extends Application {
 	
 	public static File getUploadDirectory(Context context) {
 		return new File(getAttachmentDirectory(context), dirNameUpload);
+	}
+	
+	public static File getStickerDirectory(Context context) {
+		return new File(getAttachmentDirectory(context), dirNameSticker);
 	}
 	
 	public static File getUploadTarget(Context context, String fileName) {

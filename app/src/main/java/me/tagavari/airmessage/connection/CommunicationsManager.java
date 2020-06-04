@@ -186,6 +186,13 @@ public abstract class CommunicationsManager<D, P> implements DataProxyListener<D
 	public abstract boolean requestChatCreation(short requestID, String[] members, String service);
 	
 	/**
+	 * Updates the server with this installation's push token
+	 * @param token The token to send
+	 * @return whether or not the request was successfully sent
+	 */
+	public abstract boolean sendPushToken(String token);
+	
+	/**
 	 * Checks if the specified communications version is applicable
 	 *
 	 * @param version the major communications version to check
@@ -199,4 +206,15 @@ public abstract class CommunicationsManager<D, P> implements DataProxyListener<D
 	 * @return whether or not this protocol manager can handle the specified feature
 	 */
 	public abstract boolean checkSupportsFeature(String feature);
+	
+	/**
+	 * Checks if this current communications setup should be kept alive
+	 * This usually entails:
+	 * - Keepalive pings
+	 * - Foreground service
+	 * If persistence is not requested, the app will NOT try to keep the connection alive,
+	 * and it is expected that the connection is re-established when necessary.
+	 * @return TRUE if persistence should be enabled
+	 */
+	public abstract boolean requiresPersistence();
 }

@@ -280,7 +280,7 @@ public class MassRetrievalThread extends Thread {
 						//Decompressing the item data
 						if(structItem instanceof Blocks.MessageInfo) {
 							Blocks.MessageInfo structMessage = (Blocks.MessageInfo) structItem;
-							for(Blocks.StickerModifierInfo stickerInfo : structMessage.stickers)stickerInfo.image = currentFilePackager.unpackageData(stickerInfo.image);
+							for(Blocks.StickerModifierInfo stickerInfo : structMessage.stickers)stickerInfo.data = currentFilePackager.unpackageData(stickerInfo.data);
 						}
 						
 						//Finding the parent conversation
@@ -292,7 +292,7 @@ public class MassRetrievalThread extends Thread {
 						if(parentConversation == null) continue;
 						
 						//Writing the item
-						ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItem(structItem, parentConversation);
+						ConversationItem conversationItem = DatabaseManager.getInstance().addConversationItem(context, structItem, parentConversation);
 						if(conversationItem == null) continue;
 						lastAddedItems.add(conversationItem);
 						

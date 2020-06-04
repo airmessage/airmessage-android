@@ -21,6 +21,7 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 	//Creating the connection values
 	private ProtocolManager protocolManager = null;
 	private boolean protocolRequiresAuthentication;
+	private boolean protocolRequiresKeepalive;
 	private EncryptionManager encryptionManager = null;
 	
 	private static final long handshakeExpiryTime = 1000 * 10; //10 seconds
@@ -44,6 +45,7 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 		else throw new IllegalArgumentException("Unknown proxy type " + proxyType);
 		
 		protocolRequiresAuthentication = dataProxy.requiresAuthentication();
+		protocolRequiresKeepalive = dataProxy.requiresKeepalive();
 		setProxy(dataProxy);
 		
 		//Hooking into the data proxy
@@ -195,6 +197,20 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 	}
 	
 	@Override
+	public boolean sendPushToken(String token) {
+		//Returning if there is no proxy manager
+		if(dataProxy == null) return false;
+		
+		//Handling the message through the Connect proxy
+		if(dataProxy instanceof ProxyConnect) {
+			((ProxyConnect) dataProxy).sendTokenAdd(token);
+			return true;
+		}
+		
+		return false;
+	}
+	
+	@Override
 	public int checkCommVerApplicability(int version) {
 		return Integer.compare(version, 5);
 	}
@@ -312,5 +328,10 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 		//Forwarding the request to the protocol manager
 		if(protocolManager == null) return false;
 		return protocolManager.checkSupportsFeature(feature);
+	}
+	
+	@Override
+	public boolean requiresPersistence() {
+		return protocolRequiresKeepalive;
 	}
 }

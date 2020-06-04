@@ -105,8 +105,6 @@ class ClientProtocol1 extends ProtocolManager {
 	private static final int modifierTypeSticker = 1;
 	private static final int modifierTypeTapback = 2;
 	
-	private static final int transmissionCheckLength = 32;
-	
 	ClientProtocol1(Context context, ConnectionManager connectionManager, ClientComm5 communicationsManager) {
 		super(context, connectionManager, communicationsManager);
 	}
@@ -718,9 +716,10 @@ class ClientProtocol1 extends ProtocolManager {
 					String fileGuid = unpacker.unpackString();
 					String sender = unpackNilString(unpacker);
 					long date = unpacker.unpackLong();
-					byte[] image = unpacker.readPayload(unpacker.unpackBinaryHeader());
+					byte[] data = unpacker.readPayload(unpacker.unpackBinaryHeader());
+					String fileType = unpacker.unpackString();
 					
-					list.add(new Blocks.StickerModifierInfo(message, messageIndex, fileGuid, sender, date, image));
+					list.add(new Blocks.StickerModifierInfo(message, messageIndex, fileGuid, sender, date, data, fileType));
 					break;
 				}
 				case modifierTypeTapback: {
@@ -749,7 +748,7 @@ class ClientProtocol1 extends ProtocolManager {
 		String platformID = ClientProtocol1.platformID;
 		
 		//Checking if the current protocol requires authentication
-		if(communicationsManager.requiresAuthentication()) {
+		if(unpacker.unpackBoolean()) {
 			//Reading the transmission check
 			byte[] transmissionCheck;
 			try {

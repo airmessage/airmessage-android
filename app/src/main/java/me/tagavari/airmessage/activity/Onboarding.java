@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.activity;
 
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.ViewGroup;
 
@@ -12,10 +13,12 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.extension.FragmentBackOverride;
 import me.tagavari.airmessage.extension.FragmentCommunicationSwap;
 import me.tagavari.airmessage.fragment.FragmentCommunication;
 import me.tagavari.airmessage.fragment.FragmentOnboardingWelcome;
+import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.Constants;
 
 public class Onboarding extends AppCompatActivity implements FragmentCommunicationSwap {
@@ -34,7 +37,7 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 		
 		if(savedInstanceState == null) {
 			//Initializing the first fragment
-			swapFragment(new FragmentOnboardingWelcome());
+			swapFragment(new FragmentOnboardingWelcome(), false);
 		} else {
 			//Restoring the fragment
 			currentFragment = (FragmentCommunication<FragmentCommunicationSwap>) getSupportFragmentManager().getFragment(savedInstanceState, keyFragment);
@@ -49,6 +52,12 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 				if(windowGroup.getHeight() > paneMaxHeight) windowGroup.getLayoutParams().height = paneMaxHeight;
 			}
 		});
+		
+		//Configuring the AMOLED theme
+		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
+		
+		//Preventing the connection service from launching on boot
+		Preferences.updateConnectionServiceBootEnabled(this, false);
 	}
 	
 	@Override
@@ -72,10 +81,14 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 	}
 	
 	public void swapFragment(FragmentCommunication<FragmentCommunicationSwap> fragment) {
+		swapFragment(fragment, true);
+	}
+	
+	public void swapFragment(FragmentCommunication<FragmentCommunicationSwap> fragment, boolean addToBackStack) {
 		FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
 		if(currentFragment != null) transaction.setCustomAnimations(R.anim.windowslide_in, R.anim.windowslide_out, R.anim.windowslideback_in, R.anim.windowslideback_out);
 		transaction.replace(R.id.frame_content, fragment);
-		transaction.addToBackStack(null);
+		if(addToBackStack) transaction.addToBackStack(null);
 		transaction.commit();
 		
 		//Updating the current fragment
@@ -94,7 +107,19 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 		//Enabling transitions
 		overridePendingTransition(R.anim.fade_in_light, R.anim.activity_slide_up);
 		
+		//Restoring the connection service's start-on-boot state (if the proxy type is direct)
+		//If the proxy type is connect, we'll leave it disabled (as set in this activity's onCreate())
+		if(ConnectionManager.proxyType == ConnectionManager.proxyTypeDirect) {
+			Preferences.updateConnectionServiceBootEnabled(this, Preferences.getPreferenceStartOnBoot(this));
+		}
+		
 		//Finishing the activity
 		finish();
+	}
+	
+	void setDarkAMOLED() {
+		findViewById(android.R.id.content).getRootView().setBackgroundColor(Constants.colorAMOLED);
+		getWindow().setStatusBarColor(Constants.colorAMOLED);
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) getWindow().setNavigationBarColor(Constants.colorAMOLED); //Leaving the transparent navigation bar on Android 10
 	}
 }

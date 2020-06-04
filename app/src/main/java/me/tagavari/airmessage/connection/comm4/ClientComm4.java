@@ -163,6 +163,12 @@ public class ClientComm4 extends CommunicationsManager<PacketStructIn, PacketStr
 	}
 	
 	@Override
+	public boolean sendPushToken(String token) {
+		//No support
+		return false;
+	}
+	
+	@Override
 	public int checkCommVerApplicability(int version) {
 		return Integer.compare(version, 4);
 	}
@@ -507,5 +513,10 @@ public class ClientComm4 extends CommunicationsManager<PacketStructIn, PacketStr
 		//Forwarding the request to the protocol manager
 		if(protocolManager == null) return false;
 		return protocolManager.checkSupportsFeature(feature);
+	}
+	
+	@Override
+	public boolean requiresPersistence() {
+		return true;
 	}
 }

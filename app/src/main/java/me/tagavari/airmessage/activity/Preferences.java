@@ -51,6 +51,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -178,9 +180,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		};
 		Preference.OnPreferenceChangeListener startOnBootChangeListener = (preference, value) -> {
 			//Updating the service state
-			getActivity().getPackageManager().setComponentEnabledSetting(new ComponentName(getActivity(), StartBootReceiver.class),
-					(boolean) value ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-					PackageManager.DONT_KILL_APP);
+			updateConnectionServiceBootEnabled(getActivity(), (boolean) value);
 			
 			//Returning true (to allow the change)
 			return true;
@@ -366,11 +366,55 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Returning false (to prevent the system from changing the option)
 			return false;
 		};
+		Preference.OnPreferenceClickListener directResetClickListener = preference -> {
+			//Creating a dialog
+			AlertDialog dialog = new MaterialAlertDialogBuilder(getActivity())
+					//Setting the name
+					.setMessage(R.string.message_reset_direct)
+					//Setting the negative button
+					.setNegativeButton(android.R.string.cancel, null)
+					//Setting the positive button
+					.setPositiveButton(R.string.action_switchtoaccount, (DialogInterface dialogInterface, int which) -> {
+						resetConfiguration();
+					})
+					//Creating the dialog
+					.create();
+			
+			//Showing the dialog
+			dialog.show();
+			
+			//Returning true
+			return true;
+		};
+		Preference.OnPreferenceClickListener connectResetClickListener = preference -> {
+			//Creating a dialog
+			AlertDialog dialog = new MaterialAlertDialogBuilder(getActivity())
+					//Setting the name
+					.setMessage(R.string.message_reset_connect)
+					//Setting the negative button
+					.setNegativeButton(android.R.string.cancel, null)
+					//Setting the positive button
+					.setPositiveButton(R.string.action_signout, (DialogInterface dialogInterface, int which) -> {
+						resetConfiguration();
+					})
+					//Creating the dialog
+					.create();
+			
+			//Showing the dialog
+			dialog.show();
+			
+			//Returning true
+			return true;
+		};
 		
 		@Override
 		public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
 			//Adding the preferences
-			addPreferencesFromResource(R.xml.preferences);
+			addPreferencesFromResource(R.xml.preferences_notification);
+			addPreferencesFromResource(R.xml.preferences_main);
+			int accountType = MainApplication.getInstance().getConnectivitySharedPrefs().getInt(MainApplication.sharedPreferencesConnectivityKeyAccountType, -1);
+			if(accountType == Constants.connectivityAccountTypeDirect) addPreferencesFromResource(R.xml.preferences_server);
+			else if(accountType == Constants.connectivityAccountTypeConnect) addPreferencesFromResource(R.xml.preferences_account);
 			
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 				//Creating the notification channel intent
@@ -410,9 +454,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				}
 			}
 			
-			//Setting the intents
-			findPreference(getResources().getString(R.string.preference_server_help_key)).setIntent(new Intent(Intent.ACTION_VIEW, Constants.helpAddress));
-			
 			//Setting the listeners
 			{
 				Preference preference = findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key));
@@ -424,10 +465,30 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					preference.setSummary(getRingtoneTitle(getNotificationSound(getContext())));
 				}
 			}
-			findPreference(getResources().getString(R.string.preference_server_connectionboot_key)).setOnPreferenceChangeListener(startOnBootChangeListener);
+			{
+				Preference preference = findPreference(getResources().getString(R.string.preference_server_connectionboot_key));
+				if(preference != null) preference.setOnPreferenceChangeListener(startOnBootChangeListener);
+			}
 			findPreference(getResources().getString(R.string.preference_storage_deleteattachments_key)).setOnPreferenceClickListener(deleteAttachmentsClickListener);
 			findPreference(getResources().getString(R.string.preference_server_downloadmessages_key)).setOnPreferenceClickListener(syncMessagesClickListener);
 			findPreference(getResources().getString(R.string.preference_appearance_theme_key)).setOnPreferenceChangeListener(themeChangeListener);
+			{
+				Preference preference = findPreference(getResources().getString(R.string.preference_account_accountdetails_key));
+				if(preference != null) {
+					FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+					if(user != null) {
+						preference.setSummary(user.getDisplayName() + " (" + user.getEmail() + ")");
+					}
+				}
+			}
+			{
+				Preference preference = findPreference(getResources().getString(R.string.preference_server_reset_key));
+				if(preference != null) preference.setOnPreferenceClickListener(directResetClickListener);
+			}
+			{
+				Preference preference = findPreference(getResources().getString(R.string.preference_account_reset_key));
+				if(preference != null) preference.setOnPreferenceClickListener(connectResetClickListener);
+			}
 		}
 		
 		@Override
@@ -545,7 +606,10 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			super.onResume();
 			
 			//Updating the server URL
-			updateServerURL(findPreference(getResources().getString(R.string.preference_server_serverdetails_key)));
+			{
+				Preference preference = findPreference(getResources().getString(R.string.preference_server_serverdetails_key));
+				if(preference != null) updateServerURL(preference);
+			}
 			
 			//Updating the notification preference
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) updateMessageNotificationPreference(findPreference(getResources().getString(R.string.preference_messagenotifications_key)));
@@ -1009,6 +1073,24 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			startActivityForResult(intent, activityRequestDefaultMessagingApp);
 		}
 		
+		private void resetConfiguration() {
+			//Setting the server as not confirmed
+			MainApplication.getInstance().getConnectivitySharedPrefs().edit()
+					.putBoolean(MainApplication.sharedPreferencesConnectivityKeyConnectServerConfirmed, false)
+					.apply();
+			
+			//Disconnecting the connection
+			ConnectionService service = ConnectionService.getInstance();
+			if(service != null) service.shutDownService();
+			
+			//Opening the onboarding activity
+			startActivity(new Intent(getActivity(), Onboarding.class)
+				.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP));
+			
+			//Finishing the activity
+			getActivity().finish();
+		}
+		
 		/* @Override
 		public boolean onPreferenceStartScreen(PreferenceFragmentCompat preferenceFragmentCompat, PreferenceScreen preferenceScreen) {
 			FragmentTransaction ft = getActivity().getSupportFragmentManager().beginTransaction();
@@ -1077,5 +1159,15 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			   context.checkSelfPermission(Manifest.permission.RECEIVE_MMS) == PackageManager.PERMISSION_GRANTED &&
 			   context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED &&
 			   getPreferenceTextMessageIntegration(context);
+	}
+	
+	public static boolean getPreferenceStartOnBoot(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_connectionboot_key), false);
+	}
+	
+	public static void updateConnectionServiceBootEnabled(Context context, boolean enable) {
+		context.getPackageManager().setComponentEnabledSetting(new ComponentName(context, StartBootReceiver.class),
+				enable ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+				PackageManager.DONT_KILL_APP);
 	}
 }
