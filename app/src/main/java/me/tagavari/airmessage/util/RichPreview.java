@@ -12,11 +12,16 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.concurrent.Executor;
 
 //Taken form https://github.com/PonnamKarthik/RichLinkPreview (no longer maintained)
 public class RichPreview {
 	public static void getPreview(String url, ResponseListener responseListener) {
 		new FetchMetadataTask(url, responseListener).execute();
+	}
+	
+	public static void getPreview(String url, ResponseListener responseListener, Executor executor) {
+		new FetchMetadataTask(url, responseListener).executeOnExecutor(executor);
 	}
 	
 	private static class FetchMetadataTask extends AsyncTask<Void, Void, Metadata> {
@@ -132,10 +137,6 @@ public class RichPreview {
 				//Printing the stack trace
 				exception.printStackTrace();
 				
-				//Calling the response listener
-				ResponseListener responseListener = responseListenerReference.get();
-				if(responseListener != null) responseListener.onError(new Exception("No data received from " + url + ": " + exception.getLocalizedMessage()));
-				
 				//Returning
 				return null;
 			}
@@ -143,12 +144,12 @@ public class RichPreview {
 		
 		@Override
 		protected void onPostExecute(Metadata metadata) {
-			//Returning if the task failed
-			if(metadata == null) return;
-			
 			//Calling the response listener
 			ResponseListener responseListener = responseListenerReference.get();
-			if(responseListener != null) responseListener.onData(metadata);
+			if(responseListener != null) {
+				if(metadata == null) responseListener.onError();
+				else responseListener.onData(metadata);
+			}
 		}
 		
 		private static String resolveURL(String url, String part) {
@@ -236,6 +237,6 @@ public class RichPreview {
 	public interface ResponseListener {
 		void onData(Metadata metaData);
 		
-		void onError(Exception exception);
+		void onError();
 	}
 }
