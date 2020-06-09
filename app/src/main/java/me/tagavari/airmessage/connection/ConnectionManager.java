@@ -59,7 +59,7 @@ public class ConnectionManager {
 	 *  2 - Serialization changes
 	 *  3 - Original rework without WS layer
 	 *  4 - Better stability and security, with sub-version support
-	 *  5 - MessagePack serialization, encrypt everything
+	 *  5 - AirPack serialization, encrypt everything
 	 */
 	public static final int mmCommunicationsVersion = 5;
 	public static final int mmCommunicationsSubVersion = 1;
@@ -117,8 +117,8 @@ public class ConnectionManager {
 	private final ServiceCallbacks serviceCallbacks;
 	
 	//Creating the communications values
-	private static final List<Class<?>> communicationsClassPriorityList = Arrays.asList(ClientComm4.class, ClientComm5.class);
-	private static final List<CommunicationsManagerSource> communicationsInstancePriorityList = Arrays.asList(ClientComm4::new, ClientComm5::new);
+	private static final List<Class<?>> communicationsClassPriorityList = Arrays.asList(ClientComm5.class, ClientComm4.class);
+	private static final List<CommunicationsManagerSource> communicationsInstancePriorityList = Arrays.asList(ClientComm5::new, ClientComm4::new);
 	
 	//Creating the file processing values
 	private final BlockingQueue<FileProcessingRequest> fileProcessingRequestQueue = new LinkedBlockingQueue<>();

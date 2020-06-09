@@ -4,11 +4,8 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
-import org.msgpack.core.MessagePack;
-import org.msgpack.core.MessagePackException;
-import org.msgpack.core.MessageUnpacker;
-
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.security.GeneralSecurityException;
 import java.util.List;
 
@@ -86,6 +83,9 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 		//Invalidating the connection managers
 		protocolManager = null;
 		encryptionManager = null;
+		
+		//Setting the state
+		connectionOpened = false;
 	}
 	
 	@Override
@@ -252,8 +252,8 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 	 * Processes any data before a protocol manager is selected, usually to handle version processing
 	 */
 	private void processFloatingData(byte[] data) {
-		//Wrapping the data in a MessagePack unpacker
-		MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(data);
+		//Unpacking the data
+		AirUnpacker unpacker = new AirUnpacker(data);
 		
 		try {
 			//Reading the message type
@@ -262,22 +262,16 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 			if(messageType == nhtInformation) {
 				processServerInformation(unpacker);
 			}
-		} catch(IOException | MessagePackException exception) {
+		} catch(IOException | BufferUnderflowException exception) {
 			//Logging the exception
 			exception.printStackTrace();
 			
 			//Disconnecting
 			disconnect();
-		} finally {
-			try {
-				unpacker.close();
-			} catch(IOException exception) {
-				exception.printStackTrace();
-			}
 		}
 	}
 	
-	private void processServerInformation(MessageUnpacker unpacker) throws IOException {
+	private void processServerInformation(AirUnpacker unpacker) throws IOException {
 		//Restarting the authentication timer
 		handler.removeCallbacks(handshakeExpiryRunnable);
 		handler.postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);

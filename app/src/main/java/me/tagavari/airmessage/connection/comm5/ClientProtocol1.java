@@ -7,12 +7,7 @@ import android.os.Looper;
 
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
-import org.msgpack.core.MessageBufferPacker;
-import org.msgpack.core.MessagePack;
-import org.msgpack.core.MessagePackException;
-import org.msgpack.core.MessageUnpacker;
-
-import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -110,13 +105,13 @@ class ClientProtocol1 extends ProtocolManager {
 	}
 	
 	private boolean queueHeaderOnlyPacket(int header, boolean encrypt) {
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+		try(AirPacker packer = AirPacker.get()) {
 			packer.packInt(header);
 			
 			communicationsManager.queuePacket(packer.toByteArray(), encrypt);
 			
 			return true;
-		} catch(IOException exception) {
+		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
 			
 			return false;
@@ -125,13 +120,13 @@ class ClientProtocol1 extends ProtocolManager {
 	
 	@Override
 	boolean sendConnectionClose(Runnable sentRunnable) {
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+		try(AirPacker packer = AirPacker.get()) {
 			packer.packInt(nhtClose);
 			
 			communicationsManager.queuePacket(packer.toByteArray(), false, sentRunnable);
 			
 			return true;
-		} catch(IOException exception) {
+		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
 			
 			return false;
@@ -145,8 +140,8 @@ class ClientProtocol1 extends ProtocolManager {
 	
 	@Override
 	void processData(byte[] data, boolean wasEncrypted) {
-		//Wrapping the data in a MessagePack unpacker
-		MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(data);
+		//Wrapping the data in an unpacker
+		AirUnpacker unpacker = new AirUnpacker(data);
 		try {
 			//Reading the message type
 			int messageType = unpacker.unpackInt();
@@ -159,7 +154,7 @@ class ClientProtocol1 extends ProtocolManager {
 				//This data is always encrypted
 				processDataSecure(messageType, unpacker);
 			}
-		} catch(MessagePackException | IOException exception) {
+		} catch(BufferUnderflowException exception) {
 			exception.printStackTrace();
 		}
 	}
@@ -170,7 +165,7 @@ class ClientProtocol1 extends ProtocolManager {
 	 * @param unpacker The message data
 	 * @return TRUE if this message was consumed
 	 */
-	private boolean processDataInsecure(int messageType, MessageUnpacker unpacker) throws IOException {
+	private boolean processDataInsecure(int messageType, AirUnpacker unpacker) {
 		switch(messageType) {
 			case nhtClose:
 				//Closing the connection
@@ -193,12 +188,12 @@ class ClientProtocol1 extends ProtocolManager {
 	
 	/**
 	 * Process data that does need to be encrypted
-	 * This method also invokes {@link #processDataInsecure(int, MessageUnpacker)} method
+	 * This method also invokes {@link #processDataInsecure(int, AirUnpacker)} method
 	 * @param messageType The message header
 	 * @param unpacker The message data
 	 * @return TRUE if this message was consumed
 	 */
-	private boolean processDataSecure(int messageType, MessageUnpacker unpacker) throws IOException {
+	private boolean processDataSecure(int messageType, AirUnpacker unpacker) {
 		if(processDataInsecure(messageType, unpacker)) return true;
 		
 		switch(messageType) {
@@ -244,7 +239,7 @@ class ClientProtocol1 extends ProtocolManager {
 		return true;
 	}
 	
-	private void handleMessageAuthentication(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageAuthentication(AirUnpacker unpacker) throws BufferUnderflowException {
 		//Stopping the authentication timer
 		communicationsManager.handler.removeCallbacks(communicationsManager.handshakeExpiryRunnable);
 		
@@ -280,7 +275,7 @@ class ClientProtocol1 extends ProtocolManager {
 		}
 	}
 	
-	private void handleMessageMessageUpdate(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageMessageUpdate(AirUnpacker unpacker) throws BufferUnderflowException {
 		//Reading the items
 		List<Blocks.ConversationItem> conversationItems = unpackConversationItems(unpacker);
 		
@@ -288,7 +283,7 @@ class ClientProtocol1 extends ProtocolManager {
 		connectionManager.processMessageUpdate(conversationItems, true);
 	}
 	
-	private void handleMessageMassRetrieval(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageMassRetrieval(AirUnpacker unpacker) {
 		//Reading the packet information
 		short requestID = unpacker.unpackShort();
 		int packetIndex = unpacker.unpackInt();
@@ -310,12 +305,12 @@ class ClientProtocol1 extends ProtocolManager {
 		}
 	}
 	
-	private void handleMessageMassRetrievalFinish(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageMassRetrievalFinish(AirUnpacker unpacker) {
 		//Finishing the mass retrieval
 		connectionManager.finishMassRetrieval();
 	}
 	
-	private void handleMessageMassRetrievalFile(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageMassRetrievalFile(AirUnpacker unpacker) {
 		//Reading the data
 		short requestID = unpacker.unpackShort();
 		int requestIndex = unpacker.unpackInt();
@@ -323,7 +318,7 @@ class ClientProtocol1 extends ProtocolManager {
 		boolean isLast = unpacker.unpackBoolean();
 		
 		String fileGUID = unpacker.unpackString();
-		byte[] fileData = unpacker.readPayload(unpacker.unpackBinaryHeader());
+		byte[] fileData = unpacker.unpackPayload();
 		
 		//Processing the data
 		if(connectionManager.getMassRetrievalThread() != null) {
@@ -332,7 +327,7 @@ class ClientProtocol1 extends ProtocolManager {
 		}
 	}
 	
-	private void handleMessageConversationUpdate(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageConversationUpdate(AirUnpacker unpacker) {
 		//Reading the data
 		List<Blocks.ConversationInfo> conversations = unpackConversations(unpacker);
 		
@@ -340,7 +335,7 @@ class ClientProtocol1 extends ProtocolManager {
 		connectionManager.processChatInfoResponse(conversations);
 	}
 	
-	private void handleMessageModifierUpdate(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageModifierUpdate(AirUnpacker unpacker) {
 		//Reading the data
 		List<Blocks.ModifierInfo> modifiers = unpackModifiers(unpacker);
 		
@@ -348,7 +343,7 @@ class ClientProtocol1 extends ProtocolManager {
 		connectionManager.processModifierUpdate(modifiers, getPackager());
 	}
 	
-	private void handleMessageAttachmentRequest(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageAttachmentRequest(AirUnpacker unpacker) {
 		//Reading the data
 		short requestID = unpacker.unpackShort();
 		int requestIndex = unpacker.unpackInt();
@@ -356,7 +351,7 @@ class ClientProtocol1 extends ProtocolManager {
 		boolean isLast = unpacker.unpackBoolean();
 		
 		String fileGUID = unpacker.unpackString();
-		byte[] fileData = unpacker.readPayload(unpacker.unpackBinaryHeader());
+		byte[] fileData = unpacker.unpackPayload();
 		
 		//Running on the UI thread
 		new Handler(Looper.getMainLooper()).post(() -> {
@@ -371,7 +366,7 @@ class ClientProtocol1 extends ProtocolManager {
 		});
 	}
 	
-	private void handleMessageAttachmentRequestConfirm(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageAttachmentRequestConfirm(AirUnpacker unpacker) {
 		//Reading the request ID
 		short requestID = unpacker.unpackShort();
 		
@@ -387,7 +382,7 @@ class ClientProtocol1 extends ProtocolManager {
 		});
 	}
 	
-	private void handleMessageAttachmentRequestFail(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageAttachmentRequestFail(AirUnpacker unpacker) {
 		//Reading the data
 		short requestID = unpacker.unpackShort();
 		int errorCode = unpacker.unpackInt();
@@ -399,11 +394,11 @@ class ClientProtocol1 extends ProtocolManager {
 		});
 	}
 	
-	private void handleMessageSendResult(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageSendResult(AirUnpacker unpacker) {
 		//Reading the data
 		short requestID = unpacker.unpackShort();
 		int resultCode = unpacker.unpackInt();
-		String details = unpackNilString(unpacker);
+		String details = unpacker.unpackNullableString();
 		
 		//Getting the message response manager
 		final MessageResponseManager messageResponseManager = connectionManager.getMessageSendRequestsList().get(requestID);
@@ -424,11 +419,11 @@ class ClientProtocol1 extends ProtocolManager {
 		}
 	}
 	
-	private void handleMessageCreateChat(MessageUnpacker unpacker) throws IOException {
+	private void handleMessageCreateChat(AirUnpacker unpacker) {
 		//Reading the data
 		short requestID = unpacker.unpackShort();
 		int resultCode = unpacker.unpackInt();
-		String details = unpackNilString(unpacker);
+		String details = unpacker.unpackNullableString();
 		
 		//Running on the UI thread
 		new Handler(Looper.getMainLooper()).post(() -> {
@@ -452,7 +447,7 @@ class ClientProtocol1 extends ProtocolManager {
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		//Sending the message
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+		try(AirPacker packer = AirPacker.get()) {
 			packer.packInt(nhtCreateChat);
 			
 			packer.packShort(requestID);
@@ -462,7 +457,7 @@ class ClientProtocol1 extends ProtocolManager {
 			
 			communicationsManager.queuePacket(packer.toByteArray(), true);
 			return true;
-		} catch(IOException exception) {
+		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
@@ -475,7 +470,7 @@ class ClientProtocol1 extends ProtocolManager {
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		//Sending the message
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+		try(AirPacker packer = AirPacker.get()) {
 			packer.packInt(nhtMassRetrieval);
 			
 			packer.packShort(requestID); //Request ID
@@ -498,7 +493,7 @@ class ClientProtocol1 extends ProtocolManager {
 			
 			communicationsManager.queuePacket(packer.toByteArray(), true);
 			return true;
-		} catch(IOException exception) {
+		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
@@ -579,7 +574,7 @@ class ClientProtocol1 extends ProtocolManager {
 		}
 	}
 	
-	private List<Blocks.ConversationInfo> unpackConversations(MessageUnpacker unpacker) throws IOException {
+	private List<Blocks.ConversationInfo> unpackConversations(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
 		
@@ -592,7 +587,7 @@ class ClientProtocol1 extends ProtocolManager {
 			boolean available = unpacker.unpackBoolean();
 			if(available) {
 				String service = unpacker.unpackString();
-				String name = unpackNilString(unpacker);
+				String name = unpacker.unpackNullableString();
 				String[] members = new String[unpacker.unpackArrayHeader()];
 				for(int m = 0; m < members.length; m++) members[m] = unpacker.unpackString();
 				list.add(new Blocks.ConversationInfo(guid, service, name, members));
@@ -605,7 +600,7 @@ class ClientProtocol1 extends ProtocolManager {
 		return list;
 	}
 	
-	private List<Blocks.ConversationItem> unpackConversationItems(MessageUnpacker unpacker) throws IOException, RuntimeException {
+	private List<Blocks.ConversationItem> unpackConversationItems(AirUnpacker unpacker) throws RuntimeException {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
 		
@@ -623,15 +618,15 @@ class ClientProtocol1 extends ProtocolManager {
 			
 			switch(type) {
 				default:
-					throw new IOException("Invalid conversation item type: " + type);
+					throw new IllegalArgumentException("Invalid conversation item type: " + type);
 				case conversationItemTypeMessage: {
-					String text = unpackNilString(unpacker);
-					String subject = unpackNilString(unpacker);
-					String sender = unpackNilString(unpacker);
+					String text = unpacker.unpackNullableString();
+					String subject = unpacker.unpackNullableString();
+					String sender = unpacker.unpackNullableString();
 					List<Blocks.AttachmentInfo> attachments = unpackAttachments(unpacker);
 					List<Blocks.StickerModifierInfo> stickers = (List<Blocks.StickerModifierInfo>) (List<?>) unpackModifiers(unpacker);
 					List<Blocks.TapbackModifierInfo> tapbacks = (List<Blocks.TapbackModifierInfo>) (List<?>) unpackModifiers(unpacker);
-					String sendEffect = unpackNilString(unpacker);
+					String sendEffect = unpacker.unpackNullableString();
 					int stateCode = convertCodeMessageState(unpacker.unpackInt());
 					int errorCode = convertCodeAppleError(unpacker.unpackInt());
 					long dateRead = unpacker.unpackLong();
@@ -640,16 +635,16 @@ class ClientProtocol1 extends ProtocolManager {
 					break;
 				}
 				case conversationItemTypeGroupAction: {
-					String agent = unpackNilString(unpacker);
-					String other = unpackNilString(unpacker);
+					String agent = unpacker.unpackNullableString();
+					String other = unpacker.unpackNullableString();
 					int groupActionType = convertCodeGroupActionSubtype(unpacker.unpackInt());
 					
 					list.add(new Blocks.GroupActionInfo(serverID, guid, chatGuid, date, agent, other, groupActionType));
 					break;
 				}
 				case conversationItemTypeChatRename: {
-					String agent = unpackNilString(unpacker);
-					String newChatName = unpackNilString(unpacker);
+					String agent = unpacker.unpackNullableString();
+					String newChatName = unpacker.unpackNullableString();
 					
 					list.add(new Blocks.ChatRenameActionInfo(serverID, guid, chatGuid, date, agent, newChatName));
 					break;
@@ -661,7 +656,7 @@ class ClientProtocol1 extends ProtocolManager {
 		return list;
 	}
 	
-	private List<Blocks.AttachmentInfo> unpackAttachments(MessageUnpacker unpacker) throws IOException, RuntimeException {
+	private List<Blocks.AttachmentInfo> unpackAttachments(AirUnpacker unpacker) throws RuntimeException {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
 		
@@ -672,14 +667,9 @@ class ClientProtocol1 extends ProtocolManager {
 		for(int i = 0; i < count; i++) {
 			String guid = unpacker.unpackString();
 			String name = unpacker.unpackString();
-			String type = unpackNilString(unpacker);
+			String type = unpacker.unpackNullableString();
 			long size = unpacker.unpackLong();
-			byte[] checksum;
-			if(unpacker.tryUnpackNil()) {
-				checksum = null;
-			} else {
-				checksum = unpacker.readPayload(unpacker.unpackBinaryHeader());
-			}
+			byte[] checksum = unpacker.unpackNullablePayload();
 			
 			list.add(new Blocks.AttachmentInfo(guid, name, type, size, checksum));
 		}
@@ -688,7 +678,7 @@ class ClientProtocol1 extends ProtocolManager {
 		return list;
 	}
 	
-	private List<Blocks.ModifierInfo> unpackModifiers(MessageUnpacker unpacker) throws IOException, RuntimeException {
+	private List<Blocks.ModifierInfo> unpackModifiers(AirUnpacker unpacker) throws RuntimeException {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
 		
@@ -703,7 +693,7 @@ class ClientProtocol1 extends ProtocolManager {
 			
 			switch(type) {
 				default:
-					throw new IOException("Invalid modifier type: " + type);
+					throw new IllegalArgumentException("Invalid modifier type: " + type);
 				case modifierTypeActivity: {
 					int state = convertCodeMessageState(unpacker.unpackInt());
 					long dateRead = unpacker.unpackLong();
@@ -714,9 +704,9 @@ class ClientProtocol1 extends ProtocolManager {
 				case modifierTypeSticker: {
 					int messageIndex = unpacker.unpackInt();
 					String fileGuid = unpacker.unpackString();
-					String sender = unpackNilString(unpacker);
+					String sender = unpacker.unpackNullableString();
 					long date = unpacker.unpackLong();
-					byte[] data = unpacker.readPayload(unpacker.unpackBinaryHeader());
+					byte[] data = unpacker.unpackPayload();
 					String fileType = unpacker.unpackString();
 					
 					list.add(new Blocks.StickerModifierInfo(message, messageIndex, fileGuid, sender, date, data, fileType));
@@ -724,7 +714,7 @@ class ClientProtocol1 extends ProtocolManager {
 				}
 				case modifierTypeTapback: {
 					int messageIndex = unpacker.unpackInt();
-					String sender = unpackNilString(unpacker);
+					String sender = unpacker.unpackNullableString();
 					int code = unpacker.unpackInt();
 					
 					list.add(new Blocks.TapbackModifierInfo(message, messageIndex, sender, code));
@@ -738,7 +728,7 @@ class ClientProtocol1 extends ProtocolManager {
 	}
 	
 	@Override
-	boolean sendAuthenticationRequest(MessageUnpacker unpacker) throws IOException {
+	boolean sendAuthenticationRequest(AirUnpacker unpacker) {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
@@ -752,19 +742,20 @@ class ClientProtocol1 extends ProtocolManager {
 			//Reading the transmission check
 			byte[] transmissionCheck;
 			try {
-				transmissionCheck = unpacker.readPayload(unpacker.unpackBinaryHeader());
+				transmissionCheck = unpacker.unpackPayload();
 			} catch(BufferUnderflowException exception) {
 				exception.printStackTrace();
 				return false;
 			}
 			
 			//Writing back the transmission check and information about this device
-			try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+			try(AirPacker packer = AirPacker.get()) {
 				packer.packInt(nhtAuthentication);
 				
 				byte[] secureData;
-				try(MessageBufferPacker securePacker = MessagePack.newDefaultBufferPacker()) {
-					securePacker.addPayload(transmissionCheck); //Transmission check
+				{
+					AirPacker securePacker = new AirPacker(1024);
+					securePacker.packPayload(transmissionCheck); //Transmission check
 					securePacker.packString(installationID); //Installation ID
 					securePacker.packString(clientName); //Client name
 					securePacker.packString(platformID); //Platform ID
@@ -775,19 +766,18 @@ class ClientProtocol1 extends ProtocolManager {
 					secureData = encryptionManager.encrypt(securePacker.toByteArray());
 				}
 				
-				packer.packBinaryHeader(secureData.length);
-				packer.addPayload(secureData);
+				packer.packPayload(secureData);
 				
 				communicationsManager.queuePacket(packer.toByteArray(), false);
 				return true;
-			} catch(IOException | GeneralSecurityException exception) {
+			} catch(BufferOverflowException | GeneralSecurityException exception) {
 				exception.printStackTrace();
 				FirebaseCrashlytics.getInstance().recordException(exception);
 				return false;
 			}
 		} else {
 			//Writing back the device information
-			try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+			try(AirPacker packer = AirPacker.get()) {
 				packer.packInt(nhtAuthentication);
 				packer.packString(installationID); //Installation ID
 				packer.packString(clientName); //Client name
@@ -795,7 +785,7 @@ class ClientProtocol1 extends ProtocolManager {
 				
 				communicationsManager.queuePacket(packer.toByteArray(), false);
 				return true;
-			} catch(IOException exception) {
+			} catch(BufferOverflowException exception) {
 				exception.printStackTrace();
 				FirebaseCrashlytics.getInstance().recordException(exception);
 				return false;
@@ -808,7 +798,7 @@ class ClientProtocol1 extends ProtocolManager {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+		try(AirPacker packer = AirPacker.get()) {
 			packer.packInt(nhtSendTextExisting);
 			
 			packer.packShort(requestID); //Request ID
@@ -818,7 +808,7 @@ class ClientProtocol1 extends ProtocolManager {
 			
 			communicationsManager.queuePacket(packer.toByteArray(), true);
 			return true;
-		} catch(IOException exception) {
+		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
@@ -830,7 +820,7 @@ class ClientProtocol1 extends ProtocolManager {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+		try(AirPacker packer = AirPacker.get()) {
 			packer.packInt(nhtSendTextNew);
 			
 			packer.packShort(requestID); //Request ID
@@ -842,7 +832,7 @@ class ClientProtocol1 extends ProtocolManager {
 			
 			communicationsManager.queuePacket(packer.toByteArray(), true);
 			return true;
-		} catch(IOException exception) {
+		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
@@ -854,7 +844,7 @@ class ClientProtocol1 extends ProtocolManager {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+		try(AirPacker packer = AirPacker.get()) {
 			packer.packInt(nhtAttachmentReq);
 			
 			packer.packShort(requestID); //Request ID
@@ -863,7 +853,7 @@ class ClientProtocol1 extends ProtocolManager {
 			
 			communicationsManager.queuePacket(packer.toByteArray(), true);
 			return true;
-		} catch(IOException exception) {
+		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
@@ -890,7 +880,7 @@ class ClientProtocol1 extends ProtocolManager {
 			}
 		}
 		
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+		try(AirPacker packer = AirPacker.get()) {
 			packer.packInt(nhtConversationUpdate);
 			
 			packer.packArrayHeader(guidList.size());
@@ -898,7 +888,7 @@ class ClientProtocol1 extends ProtocolManager {
 			
 			communicationsManager.queuePacket(packer.toByteArray(), true);
 			return true;
-		} catch(IOException exception) {
+		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
@@ -910,7 +900,7 @@ class ClientProtocol1 extends ProtocolManager {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+		try(AirPacker packer = AirPacker.get()) {
 			packer.packInt(nhtSendFileExisting);
 			
 			packer.packShort(requestID); //Request identifier
@@ -918,13 +908,12 @@ class ClientProtocol1 extends ProtocolManager {
 			packer.packBoolean(isLast); //Is last message
 			
 			packer.packString(conversationGUID); //Chat GUID
-			packer.packBinaryHeader(data.length); //File bytes
-			packer.addPayload(data);
+			packer.packPayload(data); //File bytes
 			if(requestIndex == 0) packer.packString(fileName); //File name
 			
 			communicationsManager.queuePacket(packer.toByteArray(), true);
 			return true;
-		} catch(IOException exception) {
+		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
@@ -936,7 +925,7 @@ class ClientProtocol1 extends ProtocolManager {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+		try(AirPacker packer = AirPacker.get()) {
 			packer.packInt(nhtSendFileNew);
 			
 			packer.packShort(requestID); //Request identifier
@@ -945,8 +934,7 @@ class ClientProtocol1 extends ProtocolManager {
 			
 			packer.packArrayHeader(conversationMembers.length); //Chat members
 			for(String item : conversationMembers) packer.packString(item);
-			packer.packBinaryHeader(data.length); //File bytes
-			packer.addPayload(data);
+			packer.packPayload(data); //File bytes
 			if(requestIndex == 0) {
 				packer.packString(fileName); //File name
 				packer.packString(service); //Service
@@ -954,7 +942,7 @@ class ClientProtocol1 extends ProtocolManager {
 			
 			communicationsManager.queuePacket(packer.toByteArray(), true);
 			return true;
-		} catch(IOException exception) {
+		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
@@ -966,7 +954,7 @@ class ClientProtocol1 extends ProtocolManager {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
-		try(MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+		try(AirPacker packer = AirPacker.get()) {
 			packer.packInt(nhtTimeRetrieval);
 			
 			packer.packLong(timeLower);
@@ -974,7 +962,7 @@ class ClientProtocol1 extends ProtocolManager {
 			
 			communicationsManager.queuePacket(packer.toByteArray(), true);
 			return true;
-		} catch(IOException exception) {
+		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
@@ -994,9 +982,5 @@ class ClientProtocol1 extends ProtocolManager {
 	@Override
 	boolean checkSupportsFeature(String feature) {
 		return false;
-	}
-	
-	private static String unpackNilString(MessageUnpacker unpacker) throws IOException {
-		return unpacker.tryUnpackNil() ? null : unpacker.unpackString();
 	}
 }

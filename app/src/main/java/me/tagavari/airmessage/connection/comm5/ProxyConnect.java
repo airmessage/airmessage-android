@@ -174,7 +174,7 @@ class ProxyConnect extends DataProxy5 {
 	
 	public void sendTokenAdd(String token) {
 		//Converting the token to bytes
-		byte[] tokenBytes = token.getBytes(StandardCharsets.ISO_8859_1);
+		byte[] tokenBytes = token.getBytes(StandardCharsets.UTF_8);
 		
 		//Constructing and sending the message
 		ByteBuffer byteBuffer = ByteBuffer.allocate((Integer.SIZE / Byte.SIZE) + tokenBytes.length);
@@ -187,7 +187,7 @@ class ProxyConnect extends DataProxy5 {
 	
 	public void sendTokenRemove(String token) {
 		//Converting the token to bytes
-		byte[] tokenBytes = token.getBytes(StandardCharsets.ISO_8859_1);
+		byte[] tokenBytes = token.getBytes(StandardCharsets.UTF_8);
 		
 		//Constructing and sending the message
 		ByteBuffer byteBuffer = ByteBuffer.allocate((Integer.SIZE / Byte.SIZE) + tokenBytes.length);
@@ -281,6 +281,7 @@ class ProxyConnect extends DataProxy5 {
 		
 		/*
 		 * Proxy the message to the server (client -> connect)
+		 * Receive data from the server (connect -> client)
 		 *
 		 * payload - data
 		 */

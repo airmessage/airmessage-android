@@ -2,8 +2,6 @@ package me.tagavari.airmessage.connection.comm5;
 
 import android.content.Context;
 
-import org.msgpack.core.MessageUnpacker;
-
 import java.io.IOException;
 import java.util.List;
 
@@ -56,7 +54,7 @@ abstract class ProtocolManager {
 	 * @param unpacker The unpacker of the server's info data, after reading the communications versions
 	 * @return whether or not the message was successfully sent
 	 */
-	abstract boolean sendAuthenticationRequest(MessageUnpacker unpacker) throws IOException;
+	abstract boolean sendAuthenticationRequest(AirUnpacker unpacker) throws IOException;
 	
 	/**
 	 * Requests a message to be sent to the specified conversation
