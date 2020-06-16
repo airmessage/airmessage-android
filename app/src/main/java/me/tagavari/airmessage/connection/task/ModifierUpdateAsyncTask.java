@@ -75,12 +75,8 @@ public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 				//Getting the tapback modifier
 				Blocks.TapbackModifierInfo tapbackModifierInfo = (Blocks.TapbackModifierInfo) modifierInfo;
 				
-				//Checking if the tapback is negative
-				if(tapbackModifierInfo.code >= Blocks.TapbackModifierInfo.tapbackBaseRemove) {
-					//Deleting the modifier in the database
-					DatabaseManager.getInstance().removeMessageTapback(tapbackModifierInfo);
-					tapbackRemovals.add(new TapbackRemovalStruct(tapbackModifierInfo.sender, tapbackModifierInfo.message, tapbackModifierInfo.messageIndex));
-				} else {
+				//Checking if the tapback is being added
+				if(tapbackModifierInfo.isAddition) {
 					//Updating the modifier in the database
 					TapbackInfo tapback = DatabaseManager.getInstance().addMessageTapback(tapbackModifierInfo);
 					if(tapback != null) {
@@ -99,6 +95,10 @@ public class ModifierUpdateAsyncTask extends QueueTask<Void, Void> {
 							}
 						}
 					}
+				} else {
+					//Deleting the modifier in the database
+					DatabaseManager.getInstance().removeMessageTapback(tapbackModifierInfo);
+					tapbackRemovals.add(new TapbackRemovalStruct(tapbackModifierInfo.sender, tapbackModifierInfo.message, tapbackModifierInfo.messageIndex));
 				}
 			}
 		}

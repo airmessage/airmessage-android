@@ -3192,7 +3192,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			contentValues.put(Contract.TapbackEntry.COLUMN_NAME_MESSAGE, messageID);
 			contentValues.put(Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX, tapback.messageIndex);
 			contentValues.put(Contract.TapbackEntry.COLUMN_NAME_SENDER, tapback.sender);
-			contentValues.put(Contract.TapbackEntry.COLUMN_NAME_CODE, TapbackInfo.convertToPrivateCode(tapback.code));
+			contentValues.put(Contract.TapbackEntry.COLUMN_NAME_CODE, tapback.tapbackType);
 			
 			//Inserting the entry
 			long rowID;
@@ -3207,7 +3207,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			}
 			
 			//Adding the tapback to the list
-			list.add(new TapbackInfo(rowID, messageID, tapback.messageIndex, tapback.sender, TapbackInfo.convertToPrivateCode(tapback.code)));
+			list.add(new TapbackInfo(rowID, messageID, tapback.messageIndex, tapback.sender, tapback.tapbackType));
 		}
 		
 		//Returning the list
@@ -3658,7 +3658,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Creating the content values with the code
 		ContentValues contentValues = new ContentValues();
-		contentValues.put(Contract.TapbackEntry.COLUMN_NAME_CODE, TapbackInfo.convertToPrivateCode(tapback.code));
+		contentValues.put(Contract.TapbackEntry.COLUMN_NAME_CODE, tapback.tapbackType);
 		
 		//Updating the matching entry
 		int affectedRows = database.updateWithOnConflict(Contract.TapbackEntry.TABLE_NAME, contentValues,
@@ -3684,7 +3684,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			}
 			
 			//Returning the tapback info
-			return new TapbackInfo(localID, messageID, tapback.messageIndex, tapback.sender, TapbackInfo.convertToPrivateCode(tapback.code));
+			return new TapbackInfo(localID, messageID, tapback.messageIndex, tapback.sender, tapback.tapbackType);
 		} else {
 			//Getting the affected row ID
 			cursor = database.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID},
@@ -3704,7 +3704,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			cursor.close();
 			
 			//Returning the tapback info
-			return new TapbackInfo(modifierID, messageID, tapback.messageIndex, tapback.sender, TapbackInfo.convertToPrivateCode(tapback.code));
+			return new TapbackInfo(modifierID, messageID, tapback.messageIndex, tapback.sender, tapback.tapbackType);
 		}
 	}
 	

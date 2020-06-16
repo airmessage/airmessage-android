@@ -25,7 +25,7 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 	final Handler handler = new Handler();
 	
 	//Creating the transmission values
-	private static final int nhtInformation = 0;
+	private static final int nhtInformation = 100;
 
 	final Runnable handshakeExpiryRunnable = () -> dataProxy.stop(ConnectionManager.connResultConnection);
 	

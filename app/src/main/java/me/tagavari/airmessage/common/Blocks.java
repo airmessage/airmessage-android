@@ -186,8 +186,6 @@ public class Blocks {
 		private static final int itemType = 2;
 		
 		//Creating the reference values
-		public static final int tapbackBaseAdd = 2000;
-		public static final int tapbackBaseRemove = 3000;
 		public static final int tapbackLove = 0;
 		public static final int tapbackLike = 1;
 		public static final int tapbackDislike = 2;
@@ -197,16 +195,18 @@ public class Blocks {
 		
 		public int messageIndex;
 		public String sender;
-		public int code;
+		public boolean isAddition;
+		public int tapbackType;
 		
-		public TapbackModifierInfo(String message, int messageIndex, String sender, int code) {
+		public TapbackModifierInfo(String message, int messageIndex, String sender, boolean isAddition, int tapbackType) {
 			//Calling the super constructor
 			super(message);
 			
 			//Setting the values
 			this.messageIndex = messageIndex;
 			this.sender = sender;
-			this.code = code;
+			this.isAddition = isAddition;
+			this.tapbackType = tapbackType;
 		}
 	}
 }

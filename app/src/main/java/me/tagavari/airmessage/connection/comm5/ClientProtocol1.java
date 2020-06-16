@@ -21,6 +21,7 @@ import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
 import me.tagavari.airmessage.connection.request.FileDownloadRequest;
 import me.tagavari.airmessage.connection.request.MessageResponseManager;
+import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.util.Constants;
 
 //https://trello.com/c/lRZ6cikc
@@ -30,28 +31,32 @@ class ClientProtocol1 extends ProtocolManager {
 	private static final String platformID = "android";
 	
 	//Top-level net header type values
-	private static final int nhtClose = -1;
-	private static final int nhtPing = -2;
-	private static final int nhtPong = -3;
+	private static final int nhtClose = 0;
+	private static final int nhtPing = 1;
+	private static final int nhtPong = 2;
 	
-	private static final int nhtAuthentication = 1;
-	private static final int nhtMessageUpdate = 2;
-	private static final int nhtTimeRetrieval = 3;
-	private static final int nhtMassRetrieval = 4;
-	private static final int nhtMassRetrievalFile = 5;
-	private static final int nhtMassRetrievalFinish = 6;
-	private static final int nhtConversationUpdate = 7;
-	private static final int nhtModifierUpdate = 8;
-	private static final int nhtAttachmentReq = 9;
-	private static final int nhtAttachmentReqConfirm = 10;
-	private static final int nhtAttachmentReqFail = 11;
-	private static final int nhtCreateChat = 12;
+	private static final int nhtAuthentication = 101;
 	
-	private static final int nhtSendResult = 100;
-	private static final int nhtSendTextExisting = 101;
-	private static final int nhtSendTextNew = 102;
-	private static final int nhtSendFileExisting = 103;
-	private static final int nhtSendFileNew = 104;
+	private static final int nhtMessageUpdate = 200;
+	private static final int nhtTimeRetrieval = 201;
+	private static final int nhtMassRetrieval = 202;
+	private static final int nhtMassRetrievalFile = 203;
+	private static final int nhtMassRetrievalFinish = 204;
+	private static final int nhtConversationUpdate = 205;
+	private static final int nhtModifierUpdate = 206;
+	private static final int nhtAttachmentReq = 207;
+	private static final int nhtAttachmentReqConfirm = 208;
+	private static final int nhtAttachmentReqFail = 209;
+	
+	private static final int nhtLiteConversationRetrieval = 300;
+	private static final int nhtLiteThreadRetrieval = 301;
+	
+	private static final int nhtSendResult = 400;
+	private static final int nhtSendTextExisting = 401;
+	private static final int nhtSendTextNew = 402;
+	private static final int nhtSendFileExisting = 403;
+	private static final int nhtSendFileNew = 404;
+	private static final int nhtCreateChat = 405;
 	
 	//Net subtype values
 	private static final int nstAuthenticationOK = 0;
@@ -715,9 +720,10 @@ class ClientProtocol1 extends ProtocolManager {
 				case modifierTypeTapback: {
 					int messageIndex = unpacker.unpackInt();
 					String sender = unpacker.unpackNullableString();
-					int code = unpacker.unpackInt();
+					boolean isAddition = unpacker.unpackBoolean();
+					int tapbackType = unpacker.unpackInt();
 					
-					list.add(new Blocks.TapbackModifierInfo(message, messageIndex, sender, code));
+					list.add(new Blocks.TapbackModifierInfo(message, messageIndex, sender, isAddition, convertTapbackToPrivateCode(tapbackType)));
 					break;
 				}
 			}
@@ -982,5 +988,25 @@ class ClientProtocol1 extends ProtocolManager {
 	@Override
 	boolean checkSupportsFeature(String feature) {
 		return false;
+	}
+	
+	private static int convertTapbackToPrivateCode(int publicCode) {
+		//Returning the associated version
+		switch(publicCode) {
+			case 0:
+				return TapbackInfo.tapbackHeart;
+			case 1:
+				return TapbackInfo.tapbackLike;
+			case 2:
+				return TapbackInfo.tapbackDislike;
+			case 3:
+				return TapbackInfo.tapbackLaugh;
+			case 4:
+				return TapbackInfo.tapbackExclamation;
+			case 5:
+				return TapbackInfo.tapbackQuestion;
+			default:
+				return -1;
+		}
 	}
 }

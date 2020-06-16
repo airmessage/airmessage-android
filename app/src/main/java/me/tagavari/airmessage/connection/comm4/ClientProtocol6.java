@@ -38,6 +38,7 @@ import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
 import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
 import me.tagavari.airmessage.connection.request.FileDownloadRequest;
 import me.tagavari.airmessage.connection.request.MessageResponseManager;
+import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.util.Constants;
 
 //Improved error messages, chat creation requests
@@ -747,9 +748,13 @@ class ClientProtocol6 extends ProtocolManager {
 				case modifierTypeTapback: {
 					int messageIndex = in.readInt();
 					String sender = in.readBoolean() ? in.readUTF() : null;
-					int code = in.readInt();
+					int associationType = in.readInt();
 					
-					list.add(new Blocks.TapbackModifierInfo(message, messageIndex, sender, code));
+					//In protocol 5.1+, this data is provided by the server
+					boolean tapbackAdded = associationType >= 2000 && associationType < 3000;
+					int tapbackType = associationType % 1000;
+					
+					list.add(new Blocks.TapbackModifierInfo(message, messageIndex, sender, tapbackAdded, convertTapbackToPrivateCode(tapbackType)));
 					break;
 				}
 			}
@@ -1112,5 +1117,25 @@ class ClientProtocol6 extends ProtocolManager {
 	@Override
 	boolean checkSupportsFeature(String feature) {
 		return false;
+	}
+	
+	private static int convertTapbackToPrivateCode(int publicCode) {
+		//Returning the associated version
+		switch(publicCode) {
+			case 0:
+				return TapbackInfo.tapbackHeart;
+			case 1:
+				return TapbackInfo.tapbackLike;
+			case 2:
+				return TapbackInfo.tapbackDislike;
+			case 3:
+				return TapbackInfo.tapbackLaugh;
+			case 4:
+				return TapbackInfo.tapbackExclamation;
+			case 5:
+				return TapbackInfo.tapbackQuestion;
+			default:
+				return -1;
+		}
 	}
 }

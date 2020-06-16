@@ -13,12 +13,12 @@ import me.tagavari.airmessage.data.UserCacheHelper;
 
 public class TapbackInfo {
 	//Creating the reference values
-	private static final int tapbackHeart = 0;
-	private static final int tapbackLike = 1;
-	private static final int tapbackDislike = 2;
-	private static final int tapbackLaugh = 3;
-	private static final int tapbackExclamation = 4;
-	private static final int tapbackQuestion = 5;
+	public static final int tapbackHeart = 0;
+	public static final int tapbackLike = 1;
+	public static final int tapbackDislike = 2;
+	public static final int tapbackLaugh = 3;
+	public static final int tapbackExclamation = 4;
+	public static final int tapbackQuestion = 5;
 	
 	//Creating the tapback values
 	private long localID;
@@ -61,29 +61,6 @@ public class TapbackInfo {
 	
 	public void setCode(int code) {
 		this.code = code;
-	}
-	
-	public static int convertToPrivateCode(int publicCode) {
-		//Returning if the code is not in the 2000s
-		if(publicCode < Blocks.TapbackModifierInfo.tapbackBaseAdd || publicCode >= Blocks.TapbackModifierInfo.tapbackBaseRemove) return -1;
-		
-		//Returning the associated version
-		switch(publicCode) {
-			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackLove:
-				return tapbackHeart;
-			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackLike:
-				return tapbackLike;
-			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackDislike:
-				return tapbackDislike;
-			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackLaugh:
-				return tapbackLaugh;
-			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackEmphasis:
-				return tapbackExclamation;
-			case Blocks.TapbackModifierInfo.tapbackBaseAdd + Blocks.TapbackModifierInfo.tapbackQuestion:
-				return tapbackQuestion;
-			default:
-				return -1;
-		}
 	}
 	
 	public static TapbackDisplay getTapbackDisplay(int code, Context context) {
