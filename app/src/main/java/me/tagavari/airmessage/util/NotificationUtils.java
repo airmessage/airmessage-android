@@ -356,6 +356,8 @@ public class NotificationUtils {
 				.setColor(context.getResources().getColor(R.color.colorPrimary, null))
 				//Setting the group
 				.setGroup(MainApplication.notificationGroupMessage)
+				//Setting the delete listener
+				.setDeleteIntent(PendingIntent.getBroadcast(context, 0, new Intent(context, MessageNotificationDeleteReceiver.class), PendingIntent.FLAG_IMMUTABLE))
 				//Setting the category
 				.setCategory(Notification.CATEGORY_MESSAGE)
 				//Adding the person
@@ -816,6 +818,13 @@ public class NotificationUtils {
 		}
 	}
 	
+	public static class MessageNotificationDeleteReceiver extends BroadcastReceiver {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			tryDismissMessageSummaryNotification((NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE));
+		}
+	}
+	
 	private static Notification getNotification(NotificationManager notificationManager, String tag, int identifier) {
 		try {
 			//Getting the existing notification
@@ -836,13 +845,23 @@ public class NotificationUtils {
 	
 	public static void cancelMessageNotification(NotificationManager notificationManager, int notificationID) {
 		//Cancelling the notification
-		System.out.println("Cancelling notification: " + notificationTagMessage + " (" + notificationID + ")");
 		notificationManager.cancel(notificationTagMessage, notificationID);
 		
 		//Returning if there are any more message notifications left
 		for(StatusBarNotification statusBarNotification : notificationManager.getActiveNotifications()) {
-			System.out.println("Evaluating active tag: " + statusBarNotification.getTag() + " (" + statusBarNotification.getId() + ")");
 			if(notificationTagMessage.equals(statusBarNotification.getTag()) && statusBarNotification.getId() != notificationID) {
+				return;
+			}
+		}
+		
+		//Dismissing the group notification
+		notificationManager.cancel(MainApplication.notificationIDMessageSummary);
+	}
+	
+	public static void tryDismissMessageSummaryNotification(NotificationManager notificationManager) {
+		//Returning if there are any more message notifications left
+		for(StatusBarNotification statusBarNotification : notificationManager.getActiveNotifications()) {
+			if(notificationTagMessage.equals(statusBarNotification.getTag())) {
 				return;
 			}
 		}

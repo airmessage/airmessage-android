@@ -47,6 +47,8 @@ import java.lang.ref.WeakReference;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Date;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 
 import me.tagavari.airmessage.MainApplication;
@@ -72,6 +74,9 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 	private String messageSubject;
 	private boolean messageTextSpannableLoading = false;
 	private Spannable messageTextSpannable = null;
+	
+	//Creating the state values
+	private RichPreviewResponseListener richPreviewResponseListener;
 	
 	public MessageTextInfo(long localID, String guid, MessageInfo message, String messageText, String messageSubject) {
 		//Calling the super constructor
@@ -118,7 +123,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 					} else {
 						//Requesting the text to be processed
 						if(!messageTextSpannableLoading) {
-							new TextLinksAsyncTask(context, this).execute();
+							new TextLinksAsyncTask(context, this).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 							messageTextSpannableLoading = true;
 						}
 						
@@ -212,8 +217,10 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		
 		//Checking if previews are enabled
 		if(Preferences.getPreferenceMessagePreviews(context)) {
+			int messagePreviewState = getMessagePreviewState();
+			
 			//Checking if a message preview is available
-			if(getMessagePreviewState() == MessagePreviewInfo.stateAvailable) {
+			if(messagePreviewState == MessagePreviewInfo.stateAvailable) {
 				//Requesting the message preview information
 				MessagePreviewInfo preview = getLoadMessagePreview();
 				if(preview != null) {
@@ -221,7 +228,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 				}
 			}
 			//Checking if a message preview should be fetched
-			else if(getMessagePreviewState() == MessagePreviewInfo.stateNotTried && !isMessagePreviewLoading() && messageText != null) {
+			else if(messagePreviewState == MessagePreviewInfo.stateNotTried && !isMessagePreviewLoading() && messageText != null) {
 				//Finding any URL spans
 				Matcher matcher = Patterns.WEB_URL.matcher(messageText);
 				int matchOffset = 0;
@@ -257,7 +264,8 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 				if(targetUrl != null) {
 					//Fetching the data
 					setMessagePreviewLoading(true);
-					RichPreview.getPreview(targetUrl, new RichPreviewResponseListener(this, targetUrl));
+					richPreviewResponseListener = new RichPreviewResponseListener(this, targetUrl);
+					RichPreview.getPreview(targetUrl, richPreviewResponseListener, AsyncTask.THREAD_POOL_EXECUTOR);
 				} else {
 					//Updating the preview
 					setMessagePreview(null);
@@ -381,13 +389,22 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		@Override
 		public void onData(RichPreview.Metadata metadata) {
 			//Getting the message
-			MessageTextInfo messageText = messageTextReference.get();
+			MessageTextInfo messageTextInfo = messageTextReference.get();
+			
+			//Removing the message's reference to this listener
+			if(messageTextInfo != null) {
+				messageTextInfo.richPreviewResponseListener = null;
+			}
 			
 			//Checking if there is no useful data
 			String title = metadata.getTitle();
 			if(title == null || title.isEmpty()) {
-				//Updating the preview
-				if(messageText != null) messageText.setMessagePreview(null);
+				//Updating the message
+				if(messageTextInfo != null) {
+					messageTextInfo.setMessagePreview(null);
+					messageTextInfo.setMessagePreviewState(MessagePreviewInfo.stateUnavailable);
+					messageTextInfo.setMessagePreviewLoading(false);
+				}
 				
 				//Updating the state on disk
 				new MessagePreviewStateUpdateAsyncTask(messageTextID, MessagePreviewInfo.stateUnavailable).execute();
@@ -400,7 +417,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 		}
 		
 		@Override
-		public void onError(Exception exception) {
+		public void onError() {
 			//Updating the message
 			MessageTextInfo messageTextInfo = messageTextReference.get();
 			if(messageTextInfo != null) messageTextInfo.setMessagePreviewLoading(false);
@@ -433,12 +450,9 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 					DataTransformUtils.copyStream(in, out);
 					imageBytes = out.toByteArray();
 					if(imageBytes.length > previewImageMaxSize) imageBytes = DataTransformUtils.compressFile(imageBytes, "image/webp", previewImageMaxSize);
-				} catch(FileNotFoundException exception) {
-					exception.printStackTrace();
-					//Not returning, as the preview should simply be displayed without an image if the URI 404'd
 				} catch(IOException exception) {
 					exception.printStackTrace();
-					return null;
+					//Not returning, as the preview should simply be displayed without an image if the image failed to download
 				}
 			}
 			
@@ -450,14 +464,23 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 					caption = Constants.getDomainName(originalURL);
 					if(caption == null) return null;
 				} catch(URISyntaxException exception) {
+					//Logging the error
 					exception.printStackTrace();
+					
+					//Updating the message state
+					DatabaseManager.getInstance().setMessagePreviewState(messageID, MessagePreviewInfo.stateUnavailable);
+					
+					//Returning
 					return null;
 				}
 			}
-			MessagePreviewInfo messagePreview = new MessagePreviewLink(messageID, imageBytes, originalURL, linkMetaData.getTitle(), linkMetaData.getDescription(), caption);
 			
-			//Saving the data
+			//Creating the message preview
+			MessagePreviewInfo<?> messagePreview = new MessagePreviewLink(messageID, imageBytes, originalURL, linkMetaData.getTitle(), linkMetaData.getDescription(), caption);
+			
+			//Saving the data and the new state
 			DatabaseManager.getInstance().setMessagePreviewData(messageID, messagePreview);
+			DatabaseManager.getInstance().setMessagePreviewState(messageID, MessagePreviewInfo.stateAvailable);
 			
 			//Returning the preview
 			return messagePreview;
@@ -468,10 +491,16 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			//Getting the message
 			MessageTextInfo messageTextInfo = messageTextReference.get();
 			
-			//Assigning the preview
+			//Updating the message
 			if(messageTextInfo != null) {
 				messageTextInfo.setMessagePreviewLoading(false);
-				if(preview != null) messageTextInfo.setMessagePreview(preview);
+				
+				if(preview == null) {
+					messageTextInfo.setMessagePreviewState(MessagePreviewInfo.stateUnavailable);
+				} else {
+					messageTextInfo.setMessagePreviewState(MessagePreviewInfo.stateAvailable);
+					messageTextInfo.setMessagePreview(preview);
+				}
 			}
 		}
 	}

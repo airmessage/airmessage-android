@@ -186,6 +186,12 @@
 			android:exported="false"
 			android:name=".util.NotificationUtils$NotificationBroadcastReceiver" />
 
+		<!-- Message notification deletion receiver (for updating the status notification) -->
+		<receiver
+			android:enabled="true"
+			android:exported="false"
+			android:name=".util.NotificationUtils$MessageNotificationDeleteReceiver" />
+
 		<!-- Server connection manager service -->
 		<service
 			android:description="@string/servicedesc_connectionservice"
