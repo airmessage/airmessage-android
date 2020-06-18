@@ -173,7 +173,7 @@ public class ConnectionManager {
 	
 	public boolean connect(Context context, byte launchID) {
 		//Closing the current connection if it exists
-		//if(getCurrentState() != stateDisconnected) disconnect();
+		if(getCurrentState() != stateDisconnected) disconnect();
 		
 		//Returning if there is no connection
 		{
