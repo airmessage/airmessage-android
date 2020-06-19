@@ -3103,6 +3103,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the intent
 		Intent cameraCaptureIntent = new Intent(video ? MediaStore.ACTION_VIDEO_CAPTURE : MediaStore.ACTION_IMAGE_CAPTURE);
 		
+		//Asking for low-quality video if the user is using MMS
+		if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging && ConversationInfo.serviceTypeSystemMMSSMS.equals(viewModel.conversationInfo.getService())) {
+			cameraCaptureIntent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 0);
+		}
+		
 		//Checking if there are no apps that can take the intent
 		if(cameraCaptureIntent.resolveActivity(getPackageManager()) == null) {
 			//Telling the user via a toast

@@ -131,6 +131,8 @@ dependencies {
 	implementation "org.jsoup:jsoup:1.13.1"
 
 	implementation "com.klinkerapps:android-smsmms:5.2.6"
+
+	implementation "com.otaliastudios:transcoder:0.9.1"
 }
 
 repositories {

@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.connection.thread;
 
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -14,7 +15,9 @@ import androidx.exifinterface.media.ExifInterface;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -125,18 +128,14 @@ public class FileProcessingThread extends Thread {
 				
 				//Overwriting the compressed file
 				try(FileInputStream fileInputStream = new FileInputStream(request.getSendFile())) {
-					byte[] compressedData = compressFileInputStream(fileInputStream, request.getFileType(), request.getCompressionTarget());
-					fileInputStream.close();
-					if(compressedData == null) {
+					boolean result = DataTransformUtils.compressFile(fileInputStream.getFD(), request.getFileType(), request.getCompressionTarget(), request.getSendFile(), true);
+					if(!result) {
 						//Calling the fail method
 						request.setInProcessing(false);
 						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
 						
 						//Returning
 						return;
-					}
-					try(FileOutputStream fileOutputStream = new FileOutputStream(request.getSendFile(), false)) {
-						fileOutputStream.write(compressedData);
 					}
 				} catch(IOException exception) {
 					//Printing the stack trace
@@ -213,7 +212,9 @@ public class FileProcessingThread extends Thread {
 		
 		//Creating the values
 		String fileName = null;
-		InputStream inputStream = null;
+		FileDescriptor inputFileDescriptor = null;
+		Closeable inputFileDescriptorCloseable = null;
+		long inputFileLength = -1;
 		File originalFile = request.getSendFile();
 		
 		try {
@@ -245,9 +246,12 @@ public class FileProcessingThread extends Thread {
 					if(fileName == null) fileName = Constants.defaultFileName;
 				}
 				
-				//Opening the input stream
+				//Getting the file descriptor
 				try {
-					inputStream = context.getContentResolver().openInputStream(request.getSendUri());
+					AssetFileDescriptor assetFileDescriptor = context.getContentResolver().openAssetFileDescriptor(request.getSendUri(), "r");
+					inputFileLength = assetFileDescriptor.getLength();
+					inputFileDescriptor = assetFileDescriptor.getFileDescriptor();
+					inputFileDescriptorCloseable = assetFileDescriptor;
 				} catch(IllegalArgumentException | SecurityException exception) {
 					//Printing the stack trace
 					exception.printStackTrace();
@@ -293,18 +297,14 @@ public class FileProcessingThread extends Thread {
 						
 						//Overwriting the compressed file
 						try(FileInputStream fileInputStream = new FileInputStream(request.getSendFile())) {
-							byte[] compressedData = compressFileInputStream(fileInputStream, request.getFileType(), request.getCompressionTarget());
-							fileInputStream.close();
-							if(compressedData == null) {
+							boolean result = DataTransformUtils.compressFile(fileInputStream.getFD(), request.getFileType(), request.getCompressionTarget(), request.getSendFile(), true);
+							if(!result) {
 								//Calling the fail method
 								request.setInProcessing(false);
 								handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
 								
 								//Returning
 								return false;
-							}
-							try(FileOutputStream fileOutputStream = new FileOutputStream(request.getSendFile(), false)) {
-								fileOutputStream.write(compressedData);
 							}
 						} catch(IOException exception) {
 							//Printing the stack trace
@@ -338,8 +338,20 @@ public class FileProcessingThread extends Thread {
 						return false;
 					}
 					
-					//Opening the input stream
-					inputStream = new BufferedInputStream(new FileInputStream(request.getSendFile()));
+					try {
+						//Opening the input stream
+						inputFileLength = request.getSendFile().length();
+						FileInputStream inputStream = new FileInputStream(request.getSendFile());
+						inputFileDescriptor = inputStream.getFD();
+						inputFileDescriptorCloseable = inputStream;
+					} catch(IOException exception) {
+						//Calling the fail method
+						request.setInProcessing(false);
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalIO, null));
+						
+						//Returning
+						return false;
+					}
 				}
 			} else {
 				//Calling the fail method
@@ -362,53 +374,54 @@ public class FileProcessingThread extends Thread {
 		}
 		
 		//Preparing to copy the file
-		if(inputStream != null) {
+		if(inputFileDescriptor != null) {
 			//Getting the target file
 			File targetFile = requestUpload ?
 							  MainApplication.getUploadTarget(context, fileName) :
 							  MainApplication.getDraftTarget(context, request.getConversationID(), fileName);
 			
-			try(OutputStream outputStream = new FileOutputStream(targetFile)) {
+			try {
 				//Clearing the reference to the context
 				context = null;
 				
-				//Checking if compression is required
-				if(request.getCompressionTarget() != -1) {
-					//Reading the file data
-					ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-					DataTransformUtils.copyStream(inputStream, byteArrayOutputStream);
-					inputStream.close();
-					byte[] fileBytes = byteArrayOutputStream.toByteArray();
-					
-					//Checking if the file needs to be compressed
-					if(fileBytes.length > request.getCompressionTarget()) {
-						//Checking if compression is not applicable
-						if(!DataTransformUtils.isCompressable(request.getFileType())) {
-							//Calling the fail method
-							request.setInProcessing(false);
-							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
-							
-							//Returning
-							return false;
-						}
+				//Creating the final file input stream (used to read the data to send the server, compressed)
+				InputStream inputStream;
+				boolean writeRequired;
+				
+				//Checking if compression has been requested and the file exceeds the size limit
+				if(request.getCompressionTarget() != -1 && inputFileLength > request.getCompressionTarget()) {
+					//Checking if compression is not applicable
+					if(!DataTransformUtils.isCompressable(request.getFileType())) {
+						//Calling the fail method
+						request.setInProcessing(false);
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
 						
-						//Compressing the file
-						byte[] compressedBytes = DataTransformUtils.compressFile(fileBytes, request.getFileType(), request.getCompressionTarget());
-						if(compressedBytes == null) {
-							//Calling the fail method
-							request.setInProcessing(false);
-							handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
-							
-							//Returning
-							return false;
-						}
-						
-						//Replacing the input stream
-						inputStream = new ByteArrayInputStream(compressedBytes);
-					} else {
-						//Resetting the input stream with the data in memory
-						inputStream = new ByteArrayInputStream(fileBytes);
+						//Returning
+						return false;
 					}
+					
+					//Compressing the file
+					boolean result = DataTransformUtils.compressFile(inputFileDescriptor, request.getFileType(), request.getCompressionTarget(), targetFile, false);
+					if(!result) {
+						//Calling the fail method
+						request.setInProcessing(false);
+						handler.post(() -> finalCallbacks.onFail.accept(Constants.messageErrorCodeLocalFileTooLarge, null));
+						
+						//Returning
+						return false;
+					}
+					
+					//Compressing video results in the file written straight to disk
+					writeRequired = false;
+					
+					//Setting the input stream to the saved file
+					inputStream = new FileInputStream(targetFile);
+				} else {
+					//Setting the input stream to the file descriptor
+					inputStream = new BufferedInputStream(new FileInputStream(inputFileDescriptor));
+					
+					//Didn't do anything, so we have to write the file ourselves
+					writeRequired = true;
 				}
 				
 				//Preparing to read the file
@@ -417,21 +430,26 @@ public class FileProcessingThread extends Thread {
 				int bytesRead;
 				long totalBytesRead = 0;
 				
-				//Looping while there is data to read
-				while((bytesRead = inputStream.read(buffer)) != -1) {
-					//Writing the data to the output stream
-					outputStream.write(buffer, 0, bytesRead);
-					
-					//Adding to the total bytes read
-					totalBytesRead += bytesRead;
-					
-					//Updating the progress
-					final long finalTotalBytesRead = totalBytesRead;
-					handler.post(() -> finalCallbacks.onUploadProgress.accept((float) ((double) finalTotalBytesRead / (double) totalLength * copyProgressValue)));
-				}
+				//Creating the output stream
+				OutputStream outputStream = writeRequired ? new FileOutputStream(targetFile) : null;
 				
-				//Flushing the output stream
-				outputStream.flush();
+				try {
+					//Looping while there is data to read
+					while((bytesRead = inputStream.read(buffer)) != -1) {
+						//Writing the data to the output stream
+						if(outputStream != null) outputStream.write(buffer, 0, bytesRead);
+						
+						//Adding to the total bytes read
+						totalBytesRead += bytesRead;
+						
+						//Updating the progress
+						final long finalTotalBytesRead = totalBytesRead;
+						handler.post(() -> finalCallbacks.onUploadProgress.accept((float) ((double) finalTotalBytesRead / (double) totalLength * copyProgressValue)));
+					}
+				} finally {
+					//Cleaning up
+					if(outputStream != null) outputStream.close();
+				}
 				
 				//Setting the send file
 				request.setSendFile(targetFile);
@@ -454,7 +472,7 @@ public class FileProcessingThread extends Thread {
 				return false;
 			} finally {
 				try {
-					inputStream.close();
+					inputFileDescriptorCloseable.close();
 				} catch(IOException exception) {
 					exception.printStackTrace();
 				}
@@ -752,15 +770,5 @@ public class FileProcessingThread extends Thread {
 		
 		//Returning true
 		return true;
-	}
-	
-	private byte[] compressFileInputStream(InputStream inputStream, String fileType, int maxBytes) throws IOException {
-		//Reading the file data
-		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-		DataTransformUtils.copyStream(inputStream, byteArrayOutputStream);
-		byte[] fileBytes = byteArrayOutputStream.toByteArray();
-		
-		//Compressing the file and returning the bytes
-		return DataTransformUtils.compressFile(fileBytes, fileType, maxBytes);
 	}
 }

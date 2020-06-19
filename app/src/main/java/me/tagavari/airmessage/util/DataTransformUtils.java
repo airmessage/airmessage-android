@@ -6,28 +6,75 @@ import android.graphics.Matrix;
 import android.os.Build;
 import android.os.FileUtils;
 
+import androidx.annotation.NonNull;
 import androidx.exifinterface.media.ExifInterface;
 
+import com.otaliastudios.transcoder.Transcoder;
+import com.otaliastudios.transcoder.TranscoderListener;
+import com.otaliastudios.transcoder.TranscoderOptions;
+import com.otaliastudios.transcoder.strategy.DefaultAudioStrategy;
+import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy;
+import com.otaliastudios.transcoder.strategy.TrackStrategy;
+import com.otaliastudios.transcoder.strategy.size.AtMostResizer;
+
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 public class DataTransformUtils {
 	public static final int standardBuffer = 8192; //8 kB
 	
 	private static final int bitmapQuality = 90; //90%
-	private static final List<String> compressableTypes = Collections.unmodifiableList(Arrays.asList("image/jpeg", "image/webp", "image/png"));
+	private static final List<String> compressableTypes = Collections.unmodifiableList(Arrays.asList("image/jpeg", "image/webp", "image/png", "video/mp4"));
 	
 	public static boolean isCompressable(String mimeType) {
 		return compressableTypes.contains(mimeType);
 	}
 	
-	public static byte[] compressFile(byte[] fileBytes, String mimeType, int maxBytes) {
+	public static boolean compressFile(FileDescriptor fileDescriptor, String mimeType, int maxBytes, File output, boolean replaceOutput) {
+		switch(mimeType) {
+			case "image/jpeg":
+			case "image/webp": {
+				byte[] data = compressBitmapLossy(convertCorrectBitmap(fileDescriptor), "image/jpeg".equals(mimeType) ? Bitmap.CompressFormat.JPEG : Bitmap.CompressFormat.WEBP, maxBytes);
+				if(data == null) return false;
+				try(InputStream inputStream = new ByteArrayInputStream(data); OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(output))) {
+					copyStream(inputStream, outputStream);
+					return true;
+				} catch(IOException exception) {
+					exception.printStackTrace();
+					return false;
+				}
+			}
+			case "image/png": {
+				byte[] data = compressBitmapLossless(convertCorrectBitmap(fileDescriptor), maxBytes);
+				if(data == null) return false;
+				try(InputStream inputStream = new ByteArrayInputStream(data); OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(output))) {
+					copyStream(inputStream, outputStream);
+					return true;
+				} catch(IOException exception) {
+					exception.printStackTrace();
+					return false;
+				}
+			}
+			case "video/mp4":
+				return compressVideo(fileDescriptor, output, replaceOutput);
+			default:
+				throw new IllegalArgumentException("Unknown MIME type: " + mimeType);
+		}
+	}
+	
+	public static byte[] compressBitmap(byte[] fileBytes, String mimeType, int maxBytes) {
 		switch(mimeType) {
 			case "image/jpeg":
 			case "image/webp":
@@ -37,6 +84,27 @@ public class DataTransformUtils {
 			default:
 				throw new IllegalArgumentException("Unknown MIME type: " + mimeType);
 		}
+	}
+	
+	private static Bitmap convertCorrectBitmap(FileDescriptor fileDescriptor) {
+		//Getting the bitmap from the image
+		Bitmap bitmap = BitmapFactory.decodeFileDescriptor(fileDescriptor);
+		if(bitmap == null) return null;
+		
+		//Reading the image's EXIF data
+		ExifInterface exif = null;
+		try {
+			exif = new ExifInterface(fileDescriptor);
+		} catch(IOException exception) {
+			//Printing the stack trace
+			exception.printStackTrace();
+		}
+		
+		//Fixing the bitmap orientation
+		if(exif != null) bitmap = DataTransformUtils.rotateBitmap(bitmap, exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL));
+		
+		//Returning the bitmap
+		return bitmap;
 	}
 	
 	private static Bitmap convertCorrectBitmap(byte[] fileBytes) {
@@ -168,6 +236,77 @@ public class DataTransformUtils {
 		catch (OutOfMemoryError exception) {
 			exception.printStackTrace();
 			return null;
+		}
+	}
+	
+	public static boolean compressVideo(FileDescriptor fileDescriptor, File outputFile, boolean replaceOutput) {
+		BlockingQueue<Boolean> blockingQueue = new ArrayBlockingQueue<>(1);
+		
+		TrackStrategy audioStrategy = new DefaultAudioStrategy.Builder()
+				.channels(1)
+				.bitRate(24000)
+				.build();
+		
+		TrackStrategy videoStrategy = new DefaultVideoStrategy.Builder()
+				.frameRate(12)
+				.bitRate(24000)
+				.addResizer(new AtMostResizer(144, 176))
+				.build();
+		
+		try {
+			File temporaryFile;
+			TranscoderOptions.Builder transcoder;
+			if(replaceOutput) {
+				//Write to the temporary file
+				temporaryFile = Constants.findFreeFile(outputFile.getParentFile(), "transcoder_temp", false);
+				transcoder = Transcoder.into(temporaryFile.getPath());
+			} else {
+				//Write directly to the output file
+				temporaryFile = null;
+				transcoder = Transcoder.into(outputFile.getPath());
+			}
+			
+			transcoder
+					.addDataSource(fileDescriptor)
+					.setAudioTrackStrategy(audioStrategy)
+					.setVideoTrackStrategy(videoStrategy)
+					.setListener(new TranscoderListener() {
+						@Override
+						public void onTranscodeProgress(double progress) {
+						
+						}
+						
+						@Override
+						public void onTranscodeCompleted(int successCode) {
+							blockingQueue.add(true);
+						}
+						
+						@Override
+						public void onTranscodeCanceled() {
+							blockingQueue.add(false);
+						}
+						
+						@Override
+						public void onTranscodeFailed(@NonNull Throwable exception) {
+							blockingQueue.add(false);
+						}
+					})
+					.transcode();
+			
+			//Waiting for the task to finish
+			boolean result = blockingQueue.take();
+			
+			//Cleaning up the temporary file
+			if(temporaryFile != null) {
+				outputFile.delete();
+				temporaryFile.renameTo(outputFile);
+			}
+			
+			//Returning the result
+			return result;
+		} catch(InterruptedException exception) {
+			exception.printStackTrace();
+			return false;
 		}
 	}
 	
