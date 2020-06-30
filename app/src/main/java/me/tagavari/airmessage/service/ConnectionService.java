@@ -97,7 +97,10 @@ public class ConnectionService extends Service {
 				//Reconnecting if it is a network swap or the client is disconnected
 				if((lastDisconnectionTime != -1 && lastDisconnectionTime >= SystemClock.elapsedRealtime() - 100L) || connectionManager.getCurrentState() == ConnectionManager.stateDisconnected) connectionManager.reconnect(context);
 			} else {
-				//Marking the time (there is nothing we can do here - the network is disconnected)
+				//Disconnecting
+				connectionManager.disconnect();
+				
+				//Marking the time
 				lastDisconnectionTime = SystemClock.elapsedRealtime();
 			}
 		}
