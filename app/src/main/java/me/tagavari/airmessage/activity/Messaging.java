@@ -4978,7 +4978,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						//Reading the profile picture
 						Photo photo = vcard.getPhotos().get(0);
 						byte[] photoData = photo.getData();
-						bitmap = BitmapFactory.decodeByteArray(photoData, 0, photoData.length);
+						if(photoData != null) bitmap = BitmapFactory.decodeByteArray(photoData, 0, photoData.length);
 					}
 					
 					//Setting the information

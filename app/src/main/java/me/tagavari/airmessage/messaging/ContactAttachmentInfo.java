@@ -147,8 +147,7 @@ public class ContactAttachmentInfo extends AttachmentInfo<ContactAttachmentInfo.
 					//Reading the profile picture
 					Photo photo = vcard.getPhotos().get(0);
 					byte[] photoData = photo.getData();
-					bitmap = BitmapFactory.decodeByteArray(photoData, 0, photoData.length);
-					//photo.getUrl();
+					if(photoData != null) bitmap = BitmapFactory.decodeByteArray(photoData, 0, photoData.length);
 				}
 				
 				return new Constants.Tuple2<>(name, bitmap);
