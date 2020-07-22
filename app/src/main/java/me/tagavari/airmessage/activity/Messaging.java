@@ -224,10 +224,10 @@ public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
 	
 	//List of pure urls (matches "https://google.com gmail.com youtube.com")
-	private static final Pattern urlGroupPattern = Pattern.compile("^((?:https?:\\/\\/)?(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&//=]*)\\s*){2,}$");
+	private static final Pattern urlGroupPattern = Pattern.compile("^((?:https?:\\/\\/)?(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?!&/=]*)\\s*){2,}$");
 	
 	//Any well-formed URL with protocol (matches "text https://google.com text")
-	private static final Pattern urlPattern = Pattern.compile("^((?:.|\\n)*)(https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&//=]*))((?:.|\\n)*)$");
+	private static final Pattern urlPattern = Pattern.compile("^((?:.|\\n)*)(https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?!&/=]*))((?:.|\\n)*)$");
 	
 	public static final int messageChunkSize = 20;
 	public static final int progressiveLoadThreshold = 10;
