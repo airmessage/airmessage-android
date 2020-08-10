@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.messaging;
 
+import android.app.Person;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
@@ -8,6 +9,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Icon;
 import android.os.AsyncTask;
 import android.text.TextUtils;
+import android.os.Build;
 import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.util.SparseIntArray;
@@ -18,7 +20,9 @@ import android.view.ViewStub;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.RequiresApi;
 import androidx.collection.LongSparseArray;
+import androidx.core.graphics.drawable.IconCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -318,6 +322,72 @@ public class ConversationInfo implements Serializable {
 					if(completionCount.value == displayMemberCount) {
 						//Rendering the image and returning the result
 						callback.onResult(Icon.createWithBitmap(Constants.loadBitmapFromView(iconGroup)), wasTasked);
+					}
+				}
+			});
+		}
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.P)
+	public void generatePersonList(Context context, Constants.TaskedResultCallback<Person[]> callback) {
+		//Returning if the conversation has no members
+		if(conversationMembers.isEmpty()) {
+			callback.onResult(new Person[0], false);
+			return;
+		}
+		
+		//Getting member info for each member
+		final int totalMemberCount = conversationMembers.size();
+		for(ListIterator<MemberInfo> iterator = conversationMembers.listIterator(); iterator.hasNext();) {
+			int index = iterator.nextIndex();
+			MemberInfo member = iterator.next();
+			
+			MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, member.getName(), new UserCacheHelper.UserFetchResult() {
+				int completionCount = 0;
+				final Person[] personArray = new Person[totalMemberCount];
+				boolean totalWasTasked = false;
+				
+				void onCompleted() {
+					callback.onResult(personArray, totalWasTasked);
+				}
+				
+				@Override
+				public void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
+					if(wasTasked) totalWasTasked = true;
+					
+					if(userInfo != null) {
+						//Fetching the user's icon
+						MainApplication.getInstance().getBitmapCacheHelper().getBitmapFromContact(context, member.getName(), member.getName(), new BitmapCacheHelper.ImageDecodeResult() {
+							@Override
+							public void onImageMeasured(int width, int height) {
+							
+							}
+							
+							@Override
+							public void onImageDecoded(Bitmap result, boolean wasTasked) {
+								if(wasTasked) totalWasTasked = true;
+								
+								//Adding the person to the list
+								personArray[index] = new Person.Builder()
+										.setName(userInfo.getContactName())
+										.setKey(userInfo.getLookupKey())
+										.setIcon(result == null ? null : Icon.createWithBitmap(result))
+										.build();
+								
+								//Checking if all members have been processed
+								completionCount++;
+								if(completionCount == totalMemberCount) onCompleted();
+							}
+						});
+					} else {
+						//Adding the person's address to the list
+						personArray[index] = new Person.Builder()
+								.setName(Constants.formatAddress(member.getName()))
+								.build();
+						
+						//Checking if all members have been processed
+						completionCount++;
+						if(completionCount == totalMemberCount) onCompleted();
 					}
 				}
 			});

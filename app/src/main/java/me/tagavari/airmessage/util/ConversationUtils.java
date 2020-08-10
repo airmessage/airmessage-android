@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.util;
 
+import android.app.Person;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
@@ -15,7 +16,6 @@ import android.view.View;
 import android.widget.TextView;
 
 import androidx.annotation.RequiresApi;
-import androidx.collection.LongSparseArray;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Stream;
+import java.util.function.Consumer;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
@@ -76,7 +76,7 @@ public class ConversationUtils {
 	
 	public static final int permissionRequestWriteStorageDownload = 0;
 	
-	private static final String shortcutPrefixConversation = "conversation-";
+	public static final String shortcutPrefixConversation = "conversation-";
 	
 	//Creating the conversation list
 	//private final ArrayList<ConversationInfo> conversations = new ArrayList<>();
@@ -659,46 +659,70 @@ public class ConversationUtils {
 		}
 		//Creating the shortcuts
 		List<ShortcutInfo> shortcutList = new ArrayList<>(conversationList.size());
-		LongSparseArray<String> titleMap = new LongSparseArray<>();
-		LongSparseArray<Icon> iconMap = new LongSparseArray<>();
+		String[] titleArray = new String[conversationList.size()];
+		Icon[] iconArray = new Icon[conversationList.size()];
+		Person[][] personArray = new Person[conversationList.size()][];
 		Constants.ValueWrapper<Integer> titleRequestsCompleted = new Constants.ValueWrapper<>(0);
 		
-		for(ConversationInfo conversationBuild : conversationList) {
-			conversationBuild.buildTitle(context, (titleResult, titleWasTasked) -> {
-				//Recording the title
-				titleMap.put(conversationBuild.getLocalID(), titleResult);
+		final Consumer<Boolean> completionRunnable = (wasTasked) -> {
+			//Adding to the completion count
+			titleRequestsCompleted.value++;
+			
+			//Checking if all requests have been completed
+			if(titleRequestsCompleted.value == conversationList.size()) {
+				//Building the shortcuts
+				for(ListIterator<ConversationInfo> shortcutIterator = conversationList.listIterator(); shortcutIterator.hasNext();) {
+					int indexShortcut = shortcutIterator.nextIndex();
+					ConversationInfo conversationShortcut = shortcutIterator.next();
+					
+					//Creating the intents
+					Intent intentConversations = new Intent(context, Conversations.class);
+					intentConversations.setAction(Intent.ACTION_VIEW);
+					intentConversations.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+					
+					Intent intentMessaging = new Intent(context, Messaging.class);
+					intentMessaging.setAction(Intent.ACTION_VIEW);
+					intentMessaging.putExtra(Constants.intentParamTargetID, conversationShortcut.getLocalID());
+					
+					//Building and adding the shortcuts
+					ShortcutInfo.Builder shortcutBuilder = new ShortcutInfo.Builder(context, shortcutPrefixConversation + conversationShortcut.getGuid())
+							.setShortLabel(titleArray[indexShortcut])
+							.setIcon(iconArray[indexShortcut])
+							.setIntents(new Intent[]{intentConversations, intentMessaging});
+					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+						shortcutBuilder
+								.setLongLived(true)
+								.setPersons(personArray[indexShortcut]);
+					}
+					shortcutList.add(shortcutBuilder.build());
+				}
 				
-				conversationBuild.generateShortcutIcon(context, (iconResult, iconWasTasked) -> {
-					//Recording the icon
-					iconMap.put(conversationBuild.getLocalID(), iconResult);
+				//Returning the list
+				result.onResult(wasTasked, shortcutList);
+			}
+		};
+		
+		for(ListIterator<ConversationInfo> buildIterator = conversationList.listIterator(); buildIterator.hasNext();) {
+			int indexBuild = buildIterator.nextIndex();
+			ConversationInfo indexConversation = buildIterator.next();
+			
+			//Building the title
+			indexConversation.buildTitle(context, (titleResult, titleWasTasked) -> {
+				titleArray[indexBuild] = titleResult;
+				
+				//Building the shortcut icon
+				indexConversation.generateShortcutIcon(context, (iconResult, iconWasTasked) -> {
+					iconArray[indexBuild] = iconResult;
 					
-					//Adding to the completion count
-					titleRequestsCompleted.value++;
-					
-					//Checking if all requests have been completed
-					if(titleRequestsCompleted.value == conversationList.size()) {
-						//Building the shortcuts
-						for(ConversationInfo conversationShortcut : conversationList) {
-							//Creating the intents
-							Intent intentConversations = new Intent(context, Conversations.class);
-							intentConversations.setAction(Intent.ACTION_VIEW);
-							intentConversations.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+					//Building the people list
+					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+						indexConversation.generatePersonList(context, (peopleResult, peopleWasTasked) -> {
+							personArray[indexBuild] = peopleResult;
 							
-							Intent intentMessaging = new Intent(context, Messaging.class);
-							intentMessaging.setAction(Intent.ACTION_VIEW);
-							intentMessaging.putExtra(Constants.intentParamTargetID, conversationShortcut.getLocalID());
-							
-							//Building and adding the shortcuts
-							ShortcutInfo shortcut = new ShortcutInfo.Builder(context, shortcutPrefixConversation + conversationShortcut.getGuid())
-									.setShortLabel(titleMap.get(conversationShortcut.getLocalID()))
-									.setIcon(iconMap.get(conversationShortcut.getLocalID()))
-									.setIntents(new Intent[]{intentConversations, intentMessaging})
-									.build();
-							shortcutList.add(shortcut);
-						}
-						
-						//Returning the list
-						result.onResult(iconWasTasked || titleWasTasked, shortcutList);
+							completionRunnable.accept(titleWasTasked || iconWasTasked || peopleWasTasked);
+						});
+					} else {
+						completionRunnable.accept(titleWasTasked || iconWasTasked);
 					}
 				});
 			});
@@ -720,13 +744,14 @@ public class ConversationUtils {
 		//Getting the top 3 conversations
 		MainApplication.LoadFlagArrayList<ConversationInfo> conversations = getConversations();
 		if(conversations == null || !conversations.isLoaded()) return;
-		List<ConversationInfo> topConversations = new ArrayList<>(conversations.subList(0, Math.min(conversations.size(), 3)));
+		//List<ConversationInfo> topConversations = new ArrayList<>(conversations.subList(0, Math.min(conversations.size(), 3)));
 		
 		//Creating the shortcuts
-		generateShortcutInfo(context, topConversations, (wasTasked, shortcutList) -> {
+		generateShortcutInfo(context, conversations, (wasTasked, shortcutList) -> {
 			//Setting the shortcuts
 			ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
-			shortcutManager.setDynamicShortcuts(shortcutList);
+			//shortcutManager.setDynamicShortcuts(shortcutList);
+			for(ShortcutInfo shortcut : shortcutList) shortcutManager.pushDynamicShortcut(shortcut);
 		});
 	}
 	
