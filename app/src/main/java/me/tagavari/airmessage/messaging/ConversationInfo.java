@@ -10,6 +10,7 @@ import android.graphics.drawable.Icon;
 import android.os.AsyncTask;
 import android.text.TextUtils;
 import android.os.Build;
+import android.text.TextUtils;
 import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.util.SparseIntArray;

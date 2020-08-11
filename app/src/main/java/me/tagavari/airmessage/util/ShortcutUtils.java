@@ -41,14 +41,14 @@ public class ShortcutUtils {
 		String[] titleArray = new String[conversationList.size()];
 		Icon[] iconArray = new Icon[conversationList.size()];
 		Person[][] personArray = new Person[conversationList.size()][];
-		Constants.ValueWrapper<Integer> titleRequestsCompleted = new Constants.ValueWrapper<>(0);
+		Constants.ValueWrapper<Integer> requestsCompleted = new Constants.ValueWrapper<>(0);
 		
 		final Consumer<Boolean> completionRunnable = (wasTasked) -> {
 			//Adding to the completion count
-			titleRequestsCompleted.value++;
+			requestsCompleted.value++;
 			
 			//Checking if all requests have been completed
-			if(titleRequestsCompleted.value == conversationList.size()) {
+			if(requestsCompleted.value == conversationList.size()) {
 				//Building the shortcuts
 				for(ListIterator<ConversationInfo> shortcutIterator = conversationList.listIterator(); shortcutIterator.hasNext();) {
 					int indexShortcut = shortcutIterator.nextIndex();
