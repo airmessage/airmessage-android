@@ -73,6 +73,7 @@ import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
 import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
 import me.tagavari.airmessage.compositeplugin.PluginThemeUpdater;
 import me.tagavari.airmessage.util.NotificationUtils;
+import me.tagavari.airmessage.util.ShortcutUtils;
 import me.tagavari.airmessage.util.StateUtils;
 
 public class Conversations extends AppCompatCompositeActivity {
@@ -282,7 +283,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			updateMarkAllRead();
 			
 			//Rebuilding dynamic shortcuts
-			ConversationUtils.rebuildDynamicShortcuts(this);
+			ShortcutUtils.rebuildDynamicShortcuts(this);
 		});
 		editTextBarSearch.addTextChangedListener(searchTextWatcher);
 		buttonBarSearchClear.setOnClickListener(view -> editTextBarSearch.setText(""));
@@ -311,8 +312,8 @@ public class Conversations extends AppCompatCompositeActivity {
 		restoreSearchState();
 		
 		//Updating app shortcuts
-		ConversationUtils.rebuildDynamicShortcuts(this);
-		if(conversationsBasePlugin.conversations.isLoaded()) ConversationUtils.updateShortcuts(this, conversationsBasePlugin.conversations);
+		ShortcutUtils.rebuildDynamicShortcuts(this);
+		if(conversationsBasePlugin.conversations.isLoaded()) ShortcutUtils.updateShortcuts(this, conversationsBasePlugin.conversations);
 	}
 	
 	@Override

@@ -7,6 +7,7 @@ import android.content.ClipData;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ShortcutInfo;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -80,6 +81,7 @@ import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.MMSSMSHelper;
+import me.tagavari.airmessage.util.ShortcutUtils;
 
 public class NewMessage extends AppCompatCompositeActivity {
 	//Creating the constants
@@ -1680,8 +1682,8 @@ public class NewMessage extends AppCompatCompositeActivity {
 					
 					//Updating the shortcut
 					List<ConversationInfo> shortcutUpdateList = Collections.singletonList(result);
-					ConversationUtils.updateShortcuts(getApplication(), shortcutUpdateList);
-					ConversationUtils.enableShortcuts(getApplication(), shortcutUpdateList);
+					ShortcutUtils.updateShortcuts(getApplication(), shortcutUpdateList);
+					ShortcutUtils.enableShortcuts(getApplication(), shortcutUpdateList);
 					
 					//Updating the conversation activity list
 					LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));

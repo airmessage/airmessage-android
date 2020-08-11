@@ -51,6 +51,7 @@ import me.tagavari.airmessage.data.BitmapCacheHelper;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
 import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.util.ShortcutUtils;
 
 public class ConversationInfo implements Serializable {
 	private static final long serialVersionUID = 0;
@@ -338,22 +339,21 @@ public class ConversationInfo implements Serializable {
 		
 		//Getting member info for each member
 		final int totalMemberCount = conversationMembers.size();
+		final Constants.ValueWrapper<Integer> completionCount = new Constants.ValueWrapper<>(0);
+		final Person[] personArray = new Person[totalMemberCount];
+		final Constants.ValueWrapper<Boolean> totalWasTasked = new Constants.ValueWrapper<>(false);
 		for(ListIterator<MemberInfo> iterator = conversationMembers.listIterator(); iterator.hasNext();) {
 			int index = iterator.nextIndex();
 			MemberInfo member = iterator.next();
 			
 			MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, member.getName(), new UserCacheHelper.UserFetchResult() {
-				int completionCount = 0;
-				final Person[] personArray = new Person[totalMemberCount];
-				boolean totalWasTasked = false;
-				
 				void onCompleted() {
-					callback.onResult(personArray, totalWasTasked);
+					callback.onResult(personArray, totalWasTasked.value);
 				}
 				
 				@Override
 				public void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
-					if(wasTasked) totalWasTasked = true;
+					if(wasTasked) totalWasTasked.value = true;
 					
 					if(userInfo != null) {
 						//Fetching the user's icon
@@ -365,7 +365,7 @@ public class ConversationInfo implements Serializable {
 							
 							@Override
 							public void onImageDecoded(Bitmap result, boolean wasTasked) {
-								if(wasTasked) totalWasTasked = true;
+								if(wasTasked) totalWasTasked.value = true;
 								
 								//Adding the person to the list
 								personArray[index] = new Person.Builder()
@@ -375,8 +375,8 @@ public class ConversationInfo implements Serializable {
 										.build();
 								
 								//Checking if all members have been processed
-								completionCount++;
-								if(completionCount == totalMemberCount) onCompleted();
+								completionCount.value++;
+								if(completionCount.value == totalMemberCount) onCompleted();
 							}
 						});
 					} else {
@@ -386,8 +386,8 @@ public class ConversationInfo implements Serializable {
 								.build();
 						
 						//Checking if all members have been processed
-						completionCount++;
-						if(completionCount == totalMemberCount) onCompleted();
+						completionCount.value++;
+						if(completionCount.value == totalMemberCount) onCompleted();
 					}
 				}
 			});
@@ -1306,7 +1306,7 @@ public class ConversationInfo implements Serializable {
 		if(conversations != null) conversations.remove(this);
 		
 		//Removing the conversation shortcut
-		ConversationUtils.disableShortcuts(context, Collections.singletonList(this));
+		ShortcutUtils.disableShortcuts(context, Collections.singletonList(this));
 	}
 	
 	public void delete(Context context) {

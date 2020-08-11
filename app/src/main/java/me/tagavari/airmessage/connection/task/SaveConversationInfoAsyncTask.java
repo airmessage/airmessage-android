@@ -25,6 +25,7 @@ import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.NotificationUtils;
+import me.tagavari.airmessage.util.ShortcutUtils;
 
 public class SaveConversationInfoAsyncTask extends QueueTask<Void, Void> {
 	private final WeakReference<Context> contextReference;
@@ -149,8 +150,8 @@ public class SaveConversationInfoAsyncTask extends QueueTask<Void, Void> {
 			}
 			
 			//Updating shortcuts
-			ConversationUtils.updateShortcuts(context, availableConversationInfoList);
-			ConversationUtils.enableShortcuts(context, availableConversationInfoList);
+			ShortcutUtils.updateShortcuts(context, availableConversationInfoList);
+			ShortcutUtils.enableShortcuts(context, availableConversationInfoList);
 			
 			//Updating the transferred conversations
 			if(context != null) {

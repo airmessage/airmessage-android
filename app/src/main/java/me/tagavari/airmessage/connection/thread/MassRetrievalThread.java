@@ -28,6 +28,7 @@ import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
+import me.tagavari.airmessage.util.ShortcutUtils;
 
 public class MassRetrievalThread extends Thread {
 	//Creating the reference values
@@ -245,8 +246,8 @@ public class MassRetrievalThread extends Thread {
 							Collections.sort(sharedConversations, ConversationUtils.conversationComparator);
 							
 							//Updating shortcuts
-							ConversationUtils.updateShortcuts(context, sharedConversations);
-							ConversationUtils.enableShortcuts(context, sharedConversations);
+							ShortcutUtils.updateShortcuts(context, sharedConversations);
+							ShortcutUtils.enableShortcuts(context, sharedConversations);
 						}
 						
 						//Sending the mass retrieval broadcast

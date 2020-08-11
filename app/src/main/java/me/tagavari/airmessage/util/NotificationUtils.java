@@ -369,7 +369,7 @@ public class NotificationUtils {
 				//Adding the person
 				.addPerson(userUri)
 				//Adding the shortcut ID
-				.setShortcutId(ConversationUtils.shortcutPrefixConversation + conversationInfo.getGuid());
+				.setShortcutId(ShortcutUtils.conversationToShortcutID(conversationInfo));
 		
 		//Checking if the Android version is below Oreo (on API 26 and above, notification alert details are handled by the system's notification channels)
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {

@@ -35,6 +35,7 @@ import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
+import me.tagavari.airmessage.util.ShortcutUtils;
 
 public class ConversationsBase extends AppCompatActivityPlugin {
 	//Creating the reference values
@@ -615,13 +616,13 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 			Context context = contextReference.get();
 			
 			//Clearing dynamic shortcuts
-			if(context != null) ConversationUtils.clearDynamicShortcuts(context);
+			if(context != null) ShortcutUtils.clearDynamicShortcuts(context);
 			
 			//Getting the conversations
 			ArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
 			if(conversations != null) {
 				//Disabling other shortcuts
-				if(context != null) ConversationUtils.disableShortcuts(context, conversations);
+				if(context != null) ShortcutUtils.disableShortcuts(context, conversations);
 				
 				//Clearing the conversations in memory
 				conversations.clear();
@@ -679,7 +680,7 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 				}
 				
 				//Disabling other shortcuts
-				if(context != null) ConversationUtils.disableShortcuts(context, removedConversations);
+				if(context != null) ShortcutUtils.disableShortcuts(context, removedConversations);
 			}
 			
 			//Updating the conversation activity list
@@ -742,7 +743,7 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 				}
 				
 				//Disabling other shortcuts
-				if(context != null) ConversationUtils.disableShortcuts(context, removedConversations);
+				if(context != null) ShortcutUtils.disableShortcuts(context, removedConversations);
 			}
 			
 			//Updating the conversation activity list

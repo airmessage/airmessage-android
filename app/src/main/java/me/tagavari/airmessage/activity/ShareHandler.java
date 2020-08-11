@@ -25,6 +25,7 @@ import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.util.ShortcutUtils;
 
 public class ShareHandler extends AppCompatCompositeActivity {
 	//Creating the plugin values
@@ -69,6 +70,18 @@ public class ShareHandler extends AppCompatCompositeActivity {
 				//Getting the target URI
 				Uri uri = getIntent().getParcelableExtra(Intent.EXTRA_STREAM);
 				if(dataValid = uri != null) targetUris = new Uri[]{uri};
+			}
+			
+			//Checking if the request came from direct share
+			if(getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
+				long conversationID = ShortcutUtils.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
+				if(conversationID != -1) {
+					//Launching the activity
+					launchMessaging(conversationID);
+				}
+				//Finishing the activity
+				finish();
+				return;
 			}
 		} else if(Intent.ACTION_SEND_MULTIPLE.equals(intentAction)) {
 			//Getting the target URI array
@@ -172,24 +185,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 			conversationInfo.bindSimpleView(ShareHandler.this, holder, new Constants.ViewHolderSourceImpl<>(recyclerView, conversationInfo.getLocalID()));
 			
 			//Setting the view's click listeners
-			holder.itemView.setOnClickListener(view -> {
-				//Creating the intent
-				Intent intent = new Intent(ShareHandler.this, Messaging.class);
-				intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-				
-				//Setting the target conversation
-				intent.putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID());
-				
-				//Setting the fill data
-				if(targetText != null) intent.putExtra(Constants.intentParamDataText, targetText);
-				if(targetUris != null) {
-					intent.putExtra(Constants.intentParamDataFile, true);
-					intent.setClipData(uriArrayToClipData(targetUris));
-				}
-				
-				//Starting the activity
-				startActivity(intent);
-			});
+			holder.itemView.setOnClickListener(view -> launchMessaging(conversationInfo.getLocalID()));
 		}
 		
 		@Override
@@ -224,6 +220,25 @@ public class ShareHandler extends AppCompatCompositeActivity {
 		boolean isListEmpty() {
 			return filteredItems.isEmpty();
 		}
+	}
+	
+	private void launchMessaging(long conversationID) {
+		//Creating the intent
+		Intent intent = new Intent(ShareHandler.this, Messaging.class);
+		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+		
+		//Setting the target conversation
+		intent.putExtra(Constants.intentParamTargetID, conversationID);
+		
+		//Setting the fill data
+		if(targetText != null) intent.putExtra(Constants.intentParamDataText, targetText);
+		if(targetUris != null) {
+			intent.putExtra(Constants.intentParamDataFile, true);
+			intent.setClipData(uriArrayToClipData(targetUris));
+		}
+		
+		//Starting the activity
+		startActivity(intent);
 	}
 	
 	private static ClipData uriArrayToClipData(Uri[] uriArray) {

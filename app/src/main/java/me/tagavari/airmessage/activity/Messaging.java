@@ -214,6 +214,7 @@ import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.MMSSMSHelper;
 import me.tagavari.airmessage.util.NotificationUtils;
+import me.tagavari.airmessage.util.ShortcutUtils;
 import me.tagavari.airmessage.util.StateUtils;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.OverScrollScrollView;
@@ -732,16 +733,26 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Checking if the request is a send intent
 		if(Intent.ACTION_SEND.equals(getIntent().getAction()) || Intent.ACTION_SENDTO.equals(getIntent().getAction())) {
-			//Getting the recipients
-			String[] recipients = Uri.decode(getIntent().getDataString())
-					.replaceAll("sms:", "")
-					.replaceAll("smsto:", "")
-					.replaceAll("mms:", "")
-					.replaceAll("mmsto:", "")
-					.split(",");
+			long conversationID = -1;
+			String[] recipients = null;
 			
-			//Normalizing the recipients
-			Constants.normalizeAddresses(recipients);
+			//Checking if the request came from direct share
+			if(getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
+				conversationID = ShortcutUtils.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
+			}
+			//Checking if the request came from an SMS link
+			else if(getIntent().getDataString() != null) {
+				//Getting the recipients
+				recipients = Uri.decode(getIntent().getDataString())
+						.replaceAll("sms:", "")
+						.replaceAll("smsto:", "")
+						.replaceAll("mms:", "")
+						.replaceAll("mmsto:", "")
+						.split(",");
+				
+				//Normalizing the recipients
+				Constants.normalizeAddresses(recipients);
+			}
 			
 			//Getting the message
 			String message;
@@ -763,11 +774,15 @@ public class Messaging extends AppCompatCompositeActivity {
 			fillerFiles = sendFiles.toArray(new Uri[0]);
 			
 			//Getting the view model
+			final long finalConversationID = conversationID;
+			final String[] finalRecipients = recipients;
 			viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
 				@NonNull
 				@Override
 				public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
-					return (T) new ActivityViewModel(getApplication(), recipients);
+					if(finalConversationID != -1) return (T) new ActivityViewModel(getApplication(), finalConversationID);
+					else if(finalRecipients != null) return (T) new ActivityViewModel(getApplication(), finalRecipients);
+					else return (T) new ActivityViewModel(getApplication(), -1);
 				}
 			}).get(ActivityViewModel.class);
 		} else {
@@ -1096,7 +1111,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Updating app shortcuts
 		if(viewModel.checkSetConversationAppearanceNeedsUpdate()) {
-			ConversationUtils.updateShortcuts(this, Collections.singletonList(viewModel.conversationInfo));
+			ShortcutUtils.updateShortcuts(this, Collections.singletonList(viewModel.conversationInfo));
 		}
 	}
 	
@@ -5466,7 +5481,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				messagesState.setValue(messagesStateReady);
 				
 				//Updating the conversation's shortcut usage
-				ConversationUtils.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
+				ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
 			} else {
 				//Loading the messages
 				new AsyncTask<Void, Void, List<ConversationItem>>() {
@@ -5511,7 +5526,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						messagesState.setValue(messagesStateReady);
 						
 						//Updating the conversation's shortcut usage
-						ConversationUtils.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
+						ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
 						
 						//Adding the conversation to the conversation list (for temporary usage, so that the conversation can be found for certain operations even if the conversations activity hasn't been launched yet)
 						if(ConversationUtils.getConversations() != null && !ConversationUtils.getConversations().isLoaded()) {
