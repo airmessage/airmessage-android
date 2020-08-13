@@ -113,6 +113,8 @@ public class ConnectionManager {
 	
 	private static final SecureRandom secureRandom = new SecureRandom();
 	
+	private static List<Integer> connResultNonRecoverable = Arrays.asList(connResultDirectUnauthorized, connResultConnectNoGroup, connResultConnectNoCapacity, connResultConnectAccountValidation, connResultConnectNoSubscription, connResultConnectOtherLocation);
+	
 	//Creating the service values
 	private final ServiceCallbacks serviceCallbacks;
 	
@@ -323,7 +325,7 @@ public class ConnectionManager {
 			editor.apply();
 		}
 		//Checking if no shutdown was requested and the code is an error
-		else if(!flagShutdownRequested && code != connResultDirectUnauthorized) {
+		else if(!flagShutdownRequested && !connResultNonRecoverable.contains(code)) {
 			//Connecting via the next communications manager
 			int targetIndex = communicationsClassPriorityList.indexOf(communicationsManager.getClass()) + 1;
 			if(targetIndex < communicationsInstancePriorityList.size()) {
