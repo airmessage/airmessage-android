@@ -71,10 +71,10 @@
 				android:id="@+id/content_ink"
 				android:layout_width="0px"
 				android:layout_height="0px"
-				app:layout_constraintBottom_toBottomOf="@+id/message"
-				app:layout_constraintLeft_toLeftOf="@+id/message"
-				app:layout_constraintRight_toRightOf="@+id/message"
-				app:layout_constraintTop_toTopOf="@+id/message"
+				app:layout_constraintBottom_toBottomOf="@id/content"
+				app:layout_constraintLeft_toLeftOf="@id/content"
+				app:layout_constraintRight_toRightOf="@id/content"
+				app:layout_constraintTop_toTopOf="@id/content"
 				app:backgroundColor="@color/colorMessageOutgoing"
 				android:visibility="gone" />
 		</androidx.constraintlayout.widget.ConstraintLayout>
