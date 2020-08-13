@@ -21,6 +21,7 @@ import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 
 import java.io.UnsupportedEncodingException;
+import java.net.Socket;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.BufferUnderflowException;
@@ -223,6 +224,8 @@ class ProxyConnect extends DataProxy5 {
 	protected class WSClient extends WebSocketClient {
 		WSClient(URI serverUri, Map<String, String> httpHeaders) {
 			super(serverUri, httpHeaders);
+			
+			setConnectionLostTimeout(0);
 		}
 		
 		@Override
@@ -262,15 +265,17 @@ class ProxyConnect extends DataProxy5 {
 			
 			//Perform hostname validation here instead
 			HostnameVerifier hostnameVerifier = HttpsURLConnection.getDefaultHostnameVerifier();
-			SSLSocket socket = (SSLSocket) getSocket();
-			SSLSession session = socket.getSession();
-			if(!hostnameVerifier.verify(conn.getRemoteSocketAddress().getHostName(), session)) {
-				try {
-					Log.e(ProxyConnect.class.getName(), "Expected " + conn.getRemoteSocketAddress().getHostName() + ", found " + session.getPeerPrincipal());
-					throw new InvalidDataException(CloseFrame.POLICY_VALIDATION, "Expected " + conn.getRemoteSocketAddress().getHostName() + ", found " + session.getPeerPrincipal());
-				} catch(SSLPeerUnverifiedException exception) {
-					exception.printStackTrace();
-					throw new InvalidDataException(CloseFrame.POLICY_VALIDATION);
+			Socket socket = getSocket();
+			if(socket instanceof SSLSocket) {
+				SSLSession session = ((SSLSocket) socket).getSession();
+				if(!hostnameVerifier.verify(conn.getRemoteSocketAddress().getHostName(), session)) {
+					try {
+						Log.e(ProxyConnect.class.getName(), "Expected " + conn.getRemoteSocketAddress().getHostName() + ", found " + session.getPeerPrincipal());
+						throw new InvalidDataException(CloseFrame.POLICY_VALIDATION, "Expected " + conn.getRemoteSocketAddress().getHostName() + ", found " + session.getPeerPrincipal());
+					} catch(SSLPeerUnverifiedException exception) {
+						exception.printStackTrace();
+						throw new InvalidDataException(CloseFrame.POLICY_VALIDATION);
+					}
 				}
 			}
 		}
