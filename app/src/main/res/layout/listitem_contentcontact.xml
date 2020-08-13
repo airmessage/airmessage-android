@@ -1,5 +1,5 @@
-<LinearLayout
-	xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:id="@+id/content"
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content"
@@ -23,7 +23,8 @@
 			android:tint="@color/colorToolbar" />
 
 		<!-- Profile picture -->
-		<de.hdodenhof.circleimageview.CircleImageView
+		<com.google.android.material.imageview.ShapeableImageView
+			app:shapeAppearanceOverlay="@style/CircleImageView"
 			android:id="@+id/image_profile"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent" />

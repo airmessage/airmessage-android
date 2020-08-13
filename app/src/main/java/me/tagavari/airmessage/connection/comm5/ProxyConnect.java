@@ -1,6 +1,8 @@
 package me.tagavari.airmessage.connection.comm5;
 
 import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
@@ -11,8 +13,11 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
 
+import org.java_websocket.WebSocket;
 import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.exceptions.InvalidDataException;
 import org.java_websocket.framing.CloseFrame;
+import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 
 import java.io.UnsupportedEncodingException;
@@ -26,6 +31,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocket;
+
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.CookieBuilder;
@@ -33,8 +46,7 @@ import me.tagavari.airmessage.connection.DataProxy;
 
 class ProxyConnect extends DataProxy5 {
 	//Creating the constants
-	//private static final URI connectHostname = URI.create("wss://connect.airmessage.org");
-	private static final URI connectHostname = URI.create("ws://10.0.0.52:1259");
+	private static final URI connectHostname = URI.create("wss://connect.airmessage.org");
 	private static final long handshakeTimeout = 8 * 1000;
 	
 	//Creating the state values
@@ -231,12 +243,36 @@ class ProxyConnect extends DataProxy5 {
 		@Override
 		public void onClose(int code, String reason, boolean remote) {
 			//Calling the listener
-			handleWSClose(webSocketToLocalCode(code));
+			new Handler(Looper.getMainLooper()).post(() -> handleWSClose(webSocketToLocalCode(code)));
 		}
 		
 		@Override
 		public void onError(Exception exception) {
 			exception.printStackTrace();
+		}
+		
+		@Override
+		protected void onSetSSLParameters(SSLParameters sslParameters) {
+			//Don't perform hostname validation
+		}
+		
+		@Override
+		public void onWebsocketHandshakeReceivedAsClient(WebSocket conn, ClientHandshake request, ServerHandshake response) throws InvalidDataException {
+			super.onWebsocketHandshakeReceivedAsClient(conn, request, response);
+			
+			//Perform hostname validation here instead
+			HostnameVerifier hostnameVerifier = HttpsURLConnection.getDefaultHostnameVerifier();
+			SSLSocket socket = (SSLSocket) getSocket();
+			SSLSession session = socket.getSession();
+			if(!hostnameVerifier.verify(conn.getRemoteSocketAddress().getHostName(), session)) {
+				try {
+					Log.e(ProxyConnect.class.getName(), "Expected " + conn.getRemoteSocketAddress().getHostName() + ", found " + session.getPeerPrincipal());
+					throw new InvalidDataException(CloseFrame.POLICY_VALIDATION, "Expected " + conn.getRemoteSocketAddress().getHostName() + ", found " + session.getPeerPrincipal());
+				} catch(SSLPeerUnverifiedException exception) {
+					exception.printStackTrace();
+					throw new InvalidDataException(CloseFrame.POLICY_VALIDATION);
+				}
+			}
 		}
 	}
 	

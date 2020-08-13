@@ -5,9 +5,10 @@ https://stackoverflow.com/questions/36320781/android-custom-popup-menu-with-swit
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:baselineAligned="false"
 	android:background="?android:attr/colorBackgroundFloating"
-	android:orientation="horizontal" >
+	android:orientation="horizontal">
 	<!-- Conversation Icon -->
 	<RelativeLayout
 		android:layout_width="@dimen/profile_size"
@@ -22,7 +23,8 @@ https://stackoverflow.com/questions/36320781/android-custom-popup-menu-with-swit
 			android:layout_height="match_parent"
 			android:src="@drawable/user" />
 		
-		<de.hdodenhof.circleimageview.CircleImageView
+		<com.google.android.material.imageview.ShapeableImageView
+			app:shapeAppearanceOverlay="@style/CircleImageView"
 			android:id="@+id/profile_image"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent" />
