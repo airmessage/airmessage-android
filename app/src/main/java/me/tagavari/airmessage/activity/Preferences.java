@@ -23,7 +23,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.ImageView;
-import android.widget.SeekBar;
 import android.widget.TextView;
 
 import androidx.annotation.DrawableRes;
@@ -50,6 +49,7 @@ import androidx.preference.SwitchPreference;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.slider.Slider;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -680,10 +680,10 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			
 			private int currentSliderID;
 			
-			private final SeekBar sliderDateMessages;
-			private final SeekBar sliderDateAttachments;
+			private final Slider sliderDateMessages;
+			private final Slider sliderDateAttachments;
 			
-			private final SeekBar sliderAttachmentSize;
+			private final Slider sliderAttachmentSize;
 			private final TextView labelAttachmentSize;
 			private final ViewGroup viewgroupAttachmentFilters;
 			
@@ -751,23 +751,12 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				
 				//Configuring the attachment slider
 				{
-					SeekBar seekBar = sliderAttachmentSize = view.findViewById(R.id.slider_attachments_size);
+					Slider slider = sliderAttachmentSize = view.findViewById(R.id.slider_attachments_size);
 					TextView label = labelAttachmentSize = view.findViewById(R.id.label_attachments_size);
-					seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-						@Override
-						public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-							updateSyncSizeLabel(label, progress);
-						}
-						
-						@Override
-						public void onStartTrackingTouch(SeekBar seekBar) {}
-						
-						@Override
-						public void onStopTrackingTouch(SeekBar seekBar) {}
-					});
+					slider.addOnChangeListener((changedSlider, value, fromUser) -> updateSyncSizeLabel(label, (int) value));
 					
 					//Updating the progress immediately
-					updateSyncSizeLabel(label, seekBar.getProgress());
+					updateSyncSizeLabel(label, (int) slider.getValue());
 				}
 				
 				//Configuring the time sliders
@@ -776,8 +765,19 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					TextView labelMessages = view.findViewById(R.id.label_messages);
 					sliderDateAttachments = view.findViewById(R.id.slider_attachments);
 					TextView labelAttachments = view.findViewById(R.id.label_attachments);
-					sliderDateMessages.setOnSeekBarChangeListener(new SeekBarListener(sliderDateMessages, sliderDateAttachments, true, labelMessages));
-					sliderDateAttachments.setOnSeekBarChangeListener(new SeekBarListener(sliderDateAttachments, sliderDateMessages, false, labelAttachments));
+					sliderDateMessages.addOnChangeListener(new Slider.OnChangeListener() {
+						@Override
+						public void onValueChange(@NonNull Slider slider, float value, boolean fromUser) {
+						
+						}
+					});
+					SliderListener sliderListenerMessages = new SliderListener(sliderDateMessages, sliderDateAttachments, true, labelMessages);
+					sliderDateMessages.addOnSliderTouchListener(sliderListenerMessages);
+					sliderDateMessages.addOnChangeListener(sliderListenerMessages);
+					
+					SliderListener sliderListenerAttachments = new SliderListener(sliderDateAttachments, sliderDateMessages, false, labelAttachments);
+					sliderDateAttachments.addOnSliderTouchListener(sliderListenerAttachments);
+					sliderDateAttachments.addOnChangeListener(sliderListenerAttachments);
 				}
 			}
 			
@@ -827,7 +827,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				boolean restrictMessages;
 				long timeSinceMessages = -1;
 				{
-					int progress = sliderDateMessages.getProgress();
+					int progress = (int) sliderDateMessages.getValue();
 					if(progress == 0) return; //Don't download any messages
 					else if(progress - 1 == advancedSyncTimes.length) restrictMessages = false; //Download all messages
 					else {
@@ -840,7 +840,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				boolean restrictAttachments = false;
 				long timeSinceAttachments = -1;
 				{
-					int progress = sliderDateAttachments.getProgress();
+					int progress = (int) sliderDateAttachments.getValue();
 					if(progress == 0) downloadAttachments = false; //Don't download any attachments
 					else {
 						downloadAttachments = true;
@@ -855,7 +855,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				boolean restrictAttachmentSizes;
 				long attachmentSizeLimit = -1;
 				{
-					int progress = sliderAttachmentSize.getProgress();
+					int progress = (int) sliderAttachmentSize.getValue();
 					if(progress == advancedSyncSizes.length) restrictAttachmentSizes = false; //Download any size
 					else {
 						restrictAttachmentSizes = true;
@@ -874,60 +874,60 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), SettingsFragment.this.getView(), new MassRetrievalParams(restrictMessages, timeSinceMessages, downloadAttachments, restrictAttachments, timeSinceAttachments, restrictAttachmentSizes, attachmentSizeLimit, attachmentFilterWhitelist, attachmentFilterBlacklist, attachmentFilterDLOther)).execute();
 			}
 			
-			private class SeekBarListener implements SeekBar.OnSeekBarChangeListener {
-				private final SeekBar otherBar;
+			private class SliderListener implements Slider.OnChangeListener, Slider.OnSliderTouchListener {
+				private final Slider otherBar;
 				private final boolean isMessagesSlider;
 				private final TextView descriptiveLabel;
 				
-				private int otherBarStartProgress;
+				private int otherBarStartValue;
 				private boolean isActive;
 				
 				private boolean lastSpecState = true;
 				
 				@SuppressLint("ClickableViewAccessibility")
-				SeekBarListener(SeekBar thisBar, SeekBar otherBar, boolean isMessagesSlider, TextView descriptiveLabel) {
+				SliderListener(Slider thisBar, Slider otherBar, boolean isMessagesSlider, TextView descriptiveLabel) {
 					//Setting the parameters
 					this.otherBar = otherBar;
 					this.isMessagesSlider = isMessagesSlider;
 					this.descriptiveLabel = descriptiveLabel;
 					
-					//Setting the touch prevention listener on the other seekbar
+					//Setting the touch prevention listener on the other slider
 					otherBar.setOnTouchListener((view, event) -> isActive);
 					
 					//Updating the label
-					updateChanges(thisBar.getProgress(), false);
+					updateChanges((int) thisBar.getValue(), false);
 				}
 				
 				@Override
-				public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+				public void onValueChange(@NonNull Slider slider, float value, boolean fromUser) {
 					//Updating the label
-					updateChanges(progress, true);
+					updateChanges((int) value, true);
 					
 					//Updating the button state
-					if(isMessagesSlider) stateListener.accept(progress > 0);
+					if(isMessagesSlider) stateListener.accept(value > 0);
 					
-					//Returning if this is not the active seekbar (to prevent both seekbars from being activated at once)
-					if(currentSliderID != seekBar.getId()) return;
+					//Returning if this is not the active slider (to prevent both sliders from being activated at once)
+					if(currentSliderID != slider.getId()) return;
 					
-					//Enforcing the position onto the other seekbar
+					//Enforcing the position onto the other slider
 					if(isMessagesSlider) {
-						if(otherBar.getProgress() > seekBar.getProgress()) otherBar.setProgress(seekBar.getProgress());
-						else if(otherBar.getProgress() != otherBarStartProgress) otherBar.setProgress(Math.min(otherBarStartProgress, seekBar.getProgress()));
+						if(otherBar.getValue() > slider.getValue()) otherBar.setValue(slider.getValue());
+						else if(otherBar.getValue() != otherBarStartValue) otherBar.setValue(Math.min(otherBarStartValue, slider.getValue()));
 					} else {
-						if(otherBar.getProgress() < seekBar.getProgress()) otherBar.setProgress(seekBar.getProgress());
-						else if(otherBar.getProgress() != otherBarStartProgress) otherBar.setProgress(Math.max(otherBarStartProgress, seekBar.getProgress()));
+						if(otherBar.getValue() < slider.getValue()) otherBar.setValue(slider.getValue());
+						else if(otherBar.getValue() != otherBarStartValue) otherBar.setValue(Math.max(otherBarStartValue, slider.getValue()));
 					}
 				}
 				
 				@Override
-				public void onStartTrackingTouch(SeekBar seekBar) {
-					currentSliderID = seekBar.getId();
-					otherBarStartProgress = otherBar.getProgress();
+				public void onStartTrackingTouch(@NonNull Slider slider) {
+					currentSliderID = slider.getId();
+					otherBarStartValue = (int) otherBar.getValue();
 					isActive = true;
 				}
 				
 				@Override
-				public void onStopTrackingTouch(SeekBar seekBar) {
+				public void onStopTrackingTouch(@NonNull Slider slider) {
 					isActive = false;
 				}
 				
