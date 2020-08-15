@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.service;
 
 import android.content.Intent;
+import android.os.Build;
 
 import androidx.annotation.NonNull;
 
@@ -12,9 +13,11 @@ import me.tagavari.airmessage.connection.ConnectionManager;
 public class FCMService extends FirebaseMessagingService {
 	@Override
 	public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
-		startService(new Intent(this, ConnectionService.class)
+		Intent serviceIntent = new Intent(this, ConnectionService.class)
 				.setAction(ConnectionService.selfIntentActionConnect)
-				.putExtra(ConnectionService.selfIntentExtraTemporary, true));
+				.putExtra(ConnectionService.selfIntentExtraTemporary, true);
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
+		else startService(serviceIntent);
 	}
 	
 	@Override

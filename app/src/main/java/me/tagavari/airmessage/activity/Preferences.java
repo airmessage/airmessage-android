@@ -1165,6 +1165,11 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_connectionboot_key), false);
 	}
 	
+	public static void updateConnectionServiceBootEnabled(Context context) {
+		int accountType = MainApplication.getInstance().getConnectivitySharedPrefs().getInt(MainApplication.sharedPreferencesConnectivityKeyAccountType, -1);
+		updateConnectionServiceBootEnabled(context, getPreferenceStartOnBoot(context) && accountType == Constants.connectivityAccountTypeDirect); //Don't start on boot if we're using Connect
+	}
+	
 	public static void updateConnectionServiceBootEnabled(Context context, boolean enable) {
 		context.getPackageManager().setComponentEnabledSetting(new ComponentName(context, StartBootReceiver.class),
 				enable ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,

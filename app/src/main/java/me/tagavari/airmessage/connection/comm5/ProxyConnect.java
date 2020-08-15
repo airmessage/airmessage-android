@@ -104,6 +104,7 @@ class ProxyConnect extends DataProxy5 {
 						.with("fcmToken", URLEncoder.encode(fcmToken, "UTF-8"))
 						.toString()
 				);
+				headers.put("Origin", "app");
 			} catch(Exception exception) {
 				//Error
 				exception.printStackTrace();
@@ -171,6 +172,8 @@ class ProxyConnect extends DataProxy5 {
 	
 	@Override
 	public boolean send(PacketStructOut packet) {
+		if(!client.isOpen()) return false;
+		
 		//Constructing and sending the message
 		ByteBuffer byteBuffer = ByteBuffer.allocate((Integer.SIZE / Byte.SIZE) + packet.getData().length);
 		byteBuffer.putInt(NHT.nhtClientProxy);
@@ -182,7 +185,7 @@ class ProxyConnect extends DataProxy5 {
 		//Running the sent runnable immediately
 		if(packet.getSentRunnable() != null) packet.getSentRunnable().run();
 		
-		return false;
+		return true;
 	}
 	
 	public void sendTokenAdd(String token) {

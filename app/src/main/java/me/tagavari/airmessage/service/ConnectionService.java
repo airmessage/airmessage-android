@@ -16,10 +16,8 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
 
-import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.preference.PreferenceManager;
 
 import java.lang.ref.WeakReference;
 import java.util.Timer;
