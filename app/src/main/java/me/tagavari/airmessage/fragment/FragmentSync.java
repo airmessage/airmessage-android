@@ -13,6 +13,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -20,6 +21,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 
@@ -107,6 +111,21 @@ public class FragmentSync extends BottomSheetDialogFragment {
 			buttonDelete.setText(R.string.action_skip);
 			buttonDelete.setOnClickListener(this::skip);
 		}
+		
+		//Adding bottom padding to compensate for system bars
+		view.setOnApplyWindowInsetsListener((applyView, windowInsets) -> {
+			int paddingBottom;
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+				paddingBottom = windowInsets.getInsets(WindowInsets.Type.systemBars()).bottom;
+			} else {
+				paddingBottom = windowInsets.getSystemWindowInsetBottom();
+			}
+			
+			applyView.setPadding(applyView.getPaddingLeft(), applyView.getPaddingTop(), applyView.getPaddingRight(), paddingBottom);
+			
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return WindowInsets.CONSUMED;
+			else return windowInsets.consumeSystemWindowInsets();
+		});
 	}
 	
 	@NonNull
@@ -117,9 +136,10 @@ public class FragmentSync extends BottomSheetDialogFragment {
 		superDialog.setOnShowListener(dialog -> {
 			BottomSheetDialog bottomSheetDialog = (BottomSheetDialog) dialog;
 			FrameLayout bottomSheet = bottomSheetDialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-			BottomSheetBehavior behavior = BottomSheetBehavior.from(bottomSheet);
+			BottomSheetBehavior<?> behavior = BottomSheetBehavior.from(bottomSheet);
 			
 			//Expanding and blocking drags
+			behavior.setPeekHeight(0);
 			behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
 			behavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
 				@Override
