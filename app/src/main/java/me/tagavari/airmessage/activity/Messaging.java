@@ -16,6 +16,7 @@ import android.app.SharedElementCallback;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipDescription;
+import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
@@ -29,6 +30,7 @@ import android.database.sqlite.SQLiteException;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Insets;
 import android.graphics.Outline;
 import android.graphics.PointF;
 import android.graphics.Rect;
@@ -69,6 +71,8 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.ViewStub;
 import android.view.ViewTreeObserver;
+import android.view.WindowInsets;
+import android.view.WindowInsetsAnimation;
 import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
@@ -94,6 +98,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.cardview.widget.CardView;
@@ -104,7 +109,6 @@ import androidx.core.content.FileProvider;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.util.Consumer;
 import androidx.core.util.Pools;
-import androidx.core.view.ViewCompat;
 import androidx.core.view.inputmethod.EditorInfoCompat;
 import androidx.core.view.inputmethod.InputConnectionCompat;
 import androidx.fragment.app.DialogFragment;
@@ -680,7 +684,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		listAttachmentQueue = findViewById(R.id.inputbar_attachments);
 		
 		//Setting the window layout
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+			getWindow().setDecorFitsSystemWindows(false);
+		} else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 			getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
 		} else {
 			getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
@@ -689,31 +695,51 @@ public class Messaging extends AppCompatCompositeActivity {
 		getWindow().setStatusBarColor(Color.TRANSPARENT);
 		
 		//Listening for window inset changes
-		ViewCompat.setOnApplyWindowInsetsListener(rootView, (view, insets) -> {
-			appBar.setPadding(appBar.getPaddingLeft(), insets.getSystemWindowInsetTop(), appBar.getPaddingRight(), appBar.getPaddingBottom());
+		rootView.setOnApplyWindowInsetsListener((view, windowInsets) -> {
+			int insetTop, insetBottom;
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+				Insets insets = windowInsets.getInsets(WindowInsets.Type.systemBars());
+				insetTop = insets.top;
+				insetBottom = insets.bottom;
+			} else {
+				insetTop = windowInsets.getSystemWindowInsetTop();
+				insetBottom = windowInsets.getSystemWindowInsetBottom();
+			}
+			
+			appBar.setPadding(appBar.getPaddingLeft(), insetTop, appBar.getPaddingRight(), appBar.getPaddingBottom());
 			appBar.post(() -> {
 				messageList.setPadding(messageList.getPaddingLeft(), appBar.getHeight(), messageList.getPaddingRight(), messageList.getPaddingBottom());
 			});
-			scrimStatusBar.getLayoutParams().height = insets.getSystemWindowInsetTop();
+			scrimStatusBar.getLayoutParams().height = insetTop;
 			
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-				//Adding padding to the bottom input bar
-				//View inputBarText = inputBar.findViewById(R.id.inputbar_text);
-				//inputBarText.setPadding(inputBarText.getPaddingLeft(), inputBarText.getPaddingTop(), inputBarText.getPaddingRight(), insets.getSystemWindowInsetBottom());
-				inputBar.setPadding(inputBar.getPaddingLeft(), inputBar.getPaddingTop(), inputBar.getPaddingRight(), insets.getSystemWindowInsetBottom());
-				
 				//Adding padding to the details menu
 				View detailsMenu = findViewById(R.id.group_messaginginfo_content);
-				if(detailsMenu != null) detailsMenu.setPadding(detailsMenu.getPaddingLeft(), detailsMenu.getPaddingTop(), detailsMenu.getPaddingRight(), insets.getSystemWindowInsetBottom());
+				if(detailsMenu != null) detailsMenu.setPadding(detailsMenu.getPaddingLeft(), detailsMenu.getPaddingTop(), detailsMenu.getPaddingRight(), insetBottom);
 			} else {
 				//Simply applying padding to the entire root view
-				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.getSystemWindowInsetBottom());
+				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insetBottom);
 			}
 			
-			currentInsetPaddingBottom = insets.getSystemWindowInsetBottom();
+			currentInsetPaddingBottom = insetBottom;
 			
-			return insets.consumeSystemWindowInsets();
+			//if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return WindowInsets.CONSUMED;
+			//else return windowInsets.consumeSystemWindowInsets();
+			return windowInsets;
 		});
+		
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+			//Listening for window insets and animation callbacks for the input bar
+			AnimatingInsetsCallback callback = new AnimatingInsetsCallback(inputBar);
+			inputBar.setOnApplyWindowInsetsListener(callback);
+			inputBar.setWindowInsetsAnimationCallback(callback);
+		} else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+			//Listening for window insets for the input bar
+			inputBar.setOnApplyWindowInsetsListener((view, windowInsets) -> {
+				inputBar.setPadding(inputBar.getPaddingLeft(), inputBar.getPaddingTop(), inputBar.getPaddingRight(), windowInsets.getSystemWindowInsetBottom());
+				return windowInsets.consumeSystemWindowInsets();
+			});
+		}
 		
 		//Setting the plugin views
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
@@ -5978,14 +6004,27 @@ public class Messaging extends AppCompatCompositeActivity {
 						ArrayList<SimpleAttachmentInfo> list = new ArrayList<>();
 						
 						//Querying the media files
-						try(Cursor cursor = getApplication().getContentResolver().query(
-								MediaStore.Files.getContentUri("external"),
-								new String[]{MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.DATE_MODIFIED},
-								msQuerySelection,
-								null,
-								MediaStore.Files.FileColumns.DATE_ADDED + " DESC" + ' ' + "LIMIT " + attachmentsTileCount)) {
-							if(cursor == null) return null;
+						Uri queryUri = MediaStore.Files.getContentUri("external");
+						String[] queryProjection = new String[]{MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.DATE_MODIFIED};
+						Cursor cursor;
+						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+							Bundle queryArgs = new Bundle();
+							queryArgs.putInt(ContentResolver.QUERY_ARG_LIMIT, attachmentsTileCount);
+							queryArgs.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, msQuerySelection);
+							queryArgs.putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, new String[]{MediaStore.Files.FileColumns.DATE_ADDED});
+							queryArgs.putString(ContentResolver.QUERY_ARG_SORT_DIRECTION, "DESC");
+							queryArgs.putStringArray(ContentResolver.EXTRA_HONORED_ARGS, new String[]{ContentResolver.QUERY_ARG_SORT_COLUMNS, ContentResolver.QUERY_ARG_SORT_DIRECTION});
 							
+							cursor = getApplication().getContentResolver().query(queryUri, queryProjection, queryArgs, null);
+						} else {
+							cursor = getApplication().getContentResolver().query(queryUri, queryProjection, msQuerySelection, null, MediaStore.Files.FileColumns.DATE_ADDED + " DESC" + ' ' + "LIMIT " + attachmentsTileCount);
+						}
+						
+						System.out.println("Cursor: " + cursor);
+						if(cursor == null) return null;
+						System.out.println("Cursor results: " + cursor.getCount());
+						
+						try {
 							//int indexData = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA);
 							int iLocalID = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID);
 							int iType = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE);
@@ -6009,6 +6048,8 @@ public class Messaging extends AppCompatCompositeActivity {
 								//list.add(new SimpleAttachmentInfo(file, fileType, fileName, fileSize, modificationDate));
 								list.add(new SimpleAttachmentInfo(uri, fileType, fileName, fileSize, modificationDate));
 							}
+						} finally {
+							cursor.close();
 						}
 						
 						//Returning the list
@@ -7065,6 +7106,45 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Sending the message
 			messageInfo.sendMessage(MainApplication.getInstance());
+		}
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.R)
+	private static class AnimatingInsetsCallback extends WindowInsetsAnimation.Callback implements View.OnApplyWindowInsetsListener {
+		private final View view;
+		
+		private boolean isAnimating = false;
+		
+		public AnimatingInsetsCallback(View view) {
+			super(DISPATCH_MODE_CONTINUE_ON_SUBTREE);
+			
+			this.view = view;
+		}
+		
+		@Override
+		public WindowInsets onApplyWindowInsets(View view, WindowInsets windowInsets) {
+			if(isAnimating) return windowInsets;
+			Insets insets = windowInsets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
+			view.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+			
+			return WindowInsets.CONSUMED;
+		}
+		
+		@NonNull
+		@Override
+		public WindowInsets onProgress(@NonNull WindowInsets windowInsets, @NonNull List<WindowInsetsAnimation> list) {
+			view.setPadding(view.getPaddingLeft(), view.getPaddingTop(), view.getPaddingRight(), windowInsets.getInsets(WindowInsets.Type.ime() | WindowInsets.Type.systemBars()).bottom);
+			return WindowInsets.CONSUMED;
+		}
+		
+		@Override
+		public void onPrepare(@NonNull WindowInsetsAnimation animation) {
+			isAnimating = true;
+		}
+		
+		@Override
+		public void onEnd(@NonNull WindowInsetsAnimation animation) {
+			isAnimating = false;
 		}
 	}
 }

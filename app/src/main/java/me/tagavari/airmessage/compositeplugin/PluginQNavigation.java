@@ -21,7 +21,11 @@ public class PluginQNavigation extends AppCompatActivityPlugin {
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
 		
 		//Configuring the window
-		getActivity().getWindow().getDecorView().setSystemUiVisibility(getActivity().getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+			getActivity().getWindow().setDecorFitsSystemWindows(false);
+		} else {
+			getActivity().getWindow().getDecorView().setSystemUiVisibility(getActivity().getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+		}
 	}
 	
 	public void setViewForInsets(View[] listViews) {
