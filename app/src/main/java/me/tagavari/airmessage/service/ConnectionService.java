@@ -16,7 +16,6 @@ import android.os.IBinder;
 import android.os.SystemClock;
 
 import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.lang.ref.WeakReference;
@@ -27,7 +26,6 @@ import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Conversations;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.util.NotificationUtils;
 
 public class ConnectionService extends Service {
 	//Creating the constants
@@ -263,7 +261,9 @@ public class ConnectionService extends Service {
 			postDisconnectedNotification(true);
 		}
 		//Reconnecting the client if requested
-		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) connectionManager.connect(this, intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : connectionManager.getNextLaunchID());
+		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) {
+			connectionManager.connect(this, intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : ConnectionManager.getNextLaunchID());
+		}
 		
 		//Setting the service as not shutting down
 		connectionManager.setFlagShutdownRequested(false);

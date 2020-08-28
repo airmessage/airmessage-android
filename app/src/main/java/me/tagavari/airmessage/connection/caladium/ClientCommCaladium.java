@@ -245,15 +245,15 @@ public class ClientCommCaladium extends CommunicationsManager {
 						connectionManager.broadcastState(context, ConnectionManager.stateDisconnected, reason, launchID);
 					} else {
 						//Checking if a connection existed for reconnection and the preference is enabled
-						if(connectionManager.getFlagDropReconnect()/* && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)*/) {
+						if(connectionManager.getFlagDropReconnect() && false/* && PreferenceManager.getDefaultSharedPreferences(MainApplication.getInstance()).getBoolean(MainApplication.getInstance().getResources().getString(R.string.preference_server_dropreconnect_key), false)*/) {
 							//Updating the notification
 							//connectionService.postConnectedNotification(false, false);
 							
-							//Notifying the connection listeners
+							/* //Notifying the connection listeners
 							connectionManager.broadcastState(context, ConnectionManager.stateConnecting, 0, launchID);
 							
 							//Reconnecting
-							connect(connectionManager.getNextLaunchID(), true);
+							connect(connectionManager.getNextLaunchID(), true); */
 						} else {
 							//Updating the notification
 							//connectionService.postDisconnectedNotification(false);
@@ -584,7 +584,7 @@ public class ClientCommCaladium extends CommunicationsManager {
 			updateStateDisconnected(resultCode, forwardRequest);
 			
 			//Ending the writer thread after notifying the connected server
-			if(writerThread == null) {
+			if(writerThread != null) {
 				queuePacket(new ConnectionManager.PacketStruct(nhtClose, new byte[0], () -> {
 					writerThread.interrupt();
 				}));

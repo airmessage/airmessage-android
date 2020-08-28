@@ -92,7 +92,7 @@ public class ConnectionManager {
 	private final ServiceCallbacks serviceCallbacks;
 	
 	//Creating the communications values
-	final List<Class> communicationsClassPriorityList = Collections.singletonList(ClientCommCaladium.class);
+	final List<Class<?>> communicationsClassPriorityList = Collections.singletonList(ClientCommCaladium.class);
 	final List<CommunicationsManagerSource> communicationsInstancePriorityList = Collections.singletonList(ClientCommCaladium::new);
 	
 	//Creating the file processing values
