@@ -61,11 +61,6 @@ public class ClientCommCaladium extends CommunicationsManager {
 	
 	@Override
 	public boolean connect(byte launchID) {
-		//Passing the request to the overload method
-		return connect(launchID, false);
-	}
-	
-	private boolean connect(byte launchID, boolean reconnectionRequest) {
 		//Calling the super method
 		super.connect(launchID);
 		
@@ -96,7 +91,7 @@ public class ClientCommCaladium extends CommunicationsManager {
 		currentState = ConnectionManager.stateConnecting;
 		
 		//Starting the connection
-		connectionThread = new ConnectionThread(cleanHostname, port, cleanHostnameFallback, portFallback, reconnectionRequest);
+		connectionThread = new ConnectionThread(cleanHostname, port, cleanHostnameFallback, portFallback);
 		connectionThread.start();
 		
 		//Returning true
@@ -382,7 +377,6 @@ public class ClientCommCaladium extends CommunicationsManager {
 		private final int port;
 		private final String hostnameFallback;
 		private final int portFallback;
-		private final boolean reconnectionRequest;
 		
 		private Socket socket;
 		private DataInputStream inputStream;
@@ -391,12 +385,11 @@ public class ClientCommCaladium extends CommunicationsManager {
 		
 		private boolean usingFallback;
 		
-		private ConnectionThread(String hostname, int port, String hostnameFallback, int portFallback, boolean reconnectionRequest) {
+		private ConnectionThread(String hostname, int port, String hostnameFallback, int portFallback) {
 			this.hostname = hostname;
 			this.port = port;
 			this.hostnameFallback = hostnameFallback;
 			this.portFallback = portFallback;
-			this.reconnectionRequest = reconnectionRequest;
 		}
 		
 		@Override
@@ -405,76 +398,26 @@ public class ClientCommCaladium extends CommunicationsManager {
 				//Returning if the thread is interrupted
 				if(isInterrupted()) return;
 				
-				//Checking if the request is a reconnection request
-				if(reconnectionRequest) {
-					//Looping while there are available reconnection attempts
-					int reconnectionCount = 0;
-					boolean success = false;
-					while(!isInterrupted() && !success && reconnectionCount < ConnectionService.dropReconnectDelayMillis.length) {
-						//Waiting for the delay to pass
-						try {
-							sleep(ConnectionService.dropReconnectDelayMillis[reconnectionCount]);
-						} catch(InterruptedException interruptedException) {
-							interruptedException.printStackTrace();
-							return;
-						}
-						
-						//Attempting another connection
-						success = true;
-						try {
-							if(hostnameFallback != null) {
-								try {
-									//Connecting to the primary server
-									socket = new Socket();
-									socket.connect(new InetSocketAddress(hostname, port), socketTimeout);
-									usingFallback = false;
-								} catch(IOException exception) {
-									//Printing the stack trace
-									exception.printStackTrace();
-									
-									//Connecting to the fallback server
-									socket = new Socket();
-									socket.connect(new InetSocketAddress(hostnameFallback, portFallback), socketTimeout);
-									usingFallback = true;
-								}
-							} else {
-								//Connecting to the primary server
-								socket = new Socket();
-								socket.connect(new InetSocketAddress(hostname, port), socketTimeout);
-								usingFallback = false;
-							}
-						} catch(SocketException | SocketTimeoutException exception) {
-							//Printing the stack trace
-							exception.printStackTrace();
-							
-							//Increasing the connection count
-							reconnectionCount++;
-							
-							success = false;
-						}
-					}
-				} else {
-					if(hostnameFallback != null) {
-						try {
-							//Connecting to the primary server
-							socket = new Socket();
-							socket.connect(new InetSocketAddress(hostname, port), socketTimeout);
-							usingFallback = false;
-						} catch(IOException exception) {
-							//Printing the stack trace
-							exception.printStackTrace();
-							
-							//Connecting to the fallback server
-							socket = new Socket();
-							socket.connect(new InetSocketAddress(hostnameFallback, portFallback), socketTimeout);
-							usingFallback = true;
-						}
-					} else {
+				if(hostnameFallback != null) {
+					try {
 						//Connecting to the primary server
 						socket = new Socket();
 						socket.connect(new InetSocketAddress(hostname, port), socketTimeout);
 						usingFallback = false;
+					} catch(IOException exception) {
+						//Printing the stack trace
+						exception.printStackTrace();
+						
+						//Connecting to the fallback server
+						socket = new Socket();
+						socket.connect(new InetSocketAddress(hostnameFallback, portFallback), socketTimeout);
+						usingFallback = true;
 					}
+				} else {
+					//Connecting to the primary server
+					socket = new Socket();
+					socket.connect(new InetSocketAddress(hostname, port), socketTimeout);
+					usingFallback = false;
 				}
 				
 				//Returning if the thread is interrupted

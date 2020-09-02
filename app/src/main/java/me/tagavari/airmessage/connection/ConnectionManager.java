@@ -172,10 +172,10 @@ public class ConnectionManager {
 	}
 	
 	public boolean connect(Context context, byte launchID) {
-		//Closing the current connection if it exists
-		if(getCurrentState() != stateDisconnected) disconnect();
+		//Returning if a connection is already running
+		if(getCurrentState() != stateDisconnected) return false;
 		
-		//Returning if there is no connection
+		//Returning if there is no internet connection
 		{
 			NetworkInfo activeNetwork = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
 			boolean isConnected = activeNetwork != null && activeNetwork.isConnected();

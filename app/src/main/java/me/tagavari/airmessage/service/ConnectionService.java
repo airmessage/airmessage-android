@@ -12,6 +12,7 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
 
@@ -52,6 +53,10 @@ public class ConnectionService extends Service {
 	private PendingIntent pingPendingIntent;
 	private PendingIntent reconnectPendingIntent;
 	
+	//Drop reconnect values
+	private int dropReconnectIndex = 0;
+	private Handler handler;
+	
 	//private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
 	//private Thread fileUploadRequestThread = null;
 	
@@ -67,6 +72,16 @@ public class ConnectionService extends Service {
 			
 			//Rescheduling the ping
 			schedulePing();
+		}
+	};
+	private final Runnable connectRunnable = new Runnable() {
+		@Override
+		public void run() {
+			//Returning if the service isn't running
+			if(getInstance() == null) return;
+			
+			//Connecting to the server
+			connectionManager.connect(MainApplication.getInstance(), ConnectionManager.getNextLaunchID());
 		}
 	};
 	private final BroadcastReceiver reconnectionBroadcastReceiver = new BroadcastReceiver() {
@@ -93,7 +108,7 @@ public class ConnectionService extends Service {
 			
 			if(activeNetwork.isConnected()) {
 				//Reconnecting if it is a network swap or the client is disconnected
-				if((lastDisconnectionTime != -1 && lastDisconnectionTime >= SystemClock.elapsedRealtime() - 100L) || connectionManager.getCurrentState() == ConnectionManager.stateDisconnected) connectionManager.reconnect(context);
+				if((lastDisconnectionTime != -1 && lastDisconnectionTime >= SystemClock.elapsedRealtime() - 100L)) connectionManager.reconnect(context);
 			} else {
 				//Disconnecting
 				connectionManager.disconnect();
@@ -189,6 +204,16 @@ public class ConnectionService extends Service {
 	 * Schedules a pending intent to passively attempt to reconnect to the server
 	 */
 	void scheduleReconnection() {
+		//Scheduling immediate handler reconnection
+		if(dropReconnectIndex < dropReconnectDelayMillis.length) {
+			handler.postDelayed(connectRunnable, dropReconnectDelayMillis[dropReconnectIndex++]);
+		}
+		
+		//Scheduling passive reconnection
+		reschedulePassiveReconnection();
+	}
+	
+	private void reschedulePassiveReconnection() {
 		((AlarmManager) getSystemService(Context.ALARM_SERVICE)).setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP,
 				SystemClock.elapsedRealtime() + passiveReconnectFrequencyMillis - passiveReconnectWindowMillis,
 				passiveReconnectWindowMillis * 2,
@@ -199,6 +224,11 @@ public class ConnectionService extends Service {
 	 * Cancels the pending intent to passively reconnect to the server
 	 */
 	void cancelScheduleReconnection() {
+		//Cancelling handler reconnection
+		handler.removeCallbacks(connectRunnable);
+		dropReconnectIndex = 0;
+		
+		//Cancelling passive reconnection
 		((AlarmManager) getSystemService(Context.ALARM_SERVICE)).cancel(reconnectPendingIntent);
 	}
 	
@@ -225,6 +255,8 @@ public class ConnectionService extends Service {
 		//Setting the reference values
 		pingPendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(BCPingTimer), PendingIntent.FLAG_UPDATE_CURRENT);
 		reconnectPendingIntent = PendingIntent.getBroadcast(this, 1, new Intent(BCReconnectTimer), PendingIntent.FLAG_UPDATE_CURRENT);
+		
+		handler = new Handler();
 		
 		//Starting the service as a foreground service (if enabled in the preferences)
 		if(foregroundServiceRequested()) startForeground(notificationID, getBackgroundNotification(false, false));
