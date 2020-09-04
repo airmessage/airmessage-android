@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.connection.comm5;
 
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -23,6 +24,7 @@ import org.java_websocket.handshake.ServerHandshake;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -95,26 +97,29 @@ class ProxyConnect extends DataProxy5 {
 			
 			//Constructing the headers
 			Map<String, String> headers = new HashMap<>();
+			headers.put("Origin", "app");
+			
+			//Building the URL
+			Uri uri = new Uri.Builder()
+					.scheme(connectHostname.getScheme())
+					.encodedAuthority(connectHostname.getAuthority())
+					.path(connectHostname.getPath())
+					.appendQueryParameter("communications", Integer.toString(NHT.commVer))
+					.appendQueryParameter("is_server", Boolean.toString(false))
+					.appendQueryParameter("installation_id", MainApplication.getInstance().getInstallationID())
+					.appendQueryParameter("id_token", idToken)
+					.appendQueryParameter("fcm_token", fcmToken)
+					.build();
+			
+			//Starting the server
 			try {
-				headers.put("Cookie", new CookieBuilder()
-						.with("communications", NHT.commVer)
-						.with("isServer", false)
-						.with("installationID", MainApplication.getInstance().getInstallationID())
-						.with("idToken", URLEncoder.encode(idToken, "UTF-8"))
-						.with("fcmToken", URLEncoder.encode(fcmToken, "UTF-8"))
-						.toString()
-				);
-				headers.put("Origin", "app");
-			} catch(Exception exception) {
-				//Error
+				client = new WSClient(new URI(uri.toString()), headers);
+				client.connect();
+			} catch(URISyntaxException exception) {
 				exception.printStackTrace();
 				FirebaseCrashlytics.getInstance().recordException(exception);
 				onClose(ConnectionManager.connResultInternalError);
 			}
-			
-			//Starting the server
-			client = new WSClient(connectHostname, headers);
-			client.connect();
 		});
 	}
 	
