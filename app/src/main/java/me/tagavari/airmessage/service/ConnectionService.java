@@ -55,6 +55,7 @@ public class ConnectionService extends Service {
 	
 	//Drop reconnect values
 	private int dropReconnectIndex = 0;
+	private boolean dropReconnectRunning = false;
 	private Handler handler;
 	
 	//private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
@@ -77,6 +78,8 @@ public class ConnectionService extends Service {
 	private final Runnable connectRunnable = new Runnable() {
 		@Override
 		public void run() {
+			dropReconnectRunning = false;
+			
 			//Returning if the service isn't running
 			if(getInstance() == null) return;
 			
@@ -107,8 +110,11 @@ public class ConnectionService extends Service {
 			//if(activeNetwork == null) return;
 			
 			if(activeNetwork.isConnected()) {
-				//Reconnecting if it is a network swap or the client is disconnected
-				if((lastDisconnectionTime != -1 && lastDisconnectionTime >= SystemClock.elapsedRealtime() - 100L)) connectionManager.reconnect(context);
+				//Reconnecting
+				connectionManager.reconnect(context);
+				
+				//Also reset drop reconnect
+				dropReconnectIndex = 0;
 			} else {
 				//Disconnecting
 				connectionManager.disconnect();
@@ -124,14 +130,19 @@ public class ConnectionService extends Service {
 			int state = intent.getIntExtra(Constants.intentParamState, -1);
 			if(state == -1) return;
 			
-			if(state == ConnectionManager.stateConnected) postConnectedNotification(true, connectionManager.isConnectedFallback());
+			if(state == ConnectionManager.stateConnected) {
+				postConnectedNotification(true, connectionManager.isConnectedFallback());
+				
+				//Also reset drop reconnect
+				dropReconnectIndex = 0;
+			}
 			else if(state == ConnectionManager.stateConnecting) postConnectedNotification(false, false);
-			else if(state == ConnectionManager.stateDisconnected) postDisconnectedNotification(connectionManager.getLastConnectionResult() != ConnectionManager.intentResultCodeSuccess);
+			else if(state == ConnectionManager.stateDisconnected) postDisconnectedNotification(!lastNotificationConnected);
 		}
 	};
 	
 	//Creating the other values
-	private static boolean lastNotificationDisconnected = false;
+	private static boolean lastNotificationConnected = false;
 	
 	private final ConnectionManager connectionManager = new ConnectionManager(new ConnectionManager.ServiceCallbacks() {
 		@Override
@@ -226,7 +237,7 @@ public class ConnectionService extends Service {
 	void cancelScheduleReconnection() {
 		//Cancelling handler reconnection
 		handler.removeCallbacks(connectRunnable);
-		dropReconnectIndex = 0;
+		dropReconnectRunning = false;
 		
 		//Cancelling passive reconnection
 		((AlarmManager) getSystemService(Context.ALARM_SERVICE)).cancel(reconnectPendingIntent);
@@ -315,6 +326,9 @@ public class ConnectionService extends Service {
 		//Disconnecting
 		connectionManager.disconnect();
 		
+		//Disabling the reconnect timer
+		cancelScheduleReconnection();
+		
 		//Unregistering the broadcast receivers
 		unregisterReceiver(networkStateChangeBroadcastReceiver);
 		unregisterReceiver(pingBroadcastReceiver);
@@ -323,6 +337,9 @@ public class ConnectionService extends Service {
 		
 		//Removing the notification
 		clearNotification();
+		
+		//Clearing the instance
+		serviceReference = null;
 	}
 	
 	/* void setForegroundState(boolean foregroundState) {
@@ -367,11 +384,11 @@ public class ConnectionService extends Service {
 			notificationManager.notify(notificationID, getBackgroundNotification(isConnected, isFallback));
 		}
 		
-		lastNotificationDisconnected = false;
+		lastNotificationConnected = isConnected;
 	}
 	
 	private void postDisconnectedNotification(boolean silent) {
-		if((!foregroundServiceRequested() && !disconnectedNotificationRequested()) || lastNotificationDisconnected) return;
+		if((!foregroundServiceRequested() && !disconnectedNotificationRequested())) return;
 		
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		if(!isStatusNotificationEnabled(notificationManager)) {
@@ -382,12 +399,13 @@ public class ConnectionService extends Service {
 			String channelID = isStatusImportantNotificationEnabled(notificationManager) ? MainApplication.notificationChannelStatusImportant : MainApplication.notificationChannelStatus; //Reverting to the regular status channel if the important channel is disabled
 			notificationManager.notify(notificationID, getOfflineNotification(silent, channelID));
 		}
-		lastNotificationDisconnected = true;
+		lastNotificationConnected = false;
 	}
 	
 	private void clearNotification() {
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		notificationManager.cancel(notificationID);
+		notificationManager.cancel(notificationAlertID);
 	}
 	
 	private boolean isStatusNotificationEnabled(NotificationManager notificationManager) {
