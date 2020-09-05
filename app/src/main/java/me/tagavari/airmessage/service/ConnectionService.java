@@ -216,7 +216,8 @@ public class ConnectionService extends Service {
 	 */
 	void scheduleReconnection() {
 		//Scheduling immediate handler reconnection
-		if(dropReconnectIndex < dropReconnectDelayMillis.length) {
+		if(dropReconnectIndex < dropReconnectDelayMillis.length && !dropReconnectRunning) {
+			dropReconnectRunning = true;
 			handler.postDelayed(connectRunnable, dropReconnectDelayMillis[dropReconnectIndex++]);
 		}
 		
