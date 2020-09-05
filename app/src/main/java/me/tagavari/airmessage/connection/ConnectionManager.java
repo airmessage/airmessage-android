@@ -372,8 +372,8 @@ public class ConnectionManager {
 	}
 	
 	public boolean connect(Context context, byte launchID) {
-		//Closing the current connection if it exists
-		if(getCurrentState() != stateDisconnected) disconnect();
+		//Returning if a connection is already running
+		if(getCurrentState() != stateDisconnected) return false;
 		
 		//Setting the current launch ID
 		currentLaunchID = launchID;

@@ -61,6 +61,7 @@ public class ConnectionService extends Service {
 	private boolean temporaryMode = false;
 	private Timer temporaryModeTimer = null;
 	private int dropReconnectIndex = 0;
+	private boolean dropReconnectRunning = false;
 	
 	//Creating the intent values
 	private PendingIntent pingPendingIntent;
@@ -86,6 +87,9 @@ public class ConnectionService extends Service {
 		public void run() {
 			dropReconnectRunning = false;
 			
+			//Returning if the service isn't running
+			if(getInstance() == null) return;
+			
 			//Returning if the service isn't running or we're in configuration mode
 			if(getInstance() == null || configurationMode) return;
 			
@@ -104,7 +108,6 @@ public class ConnectionService extends Service {
 		}
 	};
 	private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
-		private long lastDisconnectionTime = -1;
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			//Returning if automatic reconnects are disabled
@@ -118,16 +121,13 @@ public class ConnectionService extends Service {
 			
 			if(activeNetwork.isConnected()) {
 				//Reconnecting
-				connectionManager.reconnect(context);
+				connectionManager.connect(context);
 				
 				//Also reset drop reconnect
 				dropReconnectIndex = 0;
 			} else {
 				//Disconnecting
 				connectionManager.disconnect();
-				
-				//Marking the time
-				lastDisconnectionTime = SystemClock.elapsedRealtime();
 			}
 		}
 	};
@@ -175,7 +175,7 @@ public class ConnectionService extends Service {
 					shutDownService();
 				} else {
 					//Updating the notification
-					postDisconnectedNotification(connectionManager.getLastConnectionResult() != ConnectionManager.connResultSuccess);
+					postDisconnectedNotification(lastNotificationConnected);
 				}
 			}
 		}
