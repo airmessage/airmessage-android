@@ -287,6 +287,9 @@ public class ServerSetup extends AppCompatActivity {
 				}
 			}
 		});
+		
+		//Stopping the connection service
+		stopService(new Intent(this, ConnectionService.class));
 	}
 	
 	@Override
@@ -299,9 +302,8 @@ public class ServerSetup extends AppCompatActivity {
 			ConnectionManager.hostnameFallback = viewModel.originalHostnameFallback;
 			ConnectionManager.password = viewModel.originalPassword;
 			
-			//Starting the connection
-			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-			if(connectionManager != null) connectionManager.reconnect(this);
+			//Reconnecting
+			startService(new Intent(this, ConnectionService.class).setAction(ConnectionService.selfIntentActionConnect));
 		}
 	}
 	
@@ -403,6 +405,9 @@ public class ServerSetup extends AppCompatActivity {
 				//Setting the "NEXT" button
 				nextButtonLabel.setText(R.string.action_next);
 				if(isRequired) findViewById(R.id.backbutton).setVisibility(View.GONE);
+				
+				//Stopping the connection service
+				stopService(new Intent(this, ConnectionService.class));
 				
 				break;
 			case 1:
