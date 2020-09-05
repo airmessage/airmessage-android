@@ -841,7 +841,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		//findViewById(R.id.loading_text).setVisibility(viewModel.messagesState == viewModel.messagesStateLoading ? View.VISIBLE : View.GONE);
 		
 		//Enabling the toolbar's up navigation
-		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		if(!isInBubble()) {
+			getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		}
 		
 		//Setting the input bar elevation animation
 		messageList.setOnScrollChangeListener(new View.OnScrollChangeListener() {
@@ -1054,10 +1056,13 @@ public class Messaging extends AppCompatCompositeActivity {
 		foregroundConversations.add(new WeakReference<>(this));
 		
 		//Clearing the notifications
-		NotificationManager notificationManager = ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE));
-		int notificationID = (int) viewModel.conversationID;
-		NotificationUtils.cancelMessageNotification(notificationManager, notificationID);
-		notificationManager.cancel(NotificationUtils.notificationTagMessageError, notificationID);
+		//If we're running in a bubble, clearing the notification closes the window immediately, so we won't do that
+		if(!isInBubble()) {
+			NotificationManager notificationManager = ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE));
+			int notificationID = (int) viewModel.conversationID;
+			NotificationUtils.cancelMessageNotification(notificationManager, notificationID);
+			notificationManager.cancel(NotificationUtils.notificationTagMessageError, notificationID);
+		}
 		
 		//Updating the server warning bar state
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
@@ -1290,6 +1295,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Reconnecting the media player to its attachment
 		//getAudioMessageManager().reconnectAttachment(conversationInfo); */
+	}
+	
+	private boolean isInBubble() {
+		return getIntent().getBooleanExtra(Constants.intentParamBubble, false);
 	}
 	
 	@Override

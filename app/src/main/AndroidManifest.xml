@@ -62,7 +62,9 @@
 			android:name=".activity.Messaging"
 			android:parentActivityName=".activity.Conversations"
 			android:theme="@style/DayNight.NoActionBar"
-			android:windowSoftInputMode="adjustResize">
+			android:windowSoftInputMode="adjustResize"
+			android:allowEmbedded="true"
+			android:resizeableActivity="true">
 			<!-- Direct MMS / SMS message handling -->
 			<intent-filter>
 				<category android:name="android.intent.category.DEFAULT" />

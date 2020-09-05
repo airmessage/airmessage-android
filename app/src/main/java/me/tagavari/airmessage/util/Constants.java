@@ -132,6 +132,7 @@ public class Constants {
 	public static final String intentParamName = "name";
 	public static final String intentParamAddress = "address";
 	public static final String intentParamInstallationID = "installationID";
+	public static final String intentParamBubble = "bubble";
 	
 	public static final String notificationReplyKey = "REMOTE_INPUT_REPLY";
 	

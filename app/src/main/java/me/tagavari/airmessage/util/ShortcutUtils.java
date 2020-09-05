@@ -11,10 +11,8 @@ import android.os.Build;
 import androidx.annotation.RequiresApi;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
@@ -92,7 +90,7 @@ public class ShortcutUtils {
 				
 				//Building the shortcut icon
 				indexConversation.generateShortcutIcon(context, (iconResult, iconWasTasked) -> {
-					iconArray[indexBuild] = iconResult;
+					iconArray[indexBuild] = Icon.createWithBitmap(iconResult);
 					
 					//Building the people list
 					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -139,7 +137,10 @@ public class ShortcutUtils {
 			ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
 				//Push all dynamic shortcuts for conversation notifications (loop backwards to keep recent conversations at the top)
-				for(ListIterator<ShortcutInfo> iterator = shortcutList.listIterator(); iterator.hasPrevious();) shortcutManager.pushDynamicShortcut(iterator.previous());
+				for(ListIterator<ShortcutInfo> iterator = shortcutList.listIterator(shortcutList.size()); iterator.hasPrevious();) {
+					ShortcutInfo info = iterator.previous();
+					shortcutManager.pushDynamicShortcut(info);
+				}
 			} else {
 				//Only set the top 3 conversations
 				shortcutManager.setDynamicShortcuts(shortcutList);

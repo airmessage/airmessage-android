@@ -263,7 +263,7 @@ public class ConversationInfo implements Serializable {
 		updateViewUser(context, viewHolder);
 	}
 	
-	public void generateShortcutIcon(Context context, Constants.TaskedResultCallback<Icon> callback) {
+	public void generateShortcutIcon(Context context, Constants.TaskedResultCallback<Bitmap> callback) {
 		//Returning if the conversation has no members
 		if(conversationMembers.isEmpty()) {
 			callback.onResult(null, false);
@@ -323,7 +323,7 @@ public class ConversationInfo implements Serializable {
 					//Checking if all images have been processed
 					if(completionCount.value == displayMemberCount) {
 						//Rendering the image and returning the result
-						callback.onResult(Icon.createWithBitmap(Constants.loadBitmapFromView(iconGroup)), wasTasked);
+						callback.onResult(Constants.loadBitmapFromView(iconGroup), wasTasked);
 					}
 				}
 			});
