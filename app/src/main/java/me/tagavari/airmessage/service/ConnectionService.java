@@ -12,11 +12,11 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
 
 import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.lang.ref.WeakReference;
@@ -27,7 +27,6 @@ import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Conversations;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.util.NotificationUtils;
 
 public class ConnectionService extends Service {
 	//Creating the constants
@@ -54,6 +53,11 @@ public class ConnectionService extends Service {
 	private PendingIntent pingPendingIntent;
 	private PendingIntent reconnectPendingIntent;
 	
+	//Drop reconnect values
+	private int dropReconnectIndex = 0;
+	private boolean dropReconnectRunning = false;
+	private Handler handler;
+	
 	//private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
 	//private Thread fileUploadRequestThread = null;
 	
@@ -69,6 +73,18 @@ public class ConnectionService extends Service {
 			
 			//Rescheduling the ping
 			schedulePing();
+		}
+	};
+	private final Runnable connectRunnable = new Runnable() {
+		@Override
+		public void run() {
+			dropReconnectRunning = false;
+			
+			//Returning if the service isn't running
+			if(getInstance() == null) return;
+			
+			//Connecting to the server
+			connectionManager.connect(MainApplication.getInstance(), ConnectionManager.getNextLaunchID());
 		}
 	};
 	private final BroadcastReceiver reconnectionBroadcastReceiver = new BroadcastReceiver() {
@@ -94,10 +110,16 @@ public class ConnectionService extends Service {
 			//if(activeNetwork == null) return;
 			
 			if(activeNetwork.isConnected()) {
-				//Reconnecting if it is a network swap or the client is disconnected
-				if((lastDisconnectionTime != -1 && lastDisconnectionTime >= SystemClock.elapsedRealtime() - 100L) || connectionManager.getCurrentState() == ConnectionManager.stateDisconnected) connectionManager.reconnect(context);
+				//Reconnecting
+				connectionManager.reconnect(context);
+				
+				//Also reset drop reconnect
+				dropReconnectIndex = 0;
 			} else {
-				//Marking the time (there is nothing we can do here - the network is disconnected)
+				//Disconnecting
+				connectionManager.disconnect();
+				
+				//Marking the time
 				lastDisconnectionTime = SystemClock.elapsedRealtime();
 			}
 		}
@@ -108,14 +130,19 @@ public class ConnectionService extends Service {
 			int state = intent.getIntExtra(Constants.intentParamState, -1);
 			if(state == -1) return;
 			
-			if(state == ConnectionManager.stateConnected) postConnectedNotification(true, connectionManager.isConnectedFallback());
+			if(state == ConnectionManager.stateConnected) {
+				postConnectedNotification(true, connectionManager.isConnectedFallback());
+				
+				//Also reset drop reconnect
+				dropReconnectIndex = 0;
+			}
 			else if(state == ConnectionManager.stateConnecting) postConnectedNotification(false, false);
-			else if(state == ConnectionManager.stateDisconnected) postDisconnectedNotification(connectionManager.getLastConnectionResult() != ConnectionManager.intentResultCodeSuccess);
+			else if(state == ConnectionManager.stateDisconnected) postDisconnectedNotification(!lastNotificationConnected);
 		}
 	};
 	
 	//Creating the other values
-	private static boolean lastNotificationDisconnected = false;
+	private static boolean lastNotificationConnected = false;
 	
 	private final ConnectionManager connectionManager = new ConnectionManager(new ConnectionManager.ServiceCallbacks() {
 		@Override
@@ -188,6 +215,17 @@ public class ConnectionService extends Service {
 	 * Schedules a pending intent to passively attempt to reconnect to the server
 	 */
 	void scheduleReconnection() {
+		//Scheduling immediate handler reconnection
+		if(dropReconnectIndex < dropReconnectDelayMillis.length && !dropReconnectRunning) {
+			dropReconnectRunning = true;
+			handler.postDelayed(connectRunnable, dropReconnectDelayMillis[dropReconnectIndex++]);
+		}
+		
+		//Scheduling passive reconnection
+		reschedulePassiveReconnection();
+	}
+	
+	private void reschedulePassiveReconnection() {
 		((AlarmManager) getSystemService(Context.ALARM_SERVICE)).setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP,
 				SystemClock.elapsedRealtime() + passiveReconnectFrequencyMillis - passiveReconnectWindowMillis,
 				passiveReconnectWindowMillis * 2,
@@ -198,6 +236,11 @@ public class ConnectionService extends Service {
 	 * Cancels the pending intent to passively reconnect to the server
 	 */
 	void cancelScheduleReconnection() {
+		//Cancelling handler reconnection
+		handler.removeCallbacks(connectRunnable);
+		dropReconnectRunning = false;
+		
+		//Cancelling passive reconnection
 		((AlarmManager) getSystemService(Context.ALARM_SERVICE)).cancel(reconnectPendingIntent);
 	}
 	
@@ -224,6 +267,8 @@ public class ConnectionService extends Service {
 		//Setting the reference values
 		pingPendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(BCPingTimer), PendingIntent.FLAG_UPDATE_CURRENT);
 		reconnectPendingIntent = PendingIntent.getBroadcast(this, 1, new Intent(BCReconnectTimer), PendingIntent.FLAG_UPDATE_CURRENT);
+		
+		handler = new Handler();
 		
 		//Starting the service as a foreground service (if enabled in the preferences)
 		if(foregroundServiceRequested()) startForeground(notificationID, getBackgroundNotification(false, false));
@@ -260,7 +305,9 @@ public class ConnectionService extends Service {
 			postDisconnectedNotification(true);
 		}
 		//Reconnecting the client if requested
-		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) connectionManager.connect(this, intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : connectionManager.getNextLaunchID());
+		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) {
+			connectionManager.connect(this, intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : ConnectionManager.getNextLaunchID());
+		}
 		
 		//Setting the service as not shutting down
 		connectionManager.setFlagShutdownRequested(false);
@@ -280,6 +327,9 @@ public class ConnectionService extends Service {
 		//Disconnecting
 		connectionManager.disconnect();
 		
+		//Disabling the reconnect timer
+		cancelScheduleReconnection();
+		
 		//Unregistering the broadcast receivers
 		unregisterReceiver(networkStateChangeBroadcastReceiver);
 		unregisterReceiver(pingBroadcastReceiver);
@@ -288,6 +338,9 @@ public class ConnectionService extends Service {
 		
 		//Removing the notification
 		clearNotification();
+		
+		//Clearing the instance
+		serviceReference = null;
 	}
 	
 	/* void setForegroundState(boolean foregroundState) {
@@ -332,11 +385,11 @@ public class ConnectionService extends Service {
 			notificationManager.notify(notificationID, getBackgroundNotification(isConnected, isFallback));
 		}
 		
-		lastNotificationDisconnected = false;
+		lastNotificationConnected = isConnected;
 	}
 	
 	private void postDisconnectedNotification(boolean silent) {
-		if((!foregroundServiceRequested() && !disconnectedNotificationRequested()) || lastNotificationDisconnected) return;
+		if((!foregroundServiceRequested() && !disconnectedNotificationRequested())) return;
 		
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		if(!isStatusNotificationEnabled(notificationManager)) {
@@ -347,12 +400,13 @@ public class ConnectionService extends Service {
 			String channelID = isStatusImportantNotificationEnabled(notificationManager) ? MainApplication.notificationChannelStatusImportant : MainApplication.notificationChannelStatus; //Reverting to the regular status channel if the important channel is disabled
 			notificationManager.notify(notificationID, getOfflineNotification(silent, channelID));
 		}
-		lastNotificationDisconnected = true;
+		lastNotificationConnected = false;
 	}
 	
 	private void clearNotification() {
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		notificationManager.cancel(notificationID);
+		notificationManager.cancel(notificationAlertID);
 	}
 	
 	private boolean isStatusNotificationEnabled(NotificationManager notificationManager) {

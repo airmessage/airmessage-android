@@ -14,7 +14,7 @@ public class MMSSMSHelper {
 	 * @return The maximum file size in bytes
 	 */
 	public static int getMaxMessageSize(Context context) {
-		return 300 * 1024;
+		return 300 * 1024; //300 kB
 		//return context.getSystemService(CarrierConfigManager.class).getConfig().getInt(CarrierConfigManager.KEY_MMS_MAX_MESSAGE_SIZE_INT);
 	}
 	

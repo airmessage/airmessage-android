@@ -3,11 +3,12 @@ package me.tagavari.airmessage.activity;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.transition.ChangeBounds;
 import android.transition.Transition;
 import android.view.Menu;
@@ -28,7 +29,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.bumptech.glide.load.resource.gif.GifDrawable;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.github.chrisbanes.photoview.PhotoView;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Player;
@@ -60,8 +65,6 @@ public class MediaViewer extends AppCompatActivity {
 	
 	private static final String INSTANCEPARAM_RESTORE = "restore";
 	
-	private static final int permissionRequestExportFile = 0;
-	
 	private static final int activityResultCreateFileSAF = 0;
 	
 	private ViewPager2 viewPager;
@@ -88,6 +91,8 @@ public class MediaViewer extends AppCompatActivity {
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
+		
+		postponeEnterTransition();
 		
 		//Configuring the shared element transition
 		getWindow().requestFeature(Window.FEATURE_CONTENT_TRANSITIONS);
@@ -142,7 +147,9 @@ public class MediaViewer extends AppCompatActivity {
 					}
 					
 					@Override
-					public void onTransitionEnd(Transition transition) {}
+					public void onTransitionEnd(Transition transition) {
+					
+					}
 					
 					@Override
 					public void onTransitionCancel(Transition transition) {}
@@ -484,11 +491,29 @@ public class MediaViewer extends AppCompatActivity {
 			}
 			
 			void loadImage(File file) {
-				//Loading the image file with Glide
-				Glide.with(MediaViewer.this)
-						.load(file)
-						.transition(DrawableTransitionOptions.withCrossFade())
-						.into(imageView);
+				new Handler().post(() -> {
+					//Loading the image file with Glide
+					Glide.with(MediaViewer.this)
+							.load(file)
+							.transition(DrawableTransitionOptions.withCrossFade())
+							.listener(new RequestListener<Drawable>() {
+								@Override
+								public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+									startPostponedEnterTransition();
+									return false;
+								}
+								
+								@Override
+								public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, com.bumptech.glide.load.DataSource dataSource, boolean isFirstResource) {
+									if(resource instanceof GifDrawable) {
+										new Handler().post(() -> resource.setVisible(true, true));
+									}
+									startPostponedEnterTransition();
+									return false;
+								}
+							})
+							.into(imageView);
+				});
 			}
 		}
 		
@@ -545,6 +570,8 @@ public class MediaViewer extends AppCompatActivity {
 				MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.fromFile(file));
 				player.prepare(videoSource);
 				player.setPlayWhenReady(autoPlay);
+				
+				startPostponedEnterTransition();
 			}
 		}
 	}

@@ -224,10 +224,10 @@ public class Messaging extends AppCompatCompositeActivity {
 	//Creating the reference values
 	
 	//List of pure urls (matches "https://google.com gmail.com youtube.com")
-	private static final Pattern urlGroupPattern = Pattern.compile("^((?:https?:\\/\\/)?(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&//=]*)\\s*){2,}$");
+	private static final Pattern urlGroupPattern = Pattern.compile("^((?:https?:\\/\\/)?(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?!&/=]*)\\s*){2,}$");
 	
 	//Any well-formed URL with protocol (matches "text https://google.com text")
-	private static final Pattern urlPattern = Pattern.compile("^((?:.|\\n)*)(https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&//=]*))((?:.|\\n)*)$");
+	private static final Pattern urlPattern = Pattern.compile("^((?:.|\\n)*)(https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?!&/=]*))((?:.|\\n)*)$");
 	
 	public static final int messageChunkSize = 20;
 	public static final int progressiveLoadThreshold = 10;
@@ -3103,6 +3103,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Creating the intent
 		Intent cameraCaptureIntent = new Intent(video ? MediaStore.ACTION_VIDEO_CAPTURE : MediaStore.ACTION_IMAGE_CAPTURE);
 		
+		//Asking for low-quality video if the user is using MMS
+		if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging && ConversationInfo.serviceTypeSystemMMSSMS.equals(viewModel.conversationInfo.getService())) {
+			cameraCaptureIntent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 0);
+		}
+		
 		//Checking if there are no apps that can take the intent
 		if(cameraCaptureIntent.resolveActivity(getPackageManager()) == null) {
 			//Telling the user via a toast
@@ -4973,7 +4978,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						//Reading the profile picture
 						Photo photo = vcard.getPhotos().get(0);
 						byte[] photoData = photo.getData();
-						bitmap = BitmapFactory.decodeByteArray(photoData, 0, photoData.length);
+						if(photoData != null) bitmap = BitmapFactory.decodeByteArray(photoData, 0, photoData.length);
 					}
 					
 					//Setting the information

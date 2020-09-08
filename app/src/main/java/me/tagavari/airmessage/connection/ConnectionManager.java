@@ -92,7 +92,7 @@ public class ConnectionManager {
 	private final ServiceCallbacks serviceCallbacks;
 	
 	//Creating the communications values
-	final List<Class> communicationsClassPriorityList = Collections.singletonList(ClientCommCaladium.class);
+	final List<Class<?>> communicationsClassPriorityList = Collections.singletonList(ClientCommCaladium.class);
 	final List<CommunicationsManagerSource> communicationsInstancePriorityList = Collections.singletonList(ClientCommCaladium::new);
 	
 	//Creating the file processing values
@@ -119,6 +119,7 @@ public class ConnectionManager {
 	
 	private CommunicationsManager currentCommunicationsManager = null;
 	private static byte currentLaunchID = 0;
+	private static byte nextLaunchID = 0;
 	private int lastConnectionResult = -1;
 	
 	private boolean flagMarkEndTime = false; //Marks the time that the connection is closed, so that missed messages can be fetched since that time when reconnecting
@@ -172,10 +173,13 @@ public class ConnectionManager {
 	}
 	
 	public boolean connect(Context context, byte launchID) {
-		//Closing the current connection if it exists
-		//if(getCurrentState() != stateDisconnected) disconnect();
+		//Returning if a connection is already running
+		if(getCurrentState() != stateDisconnected) return false;
 		
-		//Returning if there is no connection
+		//Updating the launch ID
+		currentLaunchID = launchID;
+		
+		//Returning if there is no internet connection
 		{
 			NetworkInfo activeNetwork = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
 			boolean isConnected = activeNetwork != null && activeNetwork.isConnected();
@@ -319,8 +323,8 @@ public class ConnectionManager {
 		return currentLaunchID;
 	}
 	
-	public void setCurrentLaunchID(byte currentLaunchID) {
-		this.currentLaunchID = currentLaunchID;
+	public static byte getNextLaunchID() {
+		return ++nextLaunchID;
 	}
 	
 	public int getLastConnectionResult() {
@@ -329,10 +333,6 @@ public class ConnectionManager {
 	
 	public void setLastConnectionResult(int lastConnectionResult) {
 		this.lastConnectionResult = lastConnectionResult;
-	}
-	
-	public static byte getNextLaunchID() {
-		return ++currentLaunchID;
 	}
 	
 	public int compareLaunchID(byte launchID) {

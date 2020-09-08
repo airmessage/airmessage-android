@@ -449,7 +449,7 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 					ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 					DataTransformUtils.copyStream(in, out);
 					imageBytes = out.toByteArray();
-					if(imageBytes.length > previewImageMaxSize) imageBytes = DataTransformUtils.compressFile(imageBytes, "image/webp", previewImageMaxSize);
+					if(imageBytes.length > previewImageMaxSize) imageBytes = DataTransformUtils.compressBitmap(imageBytes, "image/webp", previewImageMaxSize);
 				} catch(IOException exception) {
 					exception.printStackTrace();
 					//Not returning, as the preview should simply be displayed without an image if the image failed to download
