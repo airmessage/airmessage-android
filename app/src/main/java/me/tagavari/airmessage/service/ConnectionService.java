@@ -135,14 +135,18 @@ public class ConnectionService extends Service {
 				
 				//Also reset drop reconnect
 				dropReconnectIndex = 0;
+				disconnectedSoundSinceReconnect = false;
 			}
 			else if(state == ConnectionManager.stateConnecting) postConnectedNotification(false, false);
-			else if(state == ConnectionManager.stateDisconnected) postDisconnectedNotification(!lastNotificationConnected);
+			else if(state == ConnectionManager.stateDisconnected) {
+				//Only play a sound if we haven't played one since reconnecting, and we've failed drop reconnect
+				postDisconnectedNotification(disconnectedSoundSinceReconnect || dropReconnectIndex < dropReconnectDelayMillis.length);
+			}
 		}
 	};
 	
 	//Creating the other values
-	private static boolean lastNotificationConnected = false;
+	private static boolean disconnectedSoundSinceReconnect = false;
 	
 	private final ConnectionManager connectionManager = new ConnectionManager(new ConnectionManager.ServiceCallbacks() {
 		@Override
@@ -384,8 +388,6 @@ public class ConnectionService extends Service {
 			//Updating the status ID
 			notificationManager.notify(notificationID, getBackgroundNotification(isConnected, isFallback));
 		}
-		
-		lastNotificationConnected = isConnected;
 	}
 	
 	private void postDisconnectedNotification(boolean silent) {
@@ -397,10 +399,11 @@ public class ConnectionService extends Service {
 			notificationManager.notify(notificationAlertID, getOfflineNotification(silent, MainApplication.notificationChannelStatusImportant));
 		} else {
 			//Updating the status notification
-			String channelID = isStatusImportantNotificationEnabled(notificationManager) ? MainApplication.notificationChannelStatusImportant : MainApplication.notificationChannelStatus; //Reverting to the regular status channel if the important channel is disabled
+			String channelID = isStatusImportantNotificationEnabled(notificationManager) && !silent ? MainApplication.notificationChannelStatusImportant : MainApplication.notificationChannelStatus; //Reverting to the regular status channel if the important channel is disabled
 			notificationManager.notify(notificationID, getOfflineNotification(silent, channelID));
 		}
-		lastNotificationConnected = false;
+		
+		if(!silent) disconnectedSoundSinceReconnect = true;
 	}
 	
 	private void clearNotification() {
