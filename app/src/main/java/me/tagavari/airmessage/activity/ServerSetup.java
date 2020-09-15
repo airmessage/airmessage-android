@@ -142,6 +142,9 @@ public class ServerSetup extends AppCompatActivity {
 						//Hiding the snackbar
 						if(connectionSnackbar != null && connectionSnackbar.isShownOrQueued()) connectionSnackbar.dismiss();
 					}
+					
+					//Stopping the connection service
+					stopService(new Intent(ServerSetup.this, ConnectionService.class));
 				}
 			}
 			//Otherwise checking if the response has already been verified

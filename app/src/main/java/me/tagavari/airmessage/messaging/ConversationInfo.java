@@ -7,6 +7,7 @@ import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.Icon;
 import android.os.AsyncTask;
+import android.text.TextUtils;
 import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.util.SparseIntArray;
@@ -1515,7 +1516,7 @@ public class ConversationInfo implements Serializable {
 				@Override
 				public void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
 					//Returning the user's name
-					resultCallback.onResult(userInfo != null ? userInfo.getContactName() : Constants.formatAddress(members[0]), wasTasked);
+					resultCallback.onResult(userInfo != null && !TextUtils.isEmpty(userInfo.getContactName()) ? userInfo.getContactName() : Constants.formatAddress(members[0]), wasTasked);
 				}
 			});
 			
@@ -1536,7 +1537,7 @@ public class ConversationInfo implements Serializable {
 				@Override
 				public void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
 					//Adding the name
-					namedConversationMembers.add(userInfo != null ? userInfo.getContactName() : Constants.formatAddress(member));
+					namedConversationMembers.add(userInfo != null && !TextUtils.isEmpty(userInfo.getContactName()) ? userInfo.getContactName() : Constants.formatAddress(member));
 					
 					//Returning if the names have not all been added
 					if(members.length != namedConversationMembers.size()) return;
