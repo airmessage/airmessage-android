@@ -497,4 +497,6 @@
 	<string name="action_switchtoaccount">Utiliser un compte</string>
 	<string name="message_reset_direct">Utiliser un compte pour accéder à AirMessage?</string>
 	<string name="message_reset_connect">Vous déconnecter d\'AirMessage?</string>
+	<string name="preference_about_licenses_title">Licenses open source</string>
+	<string name="preferencegroup_about_title">Informations sur l\'application</string>
 </resources>

@@ -488,4 +488,6 @@
 	<string name="preference_account_accountdetails_title">接続されたアカウント</string>
 	<string name="preferencegroup_account_title">アカウント</string>
 	<string name="preference_server_reset_title">アカウントに交換</string>
+	<string name="preferencegroup_about_title">アプリ情報</string>
+	<string name="preference_about_licenses_title">オープンソースライセンス</string>
 </resources>
