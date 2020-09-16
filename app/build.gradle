@@ -4,6 +4,7 @@ def keystoreProperties = new Properties()
 keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
 apply plugin: "com.android.application"
+apply plugin: "com.google.android.gms.oss-licenses-plugin"
 
 android {
 	signingConfigs {
@@ -91,6 +92,9 @@ dependencies {
 
 	//Android architecture components
 	implementation "androidx.lifecycle:lifecycle-extensions:2.2.0"
+
+	//GMS open source licenses
+	implementation "com.google.android.gms:play-services-oss-licenses:17.0.0"
 
 	//Backports
 	implementation "org.lukhnos:nnio:0.2"

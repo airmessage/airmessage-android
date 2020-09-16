@@ -335,5 +335,13 @@
 		<meta-data
 			android:name="com.google.android.gms.car.application"
 			android:resource="@xml/automotive_app_desc" />
+
+		<!-- GMS open source notices activities -->
+		<activity
+			android:name="com.google.android.gms.oss.licenses.OssLicensesMenuActivity"
+			android:theme="@style/DayNight" />
+		<activity
+			android:name="com.google.android.gms.oss.licenses.OssLicensesActivity"
+			android:theme="@style/DayNight" />
 	</application>
 </manifest>

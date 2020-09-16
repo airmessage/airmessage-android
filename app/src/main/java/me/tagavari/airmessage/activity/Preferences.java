@@ -48,6 +48,7 @@ import androidx.preference.PreferenceScreen;
 import androidx.preference.SwitchPreference;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.gms.oss.licenses.OssLicensesMenuActivity;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.snackbar.Snackbar;
@@ -415,6 +416,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			int accountType = MainApplication.getInstance().getConnectivitySharedPrefs().getInt(MainApplication.sharedPreferencesConnectivityKeyAccountType, -1);
 			if(accountType == Constants.connectivityAccountTypeDirect) addPreferencesFromResource(R.xml.preferences_server);
 			else if(accountType == Constants.connectivityAccountTypeConnect) addPreferencesFromResource(R.xml.preferences_account);
+			addPreferencesFromResource(R.xml.preferences_footer);
 			
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 				//Creating the notification channel intent
