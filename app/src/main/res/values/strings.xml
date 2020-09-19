@@ -185,8 +185,9 @@
 	<string name="message_serverstatus_authfail">Password not accepted</string>
 	<string name="message_serverstatus_nogroup">Personal server not available</string>
 	<string name="message_serverstatus_nocapacity">Connected device limit reached</string>
-	<string name="message_serverstatus_accoutvalidation">Connected account can\'t be used</string>
-	<string name="message_serverstatus_nosubscription">Connected account isn\'t subscribed</string>
+	<string name="message_serverstatus_accountvalidation">Connected account can\'t be used</string>
+<!--	<string name="message_serverstatus_nosubscription">Connected account isn\'t subscribed</string>-->
+	<string name="message_serverstatus_noenrollment">Connected account isn\'t enrolled</string>
 	<string name="message_serverstatus_otherlocation">Server computer swapped</string>
 	<string name="message_serverstatus_unknown">An unknown error occurred</string>
 

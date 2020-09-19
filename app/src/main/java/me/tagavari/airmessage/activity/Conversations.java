@@ -702,9 +702,8 @@ public class Conversations extends AppCompatCompositeActivity {
 															   "Device model: " + Build.MODEL + "\r\n" +
 															   "Android version: " + Build.VERSION.RELEASE + "\r\n" +
 															   "Client version: " + BuildConfig.VERSION_NAME + "\r\n" +
-															   "AM current communications version: " + currentCommunicationsVersion + "\r\n" +
-															   "AM target communications version: " + ConnectionManager.mmCommunicationsVersion + "." + ConnectionManager.mmCommunicationsSubVersion + "\r\n" +
-															   "AM proxy type: " + (ConnectionManager.proxyType == ConnectionManager.proxyTypeDirect ? "Direct" : "Connect") + "\r\n" +
+															   "Communications version: " + currentCommunicationsVersion + " (target " + ConnectionManager.mmCommunicationsVersion + "." + ConnectionManager.mmCommunicationsSubVersion + ")" + "\r\n" +
+															   "Proxy type: " + (ConnectionManager.proxyType == ConnectionManager.proxyTypeDirect ? "Direct" : "Connect") + "\r\n" +
 															   "Server system version: " + serverSystemVersion + "\r\n" +
 															   "Server software version: " + serverSoftwareVersion);
 							

@@ -65,11 +65,11 @@ public class StateUtils {
 				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
 				break;
 			case ConnectionManager.connResultConnectAccountValidation:
-				labelRes = R.string.message_serverstatus_accoutvalidation;
+				labelRes = R.string.message_serverstatus_accountvalidation;
 				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
 				break;
 			case ConnectionManager.connResultConnectNoSubscription:
-				labelRes = R.string.message_serverstatus_nosubscription;
+				labelRes = R.string.message_serverstatus_noenrollment;
 				if(!onlyConfig) button = new ErrorDetails.Button(R.string.action_retry, StateUtils::reconnectService);
 				break;
 			case ConnectionManager.connResultConnectOtherLocation:
