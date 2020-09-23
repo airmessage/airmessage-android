@@ -1,5 +1,6 @@
 package me.tagavari.airmessage;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -461,6 +462,7 @@ public class MainApplication extends Application {
 		}
 	}
 	
+	@SuppressLint("ApplySharedPref")
 	private void upgradeSharedPreferences() {
 		//Reading the current schema version
 		SharedPreferences defaultSP = PreferenceManager.getDefaultSharedPreferences(this);
@@ -471,24 +473,33 @@ public class MainApplication extends Application {
 			//Editing the shared preferences
 			SharedPreferences.Editor defaultEditor = defaultSP.edit();
 			
-			//Migrate the fallback address from "preferences" shared preferences to "connectivity" shared preferences
-			String fallbackKey = "pref_key_server_fallbackaddress";
-			if(PreferenceManager.getDefaultSharedPreferences(this).contains(fallbackKey)) {
-				//Getting the fallback
-				String fallback = defaultSP.getString(fallbackKey, null);
+			//Checking if we have anything to migrate
+			if(getConnectivitySharedPrefs().contains(sharedPreferencesConnectivityKeyHostname)) {
+				SharedPreferences.Editor connectionEditor = getConnectivitySharedPrefs().edit();
 				
-				//Removing the fallback from "preferences" shared preferences
-				defaultEditor.remove(fallbackKey);
+				//Migrate the fallback address from "preferences" shared preferences to "connectivity" shared preferences
+				String fallbackKey = "pref_key_server_fallbackaddress";
+				if(PreferenceManager.getDefaultSharedPreferences(this).contains(fallbackKey)) {
+					//Getting the fallback
+					String fallback = defaultSP.getString(fallbackKey, null);
+					
+					//Removing the fallback from "preferences" shared preferences
+					defaultEditor.remove(fallbackKey);
+					
+					//Adding the fallback to "connectivity" shared preferences
+					connectionEditor.putString(sharedPreferencesConnectivityKeyHostnameFallback, fallback);
+				}
 				
-				//Adding the fallback to "connectivity" shared preferences
-				getConnectivitySharedPrefs().edit().putString(sharedPreferencesConnectivityKeyHostnameFallback, fallback).commit();
-			}
-			
-			//Setting a notrigger hostname to prevent the sync prompt from showing up after updating
-			if(getConnectivitySharedPrefs().contains(sharedPreferencesConnectivityKeyLastConnectionHostname)) {
-				getConnectivitySharedPrefs().edit()
-						.putString(sharedPreferencesConnectivityKeyLastSyncInstallationID, "notrigger")
-						.commit();
+				//Setting a notrigger hostname to prevent the sync prompt from showing up after updating
+				if(getConnectivitySharedPrefs().contains(sharedPreferencesConnectivityKeyLastConnectionHostname)) {
+					connectionEditor.putString(sharedPreferencesConnectivityKeyLastSyncInstallationID, "notrigger");
+				}
+				
+				//Updating the connection status
+				connectionEditor.putInt(sharedPreferencesConnectivityKeyAccountType, 0); //Direct
+				connectionEditor.putBoolean(sharedPreferencesConnectivityKeyConnectServerConfirmed, true);
+				
+				connectionEditor.commit();
 			}
 			
 			//Saving the new schema version
