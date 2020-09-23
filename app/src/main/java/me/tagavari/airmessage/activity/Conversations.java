@@ -324,6 +324,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Adding the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
+		localBroadcastManager.registerReceiver(syncNeededBroadcastReceiver, new IntentFilter(ConnectionManager.localBCSyncNeeded));
 		
 		//Starting the service
 		startService(new Intent(Conversations.this, ConnectionService.class));
@@ -345,6 +346,12 @@ public class Conversations extends AppCompatCompositeActivity {
 			hideServerWarning();
 			if(connectionManager.getCurrentState() == ConnectionManager.stateConnected && connectionManager.getActiveCommunicationsVersion() < ConnectionManager.mmCommunicationsVersion) infoBarSystemUpdate.show();
 			else infoBarSystemUpdate.hide();
+		}
+		
+		//Checking if a sync is due
+		if(connectionManager != null && connectionManager.isConnected() && connectionManager.isServerSyncNeeded()) {
+			//Showing the sync screen
+			promptSync(connectionManager.getServerDeviceName(), connectionManager.getServerInstallationID());
 		}
 		
 		//Updating the contacts info bar
@@ -377,20 +384,6 @@ public class Conversations extends AppCompatCompositeActivity {
 	protected void onPause() {
 		super.onPause();
 		
-		//Adding the broadcast listeners
-		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
-		localBroadcastManager.registerReceiver(syncNeededBroadcastReceiver, new IntentFilter(ConnectionManager.localBCSyncNeeded));
-		
-		//Starting the service
-		startService(new Intent(Conversations.this, ConnectionService.class));
-		
-		//Checking if a sync is due
-		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-		if(connectionManager != null && connectionManager.isConnected() && connectionManager.isServerSyncNeeded()) {
-			//Showing the sync screen
-			promptSync(connectionManager.getServerDeviceName(), connectionManager.getServerInstallationID());
-		}
 		//Iterating over the foreground conversations
 		for(Iterator<WeakReference<Conversations>> iterator = foregroundActivities.iterator(); iterator.hasNext();) {
 			//Getting the referenced activity
@@ -410,6 +403,17 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Breaking from the loop
 			break;
 		}
+	}
+	
+	@Override
+	public void onStop() {
+		//Calling the super method
+		super.onStop();
+		
+		//Removing the broadcast listeners
+		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
+		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
+		localBroadcastManager.unregisterReceiver(syncNeededBroadcastReceiver);
 	}
 	
 	@Override
@@ -604,17 +608,6 @@ public class Conversations extends AppCompatCompositeActivity {
 						.show();
 			}
 		}
-	}
-	
-	@Override
-	public void onStop() {
-		//Calling the super method
-		super.onStop();
-		
-		//Removing the broadcast listeners
-		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
-		localBroadcastManager.unregisterReceiver(syncNeededBroadcastReceiver);
 	}
 	
 	@Override

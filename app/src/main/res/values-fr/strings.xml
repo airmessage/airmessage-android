@@ -114,7 +114,7 @@
 	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages</string>
 	<string name="message_setup_sync_download_description">Vous êtes maintenant connecté à <b>%s</b>. Voulez-vous copier vos messages récents de votre ordinateur vers cet appareil?</string>
 	<string name="action_downloadmessages">Télécharger les messages</string>
-	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages de cet appareil</string>
+	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages de cet appareil.</string>
 	<string name="action_deletemessages">Supprimer les messages</string>
 	<string name="message_setup_sync_warning_title">Passer la suppression des messages?</string>
 	<string name="message_setup_sync_description">Utilisez cet option uniquement si vous vous connectez au même ordinateur et au même compte Apple que celui utilisé auparavant.\n\nSi vous conservez vos anciennes conversations, elles risquent de mélanger avec vos nouvelles conversations ou de perdre des fonctionnalités.</string>

@@ -132,13 +132,13 @@
 	<string name="message_confirm_deleteattachments">すべてのダウンロードした添付を削除しますか？</string>
 	<string name="message_confirm_deleteattachments_started">すべてのダウンロードした添付を削除しました</string>
 	<string name="message_setup_sync_download_description">これで <b>%s</b> に接続されました。最近のメッセージをパソコンからこのデバイスにコピーしますか？</string>
-	<string name="message_setup_sync_delete_description">あるいは、再発足してこのデバイスから古いメッセージを消去します</string>
+	<string name="message_setup_sync_delete_description">あるいは、再発足してこのデバイスから古いメッセージを消去します。</string>
 	<string name="message_setup_sync_warning_title">メッセージの削除をスキップしますか？</string>
 	<string name="message_confirm_resyncmessages">最近のメッセージを同時しますか？</string>
 	<string name="message_confirm_resyncmessages_description">このデバイスに保存されているすべてのメッセージが取り替えられます</string>
 	<string name="message_confirm_resyncmessages_started">最近のメッセージをダウンロードしています</string>
 	<string name="message_confirm_resyncmessages_inprogress">最近のメッセージをもうダウンロードしています</string>
-	<string name="message_confirm_resyncmessages_advanced">詳細同期</string>
+	<string name="message_confirm_resyncmessages_advanced">高度同期</string>
 	<string name="message_confirm_deleteconversation_current">この会話を削除しますか？</string>
 	<string name="message_confirm_unblock">%sのブロックを解除しますか？</string>
 	<string name="message_shareable_text">%1$sの%2$s、%3$s：%4$s</string>
