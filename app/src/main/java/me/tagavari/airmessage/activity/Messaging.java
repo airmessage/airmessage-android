@@ -6028,9 +6028,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							cursor = getApplication().getContentResolver().query(queryUri, queryProjection, msQuerySelection, null, MediaStore.Files.FileColumns.DATE_ADDED + " DESC" + ' ' + "LIMIT " + attachmentsTileCount);
 						}
 						
-						System.out.println("Cursor: " + cursor);
 						if(cursor == null) return null;
-						System.out.println("Cursor results: " + cursor.getCount());
 						
 						try {
 							//int indexData = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA);
