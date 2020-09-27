@@ -1045,6 +1045,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Adding the broadcast listeners
 		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
 		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
+		
+		//Starting the service
+		startService(new Intent(this, ConnectionService.class));
 	}
 	
 	@Override
