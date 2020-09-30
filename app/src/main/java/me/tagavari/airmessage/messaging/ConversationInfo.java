@@ -8,7 +8,6 @@ import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.Icon;
 import android.os.AsyncTask;
-import android.text.TextUtils;
 import android.os.Build;
 import android.text.TextUtils;
 import android.text.format.DateFormat;
@@ -23,7 +22,6 @@ import android.widget.TextView;
 
 import androidx.annotation.RequiresApi;
 import androidx.collection.LongSparseArray;
-import androidx.core.graphics.drawable.IconCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -40,18 +38,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Random;
-import java.util.stream.Collectors;
 
-import me.tagavari.airmessage.activity.ConversationsBase;
-import me.tagavari.airmessage.activity.Preferences;
-import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.activity.ConversationsBase;
 import me.tagavari.airmessage.activity.Messaging;
+import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.data.BitmapCacheHelper;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
 import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.ShortcutUtils;
 
 public class ConversationInfo implements Serializable {

@@ -1087,10 +1087,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			
 			//Opening the onboarding activity
 			startActivity(new Intent(getActivity(), Onboarding.class)
-				.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP));
-			
-			//Finishing the activity
-			getActivity().finish();
+				.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION));
 		}
 		
 		/* @Override

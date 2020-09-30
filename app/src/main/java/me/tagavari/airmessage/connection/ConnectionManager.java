@@ -149,7 +149,6 @@ public class ConnectionManager {
 	private int currentState = stateDisconnected;
 	private CommunicationsManager<?, ?> currentCommunicationsManager = null;
 	private static byte currentLaunchID = 0;
-	private static byte nextLaunchID = 0;
 	private int lastConnectionResult = -1;
 	private boolean connectionEstablished = false;
 	

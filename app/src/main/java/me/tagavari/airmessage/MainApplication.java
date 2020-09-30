@@ -195,7 +195,7 @@ public class MainApplication extends Application {
 				notificationManager.createNotificationChannel(channel);
 			}
 			{
-				NotificationChannel channel = new NotificationChannel(notificationChannelStatusImportant, getResources().getString(R.string.notificationchannel_statusimportant), NotificationManager.IMPORTANCE_LOW);
+				NotificationChannel channel = new NotificationChannel(notificationChannelStatusImportant, getResources().getString(R.string.notificationchannel_statusimportant), NotificationManager.IMPORTANCE_DEFAULT);
 				channel.setDescription(getString(R.string.notificationchannel_statusimportant_desc));
 				channel.enableVibration(true);
 				channel.setShowBadge(false);

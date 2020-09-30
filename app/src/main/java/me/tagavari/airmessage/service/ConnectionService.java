@@ -60,8 +60,6 @@ public class ConnectionService extends Service {
 	private boolean configurationMode = false;
 	private boolean temporaryMode = false;
 	private Timer temporaryModeTimer = null;
-	private int dropReconnectIndex = 0;
-	private boolean dropReconnectRunning = false;
 	
 	//Creating the intent values
 	private PendingIntent pingPendingIntent;
@@ -86,9 +84,6 @@ public class ConnectionService extends Service {
 		@Override
 		public void run() {
 			dropReconnectRunning = false;
-			
-			//Returning if the service isn't running
-			if(getInstance() == null) return;
 			
 			//Returning if the service isn't running or we're in configuration mode
 			if(getInstance() == null || configurationMode) return;
@@ -174,8 +169,8 @@ public class ConnectionService extends Service {
 					//Shutting down the connection service
 					shutDownService();
 				} else {
-					//Updating the notification
-					postDisconnectedNotification(lastNotificationConnected);
+					//Only play a sound if we haven't played one since reconnecting, and we've failed drop reconnect
+					postDisconnectedNotification(disconnectedSoundSinceReconnect || dropReconnectIndex < dropReconnectDelayMillis.length);
 				}
 			}
 		}
@@ -378,9 +373,6 @@ public class ConnectionService extends Service {
 	
 	@Override
 	public void onDestroy() {
-		//Removing the instance
-		serviceReference = null;
-		
 		//Disconnecting
 		connectionManager.disconnect();
 		
