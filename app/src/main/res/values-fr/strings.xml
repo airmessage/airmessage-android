@@ -449,7 +449,6 @@
 	<string name="progress_cleantextmessages">Nettoyage des messages texte locaux&#8230;</string>
 	<string name="progress_connectionverification">Vérification de votre connexion&#8230;</string>
 	<string name="action_tapbackdetails">Afficher les détails Tapback</string>
-	<string name="message_appvaliditywarning">Cette installation de AirMessage ne peut pas être vérifiée. Vos données de messagerie peuvent être en danger. Veuillez installer AirMessage à partir du Play Store.</string>
 	<string name="preference_features_messagesounds_title">Sons de messagerie in-app</string>
 
 	<string name="label_email_home">Domicile</string>

@@ -91,7 +91,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	//Creating the view model and info bar values
 	private ActivityViewModel viewModel;
-	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarSystemUpdate, infoBarValidityWarning;
+	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarSystemUpdate;
 	
 	//Creating the menu values
 	private MenuItem menuItemSearch = null;
@@ -302,10 +302,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
 		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, permissionRequestContacts));
 		infoBarSystemUpdate = pluginMessageBar.create(R.drawable.update, getResources().getString(R.string.message_serverupdate));
-		infoBarValidityWarning = pluginMessageBar.create(R.drawable.warning, getResources().getString(R.string.message_appvaliditywarning));
-		viewModel.installValidity.observe(this, isValid -> {
-			if(!isValid) infoBarValidityWarning.show();
-		});
 		
 		//Restoring the state
 		restoreListingArchivedState();
@@ -1252,7 +1248,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		final List<Long> actionModeSelections = new ArrayList<>();
 		boolean listingArchived = false;
 		boolean isSearching = false;
-		final MutableLiveData<Boolean> installValidity = new MutableLiveData<>();
 		
 		public ActivityViewModel() {
 			final WeakReference<List<Long>> actionModeSelectionsReference = new WeakReference<>(actionModeSelections);
@@ -1260,77 +1255,6 @@ public class Conversations extends AppCompatCompositeActivity {
 				List<Long> selections = actionModeSelectionsReference.get();
 				return selections != null && selections.contains(id);
 			});
-			runInstallValidityCheck();
-		}
-		
-		private void runInstallValidityCheck() {
-			Context context = MainApplication.getInstance();
-			//Validating the app immediately if it was installed from the Google Play Store
-			if("com.android.vending".equals(context.getPackageManager().getInstallerPackageName(context.getPackageName()))) {
-				installValidity.setValue(true);
-				return;
-			}
-			
-			//Validating the app if all of its signing certificates match
-			String[] fingerprints = getFingerprints(context, "SHA1");
-			if(fingerprints.length == 0) {
-				installValidity.setValue(false);
-				return;
-			}
-			for(String fingerprint : fingerprints) {
-				if(!checkFingerprint(fingerprint)) {
-					installValidity.setValue(false);
-					return;
-				}
-			}
-			
-			installValidity.setValue(true);
-		}
-		
-		//https://stackoverflow.com/a/54791043
-		private static String[] getFingerprints(Context context, String key) {
-			//Creating the fingerprint array
-			String[] fingerprintArray = new String[0];
-			
-			try {
-				//Getting the package information
-				final PackageInfo info = context.getPackageManager().getPackageInfo(BuildConfig.APPLICATION_ID, PackageManager.GET_SIGNATURES);
-				
-				fingerprintArray = new String[info.signatures.length];
-				for(int iSig = 0; iSig < info.signatures.length; iSig++) {
-					//Getting the signature
-					Signature signature = info.signatures[iSig];
-					
-					//Getting the signature hash
-					final MessageDigest md = MessageDigest.getInstance(key);
-					md.update(signature.toByteArray());
-					
-					//Building a fingerprint string from the signature
-					final byte[] digest = md.digest();
-					final StringBuilder toRet = new StringBuilder();
-					for(int i = 0; i < digest.length; i++) {
-						if(i != 0) toRet.append(":");
-						int b = digest[i] & 0xff;
-						String hex = Integer.toHexString(b);
-						if(hex.length() == 1) toRet.append("0");
-						toRet.append(hex);
-					}
-					
-					//Adding the fingerprint string
-					fingerprintArray[iSig] = toRet.toString();
-				}
-			} catch(PackageManager.NameNotFoundException | NoSuchAlgorithmException exception) {
-				exception.printStackTrace();
-			}
-			
-			//Returning the signature array
-			return fingerprintArray;
-		}
-		
-		private static boolean checkFingerprint(String fingerprint) {
-			return "78:29:b4:4f:d8:15:9d:3c:ca:42:79:a4:9b:8c:7b:17:70:5b:2c:0f".equals(fingerprint) || //Release fingerprint (Google Play app signing)
-				   "08:34:4c:b2:14:4c:98:eb:97:5a:8a:57:f6:0d:4a:e2:54:b4:68:0d".equals(fingerprint) || //Release fingerprint (local)
-				   "ce:2b:0c:13:f9:59:98:4d:87:f2:1e:4d:f2:34:7b:98:d8:1f:a0:26".equals(fingerprint); //Debug fingerprint
 		}
 	}
 	

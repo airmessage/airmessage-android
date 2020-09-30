@@ -441,7 +441,6 @@
 	<string name="progress_cleantextmessages">ローカルテキストメッセージを片付け中&#8230;</string>
 	<string name="progress_connectionverification">接続を確認中&#8230;</string>
 	<string name="action_tapbackdetails">Tapback の詳細を表示</string>
-	<string name="message_appvaliditywarning">この AirMessage のインストールは確認できません。メッセージングデータが危険にさらされている可能性があります。Play ストアで AirMessage をインストールしてください。</string>
 	<string name="preference_features_messagesounds_title">アプリ内メッセージ音</string>
 
 	<string name="label_email_home">自宅</string>
