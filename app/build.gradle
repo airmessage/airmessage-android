@@ -100,7 +100,7 @@ dependencies {
 	implementation "org.lukhnos:nnio:0.2"
 
 	//Layouts and views
-	implementation "androidx.constraintlayout:constraintlayout:2.0.2"
+	implementation "androidx.constraintlayout:constraintlayout:2.0.0"
 	implementation "androidx.viewpager2:viewpager2:1.0.0"
 	implementation "com.google.android:flexbox:2.0.1"
 
