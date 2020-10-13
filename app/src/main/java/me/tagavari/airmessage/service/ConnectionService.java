@@ -250,6 +250,9 @@ public class ConnectionService extends Service {
 	 * Schedules a pending intent to passively attempt to reconnect to the server
 	 */
 	void scheduleReconnection() {
+		//Don't schedule a reconnection if we're shutting down
+		if(serviceReference == null) return;
+		
 		//Scheduling immediate handler reconnection
 		if(dropReconnectIndex < dropReconnectDelayMillis.length && !dropReconnectRunning) {
 			dropReconnectRunning = true;
