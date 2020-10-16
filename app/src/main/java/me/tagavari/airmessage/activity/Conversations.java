@@ -309,7 +309,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Updating app shortcuts
 		ShortcutUtils.rebuildDynamicShortcuts(this);
-		if(conversationsBasePlugin.conversations.isLoaded()) ShortcutUtils.updateShortcuts(this, conversationsBasePlugin.conversations);
+		//if(conversationsBasePlugin.conversations.isLoaded()) ShortcutUtils.updateShortcuts(this, conversationsBasePlugin.conversations);
 	}
 	
 	@Override

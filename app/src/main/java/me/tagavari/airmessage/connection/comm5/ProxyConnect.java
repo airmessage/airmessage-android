@@ -17,6 +17,7 @@ import com.google.firebase.iid.InstanceIdResult;
 import org.java_websocket.WebSocket;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.exceptions.InvalidDataException;
+import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
@@ -184,8 +185,13 @@ class ProxyConnect extends DataProxy5 {
 		byteBuffer.putInt(NHT.nhtClientProxy);
 		byteBuffer.put(packet.getData());
 		
-		//Sending the data
-		client.send(byteBuffer.array());
+		try {
+			//Sending the data
+			client.send(byteBuffer.array());
+		} catch(WebsocketNotConnectedException exception) {
+			exception.printStackTrace();
+			return false;
+		}
 		
 		//Running the sent runnable immediately
 		if(packet.getSentRunnable() != null) packet.getSentRunnable().run();

@@ -30,6 +30,80 @@ public class ShortcutUtils {
 	
 	@RequiresApi(api = Build.VERSION_CODES.N_MR1)
 	private static void generateShortcutInfo(Context context, List<ConversationInfo> conversationList, Constants.ResultCallback<List<ShortcutInfo>> result) {
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+			generateShortcutInfoAndroidQ(context, conversationList, result);
+		} else {
+			generateShortcutInfoAndroidN(context, conversationList, result);
+		}
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.N_MR1)
+	private static void generateShortcutInfoAndroidN(Context context, List<ConversationInfo> conversationList, Constants.ResultCallback<List<ShortcutInfo>> result) {
+		//Removing invalid conversations
+		for(ListIterator<ConversationInfo> iterator = conversationList.listIterator(); iterator.hasNext();) {
+			if(iterator.next().getConversationMembers().isEmpty()) iterator.remove();
+		}
+		//Creating the shortcuts
+		List<ShortcutInfo> shortcutList = new ArrayList<>(conversationList.size());
+		String[] titleArray = new String[conversationList.size()];
+		Icon[] iconArray = new Icon[conversationList.size()];
+		Constants.ValueWrapper<Integer> requestsCompleted = new Constants.ValueWrapper<>(0);
+		
+		final Consumer<Boolean> completionRunnable = (wasTasked) -> {
+			//Adding to the completion count
+			requestsCompleted.value++;
+			
+			//Checking if all requests have been completed
+			if(requestsCompleted.value == conversationList.size()) {
+				//Building the shortcuts
+				for(ListIterator<ConversationInfo> shortcutIterator = conversationList.listIterator(); shortcutIterator.hasNext();) {
+					int indexShortcut = shortcutIterator.nextIndex();
+					ConversationInfo conversationShortcut = shortcutIterator.next();
+					
+					//Creating the intents
+					Intent intentConversations = new Intent(context, Conversations.class);
+					intentConversations.setAction(Intent.ACTION_VIEW);
+					intentConversations.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+					
+					Intent intentMessaging = new Intent(context, Messaging.class);
+					intentMessaging.setAction(Intent.ACTION_VIEW);
+					intentMessaging.putExtra(Constants.intentParamTargetID, conversationShortcut.getLocalID());
+					
+					//Building and adding the shortcuts
+					shortcutList.add(new ShortcutInfo.Builder(context, conversationToShortcutID(conversationShortcut))
+							.setShortLabel(titleArray[indexShortcut])
+							.setIcon(iconArray[indexShortcut])
+							.setIntents(new Intent[]{intentConversations, intentMessaging})
+							.setCategories(shareCategorySet)
+							.build());
+				}
+				
+				//Returning the list
+				result.onResult(wasTasked, shortcutList);
+			}
+		};
+		
+		for(ListIterator<ConversationInfo> buildIterator = conversationList.listIterator(); buildIterator.hasNext();) {
+			int indexBuild = buildIterator.nextIndex();
+			ConversationInfo indexConversation = buildIterator.next();
+			
+			//Building the title
+			indexConversation.buildTitle(context, (titleResult, titleWasTasked) -> {
+				titleArray[indexBuild] = titleResult;
+				
+				//Building the shortcut icon
+				indexConversation.generateShortcutIcon(context, (iconResult, iconWasTasked) -> {
+					iconArray[indexBuild] = Icon.createWithBitmap(iconResult);
+					
+					//Building the people list
+					completionRunnable.accept(titleWasTasked || iconWasTasked);
+				});
+			});
+		}
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.Q)
+	private static void generateShortcutInfoAndroidQ(Context context, List<ConversationInfo> conversationList, Constants.ResultCallback<List<ShortcutInfo>> result) {
 		//Removing invalid conversations
 		for(ListIterator<ConversationInfo> iterator = conversationList.listIterator(); iterator.hasNext();) {
 			if(iterator.next().getConversationMembers().isEmpty()) iterator.remove();
@@ -62,17 +136,14 @@ public class ShortcutUtils {
 					intentMessaging.putExtra(Constants.intentParamTargetID, conversationShortcut.getLocalID());
 					
 					//Building and adding the shortcuts
-					ShortcutInfo.Builder shortcutBuilder = new ShortcutInfo.Builder(context, conversationToShortcutID(conversationShortcut))
+					shortcutList.add(new ShortcutInfo.Builder(context, conversationToShortcutID(conversationShortcut))
 							.setShortLabel(titleArray[indexShortcut])
 							.setIcon(iconArray[indexShortcut])
 							.setIntents(new Intent[]{intentConversations, intentMessaging})
-							.setCategories(shareCategorySet);
-					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-						shortcutBuilder
-								.setLongLived(true)
-								.setPersons(personArray[indexShortcut]);
-					}
-					shortcutList.add(shortcutBuilder.build());
+							.setCategories(shareCategorySet)
+							.setLongLived(true)
+							.setPersons(personArray[indexShortcut])
+							.build());
 				}
 				
 				//Returning the list
@@ -93,15 +164,11 @@ public class ShortcutUtils {
 					iconArray[indexBuild] = Icon.createWithBitmap(iconResult);
 					
 					//Building the people list
-					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-						indexConversation.generatePersonList(context, (peopleResult, peopleWasTasked) -> {
-							personArray[indexBuild] = peopleResult;
-							
-							completionRunnable.accept(titleWasTasked || iconWasTasked || peopleWasTasked);
-						});
-					} else {
-						completionRunnable.accept(titleWasTasked || iconWasTasked);
-					}
+					indexConversation.generatePersonList(context, (peopleResult, peopleWasTasked) -> {
+						personArray[indexBuild] = peopleResult;
+						
+						completionRunnable.accept(titleWasTasked || iconWasTasked || peopleWasTasked);
+					});
 				});
 			});
 		}
