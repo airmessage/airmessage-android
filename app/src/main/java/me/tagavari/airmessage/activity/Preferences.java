@@ -503,13 +503,9 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Setting the list padding
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 				View recyclerView = view.findViewById(R.id.recycler_view);
-				ViewCompat.setOnApplyWindowInsetsListener(recyclerView, new OnApplyWindowInsetsListener() {
-					@Override
-					public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
-						//((ViewGroup.MarginLayoutParams) reyclerView.getLayoutParams()).bottomMargin = -insets.getSystemWindowInsetBottom();
-						recyclerView.setPadding(recyclerView.getPaddingLeft(), recyclerView.getPaddingTop(), recyclerView.getPaddingRight(), insets.getSystemWindowInsetBottom());
-						return insets.consumeSystemWindowInsets();
-					}
+				ViewCompat.setOnApplyWindowInsetsListener(recyclerView, (v, insets) -> {
+					recyclerView.setPadding(insets.getSystemWindowInsetLeft(), recyclerView.getPaddingTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+					return insets.consumeSystemWindowInsets();
 				});
 			}
 			

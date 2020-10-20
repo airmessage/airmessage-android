@@ -222,7 +222,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
 		
 		//Setting the list padding
-		pluginQNavigation.setViewForInsets(new View[]{conversationsBasePlugin.recyclerView, findViewById(R.id.list_search)});
+		PluginQNavigation.setViewForInsets(conversationsBasePlugin.recyclerView, conversationsBasePlugin.recyclerView, findViewById(R.id.list_search));
 		
 		conversationsBasePlugin.recyclerView.post(() -> {
 			//Calculating the required padding

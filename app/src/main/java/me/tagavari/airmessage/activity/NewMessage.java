@@ -12,6 +12,7 @@ import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -282,17 +283,11 @@ public class NewMessage extends AppCompatCompositeActivity {
 		Constants.enforceContentWidthView(getResources(), contactListView);
 		
 		//Setting the list padding
-		//pluginQNavigation.setViewForInsets(new View[]{contactListView});
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-			ViewCompat.setOnApplyWindowInsetsListener(contactListView, new OnApplyWindowInsetsListener() {
-				@Override
-				public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
-					//((ViewGroup.MarginLayoutParams) reyclerView.getLayoutParams()).bottomMargin = -insets.getSystemWindowInsetBottom();
-					contactListView.setPadding(contactListView.getPaddingLeft(), contactListView.getPaddingTop(), contactListView.getPaddingRight(), insets.getSystemWindowInsetBottom());
-					return insets.consumeSystemWindowInsets();
-				}
-			});
-		}
+		PluginQNavigation.setViewForInsets(findViewById(android.R.id.content), contactListView);
+		/* ViewCompat.setOnApplyWindowInsetsListener(contactListView, (view, insets) -> {
+			view.setPadding(insets.getSystemWindowInsetLeft(), view.getPaddingTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+			return insets.consumeSystemWindowInsets();
+		}); */
 		
 		//Configuring the AMOLED theme
 		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();

@@ -109,6 +109,8 @@ import androidx.core.content.FileProvider;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.util.Consumer;
 import androidx.core.util.Pools;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.inputmethod.EditorInfoCompat;
 import androidx.core.view.inputmethod.InputConnectionCompat;
 import androidx.fragment.app.DialogFragment;
@@ -694,37 +696,32 @@ public class Messaging extends AppCompatCompositeActivity {
 		getWindow().setStatusBarColor(Color.TRANSPARENT);
 		
 		//Listening for window inset changes
-		rootView.setOnApplyWindowInsetsListener((view, windowInsets) -> {
-			int insetTop, insetBottom;
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-				Insets insets = windowInsets.getInsets(WindowInsets.Type.systemBars());
-				insetTop = insets.top;
-				insetBottom = insets.bottom;
-			} else {
-				insetTop = windowInsets.getSystemWindowInsetTop();
-				insetBottom = windowInsets.getSystemWindowInsetBottom();
-			}
-			
-			appBar.setPadding(appBar.getPaddingLeft(), insetTop, appBar.getPaddingRight(), appBar.getPaddingBottom());
+		ViewCompat.setOnApplyWindowInsetsListener(rootView, (view, insets) -> {
+			appBar.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), appBar.getPaddingBottom());
 			appBar.post(() -> {
-				messageList.setPadding(messageList.getPaddingLeft(), appBar.getHeight(), messageList.getPaddingRight(), messageList.getPaddingBottom());
+				messageList.setPadding(insets.getSystemWindowInsetLeft(), appBar.getHeight(), insets.getSystemWindowInsetRight(), messageList.getPaddingBottom());
 			});
-			scrimStatusBar.getLayoutParams().height = insetTop;
+			scrimStatusBar.getLayoutParams().height = insets.getSystemWindowInsetTop();
 			
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 				//Adding padding to the details menu
 				View detailsMenu = findViewById(R.id.group_messaginginfo_content);
-				if(detailsMenu != null) detailsMenu.setPadding(detailsMenu.getPaddingLeft(), detailsMenu.getPaddingTop(), detailsMenu.getPaddingRight(), insetBottom);
+				if(detailsMenu != null) detailsMenu.setPadding(insets.getSystemWindowInsetLeft(), detailsMenu.getPaddingTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+				
+				//Adding side margins to the details panel
+				ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) bottomDetailsPanel.getLayoutParams();
+				layoutParams.leftMargin = insets.getSystemWindowInsetLeft();
+				layoutParams.rightMargin = insets.getSystemWindowInsetRight();
 			} else {
 				//Simply applying padding to the entire root view
-				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insetBottom);
+				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.getSystemWindowInsetBottom());
 			}
 			
-			currentInsetPaddingBottom = insetBottom;
+			currentInsetPaddingBottom = insets.getSystemWindowInsetBottom();
 			
 			//if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return WindowInsets.CONSUMED;
 			//else return windowInsets.consumeSystemWindowInsets();
-			return windowInsets;
+			return insets;
 		});
 		
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -735,7 +732,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		} else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 			//Listening for window insets for the input bar
 			inputBar.setOnApplyWindowInsetsListener((view, windowInsets) -> {
-				inputBar.setPadding(inputBar.getPaddingLeft(), inputBar.getPaddingTop(), inputBar.getPaddingRight(), windowInsets.getSystemWindowInsetBottom());
+				inputBar.setPadding(windowInsets.getSystemWindowInsetLeft(), inputBar.getPaddingTop(), windowInsets.getSystemWindowInsetRight(), windowInsets.getSystemWindowInsetBottom());
 				return windowInsets.consumeSystemWindowInsets();
 			});
 		}
@@ -7134,7 +7131,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		public WindowInsets onApplyWindowInsets(View view, WindowInsets windowInsets) {
 			if(isAnimating) return windowInsets;
 			Insets insets = windowInsets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
-			view.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+			view.setPadding(insets.left, view.getPaddingTop(), insets.right, insets.bottom);
 			
 			return WindowInsets.CONSUMED;
 		}
