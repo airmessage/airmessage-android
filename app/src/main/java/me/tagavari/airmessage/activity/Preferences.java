@@ -5,6 +5,7 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.NotificationManager;
 import android.app.role.RoleManager;
+import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -351,9 +352,11 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Checking if the preference is enabled
 			if(((SwitchPreference) preference).isChecked()) {
 				//Launching the app details screen
-				Intent intent = new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS); //Manage default apps
-				if(intent.resolveActivity(getContext().getPackageManager()) == null) intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())); //App details page (fallback)
-				startActivity(intent);
+				try {
+					startActivity(new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)); //Manage default apps
+				} catch(ActivityNotFoundException exception) {
+					startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName()))); //App details page (fallback)
+				}
 			} else {
 				if(Constants.isDefaultMessagingApp(getContext())) {
 					//Requesting permissions

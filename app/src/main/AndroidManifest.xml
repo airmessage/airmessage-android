@@ -31,6 +31,17 @@
 	<!-- Features -->
 	<uses-feature android:name="android.hardware.telephony" android:required="false" />
 
+	<!-- Activity queries -->
+	<queries>
+		<!-- Camera -->
+		<intent>
+			<action android:name="android.media.action.IMAGE_CAPTURE" />
+		</intent>
+		<intent>
+			<action android:name="android.media.action.VIDEO_CAPTURE" />
+		</intent>
+	</queries>
+
 	<application
 		android:allowBackup="true"
 		android:fullBackupContent="@xml/backup_rules"

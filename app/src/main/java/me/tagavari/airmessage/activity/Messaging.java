@@ -13,6 +13,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.RemoteAction;
 import android.app.SharedElementCallback;
+import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipDescription;
@@ -2600,8 +2601,11 @@ public class Messaging extends AppCompatCompositeActivity {
 				else return false;
 				
 				//Launching the intent
-				if(intent.resolveActivity(context.getPackageManager()) != null) context.startActivity(intent);
-				else Toast.makeText(context, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
+				try {
+					context.startActivity(intent);
+				} catch(ActivityNotFoundException exception) {
+					Toast.makeText(context, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
+				}
 			}
 			
 			return false;
