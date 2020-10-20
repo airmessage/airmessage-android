@@ -198,7 +198,7 @@ public class Constants {
 	public static final String feedbackEmail = "hello@airmessage.org";
 	
 	public static final int defaultPort = 1359;
-	public static final String recordingName = "Audio Message.amr";
+	public static final String recordingName = "Audio message.amr";
 	public static final String pictureName = "image.jpg";
 	public static final String videoName = "video.mp4";
 	public static final String locationName = "location.loc.vcf";
