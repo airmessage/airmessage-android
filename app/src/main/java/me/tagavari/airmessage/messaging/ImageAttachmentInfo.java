@@ -19,6 +19,7 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.Target;
+import com.bumptech.glide.signature.ObjectKey;
 
 import java.io.File;
 
@@ -114,6 +115,7 @@ public class ImageAttachmentInfo extends AttachmentInfo<ImageAttachmentInfo.View
 			viewHolder.imageContent.layout(0, 0, 0, 0);
 			RequestBuilder<Drawable> requestBuilder = Glide.with(context)
 					.load(file)
+					.signature(new ObjectKey(getGuid() != null ? getGuid() : getLocalID()))
 					.transition(DrawableTransitionOptions.withCrossFade());
 					//.apply(RequestOptions.placeholderOf(new ColorDrawable(context.getResources().getServiceColor(R.color.colorImageUnloaded, null))));
 			requestBuilder.addListener(new RequestListener<Drawable>() {
