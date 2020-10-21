@@ -14,6 +14,9 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.GoogleApiAvailabilityLight;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.snackbar.Snackbar;
@@ -33,6 +36,7 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 	
 	private static final int requestCodeSignInGoogle = 0;
 	private static final int requestCodeSignInEmail = 1;
+	private static final int requestCodeFixGoogleAPI = 10;
 	
 	//Creating the sign-in values
 	private FirebaseAuth mAuth;
@@ -121,8 +125,16 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 	}
 	
 	private void launchAuthGoogle(View view) {
-		Intent signInIntent = googleSignInClient.getSignInIntent();
-		startActivityForResult(signInIntent, requestCodeSignInGoogle);
+		//Checking if Google Play Services are available
+		int googleAPIAvailability = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(requireContext());
+		if(googleAPIAvailability == ConnectionResult.SUCCESS) {
+			//Starting Google sign-in
+			Intent signInIntent = googleSignInClient.getSignInIntent();
+			startActivityForResult(signInIntent, requestCodeSignInGoogle);
+		} else {
+			//Prompting the user
+			GoogleApiAvailability.getInstance().getErrorDialog(requireActivity(), googleAPIAvailability, requestCodeFixGoogleAPI).show();
+		}
 	}
 	
 	private void launchAuthEmail(View view) {
