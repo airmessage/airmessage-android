@@ -141,11 +141,17 @@ public class MessageTextInfo extends MessageComponent<MessageTextInfo.ViewHolder
 			
 			//Setting the body text touch listener
 			viewHolder.labelBody.setOnTouchListener((View view, MotionEvent event) -> {
-				if(event.getAction() == MotionEvent.ACTION_DOWN) {
-					ViewHolder newViewHolder = getViewHolder();
-					if(newViewHolder != null) newViewHolder.inkView.reveal();
-				} else if(event.getAction() == MotionEvent.ACTION_UP) {
+				if(event.getAction() == MotionEvent.ACTION_UP) {
 					new Handler(Looper.getMainLooper()).postDelayed(() -> ((TextView) view).setLinksClickable(true), 0);
+				}
+				
+				return view.onTouchEvent(event);
+			});
+			
+			//Setting the invisible ink view touch listener
+			viewHolder.inkView.setOnTouchListener((View view, MotionEvent event) -> {
+				if(event.getAction() == MotionEvent.ACTION_DOWN) {
+					((InvisibleInkView) view).reveal();
 				}
 				
 				return view.onTouchEvent(event);
