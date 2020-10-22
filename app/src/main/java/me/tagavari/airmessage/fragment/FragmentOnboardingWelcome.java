@@ -79,9 +79,9 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 				// Google Sign In was successful, authenticate with Firebase
 				GoogleSignInAccount account = task.getResult(ApiException.class);
 				firebaseAuthWithGoogle(account);
-			} catch(ApiException e) {
+			} catch(ApiException exception) {
 				// Google Sign In failed, update UI appropriately
-				Log.w(TAG, "Google sign in failed", e);
+				exception.printStackTrace();
 				
 				//Displaying an error snackbar
 				Snackbar.make(requireView(), R.string.message_signinerror, Snackbar.LENGTH_LONG).show();
