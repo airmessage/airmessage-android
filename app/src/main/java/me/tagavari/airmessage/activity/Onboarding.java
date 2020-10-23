@@ -28,6 +28,10 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 	
 	private static final int paneMaxHeight = Constants.dpToPx(600);
 	
+	private final FragmentManager.OnBackStackChangedListener onBackStackChangedListener = () -> {
+		currentFragment = (FragmentCommunication<FragmentCommunicationSwap>) getSupportFragmentManager().findFragmentById(R.id.frame_content);
+	};
+	
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -37,11 +41,16 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 		
 		if(savedInstanceState == null) {
 			//Initializing the first fragment
-			swapFragment(new FragmentOnboardingWelcome(), false);
+			FragmentCommunication<FragmentCommunicationSwap> fragment = new FragmentOnboardingWelcome();
+			swapFragment(fragment, false);
+			currentFragment = fragment;
 		} else {
 			//Restoring the fragment
 			currentFragment = (FragmentCommunication<FragmentCommunicationSwap>) getSupportFragmentManager().getFragment(savedInstanceState, keyFragment);
 		}
+		
+		//Registering the back stack change listener
+		getSupportFragmentManager().addOnBackStackChangedListener(onBackStackChangedListener);
 		
 		//Configuring the header images
 		getWindow().getDecorView().post(() -> {
@@ -58,6 +67,14 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 		
 		//Preventing the connection service from launching on boot
 		Preferences.updateConnectionServiceBootEnabled(this, false);
+	}
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		
+		//Unregistering the back stack change listener
+		getSupportFragmentManager().removeOnBackStackChangedListener(onBackStackChangedListener);
 	}
 	
 	@Override
@@ -90,9 +107,6 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 		transaction.replace(R.id.frame_content, fragment);
 		if(addToBackStack) transaction.addToBackStack(null);
 		transaction.commit();
-		
-		//Updating the current fragment
-		currentFragment = fragment;
 	}
 	
 	public void popStack() {
