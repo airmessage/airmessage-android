@@ -14,6 +14,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.GoogleApiAvailabilityLight;
@@ -80,11 +81,12 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 				GoogleSignInAccount account = task.getResult(ApiException.class);
 				firebaseAuthWithGoogle(account);
 			} catch(ApiException exception) {
-				// Google Sign In failed, update UI appropriately
 				exception.printStackTrace();
 				
-				//Displaying an error snackbar
-				Snackbar.make(requireView(), R.string.message_signinerror, Snackbar.LENGTH_LONG).show();
+				if(exception.getStatusCode() != GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
+					//Displaying an error snackbar
+					Snackbar.make(requireView(), R.string.message_signinerror, Snackbar.LENGTH_LONG).show();
+				}
 			}
 		}
 	}
