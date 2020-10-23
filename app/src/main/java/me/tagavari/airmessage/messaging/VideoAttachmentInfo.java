@@ -23,6 +23,7 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.Target;
+import com.bumptech.glide.signature.ObjectKey;
 
 import java.io.File;
 
@@ -88,6 +89,7 @@ public class VideoAttachmentInfo extends AttachmentInfo<VideoAttachmentInfo.View
 			viewHolder.imageContent.layout(0, 0, 0, 0);
 			RequestBuilder<Drawable> requestBuilder = Glide.with(context)
 					.load(file)
+					.signature(new ObjectKey(getGuid() != null ? getGuid() : getLocalID()))
 					.listener(new RequestListener<Drawable>() {
 						@Override
 						public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {

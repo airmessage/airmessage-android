@@ -350,8 +350,6 @@ public class NotificationUtils {
 		PendingIntent clickPendingIntent = clickStackBuilder.getPendingIntent(pendingIntentOffsetThread + (int) conversationInfo.getLocalID(), 0);
 		//PendingIntent clickPendingIntent = PendingIntent.getActivity(context.getApplicationContext(), (int) conversationInfo.getLocalID(), new Intent(context, Messaging.class).putExtra(Constants.intentParamTargetID, conversationInfo.getLocalID()), 0);
 		
-		String shortcutID = ShortcutUtils.conversationToShortcutID(conversationInfo);
-		
 		//Creating the notification builder
 		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, MainApplication.notificationChannelMessage)
 				//Setting the icon
@@ -367,9 +365,12 @@ public class NotificationUtils {
 				//Setting the category
 				.setCategory(Notification.CATEGORY_MESSAGE)
 				//Adding the person
-				.addPerson(userUri)
-				//Adding the shortcut ID
-				.setShortcutId(shortcutID);
+				.addPerson(userUri);
+		
+		//Adding the shortcut
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+			notificationBuilder.setShortcutId(ShortcutUtils.conversationToShortcutID(conversationInfo));
+		}
 		
 		//Checking if the Android version is below Oreo (on API 26 and above, notification alert details are handled by the system's notification channels)
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {

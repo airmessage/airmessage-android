@@ -4,6 +4,7 @@ import android.content.ClipData;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.DisplayMetrics;
@@ -73,7 +74,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 			}
 			
 			//Checking if the request came from direct share
-			if(getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
 				long conversationID = ShortcutUtils.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
 				if(conversationID != -1) {
 					//Launching the activity

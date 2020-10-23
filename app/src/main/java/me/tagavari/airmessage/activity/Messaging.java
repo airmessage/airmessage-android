@@ -13,6 +13,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.RemoteAction;
 import android.app.SharedElementCallback;
+import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipDescription;
@@ -109,6 +110,8 @@ import androidx.core.content.FileProvider;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.util.Consumer;
 import androidx.core.util.Pools;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.inputmethod.EditorInfoCompat;
 import androidx.core.view.inputmethod.InputConnectionCompat;
 import androidx.fragment.app.DialogFragment;
@@ -694,37 +697,32 @@ public class Messaging extends AppCompatCompositeActivity {
 		getWindow().setStatusBarColor(Color.TRANSPARENT);
 		
 		//Listening for window inset changes
-		rootView.setOnApplyWindowInsetsListener((view, windowInsets) -> {
-			int insetTop, insetBottom;
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-				Insets insets = windowInsets.getInsets(WindowInsets.Type.systemBars());
-				insetTop = insets.top;
-				insetBottom = insets.bottom;
-			} else {
-				insetTop = windowInsets.getSystemWindowInsetTop();
-				insetBottom = windowInsets.getSystemWindowInsetBottom();
-			}
-			
-			appBar.setPadding(appBar.getPaddingLeft(), insetTop, appBar.getPaddingRight(), appBar.getPaddingBottom());
+		ViewCompat.setOnApplyWindowInsetsListener(rootView, (view, insets) -> {
+			appBar.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), appBar.getPaddingBottom());
 			appBar.post(() -> {
-				messageList.setPadding(messageList.getPaddingLeft(), appBar.getHeight(), messageList.getPaddingRight(), messageList.getPaddingBottom());
+				messageList.setPadding(insets.getSystemWindowInsetLeft(), appBar.getHeight(), insets.getSystemWindowInsetRight(), messageList.getPaddingBottom());
 			});
-			scrimStatusBar.getLayoutParams().height = insetTop;
+			scrimStatusBar.getLayoutParams().height = insets.getSystemWindowInsetTop();
 			
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 				//Adding padding to the details menu
 				View detailsMenu = findViewById(R.id.group_messaginginfo_content);
-				if(detailsMenu != null) detailsMenu.setPadding(detailsMenu.getPaddingLeft(), detailsMenu.getPaddingTop(), detailsMenu.getPaddingRight(), insetBottom);
+				if(detailsMenu != null) detailsMenu.setPadding(insets.getSystemWindowInsetLeft(), detailsMenu.getPaddingTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+				
+				//Adding side margins to the details panel
+				ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) bottomDetailsPanel.getLayoutParams();
+				layoutParams.leftMargin = insets.getSystemWindowInsetLeft();
+				layoutParams.rightMargin = insets.getSystemWindowInsetRight();
 			} else {
 				//Simply applying padding to the entire root view
-				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insetBottom);
+				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.getSystemWindowInsetBottom());
 			}
 			
-			currentInsetPaddingBottom = insetBottom;
+			currentInsetPaddingBottom = insets.getSystemWindowInsetBottom();
 			
 			//if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return WindowInsets.CONSUMED;
 			//else return windowInsets.consumeSystemWindowInsets();
-			return windowInsets;
+			return insets;
 		});
 		
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -735,7 +733,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		} else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 			//Listening for window insets for the input bar
 			inputBar.setOnApplyWindowInsetsListener((view, windowInsets) -> {
-				inputBar.setPadding(inputBar.getPaddingLeft(), inputBar.getPaddingTop(), inputBar.getPaddingRight(), windowInsets.getSystemWindowInsetBottom());
+				inputBar.setPadding(windowInsets.getSystemWindowInsetLeft(), inputBar.getPaddingTop(), windowInsets.getSystemWindowInsetRight(), windowInsets.getSystemWindowInsetBottom());
 				return windowInsets.consumeSystemWindowInsets();
 			});
 		}
@@ -762,7 +760,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			String[] recipients = null;
 			
 			//Checking if the request came from direct share
-			if(getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
 				conversationID = ShortcutUtils.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
 			}
 			//Checking if the request came from an SMS link
@@ -1140,11 +1138,6 @@ public class Messaging extends AppCompatCompositeActivity {
 					((MessageInfo) conversationItem).notifyPause();
 				}
 			}
-		}
-		
-		//Updating app shortcuts
-		if(viewModel.checkSetConversationAppearanceNeedsUpdate()) {
-			ShortcutUtils.updateShortcuts(this, Collections.singletonList(viewModel.conversationInfo));
 		}
 	}
 	
@@ -2246,6 +2239,11 @@ public class Messaging extends AppCompatCompositeActivity {
 										DatabaseManager.getInstance().updateConversationTitle(viewModel.conversationInfo.getLocalID(), title);
 									}
 									
+									//Updating the shortcut
+									if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+										ShortcutUtils.updateShortcuts(this, Collections.singletonList(viewModel.conversationInfo));
+									}
+									
 									//Dismissing the dialog
 									dialog.dismiss();
 								})
@@ -2603,8 +2601,11 @@ public class Messaging extends AppCompatCompositeActivity {
 				else return false;
 				
 				//Launching the intent
-				if(intent.resolveActivity(context.getPackageManager()) != null) context.startActivity(intent);
-				else Toast.makeText(context, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
+				try {
+					context.startActivity(intent);
+				} catch(ActivityNotFoundException exception) {
+					Toast.makeText(context, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
+				}
 			}
 			
 			return false;
@@ -5225,9 +5226,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		private int lastUnreadCount = 0;
 		
-		//When the conversation is modified (renamed, or participants changed), this flag is tripped to indicate that external links or representations of this conversation should be updated to match
-		private boolean conversationAppearanceNeedsUpdate = false;
-		
 		//Creating the conversation values
 		private String[] conversationParticipantsTarget;
 		private long conversationID;
@@ -5518,7 +5516,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				messagesState.setValue(messagesStateReady);
 				
 				//Updating the conversation's shortcut usage
-				ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+					ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getLocalID());
+				}
 			} else {
 				//Loading the messages
 				new AsyncTask<Void, Void, List<ConversationItem>>() {
@@ -5563,7 +5563,9 @@ public class Messaging extends AppCompatCompositeActivity {
 						messagesState.setValue(messagesStateReady);
 						
 						//Updating the conversation's shortcut usage
-						ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
+						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+							ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getLocalID());
+						}
 						
 						//Adding the conversation to the conversation list (for temporary usage, so that the conversation can be found for certain operations even if the conversations activity hasn't been launched yet)
 						if(ConversationUtils.getConversations() != null && !ConversationUtils.getConversations().isLoaded()) {
@@ -6217,19 +6219,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			//No compression required
 			return -1;
 		}
-		
-		void tripConversationAppearanceNeedsUpdate() {
-			conversationAppearanceNeedsUpdate = true;
-		}
-		
-		boolean checkSetConversationAppearanceNeedsUpdate() {
-			if(conversationAppearanceNeedsUpdate) {
-				conversationAppearanceNeedsUpdate = false;
-				return true;
-			} else {
-				return false;
-			}
-		}
 	}
 	
 	public static class AudioPlaybackManager {
@@ -6726,9 +6715,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Building the conversation title
 			activity.viewModel.conversationInfo.buildTitle(activity, new ConversationTitleResultCallback(activity));
-			
-			//Marking the conversation as modified
-			activity.viewModel.tripConversationAppearanceNeedsUpdate();
 		}
 		
 		@Override
@@ -6749,9 +6735,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Adding the member
 			activity.addMemberView(member, index, true);
-			
-			//Marking the conversation as modified
-			activity.viewModel.tripConversationAppearanceNeedsUpdate();
 		}
 		
 		@Override
@@ -6762,9 +6745,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Removing the member
 			activity.removeMemberView(member);
-			
-			//Marking the conversation as modified
-			activity.viewModel.tripConversationAppearanceNeedsUpdate();
 		}
 		
 		@Override
@@ -7134,7 +7114,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		public WindowInsets onApplyWindowInsets(View view, WindowInsets windowInsets) {
 			if(isAnimating) return windowInsets;
 			Insets insets = windowInsets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
-			view.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+			view.setPadding(insets.left, view.getPaddingTop(), insets.right, insets.bottom);
 			
 			return WindowInsets.CONSUMED;
 		}

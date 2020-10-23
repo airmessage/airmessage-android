@@ -5,6 +5,7 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.NotificationManager;
 import android.app.role.RoleManager;
+import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -249,33 +250,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Returning true
 			return true;
 		};
-		Preference.OnPreferenceClickListener deleteMessagesClickListener = preference -> {
-			//Creating a dialog
-			AlertDialog dialog = new MaterialAlertDialogBuilder(getActivity())
-					//Setting the name
-					.setMessage(R.string.message_confirm_deletemessages)
-					//Setting the negative button
-					.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> {
-						//Dismissing the dialog
-						dialogInterface.dismiss();
-					})
-					//Setting the positive button
-					.setPositiveButton(R.string.action_delete, (DialogInterface dialogInterface, int which) -> {
-						//Deleting the messages
-						new ConversationsBase.DeleteMessagesTask(getActivity().getApplicationContext()).execute();
-						
-						//Displaying a snackbar
-						Snackbar.make(getView(), R.string.message_confirm_deletemessages_started, Snackbar.LENGTH_SHORT).show();
-					})
-					//Creating the dialog
-					.create();
-			
-			//Showing the dialog
-			dialog.show();
-			
-			//Returning true
-			return true;
-		};
 		Preference.OnPreferenceClickListener syncMessagesClickListener = preference -> {
 			//Checking if the connection manager
 			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
@@ -351,9 +325,11 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Checking if the preference is enabled
 			if(((SwitchPreference) preference).isChecked()) {
 				//Launching the app details screen
-				Intent intent = new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS); //Manage default apps
-				if(intent.resolveActivity(getContext().getPackageManager()) == null) intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName())); //App details page (fallback)
-				startActivity(intent);
+				try {
+					startActivity(new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)); //Manage default apps
+				} catch(ActivityNotFoundException exception) {
+					startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName()))); //App details page (fallback)
+				}
 			} else {
 				if(Constants.isDefaultMessagingApp(getContext())) {
 					//Requesting permissions
@@ -503,13 +479,9 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Setting the list padding
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 				View recyclerView = view.findViewById(R.id.recycler_view);
-				ViewCompat.setOnApplyWindowInsetsListener(recyclerView, new OnApplyWindowInsetsListener() {
-					@Override
-					public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
-						//((ViewGroup.MarginLayoutParams) reyclerView.getLayoutParams()).bottomMargin = -insets.getSystemWindowInsetBottom();
-						recyclerView.setPadding(recyclerView.getPaddingLeft(), recyclerView.getPaddingTop(), recyclerView.getPaddingRight(), insets.getSystemWindowInsetBottom());
-						return insets.consumeSystemWindowInsets();
-					}
+				ViewCompat.setOnApplyWindowInsetsListener(recyclerView, (v, insets) -> {
+					recyclerView.setPadding(insets.getSystemWindowInsetLeft(), recyclerView.getPaddingTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+					return insets.consumeSystemWindowInsets();
 				});
 			}
 			

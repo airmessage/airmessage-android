@@ -1298,18 +1298,20 @@ public class ConversationInfo implements Serializable {
 		if(itemView != null) updateView(itemView, context);
 	}
 	
-	private void deleteMemory(Context context) {
+	private void deleteMemory() {
 		//Removing the conversation from memory
 		ArrayList<ConversationInfo> conversations = MainApplication.getInstance().getConversations();
 		if(conversations != null) conversations.remove(this);
-		
-		//Removing the conversation shortcut
-		ShortcutUtils.disableShortcuts(context, Collections.singletonList(this));
 	}
 	
 	public void delete(Context context) {
 		//Removing the conversation from memory
-		deleteMemory(context);
+		deleteMemory();
+		
+		//Removing the conversation shortcut
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+			ShortcutUtils.disableShortcuts(context, Collections.singletonList(this));
+		}
 		
 		//Removing the conversation from the database
 		new DeleteConversationTask(context, this).execute();
@@ -1317,7 +1319,7 @@ public class ConversationInfo implements Serializable {
 	
 	public void deleteSync(Context context) {
 		//Removing the conversation from memory
-		deleteMemory(context);
+		deleteMemory();
 		
 		//Deleting the conversation from the database
 		DatabaseManager.getInstance().deleteConversation(this);

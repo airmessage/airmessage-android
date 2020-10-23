@@ -2,6 +2,7 @@ package me.tagavari.airmessage.messaging;
 
 import android.app.Activity;
 import android.app.ActivityOptions;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
@@ -741,8 +742,11 @@ public abstract class AttachmentInfo<VH extends AttachmentInfo.ViewHolder> exten
 		intent.setAction(Intent.ACTION_VIEW);
 		intent.setDataAndType(content, fileType);
 		intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-		if(intent.resolveActivity(context.getPackageManager()) != null) context.startActivity(intent);
-		else Toast.makeText(context, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
+		try {
+			context.startActivity(intent);
+		} catch(ActivityNotFoundException exception) {
+			Toast.makeText(context, R.string.message_intenterror_open, Toast.LENGTH_SHORT).show();
+		}
 	}
 	
 	public void openAttachmentFileMediaViewer(Activity activity, View transitionView, float[] radiiRaw) {

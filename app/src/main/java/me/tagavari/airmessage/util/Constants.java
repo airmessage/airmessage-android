@@ -2,6 +2,7 @@ package me.tagavari.airmessage.util;
 
 import android.app.Activity;
 import android.app.Person;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -197,7 +198,7 @@ public class Constants {
 	public static final String feedbackEmail = "hello@airmessage.org";
 	
 	public static final int defaultPort = 1359;
-	public static final String recordingName = "Audio Message.amr";
+	public static final String recordingName = "Audio message.amr";
 	public static final String pictureName = "image.jpg";
 	public static final String videoName = "video.mp4";
 	public static final String locationName = "location.loc.vcf";
@@ -1343,8 +1344,11 @@ public class Constants {
 	public static void launchUri(Context context, Uri uri) {
 		Intent intent = new Intent(Intent.ACTION_VIEW, uri);
 		
-		if(intent.resolveActivity(context.getPackageManager()) != null) context.startActivity(intent);
-		else Toast.makeText(context, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
+		try {
+			context.startActivity(intent);
+		} catch(ActivityNotFoundException exception) {
+			Toast.makeText(context, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
+		}
 	}
 	
 	public static String cleanFileName(String fileName) {

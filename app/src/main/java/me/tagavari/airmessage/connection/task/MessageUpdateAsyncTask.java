@@ -2,6 +2,7 @@ package me.tagavari.airmessage.connection.task;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.preference.PreferenceManager;
 import android.util.LongSparseArray;
 
@@ -10,7 +11,9 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.ConversationsBase;
@@ -30,6 +33,7 @@ import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.util.ConversationUtils;
 import me.tagavari.airmessage.util.NotificationUtils;
+import me.tagavari.airmessage.util.ShortcutUtils;
 
 public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 	//Creating the reference values
@@ -190,6 +194,8 @@ public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 		//Sorting the complete conversation items
 		Collections.sort(newCompleteConversationItems, ConversationUtils.conversationItemComparator);
 		
+		Set<ConversationInfo> shortcutPendingConversations = new HashSet<>();
+		
 		//Getting the loaded conversations
 		//List<Long> foregroundConversations = Messaging.getForegroundConversations();
 		//List<Long> loadedConversations = Messaging.getActivityLoadedConversations();
@@ -237,13 +243,19 @@ public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 					//if(parentConversation.getState() != ConversationInfo.ConversationState.READY) continue;
 					
 					//Incrementing the conversation's unread count
-					if(conversationItem instanceof MessageInfo && !((MessageInfo) conversationItem).isOutgoing()) {
-						parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
-						parentConversation.updateUnreadStatus(context);
+					if(conversationItem instanceof MessageInfo) {
+						if(!((MessageInfo) conversationItem).isOutgoing()) {
+							parentConversation.setUnreadMessageCount(parentConversation.getUnreadMessageCount() + 1);
+							parentConversation.updateUnreadStatus(context);
+						}
 					}
-					
-					//Renaming the conversation
-					if(conversationItem instanceof ChatRenameActionInfo) parentConversation.setTitle(context, ((ChatRenameActionInfo) conversationItem).getTitle());
+					else if(conversationItem instanceof ChatRenameActionInfo) {
+						//Renaming the conversation
+						parentConversation.setTitle(context, ((ChatRenameActionInfo) conversationItem).getTitle());
+						
+						//Marking the conversation to update its shortcut
+						shortcutPendingConversations.add(parentConversation);
+					}
 					else if(conversationItem instanceof GroupActionInfo) {
 						//Converting the item to a group action info
 						GroupActionInfo groupActionInfo = (GroupActionInfo) conversationItem;
@@ -261,6 +273,9 @@ public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 							//Removing the member in memory
 							if(member != null && parentConversation.getConversationMembers().contains(member)) parentConversation.removeConversationMember(member);
 						}
+						
+						//Marking the conversation to update its shortcut
+						shortcutPendingConversations.add(parentConversation);
 					}
 				}
 			}
@@ -294,6 +309,12 @@ public class MessageUpdateAsyncTask extends QueueTask<Void, Void> {
 				//Unarchiving the conversation
 				if(conversationInfo.isArchived()) conversationInfo.setArchived(false);
 			}
+		}
+		
+		//Updating the shortcut
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+			ShortcutUtils.updateShortcuts(context, new ArrayList<>(shortcutPendingConversations));
+			//ShortcutUtils.updateTopConversations(context);
 		}
 		
 		//Updating the conversation activity list

@@ -28,17 +28,17 @@ public class PluginQNavigation extends AppCompatActivityPlugin {
 		}
 	}
 	
-	public void setViewForInsets(View[] listViews) {
+	public static void setViewForInsets(View rootView, View... listViews) {
 		//Ignoring if the system version is below Q
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
 		
 		//Adding an inset listener
-		ViewCompat.setOnApplyWindowInsetsListener(listViews[0], (v, insets) -> {
+		ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
 			for(View view : listViews) {
 				((ViewGroup.MarginLayoutParams) view.getLayoutParams()).bottomMargin = -insets.getSystemWindowInsetBottom();
 				view.setPadding(view.getPaddingLeft(), view.getPaddingTop(), view.getPaddingRight(), insets.getSystemWindowInsetBottom());
 			}
-			return insets.consumeSystemWindowInsets();
+			return insets;
 		});
 	}
 }

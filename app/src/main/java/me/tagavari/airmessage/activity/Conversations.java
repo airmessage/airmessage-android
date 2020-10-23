@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.activity;
 
 import android.app.NotificationManager;
+import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -222,7 +223,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
 		
 		//Setting the list padding
-		pluginQNavigation.setViewForInsets(new View[]{conversationsBasePlugin.recyclerView, findViewById(R.id.list_search)});
+		PluginQNavigation.setViewForInsets(conversationsBasePlugin.recyclerView, conversationsBasePlugin.recyclerView, findViewById(R.id.list_search));
 		
 		conversationsBasePlugin.recyclerView.post(() -> {
 			//Calculating the required padding
@@ -283,7 +284,9 @@ public class Conversations extends AppCompatCompositeActivity {
 			updateMarkAllRead();
 			
 			//Rebuilding dynamic shortcuts
-			ShortcutUtils.rebuildDynamicShortcuts(this);
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+				ShortcutUtils.updateTopConversations(this);
+			}
 		});
 		editTextBarSearch.addTextChangedListener(searchTextWatcher);
 		buttonBarSearchClear.setOnClickListener(view -> editTextBarSearch.setText(""));
@@ -308,8 +311,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		restoreSearchState();
 		
 		//Updating app shortcuts
-		ShortcutUtils.rebuildDynamicShortcuts(this);
-		//if(conversationsBasePlugin.conversations.isLoaded()) ShortcutUtils.updateShortcuts(this, conversationsBasePlugin.conversations);
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+			ShortcutUtils.updateTopConversations(this);
+		}
 	}
 	
 	@Override
@@ -697,8 +701,11 @@ public class Conversations extends AppCompatCompositeActivity {
 															   "Server software version: " + serverSoftwareVersion);
 							
 							//Launching the intent
-							if(intent.resolveActivity(getPackageManager()) != null) startActivity(intent);
-							else Toast.makeText(this, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
+							try {
+								startActivity(intent);
+							} catch(ActivityNotFoundException exception) {
+								Toast.makeText(this, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
+							}
 						})
 						.setPositiveButton(R.string.dialog_feedback_community, (dialog, which) -> {
 							//Creating the intent
@@ -706,8 +713,11 @@ public class Conversations extends AppCompatCompositeActivity {
 							intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 							
 							//Launching the intent
-							if(intent.resolveActivity(getPackageManager()) != null) startActivity(intent);
-							else Toast.makeText(this, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
+							try {
+								startActivity(intent);
+							} catch(ActivityNotFoundException exception) {
+								Toast.makeText(this, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
+							}
 						})
 						.create().show();
 				
