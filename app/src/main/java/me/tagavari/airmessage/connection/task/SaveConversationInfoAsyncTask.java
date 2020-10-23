@@ -2,6 +2,7 @@ package me.tagavari.airmessage.connection.task;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.util.LongSparseArray;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -150,8 +151,10 @@ public class SaveConversationInfoAsyncTask extends QueueTask<Void, Void> {
 			}
 			
 			//Updating shortcuts
-			ShortcutUtils.updateShortcuts(context, availableConversationInfoList);
-			ShortcutUtils.enableShortcuts(context, availableConversationInfoList);
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+				ShortcutUtils.updateShortcuts(context, availableConversationInfoList);
+				ShortcutUtils.enableShortcuts(context, availableConversationInfoList);
+			}
 			
 			//Updating the transferred conversations
 			if(context != null) {

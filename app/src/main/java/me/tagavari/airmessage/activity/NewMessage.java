@@ -1669,16 +1669,18 @@ public class NewMessage extends AppCompatCompositeActivity {
 				//Showing an error toast
 				Toast.makeText(getApplication(), R.string.message_serverstatus_internalexception, Toast.LENGTH_SHORT).show();
 			} else {
-				//Checking if the conversations exist
+				//Checking if the conversations exists
 				ArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
 				if(conversations != null && ConversationUtils.findConversationInfo(result.getLocalID()) == null) {
 					//Adding the conversation in memory
 					ConversationUtils.addConversation(result);
 					
 					//Updating the shortcut
-					List<ConversationInfo> shortcutUpdateList = Collections.singletonList(result);
-					ShortcutUtils.updateShortcuts(getApplication(), shortcutUpdateList);
-					ShortcutUtils.enableShortcuts(getApplication(), shortcutUpdateList);
+					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+						List<ConversationInfo> shortcutUpdateList = Collections.singletonList(result);
+						ShortcutUtils.updateShortcuts(getApplication(), shortcutUpdateList);
+						ShortcutUtils.enableShortcuts(getApplication(), shortcutUpdateList);
+					}
 					
 					//Updating the conversation activity list
 					LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));

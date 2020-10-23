@@ -284,7 +284,9 @@ public class Conversations extends AppCompatCompositeActivity {
 			updateMarkAllRead();
 			
 			//Rebuilding dynamic shortcuts
-			ShortcutUtils.rebuildDynamicShortcuts(this);
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+				ShortcutUtils.updateTopConversations(this);
+			}
 		});
 		editTextBarSearch.addTextChangedListener(searchTextWatcher);
 		buttonBarSearchClear.setOnClickListener(view -> editTextBarSearch.setText(""));
@@ -309,8 +311,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		restoreSearchState();
 		
 		//Updating app shortcuts
-		ShortcutUtils.rebuildDynamicShortcuts(this);
-		//if(conversationsBasePlugin.conversations.isLoaded()) ShortcutUtils.updateShortcuts(this, conversationsBasePlugin.conversations);
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+			ShortcutUtils.updateTopConversations(this);
+		}
 	}
 	
 	@Override

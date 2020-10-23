@@ -2,6 +2,7 @@ package me.tagavari.airmessage.connection.thread;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Handler;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -246,8 +247,10 @@ public class MassRetrievalThread extends Thread {
 							Collections.sort(sharedConversations, ConversationUtils.conversationComparator);
 							
 							//Updating shortcuts
-							ShortcutUtils.updateShortcuts(context, sharedConversations);
-							ShortcutUtils.enableShortcuts(context, sharedConversations);
+							if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+								ShortcutUtils.updateShortcuts(context, sharedConversations);
+								ShortcutUtils.enableShortcuts(context, sharedConversations);
+							}
 						}
 						
 						//Sending the mass retrieval broadcast

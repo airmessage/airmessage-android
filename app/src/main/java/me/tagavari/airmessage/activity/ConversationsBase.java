@@ -600,55 +600,6 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 		}
 	}
 	
-	@Deprecated
-	static class DeleteMessagesTask extends AsyncTask<Void, Void, Void> {
-		//Creating the values
-		private final WeakReference<Context> contextReference;
-		
-		DeleteMessagesTask(Context context) {
-			//Setting the references
-			contextReference = new WeakReference<>(context);
-		}
-		
-		@Override
-		protected void onPreExecute() {
-			//Getting context
-			Context context = contextReference.get();
-			
-			//Clearing dynamic shortcuts
-			if(context != null) ShortcutUtils.clearDynamicShortcuts(context);
-			
-			//Getting the conversations
-			ArrayList<ConversationInfo> conversations = ConversationUtils.getConversations();
-			if(conversations != null) {
-				//Disabling other shortcuts
-				if(context != null) ShortcutUtils.disableShortcuts(context, conversations);
-				
-				//Clearing the conversations in memory
-				conversations.clear();
-			}
-			
-			//Updating the conversation activity list
-			if(context != null) LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCConversationUpdate));
-		}
-		
-		@Override
-		protected Void doInBackground(Void... parameters) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return null;
-			
-			//Removing the messages from the database
-			DatabaseManager.getInstance().deleteEverything();
-			
-			//Clearing the attachments directory
-			MainApplication.clearAttachmentsDirectory(context);
-			
-			//Returning
-			return null;
-		}
-	}
-	
 	public static class DeleteAMMessagesTask extends AsyncTask<Void, Void, Void> {
 		//Creating the values
 		private final WeakReference<Context> contextReference;
@@ -680,7 +631,9 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 				}
 				
 				//Disabling other shortcuts
-				if(context != null) ShortcutUtils.disableShortcuts(context, removedConversations);
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+					if(context != null) ShortcutUtils.disableShortcuts(context, removedConversations);
+				}
 			}
 			
 			//Updating the conversation activity list
@@ -743,7 +696,9 @@ public class ConversationsBase extends AppCompatActivityPlugin {
 				}
 				
 				//Disabling other shortcuts
-				if(context != null) ShortcutUtils.disableShortcuts(context, removedConversations);
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+					if(context != null) ShortcutUtils.disableShortcuts(context, removedConversations);
+				}
 			}
 			
 			//Updating the conversation activity list

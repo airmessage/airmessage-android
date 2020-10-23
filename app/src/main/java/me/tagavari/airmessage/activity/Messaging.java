@@ -760,7 +760,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			String[] recipients = null;
 			
 			//Checking if the request came from direct share
-			if(getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
 				conversationID = ShortcutUtils.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
 			}
 			//Checking if the request came from an SMS link
@@ -1138,11 +1138,6 @@ public class Messaging extends AppCompatCompositeActivity {
 					((MessageInfo) conversationItem).notifyPause();
 				}
 			}
-		}
-		
-		//Updating app shortcuts
-		if(viewModel.checkSetConversationAppearanceNeedsUpdate()) {
-			ShortcutUtils.updateShortcuts(this, Collections.singletonList(viewModel.conversationInfo));
 		}
 	}
 	
@@ -2242,6 +2237,11 @@ public class Messaging extends AppCompatCompositeActivity {
 									//Saving the new title to disk
 									if(result) {
 										DatabaseManager.getInstance().updateConversationTitle(viewModel.conversationInfo.getLocalID(), title);
+									}
+									
+									//Updating the shortcut
+									if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+										ShortcutUtils.updateShortcuts(this, Collections.singletonList(viewModel.conversationInfo));
 									}
 									
 									//Dismissing the dialog
@@ -5226,9 +5226,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		private int lastUnreadCount = 0;
 		
-		//When the conversation is modified (renamed, or participants changed), this flag is tripped to indicate that external links or representations of this conversation should be updated to match
-		private boolean conversationAppearanceNeedsUpdate = false;
-		
 		//Creating the conversation values
 		private String[] conversationParticipantsTarget;
 		private long conversationID;
@@ -5519,7 +5516,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				messagesState.setValue(messagesStateReady);
 				
 				//Updating the conversation's shortcut usage
-				ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+					ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getLocalID());
+				}
 			} else {
 				//Loading the messages
 				new AsyncTask<Void, Void, List<ConversationItem>>() {
@@ -5564,7 +5563,9 @@ public class Messaging extends AppCompatCompositeActivity {
 						messagesState.setValue(messagesStateReady);
 						
 						//Updating the conversation's shortcut usage
-						ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getGuid());
+						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+							ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getLocalID());
+						}
 						
 						//Adding the conversation to the conversation list (for temporary usage, so that the conversation can be found for certain operations even if the conversations activity hasn't been launched yet)
 						if(ConversationUtils.getConversations() != null && !ConversationUtils.getConversations().isLoaded()) {
@@ -6218,19 +6219,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			//No compression required
 			return -1;
 		}
-		
-		void tripConversationAppearanceNeedsUpdate() {
-			conversationAppearanceNeedsUpdate = true;
-		}
-		
-		boolean checkSetConversationAppearanceNeedsUpdate() {
-			if(conversationAppearanceNeedsUpdate) {
-				conversationAppearanceNeedsUpdate = false;
-				return true;
-			} else {
-				return false;
-			}
-		}
 	}
 	
 	public static class AudioPlaybackManager {
@@ -6727,9 +6715,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Building the conversation title
 			activity.viewModel.conversationInfo.buildTitle(activity, new ConversationTitleResultCallback(activity));
-			
-			//Marking the conversation as modified
-			activity.viewModel.tripConversationAppearanceNeedsUpdate();
 		}
 		
 		@Override
@@ -6750,9 +6735,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Adding the member
 			activity.addMemberView(member, index, true);
-			
-			//Marking the conversation as modified
-			activity.viewModel.tripConversationAppearanceNeedsUpdate();
 		}
 		
 		@Override
@@ -6763,9 +6745,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Removing the member
 			activity.removeMemberView(member);
-			
-			//Marking the conversation as modified
-			activity.viewModel.tripConversationAppearanceNeedsUpdate();
 		}
 		
 		@Override

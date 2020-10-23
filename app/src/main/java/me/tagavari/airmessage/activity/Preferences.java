@@ -250,33 +250,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Returning true
 			return true;
 		};
-		Preference.OnPreferenceClickListener deleteMessagesClickListener = preference -> {
-			//Creating a dialog
-			AlertDialog dialog = new MaterialAlertDialogBuilder(getActivity())
-					//Setting the name
-					.setMessage(R.string.message_confirm_deletemessages)
-					//Setting the negative button
-					.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> {
-						//Dismissing the dialog
-						dialogInterface.dismiss();
-					})
-					//Setting the positive button
-					.setPositiveButton(R.string.action_delete, (DialogInterface dialogInterface, int which) -> {
-						//Deleting the messages
-						new ConversationsBase.DeleteMessagesTask(getActivity().getApplicationContext()).execute();
-						
-						//Displaying a snackbar
-						Snackbar.make(getView(), R.string.message_confirm_deletemessages_started, Snackbar.LENGTH_SHORT).show();
-					})
-					//Creating the dialog
-					.create();
-			
-			//Showing the dialog
-			dialog.show();
-			
-			//Returning true
-			return true;
-		};
 		Preference.OnPreferenceClickListener syncMessagesClickListener = preference -> {
 			//Checking if the connection manager
 			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
