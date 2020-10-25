@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.fragment;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -9,6 +10,7 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
@@ -20,6 +22,7 @@ import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.GoogleApiAvailabilityLight;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
@@ -27,6 +30,7 @@ import com.google.firebase.auth.GoogleAuthProvider;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.extension.FragmentBackOverride;
 import me.tagavari.airmessage.extension.FragmentCommunicationSwap;
 import me.tagavari.airmessage.util.Constants;
@@ -55,6 +59,7 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 		view.findViewById(R.id.button_connect_google).setOnClickListener(this::launchAuthGoogle);
 		view.findViewById(R.id.button_connect_email).setOnClickListener(this::launchAuthEmail);
 		view.findViewById(R.id.button_manual).setOnClickListener(this::launchManualConnect);
+		view.findViewById(R.id.button_manual).setOnLongClickListener(this::launchSkipConfig);
 		
 		//Setting up Firebase sign-in
 		mAuth = FirebaseAuth.getInstance();
@@ -124,6 +129,35 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 	
 	private void launchManualConnect(View view) {
 		callback.swapFragment(new FragmentOnboardingManual());
+	}
+	
+	private boolean launchSkipConfig(View view) {
+		//Showing a confirmation dialog
+		new MaterialAlertDialogBuilder(requireActivity())
+				.setMessage(R.string.dialog_skipsetup_message)
+				.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
+				.setPositiveButton(R.string.action_skip, (dialog, which) -> {
+					//Setting the values in the service class
+					ConnectionManager.hostname = "127.0.0.1";
+					ConnectionManager.hostnameFallback = null;
+					ConnectionManager.password = "password";
+					
+					//Setting the proxy type
+					ConnectionManager.proxyType = ConnectionManager.proxyTypeDirect;
+					
+					//Saving blank connection data in the shared preferences
+					SharedPreferences.Editor editor = MainApplication.getInstance().getConnectivitySharedPrefs().edit();
+					editor.putInt(MainApplication.sharedPreferencesConnectivityKeyAccountType, Constants.connectivityAccountTypeDirect);
+					editor.putBoolean(MainApplication.sharedPreferencesConnectivityKeyConnectServerConfirmed, true);
+					editor.putString(MainApplication.sharedPreferencesConnectivityKeyHostname, "127.0.0.1");
+					editor.putString(MainApplication.sharedPreferencesConnectivityKeyHostnameFallback, null);
+					editor.putString(MainApplication.sharedPreferencesConnectivityKeyPassword, "password");
+					editor.apply();
+					
+					//Finishing the activity
+					callback.launchConversations();
+				}).create().show();
+		return true;
 	}
 	
 	private void launchAuthGoogle(View view) {

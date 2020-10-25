@@ -10,6 +10,7 @@
 	<string name="dialog_feedback_message">Avez-vous un bogue à signaler, une fonction à suggérer, ou quelque chose d\'autre à dire? Contactez-nous ou discutez avec les autres par les liens ci-dessous.</string>
 	<string name="dialog_feedback_email">Envoyer un courriel</string>
 	<string name="dialog_feedback_community">Ouvrir la communauté subreddit</string>
+	<string name="dialog_skipsetup_message">Sauter la mise en place?</string>
 	<string name="title_conversation_members">Participants à cette conversation</string>
 	<string name="title_conversation_files">Fichiers à cette conversation</string>
 	<string name="message_permissionrejected">Demande d\'autorisation rejetée</string>

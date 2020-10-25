@@ -101,6 +101,8 @@
 
 	<string name="dialog_signout_message">Are you sure you want to sign out?</string>
 
+	<string name="dialog_skipsetup_message">Skip setup?</string>
+
 	<string name="message_blankstate_conversations">Once you start a new conversation, you\'ll see it listed here</string>
 	<string name="message_blankstate_conversations_archived">Archived conversations appear here</string>
 	<string name="message_blankstate_conversations_basic">No conversations</string>

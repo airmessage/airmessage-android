@@ -278,6 +278,7 @@
 	<string name="message_messageeffect_invisibleink">見えないインクのメッセージ</string>
 	<string name="message_setup_sync_description">同じコンピューと Apple アカウントに接続の以外、スキップしないでください。\n\n古い会話を保持すると、新しい会話と結合したり機能が失われたりする可能性があります。</string>
 	<string name="dialog_feedback_message">報告したいバグ、提案したい機能、または他に言いたいことがありますか？下記のリンクを使用して、私たちに連絡したり、他の人と話し合ったりしてください。</string>
+	<string name="dialog_skipsetup_message">セットアップをスキップしますか？</string>
 
 	<string name="dateformat_withinyear">M月d日</string>
 	<string name="dateformat_withinyear_weekday">M月d日EEEE</string>
