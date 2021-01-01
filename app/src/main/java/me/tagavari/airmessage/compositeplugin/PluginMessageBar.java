@@ -31,7 +31,7 @@ public class PluginMessageBar extends AppCompatActivityPlugin {
 	}
 	
 	private void updateAppBar() {
-		/* if(infoBarsOpen == 0) ((AppCompatActivity) getActivity()).getSupportActionBar().setElevation(Constants.dpToPx(4));
+		/* if(infoBarsOpen == 0) ((AppCompatActivity) getActivity()).getSupportActionBar().setElevation(ResourceHelper.dpToPx(4));
 		else ((AppCompatActivity) getActivity()).getSupportActionBar().setElevation(0); */
 	}
 	

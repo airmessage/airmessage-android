@@ -1,9 +1,12 @@
 package me.tagavari.airmessage.connection.comm5;
 
+import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+
+import androidx.annotation.Nullable;
 
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
@@ -22,49 +25,54 @@ import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 
-import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLEncoder;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 
-import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.connection.CookieBuilder;
 import me.tagavari.airmessage.connection.DataProxy;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.util.DirectConnectionParams;
 
-class ProxyConnect extends DataProxy5 {
+/**
+ * Handles connecting via WebSocket to AirMessage's Connect servers
+ */
+class ProxyConnect extends DataProxy<EncryptedPacket> {
 	//Creating the constants
 	private static final URI connectHostname = URI.create("wss://connect.airmessage.org");
 	private static final long handshakeTimeout = 8 * 1000;
 	
 	//Creating the state values
-	private final Handler handler = new Handler();
-	private final Runnable handshakeExpiryRunnable = () -> stop(ConnectionManager.connResultInternet);
+	private boolean isRunning = false;
+	private final Handler handler = new Handler(Looper.getMainLooper());
+	private final Runnable handshakeExpiryRunnable = () -> stop(ConnectionErrorCode.internet);
 	private WSClient client;
 	
 	@Override
-	public void start() {
+	public void start(Context context, @Nullable Object override) {
+		if(isRunning) {
+			FirebaseCrashlytics.getInstance().recordException(new IllegalStateException("Tried to start proxy, but it is already running!"));
+			return;
+		}
+		
 		//Checking if the user is logged in
 		FirebaseUser mUser = FirebaseAuth.getInstance().getCurrentUser();
 		if(mUser == null) {
 			//User isn't logged in
-			onClose(ConnectionManager.connResultDirectUnauthorized);
+			notifyClose(ConnectionErrorCode.connectAccountValidation);
 			return;
 		}
 		
@@ -83,7 +91,7 @@ class ProxyConnect extends DataProxy5 {
 				//Error
 				accountIDTask.getException().printStackTrace();
 				FirebaseCrashlytics.getInstance().recordException(accountIDTask.getException());
-				onClose(ConnectionManager.connResultInternalError);
+				notifyClose(ConnectionErrorCode.internalError);
 				return;
 			}
 			if(firebaseIDTask.isSuccessful()) {
@@ -92,7 +100,7 @@ class ProxyConnect extends DataProxy5 {
 				//Error
 				firebaseIDTask.getException().printStackTrace();
 				FirebaseCrashlytics.getInstance().recordException(firebaseIDTask.getException());
-				onClose(ConnectionManager.connResultInternalError);
+				notifyClose(ConnectionErrorCode.internalError);
 				return;
 			}
 			
@@ -107,7 +115,7 @@ class ProxyConnect extends DataProxy5 {
 					.path(connectHostname.getPath())
 					.appendQueryParameter("communications", Integer.toString(NHT.commVer))
 					.appendQueryParameter("is_server", Boolean.toString(false))
-					.appendQueryParameter("installation_id", MainApplication.getInstance().getInstallationID())
+					.appendQueryParameter("installation_id", SharedPreferencesManager.getInstallationID(context))
 					.appendQueryParameter("id_token", idToken)
 					.appendQueryParameter("fcm_token", fcmToken)
 					.build();
@@ -119,65 +127,38 @@ class ProxyConnect extends DataProxy5 {
 			} catch(URISyntaxException exception) {
 				exception.printStackTrace();
 				FirebaseCrashlytics.getInstance().recordException(exception);
-				onClose(ConnectionManager.connResultInternalError);
+				stop(ConnectionErrorCode.internalError);
 			}
 		});
+		
+		//Updating the running state
+		isRunning = true;
+	}
+	
+	private void stopAsync(@ConnectionErrorCode int code) {
+		handler.post(() -> stop(code));
 	}
 	
 	@Override
-	public void stop(int code) {
-		//Stopping the client
-		if(client != null) client.close();
+	public void stop(@ConnectionErrorCode int code) {
+		//Returning if this proxy is not running
+		if(!isRunning) return;
 		
-		handleWSClose(code);
-	}
-	
-	private void handleWSClose(int code) {
+		//Stopping the client
+		if(client != null) client.closeSilently();
+		
 		//Cancelling the handshake expiry timer
 		handler.removeCallbacks(handshakeExpiryRunnable);
 		
 		//Calling the listener
-		onClose(code);
-	}
-	
-	private void handleWSOpen() {
-		//Starting the handshake expiry timer
-		handler.postDelayed(handshakeExpiryRunnable, handshakeTimeout);
-	}
-	
-	private void handleWSMessage(ByteBuffer bytes) {
-		try {
-			//Unpacking the message
-			int type = bytes.getInt();
-			
-			switch(type) {
-				case NHT.nhtConnectionOK: {
-					//Cancelling the handshake expiry timer
-					handler.removeCallbacks(handshakeExpiryRunnable);
-					
-					//Calling the listener
-					ProxyConnect.this.onOpen();
-					
-					break;
-				}
-				case NHT.nhtClientProxy: {
-					//Reading the data
-					byte[] data = new byte[bytes.remaining()];
-					bytes.get(data);
-					
-					//Handling the message
-					ProxyConnect.this.onMessage(new PacketStructIn(data, false));
-					
-					break;
-				}
-			}
-		} catch(BufferUnderflowException exception) {
-			exception.printStackTrace();
-		}
+		notifyClose(code);
+		
+		//Updating the running state
+		isRunning = false;
 	}
 	
 	@Override
-	public boolean send(PacketStructOut packet) {
+	public boolean send(EncryptedPacket packet) {
 		if(!client.isOpen()) return false;
 		
 		//Constructing and sending the message
@@ -192,9 +173,6 @@ class ProxyConnect extends DataProxy5 {
 			exception.printStackTrace();
 			return false;
 		}
-		
-		//Running the sent runnable immediately
-		if(packet.getSentRunnable() != null) packet.getSentRunnable().run();
 		
 		return true;
 	}
@@ -225,17 +203,9 @@ class ProxyConnect extends DataProxy5 {
 		client.send(byteBuffer.array());
 	}
 	
-	@Override
-	public boolean requiresAuthentication() {
-		return false;
-	}
-	
-	@Override
-	public boolean requiresKeepalive() {
-		return false;
-	}
-	
 	protected class WSClient extends WebSocketClient {
+		private boolean silentClose = false;
+		
 		WSClient(URI serverUri, Map<String, String> httpHeaders) {
 			super(serverUri, httpHeaders);
 			
@@ -244,7 +214,8 @@ class ProxyConnect extends DataProxy5 {
 		
 		@Override
 		public void onOpen(ServerHandshake handshake) {
-			handleWSOpen();
+			//Starting the handshake expiry timer
+			handler.postDelayed(handshakeExpiryRunnable, handshakeTimeout);
 		}
 		
 		@Override
@@ -254,13 +225,44 @@ class ProxyConnect extends DataProxy5 {
 		
 		@Override
 		public void onMessage(ByteBuffer bytes) {
-			handleWSMessage(bytes);
+			try {
+				//Unpacking the message
+				int type = bytes.getInt();
+				
+				switch(type) {
+					case NHT.nhtConnectionOK: {
+						//Cancelling the handshake expiry timer
+						handler.removeCallbacks(handshakeExpiryRunnable);
+						
+						//Calling the listener
+						ProxyConnect.this.notifyOpen();
+						
+						break;
+					}
+					case NHT.nhtClientProxy: {
+						//Reading the data
+						byte[] data = new byte[bytes.remaining()];
+						bytes.get(data);
+						
+						//Handling the message
+						ProxyConnect.this.notifyMessage(new EncryptedPacket(data, true));
+						
+						break;
+					}
+				}
+			} catch(BufferUnderflowException exception) {
+				exception.printStackTrace();
+				FirebaseCrashlytics.getInstance().recordException(exception);
+			}
 		}
 		
 		@Override
 		public void onClose(int code, String reason, boolean remote) {
+			//Ignoring if we've been told to be silent
+			if(silentClose) return;
+			
 			//Calling the listener
-			new Handler(Looper.getMainLooper()).post(() -> handleWSClose(webSocketToLocalCode(code)));
+			stopAsync(webSocketToLocalCode(code));
 		}
 		
 		@Override
@@ -293,6 +295,11 @@ class ProxyConnect extends DataProxy5 {
 				}
 			}
 		}
+		
+		public void closeSilently() {
+			silentClose = true;
+			close();
+		}
 	}
 	
 	private static int webSocketToLocalCode(int code) {
@@ -302,24 +309,24 @@ class ProxyConnect extends DataProxy5 {
 			case CloseFrame.FLASHPOLICY:
 			case CloseFrame.ABNORMAL_CLOSE:
 			case CloseFrame.NORMAL:
-				return ConnectionManager.connResultInternet;
+				return ConnectionErrorCode.internet;
 			case CloseFrame.PROTOCOL_ERROR:
 			case CloseFrame.POLICY_VALIDATION:
-				return ConnectionManager.connResultBadRequest;
+				return ConnectionErrorCode.badRequest;
 			case NHT.closeCodeIncompatibleProtocol:
-				return ConnectionManager.connResultClientOutdated;
+				return ConnectionErrorCode.clientOutdated;
 			case NHT.closeCodeNoGroup:
-				return ConnectionManager.connResultConnectNoGroup;
+				return ConnectionErrorCode.connectNoGroup;
 			case NHT.closeCodeNoCapacity:
-				return ConnectionManager.connResultConnectNoCapacity;
+				return ConnectionErrorCode.connectNoCapacity;
 			case NHT.closeCodeAccountValidation:
-				return ConnectionManager.connResultConnectAccountValidation;
+				return ConnectionErrorCode.connectAccountValidation;
 			case NHT.closeCodeNoSubscription:
-				return ConnectionManager.connResultConnectNoSubscription;
+				return ConnectionErrorCode.connectNoSubscription;
 			case NHT.closeCodeOtherLocation:
-				return ConnectionManager.connResultConnectOtherLocation;
+				return ConnectionErrorCode.connectOtherLocation;
 			default:
-				return ConnectionManager.connResultExternalError;
+				return ConnectionErrorCode.externalError;
 		}
 	}
 	

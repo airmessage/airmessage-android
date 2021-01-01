@@ -55,7 +55,6 @@
 		<!-- Conversation list -->
 		<activity
 			android:label="@string/app_name"
-			android:launchMode="singleTop"
 			android:name=".activity.Conversations"
 			android:theme="@style/DayNight.NoActionBar.Protected"
 			android:windowSoftInputMode="adjustResize">
@@ -199,13 +198,13 @@
 		<receiver
 			android:enabled="true"
 			android:exported="false"
-			android:name=".util.NotificationUtils$NotificationBroadcastReceiver" />
+			android:name=".receiver.MessageNotificationActionReceiver" />
 
 		<!-- Message notification deletion receiver (for updating the status notification) -->
 		<receiver
 			android:enabled="true"
 			android:exported="false"
-			android:name=".util.NotificationUtils$MessageNotificationDeleteReceiver" />
+			android:name=".receiver.MessageNotificationDeleteReceiver" />
 
 		<!-- Server connection manager service -->
 		<service
@@ -213,7 +212,7 @@
 			android:exported="false"
 			android:description="@string/servicedesc_connectionservice" />
 
-		<!-- Server connection manager service -->
+		<!-- Text message import service -->
 		<service
 			android:name=".service.SystemMessageImportService"
 			android:exported="false"

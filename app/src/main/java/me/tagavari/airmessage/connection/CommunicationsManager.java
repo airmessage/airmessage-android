@@ -1,211 +1,210 @@
 package me.tagavari.airmessage.connection;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
-import java.util.List;
+import androidx.annotation.Nullable;
+import androidx.core.util.Consumer;
 
-import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
+import java.io.File;
+import java.util.Collection;
 
-public abstract class CommunicationsManager<D, P> implements DataProxyListener<D> {
-	protected final ConnectionManager connectionManager;
-	protected DataProxy<D, P> dataProxy;
-	protected final Context context;
+import io.reactivex.rxjava3.core.Observable;
+import me.tagavari.airmessage.connection.listener.CommunicationsManagerListener;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.ConnectionFeature;
+import me.tagavari.airmessage.enums.ProxyType;
+import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.util.ConversationTarget;
+import me.tagavari.airmessage.util.DirectConnectionParams;
+
+public abstract class CommunicationsManager<Packet> {
+	//Creating the handler
+	private final Handler handler = new Handler(Looper.getMainLooper());
 	
-	public CommunicationsManager(ConnectionManager connectionManager, Context context) {
-		this.connectionManager = connectionManager;
-		this.context = context;
+	//Creating the connection values
+	private final CommunicationsManagerListener listener;
+	@ProxyType private final int dataProxyType;
+	private final DataProxy<Packet> dataProxy;
+	
+	public CommunicationsManager(CommunicationsManagerListener listener, @ProxyType int proxyType) {
+		//Setting the values
+		this.listener = listener;
+		this.dataProxyType = proxyType;
+		dataProxy = getDataProxy(proxyType);
+		
+		//Setting the data proxy listener
+		dataProxy.setListener(new DataProxyListener<Packet>() {
+			@Override
+			public void handleOpen() {
+				//Handling the event
+				CommunicationsManager.this.handleOpen();
+			}
+			
+			@Override
+			public void handleClose(int reason) {
+				//Forwarding the event to the listener
+				if(listener != null) listener.onClose(reason);
+				
+				//Handling the event
+				CommunicationsManager.this.handleClose(reason);
+			}
+			
+			@Override
+			public void handleMessage(Packet packet) {
+				//Handling the event
+				CommunicationsManager.this.handleMessage(packet);
+			}
+		});
 	}
 	
 	/**
-	 * Assigns the data proxy for this communications manager
-	 * Must be called in the constructor extending this class
-	 * @param dataProxy The data proxy to use
+	 * Gets a data proxy from a data proxy type
+	 * @param proxyType The data proxy type
+	 * @return The data proxy
+	 * @throws IllegalArgumentException If the proxy type is invalid or unsupported
 	 */
-	protected void setProxy(DataProxy<D, P> dataProxy) {
-		this.dataProxy = dataProxy;
-	}
-	
-	/**
-	 * Cleanly closes the connection between the server and this client
-	 */
-	public abstract void initiateClose();
+	protected abstract DataProxy<Packet> getDataProxy(@ProxyType int proxyType);
 	
 	/**
 	 * Connects to the server
 	 */
-	public final void connect() {
+	public void connect(Context context, @Nullable Object override) {
 		//Connecting the proxy
-		dataProxy.start();
+		dataProxy.start(context, override);
 	}
 	
 	/**
-	 * Disconnects the connection manager from the server
+	 * Disconnects from the server
+	 * @param code The error code if this disconnection, or -1 for default
 	 */
-	public final void disconnect() {
-		//Disconnecting the proxy
-		dataProxy.stop(ConnectionManager.connResultConnection);
+	public final void disconnect(@ConnectionErrorCode int code) {
+		dataProxy.stop(code);
 	}
 	
-	@Override
-	public void onOpen() {
-		connectionManager.onConnect(this);
-	}
+	//Used in implementations
+	protected abstract void handleOpen();
+	protected abstract void handleClose(@ConnectionErrorCode int reason);
+	protected abstract void handleMessage(Packet packet);
 	
-	@Override
-	public void onClose(int reason) {
-		connectionManager.onDisconnect(this, reason);
-	}
-	
-	@Override
-	public void onMessage(D data) {
-		connectionManager.onPacket(this);
-	}
-	
-	public void onHandshakeCompleted(String installationID, String deviceName, String systemVersion, String softwareVersion) {
-		connectionManager.onHandshakeCompleted(this, installationID, deviceName, systemVersion, softwareVersion);
+	/**
+	 * Handles a handshake message
+	 * @param installationID The installation ID of the server
+	 * @param deviceName The device name of the server
+	 * @param systemVersion The system version of the server
+	 * @param softwareVersion The AirMessage version of the server
+	 */
+	public void onHandshake(String installationID, String deviceName, String systemVersion, String softwareVersion) {
+		//Forwarding the event to the listener
+		if(listener != null) listener.onOpen(installationID, deviceName, systemVersion, softwareVersion);
 	}
 	
 	/**
-	 * Get whether or not the server is connected via the fallback address
-	 * @return fallback
+	 * Get whether the server is connected via a fallback method
+	 * @return Whether the server is connected via a fallback method
 	 */
 	public abstract boolean isConnectedFallback();
 	
 	/**
-	 * Gets a packager for processing transferable data via this protocol version
-	 *
-	 * @return the packager
-	 */
-	public abstract ConnectionManager.Packager getPackager();
-	
-	/**
-	 * Returns the hash algorithm to use with this protocol
-	 *
-	 * @return the hash algorithm
-	 */
-	public abstract String getHashAlgorithm();
-	
-	/**
 	 * Sends a ping packet to the server
 	 *
-	 * @return whether or not the message was successfully sent
+	 * @return Whether the message was successfully sent
 	 */
 	public abstract boolean sendPing();
 	
 	/**
 	 * Requests a message to be sent to the specified conversation
 	 *
-	 * @param requestID the ID of the request
-	 * @param chatGUID the GUID of the target conversation
-	 * @param message the message to send
-	 * @return whether or not the request was successfully sent
+	 * @param requestID The ID of the request
+	 * @param conversation The conversation to send to
+	 * @param message The message to send
+	 * @return Whether the request was successfully sent
 	 */
-	public abstract boolean sendMessage(short requestID, String chatGUID, String message);
-	
-	/**
-	 * Requests a message to be send to the specified conversation members via the service
-	 *
-	 * @param requestID the ID of the request
-	 * @param chatMembers the members to send the message to
-	 * @param message the message to send
-	 * @param service the service to send the message across
-	 * @return whether or not the request was successfully sent
-	 */
-	public abstract boolean sendMessage(short requestID, String[] chatMembers, String message, String service);
-	
-	/**
-	 * Requests the download of a remote attachment
-	 *
-	 * @param requestID the ID of the request
-	 * @param attachmentGUID the GUID of the attachment to fetch
-	 * @param sentRunnable the runnable to call once the request has been sent (usually used to initialize the timeout)
-	 * @return whether or not the request was successful
-	 */
-	public abstract boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable);
+	public abstract boolean sendMessage(short requestID, ConversationTarget conversation, String message);
 	
 	/**
 	 * Uploads a file chunk to be sent to the specified conversation
 	 *
-	 * @param requestID the ID of the request
-	 * @param requestIndex the index of the request
-	 * @param conversationGUID the conversation to send the file to
-	 * @param data the transmission-ready bytes of the file chunk
-	 * @param fileName the name of the file to send
-	 * @param isLast whether or not this is the last file packet
-	 * @return whether or not the action was successful
+	 * @param requestID The ID of the request
+	 * @param conversation The conversation to send to
+	 * @param file The file to send
+	 * @return A {@link ReduxEventAttachmentUpload} for the progress of this upload
 	 */
-	public abstract boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast);
+	public abstract Observable<ReduxEventAttachmentUpload> sendFile(short requestID, ConversationTarget conversation, File file);
 	
 	/**
-	 * Uploads a file chunk to be sent to the specified conversation members
+	 * Requests the download of a remote attachment
 	 *
-	 * @param requestID the ID of the request
-	 * @param requestIndex the index of the request
-	 * @param conversationMembers the members of the conversation to send the file to
-	 * @param data the transmission-ready bytes of the file chunk
-	 * @param fileName the name of the file to send
-	 * @param service the service to send the file across
-	 * @param isLast whether or not this is the last file packet
-	 * @return whether or not the action was successful
+	 * @param requestID The ID of the request
+	 * @param attachmentGUID The GUID of the attachment to fetch
+	 * @return Whether the request was successful
 	 */
-	public abstract boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast);
+	public abstract boolean requestAttachmentDownload(short requestID, String attachmentGUID);
 	
 	/**
 	 * Sends a request to fetch conversation information
 	 *
-	 * @param list the list of conversation requests
-	 * @return whether or not the request was successfully sent
+	 * @param conversations The list of conversation GUIDs to request
+	 * @return Whether the request was successfully sent
 	 */
-	public abstract boolean sendConversationInfoRequest(List<ConversationInfoRequest> list);
+	public abstract boolean requestConversationInfo(Collection<String> conversations);
 	
 	/**
 	 * Requests a time range-based message retrieval
 	 *
-	 * @param timeLower the lower time range limit
-	 * @param timeUpper the upper time range limit
-	 * @return whether or not the request was successfully sent
+	 * @param timeLower The lower time range limit
+	 * @param timeUpper The upper time range limit
+	 * @return Whether the request was successfully sent
 	 */
 	public abstract boolean requestRetrievalTime(long timeLower, long timeUpper);
 	
 	/**
+	 * Requests an ID range-based message retrieval
+	 * @param idLower The ID to retrieve messages beyond (exclusive)
+	 * @return Whether the request was successfully sent
+	 */
+	public abstract boolean requestRetrievalID(long idLower);
+	
+	/**
 	 * Requests a mass message retrieval
 	 *
-	 * @param requestID the ID used to validate conflicting requests
-	 * @param params the mass retrieval parameters to use
-	 * @return whether or not the request was successfully sent
+	 * @param requestID The ID used to validate conflicting requests
+	 * @param params The mass retrieval parameters to use
+	 * @return Whether the request was successfully sent
 	 */
 	public abstract boolean requestRetrievalAll(short requestID, MassRetrievalParams params);
 	
 	/**
 	 * Requests the creation of a new conversation on the server
-	 * @param requestID the ID used to validate conflicting requests
-	 * @param members the participating members' contact addresses for this conversation
-	 * @param service the service that this conversation will use
-	 * @return whether or not the request was successfully sent
+	 * @param requestID The ID used to validate conflicting requests
+	 * @param members The participating members' contact addresses for this conversation
+	 * @param service The service that this conversation will use
+	 * @return Whether the request was successfully sent
 	 */
 	public abstract boolean requestChatCreation(short requestID, String[] members, String service);
 	
 	/**
 	 * Updates the server with this installation's push token
 	 * @param token The token to send
-	 * @return whether or not the request was successfully sent
+	 * @return Whether the request was successfully sent
 	 */
 	public abstract boolean sendPushToken(String token);
 	
 	/**
 	 * Checks if the specified communications version is applicable
 	 *
-	 * @param version the major communications version to check
+	 * @param version The major communications version to check
 	 * @return 0 if the version is applicable, -1 if the version is too old, 1 if the version is too new
 	 */
 	public abstract int checkCommVerApplicability(int version);
 	
 	/**
 	 * Checks if the specified feature is supported by the current protocol
-	 * @param feature the feature to check
-	 * @return whether or not this protocol manager can handle the specified feature
+	 * @param featureID The feature to check
+	 * @return Whether or not this protocol manager can handle the specified feature
 	 */
-	public abstract boolean checkSupportsFeature(String feature);
+	public abstract boolean isFeatureSupported(@ConnectionFeature int featureID);
 	
 	/**
 	 * Checks if this current communications setup should be kept alive
@@ -214,7 +213,47 @@ public abstract class CommunicationsManager<D, P> implements DataProxyListener<D
 	 * - Foreground service
 	 * If persistence is not requested, the app will NOT try to keep the connection alive,
 	 * and it is expected that the connection is re-established when necessary.
-	 * @return TRUE if persistence should be enabled
+	 * @return Whether persistence should be enabled
 	 */
 	public abstract boolean requiresPersistence();
+	
+	/**
+	 * Gets the active communications version
+	 */
+	public abstract String getCommunicationsVersion();
+	
+	/**
+	 * Gets the handler for this communications manager
+	 */
+	public Handler getHandler() {
+		return handler;
+	}
+	
+	/**
+	 * Gets the listener for interfacing with a communications manager
+	 */
+	private CommunicationsManagerListener getListener() {
+		return listener;
+	}
+	
+	/**
+	 * Calls the provided callback function with the listener on the main thread
+	 */
+	public void runListener(Consumer<CommunicationsManagerListener> callback) {
+		handler.post(() -> callback.accept(getListener()));
+	}
+	
+	/**
+	 * Gets the data proxy type
+	 */
+	protected int getDataProxyType() {
+		return dataProxyType;
+	}
+	
+	/**
+	 * Gets the data proxy
+	 */
+	protected DataProxy<Packet> getDataProxy() {
+		return dataProxy;
+	}
 }

@@ -1,10 +1,11 @@
 package me.tagavari.airmessage.messaging;
 
-import android.content.Context;
+import androidx.annotation.NonNull;
 
-import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.enums.ConversationItemType;
+import me.tagavari.airmessage.enums.MessageViewType;
 
-public abstract class ConversationItem<VH> {
+public abstract class ConversationItem {
 	//Creating the reference values
 	public static final int viewTypeMessage = 0;
 	public static final int viewTypeAction = 1;
@@ -14,11 +15,8 @@ public abstract class ConversationItem<VH> {
 	private long serverID;
 	private String guid;
 	private long date;
-	private ConversationInfo conversationInfo;
-	//private Constants.ViewSource viewSource;
-	private Constants.ViewHolderSource<VH> viewHolderSource;
 	
-	public ConversationItem(long localID, long serverID, String guid, long date, ConversationInfo conversationInfo) {
+	public ConversationItem(long localID, long serverID, String guid, long date) {
 		//Setting the identifiers
 		this.localID = localID;
 		this.serverID = serverID;
@@ -26,9 +24,6 @@ public abstract class ConversationItem<VH> {
 		
 		//Setting the date
 		this.date = date;
-		
-		//Setting the conversation info
-		this.conversationInfo = conversationInfo;
 	}
 	
 	public long getLocalID() {
@@ -63,34 +58,13 @@ public abstract class ConversationItem<VH> {
 		date = value;
 	}
 	
-	public void setViewHolderSource(Constants.ViewHolderSource<VH> viewHolderSource) {
-		this.viewHolderSource = viewHolderSource;
-	}
-	
-	public VH getViewHolder() {
-		if(viewHolderSource == null) return null;
-		return viewHolderSource.get();
-	}
-	
-	public ConversationInfo getConversationInfo() {
-		return conversationInfo;
-	}
-	
-	public void setConversationInfo(ConversationInfo conversationInfo) {
-		this.conversationInfo = conversationInfo;
-	}
-	
-	public abstract void bindView(VH viewHolder, Context context);
-	
-	public void updateViewColor(Context context) {}
-	
-	public abstract void getSummary(Context context, Constants.ResultCallback<String> resultCallback);
-	
+	@ConversationItemType
 	public abstract int getItemType();
 	
+	@MessageViewType
 	public abstract int getItemViewType();
 	
-	public abstract void toLightConversationItem(Context context, Constants.ResultCallback<LightConversationItem> callback);
-	
-	public abstract LightConversationItem toLightConversationItemSync(Context context);
+	@NonNull
+	@Override
+	public abstract ConversationItem clone();
 }

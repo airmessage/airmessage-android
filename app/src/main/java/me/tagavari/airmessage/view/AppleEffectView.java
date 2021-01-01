@@ -16,7 +16,7 @@ import android.view.View;
 import java.util.Random;
 
 import androidx.annotation.Nullable;
-import me.tagavari.airmessage.util.ColorHelper;
+import me.tagavari.airmessage.helper.ColorMathHelper;
 
 /**
  * Handles Apple's iMessage screen effects
@@ -326,7 +326,7 @@ public class AppleEffectView extends View {
 				colorPaint = new Paint();
 				colorPaint.setAntiAlias(true);
 				colorPaint.setStyle(Paint.Style.FILL);
-				colorPaint.setShader(new LinearGradient(0, 0, sBalloonHeadWidth, sBalloonHeadHeight + sBalloonTieSize, ColorHelper.modifyColorMultiply(color, 1.2F), color, Shader.TileMode.CLAMP));
+				colorPaint.setShader(new LinearGradient(0, 0, sBalloonHeadWidth, sBalloonHeadHeight + sBalloonTieSize, ColorMathHelper.multiplyColorLightness(color, 1.2F), color, Shader.TileMode.CLAMP));
 				
 				stemPaint = new Paint();
 				stemPaint.setAntiAlias(true);

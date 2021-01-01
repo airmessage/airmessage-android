@@ -10,6 +10,7 @@ import android.util.AttributeSet;
 import androidx.appcompat.widget.AppCompatImageView;
 import me.tagavari.airmessage.R;
 
+@Deprecated
 public class RoundedImageView extends AppCompatImageView {
 	private float[] radii = new float[8];
 	

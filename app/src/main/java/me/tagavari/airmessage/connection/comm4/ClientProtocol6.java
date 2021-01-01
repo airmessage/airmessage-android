@@ -1,27 +1,29 @@
 package me.tagavari.airmessage.connection.comm4;
 
-import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
-import android.webkit.MimeTypeMap;
-
-import com.google.android.exoplayer2.util.MimeTypes;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.URLConnection;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.security.DigestInputStream;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.concurrent.TimeUnit;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -30,137 +32,154 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.subjects.PublishSubject;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
-import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
-import me.tagavari.airmessage.connection.request.FileDownloadRequest;
-import me.tagavari.airmessage.connection.request.MessageResponseManager;
-import me.tagavari.airmessage.messaging.TapbackInfo;
-import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.connection.exception.AMRequestException;
+import me.tagavari.airmessage.constants.MIMEConstants;
+import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
+import me.tagavari.airmessage.enums.ChatCreateErrorCode;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.GroupAction;
+import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.MessageState;
+import me.tagavari.airmessage.enums.TapbackType;
+import me.tagavari.airmessage.helper.StandardCompressionHelper;
+import me.tagavari.airmessage.helper.StringHelper;
+import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.util.CompoundErrorDetails;
+import me.tagavari.airmessage.util.ConversationTarget;
 
 //Improved error messages, chat creation requests
-class ClientProtocol6 extends ProtocolManager {
-	final ConnectionManager.Packager protocolPackager = new ConnectionManager.PackagerGZIP();
-	static final String hashAlgorithm = "MD5";
-	static final String stringCharset = "UTF-8";
+class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
+	private static final String hashAlgorithm = "MD5";
+	private static final String stringCharset = "UTF-8";
+	
+	private static final int attachmentChunkSize = 1024 * 1024; //1 MB
 	
 	//Top-level net header type values
-	static final int nhtAuthentication = 1;
-	static final int nhtMessageUpdate = 2;
-	static final int nhtTimeRetrieval = 3;
-	static final int nhtMassRetrieval = 4;
-	static final int nhtConversationUpdate = 5;
-	static final int nhtModifierUpdate = 6;
-	static final int nhtAttachmentReq = 7;
-	static final int nhtAttachmentReqConfirm = 8;
-	static final int nhtAttachmentReqFail = 9;
-	static final int nhtMassRetrievalFinish = 10;
-	static final int nhtMassRetrievalFile = 11;
-	static final int nhtCreateChat = 12;
-	static final int nhtSendResult = 100;
-	static final int nhtSendTextExisting = 101;
-	static final int nhtSendTextNew = 102;
-	static final int nhtSendFileExisting = 103;
-	static final int nhtSendFileNew = 104;
+	private static final int nhtAuthentication = 1;
+	private static final int nhtMessageUpdate = 2;
+	private static final int nhtTimeRetrieval = 3;
+	private static final int nhtMassRetrieval = 4;
+	private static final int nhtConversationUpdate = 5;
+	private static final int nhtModifierUpdate = 6;
+	private static final int nhtAttachmentReq = 7;
+	private static final int nhtAttachmentReqConfirm = 8;
+	private static final int nhtAttachmentReqFail = 9;
+	private static final int nhtMassRetrievalFinish = 10;
+	private static final int nhtMassRetrievalFile = 11;
+	private static final int nhtCreateChat = 12;
+	private static final int nhtSendResult = 100;
+	private static final int nhtSendTextExisting = 101;
+	private static final int nhtSendTextNew = 102;
+	private static final int nhtSendFileExisting = 103;
+	private static final int nhtSendFileNew = 104;
 	
 	//Net subtype values
-	static final int nstAuthenticationOK = 0;
-	static final int nstAuthenticationUnauthorized = 1;
-	static final int nstAuthenticationBadRequest = 2;
-	static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
+	private static final int nstAuthenticationOK = 0;
+	private static final int nstAuthenticationUnauthorized = 1;
+	private static final int nstAuthenticationBadRequest = 2;
+	private static final String transmissionCheck = "4yAIlVK0Ce_Y7nv6at_hvgsFtaMq!lZYKipV40Fp5E%VSsLSML";
 	
 	//Net state values
-	static final int nsMessageIdle = 0;
-	static final int nsMessageSent = 1;
-	static final int nsMessageDelivered = 2;
-	static final int nsMessageRead = 3;
+	private static final int nsMessageIdle = 0;
+	private static final int nsMessageSent = 1;
+	private static final int nsMessageDelivered = 2;
+	private static final int nsMessageRead = 3;
 	
-	static final int nsAppleErrorOK = 0;
-	static final int nsAppleErrorUnknown = 1; //Unknown error code
-	static final int nsAppleErrorNetwork = 2; //Network error
-	static final int nsAppleErrorUnregistered = 3; //Not registered with iMessage
+	private static final int nsAppleErrorOK = 0;
+	private static final int nsAppleErrorUnknown = 1; //Unknown error code
+	private static final int nsAppleErrorNetwork = 2; //Network error
+	private static final int nsAppleErrorUnregistered = 3; //Not registered with iMessage
 	
-	static final int nsGroupActionSubtypeUnknown = 0;
-	static final int nsGroupActionSubtypeJoin = 1;
-	static final int nsGroupActionSubtypeLeave = 2;
+	private static final int nsGroupActionSubtypeUnknown = 0;
+	private static final int nsGroupActionSubtypeJoin = 1;
+	private static final int nsGroupActionSubtypeLeave = 2;
 	
 	//Return codes
-	static final int nstSendResultOK = 0; //Message sent successfully
-	static final int nstSendResultScriptError = 1; //Some unknown AppleScript error
-	static final int nstSendResultBadRequest = 2; //Invalid data received
-	static final int nstSendResultUnauthorized = 3; //System rejected request to send message
-	static final int nstSendResultNoConversation = 4; //A valid conversation wasn't found
-	static final int nstSendResultRequestTimeout = 5; //File data blocks stopped being received
+	private static final int nstSendResultOK = 0; //Message sent successfully
+	private static final int nstSendResultScriptError = 1; //Some unknown AppleScript error
+	private static final int nstSendResultBadRequest = 2; //Invalid data received
+	private static final int nstSendResultUnauthorized = 3; //System rejected request to send message
+	private static final int nstSendResultNoConversation = 4; //A valid conversation wasn't found
+	private static final int nstSendResultRequestTimeout = 5; //File data blocks stopped being received
 	
-	static final int nstAttachmentReqNotFound = 1; //File GUID not found
-	static final int nstAttachmentReqNotSaved = 2; //File (on disk) not found
-	static final int nstAttachmentReqUnreadable = 3; //No access to file
-	static final int nstAttachmentReqIO = 4; //IO error
+	private static final int nstAttachmentReqNotFound = 1; //File GUID not found
+	private static final int nstAttachmentReqNotSaved = 2; //File (on disk) not found
+	private static final int nstAttachmentReqUnreadable = 3; //No access to file
+	private static final int nstAttachmentReqIO = 4; //IO error
 	
-	static final int nstCreateChatOK = 0;
-	static final int nstCreateChatScriptError = 1; //Some unknown AppleScript error
-	static final int nstCreateChatBadRequest = 2; //Invalid data received
-	static final int nstCreateChatUnauthorized = 3; //System rejected request to send message
+	private static final int nstCreateChatOK = 0;
+	private static final int nstCreateChatScriptError = 1; //Some unknown AppleScript error
+	private static final int nstCreateChatBadRequest = 2; //Invalid data received
+	private static final int nstCreateChatUnauthorized = 3; //System rejected request to send message
 	
 	//Item types
-	static final int conversationItemTypeMessage = 0;
-	static final int conversationItemTypeGroupAction = 1;
-	static final int conversationItemTypeChatRename = 2;
+	private static final int conversationItemTypeMessage = 0;
+	private static final int conversationItemTypeGroupAction = 1;
+	private static final int conversationItemTypeChatRename = 2;
 	
 	private static final int modifierTypeActivity = 0;
 	private static final int modifierTypeSticker = 1;
 	private static final int modifierTypeTapback = 2;
 	
-	ClientProtocol6(Context context, ConnectionManager connectionManager, ClientComm4 communicationsManager) {
-		super(context, connectionManager, communicationsManager);
+	private short lastMassRetrievalRequestID = -1;
+	
+	//Encryption values
+	private final SecureRandom random = new SecureRandom();
+	
+	public ClientProtocol6(ClientComm4 communicationsManager, DataProxy<HeaderPacket> dataProxy) {
+		super(communicationsManager, dataProxy);
 	}
 	
 	@Override
 	boolean sendPing() {
-		return communicationsManager.queuePacket(new PacketStructOut(ClientComm4.nhtPing, new byte[0]));
+		return dataProxy.send(new HeaderPacket(new byte[0], ClientComm4.nhtPing));
 	}
 	
 	@Override
-	void processData(int messageType, byte[] data) {
+	void processData(byte[] data, int messageType) {
 		switch(messageType) {
 			case ClientComm4.nhtClose:
-				communicationsManager.disconnect(ConnectionManager.connResultConnection);
+				communicationsManager.getHandler().post(() -> communicationsManager.disconnect(ConnectionErrorCode.connection));
 				break;
 			case ClientComm4.nhtPing:
-				communicationsManager.queuePacket(new PacketStructOut(ClientComm4.nhtPong, new byte[0]));
+				dataProxy.send(new HeaderPacket(new byte[0], ClientComm4.nhtPong));
 				break;
 			case nhtAuthentication: {
 				//Stopping the authentication timer
-				communicationsManager.handler.removeCallbacks(communicationsManager.handshakeExpiryRunnable);
+				communicationsManager.stopTimeoutTimer();
 				
 				//Reading the result code
 				ByteBuffer dataBuffer = ByteBuffer.wrap(data);
 				int resultCode = dataBuffer.getInt();
 				
-				//Translating the result code to a local value
-				switch(resultCode) {
-					case nstAuthenticationOK:
-						resultCode = ConnectionManager.connResultSuccess;
-						break;
-					case nstAuthenticationUnauthorized:
-						resultCode = ConnectionManager.connResultDirectUnauthorized;
-						break;
-					case nstAuthenticationBadRequest:
-						resultCode = ConnectionManager.connResultBadRequest;
-						break;
-							/* case nhtAuthenticationVersionMismatch:
-								if(SharedValues.mmCommunicationsVersion > communicationsVersion) result = intentResultCodeServerOutdated;
-								else result = intentResultCodeClientOutdated;
-								break; */
+				//Checking if the result as successful
+				if(resultCode == nstAuthenticationOK) {
+					//Finishing the connection establishment
+					communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(null, null, null, null));
+				} else {
+					//Translating the result code to a local value
+					int localResultCode;
+					switch(resultCode) {
+						case nstAuthenticationUnauthorized:
+							localResultCode = ConnectionErrorCode.directUnauthorized;
+							break;
+						case nstAuthenticationBadRequest:
+							localResultCode = ConnectionErrorCode.badRequest;
+							break;
+						default:
+							localResultCode = ConnectionErrorCode.connection;
+							break;
+					}
+					
+					//Closing the connection
+					communicationsManager.getHandler().post(() -> communicationsManager.disconnect(localResultCode));
 				}
-				
-				//Finishing the connection establishment if the handshake was successful
-				if(resultCode == ConnectionManager.connResultSuccess) communicationsManager.onHandshakeCompleted(null, null, null, null);
-					//Otherwise terminating the connection
-				else communicationsManager.disconnect(resultCode);
 				
 				break;
 			}
@@ -170,7 +189,7 @@ class ClientProtocol6 extends ProtocolManager {
 				List<Blocks.ConversationItem> list;
 				try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
 					//Reading the secure data
-					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, ConnectionManager.password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 						list = deserializeConversationItems(inSec, inSec.readInt());
 					}
 				} catch(IOException | RuntimeException | GeneralSecurityException exception) {
@@ -179,7 +198,7 @@ class ClientProtocol6 extends ProtocolManager {
 				}
 				
 				//Processing the messages
-				connectionManager.processMessageUpdate(list, true);
+				communicationsManager.runListener(listener -> listener.onMessageUpdate(list));
 				
 				break;
 			}
@@ -190,7 +209,7 @@ class ClientProtocol6 extends ProtocolManager {
 					int packetIndex = in.readInt();
 					
 					//Reading the secure data
-					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, ConnectionManager.password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 						//Checking if this is the first packet
 						if(packetIndex == 0) {
 							//Reading the conversation list
@@ -200,28 +219,28 @@ class ClientProtocol6 extends ProtocolManager {
 							int messageCount = inSec.readInt();
 							
 							//Registering the mass retrieval manager
-							if(connectionManager.getMassRetrievalThread() != null) connectionManager.getMassRetrievalThread().registerInfo(MainApplication.getInstance(), requestID, conversationList, messageCount, getPackager());
+							communicationsManager.runListener(listener -> listener.onMassRetrievalStart(requestID, conversationList, messageCount));
+							
+							//Recording the request ID (to simulate a newer protocol version for future updates)
+							lastMassRetrievalRequestID = requestID;
 						} else {
 							//Reading the item list
 							List<Blocks.ConversationItem> listItems = deserializeConversationItems(inSec, inSec.readInt());
 							
 							//Processing the packet
-							if(connectionManager.getMassRetrievalThread() != null) connectionManager.getMassRetrievalThread().addPacket(MainApplication.getInstance(), requestID, packetIndex, listItems);
+							communicationsManager.runListener(listener -> listener.onMassRetrievalUpdate(requestID, packetIndex, listItems));
 						}
 					}
 				} catch(IOException | RuntimeException | GeneralSecurityException exception) {
 					//Logging the exception
 					exception.printStackTrace();
-					
-					//Cancelling the mass retrieval process
-					connectionManager.cancelMassRetrieval(MainApplication.getInstance());
 				}
 				
 				break;
 			}
 			case nhtMassRetrievalFinish: {
 				//Finishing the mass retrieval
-				connectionManager.finishMassRetrieval();
+				communicationsManager.runListener(listener -> listener.onMassRetrievalComplete(lastMassRetrievalRequestID));
 				
 				break;
 			}
@@ -233,7 +252,7 @@ class ClientProtocol6 extends ProtocolManager {
 				final boolean isLast;
 				
 				final String fileGUID;
-				final byte[] compressedBytes;
+				final byte[] fileData;
 				
 				try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
 					requestID = in.readShort();
@@ -242,19 +261,12 @@ class ClientProtocol6 extends ProtocolManager {
 					else fileName = null;
 					isLast = in.readBoolean();
 					
-					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, ConnectionManager.password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 						fileGUID = inSec.readUTF();
 						int contentLen = inSec.readInt();
-						if(contentLen > ConnectionManager.maxPacketAllocation) {
-							//Logging the error
-							Logger.getGlobal().log(Level.WARNING, "Rejecting large byte chunk (type: " + messageType + " - size: " + contentLen + ")");
-							
-							//Closing the connection
-							communicationsManager.disconnect(ConnectionManager.connResultConnection);
-							break;
-						}
-						compressedBytes = new byte[contentLen];
+						byte[] compressedBytes = new byte[contentLen];
 						inSec.readFully(compressedBytes);
+						fileData = StandardCompressionHelper.decompressGZIP(compressedBytes);
 					}
 				} catch(IOException | RuntimeException | GeneralSecurityException exception) {
 					exception.printStackTrace();
@@ -262,10 +274,12 @@ class ClientProtocol6 extends ProtocolManager {
 				}
 				
 				//Processing the data
-				if(connectionManager.getMassRetrievalThread() != null) {
-					if(requestIndex == 0) connectionManager.getMassRetrievalThread().startFileData(requestID, fileGUID, fileName);
-					connectionManager.getMassRetrievalThread().appendFileData(requestID, requestIndex, fileGUID, compressedBytes, isLast);
-				}
+				communicationsManager.runListener(listener -> {
+					if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName);
+					listener.onMassRetrievalFileProgress(requestID, requestIndex, fileGUID, fileData);
+					if(isLast) listener.onMassRetrievalFileComplete(requestID, fileGUID);
+				});
+				
 				break;
 			}
 			case nhtConversationUpdate: {
@@ -273,7 +287,7 @@ class ClientProtocol6 extends ProtocolManager {
 				List<Blocks.ConversationInfo> list;
 				try(ByteArrayInputStream src = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(src)) {
 					//Reading the secure data
-					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, ConnectionManager.password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 						list = deserializeConversations(inSec, inSec.readInt());
 					}
 				} catch(IOException | RuntimeException | GeneralSecurityException exception) {
@@ -282,7 +296,7 @@ class ClientProtocol6 extends ProtocolManager {
 				}
 				
 				//Processing the conversations
-				connectionManager.processChatInfoResponse(list);
+				communicationsManager.runListener(listener -> listener.onConversationUpdate(list));
 				
 				break;
 			}
@@ -291,7 +305,7 @@ class ClientProtocol6 extends ProtocolManager {
 				List<Blocks.ModifierInfo> list;
 				try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
 					//Reading the secure data
-					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, ConnectionManager.password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 						list = deserializeModifiers(inSec, inSec.readInt());
 					}
 				} catch(IOException | RuntimeException | GeneralSecurityException exception) {
@@ -300,7 +314,7 @@ class ClientProtocol6 extends ProtocolManager {
 				}
 				
 				//Processing the conversations
-				connectionManager.processModifierUpdate(list, getPackager());
+				communicationsManager.runListener(listener -> listener.onModifierUpdate(list));
 				
 				break;
 			}
@@ -312,7 +326,7 @@ class ClientProtocol6 extends ProtocolManager {
 				final boolean isLast;
 				
 				final String fileGUID;
-				final byte[] compressedBytes;
+				final byte[] decompressedBytes;
 				
 				try(ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream in = new ObjectInputStream(bis)) {
 					requestID = in.readShort();
@@ -322,26 +336,25 @@ class ClientProtocol6 extends ProtocolManager {
 					isLast = in.readBoolean();
 					
 					//Reading the secure data
-					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, ConnectionManager.password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+					final byte[] compressedBytes;
+					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 						fileGUID = inSec.readUTF();
 						compressedBytes = new byte[inSec.readInt()];
 						inSec.readFully(compressedBytes);
 					}
+					
+					//Decompressing the data
+					decompressedBytes = StandardCompressionHelper.decompressGZIP(compressedBytes);
 				} catch(IOException | RuntimeException | GeneralSecurityException exception) {
 					exception.printStackTrace();
 					break;
 				}
 				
-				//Running on the UI thread
-				new Handler(Looper.getMainLooper()).post(() -> {
-					//Searching for a matching request
-					for(FileDownloadRequest request : connectionManager.getFileDownloadRequests()) {
-						if(request.getRequestID() != requestID || !request.getAttachmentGUID().equals(fileGUID)) continue;
-						if(requestIndex == 0) request.setFileSize(fileSize);
-						request.processFileFragment(context, compressedBytes, requestIndex, isLast, getPackager());
-						if(isLast) connectionManager.removeDownloadRequest(request);
-						break;
-					}
+				//Forwarding the data to the listeners
+				communicationsManager.runListener(listener -> {
+					if(requestIndex == 0) listener.onFileRequestStart(requestID, fileSize);
+					listener.onFileRequestData(requestID, requestIndex, decompressedBytes);
+					if(isLast) listener.onFileRequestComplete(requestID);
 				});
 				
 				break;
@@ -350,30 +363,15 @@ class ClientProtocol6 extends ProtocolManager {
 				//Reading the data
 				final short requestID = ByteBuffer.wrap(data).getShort();
 				
-				//Running on the UI thread
-				new Handler(Looper.getMainLooper()).post(() -> {
-					//Searching for a matching request
-					for(FileDownloadRequest request : connectionManager.getFileDownloadRequests()) {
-						if(request.getRequestID() != requestID) continue;
-						request.stopTimer(true);
-						request.onResponseReceived();
-						break;
-					}
-				});
-				
 				break;
 			}
 			case nhtAttachmentReqFail: {
 				//Reading the data
 				ByteBuffer byteBuffer = ByteBuffer.wrap(data);
 				final short requestID = byteBuffer.getShort();
-				final int errorCode = byteBuffer.getInt();
+				final int errorCode = nstAttachmentReqCodeToLocalCode(byteBuffer.getInt());
 				
-				//Running on the UI thread
-				new Handler(Looper.getMainLooper()).post(() -> {
-					//Failing the download request
-					connectionManager.failDownloadRequest(requestID, nstAttachmentReqCodeToLocalCode(errorCode));
-				});
+				communicationsManager.runListener(listener -> listener.onFileRequestFail(requestID, errorCode));
 				
 				break;
 			}
@@ -386,7 +384,7 @@ class ClientProtocol6 extends ProtocolManager {
 					requestID = in.readShort();
 					
 					//Reading the secure data
-					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, ConnectionManager.password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 						resultCode = inSec.readInt();
 						details = inSec.readBoolean() ? inSec.readUTF() : null;
 					}
@@ -397,22 +395,10 @@ class ClientProtocol6 extends ProtocolManager {
 					break;
 				}
 				
-				//Getting the message response manager
-				final MessageResponseManager messageResponseManager = connectionManager.getMessageSendRequestsList().get(requestID);
-				if(messageResponseManager != null) {
-					//Removing the request
-					connectionManager.getMessageSendRequestsList().remove(requestID);
-					messageResponseManager.stopTimer(false);
-					
-					//Mapping the result code
-					int localResultCode = nstSendCodeToErrorCode(resultCode);
-					
-					//Running on the UI thread
-					new Handler(Looper.getMainLooper()).post(() -> {
-						//Telling the listener
-						if(localResultCode == Constants.messageErrorCodeOK) messageResponseManager.onSuccess();
-						else messageResponseManager.onFail(localResultCode, details);
-					});
+				if(resultCode == nstSendResultOK) {
+					communicationsManager.runListener(listener -> listener.onSendMessageSuccess(requestID));
+				} else {
+					communicationsManager.runListener(listener -> listener.onSendMessageFail(requestID, new CompoundErrorDetails.MessageSend(nstSendCodeToErrorCode(resultCode), details)));
 				}
 				
 				break;
@@ -427,7 +413,7 @@ class ClientProtocol6 extends ProtocolManager {
 					requestID = in.readShort();
 					
 					//Reading the secure data
-					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in, ConnectionManager.password)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
+					try(ByteArrayInputStream srcSec = new ByteArrayInputStream(readEncrypted(in)); ObjectInputStream inSec = new ObjectInputStream(srcSec)) {
 						resultCode = inSec.readInt();
 						details = (resultOK = resultCode == nstCreateChatOK) || inSec.readBoolean() ? inSec.readUTF() : null;
 					}
@@ -438,19 +424,9 @@ class ClientProtocol6 extends ProtocolManager {
 					break;
 				}
 				
-				//Running on the UI thread
-				new Handler(Looper.getMainLooper()).post(() -> {
-					//Getting the message response manager
-					final ChatCreationResponseManager responseManager = connectionManager.getChatCreationRequests().get(requestID);
-					if(responseManager == null) return;
-					
-					//Removing the request
-					connectionManager.getChatCreationRequests().remove(requestID);
-					responseManager.stopTimer();
-					
-					//Telling the listener
-					if(resultOK) responseManager.onSuccess(details);
-					else responseManager.onFail();
+				communicationsManager.runListener(listener -> {
+					if(resultOK) listener.onCreateChatSuccess(requestID, details);
+					else listener.onCreateChatError(requestID, new CompoundErrorDetails.ChatCreate(nstCreateChatCodeToErrorCode(resultCode), details));
 				});
 				
 				break;
@@ -474,7 +450,7 @@ class ClientProtocol6 extends ProtocolManager {
 			outSec.writeUTF(service); //Service
 			outSec.flush();
 			
-			writeEncrypted(trgtSec.toByteArray(), out, ConnectionManager.password); //Encrypted data
+			writeEncrypted(trgtSec.toByteArray(), out); //Encrypted data
 			
 			out.flush();
 			
@@ -488,7 +464,7 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new PacketStructOut(nhtCreateChat, packetData));
+		dataProxy.send(new HeaderPacket(packetData, nhtCreateChat));
 		
 		//Returning true
 		return true;
@@ -534,83 +510,100 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Queuing the packet
-		communicationsManager.queuePacket(new PacketStructOut(nhtMassRetrieval, packetData));
+		dataProxy.send(new HeaderPacket(packetData, nhtMassRetrieval));
 		
 		//Returning true
 		return true;
 	}
 	
+	@MessageSendErrorCode
 	private int nstSendCodeToErrorCode(int code) {
 		switch(code) {
-			case nstSendResultOK:
-				return Constants.messageErrorCodeOK;
 			case nstSendResultScriptError:
-				return Constants.messageErrorCodeServerExternal;
+				return MessageSendErrorCode.serverExternal;
 			case nstSendResultBadRequest:
-				return Constants.messageErrorCodeServerBadRequest;
+				return MessageSendErrorCode.serverBadRequest;
 			case nstSendResultUnauthorized:
-				return Constants.messageErrorCodeServerUnauthorized;
+				return MessageSendErrorCode.serverUnauthorized;
 			case nstSendResultNoConversation:
-				return Constants.messageErrorCodeServerNoConversation;
+				return MessageSendErrorCode.serverNoConversation;
 			case nstSendResultRequestTimeout:
-				return Constants.messageErrorCodeServerRequestTimeout;
+				return MessageSendErrorCode.serverRequestTimeout;
 			default:
-				return Constants.messageErrorCodeServerUnknown;
+				return MessageSendErrorCode.serverUnknown;
 		}
 	}
 	
+	@AttachmentReqErrorCode
 	private int nstAttachmentReqCodeToLocalCode(int code) {
 		switch(code) {
 			case nstAttachmentReqNotFound:
-				return FileDownloadRequest.Callbacks.errorCodeServerNotFound;
+				return AttachmentReqErrorCode.serverNotFound;
 			case nstAttachmentReqNotSaved:
-				return FileDownloadRequest.Callbacks.errorCodeServerNotSaved;
+				return AttachmentReqErrorCode.serverNotSaved;
 			case nstAttachmentReqUnreadable:
-				return FileDownloadRequest.Callbacks.errorCodeServerUnreadable;
+				return AttachmentReqErrorCode.serverUnreadable;
 			case nstAttachmentReqIO:
-				return FileDownloadRequest.Callbacks.errorCodeServerIO;
+				return AttachmentReqErrorCode.serverIO;
 			default:
-				return FileDownloadRequest.Callbacks.errorCodeUnknown;
+				return AttachmentReqErrorCode.unknown;
 		}
 	}
 	
+	@MessageState
 	private int convertCodeMessageState(int code) {
 		switch(code) {
 			default:
 			case nsMessageIdle:
-				return Constants.messageStateCodeIdle;
+				return MessageState.idle;
 			case nsMessageSent:
-				return Constants.messageStateCodeSent;
+				return MessageState.sent;
 			case nsMessageDelivered:
-				return Constants.messageStateCodeDelivered;
+				return MessageState.delivered;
 			case nsMessageRead:
-				return Constants.messageStateCodeRead;
+				return MessageState.read;
 		}
 	}
 	
+	@MessageSendErrorCode
 	private int convertCodeAppleError(int code) {
 		switch(code) {
 			case nsAppleErrorOK:
-				return Constants.messageErrorCodeOK;
+				return MessageSendErrorCode.none;
 			case nsAppleErrorUnknown:
 			default:
-				return Constants.messageErrorCodeAppleUnknown;
+				return MessageSendErrorCode.serverUnknown;
 			case nsAppleErrorNetwork:
-				return Constants.messageErrorCodeAppleNetwork;
+				return MessageSendErrorCode.appleNetwork;
 			case nsAppleErrorUnregistered:
-				return Constants.messageErrorCodeAppleUnregistered;
+				return MessageSendErrorCode.appleUnregistered;
 		}
 	}
 	
+	@ChatCreateErrorCode
+	private static int nstCreateChatCodeToErrorCode(int code) {
+		switch(code) {
+			case nstCreateChatScriptError: //Some unknown AppleScript error
+				return ChatCreateErrorCode.scriptError;
+			case nstCreateChatBadRequest: //Invalid data received
+				return ChatCreateErrorCode.badRequest;
+			case nstCreateChatUnauthorized: //System rejected request
+				return ChatCreateErrorCode.unauthorized;
+			default:
+				return ChatCreateErrorCode.unknown;
+		}
+	}
+	
+	@GroupAction
 	private int convertCodeGroupActionSubtype(int code) {
 		switch(code) {
 			case nsGroupActionSubtypeUnknown:
 			default:
-				return Constants.groupActionUnknown;
+				return GroupAction.unknown;
 			case nsGroupActionSubtypeJoin:
-				return Constants.groupActionJoin;
+				return GroupAction.join;
 			case nsGroupActionSubtypeLeave:
-				return Constants.groupActionLeave;
+				return GroupAction.leave;
 		}
 	}
 	
@@ -654,12 +647,12 @@ class ClientProtocol6 extends ProtocolManager {
 				default:
 					throw new IOException("Invalid conversation item type: " + type);
 				case conversationItemTypeMessage: {
-					String text = in.readBoolean() ? in.readUTF() : null;
-					String sender = in.readBoolean() ? in.readUTF() : null;
+					String text = in.readBoolean() ? StringHelper.nullifyEmptyString(in.readUTF()) : null;
+					String sender = in.readBoolean() ? StringHelper.nullifyEmptyString(in.readUTF()) : null;
 					List<Blocks.AttachmentInfo> attachments = deserializeAttachments(in, in.readInt());
 					List<Blocks.StickerModifierInfo> stickers = (List<Blocks.StickerModifierInfo>) (List<?>) deserializeModifiers(in, in.readInt());
 					List<Blocks.TapbackModifierInfo> tapbacks = (List<Blocks.TapbackModifierInfo>) (List<?>) deserializeModifiers(in, in.readInt());
-					String sendEffect = in.readBoolean() ? in.readUTF() : null;
+					String sendEffect = in.readBoolean() ? StringHelper.nullifyEmptyString(in.readUTF()) : null;
 					int stateCode = convertCodeMessageState(in.readInt());
 					int errorCode = convertCodeAppleError(in.readInt());
 					long dateRead = in.readLong();
@@ -677,7 +670,7 @@ class ClientProtocol6 extends ProtocolManager {
 				}
 				case conversationItemTypeChatRename: {
 					String agent = in.readBoolean() ? in.readUTF() : null;
-					String newChatName = in.readBoolean() ? in.readUTF() : null;
+					String newChatName = in.readBoolean() ? StringHelper.nullifyEmptyString(in.readUTF()) : null;
 					
 					list.add(new Blocks.ChatRenameActionInfo(serverID, guid, chatGuid, date, agent, newChatName));
 					break;
@@ -697,7 +690,7 @@ class ClientProtocol6 extends ProtocolManager {
 		for(int i = 0; i < count; i++) {
 			String guid = in.readUTF();
 			String name = in.readUTF();
-			String type = in.readBoolean() ? in.readUTF() : null;
+			String type = in.readBoolean() ? in.readUTF() : MIMEConstants.defaultMIMEType;
 			long size = in.readLong();
 			byte[] checksum;
 			if(in.readBoolean()) {
@@ -707,7 +700,7 @@ class ClientProtocol6 extends ProtocolManager {
 				checksum = null;
 			}
 			
-			list.add(new Blocks.AttachmentInfo(guid, name, type, size, checksum));
+			list.add(new Blocks.AttachmentInfo(guid, name, type, size, checksum, -1));
 		}
 		
 		//Returning the list
@@ -742,7 +735,16 @@ class ClientProtocol6 extends ProtocolManager {
 					byte[] image = new byte[in.readInt()];
 					in.readFully(image);
 					String fileType = URLConnection.guessContentTypeFromStream(new ByteArrayInputStream(image));
-					list.add(new Blocks.StickerModifierInfo(message, messageIndex, fileGuid, sender, date, image, fileType));
+					
+					byte[] decompressedImage;
+					try {
+						decompressedImage = StandardCompressionHelper.decompressGZIP(image);
+					} catch(IOException exception) {
+						exception.printStackTrace();
+						continue;
+					}
+					
+					list.add(new Blocks.StickerModifierInfo(message, messageIndex, fileGuid, sender, date, decompressedImage, fileType));
 					break;
 				}
 				case modifierTypeTapback: {
@@ -766,12 +768,12 @@ class ClientProtocol6 extends ProtocolManager {
 	
 	@Override
 	boolean sendAuthenticationRequest() {
-		//Returning false if there is no connection thread
+		//Returning false if there is no connection
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		byte[] packetData;
 		try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt)) {
-			writeEncrypted(transmissionCheck.getBytes(stringCharset), out, ConnectionManager.password);
+			writeEncrypted(transmissionCheck.getBytes(stringCharset), out);
 			out.flush();
 			
 			packetData = trgt.toByteArray();
@@ -781,22 +783,33 @@ class ClientProtocol6 extends ProtocolManager {
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			
 			//Closing the connection
-			communicationsManager.disconnect(ConnectionManager.connResultInternalError);
+			communicationsManager.getHandler().post(() -> communicationsManager.disconnect(ConnectionErrorCode.internalError));
 			
 			//Returning false
 			return false;
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new PacketStructOut(nhtAuthentication, packetData));
+		dataProxy.send(new HeaderPacket(packetData, nhtAuthentication));
 		
 		//Returning true
 		return true;
 	}
 	
 	@Override
-	boolean sendMessage(short requestID, String chatGUID, String message) {
-		//Returning false if there is no connection thread
+	boolean sendMessage(short requestID, ConversationTarget conversation, String message) {
+		if(conversation instanceof ConversationTarget.AppleLinked) {
+			return sendMessage(requestID, ((ConversationTarget.AppleLinked) conversation).getGuid(), message);
+		} else if(conversation instanceof ConversationTarget.AppleUnlinked) {
+			ConversationTarget.AppleUnlinked unlinkedTarget = (ConversationTarget.AppleUnlinked) conversation;
+			return sendMessage(requestID, unlinkedTarget.getMembers(), message, unlinkedTarget.getService());
+		} else {
+			return false;
+		}
+	}
+	
+	private boolean sendMessage(short requestID, String chatGUID, String message) {
+		//Returning false if there is no connection
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		byte[] packetData;
@@ -809,7 +822,7 @@ class ClientProtocol6 extends ProtocolManager {
 			outSec.writeUTF(message); //Message
 			outSec.flush();
 			
-			writeEncrypted(trgtSec.toByteArray(), out, ConnectionManager.password); //Encrypted data
+			writeEncrypted(trgtSec.toByteArray(), out); //Encrypted data
 			
 			out.flush();
 			
@@ -824,14 +837,13 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new PacketStructOut(nhtSendTextExisting, packetData));
+		dataProxy.send(new HeaderPacket(packetData, nhtSendTextExisting));
 		
 		//Returning true
 		return true;
 	}
 	
-	@Override
-	boolean sendMessage(short requestID, String[] chatMembers, String message, String service) {
+	private boolean sendMessage(short requestID, String[] chatMembers, String message, String service) {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
@@ -847,7 +859,7 @@ class ClientProtocol6 extends ProtocolManager {
 			outSec.writeUTF(service); //Service
 			outSec.flush();
 			
-			writeEncrypted(trgtSec.toByteArray(), out, ConnectionManager.password); //Encrypted data
+			writeEncrypted(trgtSec.toByteArray(), out); //Encrypted data
 			
 			out.flush();
 			
@@ -861,87 +873,79 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new PacketStructOut(nhtSendTextNew, packetData));
+		dataProxy.send(new HeaderPacket(packetData, nhtSendTextNew));
 		
 		//Returning true
 		return true;
 	}
 	
 	@Override
-	boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable) {
-		//Preparing to serialize the request
-		try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
-			ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
-			//Adding the data
-			out.writeShort(requestID); //Request ID
-			out.writeInt(ConnectionManager.attachmentChunkSize); //Chunk size
-			
-			outSec.writeUTF(attachmentGUID); //File GUID
-			outSec.flush();
-			
-			writeEncrypted(trgtSec.toByteArray(), out, ConnectionManager.password); //Encrypted data
-			
-			out.flush();
-			
-			//Sending the message
-			return communicationsManager.queuePacket(new PacketStructOut(nhtAttachmentReq, trgt.toByteArray(), sentRunnable));
-		} catch(IOException | GeneralSecurityException exception) {
-			//Printing the stack trace
-			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
-			
-			//Returning false
-			return false;
-		}
+	public Observable<ReduxEventAttachmentUpload> sendFile(short requestID, ConversationTarget conversation, File file) {
+		return Observable.create((emitter) -> {
+			try {
+				MessageDigest messageDigest = MessageDigest.getInstance(hashAlgorithm);
+				try(InputStream inputStream = new DigestInputStream(new BufferedInputStream(new FileInputStream(file)), messageDigest)) {
+					long totalLength = inputStream.available();
+					byte[] buffer = new byte[attachmentChunkSize];
+					int bytesRead;
+					long totalBytesRead = 0;
+					int requestIndex = 0;
+					
+					//Looping while there is data to read
+					while((bytesRead = inputStream.read(buffer)) != -1) {
+						//Adding to the total bytes read
+						totalBytesRead += bytesRead;
+						
+						//Compressing the data in chunks
+						byte[] preparedData;
+						try {
+							preparedData = StandardCompressionHelper.compressGZIP(buffer, bytesRead);
+						} catch(IOException exception) {
+							exception.printStackTrace();
+							FirebaseCrashlytics.getInstance().recordException(exception);
+							throw new AMRequestException(MessageSendErrorCode.localInternal, exception);
+						}
+						
+						//Uploading the file part
+						boolean isLast = totalBytesRead >= totalLength;
+						boolean uploadResult;
+						if(conversation instanceof ConversationTarget.AppleLinked) {
+							uploadResult = uploadFilePacket(requestID, requestIndex, ((ConversationTarget.AppleLinked) conversation).getGuid(), preparedData, file.getName(), isLast);
+						} else if(conversation instanceof ConversationTarget.AppleUnlinked) {
+							ConversationTarget.AppleUnlinked unlinkedConversation = (ConversationTarget.AppleUnlinked) conversation;
+							uploadResult = uploadFilePacket(requestID, requestIndex, unlinkedConversation.getMembers(), preparedData, file.getName(), unlinkedConversation.getService(), isLast);
+						} else {
+							uploadResult = false;
+						}
+						
+						//Throwing an error if the file part wasn't uploaded
+						if(!uploadResult) {
+							throw new AMRequestException(MessageSendErrorCode.localNetwork);
+						}
+						
+						//Incrementing the request index
+						requestIndex++;
+						
+						//Updating the progress
+						emitter.onNext(new ReduxEventAttachmentUpload.Progress(totalBytesRead, totalLength));
+					}
+				}
+				
+				//Finishing
+				emitter.onNext(new ReduxEventAttachmentUpload.Complete(messageDigest.digest()));
+				emitter.onComplete();
+			} catch(IOException exception) {
+				exception.printStackTrace();
+				throw new AMRequestException(MessageSendErrorCode.localIO, exception);
+			} catch(NoSuchAlgorithmException | BufferOverflowException exception) {
+				exception.printStackTrace();
+				FirebaseCrashlytics.getInstance().recordException(exception);
+				throw new AMRequestException(MessageSendErrorCode.localInternal, exception);
+			}
+		});
 	}
 	
-	@Override
-	boolean sendConversationInfoRequest(List<ConversationInfoRequest> list) {
-		//Returning false if there is no connection thread
-		if(!communicationsManager.isConnectionOpened()) return false;
-		
-		//Creating the guid list
-		ArrayList<String> guidList;
-		
-		//Locking the pending conversations
-		synchronized(list) {
-			//Returning false if there are no pending conversations
-			if(list.isEmpty()) return false;
-			
-			//Converting the conversation info list to a string list
-			guidList = new ArrayList<>();
-			for(ConversationInfoRequest conversationInfoRequest : list)
-				guidList.add(conversationInfoRequest.getConversationInfo().getGuid());
-		}
-		
-		//Requesting information on new conversations
-		try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
-			ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
-			outSec.writeInt(guidList.size());
-			for(String item : guidList) outSec.writeUTF(item);
-			outSec.flush();
-			
-			writeEncrypted(trgtSec.toByteArray(), out, ConnectionManager.password); //Encrypted data
-			
-			out.flush();
-			
-			//Sending the message
-			communicationsManager.queuePacket(new PacketStructOut(nhtConversationUpdate, trgt.toByteArray()));
-		} catch(IOException | GeneralSecurityException exception) {
-			//Logging the exception
-			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
-			
-			//Returning false
-			return false;
-		}
-		
-		//Returning true
-		return true;
-	}
-	
-	@Override
-	boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast) {
+	private boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast) {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
@@ -959,7 +963,7 @@ class ClientProtocol6 extends ProtocolManager {
 			if(requestIndex == 0) outSec.writeUTF(fileName); //File name
 			outSec.flush();
 			
-			writeEncrypted(trgtSec.toByteArray(), out, ConnectionManager.password); //Encrypted data
+			writeEncrypted(trgtSec.toByteArray(), out); //Encrypted data
 			
 			out.flush();
 			
@@ -974,14 +978,13 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new PacketStructOut(nhtSendFileExisting, packetData));
+		dataProxy.send(new HeaderPacket(packetData, nhtSendFileExisting));
 		
 		//Returning true
 		return true;
 	}
 	
-	@Override
-	boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast) {
+	private boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast) {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
@@ -1003,7 +1006,7 @@ class ClientProtocol6 extends ProtocolManager {
 			}
 			outSec.flush();
 			
-			writeEncrypted(trgtSec.toByteArray(), out, ConnectionManager.password); //Encrypted data
+			writeEncrypted(trgtSec.toByteArray(), out); //Encrypted data
 			
 			out.flush();
 			
@@ -1018,7 +1021,66 @@ class ClientProtocol6 extends ProtocolManager {
 		}
 		
 		//Sending the message
-		communicationsManager.queuePacket(new PacketStructOut(nhtSendFileNew, packetData));
+		dataProxy.send(new HeaderPacket(packetData, nhtSendFileNew));
+		
+		//Returning true
+		return true;
+	}
+	
+	@Override
+	public boolean requestAttachmentDownload(short requestID, String attachmentGUID) {
+		//Preparing to serialize the request
+		try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
+			ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
+			//Adding the data
+			out.writeShort(requestID); //Request ID
+			out.writeInt(attachmentChunkSize); //Chunk size
+			
+			outSec.writeUTF(attachmentGUID); //File GUID
+			outSec.flush();
+			
+			writeEncrypted(trgtSec.toByteArray(), out); //Encrypted data
+			
+			out.flush();
+			
+			//Sending the message
+			return dataProxy.send(new HeaderPacket(trgt.toByteArray(), nhtAttachmentReq));
+		} catch(IOException | GeneralSecurityException exception) {
+			//Printing the stack trace
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			
+			//Returning false
+			return false;
+		}
+	}
+	
+	@Override
+	public boolean requestConversationInfo(Collection<String> conversations) {
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
+		
+		//Requesting information on new conversations
+		try(ByteArrayOutputStream trgt = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(trgt);
+			ByteArrayOutputStream trgtSec = new ByteArrayOutputStream(); ObjectOutputStream outSec = new ObjectOutputStream(trgtSec)) {
+			outSec.writeInt(conversations.size());
+			for(String item : conversations) outSec.writeUTF(item);
+			outSec.flush();
+			
+			writeEncrypted(trgtSec.toByteArray(), out); //Encrypted data
+			
+			out.flush();
+			
+			//Sending the message
+			dataProxy.send(new HeaderPacket(trgt.toByteArray(), nhtConversationUpdate));
+		} catch(IOException | GeneralSecurityException exception) {
+			//Logging the exception
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			
+			//Returning false
+			return false;
+		}
 		
 		//Returning true
 		return true;
@@ -1030,7 +1092,7 @@ class ClientProtocol6 extends ProtocolManager {
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
 		//Sending the message
-		communicationsManager.queuePacket(new PacketStructOut(nhtTimeRetrieval, ByteBuffer.allocate(Long.SIZE / 8 * 2).putLong(timeLower).putLong(timeUpper).array()));
+		dataProxy.send(new HeaderPacket(ByteBuffer.allocate(Long.SIZE / 8 * 2).putLong(timeLower).putLong(timeUpper).array(), nhtTimeRetrieval));
 		
 		//Returning true
 		return true;
@@ -1044,7 +1106,9 @@ class ClientProtocol6 extends ProtocolManager {
 	private static final int encryptionKeyIterationCount = 10000;
 	private static final int encryptionKeyLength = 128; //128 bits
 	
-	byte[] readEncrypted(ObjectInputStream stream, String password) throws IOException, GeneralSecurityException {
+	byte[] readEncrypted(ObjectInputStream stream) throws IOException, GeneralSecurityException {
+		if(communicationsManager.getPassword() == null) throw new GeneralSecurityException("No password available");
+		
 		//Reading the data
 		byte[] salt = new byte[encryptionSaltLen];
 		stream.readFully(salt);
@@ -1057,7 +1121,7 @@ class ClientProtocol6 extends ProtocolManager {
 		
 		//Creating the key
 		SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(encryptionKeyFactoryAlgorithm, MainApplication.getSecurityProvider());
-		KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, encryptionKeyIterationCount, encryptionKeyLength);
+		KeySpec keySpec = new PBEKeySpec(communicationsManager.getPassword().toCharArray(), salt, encryptionKeyIterationCount, encryptionKeyLength);
 		SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
 		SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), encryptionKeyAlgorithm);
 		
@@ -1073,8 +1137,8 @@ class ClientProtocol6 extends ProtocolManager {
 		return block;
 	}
 	
-	void writeEncrypted(byte[] block, ObjectOutputStream stream, String password) throws IOException, GeneralSecurityException {
-		SecureRandom random = ConnectionManager.getSecureRandom();
+	void writeEncrypted(byte[] block, ObjectOutputStream stream) throws IOException, GeneralSecurityException {
+		if(communicationsManager.getPassword() == null) throw new GeneralSecurityException("No password available");
 		
 		//Generating a salt
 		byte[] salt = new byte[encryptionSaltLen];
@@ -1082,7 +1146,7 @@ class ClientProtocol6 extends ProtocolManager {
 		
 		//Creating the key
 		SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(encryptionKeyFactoryAlgorithm, MainApplication.getSecurityProvider());
-		KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, encryptionKeyIterationCount, encryptionKeyLength);
+		KeySpec keySpec = new PBEKeySpec(communicationsManager.getPassword().toCharArray(), salt, encryptionKeyIterationCount, encryptionKeyLength);
 		SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
 		SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), encryptionKeyAlgorithm);
 		
@@ -1104,38 +1168,24 @@ class ClientProtocol6 extends ProtocolManager {
 		stream.write(data);
 	}
 	
-	@Override
-	ConnectionManager.Packager getPackager() {
-		return protocolPackager;
-	}
-	
-	@Override
-	String getHashAlgorithm() {
-		return hashAlgorithm;
-	}
-	
-	@Override
-	boolean checkSupportsFeature(String feature) {
-		return false;
-	}
-	
+	@TapbackType
 	private static int convertTapbackToPrivateCode(int publicCode) {
 		//Returning the associated version
 		switch(publicCode) {
 			case 0:
-				return TapbackInfo.tapbackHeart;
+				return TapbackType.heart;
 			case 1:
-				return TapbackInfo.tapbackLike;
+				return TapbackType.like;
 			case 2:
-				return TapbackInfo.tapbackDislike;
+				return TapbackType.dislike;
 			case 3:
-				return TapbackInfo.tapbackLaugh;
+				return TapbackType.laugh;
 			case 4:
-				return TapbackInfo.tapbackExclamation;
+				return TapbackType.exclamation;
 			case 5:
-				return TapbackInfo.tapbackQuestion;
+				return TapbackType.question;
 			default:
-				return -1;
+				return TapbackType.unknown;
 		}
 	}
 }

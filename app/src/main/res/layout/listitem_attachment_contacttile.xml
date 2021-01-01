@@ -1,18 +1,19 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-	android:layout_width="200dp"
-	android:layout_height="@dimen/contenttile_size"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
-	android:layout_marginEnd="@dimen/contenttile_margin"
-	android:background="@drawable/rounded_selectable_contenttile"
+	android:layout_width="0dp"
+	android:layout_height="0dp"
+	app:layout_constraintTop_toTopOf="parent"
+	app:layout_constraintBottom_toBottomOf="parent"
+	app:layout_constraintStart_toStartOf="parent"
+	app:layout_constraintDimensionRatio="H,1:2"
+	android:background="@drawable/rounded_contenttile"
 	android:backgroundTint="@color/colorContact"
-	android:focusable="true"
-	android:clickable="true"
 	android:padding="16dp"
 	android:orientation="horizontal"
 	android:gravity="center_vertical">
 	<FrameLayout
-		android:layout_width="48dp"
-		android:layout_height="48dp">
+		android:layout_width="36dp"
+		android:layout_height="36dp">
 		<!-- Background view -->
 		<ImageView
 			android:layout_width="match_parent"
@@ -22,10 +23,10 @@
 
 		<!-- Profile picture -->
 		<com.google.android.material.imageview.ShapeableImageView
-			app:shapeAppearanceOverlay="@style/CircleImageView"
 			android:id="@+id/image_profile"
 			android:layout_width="match_parent"
-			android:layout_height="match_parent" />
+			android:layout_height="match_parent"
+			app:shapeAppearanceOverlay="@style/ShapeAppearanceCircle" />
 
 		<!-- Divider ring -->
 		<ImageView
@@ -42,13 +43,14 @@
 			android:layout_gravity="center"
 			android:tint="?android:attr/colorControlNormal" />
 	</FrameLayout>
+
 	<TextView
 		android:id="@+id/label_name"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:text="@string/part_content_contact"
 		android:textColor="@android:color/white"
-		android:textSize="16sp"
+		android:textSize="14sp"
 		android:gravity="center_vertical"
 		android:layout_marginStart="16dp"
 		android:maxLines="3" />

@@ -1,251 +1,115 @@
 package me.tagavari.airmessage.connection.comm5;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 
+import androidx.annotation.Nullable;
+
+import java.io.File;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.security.GeneralSecurityException;
-import java.util.List;
+import java.util.Collection;
 
+import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.connection.CommunicationsManager;
-import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
+import me.tagavari.airmessage.connection.exception.AMRequestException;
+import me.tagavari.airmessage.connection.listener.CommunicationsManagerListener;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.ConnectionFeature;
+import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.ProxyType;
+import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.util.ConversationTarget;
+import me.tagavari.airmessage.util.DirectConnectionParams;
 
-public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStructOut> {
-	//Creating the connection values
-	private ProtocolManager protocolManager = null;
-	private boolean protocolRequiresAuthentication;
-	private boolean protocolRequiresKeepalive;
-	private EncryptionManager encryptionManager = null;
+public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
+	private static final int communicationsVersion = 5;
 	
+	//Creating the connection values
+	private ProtocolManager<EncryptedPacket> protocolManager = null;
+	private int protocolManagerVer = -1;
+	
+	//Creating the handshake values
+	private final Runnable handshakeExpiryRunnable = () -> disconnect(ConnectionErrorCode.connection);
 	private static final long handshakeExpiryTime = 1000 * 10; //10 seconds
-	final Handler handler = new Handler();
 	
 	//Creating the transmission values
 	private static final int nhtInformation = 100;
-
-	final Runnable handshakeExpiryRunnable = () -> dataProxy.stop(ConnectionManager.connResultConnection);
 	
 	//Creating the state values
 	private boolean connectionOpened = false;
 	
-	public ClientComm5(ConnectionManager connectionManager, int proxyType, Context context) {
-		super(connectionManager, context);
-		
-		//Assigning the proxy
-		DataProxy5 dataProxy;
-		if(proxyType == ConnectionManager.proxyTypeDirect) dataProxy = new ProxyDirectTCP();
-		else if(proxyType == ConnectionManager.proxyTypeConnect) dataProxy = new ProxyConnect();
-		else throw new IllegalArgumentException("Unknown proxy type " + proxyType);
-		
-		protocolRequiresAuthentication = dataProxy.requiresAuthentication();
-		protocolRequiresKeepalive = dataProxy.requiresKeepalive();
-		setProxy(dataProxy);
-		
-		//Hooking into the data proxy
-		dataProxy.addDataListener(this);
+	//Creating the parameter values
+	private String password;
+	
+	public ClientComm5(CommunicationsManagerListener listener, int proxyType) {
+		super(listener, proxyType);
 	}
 	
 	@Override
-	public void initiateClose() {
-		if(connectionOpened && protocolManager != null) {
-			//Notifying the server before disconnecting
-			protocolManager.sendConnectionClose(() -> dataProxy.stop(ConnectionManager.connResultConnection));
+	public void connect(Context context, @Nullable Object override) {
+		//Saving the password for protocol-level encryption
+		if(override == null) {
+			try {
+				password = SharedPreferencesManager.getDirectConnectionPassword(context);
+			} catch(GeneralSecurityException | IOException exception) {
+				exception.printStackTrace();
+			}
 		} else {
-			//The server isn't connected, disconnect right away
-			dataProxy.stop(ConnectionManager.connResultConnection);
+			password = ((DirectConnectionParams) override).getPassword();
 		}
+		
+		super.connect(context, override);
 	}
 	
 	@Override
-	public void onOpen() {
-		//Calling the super method
-		super.onOpen();
-		
-		//Starting the handshake expiry timer
-		handler.postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
+	protected DataProxy<EncryptedPacket> getDataProxy(int proxyType) {
+		//Assigning the proxy
+		if(proxyType == ProxyType.direct) return new ProxyDirectTCP();
+		else if(proxyType == ProxyType.connect) return new ProxyConnect();
+		else throw new IllegalArgumentException("Unknown proxy type " + proxyType);
+	}
+	
+	protected void handleOpen() {
+		//Starting the handshake timeout
+		startTimeoutTimer();
 		
 		//Setting the state
 		connectionOpened = true;
 	}
 	
 	@Override
-	public void onClose(int reason) {
-		//Calling the super method
-		super.onClose(reason);
-		
-		//Cancelling the handshake expiry timer
-		handler.removeCallbacks(handshakeExpiryRunnable);
+	protected void handleClose(@ConnectionErrorCode int reason) {
+		//Cancelling the handshake timeout
+		stopTimeoutTimer();
 		
 		//Invalidating the connection managers
 		protocolManager = null;
-		encryptionManager = null;
+		protocolManagerVer = -1;
 		
 		//Setting the state
 		connectionOpened = false;
 	}
 	
+	void startTimeoutTimer() {
+		getHandler().postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
+	}
+	
+	void stopTimeoutTimer() {
+		getHandler().removeCallbacks(handshakeExpiryRunnable);
+	}
+	
 	@Override
-	public void onMessage(PacketStructIn message) {
-		//Calling the super method
-		super.onMessage(message);
-		
-		//Decrypting the message
-		if(message.isEncrypted()) {
-			if(encryptionManager == null) return;
-			
-			try {
-				message.decrypt(encryptionManager);
-			} catch(GeneralSecurityException exception) {
-				exception.printStackTrace();
-				return;
-			}
-		}
+	protected void handleMessage(EncryptedPacket packet) {
+		//Sending an update for the received packet
+		runListener(CommunicationsManagerListener::onPacket);
 		
 		//Processing the data
-		if(protocolManager == null) processFloatingData(message.getData());
-		else protocolManager.processData(message.getData(), message.isEncrypted());
-	}
-	
-	@Override
-	public boolean isConnectedFallback() {
-		if(dataProxy instanceof ProxyDirectTCP) return ((ProxyDirectTCP) dataProxy).isUsingFallback();
-		else return false;
-	}
-	
-	@Override
-	public boolean sendPing() {
-		if(protocolManager == null) return false;
-		else return protocolManager.sendPing();
-	}
-	
-	@Override
-	public ConnectionManager.Packager getPackager() {
-		if(protocolManager == null) return null;
-		return protocolManager.getPackager();
-	}
-	
-	@Override
-	public String getHashAlgorithm() {
-		if(protocolManager == null) return null;
-		return protocolManager.getHashAlgorithm();
-	}
-	
-	EncryptionManager getEncryptionManager() {
-		return encryptionManager;
-	}
-	
-	boolean requiresAuthentication() {
-		return protocolRequiresAuthentication;
-	}
-	
-	@Override
-	public boolean sendMessage(short requestID, String chatGUID, String message) {
-		if(protocolManager == null) return false;
-		return protocolManager.sendMessage(requestID, chatGUID, message);
-	}
-	
-	@Override
-	public boolean sendMessage(short requestID, String[] chatMembers, String message, String service) {
-		if(protocolManager == null) return false;
-		return protocolManager.sendMessage(requestID, chatMembers, message, service);
-	}
-	
-	@Override
-	public boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable) {
-		if(protocolManager == null) return false;
-		return protocolManager.addDownloadRequest(requestID, attachmentGUID, sentRunnable);
-	}
-	
-	@Override
-	public boolean sendConversationInfoRequest(List<ConversationInfoRequest> list) {
-		if(protocolManager == null) return false;
-		return protocolManager.sendConversationInfoRequest(list);
-	}
-	
-	@Override
-	public boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast) {
-		if(protocolManager == null) return false;
-		return protocolManager.uploadFilePacket(requestID, requestIndex, conversationGUID, data, fileName, isLast);
-	}
-	
-	@Override
-	public boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast) {
-		if(protocolManager == null) return false;
-		return protocolManager.uploadFilePacket(requestID, requestIndex, conversationMembers, data, fileName, service, isLast);
-	}
-	
-	@Override
-	public boolean requestRetrievalTime(long timeLower, long timeUpper) {
-		if(protocolManager == null) return false;
-		return protocolManager.requestRetrievalTime(timeLower, timeUpper);
-	}
-	
-	@Override
-	public boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
-		if(protocolManager == null) return false;
-		return protocolManager.requestRetrievalAll(requestID, params);
-	}
-	
-	@Override
-	public boolean requestChatCreation(short requestID, String[] members, String service) {
-		if(protocolManager == null) return false;
-		return protocolManager.requestChatCreation(requestID, members, service);
-	}
-	
-	@Override
-	public boolean sendPushToken(String token) {
-		//Returning if there is no proxy manager
-		if(dataProxy == null) return false;
-		
-		//Handling the message through the Connect proxy
-		if(dataProxy instanceof ProxyConnect) {
-			((ProxyConnect) dataProxy).sendTokenAdd(token);
-			return true;
-		}
-		
-		return false;
-	}
-	
-	@Override
-	public int checkCommVerApplicability(int version) {
-		return Integer.compare(version, 5);
-	}
-	
-	public boolean isConnectionOpened() {
-		return connectionOpened;
-	}
-	
-	boolean queuePacket(byte[] data, boolean encrypt) {
-		return queuePacket(data, encrypt, null);
-	}
-	
-	boolean queuePacket(byte[] data, boolean encrypt, Runnable sentRunnable) {
-		//Encrypting the content if requested
-		if(encrypt && encryptionManager != null) {
-			try {
-				data = encryptionManager.encrypt(data);
-			} catch(GeneralSecurityException exception) {
-				exception.printStackTrace();
-				return false;
-			}
-		}
-		
-		//Queuing the packet
-		return dataProxy.send(new PacketStructOut(data, encrypt, sentRunnable));
-	}
-	
-	/**
-	 * Disconnects the connection manager from the server with a custom error code
-	 *
-	 * @param code The error code to disconnect with
-	 */
-	void disconnect(int code) {
-		//Disconnecting the proxy
-		dataProxy.stop(code);
+		if(protocolManager != null) protocolManager.processData(packet.getData(), packet.getEncrypt());
+		else processFloatingData(packet.getData());
 	}
 	
 	/**
@@ -267,14 +131,14 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 			exception.printStackTrace();
 			
 			//Disconnecting
-			disconnect();
+			getHandler().post(() -> disconnect(ConnectionErrorCode.connection));
 		}
 	}
 	
 	private void processServerInformation(AirUnpacker unpacker) throws IOException {
 		//Restarting the authentication timer
-		handler.removeCallbacks(handshakeExpiryRunnable);
-		handler.postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
+		getHandler().removeCallbacks(handshakeExpiryRunnable);
+		getHandler().postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
 		
 		//Reading the communications version information
 		int communicationsVersion = unpacker.unpackInt();
@@ -284,48 +148,134 @@ public class ClientComm5 extends CommunicationsManager<PacketStructIn, PacketStr
 		int verApplicability = checkCommVerApplicability(communicationsVersion);
 		if(verApplicability != 0) {
 			//Terminating the connection
-			dataProxy.stop(verApplicability < 0 ? ConnectionManager.connResultServerOutdated : ConnectionManager.connResultClientOutdated);
+			getHandler().post(() -> disconnect(verApplicability < 0 ? ConnectionErrorCode.serverOutdated : ConnectionErrorCode.clientOutdated));
 			return;
 		}
 		
+		//Finding a matching protocol manager
 		protocolManager = findProtocolManager(communicationsSubVersion);
 		if(protocolManager == null) {
-			dataProxy.stop(ConnectionManager.connResultClientOutdated);
+			getHandler().post(() -> disconnect(ConnectionErrorCode.clientOutdated));
 			return;
 		}
 		
-		encryptionManager = findEncryptionManager(communicationsSubVersion);
-		
 		//Updating the protocol version
-		new Handler(Looper.getMainLooper()).post(() -> connectionManager.setActiveCommunicationsInfo(communicationsVersion, communicationsSubVersion));
+		protocolManagerVer = communicationsSubVersion;
 		
 		//Sending the handshake data
 		protocolManager.sendAuthenticationRequest(unpacker);
 	}
 	
-	private ProtocolManager findProtocolManager(int subVersion) {
+	private ProtocolManager<EncryptedPacket> findProtocolManager(int subVersion) {
 		switch(subVersion) {
 			default:
 				return null;
 			case 1:
-				return new ClientProtocol1(context, connectionManager, this);
+				return new ClientProtocol1(this, getDataProxy());
 		}
 	}
 	
-	private EncryptionManager findEncryptionManager(int subVersion) {
-		if(dataProxy instanceof ProxyConnect) return null;
-		return new EncryptionAES();
+	@Override
+	public boolean isConnectedFallback() {
+		if(getDataProxyType() == ProxyType.direct) return ((ProxyDirectTCP) getDataProxy()).isUsingFallback();
+		else return false;
 	}
 	
 	@Override
-	public boolean checkSupportsFeature(String feature) {
+	public boolean sendPing() {
+		if(protocolManager == null) return false;
+		else return protocolManager.sendPing();
+	}
+	
+	@Override
+	public boolean sendMessage(short requestID, ConversationTarget conversation, String message) {
+		if(protocolManager == null) return false;
+		return protocolManager.sendMessage(requestID, conversation, message);
+	}
+	
+	@Override
+	public Observable<ReduxEventAttachmentUpload> sendFile(short requestID, ConversationTarget conversation, File file) {
+		if(protocolManager == null) return Observable.error(new AMRequestException(MessageSendErrorCode.localNetwork));
+		return protocolManager.sendFile(requestID, conversation, file);
+	}
+	
+	@Override
+	public boolean requestAttachmentDownload(short requestID, String attachmentGUID) {
+		if(protocolManager == null) return false;
+		return protocolManager.requestAttachmentDownload(requestID, attachmentGUID);
+	}
+	
+	@Override
+	public boolean requestConversationInfo(Collection<String> conversations) {
+		if(protocolManager == null) return false;
+		return protocolManager.requestConversationInfo(conversations);
+	}
+	
+	@Override
+	public boolean requestRetrievalTime(long timeLower, long timeUpper) {
+		if(protocolManager == null) return false;
+		return protocolManager.requestRetrievalTime(timeLower, timeUpper);
+	}
+	
+	@Override
+	public boolean requestRetrievalID(long idLower) {
+		if(protocolManager == null) return false;
+		return protocolManager.requestRetrievalID(idLower);
+	}
+	
+	@Override
+	public boolean requestRetrievalAll(short requestID, MassRetrievalParams params) {
+		if(protocolManager == null) return false;
+		return protocolManager.requestRetrievalAll(requestID, params);
+	}
+	
+	@Override
+	public boolean requestChatCreation(short requestID, String[] members, String service) {
+		if(protocolManager == null) return false;
+		return protocolManager.requestChatCreation(requestID, members, service);
+	}
+	
+	@Override
+	public boolean sendPushToken(String token) {
+		//Returning if there is no connection
+		if(!isConnectionOpened()) return false;
+		
+		//Handling the message through the Connect proxy
+		if(getDataProxyType() == ProxyType.connect) {
+			((ProxyConnect) getDataProxy()).sendTokenAdd(token);
+			return true;
+		}
+		
+		return false;
+	}
+	
+	@Override
+	public int checkCommVerApplicability(int version) {
+		return Integer.compare(version, communicationsVersion);
+	}
+	
+	public boolean isConnectionOpened() {
+		return connectionOpened;
+	}
+	
+	@Override
+	public boolean isFeatureSupported(@ConnectionFeature int featureID) {
 		//Forwarding the request to the protocol manager
 		if(protocolManager == null) return false;
-		return protocolManager.checkSupportsFeature(feature);
+		return protocolManager.isFeatureSupported(featureID);
 	}
 	
 	@Override
 	public boolean requiresPersistence() {
-		return protocolRequiresKeepalive;
+		return getDataProxyType() == ProxyType.direct;
+	}
+	
+	@Override
+	public String getCommunicationsVersion() {
+		return communicationsVersion + "." + (protocolManagerVer != -1 ? protocolManagerVer : "X");
+	}
+	
+	String getPassword() {
+		return password;
 	}
 }

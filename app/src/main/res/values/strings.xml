@@ -103,8 +103,10 @@
 
 	<string name="dialog_skipsetup_message">Skip setup?</string>
 
-	<string name="message_blankstate_conversations">Once you start a new conversation, you\'ll see it listed here</string>
-	<string name="message_blankstate_conversations_archived">Archived conversations appear here</string>
+	<string name="message_blankstate_conversations">No conversations</string>
+	<string name="message_blankstate_conversations_description">Once you start a new conversation, you\'ll see it listed here</string>
+	<string name="message_blankstate_conversations_archived">No archived conversations</string>
+	<string name="message_blankstate_conversations_archived_description">Archived conversations appear here</string>
 	<string name="message_blankstate_conversations_basic">No conversations</string>
 	<string name="message_blankstate_blocked">No blocked addresses</string>
 
@@ -121,6 +123,7 @@
 
 	<string name="message_loaderror_gallery">Failed to load gallery images</string>
 	<string name="message_loaderror_documents">Failed to load documents</string>
+	<string name="message_loaderror_location">Failed to load your location</string>
 
 	<string name="message_intenterror_open">Couldn\'t open file</string>
 	<string name="message_intenterror_camera">No camera app found</string>
@@ -167,6 +170,7 @@
 	<string name="message_senderror">Not sent</string>
 
 	<string name="message_connectionerror">Couldn\'t connect to server</string>
+	<string name="message_serviceavailabilityerror">Connection service not available</string>
 
 	<string name="message_permissionrejected">Permission request rejected</string>
 	<string name="message_permissiondetails_contacts_listing">Allow access to contacts to show names and pictures</string>
@@ -362,6 +366,9 @@
 	<string name="message_onboardinginstructions_airmessage_title">Connect your account</string>
 	<string name="message_onboardinginstructions_airmessage_desc">Log in with your account to get your messages on this device.</string>
 
+	<string name="message_manualconfigurationstatus">Manual configuration in progress</string>
+	<string name="message_temporarymodestatus">Checking for new messages</string>
+
 	<plurals name="message_newmessages">
 		<item quantity="one">%d new message</item>
 		<item quantity="other">%d new messages</item>
@@ -439,7 +446,6 @@
 	<string name="part_tapback_question">Question mark</string>
 
 	<string name="part_invalidaddress">Invalid address</string>
-	<string name="part_manualconfigurationstatus">Manual configuration in progress</string>
 
 	<string name="label_email_home">Home</string>
 	<string name="label_email_work">Work</string>
@@ -453,6 +459,8 @@
 	<string name="label_phone_pager">Pager</string>
 	<string name="label_phone_other">Other</string>
 	<string name="label_addressdetails">%1$s - %2$s</string>
+
+	<string name="label_videoplayback">Play video</string>
 
 	<string name="state_sent">Sent</string>
 	<string name="state_delivered">Delivered</string>

@@ -59,7 +59,7 @@
 
 		<com.google.android.material.button.MaterialButton
 			style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-			android:id="@+id/button_delete"
+			android:id="@+id/button_secondary"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:layout_gravity="start"

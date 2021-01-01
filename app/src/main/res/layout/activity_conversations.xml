@@ -140,7 +140,8 @@
 				android:layout_marginTop="10dp"
 				android:progressTint="@color/colorPrimary"
 				android:progressBackgroundTint="@color/colorPrimary"
-				android:indeterminateTint="@color/colorPrimary" />
+				android:indeterminateTint="@color/colorPrimary"
+				android:indeterminate="true" />
 		</LinearLayout>
 
 		<!-- Error view -->
@@ -151,15 +152,16 @@
 			android:layout_centerInParent="true"
 			android:orientation="vertical"
 			android:visibility="gone">
-			
 			<TextView
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
 				android:text="@string/message_loaderror_messages"
-				android:tint="?android:attr/textColorSecondary" />
+				android:tint="?android:attr/textColorSecondary"
+				android:layout_marginBottom="8dp" />
 			
 			<com.google.android.material.button.MaterialButton
+				android:id="@+id/button_error"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				style="@style/Widget.MaterialComponents.Button.TextButton"
@@ -169,21 +171,35 @@
 		</LinearLayout>
 
 		<!-- No conversations view -->
-		<TextView
-			android:id="@+id/no_conversations"
+		<LinearLayout
+			android:id="@+id/blankview"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
-			android:layout_gravity="center"
+			android:orientation="vertical"
 			android:layout_marginLeft="50dp"
 			android:layout_marginRight="50dp"
-			android:visibility="gone"
 			android:alpha="0"
-			android:drawableTint="?android:attr/textColorSecondary"
-			android:drawableTop="@drawable/chat"
-			android:text="@string/message_blankstate_conversations"
-			android:textAlignment="center"
-			android:textColor="?android:attr/textColorSecondary" />
+			android:visibility="gone">
+			<TextView
+				android:id="@+id/blankview_title"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center"
+				android:text="@string/message_blankstate_conversations"
+				android:textAlignment="center"
+				android:textColor="?android:attr/textColorSecondary"
+				android:textStyle="bold" />
+			<TextView
+				android:id="@+id/blankview_description"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:layout_gravity="center"
+				android:text="@string/message_blankstate_conversations_description"
+				android:textAlignment="center"
+				android:textColor="?android:attr/textColorSecondary" />
+		</LinearLayout>
 		
 		<!-- Conversation list -->
 		<!-- <ListView
@@ -202,10 +218,10 @@
 			android:divider="@null"
 			android:dividerHeight="0dp"
 			android:theme="@style/OverscrollNeutralizer"
-			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
 			android:clipChildren="false"
 			android:clipToPadding="false"
-			android:visibility="gone" />
+			android:visibility="gone"
+			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 		<!-- Search view -->
 		<RelativeLayout
 			android:id="@+id/viewgroup_search"
@@ -233,14 +249,6 @@
 				app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 		</RelativeLayout>
 	</RelativeLayout>
-
-	<!-- Bottom shadow -->
-	<!-- <View
-		android:id="@+id/bottomshadow"
-		android:layout_width="match_parent"
-		android:layout_height="3dp"
-		android:background="@drawable/appear_bottomshadow"
-		android:layout_gravity="bottom" /> -->
 
 	<!-- Bottom divider -->
 	<View

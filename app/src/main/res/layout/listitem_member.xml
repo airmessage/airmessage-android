@@ -6,7 +6,6 @@
 	android:clickable="true"
 	android:focusable="true"
 	android:orientation="horizontal">
-	
 	<include
 		layout="@layout/reference_user"
 		android:layout_width="40dp"
@@ -14,6 +13,7 @@
 		android:layout_gravity="center"
 		android:layout_marginLeft="16dp"
 		android:layout_marginRight="16dp" />
+
 	<!-- Sender and email address -->
 	<LinearLayout
 		android:layout_width="0dp"
@@ -21,7 +21,6 @@
 		android:layout_gravity="center"
 		android:layout_weight="1"
 		android:orientation="vertical">
-		
 		<TextView
 			android:id="@+id/label_member"
 			android:layout_width="wrap_content"
@@ -43,6 +42,7 @@
 			android:textSize="14sp"
 			android:visibility="gone" />
 	</LinearLayout>
+
 	<!-- Pick color button -->
 	<ImageButton
 		android:id="@+id/button_change_color"

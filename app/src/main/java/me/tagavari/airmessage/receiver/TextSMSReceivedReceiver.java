@@ -4,26 +4,22 @@ import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.Telephony;
 import android.telephony.SmsMessage;
-import android.util.TimeUtils;
 
-import androidx.core.util.Consumer;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Collections;
 
-import me.tagavari.airmessage.activity.ConversationsBase;
-import me.tagavari.airmessage.data.DatabaseManager;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.core.SingleEmitter;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.MessageState;
+import me.tagavari.airmessage.helper.AddressHelper;
+import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.util.ConversationUtils;
-import me.tagavari.airmessage.util.NotificationUtils;
+import me.tagavari.airmessage.util.Triplet;
 
 public class TextSMSReceivedReceiver extends BroadcastReceiver {
 	@Override
@@ -33,220 +29,49 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 		String format = bundle.getString("format");
 		
 		//Getting the message
-		Message message = new Message();
-		for(int i = 0; i < pdus.length; i++) {
+		StringBuilder messageBody = new StringBuilder();
+		String messageSender = null;
+		//long messageTimestamp;
+		for(Object o : pdus) {
 			//Getting the SMS message
-			SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) pdus[i], format);
+			SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) o, format);
 			
 			//Appending the information
-			message.appendBody(smsMessage.getMessageBody());
-			if(smsMessage.getOriginatingAddress() != null) message.setSender(Constants.normalizeAddress(smsMessage.getOriginatingAddress()));
-			//message.setTimestamp(smsMessage.getTimestampMillis());
-		}
-		
-		//Overriding the message timestamp (inaccurate on certain devices)
-		message.setTimestamp(System.currentTimeMillis());
-		
-		//Saving the message
-		new GetAndroidThreadID(context, message.getSender(), threadID -> new SaveMessageTask(context, message, threadID, ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS)).execute()).execute();
-	}
-	
-	private static class Message {
-		private StringBuilder body = new StringBuilder();
-		private String sender = null;
-		private long timestamp = -1;
-		
-		public String getBody() {
-			return body.toString();
-		}
-		
-		public void appendBody(String body) {
-			this.body.append(body);
-		}
-		
-		public String getSender() {
-			return sender;
-		}
-		
-		public void setSender(String sender) {
-			if(sender == null) this.sender = null;
-			else this.sender = Constants.normalizeAddress(sender);
-		}
-		
-		public long getTimestamp() {
-			return timestamp;
-		}
-		
-		public void setTimestamp(long timestamp) {
-			this.timestamp = timestamp;
-		}
-	}
-	
-	private static class GetAndroidThreadID extends AsyncTask<Void, Void, Long> {
-		private final WeakReference<Context> contextReference;
-		private final String sender;
-		private final Consumer<Long> finishListener;
-		
-		public GetAndroidThreadID(Context context, String sender, Consumer<Long> finishListener) {
-			contextReference = new WeakReference<>(context);
-			this.sender = sender;
-			this.finishListener = finishListener;
-		}
-		
-		@Override
-		protected Long doInBackground(Void... voids) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return null;
-			
-			//Finding or creating a matching conversation in Android's message database
-			return Telephony.Threads.getOrCreateThreadId(context, sender);
-		}
-		
-		@Override
-		protected void onPostExecute(Long externalID) {
-			//Calling the listener
-			finishListener.accept(externalID);
-		}
-	}
-	
-	private static class SaveMessageTask extends AsyncTask<Void, Void, SaveMessageTaskResult> {
-		private final WeakReference<Context> contextReference;
-		private final Message message;
-		private long threadID;
-		private ConversationInfo conversationInfo;
-		
-		SaveMessageTask(Context context, Message message, long threadID, ConversationInfo conversationInfo) {
-			contextReference = new WeakReference<>(context);
-			this.message = message;
-			this.threadID = threadID;
-			this.conversationInfo = conversationInfo;
-		}
-		
-		@Override
-		protected SaveMessageTaskResult doInBackground(Void... voids) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return null;
-			
-			//Fetching a matching conversation (if one was not found in memory)
-			boolean conversationNew = false;
-			if(conversationInfo == null) {
-				conversationInfo = DatabaseManager.getInstance().findConversationByExternalID(context, threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
-				
-				//Creating a new conversation if no existing conversation was found
-				if(conversationInfo == null) {
-					//Creating the conversation
-					int conversationColor = ConversationInfo.getDefaultConversationColor(message.getTimestamp());
-					conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
-					conversationInfo.setExternalID(threadID);
-					conversationInfo.setConversationMembersCreateColors(new String[]{message.getSender()});
-					
-					//Writing the conversation to disk
-					boolean result = DatabaseManager.getInstance().addReadyConversationInfo(conversationInfo);
-					if(!result) return null;
-					
-					conversationNew = true;
-				}
+			messageBody.append(smsMessage.getMessageBody());
+			if(smsMessage.getOriginatingAddress() != null) {
+				messageSender = AddressHelper.normalizeAddress(smsMessage.getOriginatingAddress());
 			}
-			
-			//Creating and saving the message
-			MessageInfo messageInfo = createMessageInfo(message, conversationInfo);
-			DatabaseManager.getInstance().addConversationItem(messageInfo, false);
-			
-			//Writing the conversation to Android's internal database
-			insertInternalSMS(context, message);
-			
-			//Unarchiving the conversation if it is archived
-			if(conversationInfo.isArchived()) DatabaseManager.getInstance().updateConversationArchived(conversationInfo.getLocalID(), false);
-			
-			//Returning the result
-			return new SaveMessageTaskResult(messageInfo, conversationNew ? conversationInfo : null);
+			//timestamp = smsMessage.getTimestampMillis();
 		}
+		long timestamp = System.currentTimeMillis();
 		
-		@Override
-		protected void onPostExecute(SaveMessageTaskResult result) {
-			//Returning if the operation was unsuccessful
-			if(result == null) return;
-			
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return;
-			
-			//Getting the data
-			MessageInfo messageInfo = result.getMessageInfo();
-			ConversationInfo conversationInfo = messageInfo.getConversationInfo();
-			
-			//Adding the message to the conversation in memory
-			boolean addItemResult = conversationInfo.addConversationItems(context, Collections.singletonList(messageInfo));
-			//Setting the last item if the conversation items couldn't be added
-			if(!addItemResult) conversationInfo.trySetLastItemUpdate(context, messageInfo, false);
-			
-			//Incrementing the conversation's unread count
-			if(!messageInfo.isOutgoing()) {
-				conversationInfo.setUnreadMessageCount(conversationInfo.getUnreadMessageCount() + 1);
-				conversationInfo.updateUnreadStatus(context);
-			}
-			
-			//Unarchiving the conversation if it is archived
-			if(conversationInfo.isArchived()) conversationInfo.setArchived(false);
-			
-			//Checking if there is a new conversation to be added
-			if(result.getNewConversationInfo() != null) {
-				//Adding the conversation in memory
-				ConversationUtils.addConversation(result.getNewConversationInfo());
-			} else {
-				//Re-sorting the conversation
-				ConversationUtils.sortConversation(conversationInfo);
-			}
-			
-			//Updating the conversation activity list
-			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-			
-			//Sending a notification
-			NotificationUtils.sendNotification(context, result.getMessageInfo());
-		}
-	}
-	
-	private static class SaveMessageTaskResult {
-		private final MessageInfo messageInfo;
-		private final ConversationInfo newConversationInfo;
+		if(messageSender == null) return;
+		String finalMessageSender = messageSender;
 		
-		/**
-		 * Struct used to hold the result of a save message task
-		 * @param messageInfo The message info resulting from this new message
-		 * @param newConversationInfo The conversation associated with this message, only assigned if this message is the first of a new thread. Otherwise, this argument should be NULL.
-		 */
-		public SaveMessageTaskResult(MessageInfo messageInfo, ConversationInfo newConversationInfo) {
-			this.messageInfo = messageInfo;
-			this.newConversationInfo = newConversationInfo;
-		}
+		//Running on a worker thread
+		Single.create((SingleEmitter<Triplet<Boolean, ConversationInfo, MessageInfo>> emitter) -> {
+			//Writing the message to Android's database
+			insertInternalSMS(context, messageBody.toString(), finalMessageSender, timestamp);
+		}).subscribeOn(Schedulers.single()).subscribe();
 		
-		public MessageInfo getMessageInfo() {
-			return messageInfo;
-		}
-		
-		public ConversationInfo getNewConversationInfo() {
-			return newConversationInfo;
-		}
-	}
-	
-	private static MessageInfo createMessageInfo(Message message, ConversationInfo conversation) {
-		return new MessageInfo(-1, -1, null, conversation, message.getSender(), message.getBody(), null, null, false, message.getTimestamp(), Constants.messageStateCodeSent, Constants.messageErrorCodeOK, false, -1);
+		//Adding the message to the conversation
+		MMSSMSHelper.updateTextConversationMessage(context, new String[]{finalMessageSender}, new MessageInfo(-1, -1, null, timestamp, finalMessageSender, messageBody.toString(), null, new ArrayList<>(), null, false, -1, MessageState.sent, MessageSendErrorCode.none, false)).subscribe();
 	}
 	
 	/**
 	 * Inserts a message into Android's internal SMS database
 	 * @param context The context to use
-	 * @param message The message to add
+	 * @param sender The sender of the message
+	 * @param body The text content of the message
+	 * @param timestamp The date the message was sent
 	 */
-	private static void insertInternalSMS(Context context, Message message) {
+	private static void insertInternalSMS(Context context, String sender, String body, long timestamp) {
 		ContentValues contentValues = new ContentValues();
-		contentValues.put(Telephony.Sms.ADDRESS, message.getSender());
-		contentValues.put(Telephony.Sms.BODY, message.getBody());
+		contentValues.put(Telephony.Sms.ADDRESS, sender);
+		contentValues.put(Telephony.Sms.BODY, body);
 		contentValues.put(Telephony.Sms.DATE, System.currentTimeMillis());
 		contentValues.put(Telephony.Sms.READ, "1");
-		contentValues.put(Telephony.Sms.DATE_SENT, message.getTimestamp());
+		contentValues.put(Telephony.Sms.DATE_SENT, timestamp);
 		
 		try {
 			context.getContentResolver().insert(Telephony.Sms.Inbox.CONTENT_URI, contentValues);

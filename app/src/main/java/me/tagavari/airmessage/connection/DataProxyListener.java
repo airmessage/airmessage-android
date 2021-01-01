@@ -1,7 +1,12 @@
 package me.tagavari.airmessage.connection;
 
-public interface DataProxyListener<D> {
-	void onOpen();
-	void onClose(int reason);
-	void onMessage(D data);
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+
+/**
+ * Listener for events of a {@link DataProxy}
+ */
+public interface DataProxyListener<Packet> {
+	void handleOpen();
+	void handleClose(@ConnectionErrorCode int reason);
+	void handleMessage(Packet packet);
 }

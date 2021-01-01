@@ -1,23 +1,20 @@
 package me.tagavari.airmessage.service;
 
-import android.content.Intent;
-import android.os.Build;
-
 import androidx.annotation.NonNull;
 
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
 import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper;
 
 public class FCMService extends FirebaseMessagingService {
 	@Override
 	public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
-		Intent serviceIntent = new Intent(this, ConnectionService.class)
-				.setAction(ConnectionService.selfIntentActionConnect)
-				.putExtra(ConnectionService.selfIntentExtraTemporary, true);
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
-		else startService(serviceIntent);
+		//Only starting the service if it isn't already running (for example, if it's bound to an activity, we'll want to leave it that way)
+		if(ConnectionService.getInstance() == null) {
+			ConnectionServiceLaunchHelper.launchTemporary(this);
+		}
 	}
 	
 	@Override

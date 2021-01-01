@@ -1,14 +1,24 @@
 package me.tagavari.airmessage.common;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import java.util.List;
 
+import me.tagavari.airmessage.enums.GroupAction;
+import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.MessageState;
+
+/**
+ * POJOs for messaging data received over the network
+ */
 public class Blocks {
 	public static class ConversationInfo {
-		public String guid;
-		public boolean available;
-		public String service;
-		public String name;
-		public String[] members;
+		public final String guid;
+		public final boolean available;
+		public final String service;
+		@Nullable public final String name;
+		@NonNull public final String[] members;
 		
 		//Conversation unavailable
 		public ConversationInfo(String guid) {
@@ -21,7 +31,7 @@ public class Blocks {
 		}
 		
 		//Conversation available
-		public ConversationInfo(String guid, String service, String name, String[] members) {
+		public ConversationInfo(String guid, String service, @Nullable String name, @NonNull String[] members) {
 			//Setting the values
 			this.guid = guid;
 			this.available = true;
@@ -32,10 +42,10 @@ public class Blocks {
 	}
 	
 	public static abstract class ConversationItem {
-		public long serverID;
-		public String guid;
-		public String chatGuid;
-		public long date;
+		public final long serverID;
+		public final String guid;
+		public final String chatGuid;
+		public final long date;
 		
 		public ConversationItem(long serverID, String guid, String chatGuid, long date) {
 			this.serverID = serverID;
@@ -46,26 +56,18 @@ public class Blocks {
 	}
 	
 	public static class MessageInfo extends ConversationItem {
-		private static final int itemType = 0;
+		@Nullable public final String text;
+		@Nullable public final String subject;
+		@Nullable public final String sender;
+		@NonNull public final List<AttachmentInfo> attachments;
+		@NonNull public final List<StickerModifierInfo> stickers;
+		@NonNull public final List<TapbackModifierInfo> tapbacks;
+		@Nullable public final String sendEffect;
+		@MessageState public final int stateCode;
+		@MessageSendErrorCode public final int errorCode;
+		public final long dateRead;
 		
-		public static final int stateCodeGhost = 0;
-		public static final int stateCodeIdle = 1;
-		public static final int stateCodeSent = 2;
-		public static final int stateCodeDelivered = 3;
-		public static final int stateCodeRead = 4;
-		
-		public String text;
-		public String subject;
-		public String sender;
-		public List<AttachmentInfo> attachments;
-		public List<StickerModifierInfo> stickers;
-		public List<TapbackModifierInfo> tapbacks;
-		public String sendEffect;
-		public int stateCode;
-		public int errorCode;
-		public long dateRead;
-		
-		public MessageInfo(long serverID, String guid, String chatGuid, long date, String text, String subject, String sender, List<AttachmentInfo> attachments, List<StickerModifierInfo> stickers, List<TapbackModifierInfo> tapbacks, String sendEffect, int stateCode, int errorCode, long dateRead) {
+		public MessageInfo(long serverID, String guid, String chatGuid, long date, @Nullable String text, @Nullable String subject, @Nullable String sender, @NonNull List<AttachmentInfo> attachments, @NonNull List<StickerModifierInfo> stickers, @NonNull List<TapbackModifierInfo> tapbacks, @Nullable String sendEffect, @MessageState int stateCode, @MessageSendErrorCode int errorCode, long dateRead) {
 			//Calling the super constructor
 			super(serverID, guid, chatGuid, date);
 			
@@ -84,13 +86,11 @@ public class Blocks {
 	}
 	
 	public static class GroupActionInfo extends ConversationItem {
-		private static final int itemType = 1;
+		@Nullable public final String agent;
+		@Nullable public final String other;
+		@GroupAction public final int groupActionType;
 		
-		public String agent;
-		public String other;
-		public int groupActionType;
-		
-		public GroupActionInfo(long serverID, String guid, String chatGuid, long date, String agent, String other, int groupActionType) {
+		public GroupActionInfo(long serverID, String guid, String chatGuid, long date, @Nullable String agent, @Nullable String other, @GroupAction int groupActionType) {
 			//Calling the super constructor
 			super(serverID, guid, chatGuid, date);
 			
@@ -102,12 +102,10 @@ public class Blocks {
 	}
 	
 	public static class ChatRenameActionInfo extends ConversationItem {
-		private static final int itemType = 2;
+		@Nullable public final String agent;
+		@NonNull public final String newChatName;
 		
-		public String agent;
-		public String newChatName;
-		
-		public ChatRenameActionInfo(long serverID, String guid, String chatGuid, long date, String agent, String newChatName) {
+		public ChatRenameActionInfo(long serverID, String guid, String chatGuid, long date, @Nullable String agent, @NonNull String newChatName) {
 			//Calling the super constructor
 			super(serverID, guid, chatGuid, date);
 			
@@ -118,19 +116,21 @@ public class Blocks {
 	}
 	
 	public static class AttachmentInfo {
-		public String guid;
-		public String name;
-		public String type;
-		public long size;
-		public byte[] checksum;
+		@NonNull public final String guid;
+		@NonNull public final String name;
+		@NonNull public final String type;
+		public final long size;
+		@Nullable public final byte[] checksum;
+		public final int sort;
 		
-		public AttachmentInfo(String guid, String name, String type, long size, byte[] checksum) {
+		public AttachmentInfo(@NonNull String guid, @NonNull String name, @NonNull String type, long size, @Nullable byte[] checksum, int sort) {
 			//Setting the variables
 			this.guid = guid;
 			this.name = name;
 			this.type = type;
 			this.size = size;
 			this.checksum = checksum;
+			this.sort = sort;
 		}
 	}
 	
@@ -143,12 +143,10 @@ public class Blocks {
 	}
 	
 	public static class ActivityStatusModifierInfo extends ModifierInfo {
-		private static final int itemType = 0;
+		@MessageState public final int state;
+		public final long dateRead;
 		
-		public int state;
-		public long dateRead;
-		
-		public ActivityStatusModifierInfo(String message, int state, long dateRead) {
+		public ActivityStatusModifierInfo(String message, @MessageState int state, long dateRead) {
 			//Calling the super constructor
 			super(message);
 			
@@ -159,14 +157,12 @@ public class Blocks {
 	}
 	
 	public static class StickerModifierInfo extends ModifierInfo {
-		private static final int itemType = 1;
-		
-		public int messageIndex;
-		public String fileGuid;
-		public String sender;
-		public long date;
-		public byte[] data;
-		public String type;
+		public final int messageIndex;
+		public final String fileGuid;
+		public final String sender;
+		public final long date;
+		public final byte[] data;
+		public final String type;
 		
 		public StickerModifierInfo(String message, int messageIndex, String fileGuid, String sender, long date, byte[] data, String type) {
 			//Calling the super constructor
@@ -183,20 +179,10 @@ public class Blocks {
 	}
 	
 	public static class TapbackModifierInfo extends ModifierInfo {
-		private static final int itemType = 2;
-		
-		//Creating the reference values
-		public static final int tapbackLove = 0;
-		public static final int tapbackLike = 1;
-		public static final int tapbackDislike = 2;
-		public static final int tapbackLaugh = 3;
-		public static final int tapbackEmphasis = 4;
-		public static final int tapbackQuestion = 5;
-		
-		public int messageIndex;
-		public String sender;
-		public boolean isAddition;
-		public int tapbackType;
+		public final int messageIndex;
+		public final String sender;
+		public final boolean isAddition;
+		public final int tapbackType;
 		
 		public TapbackModifierInfo(String message, int messageIndex, String sender, boolean isAddition, int tapbackType) {
 			//Calling the super constructor

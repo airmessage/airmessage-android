@@ -61,9 +61,11 @@
 	<string name="title_conversation_files">会話のファイル</string>
 	<string name="dialog_feedback_email">メールを送る</string>
 	<string name="dialog_feedback_community">コミュ二ティページを開く</string>
-	<string name="message_blankstate_conversations">新しい会話を開始すると、ここに表示されます</string>
-	<string name="message_blankstate_conversations_archived">アーカイブされた会話がここに表示されます</string>
-	<string name="message_blankstate_conversations_basic">会話はありません</string>
+	<string name="message_blankstate_conversations">会話なし</string>
+	<string name="message_blankstate_conversations_description">新しい会話を開始すると、ここに表示されます</string>
+	<string name="message_blankstate_conversations_archived">アーカイブされた会話なし</string>
+	<string name="message_blankstate_conversations_archived_description">アーカイブされた会話がここに表示されます</string>
+	<string name="message_blankstate_conversations_basic">会話なし</string>
 	<string name="message_blankstate_blocked">ブロックされた連絡先はありません</string>
 	<string name="message_unknownerror">不明なエラーが発生しました</string>
 	<string name="message_loaderror_conversation">会話ロードを読み込めませんでした</string>
@@ -134,8 +136,8 @@
 	<string name="message_setup_sync_download_description">これで <b>%s</b> に接続されました。最近のメッセージをパソコンからこのデバイスにコピーしますか？</string>
 	<string name="message_setup_sync_delete_description">あるいは、再発足してこのデバイスから古いメッセージを消去します。</string>
 	<string name="message_setup_sync_warning_title">メッセージの削除をスキップしますか？</string>
-	<string name="message_confirm_resyncmessages">最近のメッセージを同時しますか？</string>
-	<string name="message_confirm_resyncmessages_description">このデバイスに保存されているすべてのメッセージが取り替えられます</string>
+	<string name="message_confirm_resyncmessages">最近のメッセージを同期しますか？</string>
+	<string name="message_confirm_resyncmessages_description">このデバイスに保存されているメッセージはすべて置き換えられます</string>
 	<string name="message_confirm_resyncmessages_started">最近のメッセージをダウンロードしています</string>
 	<string name="message_confirm_resyncmessages_inprogress">最近のメッセージをもうダウンロードしています</string>
 	<string name="message_confirm_resyncmessages_advanced">高度同期</string>
@@ -295,16 +297,16 @@
 		<item quantity="other">%d件の会話のアーカイブを解除しました</item>
 	</plurals>
 	<plurals name="message_multipleattachments">
-		<item quantity="other">%d個の添付</item>
+		<item quantity="other">%d件の添付</item>
 	</plurals>
 	<plurals name="message_selectioncount">
-		<item quantity="other">%d個選択中</item>
+		<item quantity="other">%d件選択中</item>
 	</plurals>
 	<plurals name="message_multipledestinations">
 		<item quantity="other">%s（他%s個）</item>
 	</plurals>
 	<plurals name="message_blockedmessagecount">
-		<item quantity="other">%d個のメッセージをブロックしました</item>
+		<item quantity="other">%d件のメッセージをブロックしました</item>
 	</plurals>
 	<plurals name="message_advancedsync_time_hour">
 		<item quantity="other">%d時間</item>
@@ -388,7 +390,7 @@
 	<string name="message_crashreport_subtitle">AirMessage デバッグクラッシュレポート</string>
 	<string name="message_notsupported">この機能は利用できません</string>
 	<string name="message_connecterror">サーバーに到達できませんでした</string>
-	<string name="part_content_location">場所の詳細</string>
+	<string name="part_content_location">場所詳細</string>
 	<string name="part_content_contact">連絡先</string>
 	<string name="preference_textmessage_deliveryreport_title">SMS 受取確認通知</string>
 	<string name="preference_textmessage_enable_title">テキストメッセージ統合</string>
@@ -464,7 +466,9 @@
 	<string name="action_renamegroup">このグループ名を変更する</string>
 	<string name="message_renamegroup_onlyyouvisibility">このグループ名はあなたにだけ表示されます</string>
 	<string name="part_invalidaddress">無効なアドレス</string>
-	<string name="part_manualconfigurationstatus">手動設定中</string>
+
+	<string name="message_manualconfigurationstatus">手動設定中</string>
+	<string name="message_temporarymodestatus">新着メッセージを確認しています</string>
 
 	<plurals name="message_newmessages">
 		<item quantity="other">%d件の新しいメッセージ</item>
@@ -482,7 +486,7 @@
 	<string name="message_serverstatus_otherlocation">サーバーコンピュータが交換されました</string>
 	<string name="message_serverstatus_nointernet">インターネットに接続できません</string>
 	<string name="message_reset_connect">AirMessage からログアウトしますか？</string>
-	<string name="message_reset_direct">アカウントで AirMessage にアクセスしますか？</string>
+	<string name="message_reset_direct">アカウントで AirMessage にアクセスするように切り替えますか？</string>
 	<string name="action_switchtoaccount">アカウントに切り替える</string>
 	<string name="action_signout">ログアウト</string>
 	<string name="preference_account_reset_title">ログアウト</string>

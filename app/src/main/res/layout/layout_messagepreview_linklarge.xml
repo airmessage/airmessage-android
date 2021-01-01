@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<com.google.android.material.card.MaterialCardView
 	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:id="@+id/group_messagepreview_linklarge"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
 	android:focusable="true"
 	android:clickable="true"
-	android:foreground="?android:attr/selectableItemBackground">
+	android:foreground="?android:attr/selectableItemBackground"
+	app:cardElevation="0dp"
+	app:cardUseCompatPadding="false">
 	<!-- Content -->
 	<LinearLayout
 		android:layout_width="match_parent"
@@ -61,7 +64,8 @@
 				android:src="@drawable/web"
 				android:tint="?android:attr/textColorSecondary"
 				android:tintMode="src_in"
-				android:layout_marginEnd="4dp"/>
+				android:layout_marginEnd="4dp" />
+
 			<TextView
 				android:id="@+id/label_address"
 				android:layout_width="wrap_content"
@@ -79,4 +83,4 @@
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
 		android:background="@drawable/rectangle_chatpreview" />
-</FrameLayout>
+</com.google.android.material.card.MaterialCardView>

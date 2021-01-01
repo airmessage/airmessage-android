@@ -9,6 +9,8 @@ import android.provider.Telephony;
 
 import java.util.Arrays;
 
+import me.tagavari.airmessage.helper.MMSSMSHelper;
+import me.tagavari.airmessage.helper.MessageSendHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.service.SystemMessageImportService;
@@ -31,7 +33,7 @@ public class ExternalMessagingProviderChangedReceiver extends BroadcastReceiver 
 		else return;
 		
 		//Getting the standard projection with the thread ID
-		String[] projection = type.equals(typeSMS) ? SystemMessageImportService.smsColumnProjection : SystemMessageImportService.mmsColumnProjection;
+		String[] projection = type.equals(typeSMS) ? MMSSMSHelper.smsColumnProjection : MMSSMSHelper.mmsColumnProjection;
 		projection = Arrays.copyOf(projection, projection.length + 1);
 		projection[projection.length - 1] = Telephony.Mms.THREAD_ID;
 		
@@ -51,25 +53,12 @@ public class ExternalMessagingProviderChangedReceiver extends BroadcastReceiver 
 		if(lastMessageID == messageID) return;
 		lastMessageID = messageID;
 		
-		//Setting the mapper
-		SystemMessageImportService.CursorMessageMapper mapper;
-		if(type.equals(typeMMS)) {
-			mapper = new SystemMessageImportService.CursorMessageMapper(cursor) {
-				@Override
-				public MessageInfo map(Context context, ConversationInfo conversationInfo) {
-					return SystemMessageImportService.readSaveMMSMessage(getCursor(), context, conversationInfo);
-				}
-			};
-		} else {
-			mapper = new SystemMessageImportService.CursorMessageMapper(cursor) {
-				@Override
-				public MessageInfo map(Context context, ConversationInfo conversationInfo) {
-					return SystemMessageImportService.readSaveSMSMessage(getCursor(), conversationInfo);
-				}
-			};
-		}
+		//Reading the message
+		MessageInfo messageInfo;
+		if(type.equals(typeMMS)) messageInfo = MMSSMSHelper.readMMSMessage(context, cursor);
+		else messageInfo = MMSSMSHelper.readSMSMessage(cursor);
 		
-		//Handling the new message
-		SystemMessageImportService.handleNewMessage(context, threadID, mapper);
+		//Saving the message
+		MMSSMSHelper.updateTextConversationMessage(context, threadID, messageInfo).subscribe();
 	}
 }

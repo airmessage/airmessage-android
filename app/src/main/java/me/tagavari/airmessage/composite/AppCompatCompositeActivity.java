@@ -1,15 +1,13 @@
 package me.tagavari.airmessage.composite;
 
-import android.annotation.SuppressLint;
 import android.os.Bundle;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-@SuppressLint("Registered")
+import java.util.ArrayList;
+import java.util.List;
+
 public class AppCompatCompositeActivity extends AppCompatActivity {
 	private final List<AppCompatActivityPlugin> pluginList = new ArrayList<>();
 	

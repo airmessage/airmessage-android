@@ -4,89 +4,177 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import androidx.annotation.Nullable;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.security.GeneralSecurityException;
+import java.util.Collection;
+
+import io.reactivex.rxjava3.core.Observable;
+import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.connection.CommunicationsManager;
-import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.connection.ProxyNoOp;
-import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
+import me.tagavari.airmessage.connection.exception.AMRequestException;
+import me.tagavari.airmessage.connection.listener.CommunicationsManagerListener;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.ConnectionFeature;
+import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.ProxyType;
+import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.util.ConversationTarget;
+import me.tagavari.airmessage.util.DirectConnectionParams;
 
-public class ClientComm4 extends CommunicationsManager<PacketStructIn, PacketStructOut> {
-	//Creating the connection values
-	private ProtocolManager protocolManager = null;
+public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
+	private static final int communicationsVersion = 4;
 	
+	//Creating the connection values
+	ProtocolManager<HeaderPacket> protocolManager = null;
+	private int protocolManagerVer = -1;
+	
+	//Creating the handshake values
+	final Runnable handshakeExpiryRunnable = () -> disconnect(ConnectionErrorCode.connection);
 	private static final long handshakeExpiryTime = 1000 * 10; //10 seconds
-	final Handler handler = new Handler();
 	
 	//Creating the transmission values
 	static final int nhtClose = -1;
 	static final int nhtPing = -2;
 	static final int nhtPong = -3;
 	static final int nhtInformation = 0;
-
-	final Runnable handshakeExpiryRunnable = () -> dataProxy.stop(ConnectionManager.connResultConnection);
 	
 	//Creating the state values
 	private boolean connectionOpened = false;
 	
-	public ClientComm4(ConnectionManager connectionManager, int proxyType, Context context) {
-		super(connectionManager, context);
-		
-		//Assigning the proxy
-		if(proxyType == ConnectionManager.proxyTypeDirect) setProxy(new ProxyDirectTCP());
-		else setProxy(new ProxyNoOp<>());
-		
-		//Hooking into the data proxy
-		dataProxy.addDataListener(this);
+	//Creating the parameter values
+	private String password;
+	
+	public ClientComm4(CommunicationsManagerListener listener, int proxyType) {
+		super(listener, proxyType);
 	}
 	
 	@Override
-	public void initiateClose() {
-		if(connectionOpened) {
-			//Notifying the server before disconnecting
-			queuePacket(new PacketStructOut(nhtClose, new byte[0], () -> dataProxy.stop(ConnectionManager.connResultConnection)));
+	public void connect(Context context, @Nullable Object override) {
+		//Saving the password for protocol-level encryption
+		if(override == null) {
+			try {
+				password = SharedPreferencesManager.getDirectConnectionPassword(context);
+			} catch(GeneralSecurityException | IOException exception) {
+				exception.printStackTrace();
+			}
 		} else {
-			//The server isn't connected, disconnect right away
-			dataProxy.stop(ConnectionManager.connResultConnection);
+			password = ((DirectConnectionParams) override).getPassword();
 		}
+		
+		super.connect(context, override);
 	}
 	
 	@Override
-	public void onOpen() {
-		//Calling the super method
-		super.onOpen();
-		
-		//Starting the handshake expiry timer
-		handler.postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
+	protected DataProxy<HeaderPacket> getDataProxy(int proxyType) {
+		//Assigning the proxy
+		if(proxyType == ProxyType.direct) return new ProxyDirectTCP();
+		else if(proxyType == ProxyType.connect) return new ProxyNoOp<>();
+		else throw new IllegalArgumentException("Unknown proxy type " + proxyType);
+	}
+	
+	@Override
+	protected void handleOpen() {
+		//Starting the handshake timeout
+		startTimeoutTimer();
 		
 		//Setting the state
 		connectionOpened = true;
 	}
 	
 	@Override
-	public void onClose(int reason) {
-		//Calling the super method
-		super.onClose(reason);
+	protected void handleClose(@ConnectionErrorCode int reason) {
+		//Cancelling the handshake timeout
+		stopTimeoutTimer();
 		
-		//Cancelling the handshake expiry timer
-		handler.removeCallbacks(handshakeExpiryRunnable);
+		//Invalidating the connection managers
+		protocolManager = null;
+		protocolManagerVer = -1;
+		
+		//Setting the state
+		connectionOpened = false;
+	}
+	
+	void startTimeoutTimer() {
+		getHandler().postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
+	}
+	
+	void stopTimeoutTimer() {
+		getHandler().removeCallbacks(handshakeExpiryRunnable);
 	}
 	
 	@Override
-	public void onMessage(PacketStructIn message) {
-		//Calling the super method
-		super.onMessage(message);
+	protected void handleMessage(HeaderPacket packet) {
+		//Sending an update for the received packet
+		runListener(CommunicationsManagerListener::onPacket);
 		
 		//Processing the data
-		if(protocolManager == null) processFloatingData(message.getHeader(), message.getData());
-		else protocolManager.processData(message.getHeader(), message.getData());
+		if(protocolManager != null) protocolManager.processData(packet.getData(), packet.getType());
+		else processFloatingData(packet.getData(), packet.getType());
+	}
+	
+	/**
+	 * Processes any data before a protocol manager is selected, usually to handle version processing
+	 */
+	private void processFloatingData(byte[] data, int type) {
+		//Only accepting information messages
+		if(type != nhtInformation) return;
+		
+		//Restarting the authentication timer
+		getHandler().removeCallbacks(handshakeExpiryRunnable);
+		getHandler().postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
+		
+		//Reading the communications version information
+		ByteBuffer dataBuffer = ByteBuffer.wrap(data);
+		int communicationsVersion = dataBuffer.getInt();
+		int communicationsSubVersion = dataBuffer.getInt();
+		
+		//Checking if the client can't handle this communications version
+		int verApplicability = checkCommVerApplicability(communicationsVersion);
+		if(verApplicability != 0) {
+			//Terminating the connection
+			getHandler().post(() -> disconnect(verApplicability < 0 ? ConnectionErrorCode.serverOutdated : ConnectionErrorCode.clientOutdated));
+			return;
+		}
+		
+		//Communications subversions 1-5 are no longer supported
+		if(communicationsSubVersion <= 5) {
+			getHandler().post(() -> disconnect(ConnectionErrorCode.serverOutdated));
+			return;
+		}
+		
+		protocolManager = findProtocolManager(communicationsSubVersion);
+		if(protocolManager == null) {
+			getHandler().post(() -> disconnect(ConnectionErrorCode.clientOutdated));
+			return;
+		}
+		
+		//Updating the protocol version
+		protocolManagerVer = communicationsSubVersion;
+		
+		//Sending the handshake data
+		protocolManager.sendAuthenticationRequest();
+	}
+	
+	private ProtocolManager<HeaderPacket> findProtocolManager(int subVersion) {
+		switch(subVersion) {
+			default:
+				return null;
+			case 6:
+				return new ClientProtocol6(this, getDataProxy());
+		}
 	}
 	
 	@Override
 	public boolean isConnectedFallback() {
-		if(dataProxy instanceof ProxyDirectTCP) return ((ProxyDirectTCP) dataProxy).isUsingFallback();
+		if(getDataProxyType() == ProxyType.direct) return ((ProxyDirectTCP) getDataProxy()).isUsingFallback();
 		else return false;
 	}
 	
@@ -97,57 +185,38 @@ public class ClientComm4 extends CommunicationsManager<PacketStructIn, PacketStr
 	}
 	
 	@Override
-	public ConnectionManager.Packager getPackager() {
-		if(protocolManager == null) return null;
-		return protocolManager.getPackager();
-	}
-	
-	@Override
-	public String getHashAlgorithm() {
-		if(protocolManager == null) return null;
-		return protocolManager.getHashAlgorithm();
-	}
-	
-	@Override
-	public boolean sendMessage(short requestID, String chatGUID, String message) {
+	public boolean sendMessage(short requestID, ConversationTarget conversation, String message) {
 		if(protocolManager == null) return false;
-		return protocolManager.sendMessage(requestID, chatGUID, message);
+		return protocolManager.sendMessage(requestID, conversation, message);
 	}
 	
 	@Override
-	public boolean sendMessage(short requestID, String[] chatMembers, String message, String service) {
-		if(protocolManager == null) return false;
-		return protocolManager.sendMessage(requestID, chatMembers, message, service);
+	public Observable<ReduxEventAttachmentUpload> sendFile(short requestID, ConversationTarget conversation, File file) {
+		if(protocolManager == null) return Observable.error(new AMRequestException(MessageSendErrorCode.localNetwork));
+		return protocolManager.sendFile(requestID, conversation, file);
 	}
 	
 	@Override
-	public boolean addDownloadRequest(short requestID, String attachmentGUID, Runnable sentRunnable) {
+	public boolean requestAttachmentDownload(short requestID, String attachmentGUID) {
 		if(protocolManager == null) return false;
-		return protocolManager.addDownloadRequest(requestID, attachmentGUID, sentRunnable);
+		return protocolManager.requestAttachmentDownload(requestID, attachmentGUID);
 	}
 	
 	@Override
-	public boolean sendConversationInfoRequest(List<ConversationInfoRequest> list) {
+	public boolean requestConversationInfo(Collection<String> conversations) {
 		if(protocolManager == null) return false;
-		return protocolManager.sendConversationInfoRequest(list);
-	}
-	
-	@Override
-	public boolean uploadFilePacket(short requestID, int requestIndex, String conversationGUID, byte[] data, String fileName, boolean isLast) {
-		if(protocolManager == null) return false;
-		return protocolManager.uploadFilePacket(requestID, requestIndex, conversationGUID, data, fileName, isLast);
-	}
-	
-	@Override
-	public boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast) {
-		if(protocolManager == null) return false;
-		return protocolManager.uploadFilePacket(requestID, requestIndex, conversationMembers, data, fileName, service, isLast);
+		return protocolManager.requestConversationInfo(conversations);
 	}
 	
 	@Override
 	public boolean requestRetrievalTime(long timeLower, long timeUpper) {
 		if(protocolManager == null) return false;
 		return protocolManager.requestRetrievalTime(timeLower, timeUpper);
+	}
+	
+	@Override
+	public boolean requestRetrievalID(long idLower) {
+		throw new UnsupportedOperationException("Not supported");
 	}
 	
 	@Override
@@ -177,80 +246,22 @@ public class ClientComm4 extends CommunicationsManager<PacketStructIn, PacketStr
 		return connectionOpened;
 	}
 	
-	boolean queuePacket(PacketStructOut packet) {
-		return dataProxy.send(packet);
-	}
-	
-	/**
-	 * Disconnects the connection manager from the server with a custom error code
-	 *
-	 * @param code The error code to disconnect with
-	 */
-	void disconnect(int code) {
-		//Disconnecting the proxy
-		dataProxy.stop(code);
-	}
-	
-	/**
-	 * Processes any data before a protocol manager is selected, usually to handle version processing
-	 */
-	private void processFloatingData(int messageType, byte[] data) {
-		if(messageType == nhtInformation) {
-			//Restarting the authentication timer
-			handler.removeCallbacks(handshakeExpiryRunnable);
-			handler.postDelayed(handshakeExpiryRunnable, handshakeExpiryTime);
-			
-			//Reading the communications version information
-			ByteBuffer dataBuffer = ByteBuffer.wrap(data);
-			int communicationsVersion = dataBuffer.getInt();
-			int communicationsSubVersion = dataBuffer.getInt();
-			
-			//Checking if the client can't handle this communications version
-			int verApplicability = checkCommVerApplicability(communicationsVersion);
-			if(verApplicability != 0) {
-				//Terminating the connection
-				dataProxy.stop(verApplicability < 0 ? ConnectionManager.connResultServerOutdated : ConnectionManager.connResultClientOutdated);
-				return;
-			}
-			
-			//Communications subversions 1-5 are no longer supported
-			if(communicationsSubVersion <= 5) {
-				dataProxy.stop(ConnectionManager.connResultServerOutdated);
-				return;
-			}
-			
-			protocolManager = findProtocolManager(communicationsSubVersion);
-			if(protocolManager == null) {
-				dataProxy.stop(ConnectionManager.connResultClientOutdated);
-				return;
-			}
-			
-			//Updating the protocol version
-			new Handler(Looper.getMainLooper()).post(() -> connectionManager.setActiveCommunicationsInfo(communicationsVersion, communicationsSubVersion));
-			
-			//Sending the handshake data
-			protocolManager.sendAuthenticationRequest();
-		}
-	}
-	
-	private ProtocolManager findProtocolManager(int subVersion) {
-		switch(subVersion) {
-			default:
-				return null;
-			case 6:
-				return new ClientProtocol6(context, connectionManager, this);
-		}
-	}
-	
 	@Override
-	public boolean checkSupportsFeature(String feature) {
-		//Forwarding the request to the protocol manager
-		if(protocolManager == null) return false;
-		return protocolManager.checkSupportsFeature(feature);
+	public boolean isFeatureSupported(@ConnectionFeature int featureID) {
+		return false;
 	}
 	
 	@Override
 	public boolean requiresPersistence() {
 		return true;
+	}
+	
+	@Override
+	public String getCommunicationsVersion() {
+		return communicationsVersion + "." + (protocolManagerVer != -1 ? protocolManagerVer : "X");
+	}
+	
+	String getPassword() {
+		return password;
 	}
 }

@@ -19,8 +19,10 @@
 	<string name="progress_sync">Obtention des messages&#8230;</string>
 	<string name="message_loaderror_messages">Échec de chargement des messages</string>
 	<string name="message_loaderror_contacts">Échec de chargement des contacts</string>
-	<string name="message_blankstate_conversations">Lorsque vous commencez une conversation, elle s\'affiche ici</string>
-	<string name="message_blankstate_conversations_archived">Les conversations archivées s\'affichent ici</string>
+	<string name="message_blankstate_conversations">Aucune conversation</string>
+	<string name="message_blankstate_conversations_description">Lorsque vous commencez une conversation, elle s\'affiche ici</string>
+	<string name="message_blankstate_conversations_archived">Aucune conversation archivée</string>
+	<string name="message_blankstate_conversations_archived_description">Les conversations archivées s\'affichent ici</string>
 	<string name="message_blankstate_conversations_basic">Aucune conversation</string>
 	<string name="time_today">Aujourd\'hui</string>
 	<string name="time_yesterday">Hier</string>
@@ -472,7 +474,9 @@
 	<string name="title_conversation_name">Nom du groupe</string>
 	<string name="action_renamegroup">Renommer ce groupe</string>
 	<string name="part_invalidaddress">Adresse invalide</string>
-	<string name="part_manualconfigurationstatus">Configuration manuelle en cours</string>
+
+	<string name="message_manualconfigurationstatus">Configuration manuelle en cours</string>
+	<string name="message_temporarymodestatus">Vérification de nouveaux messages</string>
 
 	<plurals name="message_newmessages">
 		<item quantity="one">%d nouveaux messages</item>
