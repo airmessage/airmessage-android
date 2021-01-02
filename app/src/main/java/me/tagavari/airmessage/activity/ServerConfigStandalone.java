@@ -61,7 +61,7 @@ public class ServerConfigStandalone extends AppCompatActivity implements Fragmen
 		if(savedInstanceState == null) {
 			//Initializing the fragment
 			currentFragment = new FragmentOnboardingManual();
-			getSupportFragmentManager().beginTransaction().add(android.R.id.content, new FragmentOnboardingManual()).commit();
+			getSupportFragmentManager().beginTransaction().add(android.R.id.content, currentFragment).commit();
 		} else {
 			//Restoring the fragment
 			currentFragment = (FragmentOnboardingManual) getSupportFragmentManager().getFragment(savedInstanceState, keyFragment);

@@ -2,13 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:tools="http://schemas.android.com/tools"
 	package="me.tagavari.airmessage">
-	
+
 	<!-- Normal permissions -->
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-	
+
 	<!-- Dangerous permissions -->
 	<uses-permission android:name="android.permission.RECORD_AUDIO" />
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -62,7 +62,7 @@
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
-			
+
 			<meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
@@ -114,7 +114,7 @@
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.NOTIFICATION_PREFERENCES" />
 			</intent-filter>
-			
+
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
@@ -183,6 +183,15 @@
 				<category android:name="android.intent.category.DEFAULT" />
 				<data android:mimeType="*/*" />
 			</intent-filter>
+		</activity>
+
+		<!-- Open source licenses -->
+		<activity
+			android:exported="false"
+			android:name=".activity.Licenses"
+			android:label="@string/screen_licenses"
+			android:theme="@style/DayNight.NoActionBar">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
 		<!-- Crash report -->
@@ -345,13 +354,5 @@
 		<meta-data
 			android:name="com.google.android.gms.car.application"
 			android:resource="@xml/automotive_app_desc" />
-
-		<!-- GMS open source notices activities -->
-		<activity
-			android:name="com.google.android.gms.oss.licenses.OssLicensesMenuActivity"
-			android:theme="@style/DayNight" />
-		<activity
-			android:name="com.google.android.gms.oss.licenses.OssLicensesActivity"
-			android:theme="@style/DayNight" />
 	</application>
 </manifest>

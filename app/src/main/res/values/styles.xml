@@ -16,6 +16,7 @@
 		<item name="android:colorBackground">@color/colorBackground</item>
 		<item name="bottomSheetDialogTheme">@style/BottomSheetDialogTheme</item>
 	</style>
+
 	<style name="Base.DayNight.NoActionBar" parent="@style/Theme.MaterialComponents.DayNight.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>

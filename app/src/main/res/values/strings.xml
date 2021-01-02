@@ -91,6 +91,7 @@
 	<string name="screen_conversationdetails">Conversation details</string>
 	<string name="screen_newmessage">New message</string>
 	<string name="screen_manualconfiguration">Manual configuration</string>
+	<string name="screen_licenses">Open source licenses</string>
 
 	<string name="title_conversation_name">Group name</string>
 	<string name="title_conversation_members">People in this conversation</string>
@@ -321,7 +322,7 @@
 	<string name="message_messagedetails_size">Size: %s</string>
 	<string name="message_messagedetails_datesent">Sent: %s</string>
 	<string name="message_messagedetails_sendeffect">Send effect: %s</string>
-	
+
 	<string name="message_locationtitle_unknown">Unnamed location</string>
 	<string name="message_locationaddress_unknown">Unknown address</string>
 

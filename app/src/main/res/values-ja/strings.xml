@@ -17,7 +17,7 @@
 	<string name="action_dismiss">閉じる</string>
 	<string name="action_undo">先に戻す</string>
 	<string name="action_close">閉める</string>
-	<string name="action_replay">リプレー</string>
+	<string name="action_replay">再生</string>
 	<string name="action_sync">同期</string>
 	<string name="action_advanced">詳細同期</string>
 	<string name="action_resync">再同期</string>
@@ -495,6 +495,7 @@
 	<string name="preference_server_reset_title">アカウントに交換</string>
 	<string name="preferencegroup_about_title">アプリ情報</string>
 	<string name="preference_about_licenses_title">オープンソースライセンス</string>
+	<string name="screen_licenses">オープンソースライセンス</string>
 	<string name="message_loaderror_location">位置情報ドキュメントを読み込めませんでした</string>
 	<string name="message_securityupdate">セキュリティアップデートをチェックできません</string>
 	<string name="label_videoplayback">ビデオ再生</string>

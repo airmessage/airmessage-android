@@ -4,7 +4,6 @@ def keystoreProperties = new Properties()
 keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
 apply plugin: "com.android.application"
-apply plugin: "com.google.android.gms.oss-licenses-plugin"
 
 android {
 	signingConfigs {
@@ -108,9 +107,6 @@ dependencies {
 	//Android architecture components
 	implementation "androidx.lifecycle:lifecycle-extensions:2.2.0"
 
-	//GMS open source licenses
-	implementation "com.google.android.gms:play-services-oss-licenses:17.0.0"
-
 	//ReactiveX
 	implementation "io.reactivex.rxjava3:rxandroid:3.0.0"
 	implementation "io.reactivex.rxjava3:rxjava:3.0.9"
@@ -140,11 +136,15 @@ dependencies {
 	implementation "com.google.android.gms:play-services-location:17.1.0"
 	implementation "com.google.android.gms:play-services-auth:19.0.0"
 
+	//About libraries
+	implementation "com.mikepenz:aboutlibraries-core:$aboutlibs_version"
+	implementation "com.mikepenz:aboutlibraries:$aboutlibs_version"
+
 	//Tools
 	implementation "com.googlecode.ez-vcard:ez-vcard:0.11.2"
 
 	//Backend
-	implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+	//implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 	implementation "org.bouncycastle:bcprov-jdk15to18:1.68"
 
 	implementation "com.github.bumptech.glide:glide:4.11.0"
@@ -175,4 +175,4 @@ repositories {
 apply plugin: "com.google.gms.google-services"
 apply plugin: "com.google.firebase.crashlytics"
 apply plugin: "kotlin-android"
-apply plugin: "kotlin-android-extensions"
+apply plugin: "com.mikepenz.aboutlibraries.plugin"

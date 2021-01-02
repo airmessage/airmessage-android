@@ -503,6 +503,7 @@
 	<string name="message_reset_direct">Utiliser un compte pour accéder à AirMessage?</string>
 	<string name="message_reset_connect">Vous déconnecter d\'AirMessage?</string>
 	<string name="preference_about_licenses_title">Licenses open source</string>
+	<string name="screen_licenses">Licenses open source</string>
 	<string name="preferencegroup_about_title">Informations sur l\'application</string>
 	<string name="message_loaderror_location">Échec du chargement de votre position</string>
 	<string name="message_securityupdate">AirMessage ne peut pas vérifier les mises à jour de sécurité</string>
