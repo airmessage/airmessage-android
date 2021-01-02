@@ -1017,14 +1017,20 @@ public class Conversations extends AppCompatCompositeActivity {
 			updateConversationDetails(conversationInfo, conversationItems);
 		}
 		
+		//Hiding the blank state view
+		if(!newConversations.isEmpty() && viewModel.conversationList.isEmpty()) {
+			viewGroupBlank.animate().alpha(0).withEndAction(() -> viewGroupBlank.setVisibility(View.GONE));
+		}
+		
 		//Handling new conversations
 		for(Map.Entry<ConversationInfo, Collection<ConversationItem>> entry : newConversations.entrySet()) {
 			//Getting the conversation
-			ConversationInfo conversationInfo = entry.getKey();
+			ConversationInfo conversationInfo = entry.getKey().clone();
 			
 			//Getting and updating the conversation's preview
 			ConversationPreview conversationPreview = ConversationPreviewHelper.latestItemToPreview(entry.getValue());
 			conversationInfo.setMessagePreview(conversationPreview);
+			conversationInfo.setUnreadMessageCount(entry.getValue().size());
 			
 			//Finding the index to insert the conversation
 			int insertionIndex = ConversationHelper.findInsertionIndex(conversationInfo, conversationList);
