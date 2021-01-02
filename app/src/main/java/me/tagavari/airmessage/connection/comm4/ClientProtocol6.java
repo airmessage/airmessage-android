@@ -1120,7 +1120,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 		stream.readFully(data);
 		
 		//Creating the key
-		SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(encryptionKeyFactoryAlgorithm, MainApplication.getSecurityProvider());
+		SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(encryptionKeyFactoryAlgorithm);
 		KeySpec keySpec = new PBEKeySpec(communicationsManager.getPassword().toCharArray(), salt, encryptionKeyIterationCount, encryptionKeyLength);
 		SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
 		SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), encryptionKeyAlgorithm);
@@ -1129,7 +1129,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 		GCMParameterSpec gcmSpec = new GCMParameterSpec(encryptionKeyLength, iv);
 		
 		//Creating the cipher
-		Cipher cipher = Cipher.getInstance(encryptionCipherTransformation, MainApplication.getSecurityProvider());
+		Cipher cipher = Cipher.getInstance(encryptionCipherTransformation);
 		cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, gcmSpec);
 		
 		//Deciphering the data
@@ -1145,7 +1145,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 		random.nextBytes(salt);
 		
 		//Creating the key
-		SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(encryptionKeyFactoryAlgorithm, MainApplication.getSecurityProvider());
+		SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(encryptionKeyFactoryAlgorithm);
 		KeySpec keySpec = new PBEKeySpec(communicationsManager.getPassword().toCharArray(), salt, encryptionKeyIterationCount, encryptionKeyLength);
 		SecretKey secretKey = secretKeyFactory.generateSecret(keySpec);
 		SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getEncoded(), encryptionKeyAlgorithm);
@@ -1155,7 +1155,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 		random.nextBytes(iv);
 		GCMParameterSpec gcmSpec = new GCMParameterSpec(encryptionKeyLength, iv);
 		
-		Cipher cipher = Cipher.getInstance(encryptionCipherTransformation, MainApplication.getSecurityProvider());
+		Cipher cipher = Cipher.getInstance(encryptionCipherTransformation);
 		cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, gcmSpec);
 		
 		//Encrypting the data

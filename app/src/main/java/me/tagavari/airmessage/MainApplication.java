@@ -4,15 +4,12 @@ import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.pm.ShortcutManager;
 import android.database.ContentObserver;
 import android.os.Build;
-import android.os.Debug;
 import android.os.Handler;
 import android.os.Process;
 import android.provider.ContactsContract;
 
-import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 
@@ -23,6 +20,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.WeakReference;
+import java.security.Security;
 
 import me.tagavari.airmessage.activity.CrashReport;
 import me.tagavari.airmessage.activity.Preferences;
@@ -33,12 +31,10 @@ import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
 import me.tagavari.airmessage.redux.ReduxReceiverNotification;
 import me.tagavari.airmessage.redux.ReduxReceiverShortcut;
-import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.service.SystemMessageImportService;
 
 public class MainApplication extends Application {
 	//Creating the reference values
-	
 	public static final String localBCContactUpdate = "LocalMSG-Main-ContactUpdate";
 	
 	private final ContentObserver contentObserver = new ContentObserver(null) {
@@ -63,12 +59,9 @@ public class MainApplication extends Application {
 	//Creating the references
 	private static WeakReference<MainApplication> instanceReference = null;
 	
-	//Creating the other reference values
-	private static final BouncyCastleProvider securityProvider = new BouncyCastleProvider();
-	
 	public MainApplication() {
 		//Initializing a custom crash reporter if in debug mode
-		if(BuildConfig.DEBUG && false) {
+		if(BuildConfig.DEBUG) {
 			Thread.setDefaultUncaughtExceptionHandler((thread, exception) -> {
 				//Printing the exception
 				exception.printStackTrace();
@@ -143,6 +136,13 @@ public class MainApplication extends Application {
 				else startService(serviceIntent);
 			}
 		}
+		
+		//Registering BouncyCastle as a security provider on older versions
+		//Otherwise, Android provides everything we need by default, so we'll just stick with that
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+			Security.removeProvider("BC");
+			int insertionIndex = Security.insertProviderAt(new BouncyCastleProvider(), 1);
+		}
 	}
 	
 	public static MainApplication getInstance() {
@@ -168,14 +168,6 @@ public class MainApplication extends Application {
 	public static boolean canUseContacts(Context context) {
 		//Returning if the permission has been granted
 		return context.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
-	}
-	
-	public void startConnectionService() {
-		startService(new Intent(this, ConnectionService.class));
-	}
-	
-	public static BouncyCastleProvider getSecurityProvider() {
-		return securityProvider;
 	}
 	
 	@Override

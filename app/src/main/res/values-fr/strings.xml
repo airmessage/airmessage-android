@@ -504,4 +504,8 @@
 	<string name="message_reset_connect">Vous déconnecter d\'AirMessage?</string>
 	<string name="preference_about_licenses_title">Licenses open source</string>
 	<string name="preferencegroup_about_title">Informations sur l\'application</string>
+	<string name="message_loaderror_location">Échec du chargement de votre position</string>
+	<string name="message_securityupdate">AirMessage ne peut pas vérifier les mises à jour de sécurité</string>
+	<string name="label_videoplayback">Lire la vidéo</string>
+	<string name="action_resolve">Résoudre</string>
 </resources>

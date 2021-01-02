@@ -31,6 +31,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.view.ActionMode;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.AndroidViewModel;
@@ -40,6 +41,8 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.security.ProviderInstaller;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -123,6 +126,8 @@ public class Conversations extends AppCompatCompositeActivity {
 	private static final int permissionRequestContacts = 0;
 	private static final String keyFragmentSync = "fragment_sync";
 	
+	private static final int activityResultPlayServices = 0;
+	
 	private static final int conversationPayloadPreview = 0;
 	private static final int conversationPayloadTitle = 1;
 	private static final int conversationPayloadMember = 2;
@@ -143,7 +148,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	//Creating the view model and info bar values
 	private ActivityViewModel viewModel;
-	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarServerUpdate;
+	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarServerUpdate, infoBarSecurityUpdate;
 	
 	//Creating the menu values
 	private MenuItem menuItemMarkAllRead = null;
@@ -321,6 +326,8 @@ public class Conversations extends AppCompatCompositeActivity {
 		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
 		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, permissionRequestContacts));
 		infoBarServerUpdate = pluginMessageBar.create(R.drawable.update, getResources().getString(R.string.message_serverupdate));
+		infoBarSecurityUpdate = pluginMessageBar.create(R.drawable.lock_alert, getResources().getString(R.string.message_securityupdate));
+		infoBarSecurityUpdate.setButton(R.string.action_resolve, view -> GoogleApiAvailability.getInstance().showErrorDialogFragment(this, viewModel.playServicesErrorCode.getValue(), activityResultPlayServices));
 		
 		//Configuring the normal / archived view
 		if(isViewArchived) {
@@ -347,6 +354,12 @@ public class Conversations extends AppCompatCompositeActivity {
 		});
 		viewModel.massRetrievalTotalLD.observe(this, total -> {
 			progressBarSync.setMax(total);
+		});
+		
+		//Subscribing to security provider updates
+		viewModel.playServicesErrorCode.observe(this, error -> {
+			if(error == null) infoBarSecurityUpdate.hide();
+			else infoBarSecurityUpdate.show();
 		});
 		
 		//Subscribing to messaging updates
@@ -452,6 +465,16 @@ public class Conversations extends AppCompatCompositeActivity {
 		updateMarkAllRead();
 		
 		return true;
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		
+		if(requestCode == activityResultPlayServices) {
+			//Refreshing the security provider
+			viewModel.updateSecurityProvider();
+		}
 	}
 	
 	@Override
@@ -1228,6 +1251,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		final MutableLiveData<Integer> massRetrievalProgressLD = new MutableLiveData<>();
 		final MutableLiveData<Integer> massRetrievalTotalLD = new MutableLiveData<>();
 		final MutableLiveData<Boolean> textImportLD = new MutableLiveData<>(false);
+		final MutableLiveData<Integer> playServicesErrorCode = new MutableLiveData<>(null);
 		final List<Long> actionModeSelections = new ArrayList<>();
 		boolean isSearching = false;
 		
@@ -1239,6 +1263,11 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Loading conversations
 			loadConversations();
+			
+			//Updating the security provider
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+				updateSecurityProvider();
+			}
 		}
 		
 		@Override
@@ -1312,6 +1341,24 @@ public class Conversations extends AppCompatCompositeActivity {
 		 */
 		public boolean isStateTextImport() {
 			return textImportLD.getValue();
+		}
+		
+		public void updateSecurityProvider() {
+			playServicesErrorCode.setValue(null);
+			
+			ProviderInstaller.installIfNeededAsync(getApplication(), new ProviderInstaller.ProviderInstallListener() {
+				@Override
+				public void onProviderInstalled() {
+				}
+				
+				@Override
+				public void onProviderInstallFailed(int errorCode, Intent recoveryIntent) {
+					GoogleApiAvailability availability = GoogleApiAvailability.getInstance();
+					if(availability.isUserResolvableError(errorCode)) {
+						playServicesErrorCode.setValue(errorCode);
+					}
+				}
+			});
 		}
 	}
 	

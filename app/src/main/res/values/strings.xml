@@ -25,6 +25,7 @@
 	<string name="action_undo">Undo</string>
 	<string name="action_replay">Replay</string>
 	<string name="action_refresh">Refresh</string>
+	<string name="action_resolve">Resolve</string>
 	<string name="action_sync">Sync</string>
 	<string name="action_resync">Resync</string>
 	<string name="action_advanced">Advanced</string>
@@ -198,6 +199,7 @@
 	<string name="message_serverstatus_unknown">An unknown error occurred</string>
 
 	<string name="message_serverupdate">A server update is available</string>
+	<string name="message_securityupdate">AirMessage can\'t check for security updates</string>
 	<string name="message_searchnoresults">No results</string>
 
 	<string name="message_eventtype_chatrename_change">%1$s named the conversation \"%2$s\"</string>
