@@ -1069,7 +1069,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 						if(pluginCS.isServiceBound() && pluginCS.getConnectionManager().isConnected()) {
 							pluginCS.getConnectionManager().fetchMassConversationData(params).doOnError(error -> {
 								Log.i(TAG, "Failed to sync messages", error);
-							}).subscribe();
+							}).onErrorComplete().subscribe();
 							return true;
 						} else {
 							return false;

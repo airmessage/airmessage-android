@@ -209,10 +209,9 @@ public class FragmentSync extends BottomSheetDialogFragment {
 			//Requesting a re-sync
 			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
 			if(connectionManager != null) {
-				connectionManager.fetchMassConversationData(new MassRetrievalParams()).onErrorComplete(error -> {
-					Log.i(TAG, "Failed to sync messages", error);
-					return true;
-				}).subscribe();
+				connectionManager.fetchMassConversationData(new MassRetrievalParams())
+						.doOnError(error -> Log.i(TAG, "Failed to sync messages", error))
+						.onErrorComplete().subscribe();
 			}
 		});
 		

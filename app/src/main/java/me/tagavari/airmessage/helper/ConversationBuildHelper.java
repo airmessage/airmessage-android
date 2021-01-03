@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
+import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -227,7 +228,7 @@ public class ConversationBuildHelper {
 		
 		//Getting member info for each member
 		if(MainApplication.canUseContacts(context)) {
-			return Single.concat(conversationInfo.getMembers().stream().map(memberInfo -> MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, memberInfo.getAddress())).collect(Collectors.toList()))
+			return Maybe.concat(conversationInfo.getMembers().stream().map(memberInfo -> MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, memberInfo.getAddress()).onErrorComplete()).collect(Collectors.toList()))
 					.observeOn(Schedulers.io())
 					.map((userInfo) -> new Person.Builder()
 							.setName(userInfo.getContactName())

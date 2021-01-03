@@ -1398,8 +1398,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		listAttachmentQueue.getAdapter().notifyItemRangeRemoved(0, files.size());
 		
 		//Updating the fragment
-		for(FileQueued fileQueued : files) {
-			if(fileQueued.getMediaStoreID() != -1) fragmentAttachments.onFileDequeued(fileQueued.getMediaStoreID());
+		if(fragmentAttachments != null) {
+			for(FileQueued fileQueued : files) {
+				if(fileQueued.getMediaStoreID() != -1) fragmentAttachments.onFileDequeued(fileQueued.getMediaStoreID());
+			}
 		}
 		
 		//Updating the send button
