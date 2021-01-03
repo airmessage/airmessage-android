@@ -3,6 +3,9 @@ package me.tagavari.airmessage.connection.request;
 import android.content.Context;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+import androidx.arch.core.util.Function;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -120,8 +123,8 @@ public class MassRetrievalRequest {
 	 * @param fileName The file name of the attachment
 	 * @return A completable to represent this task
 	 */
-	public Completable initializeAttachment(Context context, String guid, String fileName) {
-		return Completable.create(emitter -> {
+	public Completable initializeAttachment(Context context, String guid, String fileName, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
+		return Completable.fromAction(() -> {
 			//Checking if there is another request in progress
 			if(attachmentGUID != null) throw new IllegalStateException("Trying to start attachment download for " + attachmentGUID + ", but " + guid + " is already in progress");
 			
@@ -129,8 +132,7 @@ public class MassRetrievalRequest {
 			attachmentGUID = guid;
 			attachmentTargetFile = AttachmentStorageHelper.prepareContentFile(context, AttachmentStorageHelper.dirNameAttachment, fileName);
 			attachmentOutputStream = new BufferedOutputStream(new FileOutputStream(attachmentTargetFile));
-			
-			emitter.onComplete();
+			if(streamWrapper != null) attachmentOutputStream = streamWrapper.apply(attachmentOutputStream);
 		}).subscribeOn(requestScheduler).observeOn(AndroidSchedulers.mainThread());
 	}
 	
@@ -155,18 +157,16 @@ public class MassRetrievalRequest {
 	 * @return A completable to represent this task
 	 */
 	public Completable writeChunkAttachment(String guid, int responseIndex, byte[] data) {
-		return Completable.create(emitter -> {
+		return Completable.fromAction(() -> {
 			//Validating and increasing the index
 			if(responseIndex != attachmentExpectedRequestIndex) {
-				emitter.onError(new IllegalStateException("Request out of order: expected #" + attachmentExpectedRequestIndex + ", received #" + responseIndex));
-				return;
+				throw new IllegalStateException("Request out of order: expected #" + attachmentExpectedRequestIndex + ", received #" + responseIndex);
 			}
 			attachmentExpectedRequestIndex++;
 			
 			//Validating the attachment GUID
 			if(!guid.equals(attachmentGUID)) {
-				emitter.onError(new IllegalStateException("Mass retrieval file data mismatch: expected " + attachmentTargetFile + ", received" + guid));
-				return;
+				throw new IllegalStateException("Mass retrieval file data mismatch: expected " + attachmentTargetFile + ", received" + guid);
 			}
 			
 			//Writing the data

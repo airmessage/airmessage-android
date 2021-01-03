@@ -121,9 +121,9 @@ public class Blocks {
 		@NonNull public final String type;
 		public final long size;
 		@Nullable public final byte[] checksum;
-		public final int sort;
+		public final long sort;
 		
-		public AttachmentInfo(@NonNull String guid, @NonNull String name, @NonNull String type, long size, @Nullable byte[] checksum, int sort) {
+		public AttachmentInfo(@NonNull String guid, @NonNull String name, @NonNull String type, long size, @Nullable byte[] checksum, long sort) {
 			//Setting the variables
 			this.guid = guid;
 			this.name = name;

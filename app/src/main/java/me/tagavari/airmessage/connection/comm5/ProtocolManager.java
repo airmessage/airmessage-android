@@ -100,7 +100,7 @@ abstract class ProtocolManager<Packet> {
 	 * @param idLower The ID to retrieve messages beyond (exclusive)
 	 * @return Whether the request was successfully sent
 	 */
-	public abstract boolean requestRetrievalID(long idLower);
+	abstract boolean requestRetrievalID(long idLower);
 	
 	/**
 	 * Requests a mass message retrieval

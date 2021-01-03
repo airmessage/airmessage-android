@@ -13,9 +13,11 @@ import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.Nullable;
+import androidx.arch.core.util.Function;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -359,14 +361,22 @@ public class ConnectionManager {
 			compositeDisposable.add(
 					massRetrievalRequest.handleInitialInfo(conversations, messageCount)
 							.subscribe((addedConversations) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
 								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Start(addedConversations, messageCount);
-								subject.get().onNext(event);
+								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
 								if(error instanceof IllegalArgumentException) {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse, error));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse, error));
 								} else {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
 								}
 								idRequestSubjectMap.remove(requestID);
 							})
@@ -384,14 +394,23 @@ public class ConnectionManager {
 			compositeDisposable.add(
 					massRetrievalRequest.handleMessages(getContext(), responseIndex, data)
 							.subscribe((addedItems) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
 								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Progress(addedItems, massRetrievalRequest.getMessagesReceived(), massRetrievalRequest.getTotalMessageCount());
-								subject.get().onNext(event);
+								
+								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
 								if(error instanceof IllegalArgumentException) {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
 								} else {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
 								}
 								idRequestSubjectMap.remove(requestID);
 							})
@@ -409,13 +428,21 @@ public class ConnectionManager {
 			compositeDisposable.add(
 					massRetrievalRequest.complete()
 							.subscribe(() -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
 								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Complete();
-								subject.get().onNext(event);
+								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
-								subject.onComplete();
+								localSubject.onComplete();
 							}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
 								massRetrievalRequest.cancel();
-								subject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
+								localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
 								idRequestSubjectMap.remove(requestID);
 							})
 			);
@@ -441,7 +468,7 @@ public class ConnectionManager {
 		}
 		
 		@Override
-		public void onMassRetrievalFileStart(short requestID, String fileGUID, String fileName) {
+		public void onMassRetrievalFileStart(short requestID, String fileGUID, String fileName, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
 			//Getting the request
 			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
@@ -449,14 +476,18 @@ public class ConnectionManager {
 			//Initializing the attachment request
 			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
 			compositeDisposable.add(
-					massRetrievalRequest.initializeAttachment(getContext(), fileGUID, fileName)
+					massRetrievalRequest.initializeAttachment(getContext(), fileGUID, fileName, streamWrapper)
 							.subscribe(() -> {}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
 								if(error instanceof IOException) {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.localIO));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localIO, error));
 								} else if(error instanceof IllegalArgumentException) {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse, error));
 								} else {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.unknown));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
 								}
 								idRequestSubjectMap.remove(requestID);
 							})
@@ -474,12 +505,16 @@ public class ConnectionManager {
 			compositeDisposable.add(
 					massRetrievalRequest.writeChunkAttachment(fileGUID, responseIndex, fileData)
 							.subscribe(() -> {}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
 								if(error instanceof IOException) {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.localIO));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localIO, error));
 								} else if(error instanceof IllegalArgumentException) {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse, error));
 								} else {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.unknown));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
 								}
 								idRequestSubjectMap.remove(requestID);
 							})
@@ -497,12 +532,16 @@ public class ConnectionManager {
 			compositeDisposable.add(
 					massRetrievalRequest.finishAttachment(getContext(), fileGUID)
 							.subscribe(() -> {}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
 								if(error instanceof IOException) {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.localIO));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localIO));
 								} else if(error instanceof IllegalArgumentException) {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
 								} else {
-									subject.onError(new AMRequestException(MassRetrievalErrorCode.unknown));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown));
 								}
 								idRequestSubjectMap.remove(requestID);
 							})
@@ -561,7 +600,7 @@ public class ConnectionManager {
 		}
 		
 		@Override
-		public void onFileRequestStart(short requestID, long length) {
+		public void onFileRequestStart(short requestID, long length, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
 			//Getting the request
 			RequestSubject.Publish<ReduxEventAttachmentDownload> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
@@ -569,7 +608,7 @@ public class ConnectionManager {
 			//Initializing the request
 			FileFetchRequest fileFetchRequest = subject.getRequestData();
 			try {
-				fileFetchRequest.initialize(getContext(), length);
+				fileFetchRequest.initialize(getContext(), length, streamWrapper);
 			} catch(IOException exception) {
 				subject.onError(new AMRequestException(AttachmentReqErrorCode.localIO));
 				idRequestSubjectMap.remove(requestID);

@@ -18,6 +18,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.zip.DeflaterInputStream;
+import java.util.zip.InflaterOutputStream;
 
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.MainApplication;
@@ -36,6 +38,7 @@ import me.tagavari.airmessage.enums.GroupAction;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.enums.MessageState;
 import me.tagavari.airmessage.enums.TapbackType;
+import me.tagavari.airmessage.helper.LookAheadStreamIterator;
 import me.tagavari.airmessage.helper.StandardCompressionHelper;
 import me.tagavari.airmessage.helper.StringHelper;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
@@ -43,7 +46,7 @@ import me.tagavari.airmessage.util.CompoundErrorDetails;
 import me.tagavari.airmessage.util.ConversationTarget;
 
 //https://trello.com/c/lRZ6cikc
-class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
+class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	private static final String hashAlgorithm = "MD5";
 	private static final String platformID = "android";
 	
@@ -58,14 +61,15 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 	
 	private static final int nhtMessageUpdate = 200;
 	private static final int nhtTimeRetrieval = 201;
-	private static final int nhtMassRetrieval = 202;
-	private static final int nhtMassRetrievalFile = 203;
-	private static final int nhtMassRetrievalFinish = 204;
-	private static final int nhtConversationUpdate = 205;
-	private static final int nhtModifierUpdate = 206;
-	private static final int nhtAttachmentReq = 207;
-	private static final int nhtAttachmentReqConfirm = 208;
-	private static final int nhtAttachmentReqFail = 209;
+	private static final int nhtIDRetrieval = 202;
+	private static final int nhtMassRetrieval = 203;
+	private static final int nhtMassRetrievalFile = 204;
+	private static final int nhtMassRetrievalFinish = 205;
+	private static final int nhtConversationUpdate = 206;
+	private static final int nhtModifierUpdate = 207;
+	private static final int nhtAttachmentReq = 208;
+	private static final int nhtAttachmentReqConfirm = 209;
+	private static final int nhtAttachmentReqFail = 210;
 	
 	private static final int nhtLiteConversationRetrieval = 300;
 	private static final int nhtLiteThreadRetrieval = 301;
@@ -100,7 +104,7 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 	
 	private short lastMassRetrievalRequestID = -1;
 	
-	ClientProtocol1(ClientComm5 communicationsManager, DataProxy<EncryptedPacket> dataProxy) {
+	ClientProtocol2(ClientComm5 communicationsManager, DataProxy<EncryptedPacket> dataProxy) {
 		super(communicationsManager, dataProxy);
 	}
 	
@@ -289,21 +293,11 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 		boolean isLast = unpacker.unpackBoolean();
 		
 		String fileGUID = unpacker.unpackString();
-		byte[] fileData;
-		try {
-			fileData = StandardCompressionHelper.decompressGZIP(unpacker.unpackPayload());
-		} catch(IOException exception) {
-			exception.printStackTrace();
-			
-			//Failing with an error
-			communicationsManager.runListener(listener -> listener.onMassRetrievalFail(requestID));
-			
-			return;
-		}
+		byte[] fileData = unpacker.unpackPayload();
 		
 		//Processing the data
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, null);
+			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, InflaterOutputStream::new);
 			listener.onMassRetrievalFileProgress(requestID, requestIndex, fileGUID, fileData);
 			if(isLast) listener.onMassRetrievalFileComplete(requestID, fileGUID);
 		});
@@ -333,21 +327,11 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 		boolean isLast = unpacker.unpackBoolean();
 		
 		String fileGUID = unpacker.unpackString();
-		byte[] fileData;
-		try {
-			fileData = StandardCompressionHelper.decompressGZIP(unpacker.unpackPayload());
-		} catch(IOException exception) {
-			exception.printStackTrace();
-			
-			//Failing with an error
-			communicationsManager.runListener(listener -> listener.onFileRequestFail(requestID, AttachmentReqErrorCode.localBadResponse));
-			
-			return;
-		}
+		byte[] fileData = unpacker.unpackPayload();
 		
 		//Forwarding the data to the listeners
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onFileRequestStart(requestID, fileLength, null);
+			if(requestIndex == 0) listener.onFileRequestStart(requestID, fileLength, InflaterOutputStream::new);
 			listener.onFileRequestData(requestID, requestIndex, fileData);
 			if(isLast) listener.onFileRequestComplete(requestID);
 		});
@@ -464,7 +448,7 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 		//Assembling the device information
 		String installationID = SharedPreferencesManager.getInstallationID(MainApplication.getInstance());
 		String clientName = Build.MANUFACTURER + ' ' + Build.MODEL;
-		String platformID = ClientProtocol1.platformID;
+		String platformID = ClientProtocol2.platformID;
 		
 		//Checking if the current protocol requires authentication
 		if(unpacker.unpackBoolean()) {
@@ -560,27 +544,16 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 		return Observable.create((emitter) -> {
 			try {
 				MessageDigest messageDigest = MessageDigest.getInstance(hashAlgorithm);
-				try(InputStream inputStream = new DigestInputStream(new BufferedInputStream(new FileInputStream(file)), messageDigest)) {
+				try(InputStream inputStream = new DeflaterInputStream(new DigestInputStream(new BufferedInputStream(new FileInputStream(file)), messageDigest))) {
 					long totalLength = inputStream.available();
-					byte[] buffer = new byte[attachmentChunkSize];
-					int bytesRead;
 					long totalBytesRead = 0;
 					int requestIndex = 0;
 					
-					//Looping while there is data to read
-					while((bytesRead = inputStream.read(buffer)) != -1) {
-						//Adding to the total bytes read
-						totalBytesRead += bytesRead;
+					for(LookAheadStreamIterator iterator = new LookAheadStreamIterator(attachmentChunkSize, inputStream); iterator.hasNext();) {
+						LookAheadStreamIterator.ForwardsStreamData data = iterator.next();
 						
-						//Compressing the data in chunks
-						byte[] preparedData;
-						try {
-							preparedData = StandardCompressionHelper.compressGZIP(buffer, bytesRead);
-						} catch(IOException exception) {
-							exception.printStackTrace();
-							FirebaseCrashlytics.getInstance().recordException(exception);
-							throw new AMRequestException(MessageSendErrorCode.localInternal, exception);
-						}
+						//Adding to the total bytes read
+						totalBytesRead += data.getLength();
 						
 						//Uploading the file part
 						try(AirPacker packer = AirPacker.get()) {
@@ -593,7 +566,7 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 							
 							packer.packShort(requestID); //Request identifier
 							packer.packInt(requestIndex); //Request index
-							packer.packBoolean(totalBytesRead >= totalLength); //Is last message
+							packer.packBoolean(data.isLast()); //Is last message
 							
 							if(conversation instanceof ConversationTarget.AppleLinked) {
 								packer.packString(((ConversationTarget.AppleLinked) conversation).getGuid()); //Chat GUID
@@ -603,7 +576,7 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 								for(String item : unlinked.getMembers()) packer.packString(item);
 							}
 							
-							packer.packPayload(preparedData); //File bytes
+							packer.packPayload(data.getData(), data.getLength()); //File bytes
 							if(requestIndex == 0) {
 								packer.packString(file.getName()); //File name
 								if(conversation instanceof ConversationTarget.AppleUnlinked) {
@@ -699,13 +672,27 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 	}
 	
 	@Override
-	boolean requestRetrievalID(long idLower) {
-		throw new UnsupportedOperationException("Not supported");
+	boolean requestRetrievalID(long idSince) {
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
+		
+		try(AirPacker packer = AirPacker.get()) {
+			packer.packInt(nhtIDRetrieval);
+			
+			packer.packLong(idSince);
+			
+			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
+			return true;
+		} catch(BufferOverflowException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			return false;
+		}
 	}
 	
 	@Override
 	boolean isFeatureSupported(@ConnectionFeature int featureID) {
-		return false;
+		return featureID == ConnectionFeature.idBasedRetrieval;
 	}
 	
 	/**
@@ -961,8 +948,9 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 			String type = StringHelper.defaultEmptyString(unpacker.unpackNullableString(), MIMEConstants.defaultMIMEType);
 			long size = unpacker.unpackLong();
 			byte[] checksum = unpacker.unpackNullablePayload();
+			long sort = unpacker.unpackLong();
 			
-			list.add(new Blocks.AttachmentInfo(guid, name, type, size, checksum, -1));
+			list.add(new Blocks.AttachmentInfo(guid, name, type, size, checksum, sort));
 		}
 		
 		//Returning the list

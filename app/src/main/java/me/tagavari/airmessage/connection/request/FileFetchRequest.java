@@ -2,6 +2,9 @@ package me.tagavari.airmessage.connection.request;
 
 import android.content.Context;
 
+import androidx.annotation.Nullable;
+import androidx.arch.core.util.Function;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -47,9 +50,10 @@ public class FileFetchRequest {
 	/**
 	 * Initializes this request's streams
 	 */
-	public void initialize(Context context, long totalLength) throws IOException {
+	public void initialize(Context context, long totalLength, @Nullable Function<OutputStream, OutputStream> streamWrapper) throws IOException {
 		targetFile = AttachmentStorageHelper.prepareContentFile(context, AttachmentStorageHelper.dirNameAttachment, fileName);
 		outputStream = new BufferedOutputStream(new FileOutputStream(targetFile));
+		if(streamWrapper != null) outputStream = streamWrapper.apply(outputStream);
 		this.totalLength = totalLength;
 	}
 	
