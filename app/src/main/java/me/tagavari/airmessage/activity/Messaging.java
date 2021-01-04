@@ -148,6 +148,7 @@ import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.functions.Consumer;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.BehaviorSubject;
 import io.reactivex.rxjava3.subjects.PublishSubject;
@@ -173,6 +174,7 @@ import me.tagavari.airmessage.enums.MessagePreviewState;
 import me.tagavari.airmessage.enums.MessagePreviewType;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.enums.MessageState;
+import me.tagavari.airmessage.enums.MessageViewType;
 import me.tagavari.airmessage.enums.ServiceHandler;
 import me.tagavari.airmessage.enums.ServiceType;
 import me.tagavari.airmessage.fragment.FragmentMessagingAttachments;
@@ -208,6 +210,7 @@ import me.tagavari.airmessage.helper.ViewHelper;
 import me.tagavari.airmessage.helper.WindowHelper;
 import me.tagavari.airmessage.messaging.AMConversationAction;
 import me.tagavari.airmessage.messaging.AttachmentInfo;
+import me.tagavari.airmessage.messaging.ConversationAction;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.FileDisplayMetadata;
@@ -2349,27 +2352,41 @@ public class Messaging extends AppCompatCompositeActivity {
 					handleMessageSent();
 				});
 				viewHolder.resetScroll();
-			} else {
+			}
+			//Otherwise checking if the item is a message
+			else if(itemType == MessageViewType.message) {
 				//Getting the item
-				ConversationItem conversationItem = getItemAt(position);
+				MessageInfo messageInfo = (MessageInfo) getItemAt(position);
 				
-				//Checking if the item is a message
-				if(conversationItem instanceof MessageInfo) {
-					MessageInfo messageInfo = (MessageInfo) conversationItem;
-					
-					//Getting the adjacent messages
-					Pair<MessageInfo, MessageInfo> adjacentMessages = getAdjacentMessages(mapSourceIndex(position));
-					
-					//Binding the message view
-					bindMessage((VHMessageStructure) holder, viewModel.conversationInfo, messageInfo, adjacentMessages.first, adjacentMessages.second);
-					
-					//Playing the message's effect if it hasn't been viewed yet
-					if(messageInfo.getSendStyle() != null && !messageInfo.isSendStyleViewed()) {
-						messageInfo.setSendStyleViewed(true);
-						playScreenEffect(messageInfo.getSendStyle(), holder.itemView);
-						Completable.fromAction(() -> DatabaseManager.getInstance().markSendStyleViewed(messageInfo.getLocalID()))
-								.subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).subscribe();
-					}
+				//Getting the adjacent messages
+				Pair<MessageInfo, MessageInfo> adjacentMessages = getAdjacentMessages(mapSourceIndex(position));
+				
+				//Binding the message view
+				bindMessage((VHMessageStructure) holder, viewModel.conversationInfo, messageInfo, adjacentMessages.first, adjacentMessages.second);
+				
+				//Playing the message's effect if it hasn't been viewed yet
+				if(messageInfo.getSendStyle() != null && !messageInfo.isSendStyleViewed()) {
+					messageInfo.setSendStyleViewed(true);
+					playScreenEffect(messageInfo.getSendStyle(), holder.itemView);
+					Completable.fromAction(() -> DatabaseManager.getInstance().markSendStyleViewed(messageInfo.getLocalID()))
+							.subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).subscribe();
+				}
+			}
+			//Otherwise checking if the item is an action
+			else if(itemType == MessageViewType.action) {
+				//Getting the data
+				VHMessageAction viewHolder = (VHMessageAction) holder;
+				ConversationAction conversationAction = (ConversationAction) getItemAt(position);
+				
+				//Setting the immediate text
+				viewHolder.label.setText(conversationAction.getMessageDirect(Messaging.this));
+				
+				//Building and applying the complete action
+				if(conversationAction.supportsBuildMessageAsync()) {
+					viewHolder.getCompositeDisposable().add(
+							conversationAction.buildMessageAsync(Messaging.this)
+									.subscribe((Consumer<String>) viewHolder.label::setText)
+					);
 				}
 			}
 		}
