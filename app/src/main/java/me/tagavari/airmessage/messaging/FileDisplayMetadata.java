@@ -124,19 +124,38 @@ public abstract class FileDisplayMetadata {
 						mapLink = Uri.parse(url.getValue());
 						break;
 					}
+				} else {
+					/* On newer iOS versions, all that is included is the URL without a group
+					
+					Example:
+						BEGIN:VCARD
+						VERSION:3.0
+						PRODID:-//Apple Inc.//iPhone OS 14.3//EN
+						N:;Current Location;;;
+						FN:Current Location
+						URL;type=pref:http://maps.apple.com/?ll=XX.XXXXXX\,-XX.XXXXXX&q=XX.XXXXXX\,-XX.XXXXXX
+						END:VCARD
+					 */
+					for(Url url : vcard.getUrls()) {
+						if(url.getGroup() != null) continue;
+						mapLink = Uri.parse(url.getValue());
+						break;
+					}
 				}
 				
-				//Pulling the coordinates from the map URL
-				//See the following link for more details (Apple Map Links documentation)
-				//https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/MapLinks/MapLinks.html
-				String[] stringMapCoords = mapLink.getQueryParameter("ll").split(",");
-				locationCoords = new LatLng(Double.parseDouble(stringMapCoords[0]), Double.parseDouble(stringMapCoords[1]));
-				
-				//Reverse-Geocoding the coordinates for a user-friendly location string
-				if(Geocoder.isPresent()) {
-					List<Address> results = new Geocoder(context).getFromLocation(locationCoords.latitude, locationCoords.longitude, 1);
-					if(results != null && !results.isEmpty()) {
-						locationAddress = results.get(0).getAddressLine(0);
+				if(mapLink != null) {
+					//Pulling the coordinates from the map URL
+					//See the following link for more details (Apple Map Links documentation)
+					//https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/MapLinks/MapLinks.html
+					String[] stringMapCoords = mapLink.getQueryParameter("ll").split(",");
+					locationCoords = new LatLng(Double.parseDouble(stringMapCoords[0]), Double.parseDouble(stringMapCoords[1]));
+					
+					//Reverse-Geocoding the coordinates for a user-friendly location string
+					if(Geocoder.isPresent()) {
+						List<Address> results = new Geocoder(context).getFromLocation(locationCoords.latitude, locationCoords.longitude, 1);
+						if(results != null && !results.isEmpty()) {
+							locationAddress = results.get(0).getAddressLine(0);
+						}
 					}
 				}
 			} catch(IOException | NullPointerException exception) {
