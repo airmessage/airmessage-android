@@ -47,7 +47,7 @@ public class VBMessageComponent {
 		
 		//Determining the maximum image size
 		DisplayMetrics displayMetrics = new DisplayMetrics();
-		((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getMetrics(displayMetrics);
+		context.getSystemService(WindowManager.class).getDefaultDisplay().getMetrics(displayMetrics);
 		int maxStickerSize = Math.min(displayMetrics.widthPixels, displayMetrics.heightPixels) / 3; //One third of the smaller side of the display
 		
 		for(StickerInfo sticker : stickers) {
@@ -58,34 +58,12 @@ public class VBMessageComponent {
 			imageView.setLayoutParams(layoutParams);
 			imageView.setMaxWidth(maxStickerSize);
 			imageView.setMaxHeight(maxStickerSize);
+			imageView.setAdjustViewBounds(true);
 			Glide.with(context).load(sticker.getFile()).into(imageView);
 			
 			//Adding the view to the sticker container
 			stickerContainer.addView(imageView);
 		}
-		
-		/* return Observable.fromIterable(stickers)
-				.flatMapSingle(sticker -> MainApplication.getInstance().getBitmapCacheHelper().getSticker(context, sticker.getLocalID()))
-				.observeOn(AndroidSchedulers.mainThread())
-				.doOnNext(bitmap -> {
-					//Determining the maximum image size
-					DisplayMetrics displayMetrics = new DisplayMetrics();
-					((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getMetrics(displayMetrics);
-					int maxStickerSize = Math.min(displayMetrics.widthPixels, displayMetrics.heightPixels) / 3; //One third of the smaller side of the display
-					
-					//Creating the image view
-					ImageView imageView = new ImageView(context);
-					RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-					layoutParams.addRule(RelativeLayout.CENTER_IN_PARENT);
-					imageView.setLayoutParams(layoutParams);
-					imageView.setMaxWidth(maxStickerSize);
-					imageView.setMaxHeight(maxStickerSize);
-					imageView.setImageBitmap(bitmap);
-					
-					//Adding the view to the sticker container
-					stickerContainer.addView(imageView);
-				})
-				.ignoreElements(); */
 	}
 	
 	/**
@@ -97,7 +75,7 @@ public class VBMessageComponent {
 	public static void addStickerView(Context context, StickerInfo sticker, ViewGroup stickerContainer) {
 		//Determining the maximum image size
 		DisplayMetrics displayMetrics = new DisplayMetrics();
-		((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getMetrics(displayMetrics);
+		context.getSystemService(WindowManager.class).getDefaultDisplay().getMetrics(displayMetrics);
 		int maxStickerSize = Math.min(displayMetrics.widthPixels, displayMetrics.heightPixels) / 3; //One third of the smaller side of the display
 		
 		//Creating the image view
@@ -107,6 +85,7 @@ public class VBMessageComponent {
 		imageView.setLayoutParams(layoutParams);
 		imageView.setMaxWidth(maxStickerSize);
 		imageView.setMaxHeight(maxStickerSize);
+		imageView.setAdjustViewBounds(true);
 		Glide.with(context)
 				.load(sticker.getFile())
 				.listener(new RequestListener<Drawable>() {
