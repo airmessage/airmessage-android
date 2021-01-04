@@ -4765,11 +4765,12 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 			
 			//Clearing the conversation's drafts on disk
-			Completable.create((emitter) -> {
+			Completable.fromAction(() -> {
 				DatabaseManager.getInstance().clearDraftReferences(conversationIDTarget);
 				DatabaseManager.getInstance().updateConversationDraftMessage(conversationIDTarget, null, -1);
-				emitter.onComplete();
-			}).subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).subscribe();
+			}).subscribeOn(Schedulers.single())
+					.observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationDraftFileClear(conversationInfo)))
+					.subscribe();
 		}
 		
 		/**

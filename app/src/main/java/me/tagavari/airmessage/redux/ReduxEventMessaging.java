@@ -414,6 +414,13 @@ public abstract class ReduxEventMessaging {
 		}
 	}
 	
+	//When a conversation's draft files are cleared
+	public static final class ConversationDraftFileClear extends ReduxConversationAction {
+		public ConversationDraftFileClear(ConversationInfo conversationInfo) {
+			super(conversationInfo);
+		}
+	}
+	
 	//When a conversation's color changes
 	public static final class ConversationColor extends ReduxConversationAction {
 		private final int color;

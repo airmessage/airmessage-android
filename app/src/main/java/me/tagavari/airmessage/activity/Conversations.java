@@ -926,6 +926,15 @@ public class Conversations extends AppCompatCompositeActivity {
 				conversation.setDraftUpdateTime(draftFileEvent.getUpdateTime());
 				conversationRecyclerAdapter.notifyItemChanged(i, conversationPayloadPreview);
 			});
+		} else if(event instanceof ReduxEventMessaging.ConversationDraftFileClear) {
+			ReduxEventMessaging.ConversationDraftFileClear draftClearEvent = (ReduxEventMessaging.ConversationDraftFileClear) event;
+			
+			//Updating the conversation
+			getConversationFromAction(draftClearEvent, (conversation, i) -> {
+				conversation.getDraftFiles().clear();
+				conversation.setDraftUpdateTime(System.currentTimeMillis());
+				conversationRecyclerAdapter.notifyItemChanged(i, conversationPayloadPreview);
+			});
 		}
 		
 		//Updating the search list adapter
