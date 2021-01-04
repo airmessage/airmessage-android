@@ -910,30 +910,57 @@ public class Conversations extends AppCompatCompositeActivity {
 		} else if(event instanceof ReduxEventMessaging.ConversationDraftMessageUpdate) {
 			ReduxEventMessaging.ConversationDraftMessageUpdate draftMessageEvent = (ReduxEventMessaging.ConversationDraftMessageUpdate) event;
 			
-			//Updating the conversation
 			getConversationFromAction(draftMessageEvent, (conversation, i) -> {
-						conversation.setDraftMessage(draftMessageEvent.getDraftMessage());
-						conversation.setDraftUpdateTime(draftMessageEvent.getUpdateTime());
-						conversationRecyclerAdapter.notifyItemChanged(i, conversationPayloadPreview);
-					});
+				//Updating the conversation
+				conversation.setDraftMessage(draftMessageEvent.getDraftMessage());
+				conversation.setDraftUpdateTime(draftMessageEvent.getUpdateTime());
+				conversationRecyclerAdapter.notifyItemChanged(i, conversationPayloadPreview);
+				
+				//Re-sorting the conversation
+				int conversationIndex = viewModel.conversationList.indexOf(conversation);
+				int insertionIndex = ConversationHelper.findReinsertionIndex(conversation, viewModel.conversationList);
+				if(conversationIndex != insertionIndex) {
+					viewModel.conversationList.remove(conversation);
+					viewModel.conversationList.add(insertionIndex, conversation);
+					conversationRecyclerAdapter.notifyItemMoved(conversationIndex, insertionIndex);
+				}
+			});
 		} else if(event instanceof ReduxEventMessaging.ConversationDraftFileUpdate) {
 			ReduxEventMessaging.ConversationDraftFileUpdate draftFileEvent = (ReduxEventMessaging.ConversationDraftFileUpdate) event;
 			
-			//Updating the conversation
 			getConversationFromAction(draftFileEvent, (conversation, i) -> {
+				//Updating the conversation
 				if(draftFileEvent.isAddition()) conversation.getDraftFiles().add(draftFileEvent.getDraft());
 				else conversation.getDraftFiles().removeIf(draft -> draft.getLocalID() == draftFileEvent.getDraft().getLocalID());
 				conversation.setDraftUpdateTime(draftFileEvent.getUpdateTime());
 				conversationRecyclerAdapter.notifyItemChanged(i, conversationPayloadPreview);
+				
+				//Re-sorting the conversation
+				int conversationIndex = viewModel.conversationList.indexOf(conversation);
+				int insertionIndex = ConversationHelper.findReinsertionIndex(conversation, viewModel.conversationList);
+				if(conversationIndex != insertionIndex) {
+					viewModel.conversationList.remove(conversation);
+					viewModel.conversationList.add(insertionIndex, conversation);
+					conversationRecyclerAdapter.notifyItemMoved(conversationIndex, insertionIndex);
+				}
 			});
 		} else if(event instanceof ReduxEventMessaging.ConversationDraftFileClear) {
 			ReduxEventMessaging.ConversationDraftFileClear draftClearEvent = (ReduxEventMessaging.ConversationDraftFileClear) event;
 			
-			//Updating the conversation
 			getConversationFromAction(draftClearEvent, (conversation, i) -> {
+				//Updating the conversation
 				conversation.getDraftFiles().clear();
 				conversation.setDraftUpdateTime(System.currentTimeMillis());
 				conversationRecyclerAdapter.notifyItemChanged(i, conversationPayloadPreview);
+				
+				//Re-sorting the conversation
+				int conversationIndex = viewModel.conversationList.indexOf(conversation);
+				int insertionIndex = ConversationHelper.findReinsertionIndex(conversation, viewModel.conversationList);
+				if(conversationIndex != insertionIndex) {
+					viewModel.conversationList.remove(conversation);
+					viewModel.conversationList.add(insertionIndex, conversation);
+					conversationRecyclerAdapter.notifyItemMoved(conversationIndex, insertionIndex);
+				}
 			});
 		}
 		
