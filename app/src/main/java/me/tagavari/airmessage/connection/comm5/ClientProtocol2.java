@@ -187,6 +187,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		switch(messageType) {
 			case nhtMessageUpdate:
 			case nhtTimeRetrieval:
+			case nhtIDRetrieval:
 				handleMessageMessageUpdate(unpacker);
 				break;
 			case nhtMassRetrieval:

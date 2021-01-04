@@ -30,6 +30,7 @@ public class SharedPreferencesManager {
 	private static final String sharedPreferencesConnectivityKeyConnectServerConfirmed = "connect_server_confirmed"; //TRUE if this account has confirmed its connection with the server
 	private static final String sharedPreferencesConnectivityKeyLastSyncInstallationID = "last_sync_installation_id"; //The installation ID recorded when messages were last synced (or cleared), used for tracking when the user should be prompted to re-sync their messages
 	private static final String sharedPreferencesConnectivityKeyLastConnectionTime = "last_connection_time"; //The last time this client established a connection with the server
+	private static final String sharedPreferencesConnectivityKeyLastServerMessageID = "last_server_message_id"; //The last message ID received from the server
 	private static final String sharedPreferencesConnectivityKeyLastConnectionInstallationID = "last_connection_installation_id"; //The installation ID of the server from the last conversation, used for tracking server changes immediately when connecting
 	private static final String sharedPreferencesConnectivityKeyTextMessageConversationsInstalled = "text_message_conversations_installed"; //Whether text message conversations are currently imported into the app's database
 	
@@ -285,6 +286,27 @@ public class SharedPreferencesManager {
 	 */
 	public static void setLastConnectionTime(Context context, long time) {
 		getConnectivitySharedPrefs(context).edit().putLong(sharedPreferencesConnectivityKeyLastConnectionTime, time).apply();
+	}
+	
+	/**
+	 * Fetches the last server message ID, or -1 if unavailable
+	 */
+	public static long getLastServerMessageID(Context context) {
+		return getConnectivitySharedPrefs(context).getLong(sharedPreferencesConnectivityKeyLastServerMessageID, -1);
+	}
+	
+	/**
+	 * Sets the last server message ID
+	 */
+	public static void setLastServerMessageID(Context context, long lastMessageID) {
+		getConnectivitySharedPrefs(context).edit().putLong(sharedPreferencesConnectivityKeyLastServerMessageID, lastMessageID).apply();
+	}
+	
+	/**
+	 * Removes the last server message ID
+	 */
+	public static void removeLastServerMessageID(Context context) {
+		getConnectivitySharedPrefs(context).edit().remove(sharedPreferencesConnectivityKeyLastServerMessageID).apply();
 	}
 	
 	/**

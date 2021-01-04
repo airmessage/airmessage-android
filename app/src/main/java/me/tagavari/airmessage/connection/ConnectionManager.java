@@ -250,11 +250,17 @@ public class ConnectionManager {
 			//Retrieving the pending conversation info
 			fetchPendingConversations();
 			
-			//Checking if we are connected to the same server
-			if(!isNewServer) {
+			//Checking if we are connected to a new server
+			if(isNewServer) {
+				//Resetting the last message ID
+				SharedPreferencesManager.removeLastServerMessageID(getContext());
+			} else {
+				long lastServerMessageID = SharedPreferencesManager.getLastServerMessageID(getContext());
+				
 				//Fetching missed messages
-				if(communicationsManager.isFeatureSupported(ConnectionFeature.idBasedRetrieval)) {
-					//TODO Fetching messages since the last message ID
+				if(communicationsManager.isFeatureSupported(ConnectionFeature.idBasedRetrieval) && lastServerMessageID != -1) {
+					//Fetching messages since the last message ID
+					requestMessagesIDRange(lastServerMessageID);
 				} else {
 					//Fetching the messages since the last connection time
 					requestMessagesTimeRange(lastConnectionTime, System.currentTimeMillis());
@@ -331,6 +337,14 @@ public class ConnectionManager {
 		
 		@Override
 		public void onMessageUpdate(Collection<Blocks.ConversationItem> data) {
+			//Updating the latest message ID
+			data.stream().max((item1, item2) -> Long.compare(item1.serverID, item2.serverID)).ifPresent(item -> {
+				long latestID = item.serverID;
+				if(latestID > SharedPreferencesManager.getLastServerMessageID(getContext())) {
+					SharedPreferencesManager.setLastServerMessageID(getContext(), latestID);
+				}
+			});
+			
 			//Loading the foreground conversations (needs to be done on the main thread)
 			Single.fromCallable(Messaging::getForegroundConversations)
 					.subscribeOn(AndroidSchedulers.mainThread())
