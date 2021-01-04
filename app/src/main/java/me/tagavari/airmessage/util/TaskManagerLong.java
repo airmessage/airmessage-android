@@ -61,4 +61,19 @@ public class TaskManagerLong<T> {
 		subject.onSuccess(value);
 		requestMap.put(id, subject);
 	}
+	
+	/**
+	 * Removes a completed result from the cache
+	 * @param id The ID of the request
+	 */
+	public void remove(long id) {
+		requestMap.remove(id);
+	}
+	
+	/**
+	 * Clears all results from the cache
+	 */
+	public void clear() {
+		requestMap.clear();
+	}
 }

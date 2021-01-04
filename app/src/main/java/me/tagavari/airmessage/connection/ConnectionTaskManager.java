@@ -29,4 +29,8 @@ public class ConnectionTaskManager {
 	public static void removeDownload(long attachmentLocalID) {
 		downloadAttachmentTaskManager.remove(attachmentLocalID);
 	}
+	
+	public static void clearDownloads() {
+		downloadAttachmentTaskManager.clear();
+	}
 }

@@ -67,4 +67,11 @@ public class TaskManagerLongBehavior<T> {
 	public void remove(long id) {
 		requestMap.remove(id);
 	}
+	
+	/**
+	 * Clears all results from the cache
+	 */
+	public void clear() {
+		requestMap.clear();
+	}
 }

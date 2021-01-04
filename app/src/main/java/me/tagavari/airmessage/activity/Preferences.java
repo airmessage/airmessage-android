@@ -65,6 +65,7 @@ import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
 import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
+import me.tagavari.airmessage.connection.ConnectionTaskManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.data.MessagesDataHelper;
@@ -1061,6 +1062,9 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		}
 		
 		private void requestSyncMessages(MassRetrievalParams params) {
+			//Clearing download tasks
+			ConnectionTaskManager.clearDownloads();
+			
 			//Deleting the messages
 			syncSubscription = MessagesDataHelper.deleteAMBMessages(getContext())
 					.toSingle(() -> {
