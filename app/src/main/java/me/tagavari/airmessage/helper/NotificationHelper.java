@@ -833,7 +833,7 @@ public class NotificationHelper {
 				.setContentIntent(PendingIntent.getActivity(context, 0, new Intent(context, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT));
 		
 		//Disconnect (only available in debug)
-		if(BuildConfig.DEBUG) builder.addAction(R.drawable.wifi_off, context.getResources().getString(R.string.action_disconnect), PendingIntent.getService(context, 0, new Intent(context, ConnectionService.class).setAction(ConnectionService.selfIntentActionDisconnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT));
+		if(BuildConfig.DEBUG) builder.addAction(R.drawable.wifi_off, context.getResources().getString(R.string.action_disconnect), PendingIntent.getService(context, 1, new Intent(context, ConnectionService.class).setAction(ConnectionService.selfIntentActionDisconnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT));
 		
 		return builder
 				.addAction(getConnectionQuitAction(context))
@@ -855,7 +855,7 @@ public class NotificationHelper {
 				.setContentIntent(PendingIntent.getActivity(context, 0, new Intent(context, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT));
 		
 		//Adding the reconnect action
-		builder.addAction(R.drawable.wifi, context.getResources().getString(R.string.action_reconnect), PendingIntent.getService(context, 0, new Intent(context, ConnectionService.class).setAction(ConnectionService.selfIntentActionConnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT));
+		builder.addAction(R.drawable.wifi, context.getResources().getString(R.string.action_reconnect), PendingIntent.getService(context, 2, new Intent(context, ConnectionService.class).setAction(ConnectionService.selfIntentActionConnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT));
 		
 		//Completing and returning the notification
 		return builder
