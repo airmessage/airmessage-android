@@ -994,7 +994,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 					
 					byte[] decompressedData;
 					try {
-						decompressedData = StandardCompressionHelper.decompressGZIP(data);
+						decompressedData = StandardCompressionHelper.decompressInflate(data);
 					} catch(IOException exception) {
 						exception.printStackTrace();
 						
