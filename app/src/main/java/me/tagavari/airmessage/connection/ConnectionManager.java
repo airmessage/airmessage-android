@@ -337,14 +337,6 @@ public class ConnectionManager {
 		
 		@Override
 		public void onMessageUpdate(Collection<Blocks.ConversationItem> data) {
-			//Updating the latest message ID
-			data.stream().max((item1, item2) -> Long.compare(item1.serverID, item2.serverID)).ifPresent(item -> {
-				long latestID = item.serverID;
-				if(latestID > SharedPreferencesManager.getLastServerMessageID(getContext())) {
-					SharedPreferencesManager.setLastServerMessageID(getContext(), latestID);
-				}
-			});
-			
 			//Loading the foreground conversations (needs to be done on the main thread)
 			Single.fromCallable(Messaging::getForegroundConversations)
 					.subscribeOn(AndroidSchedulers.mainThread())
@@ -686,6 +678,11 @@ public class ConnectionManager {
 			//Failing the request
 			subject.onError(new AMRequestException(AttachmentReqErrorCode.localIO));
 			idRequestSubjectMap.remove(requestID);
+		}
+		
+		@Override
+		public void onIDUpdate(long messageID) {
+			SharedPreferencesManager.setLastServerMessageID(getContext(), messageID);
 		}
 		
 		@Override

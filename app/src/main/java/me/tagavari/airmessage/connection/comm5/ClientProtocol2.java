@@ -70,6 +70,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	private static final int nhtAttachmentReq = 208;
 	private static final int nhtAttachmentReqConfirm = 209;
 	private static final int nhtAttachmentReqFail = 210;
+	private static final int nhtIDUpdate = 211;
 	
 	private static final int nhtLiteConversationRetrieval = 300;
 	private static final int nhtLiteThreadRetrieval = 301;
@@ -214,6 +215,9 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			case nhtAttachmentReqFail:
 				handleMessageAttachmentRequestFail(unpacker);
 				break;
+			case nhtIDUpdate:
+				handleMessageIDUpdate(unpacker);
+				break;
 			case nhtSendResult:
 				handleMessageSendResult(unpacker);
 				break;
@@ -349,6 +353,13 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		int errorCode = mapNRCAttachmentReqCode(unpacker.unpackInt());
 		
 		communicationsManager.runListener(listener -> listener.onFileRequestFail(requestID, errorCode));
+	}
+	
+	private void handleMessageIDUpdate(AirUnpacker unpacker) {
+		//Reading the data
+		long messageID = unpacker.unpackLong();
+		
+		communicationsManager.runListener(listener -> listener.onIDUpdate(messageID));
 	}
 	
 	private void handleMessageSendResult(AirUnpacker unpacker) {

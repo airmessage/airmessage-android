@@ -32,6 +32,7 @@ public interface CommunicationsManagerListener {
 	void onFileRequestData(short requestID, int responseIndex, byte[] data);
 	void onFileRequestComplete(short requestID);
 	void onFileRequestFail(short requestID, @AttachmentReqErrorCode int errorCode);
+	void onIDUpdate(long messageID);
 	void onSendMessageSuccess(short requestID);
 	void onSendMessageFail(short requestID, CompoundErrorDetails.MessageSend error);
 	void onCreateChatSuccess(short requestID, String chatGUID);
