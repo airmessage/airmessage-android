@@ -51,7 +51,7 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 		//Running on a worker thread
 		Single.create((SingleEmitter<Triplet<Boolean, ConversationInfo, MessageInfo>> emitter) -> {
 			//Writing the message to Android's database
-			insertInternalSMS(context, messageBody.toString(), finalMessageSender, timestamp);
+			insertInternalSMS(context, finalMessageSender, messageBody.toString(), timestamp);
 		}).subscribeOn(Schedulers.single()).subscribe();
 		
 		//Adding the message to the conversation
