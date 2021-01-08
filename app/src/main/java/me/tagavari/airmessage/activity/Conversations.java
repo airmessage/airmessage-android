@@ -811,7 +811,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	 */
 	private void updateConversationList(ReduxEventMessaging event) {
 		//Ignoring if messages aren't loaded
-		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return;
+		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady || conversationRecyclerAdapter == null) return;
 		
 		if(event instanceof ReduxEventMessaging.Message) {
 			updateMessageListMessageUpdate((ReduxEventMessaging.Message) event);
