@@ -1145,12 +1145,14 @@ public class ConnectionManager {
 		//Adding the request
 		MassRetrievalRequest massRetrievalRequest = new MassRetrievalRequest();
 		return this.<ReduxEventMassRetrieval>queueObservableIDRequest(requestID, error, massRetrievalRequest).doOnError((observableError) -> {
+			AMRequestException exception = (AMRequestException) observableError;
+			
 			//Cleaning up
 			massRetrievalRequest.cancel();
 			
 			//Emitting an update
-			ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(new ReduxEventMassRetrieval.Error(MassRetrievalErrorCode.localBadResponse));
-			Log.w(TAG, "Mass retrieval failed", observableError);
+			ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(new ReduxEventMassRetrieval.Error(exception.getErrorCode()));
+			Log.w(TAG, "Mass retrieval failed", exception);
 		}).doOnTerminate(() -> {
 			//Updating the mass retrieval state
 			isMassRetrievalInProgress = false;

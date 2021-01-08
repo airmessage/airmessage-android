@@ -736,7 +736,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			viewModel.finishStateSyncing();
 			
 			//Showing a snackbar
-			Snackbar.make(findViewById(R.id.root), R.string.message_syncerror, Snackbar.LENGTH_LONG).show();
+			Snackbar.make(findViewById(R.id.root), getResources().getString(R.string.message_syncerror, ((ReduxEventMassRetrieval.Error) event).getCode()), Snackbar.LENGTH_LONG).show();
 		} else {
 			viewModel.setStateSyncing();
 			

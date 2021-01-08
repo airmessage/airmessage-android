@@ -165,7 +165,7 @@
 	<string name="message_attachmentreqerror_server_unreadable">Attachment file unreadable</string>
 	<string name="message_attachmentreqerror_server_io">External error (I/O)</string>
 
-	<string name="message_syncerror">Couldn\'t sync messages</string>
+	<string name="message_syncerror">Couldn\'t sync messages (error code %d)</string>
 
 	<string name="message_senderrornotify">Message not sent</string>
 	<string name="message_senderrornotify_desc">Your message to %s failed to send</string>
