@@ -3190,7 +3190,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					}
 					
 					//Setting the download click listener
-					viewHolder.groupPrompt.setOnClickListener(view -> {
+					viewHolder.itemView.setOnClickListener(view -> {
 						if(component.getGUID() != null) {
 							if(pluginCS.isServiceBound()) {
 								//Switching to the download view
