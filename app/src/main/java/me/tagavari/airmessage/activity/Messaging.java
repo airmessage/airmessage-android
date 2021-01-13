@@ -3182,8 +3182,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					//Showing the download prompt view
 					setAttachmentView(viewHolder, viewHolder.groupPrompt);
 					
-					if(FileHelper.isAttachmentDocument(component.getContentType())) viewHolder.labelPromptType.setText(component.getFileName());
-					else viewHolder.labelPromptType.setText(LanguageHelper.getHumanReadableContentType(getResources(), component.getContentType()));
+					viewHolder.labelPromptType.setText(LanguageHelper.getHumanReadableContentType(getResources(), component.getContentType()));
 					if(component.getFileSize() == -1) viewHolder.labelPromptSize.setVisibility(View.GONE);
 					else {
 						viewHolder.labelPromptSize.setVisibility(View.VISIBLE);
