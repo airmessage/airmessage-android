@@ -15,6 +15,8 @@ import android.util.Pair;
 import androidx.annotation.Nullable;
 import androidx.arch.core.util.Function;
 
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -483,7 +485,15 @@ public class ConnectionManager {
 			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
 			compositeDisposable.add(
 					massRetrievalRequest.initializeAttachment(getContext(), fileGUID, fileName, streamWrapper)
-							.subscribe(() -> {}, (error) -> {
+							.subscribe(() -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								localSubject.get().onNext(event);
+								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
+							}, (error) -> {
 								//Getting the request
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
@@ -510,7 +520,15 @@ public class ConnectionManager {
 			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
 			compositeDisposable.add(
 					massRetrievalRequest.writeChunkAttachment(fileGUID, responseIndex, fileData)
-							.subscribe(() -> {}, (error) -> {
+							.subscribe(() -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								localSubject.get().onNext(event);
+								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
+							}, (error) -> {
 								//Getting the request
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
@@ -537,7 +555,15 @@ public class ConnectionManager {
 			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
 			compositeDisposable.add(
 					massRetrievalRequest.finishAttachment(getContext(), fileGUID)
-							.subscribe(() -> {}, (error) -> {
+							.subscribe(() -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								localSubject.get().onNext(event);
+								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
+							}, (error) -> {
 								//Getting the request
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
@@ -1145,14 +1171,21 @@ public class ConnectionManager {
 		//Adding the request
 		MassRetrievalRequest massRetrievalRequest = new MassRetrievalRequest();
 		return this.<ReduxEventMassRetrieval>queueObservableIDRequest(requestID, error, massRetrievalRequest).doOnError((observableError) -> {
-			AMRequestException exception = (AMRequestException) observableError;
+			//Getting the error code
+			int errorCode;
+			if(observableError instanceof AMRequestException) {
+				errorCode = ((AMRequestException) observableError).getErrorCode();
+			} else {
+				errorCode = MassRetrievalErrorCode.unknown;
+				FirebaseCrashlytics.getInstance().recordException(observableError);
+			}
 			
 			//Cleaning up
 			massRetrievalRequest.cancel();
 			
 			//Emitting an update
-			ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(new ReduxEventMassRetrieval.Error(exception.getErrorCode()));
-			Log.w(TAG, "Mass retrieval failed", exception);
+			ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(new ReduxEventMassRetrieval.Error(errorCode));
+			Log.w(TAG, "Mass retrieval failed", observableError);
 		}).doOnTerminate(() -> {
 			//Updating the mass retrieval state
 			isMassRetrievalInProgress = false;

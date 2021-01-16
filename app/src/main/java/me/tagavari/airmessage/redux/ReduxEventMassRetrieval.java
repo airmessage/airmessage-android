@@ -49,6 +49,10 @@ public abstract class ReduxEventMassRetrieval {
 		}
 	}
 	
+	public static class File extends ReduxEventMassRetrieval {
+	
+	}
+	
 	public static class Complete extends ReduxEventMassRetrieval {
 		
 	}
