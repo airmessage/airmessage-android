@@ -35,7 +35,7 @@ public class MassRetrievalRequest {
 	
 	//Conversations state
 	private boolean initialInfoReceived = false;
-	private List<ConversationInfo> conversationList;
+	private volatile List<ConversationInfo> conversationList;
 	
 	//Messages state
 	private int totalMessageCount;
@@ -63,15 +63,17 @@ public class MassRetrievalRequest {
 		this.totalMessageCount = totalMessageCount;
 		
 		//Writing the data
-		return Single.create((SingleEmitter<List<ConversationInfo>> emitter) -> {
+		return Single.fromCallable(() -> {
 			//Writing the conversations to disk
 			List<ConversationInfo> conversationInfoList = new ArrayList<>();
 			for(Blocks.ConversationInfo structConversation : conversationList) {
 				ConversationInfo item = DatabaseManager.getInstance().addReadyConversationInfoAMBridge(structConversation);
 				if(item != null) conversationInfoList.add(item);
 			}
-			emitter.onSuccess(conversationInfoList);
-		}).subscribeOn(requestScheduler).observeOn(AndroidSchedulers.mainThread()).doOnSuccess(conversations -> this.conversationList = conversations);
+			return conversationInfoList;
+		}).subscribeOn(requestScheduler).observeOn(AndroidSchedulers.mainThread()).doOnSuccess(conversations -> {
+			this.conversationList = conversations;
+		});
 	}
 	
 	/**
@@ -91,7 +93,7 @@ public class MassRetrievalRequest {
 		}
 		expectedResponseIndex++;
 		
-		return Single.create((SingleEmitter<List<ConversationItem>> emitter) -> {
+		return Single.fromCallable(() -> {
 			List<ConversationItem> addedItemList = new ArrayList<>();
 			
 			//Adding the messages
@@ -109,7 +111,7 @@ public class MassRetrievalRequest {
 				addedItemList.add(conversationItem);
 			}
 			
-			emitter.onSuccess(addedItemList);
+			return addedItemList;
 		}).subscribeOn(requestScheduler).observeOn(AndroidSchedulers.mainThread()).doOnSuccess(addedItems -> {
 			//Updating the total
 			messagesReceived += itemList.size();
@@ -133,19 +135,6 @@ public class MassRetrievalRequest {
 			attachmentTargetFile = AttachmentStorageHelper.prepareContentFile(context, AttachmentStorageHelper.dirNameAttachment, fileName);
 			attachmentOutputStream = new BufferedOutputStream(new FileOutputStream(attachmentTargetFile));
 			if(streamWrapper != null) attachmentOutputStream = streamWrapper.apply(attachmentOutputStream);
-		}).subscribeOn(requestScheduler).observeOn(AndroidSchedulers.mainThread());
-	}
-	
-	/**
-	 * Performs a validation check and finishes this retrieval request
-	 * @return A completable to represent this task
-	 */
-	public Completable complete() {
-		return Completable.create(emitter -> {
-			//Checking if there is a file request in progress
-			if(attachmentGUID != null) throw new IllegalStateException("Trying to finish mass retrieval, but attachment download " + attachmentGUID + " is still in progress");
-			
-			emitter.onComplete();
 		}).subscribeOn(requestScheduler).observeOn(AndroidSchedulers.mainThread());
 	}
 	
@@ -213,6 +202,17 @@ public class MassRetrievalRequest {
 	 */
 	public int getMessagesReceived() {
 		return messagesReceived;
+	}
+	
+	/**
+	 * Performs a validation check and finishes this retrieval request
+	 * @return A completable to represent this task
+	 */
+	public Completable complete() {
+		return Completable.fromAction(() -> {
+			//Checking if there is a file request in progress
+			if(attachmentGUID != null) throw new IllegalStateException("Trying to finish mass retrieval, but attachment download " + attachmentGUID + " is still in progress");
+		}).subscribeOn(requestScheduler).observeOn(AndroidSchedulers.mainThread());
 	}
 	
 	/**
