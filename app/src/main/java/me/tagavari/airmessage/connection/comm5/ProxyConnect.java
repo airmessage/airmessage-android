@@ -16,6 +16,7 @@ import com.google.firebase.auth.GetTokenResult;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import org.java_websocket.WebSocket;
 import org.java_websocket.client.WebSocketClient;
@@ -77,10 +78,10 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 		}
 		
 		//Fetching the user's ID token and FCM token
-		Tasks.whenAllComplete(mUser.getIdToken(false), FirebaseInstanceId.getInstance().getInstanceId()).addOnCompleteListener(task -> {
+		Tasks.whenAllComplete(mUser.getIdToken(false), FirebaseMessaging.getInstance().getToken()).addOnCompleteListener(task -> {
 			List<Task<?>> tasks = task.getResult();
 			Task<GetTokenResult> accountIDTask = (Task<GetTokenResult>) tasks.get(0);
-			Task<InstanceIdResult> firebaseIDTask = (Task<InstanceIdResult>) tasks.get(1);
+			Task<String> fcmTokenTask = (Task<String>) tasks.get(1);
 			
 			//Getting the results
 			String idToken;
@@ -94,12 +95,12 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 				notifyClose(ConnectionErrorCode.internalError);
 				return;
 			}
-			if(firebaseIDTask.isSuccessful()) {
-				fcmToken = firebaseIDTask.getResult().getToken();
+			if(fcmTokenTask.isSuccessful()) {
+				fcmToken = fcmTokenTask.getResult();
 			} else {
 				//Error
-				firebaseIDTask.getException().printStackTrace();
-				FirebaseCrashlytics.getInstance().recordException(firebaseIDTask.getException());
+				fcmTokenTask.getException().printStackTrace();
+				FirebaseCrashlytics.getInstance().recordException(fcmTokenTask.getException());
 				notifyClose(ConnectionErrorCode.internalError);
 				return;
 			}
