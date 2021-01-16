@@ -887,9 +887,9 @@ public class Conversations extends AppCompatCompositeActivity {
 			ReduxEventMessaging.ConversationServiceHandlerDelete deleteEvent = (ReduxEventMessaging.ConversationServiceHandlerDelete) event;
 			
 			//Removing any matching conversations
-			for(ListIterator<ConversationInfo> iterator = viewModel.conversationList.listIterator(); iterator.hasPrevious();) {
-				int i = iterator.previousIndex();
-				ConversationInfo conversationInfo = iterator.previous();
+			for(ListIterator<ConversationInfo> iterator = viewModel.conversationList.listIterator(); iterator.hasNext();) {
+				int i = iterator.nextIndex();
+				ConversationInfo conversationInfo = iterator.next();
 				if(conversationInfo.getServiceHandler() != deleteEvent.getServiceHandler()) continue;
 				
 				iterator.remove();
