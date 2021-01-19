@@ -6,7 +6,7 @@ public class StringHelper {
 	}
 	
 	public static String defaultEmptyString(String string, String fallback) {
-		if(string != null && string.isEmpty()) return fallback;
+		if(string == null || string.isEmpty()) return fallback;
 		else return string;
 	}
 	
