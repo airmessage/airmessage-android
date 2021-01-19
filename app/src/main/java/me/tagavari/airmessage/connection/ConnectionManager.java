@@ -288,8 +288,8 @@ public class ConnectionManager {
 				//Checking if we have yet to establish a connection, and there are older protocol versions available to use
 				if(!connectionEstablished && currentCommunicationsIndex + 1 < communicationsPriorityList.size()) {
 					//Falling back to an older protocol
+					//updateStateConnecting();
 					connectFromList(getContext(), currentCommunicationsIndex + 1);
-					updateStateConnecting();
 					return;
 				}
 				//Checking if we have already established a connection, and we are allowed to run automatic reconnections
@@ -297,7 +297,7 @@ public class ConnectionManager {
 					//Trying to start an immediate reconnection
 					boolean result = continueImmediateReconnect();
 					if(result) {
-						updateStateConnecting();
+						//updateStateConnecting();
 						return;
 					}
 				}
@@ -856,10 +856,10 @@ public class ConnectionManager {
 		
 		//Recording the state
 		isConnectingSilently = true;
+		isConnecting = true;
 		
 		//Connecting from the top of the priority list
-		connectFromList(getContext(), currentCommunicationsIndex);
-		isConnecting = true;
+		connectFromList(getContext(), 0);
 	}
 	
 	/**
