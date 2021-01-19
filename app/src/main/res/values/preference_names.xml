@@ -104,7 +104,7 @@
 	<string name="preference_account_reset_key" translatable="false">pref_key_account_reset</string>
 	<string name="preference_account_reset_title">Sign out</string>
 
-	<string name="preferencegroup_about_key" translatable="false">pref_group_account</string>
+	<string name="preferencegroup_about_key" translatable="false">pref_group_about</string>
 	<string name="preferencegroup_about_title">App info</string>
 	<string name="preference_about_licenses_key" translatable="false">pref_key_about_licenses</string>
 	<string name="preference_about_licenses_title">Open source licenses</string>
