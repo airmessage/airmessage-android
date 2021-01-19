@@ -733,10 +733,12 @@ public class Conversations extends AppCompatCompositeActivity {
 		if(event instanceof ReduxEventMassRetrieval.Complete) {
 			viewModel.finishStateSyncing();
 		} else if(event instanceof ReduxEventMassRetrieval.Error) {
-			viewModel.finishStateSyncing();
+			boolean wasSyncing = viewModel.finishStateSyncing();
 			
 			//Showing a snackbar
-			Snackbar.make(findViewById(R.id.root), getResources().getString(R.string.message_syncerror, ((ReduxEventMassRetrieval.Error) event).getCode()), Snackbar.LENGTH_LONG).show();
+			if(wasSyncing) {
+				Snackbar.make(findViewById(R.id.root), getResources().getString(R.string.message_syncerror, ((ReduxEventMassRetrieval.Error) event).getCode()), Snackbar.LENGTH_LONG).show();
+			}
 		} else {
 			viewModel.setStateSyncing();
 			
@@ -1361,13 +1363,17 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		/**
 		 * Updates the state in response to the completion of a sync event
+		 * @return Whether a sync was taking place
 		 */
-		public void finishStateSyncing() {
+		public boolean finishStateSyncing() {
 			//Ignoring if the state is not syncing
-			if(stateLD.getValue() != stateSyncing) return;
+			if(stateLD.getValue() != stateSyncing) return false;
 			
 			//Reloading the conversations
 			loadConversations();
+			
+			//Returning true
+			return true;
 		}
 		
 		/**
