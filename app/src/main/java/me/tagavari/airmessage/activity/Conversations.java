@@ -9,6 +9,8 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.service.notification.StatusBarNotification;
 import android.text.Editable;
 import android.text.Spannable;
@@ -135,6 +137,8 @@ public class Conversations extends AppCompatCompositeActivity {
 	private static final int conversationPayloadUnread = 4;
 	private static final int conversationPayloadSelection = 5;
 	
+	private static final long timeUpdateHandlerDelay = 60 * 1000; //1 minute
+	
 	//Creating the static values
 	private static final List<WeakReference<Conversations>> foregroundActivities = new ArrayList<>();
 	
@@ -196,6 +200,20 @@ public class Conversations extends AppCompatCompositeActivity {
 		@Override
 		public void afterTextChanged(Editable s) {
 		
+		}
+	};
+	
+	//Creating the timer values
+	private final Handler timeUpdateHandler = new Handler(Looper.getMainLooper());
+	private Runnable timeUpdateHandlerRunnable = new Runnable() {
+		@Override
+		public void run() {
+			if(viewModel.stateLD.getValue() == ActivityViewModel.stateReady && conversationRecyclerAdapter != null) {
+				conversationRecyclerAdapter.notifyItemRangeChanged(0, viewModel.conversationList.size(), conversationPayloadPreview);
+			}
+			
+			//Running again
+			timeUpdateHandler.postDelayed(this, timeUpdateHandlerDelay);
 		}
 	};
 	
@@ -416,6 +434,9 @@ public class Conversations extends AppCompatCompositeActivity {
 				notificationManager.cancel(notification.getId());
 			}
 		} */
+		
+		//Starting the time update handler
+		timeUpdateHandlerRunnable.run();
 	}
 	
 	@Override
@@ -441,6 +462,9 @@ public class Conversations extends AppCompatCompositeActivity {
 			//Breaking from the loop
 			break;
 		}
+		
+		//Stopping the time update handler
+		timeUpdateHandler.removeCallbacks(timeUpdateHandlerRunnable);
 	}
 	
 	@Override
