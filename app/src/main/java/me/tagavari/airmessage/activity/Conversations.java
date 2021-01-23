@@ -468,6 +468,14 @@ public class Conversations extends AppCompatCompositeActivity {
 	}
 	
 	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		
+		if(viewMainList != null) viewMainList.setAdapter(null);
+		if(viewSearchList != null) viewSearchList.setAdapter(null);
+	}
+	
+	@Override
 	protected void onSaveInstanceState(@NonNull Bundle savedInstanceState) {
 		super.onSaveInstanceState(savedInstanceState);
 		
@@ -1551,6 +1559,24 @@ public class Conversations extends AppCompatCompositeActivity {
 		}
 		
 		@Override
+		public void onViewRecycled(@NonNull VHConversationDetailed holder) {
+			holder.getCompositeDisposable().clear();
+		}
+		
+		@Override
+		public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+			//Cancelling all view holder tasks
+			LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+			int firstVisibleIndex = layoutManager.findFirstVisibleItemPosition();
+			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
+			
+			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
+				DisposableViewHolder holder = (DisposableViewHolder) recyclerView.findViewHolderForAdapterPosition(i);
+				if(holder != null) holder.getCompositeDisposable().clear();
+			}
+		}
+		
+		@Override
 		public int getItemCount() {
 			return items.size();
 		}
@@ -1740,6 +1766,21 @@ public class Conversations extends AppCompatCompositeActivity {
 		public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
 			if(holder instanceof DisposableViewHolder) {
 				((DisposableViewHolder) holder).getCompositeDisposable().clear();
+			}
+		}
+		
+		@Override
+		public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+			//Cancelling all view holder tasks
+			LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+			int firstVisibleIndex = layoutManager.findFirstVisibleItemPosition();
+			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
+			
+			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
+				RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(i);
+				if(holder instanceof DisposableViewHolder) {
+					((DisposableViewHolder) holder).getCompositeDisposable().clear();
+				}
 			}
 		}
 		

@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.lang.annotation.Retention;
@@ -41,6 +42,7 @@ import me.tagavari.airmessage.helper.ShortcutHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.viewbinder.VBConversation;
 import me.tagavari.airmessage.messaging.viewholder.VHConversationBase;
+import me.tagavari.airmessage.util.DisposableViewHolder;
 
 public class ShareHandler extends AppCompatCompositeActivity {
 	//Creating the view model value
@@ -143,6 +145,13 @@ public class ShareHandler extends AppCompatCompositeActivity {
 			button.setEnabled(false);
 			button.setAlpha(ResourceHelper.resolveFloatAttr(this, android.R.attr.disabledAlpha));
 		}
+	}
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		
+		listConversations.setAdapter(null);
 	}
 	
 	/**
@@ -274,6 +283,19 @@ public class ShareHandler extends AppCompatCompositeActivity {
 		@Override
 		public void onViewRecycled(@NonNull VHConversationBase holder) {
 			holder.getCompositeDisposable().clear();
+		}
+		
+		@Override
+		public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+			//Cancelling all view holder tasks
+			LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+			int firstVisibleIndex = layoutManager.findFirstVisibleItemPosition();
+			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
+			
+			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
+				DisposableViewHolder holder = (DisposableViewHolder) recyclerView.findViewHolderForAdapterPosition(i);
+				if(holder != null) holder.getCompositeDisposable().clear();
+			}
 		}
 		
 		@Override

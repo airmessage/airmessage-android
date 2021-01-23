@@ -780,6 +780,14 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewModel.applyDraftMessage(messageInputField.getText().toString());
 	}
 	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		
+		//Detatching the recycler view adapter
+		messageList.setAdapter(null);
+	}
+	
 	/**
 	 * Updates the connection warning banner based on a connection event
 	 */
@@ -2333,6 +2341,21 @@ public class Messaging extends AppCompatCompositeActivity {
 		public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
 			if(holder instanceof DisposableViewHolder) {
 				((DisposableViewHolder) holder).getCompositeDisposable().clear();
+			}
+		}
+		
+		@Override
+		public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+			//Cancelling all view holder tasks
+			LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+			int firstVisibleIndex = layoutManager.findFirstVisibleItemPosition();
+			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
+			
+			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
+				RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(i);
+				if(holder instanceof DisposableViewHolder) {
+					((DisposableViewHolder) holder).getCompositeDisposable().clear();
+				}
 			}
 		}
 		
