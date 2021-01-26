@@ -23,12 +23,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.messaging.AMConversationAction;
 import me.tagavari.airmessage.messaging.MessageInfo;
@@ -84,13 +84,14 @@ public class SmartReplyHelper {
 					.map(result -> result.getConversationActions().stream().map(action -> {
 						if(action.getType().equals(ConversationAction.TYPE_TEXT_REPLY)) {
 							//Text replies
-							return AMConversationAction.createReplyAction(action.getTextReply());
+							return Optional.of(AMConversationAction.createReplyAction(action.getTextReply()));
 						} else {
 							//Action replies
 							RemoteAction remoteAction = action.getAction();
-							return AMConversationAction.createRemoteAction(new AMConversationAction.RemoteAction(remoteAction.shouldShowIcon() ? remoteAction.getIcon() : null, remoteAction.getTitle(), remoteAction.getActionIntent()));
+							if(remoteAction == null) return Optional.<AMConversationAction>empty();
+							else return Optional.of(AMConversationAction.createRemoteAction(new AMConversationAction.RemoteAction(remoteAction.shouldShowIcon() ? remoteAction.getIcon() : null, remoteAction.getTitle(), remoteAction.getActionIntent())));
 						}
-					}).toArray(AMConversationAction[]::new));
+					}).filter(Optional::isPresent).map(Optional::get).toArray(AMConversationAction[]::new));
 		} else {
 			//Use MLKit
 			return generateResponsesMLKit(messagesToMLKitMessageList(sortedMessages))
@@ -109,13 +110,12 @@ public class SmartReplyHelper {
 	public static Single<ConversationActions> generateResponsesTextClassifier(Context context, List<ConversationActions.Message> messages) {
 		return Single.fromCallable(() -> {
 			TextClassifier textClassifier = context.getSystemService(TextClassificationManager.class).getTextClassifier();
-			ConversationActions conversationActions = textClassifier.suggestConversationActions(
+			return textClassifier.suggestConversationActions(
 					new ConversationActions.Request.Builder(messages)
 							.setMaxSuggestions(3)
 							.setHints(Collections.singletonList(ConversationActions.Request.HINT_FOR_IN_APP))
 							.build()
 			);
-			return conversationActions;
 		}).subscribeOn(Schedulers.computation()).observeOn(AndroidSchedulers.mainThread());
 	}
 	
