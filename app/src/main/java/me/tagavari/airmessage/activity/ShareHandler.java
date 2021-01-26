@@ -82,7 +82,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 		//Checking if the intent is a single object
 		if(Intent.ACTION_SEND.equals(intentAction)) {
 			//Checking if the content type is text
-			if("text/plain".equals(intentType)) {
+			if("text/plain".equals(intentType) && getIntent().hasExtra(Intent.EXTRA_TEXT)) {
 				//Setting the target text
 				targetText = getIntent().getStringExtra(Intent.EXTRA_TEXT);
 				dataValid = targetText != null;
@@ -151,7 +151,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 	protected void onDestroy() {
 		super.onDestroy();
 		
-		listConversations.setAdapter(null);
+		if(listConversations != null) listConversations.setAdapter(null);
 	}
 	
 	/**
