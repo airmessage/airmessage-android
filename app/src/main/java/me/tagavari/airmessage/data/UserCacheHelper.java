@@ -63,16 +63,17 @@ public class UserCacheHelper {
 		}
 		//Otherwise checking if we haven't previously confirmed that this user can't be fetched
 		else if(!failedCache.contains(normalizedAddress)) {
-			return Single.fromCallable(() -> {
+			return Single.create((SingleEmitter<UserInfo> emitter) -> {
 				UserInfo userInfo;
 				try {
 					userInfo = fetchUserInfo(context, normalizedAddress);
 				} catch(Exception exception) {
 					FirebaseCrashlytics.getInstance().recordException(exception);
-					throw exception;
+					emitter.tryOnError(exception);
+					return;
 				}
-				if(userInfo != null) return userInfo;
-				else throw new RuntimeException("User " + address + " not found");
+				if(userInfo != null) emitter.onSuccess(userInfo);
+				else emitter.tryOnError(new RuntimeException("User " + address + " not found"));
 			}).subscribeOn(Schedulers.io())
 					.observeOn(AndroidSchedulers.mainThread())
 					.doOnSuccess((userInfo) -> {

@@ -80,10 +80,10 @@ public class ConversationBuildHelper {
 		//Map each member to their name
 		return Single.concat(members.stream().map(member ->
 				MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, member.getAddress())
-						.map(Optional::of)
-						.onErrorReturnItem(Optional.empty())
 						//If the member's name is available, use it, otherwise use their address
-						.map(optionalUserInfo -> optionalUserInfo.map(UserCacheHelper.UserInfo::getContactName).orElse(member.getAddress())))
+						.map(UserCacheHelper.UserInfo::getContactName)
+						.onErrorReturnItem(member.getAddress())
+		)
 				.collect(Collectors.toList()))
 				//Create a localized list of members
 				.toList().map(nameList -> LanguageHelper.createLocalizedList(context.getResources(), nameList.toArray(new String[0])));
