@@ -1138,7 +1138,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			int previewState = cursor.getInt(indices.iPreviewState);
 			
 			//Querying the database for attachments
-			List<AttachmentInfo> attachments;
+			ArrayList<AttachmentInfo> attachments;
 			try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(localID)}, null, null, Contract.AttachmentEntry.COLUMN_NAME_SORT + " ASC")) {
 				//Creating the attachments list
 				attachments = new ArrayList<>(attachmentCursor.getCount());
@@ -2218,7 +2218,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			long matchedMessageID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.MessageEntry._ID));
 			
 			//Returning the result
-			return new GhostMergeResult<>(matchedMessageID, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+			return new GhostMergeResult<>(matchedMessageID, Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList());
 		}
 	}
 	
@@ -2243,6 +2243,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//Creating the matching values
 		long matchedMessageID = -1;
 		List<Long> deletedMessageIDs = new ArrayList<>(); //Messages that should be deleted
+		Pair<Long, A> persistingAttachment = null;
 		List<Pair<Long, A>> matchedAttachments = new ArrayList<>(); //Attachments transferred from subsequently matched messages
 		List<A> unmatchedAttachments = new ArrayList<>(); //Attachments that were delivered as a part of the source message, but couldn't be matched in the database
 		
@@ -2283,12 +2284,13 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				} else {
 					//Setting the target message
 					matchedMessageID = messageID;
+					persistingAttachment = new Pair<>(attachmentID, pair.second);
 				}
 			}
 		}
 		
 		if(matchedMessageID == -1) return null;
-		else return new GhostMergeResult<>(matchedMessageID, deletedMessageIDs, matchedAttachments, unmatchedAttachments);
+		else return new GhostMergeResult<>(matchedMessageID, deletedMessageIDs, persistingAttachment, matchedAttachments, unmatchedAttachments);
 	}
 	
 	/**
@@ -2344,7 +2346,26 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					//Updating the message values
 					database.update(Contract.MessageEntry.TABLE_NAME, messageContentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(result.getTargetMessageID())});
 					
-					List<AttachmentInfo> messageAttachments = new ArrayList<>();
+					ArrayList<AttachmentInfo> messageAttachments = new ArrayList<>();
+					
+					//Updating the existing attachment
+					if(result.getPersistingAttachment() != null) {
+						Pair<Long, Blocks.AttachmentInfo> pair = result.getPersistingAttachment();
+						//Updating the attachment information
+						ContentValues attachmentContentValues = new ContentValues();
+						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.second.guid);
+						if(pair.second.sort != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.second.sort);
+						
+						database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)});
+						
+						//Adding the attachment to the list
+						try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)}, null, null, null, "1")) {
+							if(attachmentCursor.moveToNext()) {
+								AttachmentInfo attachmentInfo = loadAttachmentInfo(context, AttachmentInfoIndices.fromCursor(attachmentCursor), attachmentCursor);
+								messageAttachments.add(attachmentInfo);
+							}
+						}
+					}
 					
 					//Transferring existing attachments
 					for(Pair<Long, Blocks.AttachmentInfo> pair : result.getTransferAttachments()) {
@@ -2467,7 +2488,26 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					//Updating the message values
 					database.update(Contract.MessageEntry.TABLE_NAME, messageContentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(result.getTargetMessageID())});
 					
-					List<AttachmentInfo> messageAttachments = new ArrayList<>();
+					ArrayList<AttachmentInfo> messageAttachments = new ArrayList<>();
+					
+					//Updating the existing attachment
+					if(result.getPersistingAttachment() != null) {
+						Pair<Long, AttachmentInfo> pair = result.getPersistingAttachment();
+						//Updating the attachment information
+						ContentValues attachmentContentValues = new ContentValues();
+						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.second.getGUID());
+						if(pair.second.getSort() != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.second.getSort());
+						
+						database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)});
+						
+						//Adding the attachment to the list
+						try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)}, null, null, null, "1")) {
+							if(attachmentCursor.moveToNext()) {
+								AttachmentInfo attachmentInfo = loadAttachmentInfo(context, AttachmentInfoIndices.fromCursor(attachmentCursor), attachmentCursor);
+								messageAttachments.add(attachmentInfo);
+							}
+						}
+					}
 					
 					//Transferring existing attachments
 					for(Pair<Long, AttachmentInfo> pair : result.getTransferAttachments()) {
@@ -2538,6 +2578,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	public static class GhostMergeResult<A> {
 		private final long targetMessageID;
 		private final List<Long> discardedMessageIDs;
+		@Nullable private final Pair<Long, A> persistingAttachment;
 		private final List<Pair<Long, A>> transferAttachments;
 		private final List<A> newAttachments;
 		
@@ -2545,12 +2586,14 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		 * Represents the result of a 'smart insert' where updated messages are merged into an existing conversation thread
 		 * @param targetMessageID The ID of the message that is having its result updated
 		 * @param discardedMessageIDs A list of message IDs of messages that should be discarded
+		 * @param persistingAttachment Attachment IDs that match attachments of the target message
 		 * @param transferAttachments A list of attachment IDs that should be transferred to the target message
 		 * @param newAttachments A list of attachments that should be newly written under the target message
 		 */
-		public GhostMergeResult(long targetMessageID, List<Long> discardedMessageIDs, List<Pair<Long, A>> transferAttachments, List<A> newAttachments) {
+		public GhostMergeResult(long targetMessageID, List<Long> discardedMessageIDs, Pair<Long, A> persistingAttachment, List<Pair<Long, A>> transferAttachments, List<A> newAttachments) {
 			this.targetMessageID = targetMessageID;
 			this.discardedMessageIDs = discardedMessageIDs;
+			this.persistingAttachment = persistingAttachment;
 			this.transferAttachments = transferAttachments;
 			this.newAttachments = newAttachments;
 		}
@@ -2561,6 +2604,11 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		public List<Long> getDiscardedMessageIDs() {
 			return discardedMessageIDs;
+		}
+		
+		@Nullable
+		public Pair<Long, A> getPersistingAttachment() {
+			return persistingAttachment;
 		}
 		
 		public List<Pair<Long, A>> getTransferAttachments() {
@@ -2634,7 +2682,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			}
 			
 			//Adding the attachments
-			List<AttachmentInfo> attachments = messageInfoStruct.attachments.stream().map(attachment -> addMessageAttachment(messageLocalID, attachment)).filter(Objects::nonNull).collect(Collectors.toList());
+			ArrayList<AttachmentInfo> attachments = new ArrayList<>(messageInfoStruct.attachments.stream().map(attachment -> addMessageAttachment(messageLocalID, attachment)).filter(Objects::nonNull).collect(Collectors.toList()));
 			
 			//Adding the modifiers
 			List<Pair<StickerInfo, ModifierMetadata>> stickers = addMessageStickers(context, messageLocalID, messageInfoStruct.stickers);

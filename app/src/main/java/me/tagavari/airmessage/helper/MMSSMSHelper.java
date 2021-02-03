@@ -304,7 +304,7 @@ public class MMSSMSHelper {
 		//long threadID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.THREAD_ID));
 		
 		StringBuilder messageTextSB = new StringBuilder();
-		List<AttachmentInfo> messageAttachments = new ArrayList<>();
+		ArrayList<AttachmentInfo> messageAttachments = new ArrayList<>();
 		
 		
 		//This URI has a constant at Telephony.Mms.Part.CONTENT_URI, but for some reason this is only available in Android Q, so we can't use it here

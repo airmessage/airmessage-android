@@ -23,7 +23,7 @@ public class MessageInfo extends ConversationItem implements Parcelable {
 	//Creating the values
 	@Nullable private final String sender;
 	@Nullable private final MessageComponentText messageText;
-	@NonNull private final List<AttachmentInfo> attachments;
+	@NonNull private final ArrayList<AttachmentInfo> attachments;
 	@Nullable private final String sendStyle;
 	private boolean sendStyleViewed;
 	private long dateRead;
@@ -32,7 +32,7 @@ public class MessageInfo extends ConversationItem implements Parcelable {
 	private boolean errorDetailsAvailable;
 	@Nullable private String errorDetails;
 	
-	public MessageInfo(long localID, long serverID, String guid, long date, @Nullable String sender, String messageText, String messageSubject, @NonNull List<AttachmentInfo> attachments, @Nullable String sendStyle, boolean sendStyleViewed, long dateRead, @MessageState int messageState, @MessageSendErrorCode int errorCode, boolean errorDetailsAvailable) {
+	public MessageInfo(long localID, long serverID, String guid, long date, @Nullable String sender, String messageText, String messageSubject, @NonNull ArrayList<AttachmentInfo> attachments, @Nullable String sendStyle, boolean sendStyleViewed, long dateRead, @MessageState int messageState, @MessageSendErrorCode int errorCode, boolean errorDetailsAvailable) {
 		super(localID, serverID, guid, date);
 		this.sender = sender;
 		this.messageText = MessageComponentText.fromText(localID, guid, messageText, messageSubject);
@@ -45,7 +45,7 @@ public class MessageInfo extends ConversationItem implements Parcelable {
 		this.errorDetailsAvailable = errorDetailsAvailable;
 	}
 	
-	public MessageInfo(long localID, long serverID, String guid, long date, @Nullable String sender, @Nullable MessageComponentText messageText, @NonNull List<AttachmentInfo> attachments, @Nullable String sendStyle, boolean sendStyleViewed, long dateRead, @MessageState int messageState, @MessageSendErrorCode int errorCode, boolean errorDetailsAvailable, @Nullable String errorDetails) {
+	public MessageInfo(long localID, long serverID, String guid, long date, @Nullable String sender, @Nullable MessageComponentText messageText, @NonNull ArrayList<AttachmentInfo> attachments, @Nullable String sendStyle, boolean sendStyleViewed, long dateRead, @MessageState int messageState, @MessageSendErrorCode int errorCode, boolean errorDetailsAvailable, @Nullable String errorDetails) {
 		super(localID, serverID, guid, date);
 		this.sender = sender;
 		this.messageText = messageText;
@@ -63,7 +63,7 @@ public class MessageInfo extends ConversationItem implements Parcelable {
 	 * Creates a new message in a default unsent state from the provided text
 	 */
 	public static MessageInfo blankFromText(String message) {
-		return new MessageInfo(-1, -1, null, System.currentTimeMillis(), null, message, null, Collections.emptyList(), null, false, -1, MessageState.ghost, MessageSendErrorCode.none, false);
+		return new MessageInfo(-1, -1, null, System.currentTimeMillis(), null, message, null, new ArrayList<>(), null, false, -1, MessageState.ghost, MessageSendErrorCode.none, false);
 	}
 	
 	@Override

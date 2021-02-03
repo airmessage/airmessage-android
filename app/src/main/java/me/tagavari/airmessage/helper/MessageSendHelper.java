@@ -146,7 +146,7 @@ public class MessageSendHelper {
 			
 			//Adding the attachments
 			for(AttachmentInfo attachment : attachmentList) {
-				emitter.onNext(new MessageInfo(-1, -1, null, System.currentTimeMillis(), null, null, null, Collections.singletonList(attachment), null, false, -1, MessageState.ghost, MessageSendErrorCode.none, false));
+				emitter.onNext(new MessageInfo(-1, -1, null, System.currentTimeMillis(), null, null, null, new ArrayList<>(Collections.singletonList(attachment)), null, false, -1, MessageState.ghost, MessageSendErrorCode.none, false));
 			}
 			
 			emitter.onComplete();
@@ -159,7 +159,7 @@ public class MessageSendHelper {
 	@CheckReturnValue
 	public static Single<MessageInfo> prepareMessageStandard(String messageText, List<AttachmentInfo> attachmentList) {
 		return Single.create((SingleEmitter<MessageInfo> emitter) -> {
-			emitter.onSuccess(new MessageInfo(-1, -1, null, System.currentTimeMillis(), null, messageText, null, attachmentList, null, false, -1, MessageState.ghost, MessageSendErrorCode.none, false));
+			emitter.onSuccess(new MessageInfo(-1, -1, null, System.currentTimeMillis(), null, messageText, null, new ArrayList<>(attachmentList), null, false, -1, MessageState.ghost, MessageSendErrorCode.none, false));
 		});
 	}
 	
