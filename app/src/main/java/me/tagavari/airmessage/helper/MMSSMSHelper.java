@@ -10,6 +10,8 @@ import android.provider.ContactsContract;
 import android.provider.Telephony;
 import android.util.Pair;
 
+import androidx.annotation.Nullable;
+
 import com.google.android.mms.pdu_alt.EncodedStringValue;
 import com.google.android.mms.pdu_alt.PduHeaders;
 import com.google.android.mms.pdu_alt.PduPersister;
@@ -571,5 +573,18 @@ public class MMSSMSHelper {
 	 */
 	public static boolean isDefaultMessagingApp(Context context) {
 		return context.getPackageName().equals(Telephony.Sms.getDefaultSmsPackage(context));
+	}
+	
+	/**
+	 * Cleans the subject line of an MMS message before displaying it to the user
+	 * @return The cleaned subject line, or NULL if no subject line should be displayed
+	 */
+	@Nullable
+	public static String cleanMMSSubject(@Nullable String subject) {
+		if(subject == null || subject.equals("") || subject.equals("no subject") || subject.equals("NoSubject")) {
+			return null;
+		} else {
+			return subject;
+		}
 	}
 }

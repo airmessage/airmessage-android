@@ -52,6 +52,7 @@ import me.tagavari.airmessage.helper.AttachmentStorageHelper;
 import me.tagavari.airmessage.helper.ConversationColorHelper;
 import me.tagavari.airmessage.helper.ConversationHelper;
 import me.tagavari.airmessage.helper.DataStreamHelper;
+import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.helper.SmartReplyHelper;
 import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.messaging.AttachmentPreview;
@@ -1134,7 +1135,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			String sendStyle = cursor.getString(indices.iSendStyle);
 			boolean sendStyleViewed = cursor.getInt(indices.iSendStyleViewed) != 0;
 			String messageText = cursor.getString(indices.iMessageText);
-			String messageSubject = cursor.getString(indices.iMessageSubject);
+			String messageSubject = MMSSMSHelper.cleanMMSSubject(cursor.getString(indices.iMessageSubject));
 			int previewState = cursor.getInt(indices.iPreviewState);
 			
 			//Querying the database for attachments
@@ -1682,7 +1683,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				String message = messageCursor.isNull(currentIndex) ? null : messageCursor.getString(currentIndex);
 				
 				currentIndex = messageCursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGESUBJECT);
-				String subject = messageCursor.isNull(currentIndex) ? null : messageCursor.getString(currentIndex);
+				String subject = messageCursor.isNull(currentIndex) ? null : MMSSMSHelper.cleanMMSSubject(messageCursor.getString(currentIndex));
 				
 				currentIndex = messageCursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE);
 				String sendStyle = messageCursor.isNull(currentIndex) ? null : messageCursor.getString(currentIndex);
