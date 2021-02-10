@@ -280,11 +280,11 @@ public class ConnectionManager {
 		}
 		
 		@Override
-		public void onClose(int errorCode) {
+		public void onClose(@ConnectionErrorCode int errorCode) {
 			isConnecting = false;
 			
 			//Checking if the disconnection is caused by a protocol error
-			if((errorCode == ConnectionErrorCode.connection || errorCode == ConnectionErrorCode.internet || errorCode == ConnectionErrorCode.externalError)) {
+			if((errorCode == ConnectionErrorCode.connection || errorCode == ConnectionErrorCode.externalError)) {
 				//Checking if we have yet to establish a connection, and there are older protocol versions available to use
 				if(!connectionEstablished && currentCommunicationsIndex + 1 < communicationsPriorityList.size()) {
 					//Falling back to an older protocol

@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.connection.comm5;
 
 import android.content.Context;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -26,6 +27,8 @@ import me.tagavari.airmessage.util.ConversationTarget;
 import me.tagavari.airmessage.util.DirectConnectionParams;
 
 public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
+	private static final String TAG = ClientComm5.class.getSimpleName();
+	
 	private static final int communicationsVersion = 5;
 	
 	//Creating the connection values
@@ -33,7 +36,10 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	private int protocolManagerVer = -1;
 	
 	//Creating the handshake values
-	private final Runnable handshakeExpiryRunnable = () -> disconnect(ConnectionErrorCode.connection);
+	private final Runnable handshakeExpiryRunnable = () -> {
+		Log.i(TAG, "Disconnecting from server due to handshake expiry");
+		disconnect(ConnectionErrorCode.connection);
+	};
 	private static final long handshakeExpiryTime = 1000 * 10; //10 seconds
 	
 	//Creating the transmission values
