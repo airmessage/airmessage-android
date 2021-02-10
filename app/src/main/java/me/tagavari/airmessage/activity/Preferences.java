@@ -1131,6 +1131,10 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_features_messagesounds_key), true);
 	}
 	
+	public static boolean getPreferenceAutoDownloadAttachments(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_storage_autodownload_key), true);
+	}
+	
 	public static boolean getPreferenceSMSDeliveryReports(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_textmessage_deliveryreport_key), false);
 	}

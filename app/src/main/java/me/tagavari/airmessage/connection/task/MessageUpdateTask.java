@@ -5,6 +5,8 @@ import android.util.LongSparseArray;
 import android.util.Pair;
 import android.util.SparseArray;
 
+import androidx.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -16,12 +18,14 @@ import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.common.Blocks;
+import me.tagavari.airmessage.connection.ConnectionTaskManager;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.enums.ConversationItemType;
 import me.tagavari.airmessage.enums.ConversationState;
 import me.tagavari.airmessage.enums.GroupAction;
 import me.tagavari.airmessage.helper.ConversationColorHelper;
 import me.tagavari.airmessage.helper.ConversationHelper;
+import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.messaging.ChatMemberAction;
 import me.tagavari.airmessage.messaging.ChatRenameAction;
 import me.tagavari.airmessage.messaging.ConversationInfo;
@@ -38,14 +42,16 @@ public class MessageUpdateTask {
 	 * @param context The context to use
 	 * @param foregroundConversationIDs A collection of the IDs of conversations that are currently in the foreground
 	 * @param conversationItems The new conversation items
+	 * @param collectAttachments Whether to return all found attachments in a list
 	 */
 	@CheckReturnValue
-	public static Single<Response> create(Context context, Collection<Long> foregroundConversationIDs, Collection<Blocks.ConversationItem> conversationItems) {
+	public static Single<Response> create(Context context, Collection<Long> foregroundConversationIDs, Collection<Blocks.ConversationItem> conversationItems, boolean collectAttachments) {
 		return Single.fromCallable(() -> {
 			//Creating the collector lists
 			List<ReduxEventMessaging> events = new ArrayList<>();
 			List<Pair<ConversationInfo, List<ReplaceInsertResult>>> updatedCompleteConversations = new ArrayList<>();
 			List<ConversationInfo> incompleteServerConversations = new ArrayList<>();
+			List<Pair<MessageInfo, AttachmentInfo>> collectedAttachments = collectAttachments ? new ArrayList<>() : null;
 			
 			//Grouping the messages by conversation and iterating
 			for(Map.Entry<String, List<Blocks.ConversationItem>> entry : conversationItems.stream().collect(Collectors.groupingBy(item -> item.chatGuid)).entrySet()) {
@@ -100,6 +106,12 @@ public class MessageUpdateTask {
 					if(targetItem.getItemType() == ConversationItemType.message && !((MessageInfo) targetItem).isOutgoing()) {
 						newIncomingMessageCount++;
 					}
+					
+					if(collectAttachments && targetItem.getItemType() == ConversationItemType.message) {
+						//Adding attachments
+						MessageInfo messageInfo = (MessageInfo) targetItem;
+						collectedAttachments.addAll(messageInfo.getAttachments().stream().map(attachment -> new Pair<>(messageInfo, attachment)).collect(Collectors.toList()));
+					}
 				}
 				
 				//Updating the conversation values
@@ -118,7 +130,7 @@ public class MessageUpdateTask {
 			events.add(new ReduxEventMessaging.Message(updatedCompleteConversations));
 			
 			//Finishing
-			return new Response(events, incompleteServerConversations);
+			return new Response(events, incompleteServerConversations, collectedAttachments);
 		}).subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread());
 	}
 	
@@ -129,9 +141,13 @@ public class MessageUpdateTask {
 		//Conversations found from incoming messages that aren't available
 		private final List<ConversationInfo> incompleteServerConversations;
 		
-		public Response(List<ReduxEventMessaging> events, List<ConversationInfo> incompleteServerConversations) {
+		//A list of all attachments passed to this task
+		private final List<Pair<MessageInfo, AttachmentInfo>> collectedAttachments;
+		
+		public Response(List<ReduxEventMessaging> events, List<ConversationInfo> incompleteServerConversations, @Nullable List<Pair<MessageInfo, AttachmentInfo>> collectedAttachments) {
 			this.events = events;
 			this.incompleteServerConversations = incompleteServerConversations;
+			this.collectedAttachments = collectedAttachments;
 		}
 		
 		public List<ReduxEventMessaging> getEvents() {
@@ -140,6 +156,10 @@ public class MessageUpdateTask {
 		
 		public List<ConversationInfo> getIncompleteServerConversations() {
 			return incompleteServerConversations;
+		}
+		
+		public List<Pair<MessageInfo, AttachmentInfo>> getCollectedAttachments() {
+			return collectedAttachments;
 		}
 	}
 }

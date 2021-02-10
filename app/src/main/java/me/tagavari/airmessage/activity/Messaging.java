@@ -3221,20 +3221,29 @@ public class Messaging extends AppCompatCompositeActivity {
 					}
 					
 					//Setting the download click listener
-					viewHolder.itemView.setOnClickListener(view -> {
-						if(component.getGUID() != null) {
-							if(pluginCS.isServiceBound()) {
-								//Switching to the download view
-								setAttachmentView(viewHolder, viewHolder.groupProgress);
-								viewHolder.progressProgress.setIndeterminate(true);
-								
-								//Starting the download
-								attachmentSubscribeDownload(viewHolderStructure, viewHolder, messageInfo, component, ConnectionTaskManager.downloadAttachment(pluginCS.getConnectionManager(), messageInfo.getLocalID(), component.getLocalID(), component.getGUID(), component.getFileName()));
-							} else {
-								Toast.makeText(Messaging.this, R.string.message_connectionerror, Toast.LENGTH_SHORT).show();
-							}
-						}
-					});
+					viewHolder.itemView.setOnClickListener(view -> downloadAttachmentContent(viewHolderStructure, viewHolder, messageInfo, component));
+				}
+			}
+		}
+		
+		/**
+		 * Initiates a download request for an attachment's content and updates the attachment's view to reflect the new state
+		 * @param viewHolderStructure The view holder structure
+		 * @param viewHolder The view holder of the component
+		 * @param messageInfo The message of the attachment
+		 * @param component The attachment to download
+		 */
+		private void downloadAttachmentContent(VHMessageStructure viewHolderStructure, VHMessageComponentAttachment viewHolder, MessageInfo messageInfo, AttachmentInfo component) {
+			if(component.getGUID() != null) {
+				if(pluginCS.isServiceBound()) {
+					//Switching to the download view
+					setAttachmentView(viewHolder, viewHolder.groupProgress);
+					viewHolder.progressProgress.setIndeterminate(true);
+					
+					//Starting the download
+					attachmentSubscribeDownload(viewHolderStructure, viewHolder, messageInfo, component, ConnectionTaskManager.downloadAttachment(pluginCS.getConnectionManager(), messageInfo.getLocalID(), component.getLocalID(), component.getGUID(), component.getFileName()));
+				} else {
+					Toast.makeText(Messaging.this, R.string.message_connectionerror, Toast.LENGTH_SHORT).show();
 				}
 			}
 		}

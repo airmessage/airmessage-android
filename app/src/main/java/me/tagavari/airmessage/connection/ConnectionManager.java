@@ -47,6 +47,7 @@ import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.SingleSubject;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Messaging;
+import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.comm4.ClientComm4;
 import me.tagavari.airmessage.connection.comm5.ClientComm5;
@@ -68,7 +69,9 @@ import me.tagavari.airmessage.enums.MassRetrievalErrorCode;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.enums.TrackableRequestCategory;
 import me.tagavari.airmessage.helper.ConversationColorHelper;
+import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.messaging.ConversationInfo;
+import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
@@ -342,7 +345,7 @@ public class ConnectionManager {
 			//Loading the foreground conversations (needs to be done on the main thread)
 			Single.fromCallable(Messaging::getForegroundConversations)
 					.subscribeOn(AndroidSchedulers.mainThread())
-					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, data))
+					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, data, Preferences.getPreferenceAutoDownloadAttachments(getContext())))
 					.observeOn(AndroidSchedulers.mainThread())
 					.doOnSuccess(response -> {
 						//Adding the conversations as pending conversations and retrieving pending conversation information
@@ -355,6 +358,15 @@ public class ConnectionManager {
 						
 						//Fetching pending conversations
 						fetchPendingConversations();
+						
+						//Downloading attachments
+						if(response.getCollectedAttachments() != null) {
+							for(Pair<MessageInfo, AttachmentInfo> attachmentData : response.getCollectedAttachments()) {
+								//Ignoring outgoing attachments
+								if(attachmentData.first.isOutgoing()) continue;
+								ConnectionTaskManager.downloadAttachment(ConnectionManager.this, attachmentData.first.getLocalID(), attachmentData.second.getLocalID(), attachmentData.second.getGUID(), attachmentData.second.getFileName());
+							}
+						}
 					}).subscribe();
 		}
 		
