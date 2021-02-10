@@ -1136,7 +1136,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				messageTargetCandidates.add(localItem);
 				
 				//Updating the local item
-				if(!updatedItem.getAttachments().isEmpty()) {
+				if(!updatedItem.getAttachments().isEmpty() &&
+						(localItem.getAttachments().size() != updatedItem.getAttachments().size() ||
+								IntStream.range(0, localItem.getAttachments().size()).anyMatch(i -> localItem.getAttachments().get(i).getLocalID() != updatedItem.getAttachments().get(i).getLocalID()))) {
 					localItem.getAttachments().clear();
 					localItem.getAttachments().addAll(updatedItem.getAttachments());
 					
