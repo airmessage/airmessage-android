@@ -2356,15 +2356,19 @@ public class DatabaseManager extends SQLiteOpenHelper {
 						ContentValues attachmentContentValues = new ContentValues();
 						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.second.guid);
 						if(pair.second.sort != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.second.sort);
-						
-						database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)});
-						
-						//Adding the attachment to the list
-						try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)}, null, null, null, "1")) {
-							if(attachmentCursor.moveToNext()) {
-								AttachmentInfo attachmentInfo = loadAttachmentInfo(context, AttachmentInfoIndices.fromCursor(attachmentCursor), attachmentCursor);
-								messageAttachments.add(attachmentInfo);
+
+						try {
+							database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)});
+							
+							//Adding the attachment to the list
+							try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)}, null, null, null, "1")) {
+								if(attachmentCursor.moveToNext()) {
+									AttachmentInfo attachmentInfo = loadAttachmentInfo(context, AttachmentInfoIndices.fromCursor(attachmentCursor), attachmentCursor);
+									messageAttachments.add(attachmentInfo);
+								}
 							}
+						} catch(SQLiteConstraintException exception) {
+							exception.printStackTrace();
 						}
 					}
 					
@@ -2375,7 +2379,12 @@ public class DatabaseManager extends SQLiteOpenHelper {
 						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.second.guid);
 						if(pair.second.sort != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.second.sort);
 						
-						database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)});
+						try {
+							database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)});
+						} catch(SQLiteConstraintException exception) {
+							exception.printStackTrace();
+							continue;
+						}
 						
 						try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)}, null, null, null, "1")) {
 							if(attachmentCursor.moveToNext()) {
@@ -2388,7 +2397,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					//Writing new attachments
 					for(Blocks.AttachmentInfo attachmentStruct : result.getNewAttachments()) {
 						AttachmentInfo attachmentInfo = addMessageAttachment(result.getTargetMessageID(), attachmentStruct);
-						messageAttachments.add(attachmentInfo);
+						if(attachmentInfo != null) messageAttachments.add(attachmentInfo);
 					}
 					
 					Collections.sort(messageAttachments, (attachment1, attachment2) -> Long.compare(attachment1.getSort(), attachment2.getSort()));
