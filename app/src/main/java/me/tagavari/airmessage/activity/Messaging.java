@@ -3294,10 +3294,11 @@ public class Messaging extends AppCompatCompositeActivity {
 					.transition(DrawableTransitionOptions.withCrossFade());
 			if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(SendStyleHelper.invisibleInkBlurRadius, SendStyleHelper.invisibleInkBlurSampling)));
 			//requestBuilder.into(viewHolder.imageView);
-			requestBuilder.into(new DrawableImageViewTarget(viewHolder.imageView){
+			requestBuilder.into(new DrawableImageViewTarget(viewHolder.imageView) {
 				@Override
 				protected void setResource(@Nullable Drawable resource) {
 					super.setResource(resource);
+					if(resource == null) return;
 					
 					//Switching to the content view
 					setAttachmentView(viewHolder, viewHolder.groupContentFrame);
