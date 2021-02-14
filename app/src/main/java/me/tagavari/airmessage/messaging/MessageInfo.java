@@ -135,7 +135,7 @@ public class MessageInfo extends ConversationItem implements Parcelable {
 	/**
 	 * Gets the component at the specified index
 	 * @throws IndexOutOfBoundsException if the index is out of range
-	 *      *         ({@code index < 0 || index >= getComponentCount()})
+	 * ({@code index < 0 || index >= getComponentCount()})
 	 */
 	public MessageComponent getComponentAt(int index) {
 		if(messageText != null) {

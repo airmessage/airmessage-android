@@ -2700,8 +2700,14 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			
 			//Creating the message info
 			MessageInfo messageInfo = new MessageInfo(messageLocalID, messageInfoStruct.serverID, messageInfoStruct.guid, messageInfoStruct.date, messageInfoStruct.sender, messageInfoStruct.text, messageInfoStruct.subject, attachments, messageInfoStruct.sendEffect, false, messageInfoStruct.dateRead, messageInfoStruct.stateCode, messageInfoStruct.errorCode, false);
-			for(Pair<StickerInfo, ModifierMetadata> pair : stickers) messageInfo.getComponentAt(pair.second.getComponentIndex()).getStickers().add(pair.first);
-			for(Pair<TapbackInfo, ModifierMetadata> pair : tapbacks) messageInfo.getComponentAt(pair.second.getComponentIndex()).getTapbacks().add(pair.first);
+			for(Pair<StickerInfo, ModifierMetadata> pair : stickers) {
+				if(pair.second.getComponentIndex() >= messageInfo.getComponentCount()) continue;
+				messageInfo.getComponentAt(pair.second.getComponentIndex()).getStickers().add(pair.first);
+			}
+			for(Pair<TapbackInfo, ModifierMetadata> pair : tapbacks) {
+				if(pair.second.getComponentIndex() >= messageInfo.getComponentCount()) continue;
+				messageInfo.getComponentAt(pair.second.getComponentIndex()).getTapbacks().add(pair.first);
+			}
 			
 			//Returning the message info
 			return messageInfo;
