@@ -1,65 +1,49 @@
 package me.tagavari.airmessage.activity;
 
-import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
-import android.app.Dialog;
 import android.app.Notification;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.RemoteAction;
-import android.app.SharedElementCallback;
-import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipDescription;
-import android.content.ContentResolver;
-import android.content.ContentUris;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.IntentSender;
-import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
-import android.content.res.Resources;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteException;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.Insets;
 import android.graphics.Outline;
 import android.graphics.PointF;
-import android.graphics.Rect;
-import android.graphics.drawable.ColorDrawable;
-import android.location.Location;
-import android.media.AudioAttributes;
-import android.media.AudioManager;
-import android.media.MediaRecorder;
+import android.graphics.Typeface;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.media.SoundPool;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
-import android.provider.ContactsContract;
-import android.provider.MediaStore;
 import android.provider.Telephony;
 import android.text.Editable;
-import android.text.TextUtils;
+import android.text.Spannable;
+import android.text.SpannableString;
 import android.text.TextWatcher;
-import android.text.format.DateUtils;
+import android.text.format.DateFormat;
 import android.text.format.Formatter;
-import android.transition.Transition;
-import android.transition.TransitionManager;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.Log;
+import android.util.Pair;
+import android.util.Patterns;
 import android.util.SparseArray;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -67,224 +51,266 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
-import android.view.ViewStub;
 import android.view.ViewTreeObserver;
-import android.view.WindowInsets;
-import android.view.WindowInsetsAnimation;
-import android.view.WindowManager;
-import android.view.animation.AccelerateInterpolator;
+import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
-import android.view.textclassifier.ConversationAction;
-import android.view.textclassifier.ConversationActions;
 import android.view.textclassifier.TextClassificationManager;
 import android.view.textclassifier.TextClassifier;
-import android.widget.Button;
+import android.view.textclassifier.TextLinks;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.ProgressBar;
-import android.widget.RelativeLayout;
-import android.widget.ScrollView;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.IntDef;
+import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.AlertDialog;
+import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatEditText;
-import androidx.cardview.widget.CardView;
-import androidx.collection.LongSparseArray;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.graphics.ColorUtils;
-import androidx.core.util.Consumer;
 import androidx.core.util.Pools;
 import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.inputmethod.EditorInfoCompat;
 import androidx.core.view.inputmethod.InputConnectionCompat;
-import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.RequestBuilder;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
-import com.bumptech.glide.signature.MediaStoreSignature;
-import com.google.android.exoplayer2.ExoPlayerFactory;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.source.MediaSource;
-import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
-import com.google.android.exoplayer2.util.Util;
-import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.common.api.ResolvableApiException;
-import com.google.android.gms.common.util.BiConsumer;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationSettingsRequest;
-import com.google.android.gms.location.LocationSettingsResponse;
-import com.google.android.gms.location.LocationSettingsStatusCodes;
+import com.bumptech.glide.request.target.CustomViewTarget;
+import com.bumptech.glide.request.target.DrawableImageViewTarget;
+import com.bumptech.glide.request.target.Target;
+import com.bumptech.glide.request.target.ViewTarget;
+import com.bumptech.glide.request.transition.Transition;
+import com.bumptech.glide.signature.ObjectKey;
 import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
-import com.google.android.gms.tasks.Task;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.appbar.AppBarLayout;
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-import com.google.firebase.ml.naturallanguage.FirebaseNaturalLanguage;
-import com.google.firebase.ml.naturallanguage.smartreply.SmartReplySuggestionResult;
 
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-import ezvcard.Ezvcard;
-import ezvcard.VCard;
-import ezvcard.VCardVersion;
-import ezvcard.io.text.VCardWriter;
-import ezvcard.property.Photo;
-import ezvcard.property.RawProperty;
-import ezvcard.property.Url;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.core.SingleEmitter;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.functions.Consumer;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import io.reactivex.rxjava3.subjects.BehaviorSubject;
+import io.reactivex.rxjava3.subjects.PublishSubject;
+import jp.wasabeef.glide.transformations.BlurTransformation;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
+import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
 import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
-import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.connection.request.FileProcessingRequest;
-import me.tagavari.airmessage.connection.request.FilePushRequest;
-import me.tagavari.airmessage.connection.request.FileRemovalRequest;
+import me.tagavari.airmessage.compositeplugin.PluginRXDisposable;
+import me.tagavari.airmessage.connection.ConnectionTaskManager;
+import me.tagavari.airmessage.constants.ColorConstants;
+import me.tagavari.airmessage.constants.MIMEConstants;
+import me.tagavari.airmessage.constants.TimingConstants;
 import me.tagavari.airmessage.data.DatabaseManager;
-import me.tagavari.airmessage.data.UserCacheHelper;
-import me.tagavari.airmessage.extension.MediaSharedElementCallback;
+import me.tagavari.airmessage.enums.AttachmentType;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.ConnectionState;
+import me.tagavari.airmessage.enums.ConversationItemType;
+import me.tagavari.airmessage.enums.ConversationState;
+import me.tagavari.airmessage.enums.MessageComponentType;
+import me.tagavari.airmessage.enums.MessagePreviewState;
+import me.tagavari.airmessage.enums.MessagePreviewType;
+import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.MessageState;
+import me.tagavari.airmessage.enums.MessageViewType;
+import me.tagavari.airmessage.enums.ServiceHandler;
+import me.tagavari.airmessage.enums.ServiceType;
+import me.tagavari.airmessage.fragment.FragmentMessagingAttachments;
+import me.tagavari.airmessage.fragment.FragmentMessagingDetails;
+import me.tagavari.airmessage.helper.AddressHelper;
+import me.tagavari.airmessage.helper.AttachmentStorageHelper;
+import me.tagavari.airmessage.helper.CollectionHelper;
+import me.tagavari.airmessage.helper.ColorHelper;
+import me.tagavari.airmessage.helper.ColorMathHelper;
+import me.tagavari.airmessage.helper.ContactHelper;
+import me.tagavari.airmessage.helper.ConversationBuildHelper;
+import me.tagavari.airmessage.helper.ConversationColorHelper;
+import me.tagavari.airmessage.helper.DataCompressionHelper;
+import me.tagavari.airmessage.helper.DataStreamHelper;
+import me.tagavari.airmessage.helper.ErrorDetailsHelper;
+import me.tagavari.airmessage.helper.ErrorLanguageHelper;
+import me.tagavari.airmessage.helper.ExternalStorageHelper;
+import me.tagavari.airmessage.helper.FileHelper;
+import me.tagavari.airmessage.helper.IntentHelper;
+import me.tagavari.airmessage.helper.LanguageHelper;
+import me.tagavari.airmessage.helper.MMSSMSHelper;
+import me.tagavari.airmessage.helper.MessageSendHelper;
+import me.tagavari.airmessage.helper.NotificationHelper;
+import me.tagavari.airmessage.helper.PlatformHelper;
+import me.tagavari.airmessage.helper.ResourceHelper;
+import me.tagavari.airmessage.helper.SendStyleHelper;
+import me.tagavari.airmessage.helper.ShortcutHelper;
+import me.tagavari.airmessage.helper.SmartReplyHelper;
+import me.tagavari.airmessage.helper.SoundHelper;
+import me.tagavari.airmessage.helper.StringHelper;
+import me.tagavari.airmessage.helper.ThemeHelper;
+import me.tagavari.airmessage.helper.ViewHelper;
+import me.tagavari.airmessage.helper.WindowHelper;
 import me.tagavari.airmessage.messaging.AMConversationAction;
 import me.tagavari.airmessage.messaging.AttachmentInfo;
-import me.tagavari.airmessage.messaging.ContactAttachmentInfo;
+import me.tagavari.airmessage.messaging.ConversationAction;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationItem;
-import me.tagavari.airmessage.messaging.DraftFile;
+import me.tagavari.airmessage.messaging.FileDisplayMetadata;
+import me.tagavari.airmessage.messaging.FileDraft;
+import me.tagavari.airmessage.messaging.FileLinked;
 import me.tagavari.airmessage.messaging.MemberInfo;
 import me.tagavari.airmessage.messaging.MessageComponent;
+import me.tagavari.airmessage.messaging.MessageComponentText;
 import me.tagavari.airmessage.messaging.MessageInfo;
+import me.tagavari.airmessage.messaging.MessagePreviewInfo;
 import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
-import me.tagavari.airmessage.messaging.VLocationAttachmentInfo;
-import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.util.ColorHelper;
-import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.util.ConversationUtils;
-import me.tagavari.airmessage.util.MMSSMSHelper;
-import me.tagavari.airmessage.util.NotificationUtils;
-import me.tagavari.airmessage.util.ShortcutUtils;
-import me.tagavari.airmessage.util.StateUtils;
+import me.tagavari.airmessage.messaging.viewbinder.VBMessageComponent;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentQueued;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContent;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentAudio;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentContact;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentDocument;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentLocation;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentMedia;
+import me.tagavari.airmessage.messaging.viewholder.VHConversationActions;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageAction;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponent;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentAttachment;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentAudio;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentContact;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentDocument;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentLocation;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentText;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentVisual;
+import me.tagavari.airmessage.messaging.viewholder.VHMessagePreviewLink;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageStructure;
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
+import me.tagavari.airmessage.redux.ReduxEventAttachmentDownload;
+import me.tagavari.airmessage.redux.ReduxEventConnection;
+import me.tagavari.airmessage.redux.ReduxEventMessaging;
+import me.tagavari.airmessage.task.ConversationActionTask;
+import me.tagavari.airmessage.task.DraftActionTask;
+import me.tagavari.airmessage.task.FileQueueTask;
+import me.tagavari.airmessage.task.MessageActionTask;
+import me.tagavari.airmessage.task.RichPreviewTask;
+import me.tagavari.airmessage.util.AnimatingInsetsCallback;
+import me.tagavari.airmessage.util.AudioPlaybackManager;
+import me.tagavari.airmessage.util.CustomTabsLinkTransformationMethod;
+import me.tagavari.airmessage.util.DisposableViewHolder;
+import me.tagavari.airmessage.util.ReplaceInsertResult;
+import me.tagavari.airmessage.util.TapbackDisplayData;
+import me.tagavari.airmessage.util.TaskManager;
+import me.tagavari.airmessage.util.TaskManagerLong;
+import me.tagavari.airmessage.util.Union;
 import me.tagavari.airmessage.view.AppleEffectView;
-import me.tagavari.airmessage.view.OverScrollScrollView;
-import me.tagavari.airmessage.view.VisualizerView;
+import me.tagavari.airmessage.view.InvisibleInkView;
 import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
 
 public class Messaging extends AppCompatCompositeActivity {
-	//Creating the reference values
+	private static final String TAG = Messaging.class.getSimpleName();
 	
-	//List of pure urls (matches "https://google.com gmail.com youtube.com")
-	private static final Pattern urlGroupPattern = Pattern.compile("^((?:https?:\\/\\/)?(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?!&/=]*)\\s*){2,}$");
-	
-	//Any well-formed URL with protocol (matches "text https://google.com text")
-	private static final Pattern urlPattern = Pattern.compile("^((?:.|\\n)*)(https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?!&/=]*))((?:.|\\n)*)$");
+	public static final String intentParamTargetID = "targetID";
+	public static final String intentParamDataText = "dataText";
+	public static final String intentParamDataFile = "dataFile";
+	public static final String intentParamBubble = "bubble";
 	
 	public static final int messageChunkSize = 20;
 	public static final int progressiveLoadThreshold = 10;
 	
 	private static final int quickScrollFABThreshold = 3;
-	private static final float bottomSheetFillThreshold = 0.8F;
 	private static final float contentPanelMinAllowanceDP = 275;
 	private static final int draftCountLimit = 10;
-	
-	private static final String mimeTypeImage = "image/*";
-	private static final String mimeTypeVideo = "video/*";
-	private static final String mimeTypeAudio = "audio/*";
-	private static final String mimeTypeGIF = "image/gif";
-	private static final String mimeTypeVLocation = "text/x-vlocation";
 	
 	private static final long confettiDuration = 1000;
 	//private static final float disabledAlpha = 0.38F
 	
-	private static final int permissionRequestStorage = 0;
-	private static final int permissionRequestAudio = 1;
-	private static final int permissionRequestAudioDirect = 2; //Used when requesting microphone usage directly form the input bar
-	private static final int permissionRequestLocation = 3;
-	private static final int permissionRequestMessageCustomOffset = 100; //Used to offset custom message permission requests, to prevent collisions with activity requests
+	private static final int intentSaveFileSAF = 1;
 	
-	private static final int intentPickFile = 0;
-	private static final int intentTakePicture = 1;
-	private static final int intentLocationResolution = 2;
-	private static final int intentPickLocation = 3;
-	private static final int intentSaveFileSAF = 4;
+	private static final int previewImageMaxSize = 128 * 1024; //128 kB
+	
+	private static final String keyFragmentAttachments = "fragmentAttachments";
 	
 	//Creating the static values
 	private static final List<WeakReference<Messaging>> foregroundConversations = new ArrayList<>();
-	//private static final List<WeakReference<Messaging>> loadedConversations = new ArrayList<>();
 	
 	//Creating the view model and plugin values
 	private ActivityViewModel viewModel;
-	private PluginMessageBar pluginMessageBar;
+	private final PluginMessageBar pluginMessageBar;
+	private final PluginConnectionService pluginCS;
+	private final PluginRXDisposable pluginRXD;
 	
 	//Creating the info bar values
 	private PluginMessageBar.InfoBar infoBarConnection;
 	
 	//Creating the state values
 	private boolean currentScreenEffectPlaying = false;
-	
-	private boolean bottomDetailsWindowIntercept = false;
-	private float bottomDetailsWindowDragY = -1;
-	//private float bottomDetailsWindowStartY;
-	private float bottomDetailsWindowEndY;
+	private boolean attachmentQueueVisible = false;
+	private ValueAnimator attachmentQueueValueAnimator = null;
 	
 	//Creating the view values
 	private View rootView;
@@ -300,42 +326,21 @@ public class Messaging extends AppCompatCompositeActivity {
 	private ImageButton buttonSendMessage;
 	private FrameLayout buttonAddContent;
 	private InsertionEditText messageInputField;
-	private ViewGroup recordingActiveGroup;
-	private TextView recordingTimeLabel;
-	private VisualizerView recordingVisualizer;
 	private FloatingActionButton bottomFAB;
 	private TextView bottomFABBadge;
+	private View bottomFABSplash;
 	private AppleEffectView appleEffectView;
 	private FrameLayout bottomDetailsPanel;
 	
-	private final HashMap<MemberInfo, View> memberListViews = new HashMap<>();
-	
-	private View detailScrim;
-	
 	private RecyclerView listAttachmentQueue;
 	
-	private final MessageListRecyclerAdapter messageListAdapter = new MessageListRecyclerAdapter();
+	private MessageListRecyclerAdapter messageListAdapter;
+	
+	//Creating the fragment values
+	private FragmentMessagingAttachments fragmentAttachments;
 	
 	//Creating the listener values
-	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			//Getting the connection manager
-			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-			
-			//Returning if this is not the latest launch
-			if(connectionManager == null || ConnectionManager.getCurrentLaunchID() != intent.getByteExtra(Constants.intentParamLaunchID, (byte) -1)) return;
-			
-			int state = intent.getIntExtra(Constants.intentParamState, -1);
-			if(state == ConnectionManager.stateDisconnected) {
-				int code = intent.getIntExtra(Constants.intentParamCode, -1);
-				showServerWarning(code);
-			} else hideServerWarning();
-		}
-	};
 	private final RecyclerView.OnScrollListener messageListScrollListener = new RecyclerView.OnScrollListener() {
-		int lastRevealedItem = 0;
-		
 		@Override
 		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
 			//Getting the layout manager
@@ -343,61 +348,24 @@ public class Messaging extends AppCompatCompositeActivity {
 			int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - 1 - linearLayoutManager.findLastVisibleItemPosition();
 			
 			//Showing the FAB if the user has scrolled more than the threshold items
-			if(itemsScrolledFromBottom > quickScrollFABThreshold) setFABVisibility(true);
-			else setFABVisibility(false);
+			setFABVisibility(itemsScrolledFromBottom > quickScrollFABThreshold);
 			
 			//Marking viewed items as read
-			if(itemsScrolledFromBottom < viewModel.conversationInfo.getUnreadMessageCount())
+			if(itemsScrolledFromBottom < viewModel.conversationInfo.getUnreadMessageCount()) {
 				viewModel.conversationInfo.setUnreadMessageCount(itemsScrolledFromBottom);
+				updateUnreadIndicator();
+			}
 			
 			//Loading chunks if the user is scrolled to the top
-			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !viewModel.isProgressiveLoadInProgress() && !viewModel.progressiveLoadReachedLimit)
+			if(linearLayoutManager.findFirstVisibleItemPosition() < progressiveLoadThreshold && !viewModel.isProgressiveLoadInProgress() && !viewModel.progressiveLoadReachedLimit) {
 				recyclerView.post(viewModel::loadNextChunk);
-			
-			//Checking if the user is scrolling upwards
-			int newRevealedItem = dy < 0 ? linearLayoutManager.findFirstVisibleItemPosition() : linearLayoutManager.findLastVisibleItemPosition();
-			if(lastRevealedItem != newRevealedItem) {
-				lastRevealedItem = newRevealedItem;
-				/* RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForLayoutPosition(newRevealedItem);
-				if(viewHolder instanceof MessageInfo.ViewHolder) {
-					((MessageInfo.ViewHolder) viewHolder).onBind();
-				} */
-				if(lastRevealedItem > 0 && lastRevealedItem < viewModel.conversationItemList.size()) {
-					ConversationItem item = viewModel.conversationItemList.get(lastRevealedItem);
-					if(item instanceof MessageInfo)
-						((MessageInfo) item).onScrollShow();
-				}
 			}
 		}
 	};
-	private final View.OnTouchListener recordingTouchListener = (view, motionEvent) -> {
-		//Performing the click
-		view.performClick();
-		
-		//Checking if the input state is content and the action is a down touch
-		if(motionEvent.getAction() == MotionEvent.ACTION_DOWN) {
-			//Attempting to start recording
-			startRecording(motionEvent.getX(), motionEvent.getY());
-			
-			//Returning true
-			return true;
-		}
-		
-		//Returning false
-		return false;
-	};
-	private final ActivityViewModel.AttachmentsLoadCallbacks[] attachmentsLoadCallbacks = new ActivityViewModel.AttachmentsLoadCallbacks[2];
 	private final BroadcastReceiver contactsUpdateBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			rebuildContactViews();
-		}
-	};
-	private final OverScrollScrollView.OverScrollListener detailsPanelOverScrollListener = new OverScrollScrollView.OverScrollListener() {
-		@Override
-		public void onOverScroll(float scrollY) {
-			//Only accepting when the user overscrolls from the top of the window
-			if(scrollY > 0) bottomDetailsWindowIntercept = true;
 		}
 	};
 	private final ViewTreeObserver.OnGlobalLayoutListener rootLayoutListener = () -> {
@@ -419,7 +387,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		{
 			//Setting a height limit on the message input field
 			//int height = rootView.getHeight() - attachmentsPanel.getHeight();
-			//messageInputField.setMaxHeight(height - Constants.dpToPx(200));
+			//messageInputField.setMaxHeight(height - ResourceHelper.dpToPx(200));
 		}
 	};
 	private final TextWatcher inputFieldTextWatcher = new TextWatcher() {
@@ -441,29 +409,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		public void afterTextChanged(Editable s) {
 		}
 	};
-	private final View.OnKeyListener inputFieldKeyListener = (view, keyCode, event) -> {
-		//Returning if the event is not a key down
-		if(event.getAction() != KeyEvent.ACTION_DOWN) return false;
-		
-		/*
-		Google default keyboards are the only keyboards that seem to behave properly here.
-		Third-party keyboards like SwiftKey and Samsung Keyboard will trigger this key event when pressing the enter key, even though they're still software keyboards.
-		If a software keyboard provided the event, the event source is UNKNOWN. If it's a physical bluetooth keyboard, it is assigned a source.
-		On Chrome OS, since the keyboard is attached to the device, it provides the same event data as a soft keyboard.
-		However, on Chrome OS, the default keyboard does not trigger this. (Let's just hope the user doesn't install a third-party keyboard!)
-		 */
-		if(keyCode == KeyEvent.KEYCODE_ENTER && !event.isShiftPressed() &&
-		   (event.getSource() != InputDevice.SOURCE_UNKNOWN || Constants.isChromeOS(this))) {
-			//Sending the message
-			sendMessage();
-			
-			//Returning true
-			return true;
-		}
-		
-		//Returning false
-		return false;
-	};
 	private final TextView.OnEditorActionListener inputFieldEditorActionListener = (textView, actionID, event) -> {
 		/*
 		IME_ACTION_DONE is triggered on the Google Pixelbook
@@ -472,7 +417,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(actionID == EditorInfo.IME_ACTION_DONE ||
 		   (actionID == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_DOWN && event.getSource() != InputDevice.SOURCE_UNKNOWN)) {
 			//Sending the message
-			sendMessage();
+			submitInput();
 			
 			//Returning true
 			return true;
@@ -481,171 +426,18 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Returning false
 		return false;
 	};
-	private final View.OnClickListener sendButtonClickListener = view -> sendMessage();
-	private final Observer<Integer> messagesStateObserver = state -> {
-		switch(state) {
-			case ActivityViewModel.messagesStateLoadingConversation:
-				labelLoading.setVisibility(View.VISIBLE);
-				groupLoadFail.setVisibility(View.GONE);
-				
-				setMessageBarState(false);
-				
-				break;
-			case ActivityViewModel.messagesStateLoadingMessages:
-				labelLoading.setVisibility(View.VISIBLE);
-				groupLoadFail.setVisibility(View.GONE);
-				
-				setMessageBarState(false);
-				
-				//Setting the conversation title
-				viewModel.conversationInfo.buildTitle(this, new ConversationTitleResultCallback(this));
-				
-				//Coloring the UI
-				colorUI(findViewById(android.R.id.content));
-				
-				//Setting the activity callbacks
-				viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
-				
-				//Setting the message input field hint
-				messageInputField.setHint(getInputBarMessage());
-				
-				//Updating the send button
-				//updateSendButton();
-				
-				break;
-			case ActivityViewModel.messagesStateReady: {
-				labelLoading.setVisibility(View.GONE);
-				groupLoadFail.setVisibility(View.GONE);
-				
-				setMessageBarState(true);
-				
-				//Setting the conversation title
-				viewModel.conversationInfo.buildTitle(this, new ConversationTitleResultCallback(this));
-				
-				//Setting the activity callbacks
-				viewModel.conversationInfo.setActivityCallbacks(new ActivityCallbacks(this));
-				
-				//Setting the list adapter
-				messageListAdapter.setItemList(viewModel.conversationItemList);
-				messageList.setAdapter(messageListAdapter);
-				messageList.addOnScrollListener(messageListScrollListener);
-				
-				//Setting the message input field hint
-				messageInputField.setHint(getInputBarMessage());
-				
-				//Checking if there are drafts files saved in the conversation
-				if(!viewModel.conversationInfo.getDrafts().isEmpty()) {
-					//Copying the drafts to the activity
-					if(viewModel.draftQueueList.isEmpty())
-						for(DraftFile draft : viewModel.conversationInfo.getDrafts()) {
-							//Creating the queued item
-							QueuedFileInfo queuedItem = new QueuedFileInfo(draft);
-							
-							//Searching for the item's push request
-							FilePushRequest currentRequest = null;
-							ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-							if(connectionManager != null) {
-								FileProcessingRequest processingRequest = connectionManager.searchFileProcessingQueue(draft.getLocalID());
-								if(processingRequest instanceof FilePushRequest) currentRequest = (FilePushRequest) processingRequest;
-							}
-							
-							//Creating a new request if there was no current request in the queue
-							if(currentRequest == null) currentRequest = new FilePushRequest(draft.getFile(), draft.getFileType(), draft.getFileName(), draft.getModificationDate(), viewModel.conversationInfo, -1, draft.getLocalID(), FilePushRequest.stateQueued, 0, false, viewModel.getFileTargetCompression());
-							
-							//Assigning the request to the queued item
-							queuedItem.setFilePushRequest(currentRequest);
-							
-							//Adding the queued item
-							viewModel.draftQueueList.add(queuedItem);
-						}
-					
-					//Showing the draft bar
-					listAttachmentQueue.setVisibility(View.VISIBLE);
-					
-					//Updating the send button
-					updateSendButton(false);
-				}
-				
-				//Restoring the draft message
-				if(messageInputField.getText().length() == 0) messageInputField.setText(viewModel.conversationInfo.getDraftMessage());
-				
-				/* //Finding the latest send effect
-				for(int i = viewModel.conversationItemList.size() - 1; i >= 0 && i >= viewModel.conversationItemList.size() - viewModel.conversationInfo.getUnreadMessageCount(); i--) {
-					//Getting the conversation item
-					ConversationItem conversationItem = viewModel.conversationItemList.get(i);
-					
-					//Skipping the remainder of the iteration if the item is not a message
-					if(!(conversationItem instanceof MessageInfo)) continue;
-					
-					//Getting the message
-					MessageInfo messageInfo = (MessageInfo) conversationItem;
-					
-					//Skipping the remainder of the iteration if the message has no send effect
-					if(messageInfo.getSendStyle().isEmpty()) continue;
-					
-					//Setting the send effect
-					currentScreenEffect = messageInfo.getSendStyle();
-					
-					//Breaking from the loop
-					break;
-				}
-				
-				//Playing the send effect if there is one
-				if(!currentScreenEffect.isEmpty()) playCurrentScreenEffect(); */
-				
-				//Setting the last message count
-				viewModel.lastUnreadCount = viewModel.conversationInfo.getUnreadMessageCount();
-				
-				{
-					//Getting the layout manager
-					LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
-					int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
-					
-					//Showing the FAB if the user has scrolled more than 3 items
-					if(itemsScrolledFromBottom > quickScrollFABThreshold) {
-						bottomFAB.show();
-						restoreUnreadIndicator();
-					}
-				}
-				
-				//Updating the reply suggestions
-				viewModel.updateSmartReply();
-			}
-			break;
-			case ActivityViewModel.messagesStateFailedMatching:
-			case ActivityViewModel.messagesStateFailedConversation:
-				labelLoading.setVisibility(View.GONE);
-				groupLoadFail.setVisibility(View.VISIBLE);
-				labelLoadFail.setText(R.string.message_loaderror_conversation);
-				
-				setMessageBarState(false);
-				
-				break;
-			case ActivityViewModel.messagesStateFailedMessages:
-				labelLoading.setVisibility(View.GONE);
-				groupLoadFail.setVisibility(View.VISIBLE);
-				labelLoadFail.setText(R.string.message_loaderror_messages);
-				
-				setMessageBarState(false);
-				
-				break;
-		}
-	};
 	
 	//Creating the other values
 	private boolean currentSendButtonState = true;
 	private boolean toolbarVisible = true;
 	
-	private DialogFragment currentColorPickerDialog = null;
-	private MemberInfo currentColorPickerDialogMember = null;
-	
 	private File currentTargetSAFFile = null;
-	
-	private int currentInsetPaddingBottom = 0;
 	
 	public Messaging() {
 		//Setting the plugins;
 		addPlugin(pluginMessageBar = new PluginMessageBar());
+		addPlugin(pluginCS = new PluginConnectionService());
+		addPlugin(pluginRXD = new PluginRXDisposable());
 	}
 	
 	@Override
@@ -669,19 +461,17 @@ public class Messaging extends AppCompatCompositeActivity {
 		labelLoadFail = findViewById(R.id.group_error_label);
 		messageList = findViewById(R.id.list_messages);
 		inputBar = findViewById(R.id.inputbar);
-		inputBarShadow = Constants.shouldUseAMOLED(this) ? findViewById(R.id.bottomshadow_amoled) : findViewById(R.id.bottomshadow);
+		inputBarShadow = ThemeHelper.shouldUseAMOLED(this) ? findViewById(R.id.bottomshadow_amoled) : findViewById(R.id.bottomshadow);
 		attachmentsPanel = findViewById(R.id.panel_attachments);
 		inputBarShadow.setVisibility(View.VISIBLE);
 		buttonSendMessage = inputBar.findViewById(R.id.button_send);
 		buttonAddContent = inputBar.findViewById(R.id.button_addcontent);
 		messageInputField = inputBar.findViewById(R.id.messagebox);
-		//recordingTimeLabel = inputBar.findViewById(R.id.recordingtime);
 		bottomFAB = findViewById(R.id.fab_bottom);
 		bottomFABBadge = findViewById(R.id.fab_bottom_badge);
+		bottomFABSplash = findViewById(R.id.fab_bottom_splash);
 		appleEffectView = findViewById(R.id.effect_foreground);
 		bottomDetailsPanel = findViewById(R.id.panel_messaginginfo);
-		
-		detailScrim = findViewById(R.id.scrim);
 		
 		listAttachmentQueue = findViewById(R.id.inputbar_attachments);
 		
@@ -718,7 +508,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.getSystemWindowInsetBottom());
 			}
 			
-			currentInsetPaddingBottom = insets.getSystemWindowInsetBottom();
+			//currentInsetPaddingBottom = insets.getSystemWindowInsetBottom();
 			
 			//if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return WindowInsets.CONSUMED;
 			//else return windowInsets.consumeSystemWindowInsets();
@@ -741,14 +531,19 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the plugin views
 		pluginMessageBar.setParentView(findViewById(R.id.infobar_container));
 		
+		if(savedInstanceState != null) {
+			//Restoring the fragments
+			fragmentAttachments = (FragmentMessagingAttachments) getSupportFragmentManager().getFragment(savedInstanceState, keyFragmentAttachments);
+		}
+		
 		//Enforcing the maximum content width
-		Constants.enforceContentWidthView(getResources(), messageList);
+		WindowHelper.enforceContentWidthView(getResources(), messageList);
 		
 		//Configuring the AMOLED theme
-		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
+		if(ThemeHelper.shouldUseAMOLED(this)) setDarkAMOLED();
 		
 		//Setting the status bar color
-		Constants.updateChromeOSStatusBar(this);
+		PlatformHelper.updateChromeOSStatusBar(this);
 		
 		//Creating the filler values
 		String fillerText = null;
@@ -761,7 +556,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Checking if the request came from direct share
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
-				conversationID = ShortcutUtils.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
+				conversationID = ShortcutHelper.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
 			}
 			//Checking if the request came from an SMS link
 			else if(getIntent().getDataString() != null) {
@@ -774,7 +569,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						.split(",");
 				
 				//Normalizing the recipients
-				Constants.normalizeAddresses(recipients);
+				AddressHelper.normalizeAddresses(recipients);
 			}
 			
 			//Getting the message
@@ -810,7 +605,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			}).get(ActivityViewModel.class);
 		} else {
 			//Getting the conversation ID
-			long conversationID = getIntent().getLongExtra(Constants.intentParamTargetID, -1);
+			long conversationID = getIntent().getLongExtra(intentParamTargetID, -1);
 			
 			//Getting the view model
 			viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
@@ -823,20 +618,14 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Getting the filler data
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && getIntent().hasExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)) fillerText = getIntent().getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT); //Notification inline reply text (only supported on Android P and above)
-			else if(getIntent().hasExtra(Constants.intentParamDataText)) fillerText = getIntent().getStringExtra(Constants.intentParamDataText); //Shared text from activity
+			else if(getIntent().hasExtra(intentParamDataText)) fillerText = getIntent().getStringExtra(intentParamDataText); //Shared text from activity
 			
-			if(getIntent().getBooleanExtra(Constants.intentParamDataFile, false)) {
+			if(getIntent().getBooleanExtra(intentParamDataFile, false)) {
 				ClipData clipData = getIntent().getClipData();
 				fillerFiles = new Uri[clipData.getItemCount()];
 				for(int i = 0; i < clipData.getItemCount(); i++) fillerFiles[i] = clipData.getItemAt(i).getUri();
 			}
 		}
-		
-		//Restoring the input bar state
-		restoreInputBarState();
-		
-		//Restoring the text states
-		//findViewById(R.id.loading_text).setVisibility(viewModel.messagesState == viewModel.messagesStateLoading ? View.VISIBLE : View.GONE);
 		
 		//Enabling the toolbar's up navigation
 		if(!isInBubble()) {
@@ -862,53 +651,40 @@ public class Messaging extends AppCompatCompositeActivity {
 			public void onGlobalLayout() {
 				rootView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
 				int height = rootView.getHeight() - attachmentsPanel.getHeight();
-				messageInputField.setMaxHeight(height - Constants.dpToPx(400));
+				messageInputField.setMaxHeight(height - ResourceHelper.dpToPx(400));
 			}
 		});
 		
 		//Setting the listeners
 		rootView.getViewTreeObserver().addOnGlobalLayoutListener(rootLayoutListener);
 		messageInputField.addTextChangedListener(inputFieldTextWatcher);
-		//messageInputField.setOnKeyListener(inputFieldKeyListener);
 		messageInputField.setOnEditorActionListener(inputFieldEditorActionListener);
-		//messageInputField.setOnClickListener(view -> closeAttachmentsPanel(false));
-		buttonSendMessage.setOnClickListener(sendButtonClickListener);
+		buttonSendMessage.setOnClickListener(view -> submitInput());
 		buttonAddContent.setOnClickListener(view -> {
 			if(viewModel.isAttachmentsPanelOpen) {
-				/* if(KeyboardVisibilityEvent.isKeyboardVisible(Messaging.this)) UIUtil.showKeyboard(Messaging.this, messageInputField); //The attachment drawer is automatically hidden when the keyboard is opened
-				else closeAttachmentsPanel(true); */
 				closeAttachmentsPanel(true);
 			} else {
-				/*InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
-				boolean result = inputMethodManager.hideSoftInputFromWindow(view.getWindowToken(), 0);
-				openAttachmentsPanel(false, !result); */
-				
-				/* if(KeyboardVisibilityEvent.isKeyboardVisible(Messaging.this)) {
-					//Waiting for the keyboard to close itself before opening the attachment drawer
-					attachmentsWaitingForKeyboard = true;
-					UIUtil.hideKeyboard(Messaging.this);
-				} else openAttachmentsPanel(false, true); */
-				
 				openAttachmentsPanel(false, true);
 			}
 		});
-		/* inputBar.findViewById(R.id.button_camera).setOnClickListener(view -> requestTakePicture());
-		inputBar.findViewById(R.id.button_gallery).setOnClickListener(view -> requestGalleryFile());
-		inputBar.findViewById(R.id.button_attach).setOnClickListener(view -> requestAnyFile());
-		contentRecordButton.setOnTouchListener(recordingTouchListener); */
 		bottomFAB.setOnClickListener(view -> messageListAdapter.scrollToBottom());
 		appleEffectView.setFinishListener(() -> currentScreenEffectPlaying = false);
-		detailScrim.setOnClickListener(view -> closeDetailsPanel(true));
+		
+		viewModel.titleLD.observe(this, (title) -> getSupportActionBar().setTitle(title));
 		
 		LocalBroadcastManager.getInstance(this).registerReceiver(contactsUpdateBroadcastReceiver, new IntentFilter(MainApplication.localBCContactUpdate));
 		
 		//Configuring the input field
-		messageInputField.setContentProcessor((uri, type, name, size) -> queueAttachment(new SimpleAttachmentInfo(uri, type, Constants.cleanFileName(name), size, -1), findAppropriateTileHelper(type), true));
+		messageInputField.setContentProcessor((uri, type, name, size) -> {
+			if(!checkQueueCapacity(1)) return;
+			
+			viewModel.queueFile(new FileLinked(Union.ofB(uri), FileHelper.cleanFileName(name), size, type));
+		});
 		
 		//Setting up the attachments
 		{
 			listAttachmentQueue.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-			listAttachmentQueue.setAdapter(new AttachmentsQueueRecyclerAdapter(viewModel.draftQueueList));
+			listAttachmentQueue.setAdapter(new AttachmentsQueueRecyclerAdapter(viewModel.queueList));
 			
 			listAttachmentQueue.setOutlineProvider(new ViewOutlineProvider() {
 				@Override
@@ -922,39 +698,13 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Setting the filler data
 		if(fillerText != null) messageInputField.setText(fillerText);
-		if(fillerFiles != null) new QueueUriAsyncTask(this).execute(fillerFiles);
-		
-		/* //Iterating over the loaded conversations
-		for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext(); ) {
-			//Getting the referenced activity
-			Messaging activity = iterator.next().get();
-			
-			//Removing the reference if it is invalid
-			if(activity == null) {
-				iterator.remove();
-				continue;
-			}
-			
-			//Checking if the conversation matches this one
-			//if(activity.viewModel.conversationID != conversationID) continue;
-			
-			//Destroying the activity
-			activity.finish();
-			iterator.remove();
-			
-			//Breaking from the loop
-			break;
-		}
-		
-		//Adding the conversation as a loaded conversation
-		loadedConversations.add(new WeakReference<>(this)); */
+		if(fillerFiles != null) queueURIs(fillerFiles);
 		
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
 		
 		getWindow().getDecorView().post(() -> {
 			//Restoring the panels
-			openDetailsPanel(true);
 			openAttachmentsPanel(true, false);
 		});
 		
@@ -962,90 +712,30 @@ public class Messaging extends AppCompatCompositeActivity {
 		updateSendButton(true);
 		
 		//Registering the observers
-		viewModel.messagesState.observe(this, messagesStateObserver);
-		viewModel.isRecording.observe(this, value -> {
-			//Returning if the value is recording (already handled, since the activity has to initiate it)
-			if(value) return;
-			
-			//Concealing the recording view
-			concealRecordingView();
-			
-			//Queuing the target file (if it is available)
-			if(viewModel.targetFileRecording != null) {
-				new QueueFileAsyncTask(this).execute(viewModel.targetFileRecording);
-				viewModel.targetFileRecording = null;
-			}
-		});
-		viewModel.recordingDuration.observe(this, value -> {
-			if(recordingTimeLabel != null) recordingTimeLabel.setText(DateUtils.formatElapsedTime(value));
-		});
-		viewModel.progressiveLoadInProgress.observe(this, value -> {
-			if(value) onProgressiveLoadStart();
-			else onProgressiveLoadFinish(viewModel.lastProgressiveLoadCount);
-		});
-		viewModel.smartReplyAvailable.observe(this, value -> {
-			//Updating the recycler adapter (to show the reply suggestions)
-			if(value) {
-				if(messageListAdapter.replySuggestionsAvailable) {
-					messageListAdapter.notifyItemChanged(messageListAdapter.getItemCount() - 1);
-				} else {
-					messageListAdapter.replySuggestionsAvailable = true;
-					messageListAdapter.notifyItemInserted(messageListAdapter.getItemCount());
-					getWindow().getDecorView().post(messageListAdapter::scrollToBottom);
-				}
-			} else {
-				if(messageListAdapter.replySuggestionsAvailable) {
-					messageListAdapter.replySuggestionsAvailable = false;
-					messageListAdapter.notifyItemRemoved(messageListAdapter.getItemCount() - 1);
-				}
-			}
-		});
+		viewModel.stateLD.observe(this, this::updateUI);
+		viewModel.progressiveLoadInProgress.observe(this, value -> messageListAdapter.setShowTopProgressBar(value));
+		pluginRXD.activity().add(viewModel.subjectProgressiveLoadUpdate.subscribe(count -> messageListAdapter.notifyItemRangeInserted(messageListAdapter.mapRecyclerIndex(0), count)));
 		
-		/* KeyboardVisibilityEvent.setEventListener(this, isOpen -> {
-			//Closing the attachment drawer if it is open
-			if(isOpen && viewModel.isAttachmentsPanelOpen) {
-				closeAttachmentsPanel(false);
-			}
-			//Checking if the activity is waiting for the keyboard and the drawer is closed
-			else if(!isOpen && !viewModel.isAttachmentsPanelOpen && attachmentsWaitingForKeyboard) {
-				//Updating the attachment drawer
-				attachmentsWaitingForKeyboard = false;
-			}
-		}); */
-		
-		/* inputBar.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
-			boolean movingUp = top < oldTop;
-			if(top > oldTop) { //Layout is expanding downwards
-				closeAttachmentsPanel(false);
-				inputBar.post(() -> inputBar.requestLayout());
-			}
-		}); */
+		pluginRXD.activity().add(viewModel.subjectQueueListAdd.subscribe(this::updateQueueAdded));
+		pluginRXD.activity().add(viewModel.subjectQueueListRemove.subscribe(this::updateQueueRemoved));
+		pluginRXD.activity().add(viewModel.subjectQueueListUpdate.subscribe(this::updateQueueUpdated));
 		
 		messageInputField.setOnTouchListener((View view, MotionEvent event) -> {
 			closeAttachmentsPanel(true);
 			return false;
 		});
-	}
-	
-	/* void onMessagesFailed() {
-		//Hiding the loading text
-		findViewById(R.id.loading_text).setVisibility(View.GONE);
 		
-		//Showing the failed text
-		findViewById(R.id.error_text).setVisibility(View.VISIBLE);
-	} */
+		//Subscribing to messaging updates
+		pluginRXD.activity().add(ReduxEmitterNetwork.getMessageUpdateSubject().subscribe(this::updateMessageList));
+	}
 	
 	@Override
 	public void onStart() {
 		//Calling the super method
 		super.onStart();
 		
-		//Adding the broadcast listeners
-		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
-		
-		//Starting the service
-		startService(new Intent(this, ConnectionService.class));
+		//Subscribing to connection state updates
+		pluginRXD.ui().add(ReduxEmitterNetwork.getConnectionStateSubject().subscribe(this::updateServerWarning));
 	}
 	
 	@Override
@@ -1056,32 +746,13 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Adding the phantom reference
 		foregroundConversations.add(new WeakReference<>(this));
 		
-		//Clearing the notifications
-		//If we're running in a bubble, clearing the notification closes the window immediately, so we won't do that
+		//Clearing the notifications (unless we're running in a bubble, as clearing the notification closes the window immediately)
 		if(!isInBubble()) {
 			NotificationManager notificationManager = ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE));
-			int notificationID = (int) viewModel.conversationID;
-			NotificationUtils.cancelMessageNotification(notificationManager, notificationID);
-			notificationManager.cancel(NotificationUtils.notificationTagMessageError, notificationID);
+			int notificationID = (int) viewModel.conversationIDTarget;
+			NotificationHelper.cancelMessageNotification(notificationManager, notificationID);
+			notificationManager.cancel(NotificationHelper.notificationTagMessageError, notificationID);
 		}
-		
-		//Updating the server warning bar state
-		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-		boolean showWarning = connectionManager == null || (connectionManager.getCurrentState() == ConnectionManager.stateDisconnected && connectionManager.getLastConnectionResult() != -1);
-		if(showWarning) showServerWarning(connectionManager == null ? -1 : connectionManager.getLastConnectionResult());
-		else hideServerWarning();
-		
-		//Notifying the views
-		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
-			for(ConversationItem conversationItem : viewModel.conversationItemList) {
-				if(conversationItem instanceof MessageInfo) {
-					((MessageInfo) conversationItem).notifyResume();
-				}
-			}
-		}
-		
-		//Coloring the UI
-		colorUI(findViewById(android.R.id.content));
 	}
 	
 	@Override
@@ -1109,399 +780,447 @@ public class Messaging extends AppCompatCompositeActivity {
 			break;
 		}
 		
-		//Notifying the views
-		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
-			for(ConversationItem conversationItem : viewModel.conversationItemList) {
-				if(conversationItem instanceof MessageInfo) {
-					((MessageInfo) conversationItem).notifyPause();
-				}
-			}
-		}
-		
 		//Saving the draft message
 		viewModel.applyDraftMessage(messageInputField.getText().toString());
 	}
 	
 	@Override
-	public void onStop() {
-		//Calling the super method
-		super.onStop();
-		
-		//Removing the broadcast listeners
-		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
-		
-		//Notifying the views
-		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
-			for(ConversationItem conversationItem : viewModel.conversationItemList) {
-				if(conversationItem instanceof MessageInfo) {
-					((MessageInfo) conversationItem).notifyPause();
-				}
-			}
-		}
-	}
-	
-	@Override
-	public void onDestroy() {
-		//Calling the super method
+	protected void onDestroy() {
 		super.onDestroy();
 		
-		//Iterating over the loaded conversations
-		/* for(Iterator<WeakReference<Messaging>> iterator = loadedConversations.iterator(); iterator.hasNext();) {
-			//Getting the referenced activity
-			Messaging activity = iterator.next().get();
-			
-			//Removing the reference if it is invalid
-			if(activity == null) {
-				iterator.remove();
-				continue;
+		//Detatching the recycler view adapter
+		messageList.setAdapter(null);
+	}
+	
+	/**
+	 * Updates the connection warning banner based on a connection event
+	 */
+	private void updateServerWarning(ReduxEventConnection event) {
+		if(event.getState() == ConnectionState.disconnected) {
+			showServerWarning(((ReduxEventConnection.Disconnected) event).getCode());
+		} else {
+			hideServerWarning();
+		}
+	}
+	
+	/**
+	 * Updates the activity's UI in response to a change in state
+	 */
+	private void updateUI(int state) {
+		switch(state) {
+			case ActivityViewModel.stateLoadingConversation:
+				labelLoading.setVisibility(View.VISIBLE);
+				groupLoadFail.setVisibility(View.GONE);
+				
+				setMessageInputBarState(false);
+				
+				break;
+			case ActivityViewModel.stateLoadingMessages:
+				labelLoading.setVisibility(View.VISIBLE);
+				groupLoadFail.setVisibility(View.GONE);
+				
+				setMessageInputBarState(false);
+				
+				//Coloring the UI
+				updateUIColor();
+				
+				//Setting the message input field hint
+				messageInputField.setHint(getMessageFieldPlaceholder());
+				
+				//Updating the send button
+				//updateSendButton();
+				
+				break;
+			case ActivityViewModel.stateReady: {
+				labelLoading.setVisibility(View.GONE);
+				groupLoadFail.setVisibility(View.GONE);
+				
+				setMessageInputBarState(true);
+				
+				//Setting the list adapter
+				messageListAdapter = new MessageListRecyclerAdapter(viewModel.conversationItemList);
+				messageList.setAdapter(messageListAdapter);
+				messageList.addOnScrollListener(messageListScrollListener);
+				viewModel.conversationActionsLD.observe(this, messageListAdapter::setConversationActions);
+				
+				//Setting the message input field hint
+				messageInputField.setHint(getMessageFieldPlaceholder());
+				
+				//Checking if there are drafts files saved in the conversation
+				if(!viewModel.conversationInfo.getDraftFiles().isEmpty()) {
+					//Showing the file queue
+					showFileQueue(false);
+					
+					//Updating the send button
+					updateSendButton(false);
+				}
+				
+				//Restoring the draft message
+				if(messageInputField.getText().length() == 0) {
+					messageInputField.setText(viewModel.conversationInfo.getDraftMessage());
+				}
+				
+				//Setting the last message count
+				viewModel.lastUnreadCount = viewModel.conversationInfo.getUnreadMessageCount();
+				
+				{
+					//Getting the layout manager
+					LinearLayoutManager linearLayoutManager = (LinearLayoutManager) messageList.getLayoutManager();
+					int itemsScrolledFromBottom = linearLayoutManager.getItemCount() - linearLayoutManager.findLastVisibleItemPosition();
+					
+					//Showing the FAB if the user has scrolled more than 3 items
+					if(itemsScrolledFromBottom > quickScrollFABThreshold) {
+						bottomFAB.show();
+						restoreUnreadIndicator();
+					}
+				}
+				
+				//Updating the reply suggestions
+				viewModel.updateConversationActions();
+				
+				break;
 			}
-			//Skipping the remainder of the iteration if the activity isn't this one
-			else if(activity != this) continue;
-			
-			//Removing the reference
-			iterator.remove();
-			
-			//Breaking from the loop
-			break;
-		} */
+			case ActivityViewModel.stateFailedMatching:
+			case ActivityViewModel.stateFailedConversation:
+				labelLoading.setVisibility(View.GONE);
+				groupLoadFail.setVisibility(View.VISIBLE);
+				labelLoadFail.setText(R.string.message_loaderror_conversation);
+				
+				setMessageInputBarState(false);
+				
+				break;
+			case ActivityViewModel.stateFailedMessages:
+				labelLoading.setVisibility(View.GONE);
+				groupLoadFail.setVisibility(View.VISIBLE);
+				labelLoadFail.setText(R.string.message_loaderror_messages);
+				
+				setMessageInputBarState(false);
+				
+				break;
+		}
+	}
+	
+	/**
+	 * Updates the message list in response to a messaging event
+	 */
+	private void updateMessageList(ReduxEventMessaging event) {
+		//Ignoring the event if we aren't loaded yet
+		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return;
 		
-		//Notifying the views
-		if(viewModel.messagesState.getValue() == ActivityViewModel.messagesStateReady) {
-			for(ConversationItem conversationItem : viewModel.conversationItemList) {
-				if(conversationItem instanceof MessageInfo) {
-					((MessageInfo) conversationItem).notifyPause();
+		if(event instanceof ReduxEventMessaging.Message) {
+			ReduxEventMessaging.Message messageEvent = (ReduxEventMessaging.Message) event;
+			
+			//Getting the conversation items for this conversation
+			List<ReplaceInsertResult> resultList = messageEvent.getConversationItems().stream()
+					.filter(pair -> pair.first.getLocalID() == viewModel.conversationInfo.getLocalID())
+					.findAny().map(pair -> new ArrayList<>(pair.second)).orElse(null);
+			if(resultList == null) return;
+			
+			applyMessageUpdate(resultList);
+		} else if(event instanceof ReduxEventMessaging.ConversationUpdate) {
+			ReduxEventMessaging.ConversationUpdate conversationEvent = (ReduxEventMessaging.ConversationUpdate) event;
+			
+			//Searching for this activity's conversation
+			conversationEvent.getTransferredConversations().stream()
+					.filter(transferredConversation -> transferredConversation.getClientConversation().getLocalID() == viewModel.conversationInfo.getLocalID())
+					.findFirst().ifPresent(transferredConversation -> {
+				//Updating the conversation details
+				ConversationInfo serverConversation = transferredConversation.getServerConversation();
+				viewModel.conversationInfo.setGUID(serverConversation.getGUID());
+				viewModel.conversationInfo.setState(serverConversation.getState());
+				viewModel.conversationInfo.setTitle(serverConversation.getTitle());
+				viewModel.updateConversationTitle();
+				
+				//Adding the transferred messages
+				applyMessageUpdate(transferredConversation.getServerConversationItems());
+			});
+		} else if(event instanceof ReduxEventMessaging.MessageState) {
+			ReduxEventMessaging.MessageState eventState = (ReduxEventMessaging.MessageState) event;
+			IntStream.range(0, viewModel.conversationItemList.size())
+					.filter(i -> viewModel.conversationItemList.get(i).getLocalID() == eventState.getMessageID())
+					.findAny()
+					.ifPresent(i -> {
+						//Updating the message
+						MessageInfo messageInfo = (MessageInfo) viewModel.conversationItemList.get(i);
+						messageInfo.setMessageState(eventState.getStateCode());
+						messageInfo.setDateRead(eventState.getDateRead());
+						
+						//Trying to set conversation targets
+						MessageTargetUpdate update = null;
+						if(messageInfo.getMessageState() == MessageState.delivered) {
+							update = viewModel.tryApplyDeliveredTarget(messageInfo);
+						} else if(messageInfo.getMessageState() == MessageState.read) {
+							update = viewModel.tryApplyReadTarget(messageInfo);
+						}
+						
+						//Updating the adapter
+						messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(i), MessageListPayload.state);
+						if(update != null) {
+							messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(viewModel.conversationItemList.indexOf(update.getNewMessage())), MessageListPayload.status);
+							for(MessageInfo changedMessage : update.getOldMessages()) {
+								messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(viewModel.conversationItemList.indexOf(changedMessage)), MessageListPayload.status);
+							}
+						}
+					});
+		} else if(event instanceof ReduxEventMessaging.MessageError) {
+			ReduxEventMessaging.MessageError eventError = (ReduxEventMessaging.MessageError) event;
+			IntStream.range(0, viewModel.conversationItemList.size())
+					.filter(i -> viewModel.conversationItemList.get(i).getLocalID() == eventError.getMessageInfo().getLocalID())
+					.findAny()
+					.ifPresent(i -> {
+						//Updating the message
+						MessageInfo messageInfo = (MessageInfo) viewModel.conversationItemList.get(i);
+						messageInfo.setErrorCode(eventError.getErrorCode());
+						messageInfo.setErrorDetailsAvailable(eventError.getErrorDetails() != null);
+						messageInfo.setErrorDetails(eventError.getErrorDetails());
+						
+						//Updating the adapter
+						messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(i), MessageListPayload.state);
+					});
+		} else if(event instanceof ReduxEventMessaging.MessageDelete) {
+			IntStream.range(0, viewModel.conversationItemList.size())
+					.filter(i -> viewModel.conversationItemList.get(i).getLocalID() == ((ReduxEventMessaging.MessageDelete) event).getMessageInfo().getLocalID())
+					.findAny()
+					.ifPresent(i -> {
+						//Removing the message
+						viewModel.conversationItemList.remove(i);
+						
+						//Updating the adapter
+						messageListAdapter.notifyItemRemoved(messageListAdapter.mapRecyclerIndex(i));
+					});
+		} else if(event instanceof ReduxEventMessaging.AttachmentFile) {
+			ReduxEventMessaging.AttachmentFile attachmentEvent = (ReduxEventMessaging.AttachmentFile) event;
+			
+			//Finding the message
+			int messageIndex = IntStream.range(0, viewModel.conversationItemList.size())
+					.filter(i -> viewModel.conversationItemList.get(i).getLocalID() == attachmentEvent.getMessageID())
+					.findAny().orElse(-1);
+			if(messageIndex == -1) return;
+			MessageInfo messageInfo = (MessageInfo) viewModel.conversationItemList.get(messageIndex);
+			
+			//Finding the attachment
+			int attachmentIndex = IntStream.range(0, messageInfo.getAttachments().size())
+					.filter(i -> messageInfo.getAttachments().get(i).getLocalID() == attachmentEvent.getAttachmentID())
+					.findAny().orElse(-1);
+			if(attachmentIndex == -1) return;
+			
+			//Updating the attachment
+			messageInfo.getAttachments().get(attachmentIndex).setFile(attachmentEvent.getFile());
+			
+			//Updating the adapter
+			messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(messageIndex), new MessageListPayload.Attachment(attachmentIndex));
+		} else if(event instanceof ReduxEventMessaging.TapbackUpdate) {
+			ReduxEventMessaging.TapbackUpdate tapbackEvent = (ReduxEventMessaging.TapbackUpdate) event;
+			
+			//Finding the message
+			int messageIndex = IntStream.range(0, viewModel.conversationItemList.size())
+					.filter(i -> viewModel.conversationItemList.get(i).getLocalID() == tapbackEvent.getMetadata().getMessageID())
+					.findAny().orElse(-1);
+			if(messageIndex == -1) return;
+			MessageInfo messageInfo = (MessageInfo) viewModel.conversationItemList.get(messageIndex);
+			
+			//Finding the component
+			List<MessageComponent> componentList = messageInfo.getComponents();
+			if(tapbackEvent.getMetadata().getComponentIndex() >= componentList.size()) return;
+			MessageComponent component = componentList.get(tapbackEvent.getMetadata().getComponentIndex());
+			
+			//Updating the component's tapbacks
+			if(tapbackEvent.isAddition()) component.getTapbacks().add(tapbackEvent.getTapbackInfo());
+			else component.getTapbacks().removeIf(tapback -> tapback.getLocalID() == tapbackEvent.getTapbackInfo().getLocalID());
+			
+			//Updating the adapter
+			messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(messageIndex), new MessageListPayload.Tapback(tapbackEvent.getMetadata().getComponentIndex()));
+		} else if(event instanceof ReduxEventMessaging.StickerAdd) {
+			ReduxEventMessaging.StickerAdd stickerEvent = (ReduxEventMessaging.StickerAdd) event;
+			
+			//Finding the message
+			int messageIndex = IntStream.range(0, viewModel.conversationItemList.size())
+					.filter(i -> viewModel.conversationItemList.get(i).getLocalID() == stickerEvent.getMetadata().getMessageID())
+					.findAny().orElse(-1);
+			if(messageIndex == -1) return;
+			MessageInfo messageInfo = (MessageInfo) viewModel.conversationItemList.get(messageIndex);
+			
+			//Finding the component
+			List<MessageComponent> componentList = messageInfo.getComponents();
+			if(stickerEvent.getMetadata().getComponentIndex() >= componentList.size()) return;
+			MessageComponent component = componentList.get(stickerEvent.getMetadata().getComponentIndex());
+			
+			//Adding the sticker
+			component.getStickers().add(stickerEvent.getStickerInfo());
+			
+			//Updating the adapter
+			messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(messageIndex), new MessageListPayload.Sticker(stickerEvent.getMetadata().getComponentIndex(), stickerEvent.getStickerInfo()));
+		} else if(event instanceof ReduxEventMessaging.ReduxConversationAction) {
+			//Ignoring if the event is not relevant to this conversation
+			if(((ReduxEventMessaging.ReduxConversationAction) event).getConversationInfo().getLocalID() != viewModel.conversationInfo.getLocalID()) return;
+			
+			if(event instanceof ReduxEventMessaging.ConversationMember) {
+				ReduxEventMessaging.ConversationMember memberEvent = (ReduxEventMessaging.ConversationMember) event;
+				
+				//Updating the members
+				if(memberEvent.isJoin()) viewModel.conversationInfo.getMembers().add(memberEvent.getMember().clone());
+				else viewModel.conversationInfo.getMembers().removeIf(member -> member.getAddress().equals(memberEvent.getMember().getAddress()));
+				
+				//Rebuilding the conversation title
+				if(viewModel.conversationInfo.getTitle() == null) viewModel.updateConversationTitle();
+			} else if(event instanceof ReduxEventMessaging.ConversationDelete) {
+				//Close this activity
+				finish();
+			} else if(event instanceof ReduxEventMessaging.ConversationTitle) {
+				ReduxEventMessaging.ConversationTitle titleEvent = (ReduxEventMessaging.ConversationTitle) event;
+				
+				//Updating the title
+				viewModel.conversationInfo.setTitle(titleEvent.getTitle());
+				viewModel.updateConversationTitle();
+			} else if(event instanceof ReduxEventMessaging.ConversationColor) {
+				ReduxEventMessaging.ConversationColor colorEvent = (ReduxEventMessaging.ConversationColor) event;
+				
+				//Updating the color
+				viewModel.conversationInfo.setConversationColor(colorEvent.getColor());
+				updateUIColor();
+				if(!Preferences.getPreferenceAdvancedColor(Messaging.this)) {
+					messageListAdapter.notifyItemRangeChanged(messageListAdapter.mapRecyclerIndex(0), viewModel.conversationItemList.size(), MessageListPayload.color);
+				}
+			} else if(event instanceof ReduxEventMessaging.ConversationMemberColor) {
+				ReduxEventMessaging.ConversationMemberColor memberColorEvent = (ReduxEventMessaging.ConversationMemberColor) event;
+				
+				//Updating the color
+				viewModel.conversationInfo.getMembers().stream()
+						.filter(member -> member.getAddress().equals(memberColorEvent.getMemberInfo().getAddress()))
+						.findAny().ifPresent(member -> {
+					member.setColor(memberColorEvent.getColor());
+					for(ListIterator<ConversationItem> iterator = viewModel.conversationItemList.listIterator(); iterator.hasNext();) {
+						int i = iterator.nextIndex();
+						ConversationItem item = iterator.next();
+						if(item.getItemType() == ConversationItemType.message && memberColorEvent.getMemberInfo().getAddress().equals(((MessageInfo) item).getSender())) {
+							messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(i), MessageListPayload.color);
+						}
+					}
+				});
+			}
+		}
+	}
+	
+	/**
+	 * Applies a list of {@link ReplaceInsertResult}s to the conversation
+	 */
+	private void applyMessageUpdate(List<ReplaceInsertResult> replaceInsertResults) {
+		//A newest-to-oldest list of messages that may become the next delivered or read target
+		List<MessageInfo> messageTargetCandidates = new ArrayList<>();
+		
+		//Whether any of the new messages are incoming / outgoing
+		int incomingMessageCount = (int) replaceInsertResults.stream().filter(result ->
+				result.getTargetItem().getItemType() == ConversationItemType.message &&
+						!((MessageInfo) result.getTargetItem()).isOutgoing()).count();
+		boolean messageOutgoing = false;
+		
+		boolean wasScrolledToBottom = messageListAdapter.isScrolledToBottom();
+		
+		for(ReplaceInsertResult result : replaceInsertResults) {
+			//Adding new items
+			int insertIndex = viewModel.conversationItemList.size();
+			viewModel.conversationItemList.addAll(result.getNewItems());
+			messageListAdapter.notifyItemRangeInserted(messageListAdapter.mapRecyclerIndex(insertIndex), result.getNewItems().size());
+			if(insertIndex > 0 && viewModel.conversationItemList.get(insertIndex - 1).getItemType() == ConversationItemType.message) messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(insertIndex - 1), MessageListPayload.flow);
+			messageTargetCandidates.addAll(result.getNewItems().stream().filter(item -> item.getItemType() == ConversationItemType.message).map(item -> (MessageInfo) item).collect(Collectors.toList()));
+			if(!messageOutgoing) messageOutgoing = result.getNewItems().stream().anyMatch(item -> item.getItemType() == ConversationItemType.message && ((MessageInfo) item).isOutgoing());
+			
+			//Applying updated items
+			for(MessageInfo updatedItem : result.getUpdatedItems()) {
+				//Finding a matching local item
+				MessageInfo localItem = viewModel.conversationGhostList.stream()
+						.filter(ghostMessage -> ghostMessage.getLocalID() == updatedItem.getLocalID())
+						.findAny().orElse(null);
+				if(localItem == null) continue;
+				viewModel.conversationGhostList.remove(localItem);
+				messageTargetCandidates.add(localItem);
+				
+				//Updating the local item
+				if(!updatedItem.getAttachments().isEmpty() &&
+						(localItem.getAttachments().size() != updatedItem.getAttachments().size() ||
+								IntStream.range(0, localItem.getAttachments().size()).anyMatch(i -> localItem.getAttachments().get(i).getLocalID() != updatedItem.getAttachments().get(i).getLocalID()))) {
+					localItem.getAttachments().clear();
+					localItem.getAttachments().addAll(updatedItem.getAttachments());
+					
+					messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(viewModel.conversationItemList.indexOf(localItem)), MessageListPayload.attachmentRebuild);
+				}
+				
+				localItem.setDate(updatedItem.getDate());
+				localItem.setMessageState(updatedItem.getMessageState());
+				localItem.setGuid(updatedItem.getGuid());
+				localItem.setMessageState(updatedItem.getMessageState());
+				localItem.setErrorDetailsAvailable(updatedItem.isErrorDetailsAvailable());
+				localItem.setDateRead(updatedItem.getDateRead());
+				messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(viewModel.conversationItemList.indexOf(localItem)), MessageListPayload.state);
+			}
+			
+			//Adding new ghost items
+			viewModel.conversationGhostList.addAll(result.getNewItems().stream().filter(conversationItem ->
+					conversationItem instanceof MessageInfo && ((MessageInfo) conversationItem).getMessageState() == MessageState.ghost)
+					.map(conversationItem -> (MessageInfo) conversationItem).collect(Collectors.toList()));
+		}
+		
+		Collections.sort(messageTargetCandidates, (message1, message2) -> -Long.compare(message1.getDate(), message2.getDate())); //Sort newest to oldest
+		
+		//Trying to update conversation targets
+		boolean deliveredTargetMatched = false;
+		List<MessageTargetUpdate> messageTargetUpdates = new ArrayList<>();
+		for(MessageInfo messageInfo : messageTargetCandidates) {
+			if(!deliveredTargetMatched && messageInfo.getMessageState() == MessageState.delivered) {
+				MessageTargetUpdate update = viewModel.tryApplyDeliveredTarget(messageInfo);
+				if(update != null) {
+					messageTargetUpdates.add(update);
+					deliveredTargetMatched = true;
+				}
+			} else if(messageInfo.getMessageState() == MessageState.read) {
+				MessageTargetUpdate update = viewModel.tryApplyReadTarget(messageInfo);
+				if(update != null) {
+					messageTargetUpdates.add(update);
+					break;
 				}
 			}
 		}
 		
-		//Unregistering the broadcast listeners
-		LocalBroadcastManager.getInstance(this).unregisterReceiver(contactsUpdateBroadcastReceiver);
-	}
-	
-	@Override
-	public void onActivityReenter(int resultCode, Intent data) {
-		//Returning if there is no data
-		if(viewModel.conversationInfo == null || viewModel.conversationItemList == null) return;
-		
-		//Getting the associated message information
-		long selectedID = data.getLongExtra(MediaViewer.PARAM_SELECTEDID, -1);
-		if(selectedID == -1) return;
-		
-		LongSparseArray<AttachmentInfo> localIDConversationMap = viewModel.conversationInfo.getLocalIDAttachmentMap();
-		AttachmentInfo attachmentInfo = localIDConversationMap.get(selectedID);
-		if(attachmentInfo == null) return;
-		
-		MessageInfo messageInfo = attachmentInfo.getMessageInfo();
-		
-		//Scrolling the list to the message
-		int position = viewModel.conversationItemList.indexOf(messageInfo);
-		if(position != RecyclerView.NO_POSITION) messageList.scrollToPosition(position);
-		
-		//Setting the shared element transitions callback
-		MediaSharedElementCallback sharedElementCallback = new MediaSharedElementCallback();
-		setExitSharedElementCallback(sharedElementCallback);
-		/* setExitSharedElementCallback(new SharedElementCallback() {
-			@Override
-			public void onMapSharedElements(List<String> names, Map<String, View> sharedElements) {
-				if(viewModel.conversationInfo == null) return;
-				LongSparseArray<ConversationUtils.AttachmentInfo> localIDConversationMap = viewModel.conversationInfo.getLocalIDAttachmentMap();
-				ConversationUtils.AttachmentInfo attachmentInfo = localIDConversationMap.get(MediaViewer.selectedID);
-				if(attachmentInfo == null) return;
-				View view = attachmentInfo.getSharedElementView();
-				if(view == null) return;
-				
-				sharedElements.put(names.get(0), view);
+		//Updating the adapter
+		for(MessageTargetUpdate update : messageTargetUpdates) {
+			messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(viewModel.conversationItemList.indexOf(update.getNewMessage())), MessageListPayload.status);
+			for(MessageInfo changedMessage : update.getOldMessages()) {
+				messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(viewModel.conversationItemList.indexOf(changedMessage)), MessageListPayload.status);
 			}
-		}); */
-		supportPostponeEnterTransition();
-		messageList.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
-			@Override
-			public boolean onPreDraw() {
-				messageList.getViewTreeObserver().removeOnPreDrawListener(this);
-				sharedElementCallback.setSharedElementViews(attachmentInfo.getSharedElementView());
-				supportStartPostponedEnterTransition();
-				return true;
-			}
-		});
-		
-		getWindow().getSharedElementExitTransition().addListener(new Transition.TransitionListener() {
-			@Override
-			public void onTransitionStart(Transition transition) {}
-			
-			@Override
-			public void onTransitionEnd(Transition transition) {
-				getWindow().getSharedElementExitTransition().removeListener(this);
-				setExitSharedElementCallback((SharedElementCallback) null);
-			}
-			
-			@Override
-			public void onTransitionCancel(Transition transition) {}
-			
-			@Override
-			public void onTransitionPause(Transition transition) {}
-			
-			@Override
-			public void onTransitionResume(Transition transition) {}
-		});
-	}
-	
-	long getConversationID() {
-		return viewModel.conversationID;
-	}
-	
-	private void restoreInputBarState() {
-		/* switch(viewModel.inputState) {
-			case ActivityViewModel.inputStateContent:
-				//Disabling the message bar
-				messageContentButton.setEnabled(false);
-				messageInputField.setEnabled(false);
-				messageSendButton.setEnabled(false);
-				messageBar.getLayoutParams().height = referenceBar.getHeight();
-				
-				//Showing the content bar
-				contentCloseButton.setRotation(45);
-				contentBar.setVisibility(View.VISIBLE);
-				
-				break;
-			case ActivityViewModel.inputStateRecording:
-				//Disabling the message bar
-				messageContentButton.setEnabled(false);
-				messageInputField.setEnabled(false);
-				messageSendButton.setEnabled(false);
-				
-				//Showing the recording bar
-				recordingBar.setVisibility(View.VISIBLE);
-				
-				//Waiting until the view has been loaded
-				messageList.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-					@Override
-					public void onGlobalLayout() {
-						//Removing the layout listener
-						messageList.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-						
-						//Positioning and showing the recording indicator
-						recordingIndicator.setY(inputBar.getTop() + inputBar.getHeight() / 2 - recordingIndicator.getHeight() / 2);
-						recordingIndicator.setVisibility(View.VISIBLE);
-					}
-				});
-				
-				break;
 		}
 		
-		//Reconnecting the media player to its attachment
-		//getAudioMessageManager().reconnectAttachment(conversationInfo); */
-	}
-	
-	private boolean isInBubble() {
-		return getIntent().getBooleanExtra(Constants.intentParamBubble, false);
+		//Checking if we have any new incoming messages
+		if(incomingMessageCount > 0) {
+			//Playing a sound
+			if(Preferences.getPreferenceMessageSounds(this)) {
+				SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageIncoming);
+			}
+			
+			//Updating the unread count
+			if(!wasScrolledToBottom) {
+				viewModel.conversationInfo.setUnreadMessageCount(viewModel.conversationInfo.getUnreadMessageCount() + incomingMessageCount);
+				updateUnreadIndicator();
+			}
+		}
+		
+		//Scrolling to the bottom of the list
+		if(messageOutgoing || wasScrolledToBottom) {
+			messageListAdapter.scrollToBottom();
+		}
+		
+		//Updating the reply suggestions
+		viewModel.updateConversationActions();
 	}
 	
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		super.onActivityResult(requestCode, resultCode, intent);
 		
-		switch(requestCode) {
-			case intentTakePicture: //Taking a picture
-				//Returning if the current input state is not the content bar
-				//if(viewModel.inputState != inputStateContent) return;
-				
-				//Queuing the file
-				if(resultCode == RESULT_OK && viewModel.targetFileIntent != null) new QueueFileAsyncTask(this).execute(viewModel.targetFileIntent);
-				break;
-			case intentPickFile: //Media picker
-				//Returning if the current input state is not the content bar
-				//if(viewModel.inputState != ActivityViewModel.inputStateContent) return;
-				
-				//Checking if the result was a success
-				if(resultCode == RESULT_OK) {
-					//Getting the content
-					if(intent.getData() != null) {
-						//Queuing the content
-						new QueueUriAsyncTask(this).execute(intent.getData());
-					} else if(intent.getClipData() != null) {
-						Uri[] list = new Uri[intent.getClipData().getItemCount()];
-						for(int i = 0; i < intent.getClipData().getItemCount(); i++)
-							list[i] = intent.getClipData().getItemAt(i).getUri();
-						new QueueUriAsyncTask(this).execute(list);
-					}
-				}
-				break;
-			case intentLocationResolution:
-				//Updating the attachment section
-				if(resultCode == RESULT_OK) viewModel.updateAttachmentsLocationState();
-				break;
-			case intentPickLocation: {
-				if(resultCode != RESULT_OK) break;
-				
-				//Getting the data
-				LatLng mapPosition = intent.getParcelableExtra(Constants.intentParamData);
-				String mapPositionAddress = intent.getStringExtra(Constants.intentParamAddress);
-				String mapPositionName = intent.getStringExtra(Constants.intentParamName);
-				
-				//Checking if this is an iMessage conversation
-				if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge &&
-				   ConversationInfo.serviceTypeAppleMessage.equals(viewModel.conversationInfo.getService())) {
-					//Selecting a file to write to
-					File file = MainApplication.getDraftTarget(this, viewModel.conversationID, mapPositionName != null ? Constants.cleanFileName(mapPositionName) + ".loc.vcf" : Constants.locationName);
-					
-					//Writing the file and creating the attachment data
-					new WriteVLocationTask(file, mapPosition, mapPositionAddress, mapPositionName, this).execute();
-				} else {
-					//Creating the query string
-					String query;
-					if(mapPositionAddress != null) {
-						query = mapPositionAddress;
-					} else {
-						query = mapPosition.latitude + "," + mapPosition.longitude;
-					}
-					
-					//Building the Google Maps URL
-					Uri mapsUri = new Uri.Builder()
-							.scheme("https")
-							.authority("www.google.com")
-							.appendPath("maps")
-							.appendPath("search")
-							.appendPath("")
-							.appendQueryParameter("api", "1")
-							.appendQueryParameter("query", query)
-							.build();
-					
-					//Appending to the text box
-					String currentInputText = messageInputField.getText().toString();
-					if(currentInputText.isEmpty()) {
-						messageInputField.setText(mapsUri.toString());
-					} else {
-						//Adding a whitespace character if there is none
-						if(!Character.isWhitespace(currentInputText.charAt(currentInputText.length() - 1))) currentInputText += " ";
-						messageInputField.setText(currentInputText + mapsUri.toString());
-					}
-				}
-				
-				break;
+		if(requestCode == intentSaveFileSAF) {
+			if(resultCode == RESULT_OK) {
+				//Saving the file
+				ExternalStorageHelper.exportFile(this, currentTargetSAFFile, intent.getData());
 			}
-			case intentSaveFileSAF:
-				if(resultCode == RESULT_OK) Constants.exportUri(this, currentTargetSAFFile, intent.getData());
-				break;
-		}
-	}
-	
-	void setDarkAMOLED() {
-		Constants.setActivityAMOLEDBase(this);
-		appBar.setBackgroundColor(Constants.colorAMOLED);
-		
-		//Setting the input bar background color
-		inputBar.setBackgroundColor(Constants.colorAMOLED);
-		
-		//Setting the attachments view
-		View attachmentsView = findViewById(R.id.pane_attachments);
-		if(attachmentsView != null) {
-			attachmentsView.setBackgroundColor(Constants.colorAMOLED);
-		}
-	}
-	
-	private static class QueueFileAsyncTask extends AsyncTask<File, Void, ArrayList<SimpleAttachmentInfo>> {
-		private final WeakReference<Messaging> activityReference;
-		
-		QueueFileAsyncTask(Messaging activity) {
-			activityReference = new WeakReference<>(activity);
-		}
-		
-		@Override
-		protected ArrayList<SimpleAttachmentInfo> doInBackground(File... files) {
-			//Creating the list
-			ArrayList<SimpleAttachmentInfo> list = new ArrayList<>();
-			
-			//Getting the context
-			Context context = activityReference.get();
-			if(context == null) return null;
-			
-			//Adding the files
-			for(File file : files) list.add(new SimpleAttachmentInfo(file, Constants.getMimeType(file), file.getName(), file.length(), file.lastModified()));
-			
-			//Returning
-			return list;
-		}
-		
-		@Override
-		protected void onPostExecute(ArrayList<SimpleAttachmentInfo> results) {
-			//Returning if there are no results
-			if(results == null || results.isEmpty()) return;
-			
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Queuing the files
-			for(SimpleAttachmentInfo attachmentInfo : results) activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
-		}
-	}
-	
-	private static class QueueUriAsyncTask extends AsyncTask<Uri, Void, ArrayList<SimpleAttachmentInfo>> {
-		private final WeakReference<Messaging> activityReference;
-		
-		QueueUriAsyncTask(Messaging activity) {
-			activityReference = new WeakReference<>(activity);
-		}
-		
-		@Override
-		protected ArrayList<SimpleAttachmentInfo> doInBackground(Uri... uris) {
-			//Creating the list
-			ArrayList<SimpleAttachmentInfo> list = new ArrayList<>();
-			
-			//Getting the context
-			Context context = activityReference.get();
-			if(context == null) return null;
-			
-			//Adding the files
-			for(Uri uri : uris) {
-				if(uri == null) continue;
-				
-				//Querying the file data
-				try(Cursor cursor = context.getContentResolver().query(uri, new String[]{/*MediaStore.Files.FileColumns.MIME_TYPE, */MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.DATE_MODIFIED}, null, null, null)) {
-					if(cursor == null) continue;
-					//int iType = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE);
-					int iDisplayName = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME);
-					int iSize = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE);
-					int iModificationDate = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED);
-					
-					if(!cursor.moveToFirst()) continue;
-					
-					//Getting the file information
-					String fileName = null;
-					if(iDisplayName != -1) {
-						String rawFileName = cursor.getString(iDisplayName);
-						if(rawFileName != null) fileName = Constants.cleanFileName(rawFileName);
-						else fileName = "file";
-					}
-					String fileType = context.getContentResolver().getType(uri); //iType == -1 ? null : cursor.getString(iType);
-					if(fileType == null) {
-						if(fileName != null) fileType = Constants.getMimeType(context, uri);
-						if(fileType == null) fileType = "application/octet-stream";
-					}
-					long fileSize = iSize == -1 ? -1 : cursor.getLong(iSize);
-					long modificationDate = iModificationDate == -1 ? -1 : cursor.getLong(iModificationDate);
-					list.add(new SimpleAttachmentInfo(uri, fileType, fileName, fileSize, modificationDate));
-				}
-				
-				//list.add(new SimpleAttachmentInfo(uri, Constants.getMimeType(context, uri), Constants.getUriName(context, uri), Constants.getUriSize(context, uri), -1));
-			}
-			
-			//Returning
-			return list;
-		}
-		
-		@Override
-		protected void onPostExecute(ArrayList<SimpleAttachmentInfo> results) {
-			//Returning if there are no results
-			if(results == null || results.isEmpty()) return;
-			
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Queuing the files
-			for(SimpleAttachmentInfo attachmentInfo : results) activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
 		}
 	}
 	
@@ -1516,187 +1235,314 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		switch(item.getItemId()) {
-			/* case android.R.id.home:
-				//Closing the details panel if it is open
-				if(viewModel.isDetailsPanelOpen) closeDetailsPanel();
-				//Otherwise finishing the activity
-				else finish();
-				
-				return true; */
-			case R.id.action_details:
-				//Checking if the conversation is valid
-				if(viewModel.conversationInfo != null) {
-					//Launching the details activity
-					//startActivity(new Intent(this, MessagingInfo.class).putExtra(Constants.intentParamTargetID, viewModel.conversationInfo.getLocalID()));
-					
-					//Opening the details panel
-					openDetailsPanel(false);
-				}
-				
-				return true;
+		if(item.getItemId() == android.R.id.home) {
+			//Going back
+			finish();
+			return true;
+		} else if(item.getItemId() == R.id.action_details) {
+			if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return true;
+			
+			//Opening the details panel
+			FragmentMessagingDetails fragment = new FragmentMessagingDetails(viewModel.conversationInfo);
+			fragment.show(getSupportFragmentManager(), null);
+			
+			return true;
 		}
 		
-		//Returning false
 		return false;
 	}
 	
 	@Override
 	public void onBackPressed() {
-		//Closing the details panel if it is open
-		if(viewModel.isDetailsPanelOpen) closeDetailsPanel(true);
-			//Closing the attachments panel if it is open
-		else if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel(true);
-			//Otherwise passing the event to the superclass
+		//Closing the attachments panel if it is open
+		if(viewModel.isAttachmentsPanelOpen) closeAttachmentsPanel(true);
+		//Otherwise passing the event to the superclass
 		else super.onBackPressed();
 	}
 	
-	private void sendMessage() {
-		/* if(!canWrite(this)) {
-			Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS);
-			intent.setData(Uri.parse("package:" + getPackageName()));
-			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			
-			try {
-				startActivity(intent);
-			} catch (Exception e) {
-				Log.e("MainActivity", "error starting permission intent", e);
-			}
-			return;
-		} */
+	@Override
+	protected void onSaveInstanceState(@NonNull Bundle outState) {
+		super.onSaveInstanceState(outState);
 		
-		//Creating the message list
-		ArrayList<MessageInfo> messageList = new ArrayList<>();
+		//Saving the fragment
+		if(fragmentAttachments != null && fragmentAttachments.isAdded()) getSupportFragmentManager().putFragment(outState, keyFragmentAttachments, fragmentAttachments);
+	}
+	
+	@Override
+	public void onAttachFragment(@NonNull Fragment fragment) {
+		super.onAttachFragment(fragment);
 		
-		//Getting the message details
-		String cleanMessageText = messageInputField.getText().toString().trim();
-		if(cleanMessageText.isEmpty()) cleanMessageText = null;
-		
-		//Returning if there is no data to send
-		if(cleanMessageText == null && viewModel.draftQueueList.isEmpty()) return;
-		
-		//Checking if the current service handler is AirMessage bridge
-		if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
-			//Checking if the message box has text
-			if(cleanMessageText != null) {
-				List<String> messageTextList = new ArrayList<>();
+		if(fragment instanceof FragmentMessagingAttachments) {
+			((FragmentMessagingAttachments) fragment).setCommunicationsCallback(new FragmentMessagingAttachments.FragmentCommunicationQueue() {
+				@Override
+				public long[] getMediaStoreIDs() {
+					return viewModel.queueList.stream().mapToLong(FileQueued::getMediaStoreID).filter(id -> id != -1).toArray();
+				}
 				
-				//Checking for a straight line of pure URLS
-				Matcher matcher = urlGroupPattern.matcher(cleanMessageText);
-				if(matcher.find()) {
-					//Adding the URLs
-					messageTextList.addAll(Arrays.asList(cleanMessageText.split("\\s")));
-				} else {
-					//Checking for a single URL
-					matcher = urlPattern.matcher(cleanMessageText);
-					if(matcher.find()) {
-						String prefix = matcher.group(1);
-						if(prefix != null) prefix = prefix.trim();
-						boolean prefixOK = !TextUtils.isEmpty(prefix);
-						String url = matcher.group(2);
-						String suffix = matcher.group(3);
-						if(suffix != null) suffix = suffix.trim();
-						boolean suffixOK = !TextUtils.isEmpty(suffix);
-						
-						if(prefixOK && suffixOK) {
-							//Just add the entire message if there is both a prefix and a suffix, Apple Messages doesn't do anything special in this case
-							messageTextList.add(cleanMessageText);
-						} else {
-							//Add each message part separately
-							if(prefixOK) messageTextList.add(prefix.trim());
-							messageTextList.add(url);
-							if(suffixOK) messageTextList.add(suffix.trim());
-						}
+				@Override
+				public int getQueueIndex(long mediaStoreID) {
+					return IntStream.range(0, viewModel.queueList.size()).filter(i -> viewModel.queueList.get(i).getMediaStoreID() == mediaStoreID).findAny().orElse(-1);
+				}
+				
+				@Override
+				public void queueFile(FileLinked file) {
+					if(!checkQueueCapacity(1)) return;
+					
+					//Queuing the file
+					viewModel.queueFile(file);
+				}
+				
+				@Override
+				public void dequeueFile(FileLinked file) {
+					if(file.getMediaStoreData() == null) return;
+					
+					//Finding and dequeuing the file
+					viewModel.queueList.stream().filter(fileQueued -> fileQueued.getMediaStoreID() == file.getMediaStoreData().getMediaStoreID()).findAny().ifPresent(viewModel::dequeueFile);
+				}
+				
+				@Override
+				public void queueText(String text) {
+					String currentInputText = messageInputField.getText().toString();
+					if(currentInputText.isEmpty()) {
+						messageInputField.setText(text);
 					} else {
-						messageTextList.add(cleanMessageText);
+						//Adding a whitespace character if there is none
+						if(!Character.isWhitespace(currentInputText.charAt(currentInputText.length() - 1))) currentInputText += " ";
+						messageInputField.setText(currentInputText + text);
 					}
 				}
-				
-				//Adding the messages
-				for(String message : messageTextList) {
-					messageList.add(new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, message, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1));
-				}
-				
-				//Clearing the message box
-				messageInputField.setText("");
-				messageInputField.requestLayout(); //Height of input field doesn't update otherwise
-				//messageBoxHasText = false;
-				
-				//Saving the draft message
-				//viewModel.applyDraftMessage("");
-			}
-			
-			//Iterating over the drafts
-			for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
-				//Creating the message
-				MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, null, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
-				
-				//Creating the attachment
-				SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
-				AttachmentInfo attachment = ConversationUtils.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType(), attachmentFile.getFileSize());
-				attachment.setDraftingPushRequest(queuedFile.getFilePushRequest());
-				
-				//Adding the attachment to the message
-				messageInfo.addAttachment(attachment);
-				
-				//Adding the message to the list
-				messageList.add(messageInfo);
-				
-				//Dequeuing the item
-				dequeueAttachment(queuedFile, true, false);
-				viewModel.conversationInfo.removeDraftFileUpdate(this, queuedFile.getDraftFile(), -1);
-			}
-		} else {
-			//Creating the message
-			MessageInfo messageInfo = new MessageInfo(-1, -1, null, viewModel.conversationInfo, null, cleanMessageText, null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
-			
-			//Clearing the message box
-			if(cleanMessageText != null) {
-				messageInputField.setText("");
-				messageInputField.requestLayout(); //Height of input field doesn't update otherwise
-			}
-			
-			//Iterating over the drafts
-			for(QueuedFileInfo queuedFile : new ArrayList<>(viewModel.draftQueueList)) {
-				//Creating the attachment
-				SimpleAttachmentInfo attachmentFile = queuedFile.getItem();
-				AttachmentInfo attachment = ConversationUtils.createAttachmentInfoFromType(-1, null, messageInfo, attachmentFile.getFileName(), attachmentFile.getFileType(), attachmentFile.getFileSize());
-				attachment.setDraftingPushRequest(queuedFile.getFilePushRequest());
-				
-				//Adding the attachment to the message
-				messageInfo.addAttachment(attachment);
-				
-				//Dequeuing the item
-				dequeueAttachment(queuedFile, true, false);
-				viewModel.conversationInfo.removeDraftFileUpdate(this, queuedFile.getDraftFile(), -1);
-			}
-			
-			//Adding the message to the list
-			messageList.add(messageInfo);
-		}
-		
-		//Returning if there are no items to send
-		if(messageList.isEmpty()) return;
-		
-		//Clearing the conversation's drafts
-		viewModel.clearDraftMessage();
-		
-		//Writing the messages to the database
-		new AddGhostMessageTask(getApplicationContext(), viewModel.conversationInfo, new GhostMessageFinishHandler()).execute(messageList.toArray(new MessageInfo[0]));
-		
-		//Scrolling to the bottom of the chat
-		messageListAdapter.scrollToBottom();
-		
-		//Unarchiving the conversation
-		if(viewModel.conversationInfo.isArchived()) {
-			viewModel.conversationInfo.setArchived(false);
-			DatabaseManager.getInstance().updateConversationArchived(viewModel.conversationInfo.getLocalID(), false);
+			});
 		}
 	}
 	
+	/**
+	 * Gets the ID of the currently loaded conversation of this activity, or -1 if unavailable
+	 */
+	public long getConversationID() {
+		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return -1;
+		return viewModel.conversationInfo.getLocalID();
+	}
+	
+	/**
+	 * Gets if this messaging activity is launched as a floating bubble
+	 */
+	private boolean isInBubble() {
+		return getIntent().getBooleanExtra(intentParamBubble, false);
+	}
+	
+	/**
+	 * Adapts the view for an AMOLED display
+	 */
+	private void setDarkAMOLED() {
+		ThemeHelper.setActivityAMOLEDBase(this);
+		appBar.setBackgroundColor(ColorConstants.colorAMOLED);
+		
+		//Setting the input bar background color
+		inputBar.setBackgroundColor(ColorConstants.colorAMOLED);
+		
+		//Setting the attachments view
+		View attachmentsView = findViewById(R.id.pane_attachments);
+		if(attachmentsView != null) {
+			attachmentsView.setBackgroundColor(ColorConstants.colorAMOLED);
+		}
+	}
+	
+	/**
+	 * Updates the view when a queue file is added
+	 * @param pair The index and the added item
+	 */
+	private void updateQueueAdded(Pair<Integer, FileQueued> pair) {
+		//Updating the adapter
+		listAttachmentQueue.getAdapter().notifyItemInserted(pair.first);
+		
+		//Showing the attachment queue
+		if(!attachmentQueueVisible) {
+			showFileQueue(true);
+		}
+		
+		//Updating the fragment
+		if(fragmentAttachments != null) {
+			FileQueued fileQueued = pair.second;
+			if(fileQueued.getMediaStoreID() != -1) fragmentAttachments.onFileQueued(fileQueued.getMediaStoreID());
+		}
+		
+		//Scrolling to the end of the list
+		listAttachmentQueue.smoothScrollToPosition(viewModel.queueList.size() - 1);
+		
+		//Updating the send button
+		updateSendButton(false);
+	}
+	
+	/**
+	 * Updates the view when a queue file is removed
+	 * @param pair The index and the removed item
+	 */
+	private void updateQueueRemoved(Pair<Integer, FileQueued> pair) {
+		//Updating the adapter
+		listAttachmentQueue.getAdapter().notifyItemRemoved(pair.first);
+		
+		//Updating the fragment
+		if(fragmentAttachments != null) {
+			FileQueued fileQueued = pair.second;
+			if(fileQueued.getMediaStoreID() != -1) fragmentAttachments.onFileDequeued(fileQueued.getMediaStoreID());
+		}
+		
+		//Checking if there are no more queued files
+		if(viewModel.queueList.isEmpty()) {
+			//Updating the send button
+			updateSendButton(false);
+			
+			//Hiding the attachment queue
+			if(attachmentQueueVisible) {
+				hideFileQueue(true);
+			}
+		}
+	}
+	
+	/**
+	 * Updates the view when a queue file is updated
+	 * @param pair The index and the updated item
+	 */
+	private void updateQueueUpdated(Pair<Integer, FileQueued> pair) {
+		//Updating the adapter
+		listAttachmentQueue.getAdapter().notifyItemChanged(pair.first, AttachmentsQueueRecyclerAdapter.payloadUpdateState);
+	}
+	
+	/**
+	 * Updates the view when all queued files are removed
+	 * @param files The queued files that have been removed
+	 */
+	private void updateQueueCleared(List<FileQueued> files) {
+		//Updating the adapter
+		listAttachmentQueue.getAdapter().notifyItemRangeRemoved(0, files.size());
+		
+		//Updating the fragment
+		if(fragmentAttachments != null) {
+			for(FileQueued fileQueued : files) {
+				if(fileQueued.getMediaStoreID() != -1) fragmentAttachments.onFileDequeued(fileQueued.getMediaStoreID());
+			}
+		}
+		
+		//Updating the send button
+		updateSendButton(false);
+		
+		//Hiding the attachment queue
+		hideFileQueue(true);
+	}
+	
+	private void showFileQueue(boolean animate) {
+		//Ignoring if there is no change in state
+		if(attachmentQueueVisible) return;
+		attachmentQueueVisible = true;
+		
+		if(!animate) {
+			listAttachmentQueue.setVisibility(View.VISIBLE);
+			
+			return;
+		}
+		
+		listAttachmentQueue.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+		
+		//Cancelling the current animation
+		if(attachmentQueueValueAnimator != null) {
+			attachmentQueueValueAnimator.cancel();
+		}
+		
+		//Animating the attachment queue height
+		listAttachmentQueue.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+		ValueAnimator anim = ValueAnimator.ofInt(0, listAttachmentQueue.getMeasuredHeight());
+		anim.addListener(new AnimatorListenerAdapter() {
+			@Override
+			public void onAnimationStart(Animator animation) {
+				listAttachmentQueue.setVisibility(View.VISIBLE);
+				listAttachmentQueue.getLayoutParams().height = 0;
+			}
+			
+			@Override
+			public void onAnimationEnd(Animator animation) {
+				listAttachmentQueue.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+				listAttachmentQueue.requestLayout();
+			}
+		});
+		anim.addUpdateListener(valueAnimator -> {
+			listAttachmentQueue.getLayoutParams().height = (int) valueAnimator.getAnimatedValue();
+			listAttachmentQueue.requestLayout();
+		});
+		anim.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
+		anim.start();
+		attachmentQueueValueAnimator = anim;
+	}
+	
+	private void hideFileQueue(boolean animate) {
+		//Ignoring if there is no change in state
+		if(!attachmentQueueVisible) return;
+		attachmentQueueVisible = false;
+		
+		if(!animate) {
+			listAttachmentQueue.setVisibility(View.GONE);
+			
+			return;
+		}
+		
+		//Cancelling the current animation
+		if(attachmentQueueValueAnimator != null) {
+			attachmentQueueValueAnimator.cancel();
+		}
+		
+		ValueAnimator anim = ValueAnimator.ofInt(listAttachmentQueue.getHeight(), 0);
+		anim.addListener(new AnimatorListenerAdapter() {
+			@Override
+			public void onAnimationEnd(Animator animation) {
+				listAttachmentQueue.setVisibility(View.GONE);
+				//listAttachmentQueue.requestLayout();
+			}
+		});
+		anim.addUpdateListener(valueAnimator -> {
+			listAttachmentQueue.getLayoutParams().height = (int) valueAnimator.getAnimatedValue();
+			listAttachmentQueue.requestLayout();
+			//listAttachmentQueue.invalidate();
+		});
+		anim.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
+		anim.start();
+		attachmentQueueValueAnimator = anim;
+	}
+	
+	/**
+	 * Converts URIs to draft files and adds them to the queue
+	 */
+	private void queueURIs(Uri[] uris) {
+		if(!checkQueueCapacity(uris.length)) return;
+		
+		//Adding the URIs as queued files
+		pluginRXD.activity().add(Observable.fromArray(uris)
+				.observeOn(Schedulers.io()).map(uri -> FileQueueTask.uriToFileLinkedSync(this, uri))
+				.observeOn(AndroidSchedulers.mainThread()).subscribe(file -> viewModel.queueFile(file)));
+	}
+	
+	/**
+	 * Checks if there is enough room in the queue to add more files. Displays a warning to the user if the files cannot be added.
+	 * @param additionCount The amount of files to check for space for in the queue
+	 * @return Whether these files can be added to the queue
+	 */
+	private boolean checkQueueCapacity(int additionCount) {
+		if(viewModel.queueList.size() + additionCount >= draftCountLimit) {
+			//Displaying a toast message
+			Toast.makeText(this, R.string.message_draft_limitreached, Toast.LENGTH_SHORT).show();
+			
+			return false;
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * Opens the attachments panel
+	 * @param restore Whether to treat this action as a restore after activity start
+	 * @param animate Whether to animate this change
+	 */
 	private void openAttachmentsPanel(boolean restore, boolean animate) {
 		//Returning if the conversation is not ready or the panel is already open
-		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || restore != viewModel.isAttachmentsPanelOpen) return;
+		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady || restore != viewModel.isAttachmentsPanelOpen) return;
 		
 		//Setting the panel as open
 		viewModel.isAttachmentsPanelOpen = true;
@@ -1704,47 +1550,25 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Closing the keyboard
 		hideKeyboard();
 		
-		//Inflating the view
-		ViewStub viewStub = findViewById(R.id.viewstub_attachments);
-		if(viewStub != null) {
-			//Inflating the view stub
-			ViewGroup inflated = (ViewGroup) viewStub.inflate();
+		if(fragmentAttachments == null) {
+			//Initializing the fragment
+			fragmentAttachments = new FragmentMessagingAttachments();
+			fragmentAttachments.setSupportsAppleContent(viewModel.conversationInfo.getServiceHandler() == ServiceHandler.appleBridge && ServiceType.appleMessage.equals(viewModel.conversationInfo.getServiceType()));
+			fragmentAttachments.setLowResContent(
+					viewModel.conversationInfo.getServiceHandler() == ServiceHandler.appleBridge && ServiceType.appleSMS.equals(viewModel.conversationInfo.getServiceType()) ||
+							viewModel.conversationInfo.getServiceHandler() == ServiceHandler.systemMessaging && ServiceType.systemSMS.equals(viewModel.conversationInfo.getServiceType())
+			);
+			fragmentAttachments.setPrimaryColor(getUIColor());
 			
-			/* LinearLayout.LayoutParams inflatedParams = (LinearLayout.LayoutParams) inflated.getLayoutParams();
-			inflatedParams.width = LinearLayout.LayoutParams.MATCH_PARENT;
-			inflatedParams.height = getResources().getDimensionPixelSize(R.dimen.contentpanel_height);
-			inflated.setLayoutParams(inflatedParams); */
-			
-			//Coloring the UI
-			colorUI(inflated);
-			if(Constants.shouldUseAMOLED(this)) findViewById(R.id.pane_attachments).setBackgroundColor(Constants.colorAMOLED);
-			
-			//Setting up the sections
-			setupAttachmentsGallerySection();
-			setupAttachmentsAudioSection();
-			
-			viewModel.attachmentsLocationLoading.observe(this, value -> {
-				if(value) setupAttachmentsLocationSection();
-			});
-			viewModel.attachmentsLocationState.observe(this, value -> {
-				if(!viewModel.isAttachmentsLocationLoading()) setupAttachmentsLocationSection();
-			});
-			viewModel.updateAttachmentsLocationState();
-			//setupAttachmentsLocationSection();
-			
-			//Setting the listeners
-			//inflated.findViewById(R.id.pane_attachments).setOnTouchListener(attachmentListTouchListener);
-			
-			//Checking if the request is a restore
-			if(restore) {
-				//Setting the recording panel
-				restoreRecordingView();
-			}
+			//Adding the fragment
+			FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+			fragmentTransaction.add(R.id.fragmentcontainer_attachments, fragmentAttachments);
+			fragmentTransaction.commit();
 		}
 		
 		//Resolving the heights
 		int requestedPanelHeight = getResources().getDimensionPixelSize(R.dimen.contentpanel_height);
-		int windowThreshold = Constants.getWindowHeight(this) - Constants.dpToPx(contentPanelMinAllowanceDP);
+		int windowThreshold = WindowHelper.getWindowHeight(this) - ResourceHelper.dpToPx(contentPanelMinAllowanceDP);
 		
 		//Limiting the panel height
 		int targetHeight = Math.min(requestedPanelHeight, windowThreshold);
@@ -1781,6 +1605,10 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
+	/**
+	 * Closes the attachments panel
+	 * @param animate Whether to animate this change
+	 */
 	private void closeAttachmentsPanel(boolean animate) {
 		//Returning if the conversation is not ready or the panel is already closed
 		if(viewModel.conversationInfo == null || !viewModel.isAttachmentsPanelOpen) return;
@@ -1812,206 +1640,47 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	private void setupAttachmentsGallerySection() {
-		//Getting the view
-		ViewGroup viewGroup = findViewById(R.id.viewgroup_attachment_gallery);
-		if(viewGroup == null) return;
+	/**
+	 * Sends all of the messages and files in the input bar
+	 */
+	private void submitInput() {
+		//Getting the message details
+		String cleanMessageText = messageInputField.getText().toString().trim();
+		if(cleanMessageText.isEmpty()) cleanMessageText = null;
 		
-		//Setting the click listeners
-		viewGroup.findViewById(R.id.button_attachment_gallery_systempicker).setOnClickListener(view -> requestGalleryFile());
+		//Ignoring if there is no data to send, or if there is an attachment that hasn't been prepared
+		if(cleanMessageText == null && viewModel.queueList.isEmpty() || viewModel.queueList.stream().anyMatch(fileQueued -> fileQueued.getFile().isA())) return;
 		
-		//Checking if the state is failed
-		if(viewModel.getAttachmentState(ActivityViewModel.attachmentTypeGallery) == ActivityViewModel.attachmentsStateFailed) {
-			//Showing the failed text
-			viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.VISIBLE);
-			
-			//Hiding the permission request button and the list
-			viewGroup.findViewById(R.id.button_attachment_gallery_permission).setVisibility(View.GONE);
-			viewGroup.findViewById(R.id.list_attachment_gallery).setVisibility(View.GONE);
-		}
-		//Checking if the permission has not been granted
-		else if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-			//Hiding the list and failed text
-			viewGroup.findViewById(R.id.list_attachment_gallery).setVisibility(View.GONE);
-			viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.GONE);
-			
-			//Setting up the permission request button
-			View permissionButton = viewGroup.findViewById(R.id.button_attachment_gallery_permission);
-			permissionButton.setVisibility(View.VISIBLE);
-			permissionButton.setOnClickListener(view -> Constants.requestPermission(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, permissionRequestStorage));
-		} else {
-			//Hiding the permission request button and the failed text
-			viewGroup.findViewById(R.id.button_attachment_gallery_permission).setVisibility(View.GONE);
-			viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.GONE);
-			
-			//Setting up the list
-			RecyclerView list = viewGroup.findViewById(R.id.list_attachment_gallery);
-			list.setVisibility(View.VISIBLE);
-			GridLayoutManager layoutManager = new GridLayoutManager(this, 2, LinearLayoutManager.HORIZONTAL, false);
-			layoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
-				@Override
-				public int getSpanSize(int position) {
-					List<SimpleAttachmentInfo> items = viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery);
-					int itemCount = items == null ? ActivityViewModel.attachmentsTileCount : items.size();
-					return (position == 0 || position == itemCount + 1) ? 2 : 1;
-				}
-			});
-			list.setLayoutManager(layoutManager);
-			list.addOnScrollListener(new AttachmentListScrollListener(viewGroup.findViewById(R.id.button_attachment_gallery_systempicker), getResources().getDimensionPixelSize(R.dimen.contenttile_size_double)));
-			list.addItemDecoration(new AttachmentsDoubleSpacingDecoration());
-			
-			//Checking if the files are loaded
-			if(viewModel.getAttachmentState(ActivityViewModel.attachmentTypeGallery) == ActivityViewModel.attachmentsStateLoaded) {
-				//Setting the list adapter
-				list.setAdapter(new AttachmentsGalleryRecyclerAdapter(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery)));
-			} else {
-				//Setting the list adapter
-				ArrayList<SimpleAttachmentInfo> itemList = new ArrayList<>();
-				for(int i = 0; i < ActivityViewModel.attachmentsTileCount; i++) itemList.add(null);
-				AttachmentsRecyclerAdapter<?> adapter = new AttachmentsGalleryRecyclerAdapter(itemList);
-				list.setAdapter(adapter);
-				
-				//Creating the listener
-				ActivityViewModel.AttachmentsLoadCallbacks callbacks = attachmentsLoadCallbacks[ActivityViewModel.attachmentTypeGallery];
-				if(callbacks == null) {
-					callbacks = attachmentsLoadCallbacks[ActivityViewModel.attachmentTypeGallery] = result -> {
-						if(result) {
-							//Setting the list adapter's list
-							((AttachmentsGalleryRecyclerAdapter) list.getAdapter()).setList(viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery));
-						} else {
-							//Replacing the list view with the failed text
-							viewGroup.findViewById(R.id.list_attachment_gallery).setVisibility(View.GONE);
-							viewGroup.findViewById(R.id.label_attachment_gallery_failed).setVisibility(View.VISIBLE);
-						}
-					};
-				}
-				
-				//Loading the media
-				viewModel.indexAttachmentsGallery(callbacks, adapter);
-			}
-		}
+		//Preparing and sending the messages
+		MessageSendHelper.prepareSendMessages(this, viewModel.conversationInfo, cleanMessageText, viewModel.queueList.stream().map(fileQueued -> fileQueued.getFile().getB()).collect(Collectors.toList()), pluginCS.getConnectionManager()).subscribe();
+		/* MessageSendHelper.prepareMessages(this, viewModel.conversationInfo, cleanMessageText, viewModel.queueList.stream().map(fileQueued -> fileQueued.getFile().getB()).collect(Collectors.toList()))
+				.flatMapCompletable(message -> MessageSendHelper.sendMessage(this, viewModel.conversationInfo, message, pluginCS.getConnectionManager())).subscribe(); */
+		
+		//Clearing the message
+		messageInputField.setText(null);
+		List<FileQueued> queueList = new ArrayList<>(viewModel.queueList);
+		viewModel.clearDrafts();
+		updateQueueCleared(queueList);
+		
+		//Updating the activity
+		handleMessageSent();
 	}
 	
-	private void setupAttachmentsAudioSection() {
-		//Getting the view
-		ViewGroup viewGroup = findViewById(R.id.viewgroup_attachment_audio);
-		if(viewGroup == null) return;
-		
-		//Setting the click listeners
-		viewGroup.findViewById(R.id.button_attachment_audio_systempicker).setOnClickListener(view -> requestAudioFile());
-		
-		//Checking if the permission has not been granted
-		if(ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-			//Setting up the permission request button
-			View permissionButton = viewGroup.findViewById(R.id.button_attachment_audio_permission);
-			permissionButton.setVisibility(View.VISIBLE);
-			permissionButton.setOnClickListener(view -> Constants.requestPermission(this, new String[]{Manifest.permission.RECORD_AUDIO}, permissionRequestAudio));
-			
-			//Hiding the recording view
-			viewGroup.findViewById(R.id.frame_attachment_audio_content).setVisibility(View.GONE);
-		} else {
-			//Swapping to the content view
-			viewGroup.findViewById(R.id.button_attachment_audio_permission).setVisibility(View.GONE);
-			viewGroup.findViewById(R.id.frame_attachment_audio_content).setVisibility(View.VISIBLE);
-			
-			//Getting the views
-			recordingActiveGroup = viewGroup.findViewById(R.id.frame_attachment_audio_recording);
-			recordingTimeLabel = viewGroup.findViewById(R.id.label_attachment_audio_recording);
-			recordingVisualizer = viewGroup.findViewById(R.id.visualizer_attachment_audio_recording);
-			
-			//Setting the listeners
-			viewGroup.findViewById(R.id.frame_attachment_audio_gate).setOnTouchListener(recordingTouchListener);
-			//recordingTouchListener
-		}
-	}
-	
-	private void setupAttachmentsLocationSection() {
-		//Getting the views
-		ViewGroup viewGroup = findViewById(R.id.viewgroup_attachment_location);
-		if(viewGroup == null) return;
-		ViewGroup groupAction = viewGroup.findViewById(R.id.button_attachment_location_action);
-		ViewGroup groupContent = viewGroup.findViewById(R.id.frame_attachment_location_content);
-		
-		//Checking if the process is loading
-		if(viewModel.isAttachmentsLocationLoading()) {
-			//Switching to the loading view
-			groupAction.setVisibility(View.VISIBLE);
-			groupContent.setVisibility(View.GONE);
-			
-			((TextView) groupAction.findViewById(R.id.button_attachment_location_action_label)).setText(R.string.message_generalloading);
-			groupAction.setOnClickListener(null);
-			
-			return;
+	/**
+	 * Updates the conversation and the activity in response to a message sent by the user
+	 */
+	private void handleMessageSent() {
+		//Unarchiving the conversation
+		if(viewModel.conversationInfo.isArchived()) {
+			ConversationActionTask.archiveConversations(Collections.singleton(viewModel.conversationInfo), false).subscribe();
 		}
 		
-		int state = viewModel.getAttachmentsLocationState();
-		if(state == ActivityViewModel.attachmentsLocationStateOK) {
-			//Swapping to the content view
-			groupAction.setVisibility(View.GONE);
-			groupContent.setVisibility(View.VISIBLE);
-			
-			//Configuring the map
-			groupContent.findViewById(R.id.frame_attachment_location_map).setClickable(false);
-			MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.frame_attachment_location_map);
-			mapFragment.getMapAsync(googleMap -> {
-				googleMap.setBuildingsEnabled(true);
-				googleMap.getUiSettings().setMapToolbarEnabled(false);
-				googleMap.getUiSettings().setAllGesturesEnabled(false);
-				googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(viewModel.attachmentsLocationResult.getLatitude(), viewModel.attachmentsLocationResult.getLongitude()), 15));
-				googleMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this, Constants.isNightMode(getResources()) ? R.raw.map_plaindark : R.raw.map_plainlight));
-			});
-			
-			groupContent.setOnClickListener(view -> {
-				startActivityForResult(new Intent(Messaging.this, LocationPicker.class).putExtra(Constants.intentParamData, viewModel.attachmentsLocationResult), intentPickLocation);
-			});
-			
-			return;
-		}
+		//Clearing the conversation actions
+		viewModel.clearConversationActions();
 		
-		//Swapping to the action view
-		groupAction.setVisibility(View.VISIBLE);
-		groupContent.setVisibility(View.GONE);
-		
-		String buttonText;
-		View.OnClickListener buttonClickListener;
-		switch(state) {
-			case ActivityViewModel.attachmentsLocationStatePermission:
-				buttonText = getResources().getString(R.string.imperative_permission_location);
-				buttonClickListener = view -> Constants.requestPermission(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, permissionRequestLocation);
-				break;
-			case ActivityViewModel.attachmentsLocationStatePrompt:
-				buttonText = getResources().getString(R.string.imperative_enablelocationservices);
-				buttonClickListener = view -> viewModel.attachmentsLocationLaunchPrompt(this, intentLocationResolution);
-				break;
-			case ActivityViewModel.attachmentsLocationStateUnavailable:
-				buttonText = getResources().getString(R.string.message_notsupported);
-				buttonClickListener = null;
-				break;
-			case ActivityViewModel.attachmentsLocationStateFetching:
-				buttonText = getResources().getString(R.string.message_generalloading);
-				buttonClickListener = null;
-				break;
-			default:
-				throw new IllegalArgumentException("Invalid attachment location state " + state + " provided");
-		}
-		
-		//Setting the details
-		((TextView) groupAction.findViewById(R.id.button_attachment_location_action_label)).setText(buttonText);
-		groupAction.setOnClickListener(buttonClickListener);
-	}
-	
-	private class AttachmentsDoubleSpacingDecoration extends RecyclerView.ItemDecoration {
-		@Override
-		public void getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
-			//Getting the item count
-			List<SimpleAttachmentInfo> items = viewModel.getAttachmentFileList(ActivityViewModel.attachmentTypeGallery);
-			int itemCount = items == null ? ActivityViewModel.attachmentsTileCount : items.size();
-			
-			//Adding top margin for items on the bottom row
-			int position = parent.getChildLayoutPosition(view);
-			if(position != 0 && position != itemCount + 1 && parent.getChildLayoutPosition(view) % 2 == 0) {
-				outRect.top = getResources().getDimensionPixelSize(R.dimen.contenttile_margin) / 2;
-			}
+		//Playing a sound
+		if(Preferences.getPreferenceMessageSounds(this)) {
+			SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageOutgoing);
 		}
 	}
 	
@@ -2022,378 +1691,6 @@ public class Messaging extends AppCompatCompositeActivity {
 	 */
 	private int getAvailableWindowHeight() {
 		return getWindow().getDecorView().getHeight() - getSupportActionBar().getHeight();
-	}
-	
-	private class AttachmentListScrollListener extends RecyclerView.OnScrollListener {
-		boolean buttonIsBubble = false;
-		private final CardView pickerView;
-		private final int fullHeight;
-		
-		AttachmentListScrollListener(CardView pickerView, int fullHeight) {
-			this.pickerView = pickerView;
-			this.fullHeight = fullHeight;
-		}
-		
-		@Override
-		public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-			//boolean isAtStart = ((LinearLayoutManager) recyclerView.getLayoutManager()).findFirstCompletelyVisibleItemPosition() == 0;
-			boolean isAtStart = !recyclerView.canScrollHorizontally(-1);
-			if(buttonIsBubble == isAtStart) {
-				buttonIsBubble = !isAtStart;
-				setSystemPickerBubbleState(pickerView, buttonIsBubble, fullHeight);
-			}
-		}
-	}
-	
-	//private float systemPickerBubbleStateSizeTile = -1;
-	private float systemPickerBubbleStateRadiusTile = -1;
-	private float systemPickerBubbleStateElevationBubble = -1;
-	
-	void setSystemPickerBubbleState(CardView view, boolean bubble, int tileSize) {
-		//Fetching the reference target values if needed
-		if(systemPickerBubbleStateRadiusTile == -1) {
-			//systemPickerBubbleStateSizeTile = getResources().getDimensionPixelSize(R.dimen.contenttile_size);
-			systemPickerBubbleStateRadiusTile = getResources().getDimensionPixelSize(R.dimen.contenttile_radius);
-			systemPickerBubbleStateElevationBubble = Constants.dpToPx(4);
-		}
-		
-		//Establishing the target values
-		float sizeStart = view.getHeight();
-		float radiusStart = view.getRadius();
-		float elevationStart = view.getCardElevation();
-		float sizeTarget, radiusTarget, elevationTarget;
-		if(bubble) {
-			sizeTarget = view.getWidth();
-			radiusTarget = sizeTarget / 2F;
-			elevationTarget = systemPickerBubbleStateElevationBubble;
-		} else {
-			sizeTarget = tileSize;
-			radiusTarget = systemPickerBubbleStateRadiusTile;
-			elevationTarget = 0;
-		}
-		
-		//Setting the value animator
-		ValueAnimator valueAnimator = ValueAnimator.ofFloat(0, 1);
-		valueAnimator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
-		valueAnimator.addUpdateListener(animation -> {
-			float value = (float) animation.getAnimatedValue();
-			view.getLayoutParams().height = (int) Constants.lerp(value, sizeStart, sizeTarget);
-			view.setRadius(Constants.lerp(value, radiusStart, radiusTarget));
-			view.setCardElevation(Constants.lerp(value, elevationStart, elevationTarget));
-			view.requestLayout();
-		});
-		valueAnimator.start();
-	}
-	
-	private void openDetailsPanel(boolean restore) {
-		//Returning if the conversation is not ready or the panel is already open
-		if(viewModel.messagesState.getValue() != ActivityViewModel.messagesStateReady || restore != viewModel.isDetailsPanelOpen) return;
-		
-		//Setting the panel as open
-		viewModel.isDetailsPanelOpen = true;
-		
-		//Closing the keyboard
-		hideKeyboard();
-		
-		//Inflating the view
-		ViewStub viewStub = findViewById(R.id.viewstub_messaginginfo);
-		if(viewStub != null) {
-			//Inflating the view stub
-			ViewGroup inflated = (ViewGroup) viewStub.inflate();
-			
-			//Coloring the UI
-			colorUI(inflated);
-			
-			//Getting the views
-			Switch notificationsSwitch = inflated.findViewById(R.id.switch_getnotifications);
-			MaterialButton archiveButton = inflated.findViewById(R.id.button_archive);
-			//Switch pinnedSwitch = inflated.findViewById(R.id.switch_pinconversation);
-			
-			//Restoring the elements' states
-			notificationsSwitch.setChecked(!viewModel.conversationInfo.isMuted());
-			archiveButton.setText(viewModel.conversationInfo.isArchived() ? R.string.action_unarchive : R.string.action_archive);
-			archiveButton.setIconResource(viewModel.conversationInfo.isArchived() ? R.drawable.unarchive_outlined : R.drawable.archive_outlined);
-			//pinnedSwitch.setChecked(viewModel.conversationInfo.isPinned());
-			
-			//Setting the listeners
-			inflated.findViewById(R.id.group_getnotifications).setOnClickListener(view -> notificationsSwitch.setChecked(!notificationsSwitch.isChecked()));
-			
-			//inflated.findViewById(R.id.group_pinconversation).setOnClickListener(view -> pinnedSwitch.setChecked(!pinnedSwitch.isChecked()));
-			//pinnedSwitch.setOnCheckedChangeListener((view, isChecked) -> viewModel.conversationInfo.setPinned(isChecked));
-			
-			notificationsSwitch.setOnCheckedChangeListener((view, isChecked) -> {
-				//Updating the conversation
-				boolean isMuted = !isChecked;
-				viewModel.conversationInfo.setMuted(isMuted);
-				DatabaseManager.getInstance().updateConversationMuted(viewModel.conversationInfo.getLocalID(), isMuted);
-			});
-			
-			Button buttonChangeColor = inflated.findViewById(R.id.button_changecolor);
-			if(Preferences.getPreferenceAdvancedColor(this)) buttonChangeColor.setOnClickListener(view -> showColorDialog(null, viewModel.conversationInfo.getConversationColor()));
-			else buttonChangeColor.setVisibility(View.GONE);
-			
-			archiveButton.setOnClickListener(view -> {
-				//Toggling the archive state
-				boolean newState = !viewModel.conversationInfo.isArchived();
-				viewModel.conversationInfo.setArchived(newState);
-				
-				//Sending an update
-				LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-				
-				//Updating the conversation's database entry
-				DatabaseManager.getInstance().updateConversationArchived(viewModel.conversationInfo.getLocalID(), newState);
-				
-				//Updating the button
-				MaterialButton buttonView = (MaterialButton) view;
-				buttonView.setText(newState ? R.string.action_unarchive : R.string.action_archive);
-				buttonView.setIconResource(newState ? R.drawable.unarchive_outlined : R.drawable.archive_outlined);
-			});
-			
-			inflated.findViewById(R.id.button_delete).setOnClickListener(view -> {
-				//Creating a dialog
-				AlertDialog dialog = new MaterialAlertDialogBuilder(this)
-						.setMessage(R.string.message_confirm_deleteconversation_current)
-						.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
-						.setPositiveButton(R.string.action_delete, (dialogInterface, which) -> {
-							//Deleting the conversation
-							viewModel.conversationInfo.deleteSync(this);
-							
-							//Sending an update
-							LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-							
-							//Finishing the activity
-							finish();
-						})
-						.create();
-				
-				//Configuring the dialog's listener
-				dialog.setOnShowListener(dialogInterface -> {
-					//Setting the button's colors
-					int color = getResources().getColor(R.color.colorActionDelete, null);
-					ColorStateList colorRipple = ColorStateList.valueOf(ColorUtils.setAlphaComponent(color, Constants.rippleAlphaInt));
-					
-					MaterialButton buttonPositive = (MaterialButton) dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-					buttonPositive.setTextColor(color);
-					buttonPositive.setRippleColor(colorRipple);
-					
-					MaterialButton buttonNegative = (MaterialButton) dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
-					buttonNegative.setTextColor(color);
-					buttonNegative.setRippleColor(colorRipple);
-				});
-				
-				//Showing the dialog
-				dialog.show();
-			});
-			
-			//Adding the conversation members
-			detailsBuildConversationMembers(new ArrayList<>(viewModel.conversationInfo.getConversationMembers()));
-			
-			//Checking if this group can be renamed
-			if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging && ConversationInfo.serviceTypeSystemMMSSMS.equals(viewModel.conversationInfo.getService()) && viewModel.conversationInfo.isGroupChat()) {
-				ViewStub viewStubChatRename = findViewById(R.id.viewstub_groupname);
-				if(viewStubChatRename != null) {
-					View inflatedChatRename = viewStubChatRename.inflate();
-					
-					ViewGroup groupGroupName = inflatedChatRename.findViewById(R.id.group_groupname);
-					TextView labelGroupName = groupGroupName.findViewById(R.id.label_groupname);
-					
-					groupGroupName.setOnClickListener(view -> {
-						//Creating the view
-						View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_renamechat, null);
-						TextInputLayout input = dialogView.findViewById(R.id.input);
-						input.getEditText().setText(viewModel.conversationInfo.getStaticTitle());
-						input.setHelperText(getResources().getString(R.string.message_renamegroup_onlyyouvisibility));
-						input.setHelperTextEnabled(true);
-						input.setHintEnabled(false);
-						getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
-						
-						//Updating the hint
-						WeakReference<TextInputLayout> inputReference = new WeakReference<>(input);
-						ConversationInfo.buildTitle(this, null, viewModel.conversationInfo.getConversationMembersAsArray(), (title, wasTasked) -> {
-							TextInputLayout newInput = inputReference.get();
-							if(newInput != null) {
-								newInput.setHint(title);
-								newInput.getEditText().setHint(title);
-							}
-						});
-						
-						//Showing the dialog
-						Dialog groupDialog = new MaterialAlertDialogBuilder(this)
-								.setView(dialogView)
-								.setTitle(R.string.action_renamegroup)
-								.setOnDismissListener(dialog -> {
-									//Hiding the keyboard
-									((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0);
-									new Handler(Looper.getMainLooper()).postDelayed(() -> {
-										getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-									}, 100);
-								})
-								.setPositiveButton(android.R.string.ok, (dialog, which) -> {
-									//Setting the conversation title
-									String title = input.getEditText().getText().toString();
-									if(title.isEmpty()) title = null;
-									boolean result = viewModel.conversationInfo.setTitle(this, title);
-									
-									//Saving the new title to disk
-									if(result) {
-										DatabaseManager.getInstance().updateConversationTitle(viewModel.conversationInfo.getLocalID(), title);
-									}
-									
-									//Updating the shortcut
-									if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-										ShortcutUtils.updateShortcuts(this, Collections.singletonList(viewModel.conversationInfo));
-									}
-									
-									//Dismissing the dialog
-									dialog.dismiss();
-								})
-								.setNegativeButton(android.R.string.cancel, null)
-								.create();
-						
-						groupDialog.setOnShowListener(dialog -> {
-							//Focusing the text view
-							input.requestFocus();
-							((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
-						});
-						groupDialog.show();
-					});
-					{
-						//Setting the conversation title
-						labelGroupName.setText(viewModel.conversationInfo.getStaticTitle());
-						
-						WeakReference<TextView> labelReference = new WeakReference<>(labelGroupName);
-						viewModel.conversationInfo.buildTitle(this, (title, wasTasked) -> {
-							TextView label = labelReference.get();
-							if(label != null) label.setText(title);
-						});
-					}
-				}
-			}
-			
-			//Setting the panel position
-			bottomDetailsPanel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-			bottomDetailsPanel.setTranslationY(bottomDetailsPanel.getMeasuredHeight());
-		} else {
-			((ScrollView) findViewById(R.id.group_messaginginfo_scroll)).fullScroll(ScrollView.FOCUS_UP);
-		}
-		
-		//Finding the views
-		FrameLayout panel = bottomDetailsPanel;
-		ViewGroup content = findViewById(R.id.group_messaginginfo_content);
-		
-		//Adding padding on Android Q
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-			content.setPadding(content.getPaddingLeft(), content.getPaddingTop(), content.getPaddingRight(), currentInsetPaddingBottom);
-		}
-		
-		//Measuring the content
-		content.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-		
-		//Checking if the view occupies most of the window
-		if(content.getMeasuredHeight() > getAvailableWindowHeight() * bottomSheetFillThreshold) {
-			//Instructing the panel to fill the entire view
-			ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) panel.getLayoutParams();
-			params.topToBottom = R.id.appbar;
-			params.height = 0;
-		} else {
-			//Instructing the panel to align to the bottom and wrap its content
-			ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) panel.getLayoutParams();
-			params.topToBottom = ConstraintLayout.LayoutParams.UNSET;
-			params.height = ConstraintLayout.LayoutParams.WRAP_CONTENT;
-		}
-		
-		if(restore) {
-			//Showing the details panel
-			bottomDetailsPanel.setVisibility(View.VISIBLE);
-			bottomDetailsPanel.setTranslationY(0);
-			
-			//Showing the scrim
-			detailScrim.setVisibility(View.VISIBLE);
-			detailScrim.setAlpha(1);
-			
-			//ADding the overscroll listener
-			OverScrollScrollView scrollView = panel.findViewById(R.id.group_messaginginfo_scroll);
-			scrollView.setOverScrollListener(detailsPanelOverScrollListener);
-		} else {
-			animateDetailsPanelOpen();
-		}
-	}
-	
-	private void animateDetailsPanelOpen() {
-		//Getting the animation duration
-		long duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
-		
-		//Animating in the panel
-		FrameLayout panel = bottomDetailsPanel;
-		panel.animate()
-				.translationY(0)
-				.setDuration(duration)
-				.setInterpolator(new DecelerateInterpolator())
-				.setListener(new AnimatorListenerAdapter() {
-					@Override
-					public void onAnimationStart(Animator animation) {
-						panel.setVisibility(View.VISIBLE);
-					}
-					
-					@Override
-					public void onAnimationEnd(Animator animation) {
-						//Setting the overscroll listener
-						OverScrollScrollView scrollView = panel.findViewById(R.id.group_messaginginfo_scroll);
-						scrollView.setOverScrollListener(detailsPanelOverScrollListener);
-					}
-				}).start();
-		
-		//Animating in the scrim
-		detailScrim.animate().alpha(1).withStartAction(() -> detailScrim.setVisibility(View.VISIBLE)).setDuration(duration).start();
-	}
-	
-	private void closeDetailsPanel(boolean animateAccelerate) {
-		//Returning if the conversation is not ready or the panel is already closed
-		if(viewModel.conversationInfo == null || !viewModel.isDetailsPanelOpen) return;
-		
-		//Setting the panel as closed
-		viewModel.isDetailsPanelOpen = false;
-		
-		//Starting the animation
-		animateDetailsPanelClose(animateAccelerate);
-	}
-	
-	private void animateDetailsPanelClose(boolean animateAccelerate) {
-		//Getting the animation duration
-		long duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
-		
-		//Animating out the panel
-		FrameLayout panel = bottomDetailsPanel;
-		panel.animate()
-				.translationY(panel.getHeight())
-				.setDuration(duration)
-				.setInterpolator(animateAccelerate ? new AccelerateInterpolator() : new DecelerateInterpolator())
-				.setListener(new AnimatorListenerAdapter() {
-					@Override
-					public void onAnimationStart(Animator animation) {
-						//Disabling the scroll listener
-						OverScrollScrollView scrollView = panel.findViewById(R.id.group_messaginginfo_scroll);
-						scrollView.setOverScrollListener(null);
-					}
-					
-					@Override
-					public void onAnimationEnd(Animator animation) {
-						//Hiding the panel
-						panel.setVisibility(View.GONE);
-					}
-				}).start();
-		
-		//Animating out the scrim
-		detailScrim.animate().alpha(0).withEndAction(() -> detailScrim.setVisibility(View.GONE)).setDuration(duration).start();
-	}
-	
-	void releaseDragDetailsPanel() {
-		//Checking if the panel should collapse (more than 100dp dragged down)
-		if(bottomDetailsPanel.getTranslationY() > Constants.dpToPx(100)) {
-			closeDetailsPanel(false);
-		} else {
-			animateDetailsPanelOpen();
-		}
 	}
 	
 	private boolean checkInputVisibility() {
@@ -2411,322 +1708,64 @@ public class Messaging extends AppCompatCompositeActivity {
 		imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
 	}
 	
-	private void detailsBuildConversationMembers(List<MemberInfo> members) {
-		//Getting the members layout
-		ViewGroup membersLayout = findViewById(R.id.list_conversationmembers);
-		if(membersLayout == null) return;
-		membersLayout.removeAllViews();
-		
-		//Sorting the members
-		Collections.sort(members, ConversationUtils.memberInfoComparator);
-		
-		//Adding the member views
-		boolean showMemberColors = members.size() > 1;
-		for(int i = 0; i < members.size(); i++) addMemberView(members.get(i), i, showMemberColors);
-		/* for(final MemberInfo member : members) {
-			//Creating the view
-			LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-			View memberEntry = inflater.inflate(R.layout.listitem_member, membersLayout, false);
-			
-			//Setting the default information
-			((TextView) memberEntry.findViewById(R.id.label_member)).setText(member.getName());
-			((ImageView) memberEntry.findViewById(R.id.profile_default)).setColorFilter(member.getServiceColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
-			
-			//Filling in the information
-			MainApplication.getInstance().getUserCacheHelper().getUserInfo(this, member.getName(), new UserCacheHelper.UserFetchResult(memberEntry) {
-				@Override
-				void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
-					//Returning if the user info is invalid
-					if(userInfo == null) return;
-					
-					//Getting the view
-					View memberEntry = viewReference.get();
-					if(memberEntry == null) return;
-					
-					//Setting the tag
-					memberEntry.setTag(userInfo.getContactLookupUri());
-					
-					//Setting the member's name
-					((TextView) memberEntry.findViewById(R.id.label_member)).setText(userInfo.getContactName());
-					TextView addressView = memberEntry.findViewById(R.id.label_address);
-					addressView.setText(member.getName());
-					addressView.setVisibility(View.VISIBLE);
-				}
-			});
-			MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(getApplicationContext(), member.getName(), (View) memberEntry.findViewById(R.id.profile_image));
-			
-			//Configuring the color editor
-			ImageView changeColorButton = memberEntry.findViewById(R.id.button_change_color);
-			if(members.size() == 1) {
-				changeColorButton.setVisibility(View.GONE);
-			} else {
-				changeColorButton.setColorFilter(member.getServiceColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
-				changeColorButton.setOnClickListener(view -> showColorDialog(member, member.getServiceColor()));
-				changeColorButton.setVisibility(View.VISIBLE);
-			}
-			
-			//Setting the click listener
-			memberEntry.setOnClickListener(view -> {
-				//Returning if the view has no tag
-				if(view.getTag() == null) return;
-				
-				//Opening the user's contact profile
-				Intent intent = new Intent(Intent.ACTION_VIEW);
-				intent.setData((Uri) view.getTag());
-				//intent.setData(Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(view.getTag())));
-				view.getContext().startActivity(intent);
-			});
-			
-			//Adding the view
-			membersLayout.addView(memberEntry);
-			memberListViews.put(member.getName(), memberEntry);
-		} */
-	}
-	
-	private void detailsUpdateConversationTitle(String title) {
-		TextView label = findViewById(R.id.label_groupname);
-		if(label != null) label.setText(title);
-	}
-	
-	private void addMemberView(MemberInfo member, int index, boolean showColor) {
-		//Getting the members layout
-		ViewGroup membersLayout = findViewById(R.id.list_conversationmembers);
-		if(membersLayout == null) return;
-		
-		//Creating the view
-		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-		View memberEntry = inflater.inflate(R.layout.listitem_member, membersLayout, false);
-		
-		String displayAddress = Constants.formatAddress(member.getName());
-		
-		//Setting the default information
-		((TextView) memberEntry.findViewById(R.id.label_member)).setText(displayAddress);
-		((ImageView) memberEntry.findViewById(R.id.profile_default)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
-		
-		//Filling in the information
-		MainApplication.getInstance().getUserCacheHelper().getUserInfo(this, member.getName(), new UserCacheHelper.UserFetchResult(memberEntry) {
-			@Override
-			public void onUserFetched(UserCacheHelper.UserInfo userInfo, boolean wasTasked) {
-				//Getting the view
-				View memberEntry = viewReference.get();
-				if(memberEntry == null) return;
-				
-				//Checking if the user info is invalid
-				if(userInfo == null) {
-					//Setting the tag (for a new contact request)
-					memberEntry.setTag(new ContactAccessInfo(member.getName()));
-					return;
-				}
-				
-				//Setting the tag (for a contact view link)
-				memberEntry.setTag(new ContactAccessInfo(userInfo.getContactLookupUri()));
-				
-				//Setting the member's name
-				((TextView) memberEntry.findViewById(R.id.label_member)).setText(userInfo.getContactName());
-				TextView addressView = memberEntry.findViewById(R.id.label_address);
-				addressView.setText(displayAddress);
-				addressView.setVisibility(View.VISIBLE);
-			}
-		});
-		MainApplication.getInstance().getBitmapCacheHelper().assignContactImage(getApplicationContext(), member.getName(), (View) memberEntry.findViewById(R.id.profile_image));
-		
-		//Configuring the color editor
-		ImageView changeColorButton = memberEntry.findViewById(R.id.button_change_color);
-		if(showColor && Preferences.getPreferenceAdvancedColor(this)) {
-			changeColorButton.setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
-			changeColorButton.setOnClickListener(view -> showColorDialog(member, member.getColor()));
-			changeColorButton.setVisibility(View.VISIBLE);
-		} else {
-			changeColorButton.setVisibility(View.GONE);
-		}
-		
-		//Setting the click listener
-		memberEntry.setOnClickListener(view -> {
-			//Returning if the view has no tag
-			if(view.getTag() == null) return;
-			
-			//Opening the user's contact profile
-			/* Intent intent = new Intent(Intent.ACTION_VIEW);
-			intent.setData((Uri) view.getTag());
-			//intent.setData(Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(view.getTag())));
-			view.getContext().startActivity(intent); */
-			((ContactAccessInfo) view.getTag()).openContact(view.getContext());
-		});
-		
-		//Adding the view
-		membersLayout.addView(memberEntry, index);
-		memberListViews.put(member, memberEntry);
-	}
-	
-	private void removeMemberView(MemberInfo member) {
-		//Getting the members layout
-		ViewGroup membersLayout = findViewById(R.id.list_conversationmembers);
-		if(membersLayout == null) return;
-		
-		//Removing the view
-		membersLayout.removeView(memberListViews.get(member));
-		memberListViews.remove(member);
-		
-		//Closing the dialog
-		if(currentColorPickerDialog != null && currentColorPickerDialogMember == member)
-			currentColorPickerDialog.dismiss();
-	}
-	
-	private static class ContactAccessInfo {
-		private final Uri accessUri;
-		private final String address;
-		
-		ContactAccessInfo(Uri accessUri) {
-			this.accessUri = accessUri;
-			address = null;
-		}
-		
-		ContactAccessInfo(String address) {
-			accessUri = null;
-			this.address = address;
-		}
-		
-		boolean openContact(Context context) {
-			if(accessUri != null) {
-				Intent intent = new Intent(Intent.ACTION_VIEW);
-				intent.setData(accessUri);
-				context.startActivity(intent);
-				return true;
-			} else if(address != null) {
-				Intent intent = new Intent(Intent.ACTION_INSERT_OR_EDIT);
-				intent.setType(ContactsContract.Contacts.CONTENT_ITEM_TYPE);
-				
-				if(Constants.validateEmail(address)) intent.putExtra(ContactsContract.Intents.Insert.EMAIL, address);
-				else if(Constants.validatePhoneNumber(address)) intent.putExtra(ContactsContract.Intents.Insert.PHONE, address);
-				else return false;
-				
-				//Launching the intent
-				try {
-					context.startActivity(intent);
-				} catch(ActivityNotFoundException exception) {
-					Toast.makeText(context, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
-				}
-			}
-			
-			return false;
-		}
-	}
-	
-	@Override
-	public boolean dispatchTouchEvent(MotionEvent motionEvent) {
-		//Checking if there is a recording taking place
-		if(viewModel.isRecording()) {
-			//Consuming the move event (as to not affect the elements below)
-			if(motionEvent.getAction() == MotionEvent.ACTION_MOVE) return true;
-			else if(motionEvent.getAction() == MotionEvent.ACTION_UP) {
-				//Stopping the recording session
-				stopRecording();
-				
-				//Returning true to consume the event
-				return true;
-			}
-		}
-		
-		if(bottomDetailsWindowIntercept) {
-			if(motionEvent.getAction() == MotionEvent.ACTION_MOVE) {
-				//Assigning the start data
-				if(bottomDetailsWindowDragY == -1) {
-					bottomDetailsWindowDragY = motionEvent.getY();
-					bottomDetailsWindowEndY = bottomDetailsPanel.getHeight();
-				} else {
-					//Calculating the Y movement delta
-					float deltaY = motionEvent.getRawY() - bottomDetailsWindowDragY;
-					bottomDetailsWindowDragY = motionEvent.getY();
-					
-					//Checking if the panel is going to be placed back at its original location
-					if(bottomDetailsPanel.getTranslationY() + deltaY <= 0) {
-						//Setting the translation and scrim opacity
-						bottomDetailsPanel.setTranslationY(0);
-						detailScrim.setAlpha(1);
-						
-						//Cancelling the motion
-						bottomDetailsWindowIntercept = false;
-						bottomDetailsWindowDragY = -1;
-						releaseDragDetailsPanel();
-					} else {
-						//Setting the bottom panel translation
-						bottomDetailsPanel.setTranslationY(Math.min(bottomDetailsPanel.getTranslationY() + deltaY, bottomDetailsWindowEndY));
-						
-						//Setting the scrim opacity
-						detailScrim.setAlpha(1 - (bottomDetailsPanel.getTranslationY() / bottomDetailsPanel.getHeight()));
-						
-						return true;
-					}
-				}
-			} else if(motionEvent.getAction() == MotionEvent.ACTION_UP || motionEvent.getAction() == MotionEvent.ACTION_CANCEL) {
-				bottomDetailsWindowIntercept = false;
-				bottomDetailsWindowDragY = -1;
-				releaseDragDetailsPanel();
-			}
-		}
-		
-		//Calling the super method
-		return super.dispatchTouchEvent(motionEvent);
-	}
-	
-	private void colorUI(ViewGroup root) {
-		//Returning if the conversation is invalid
+	/**
+	 * Colors accented UI components with the service or conversation color
+	 */
+	private void updateUIColor() {
+		//Ignoring if the conversation is invalid
 		if(viewModel.conversationInfo == null) return;
 		
 		//Getting the color
-		int color = getConversationUIColor();
-		int darkerColor = ColorHelper.darkenColor(color);
-		int lighterColor = ColorHelper.lightenColor(color);
+		int color = getUIColor();
+		int darkerColor = ColorMathHelper.darkenColor(color);
+		int lighterColor = ColorMathHelper.lightenColor(color);
 		
 		//Coloring tagged parts of the UI
-		for(View view : Constants.getViewsByTag(root, getResources().getString(R.string.tag_primarytint))) {
-			if(view instanceof ImageView) ((ImageView) view).setColorFilter(color, android.graphics.PorterDuff.Mode.MULTIPLY);
-			else if(view instanceof Switch) {
-				Switch switchView = (Switch) view;
-				switchView.setThumbTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0xFFFAFAFA, color}));
-				switchView.setTrackTintList(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_checked}, new int[]{android.R.attr.state_checked}}, new int[]{0x61000000, color}));
-			} else if(view instanceof MaterialButton) {
-				MaterialButton buttonView = (MaterialButton) view;
-				buttonView.setTextColor(color);
-				buttonView.setIconTint(ColorStateList.valueOf(color));
-				buttonView.setRippleColor(ColorStateList.valueOf(color));
-			} else if(view instanceof TextView) ((TextView) view).setTextColor(color);
-			else if(view instanceof RelativeLayout) view.setBackground(new ColorDrawable(color));
-			else if(view instanceof FrameLayout) view.setBackgroundTintList(ColorStateList.valueOf(color));
-		}
+		ViewHelper.colorTaggedUI(getResources(), findViewById(android.R.id.content), color);
 		
 		//Coloring the unique UI components
 		updateSendButton(true);
 		if(viewModel.lastUnreadCount == 0) bottomFAB.setImageTintList(ColorStateList.valueOf(color));
 		else bottomFAB.setBackgroundTintList(ColorStateList.valueOf(color));
 		bottomFABBadge.setBackgroundTintList(ColorStateList.valueOf(darkerColor));
-		findViewById(R.id.fab_bottom_splash).setBackgroundTintList(ColorStateList.valueOf(lighterColor));
+		bottomFABSplash.setBackgroundTintList(ColorStateList.valueOf(lighterColor));
 		
 		//Coloring the info bars
 		infoBarConnection.setColor(color);
 	}
 	
-	int getConversationUIColor() {
-		int color = viewModel.conversationInfo.getDisplayConversationColor(this);
-		if(Constants.isNightMode(getResources()) && Preferences.getPreferenceAdvancedColor(this)) color = ColorHelper.darkModeLightenColor(color); //Standard colors have night mode overrides by default
-		return color;
-	}
-	
-	private void setActionBarTitle(String title) {
-		/* Spannable text = new SpannableString(title);
-		text.setSpan(new ForegroundColorSpan(viewModel.conversationInfo.getConversationColor()), 0, text.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
-		getSupportActionBar().setTitle(text); */
-		getSupportActionBar().setTitle(title);
+	/**
+	 * Gets the UI color, based off of the conversation color and dark theme
+	 */
+	private int getUIColor() {
+		//If the user has enabled rainbow chats, get the color based on the conversation's setting
+		if(Preferences.getPreferenceAdvancedColor(this)) {
+			int color = viewModel.conversationInfo.getConversationColor();
+			
+			//Lighten the color for night mode
+			if(ThemeHelper.isNightMode(getResources())) {
+				color = ColorMathHelper.darkModeLightenColor(color);
+			}
+			
+			return color;
+		} else {
+			//Otherwise, grab the color from the service type
+			//These colors are automatically adapted for night mode based on their resource overrides
+			return ColorHelper.getServiceColor(getResources(), viewModel.conversationInfo.getServiceHandler(), viewModel.conversationInfo.getServiceType());
+		}
 	}
 	
 	public void onClickRetryLoad(View view) {
-		int state = viewModel.messagesState.getValue();
-		if(state == ActivityViewModel.messagesStateFailedMatching) viewModel.findCreateConversationMMSSMS();
-		if(state == ActivityViewModel.messagesStateFailedConversation) viewModel.loadConversation();
-		else if(state == ActivityViewModel.messagesStateFailedMessages) viewModel.loadMessages();
+		int state = viewModel.stateLD.getValue();
+		if(state == ActivityViewModel.stateFailedMatching) viewModel.findCreateConversationMMSSMS();
+		if(state == ActivityViewModel.stateFailedConversation) viewModel.loadConversation();
+		else if(state == ActivityViewModel.stateFailedMessages) viewModel.loadMessages();
 	}
 	
-	void setMessageBarState(boolean enabled) {
+	/**
+	 * Sets whether the message input bar can be interacted with
+	 */
+	void setMessageInputBarState(boolean enabled) {
 		//Setting the message input field
 		messageInputField.setEnabled(enabled);
 		
@@ -2743,18 +1782,21 @@ public class Messaging extends AppCompatCompositeActivity {
 		//if(enabled) ((InputMethodManager) activitySource.getActivity().getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(messageInputField, InputMethodManager.SHOW_FORCED);
 	}
 	
+	/**
+	 * Updates the state of the send button
+	 */
 	private void updateSendButton(boolean restore) {
 		//Returning if the conversation isn't ready
 		if(viewModel.conversationInfo == null) return;
 		
 		//Getting the send button state
-		boolean state = !messageInputField.getText().toString().trim().isEmpty() || !viewModel.draftQueueList.isEmpty();
+		boolean state = !messageInputField.getText().toString().trim().isEmpty() || !viewModel.queueList.isEmpty();
 		if(currentSendButtonState == state && !restore) return;
 		currentSendButtonState = state;
 		
 		//Updating the button
 		buttonSendMessage.setClickable(state);
-		int targetColor = state ? getConversationUIColor() : Constants.resolveColorAttr(this, android.R.attr.colorControlNormal);
+		int targetColor = state ? getUIColor() : ResourceHelper.resolveColorAttr(this, android.R.attr.colorControlNormal);
 		/* if(restore) buttonSendMessage.setColorFilter(targetColor);
 		else {
 			int startColor = state ? Constants.resolveColorAttr(this, android.R.attr.colorControlNormal) : viewModel.conversationInfo.getConversationColor();
@@ -2773,13 +1815,10 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void rebuildContactViews() {
 		//Returning if the messages are not ready
-		if(viewModel.conversationItemList == null) return;
+		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return;
 		
 		//Updating the title
-		viewModel.conversationInfo.buildTitle(this, new ConversationTitleResultCallback(this));
-		
-		//Rebuilding the conversation members
-		detailsBuildConversationMembers(new ArrayList<>(viewModel.conversationInfo.getConversationMembers()));
+		if(viewModel.conversationInfo.getTitle() == null) viewModel.updateConversationTitle();
 		
 		//Updating the views
 		messageListAdapter.notifyDataSetChanged();
@@ -2856,32 +1895,35 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(fileAvailable) sendFile(viewModel.targetFile);
 	} */
 	
-	private String getInputBarMessage() {
+	/**
+	 * Gets the placeholder message to display in the input field
+	 */
+	private String getMessageFieldPlaceholder() {
 		//AirMessage bridge
-		if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
+		if(viewModel.conversationInfo.getServiceHandler() == ServiceHandler.appleBridge) {
 			//Returning a generic message if the service is invalid
-			if(viewModel.conversationInfo.getService() == null) return getResources().getString(R.string.imperative_messageinput);
+			if(viewModel.conversationInfo.getServiceType() == null) return getResources().getString(R.string.imperative_messageinput);
 			
-			switch(viewModel.conversationInfo.getService()) {
-				case ConversationInfo.serviceTypeAppleMessage:
+			switch(viewModel.conversationInfo.getServiceType()) {
+				case ServiceType.appleMessage:
 					//iMessage
 					return getResources().getString(R.string.title_imessage);
 					//SMS bridge
-				case ConversationInfo.serviceTypeAppleTextMessageForwarding:
+				case ServiceType.appleSMS:
 					return getResources().getString(R.string.title_textmessageforwarding);
 				default:
-					return viewModel.conversationInfo.getService();
+					return viewModel.conversationInfo.getServiceType();
 			}
 		}
 		//System messaging
-		else if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging) {
-			switch(viewModel.conversationInfo.getService()) {
-				case ConversationInfo.serviceTypeSystemMMSSMS:
+		else if(viewModel.conversationInfo.getServiceHandler() == ServiceHandler.systemMessaging) {
+			switch(viewModel.conversationInfo.getServiceType()) {
+				case ServiceType.systemSMS:
 					return getResources().getString(R.string.title_textmessage);
-				case ConversationInfo.serviceTypeSystemRCS:
+				case ServiceType.systemRCS:
 					return getResources().getString(R.string.title_rcs);
 				default:
-					return viewModel.conversationInfo.getService();
+					return viewModel.conversationInfo.getServiceType();
 			}
 		}
 		
@@ -2889,41 +1931,37 @@ public class Messaging extends AppCompatCompositeActivity {
 		return getResources().getString(R.string.imperative_messageinput);
 	}
 	
-	void showServerWarning(int reason) {
+	/**
+	 * Shows the server warning banner
+	 * @param reason The connection error code
+	 */
+	private void showServerWarning(@ConnectionErrorCode int reason) {
 		//Getting the error details
-		StateUtils.ErrorDetails details = StateUtils.getErrorDetails(reason, false);
-		StateUtils.ErrorDetails.Button button = details.getButton();
+		ErrorDetailsHelper.ErrorDetails details = ErrorDetailsHelper.getErrorDetails(reason, false);
+		ErrorDetailsHelper.ErrorDetails.Button button = details.getButton();
 		
 		//Applying the error details to the info bar
 		infoBarConnection.setText(getResources().getString(details.getLabel()));
 		if(button == null) {
 			infoBarConnection.removeButton();
 		} else {
-			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().accept(this));
+			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().accept(this, pluginCS.getConnectionManager()));
 		}
 		
 		//Showing the info bar
 		infoBarConnection.show();
 	}
 	
-	private void reconnectService() {
-		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-		if(connectionManager == null) {
-			//Starting the service
-			startService(new Intent(Messaging.this, ConnectionService.class));
-		} else {
-			//Reconnecting
-			connectionManager.connect(this);
-			
-			//Hiding the bar
-			hideServerWarning();
-		}
-	}
-	
-	void hideServerWarning() {
+	/**
+	 * Hides the server warning banner
+	 */
+	private void hideServerWarning() {
 		infoBarConnection.hide();
 	}
 	
+	/**
+	 * Hides the toolbar at the top of the screen
+	 */
 	void hideToolbar() {
 		//Returning if the toolbar is already invisible
 		if(!toolbarVisible) return;
@@ -2936,6 +1974,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		scrimStatusBar.setVisibility(View.VISIBLE);
 	}
 	
+	/**
+	 * Shows the toolbar at the top of the screen
+	 */
 	void showToolbar() {
 		//Returning if the toolbar is already visible
 		if(toolbarVisible) return;
@@ -2987,8 +2028,8 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(viewModel.conversationInfo.getUnreadMessageCount() == 0) return;
 		
 		//Coloring the FAB
-		bottomFAB.setBackgroundTintList(ColorStateList.valueOf(getConversationUIColor()));
-		bottomFAB.setImageTintList(ColorStateList.valueOf(Constants.resolveColorAttr(this, R.attr.colorOnPrimary)));
+		bottomFAB.setBackgroundTintList(ColorStateList.valueOf(getUIColor()));
+		bottomFAB.setImageTintList(ColorStateList.valueOf(ResourceHelper.resolveColorAttr(this, R.attr.colorOnPrimary)));
 		
 		//Updating the badge
 		bottomFABBadge.setText(String.format(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? getResources().getConfiguration().getLocales().get(0) : getResources().getConfiguration().locale, "%d", viewModel.conversationInfo.getUnreadMessageCount()));
@@ -3002,16 +2043,16 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(viewModel.lastUnreadCount == viewModel.conversationInfo.getUnreadMessageCount()) return;
 		
 		//Getting the color
-		int colorTint = getConversationUIColor();
+		int colorTint = getUIColor();
 		
 		//Checking if there are any unread messages
 		if(viewModel.conversationInfo.getUnreadMessageCount() > 0) {
 			//Coloring the FAB
 			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(colorTint));
-			bottomFAB.setImageTintList(ColorStateList.valueOf(Constants.resolveColorAttr(this, R.attr.colorOnPrimary)));
+			bottomFAB.setImageTintList(ColorStateList.valueOf(ResourceHelper.resolveColorAttr(this, R.attr.colorOnPrimary)));
 			
 			//Updating the badge text
-			bottomFABBadge.setText(Constants.intToFormattedString(getResources(), viewModel.conversationInfo.getUnreadMessageCount()));
+			bottomFABBadge.setText(LanguageHelper.intToFormattedString(getResources(), viewModel.conversationInfo.getUnreadMessageCount()));
 			
 			//Animating the badge
 			if(bottomFAB.isShown()) {
@@ -3028,23 +2069,22 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Checking if there were previously no unread messages and the FAB is visible
 			if(viewModel.lastUnreadCount == 0 && bottomFAB.isShown()) {
 				//Animating the splash
-				View bottomSplash = findViewById(R.id.fab_bottom_splash);
-				bottomSplash.setScaleX(1);
-				bottomSplash.setScaleY(1);
-				bottomSplash.setAlpha(1);
-				bottomSplash.setVisibility(View.VISIBLE);
-				bottomSplash.animate()
+				bottomFABSplash.setScaleX(1);
+				bottomFABSplash.setScaleY(1);
+				bottomFABSplash.setAlpha(1);
+				bottomFABSplash.setVisibility(View.VISIBLE);
+				bottomFABSplash.animate()
 						.scaleX(2.5F)
 						.scaleY(2.5F)
 						.alpha(0)
 						.setDuration(1000)
 						.setInterpolator(new DecelerateInterpolator())
-						.withEndAction(() -> bottomSplash.setVisibility(View.GONE))
+						.withEndAction(() -> bottomFABSplash.setVisibility(View.GONE))
 						.start();
 			}
 		} else {
 			//Restoring the FAB color
-			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(Constants.resolveColorAttr(this, android.R.attr.colorBackgroundFloating)));
+			bottomFAB.setBackgroundTintList(ColorStateList.valueOf(ResourceHelper.resolveColorAttr(this, android.R.attr.colorBackgroundFloating)));
 			bottomFAB.setImageTintList(ColorStateList.valueOf(colorTint));
 			
 			//Hiding the badge
@@ -3057,150 +2097,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Setting the last unread message count
 		viewModel.lastUnreadCount = viewModel.conversationInfo.getUnreadMessageCount();
-	}
-	
-	@Override
-	public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
-		//Returning if there are no grant results
-		if(grantResults.length == 0) return;
-		
-		switch(requestCode) {
-			case permissionRequestStorage:
-				//Checking if the request was granted
-				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-					//Updating the attachment sections
-					setupAttachmentsGallerySection();
-				}
-				break;
-			case permissionRequestAudio:
-				//Checking if the request was granted
-				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-					//Updating the attachment section
-					setupAttachmentsAudioSection();
-				}
-				break;
-			case permissionRequestAudioDirect: {
-				//Checking if the request was denied
-				if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
-					//Creating a dialog
-					AlertDialog dialog = new MaterialAlertDialogBuilder(Messaging.this)
-							.setTitle(R.string.message_permissionrejected)
-							.setMessage(R.string.message_permissiondetails_microphone_failedrequest)
-							.setPositiveButton(R.string.action_retry, (dialogInterface, which) -> {
-								//Requesting microphone access again
-								Constants.requestPermission(Messaging.this, new String[]{Manifest.permission.RECORD_AUDIO}, permissionRequestAudio);
-								
-								//Dismissing the dialog
-								dialogInterface.dismiss();
-							})
-							.setNeutralButton(R.string.screen_settings, (dialogInterface, which) -> {
-								//Showing the application settings
-								Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-								intent.setData(Uri.parse("package:" + getPackageName()));
-								startActivity(intent);
-								
-								//Dismissing the dialog
-								dialogInterface.dismiss();
-							})
-							.setNegativeButton(android.R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
-							.create();
-					
-					//Configuring the dialog's listener
-					dialog.setOnShowListener(dialogInterface -> {
-						//Setting the button's colors
-						int color = getConversationUIColor();
-						dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
-						dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(color);
-						dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(color);
-					});
-					
-					//Displaying the dialog
-					dialog.show();
-				} else {
-					//Updating the attachment sections
-					setupAttachmentsAudioSection();
-				}
-			}
-			case permissionRequestLocation: {
-				//Checking if the request was granted
-				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-					//Updating the attachment section
-					viewModel.updateAttachmentsLocationState();
-					//setupAttachmentsLocationSection();
-				}
-			}
-			default:
-				viewModel.callPermissionsRequestListener(requestCode - permissionRequestMessageCustomOffset, grantResults[0] == PackageManager.PERMISSION_GRANTED);
-		}
-	}
-	
-	private void requestCamera(boolean video) {
-		//Creating the intent
-		Intent cameraCaptureIntent = new Intent(video ? MediaStore.ACTION_VIDEO_CAPTURE : MediaStore.ACTION_IMAGE_CAPTURE);
-		
-		//Asking for low-quality video if the user is using MMS
-		if(viewModel.conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging && ConversationInfo.serviceTypeSystemMMSSMS.equals(viewModel.conversationInfo.getService())) {
-			cameraCaptureIntent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 0);
-		}
-		
-		//Checking if there are no apps that can take the intent
-		if(cameraCaptureIntent.resolveActivity(getPackageManager()) == null) {
-			//Telling the user via a toast
-			Toast.makeText(Messaging.this, R.string.message_intenterror_camera, Toast.LENGTH_SHORT).show();
-			
-			//Returning
-			return;
-		}
-		
-		//Finding a free file
-		viewModel.targetFileIntent = MainApplication.getDraftTarget(this, viewModel.conversationID, video ? Constants.videoName : Constants.pictureName);
-		
-		//Setting the output file target
-		Uri targetUri = FileProvider.getUriForFile(this, MainApplication.getFileAuthority(this), viewModel.targetFileIntent);
-		cameraCaptureIntent.putExtra(MediaStore.EXTRA_OUTPUT, targetUri);
-		
-		//Starting the activity
-		startActivityForResult(cameraCaptureIntent, intentTakePicture);
-	}
-	
-	private void launchPickerIntent(String[] mimeTypes) {
-		Intent intent = new Intent();
-		intent.setType("*/*");
-		intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
-		intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickFile);
-	}
-	
-	private void requestGalleryFile() {
-		launchPickerIntent(new String[]{"image/*", "video/*"});
-	}
-	
-	private void requestAudioFile() {
-		launchPickerIntent(new String[]{"audio/*"});
-	}
-	
-	public static ArrayList<Long> getForegroundConversations() {
-		//Creating the list
-		ArrayList<Long> list = new ArrayList<>();
-		
-		//Iterating over the loaded conversations
-		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext(); ) {
-			//Getting the referenced activity
-			Messaging activity = iterator.next().get();
-			
-			//Removing the reference if it is invalid
-			if(activity == null) {
-				iterator.remove();
-				continue;
-			}
-			
-			//Adding the entry to the list
-			list.add(activity.getConversationID());
-		}
-		
-		//Returning the list
-		return list;
 	}
 	
 	/* public static ArrayList<Long> getActivityLoadedConversations() {
@@ -3226,27 +2122,28 @@ public class Messaging extends AppCompatCompositeActivity {
 		return list;
 	} */
 	
-	void playScreenEffect(String effect, View target) {
+	private void playScreenEffect(String effect, View target) {
 		//Returning if an effect is already playing
 		if(currentScreenEffectPlaying) return;
 		currentScreenEffectPlaying = true;
 		
+		//TODO finish implementation of effects
 		switch(effect) {
-			case Constants.appleSendStyleScrnEcho:
+			case SendStyleHelper.appleSendStyleScrnEcho:
 				//Activating the effect view
 				appleEffectView.playEcho(target);
 				break;
-			case Constants.appleSendStyleScrnSpotlight:
+			case SendStyleHelper.appleSendStyleScrnSpotlight:
 				currentScreenEffectPlaying = false;
 				break;
-			case Constants.appleSendStyleScrnBalloons:
+			case SendStyleHelper.appleSendStyleScrnBalloons:
 				appleEffectView.playBalloons();
 				break;
-			case Constants.appleSendStyleScrnConfetti: {
+			case SendStyleHelper.appleSendStyleScrnConfetti: {
 				//Activating the Konfetti view
 				KonfettiView konfettiView = findViewById(R.id.konfetti);
 				konfettiView.build()
-						.addColors(Constants.effectColors)
+						.addColors(ColorConstants.effectColors)
 						.setDirection(0D, 359D)
 						.setSpeed(4F, 8F)
 						.setFadeOutEnabled(true)
@@ -3261,19 +2158,19 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				break;
 			}
-			case Constants.appleSendStyleScrnLove:
+			case SendStyleHelper.appleSendStyleScrnLove:
 				currentScreenEffectPlaying = false;
 				break;
-			case Constants.appleSendStyleScrnLasers:
+			case SendStyleHelper.appleSendStyleScrnLasers:
 				currentScreenEffectPlaying = false;
 				break;
-			case Constants.appleSendStyleScrnFireworks:
+			case SendStyleHelper.appleSendStyleScrnFireworks:
 				currentScreenEffectPlaying = false;
 				break;
-			case Constants.appleSendStyleScrnShootingStar:
+			case SendStyleHelper.appleSendStyleScrnShootingStar:
 				currentScreenEffectPlaying = false;
 				break;
-			case Constants.appleSendStyleScrnCelebration:
+			case SendStyleHelper.appleSendStyleScrnCelebration:
 				currentScreenEffectPlaying = false;
 				break;
 			default:
@@ -3282,104 +2179,128 @@ public class Messaging extends AppCompatCompositeActivity {
 		}
 	}
 	
-	void onProgressiveLoadStart() {
-		//Updating the recycler adapter (to show the loading spinner)
-		messageListAdapter.notifyItemInserted(0);
+	public static boolean isConversationInForeground(long conversationID) {
+		return getForegroundConversations().contains(conversationID);
 	}
 	
-	void onProgressiveLoadFinish(int itemCount) {
-		messageListAdapter.notifyItemRemoved(0); //Removing the loading spinner
-		messageListAdapter.notifyItemRangeInserted(0, itemCount); //Inserting the new items
-	}
-	
-	void startRecording(float touchX, float touchY) {
-		//Playing a sound
-		viewModel.playSound(ActivityViewModel.soundRecordingStart);
+	public static List<Long> getForegroundConversations() {
+		//Creating the list
+		List<Long> list = new ArrayList<>();
 		
-		//Telling the view model to start recording
-		boolean result = viewModel.startRecording(this);
-		if(!result) return;
-		
-		//Revealing the recording view
-		revealRecordingView(touchX, touchY);
-	}
-	
-	void stopRecording() {
-		//Telling the view model to stop recording
-		viewModel.stopRecording(true, false);
-	}
-	
-	private void restoreRecordingView() {
-		if(recordingActiveGroup == null || !viewModel.isRecording()) return;
-		recordingActiveGroup.setVisibility(View.VISIBLE);
-	}
-	
-	private void revealRecordingView(float touchX, float touchY) {
-		//Returning if the view is invalid
-		if(recordingActiveGroup == null) return;
-		
-		//Calculating the radius
-		float greaterX = Math.max(touchX, recordingActiveGroup.getWidth() - touchX);
-		float greaterY = Math.max(touchY, recordingActiveGroup.getHeight() - touchY);
-		float endRadius = (float) Math.hypot(greaterX, greaterY);
-		
-		//Revealing the recording view
-		Animator animator = ViewAnimationUtils.createCircularReveal(recordingActiveGroup, (int) touchX, (int) touchY, 0, endRadius);
-		animator.addListener(new AnimatorListenerAdapter() {
-			@Override
-			public void onAnimationStart(Animator animation) {
-				recordingActiveGroup.setAlpha(1);
-				recordingActiveGroup.setVisibility(View.VISIBLE);
-				recordingVisualizer.clear();
-				recordingVisualizer.attachMediaRecorder(viewModel.mediaRecorder);
+		//Iterating over the loaded conversations
+		for(Iterator<WeakReference<Messaging>> iterator = foregroundConversations.iterator(); iterator.hasNext();) {
+			//Getting the referenced activity
+			Messaging activity = iterator.next().get();
+			
+			//Removing the reference if it is invalid
+			if(activity == null) {
+				iterator.remove();
+				continue;
 			}
-		});
-		animator.start();
+			
+			//Adding the entry to the list
+			long conversationID = activity.getConversationID();
+			if(conversationID != -1) list.add(conversationID);
+		}
 		
-		//Resetting the time label
-		recordingTimeLabel.setText(DateUtils.formatElapsedTime(0));
-	}
-	
-	private void concealRecordingView() {
-		//Returning if the view is invalid
-		if(recordingActiveGroup == null) return;
-		
-		//Fading the view
-		recordingActiveGroup.animate().alpha(0).withEndAction(() -> {
-			if(viewModel.isRecording()) return;
-			recordingActiveGroup.setVisibility(View.GONE);
-			recordingVisualizer.detachMediaRecorder();
-		});
+		//Returning the list
+		return list;
 	}
 	
 	public class MessageListRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 		//Creating the reference values
-		private static final int itemTypeLoadingBar = -1;
-		private static final int itemTypeReplySuggestions = -2;
+		private static final int poolSize = 12;
+		private static final int itemTypeTopProgressBar = -1;
+		private static final int itemTypeConversationActions = -2;
 		
-		//Creating the values
-		private ArrayList<ConversationItem> conversationItems = null;
+		//Creating the content values
+		private final List<ConversationItem> conversationItems;
 		private RecyclerView recyclerView;
 		
+		private AMConversationAction[] conversationActions = null; //Suggested actions at the bottom of the message list
+		private boolean showTopProgressBar = false; //A loading spinner displayed at the top of the message list when loading previous message history
+		
 		//Creating the pools
-		private final SparseArray<Pools.SimplePool<? extends RecyclerView.ViewHolder>> componentPoolList = new SparseArray<>();
-		private final PoolSource poolSource = new PoolSource();
+		private final SparseArray<Pools.SimplePool<? extends VHMessageComponent>> componentPoolList = new SparseArray<>();
+		private final Pools.SimplePool<VHMessagePreviewLink> previewPool = new Pools.SimplePool<>(poolSize);
 		
-		//Creating the states
-		private boolean replySuggestionsAvailable;
-		
-		public MessageListRecyclerAdapter() {
+		public MessageListRecyclerAdapter(List<ConversationItem> items) {
+			conversationItems = items;
+			
 			//Enabling stable IDs
 			setHasStableIds(true);
 		}
 		
-		public void setItemList(ArrayList<ConversationItem> items) {
-			//Setting the conversation items
-			conversationItems = items;
+		/**
+		 * Updates the reply suggestions at the bottom of the list.
+		 * Pass NULL to hide suggestions.
+		 */
+		public void setConversationActions(@Nullable AMConversationAction[] conversationActions) {
+			boolean wasScrolledToBottom = isScrolledToBottom();
 			
-			//Updating the view
-			messageList.getRecycledViewPool().clear();
-			notifyDataSetChanged();
+			boolean oldAvailable = this.conversationActions != null;
+			boolean newAvailable = conversationActions != null;
+			
+			//Setting the suggestions
+			this.conversationActions = conversationActions;
+			
+			//If conversation actions are being added
+			if(!oldAvailable && newAvailable) {
+				notifyItemInserted(getItemCount() - 1);
+				
+				if(wasScrolledToBottom) scrollToBottom();
+			}
+			//If conversation actions are being removed
+			else if(oldAvailable && !newAvailable) {
+				notifyItemRemoved(getItemCount());
+			}
+			//If conversation actions are being updated
+			else if(oldAvailable && newAvailable) {
+				notifyItemChanged(getItemCount() - 1);
+			}
+		}
+		
+		/**
+		 * Updates the display of the progress bar at the top of the list
+		 */
+		public void setShowTopProgressBar(boolean show) {
+			//Ignore if there is no change
+			if(showTopProgressBar == show) return;
+			
+			boolean oldShow = showTopProgressBar;
+			showTopProgressBar = show;
+			
+			//The loading spinner is added
+			if(!oldShow && show) {
+				notifyItemInserted(0);
+			}
+			//The loading spinner is removed
+			else {
+				notifyItemRemoved(0);
+			}
+		}
+		
+		/**
+		 * Maps a source array index to an array adapter index (for use with adapter.notify, for example)
+		 */
+		public int mapRecyclerIndex(int index) {
+			if(conversationActions != null) return index + 1;
+			else return index;
+		}
+		
+		/**
+		 * Maps an array adapter index to a source array index (for retrieving source items based on their adapter position, for example)
+		 */
+		public int mapSourceIndex(int index) {
+			if(showTopProgressBar) return index - 1;
+			else return index;
+		}
+		
+		/**
+		 * Gets the matching conversation item from its adapter index
+		 */
+		private ConversationItem getItemAt(int index) {
+			return conversationItems.get(mapSourceIndex(index));
 		}
 		
 		@Override
@@ -3387,9 +2308,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			super.onAttachedToRecyclerView(recyclerView);
 			
 			this.recyclerView = recyclerView;
-			
-			//Getting the reply suggestions available state
-			replySuggestionsAvailable = viewModel.isSmartReplyAvailable();
 		}
 		
 		@Override
@@ -3397,17 +2315,33 @@ public class Messaging extends AppCompatCompositeActivity {
 		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			//Returning the correct view holder
 			switch(viewType) {
-				case ConversationItem.viewTypeMessage:
-					return new MessageInfo.ViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_message, parent, false));
-				case ConversationItem.viewTypeAction:
-					return new ConversationUtils.ActionLineViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_action, parent, false));
-				case itemTypeLoadingBar: {
-					View loadingView = LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_loading, parent, false);
-					((ProgressBar) loadingView.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(getConversationUIColor()));
-					return new LoadingViewHolder(loadingView);
+				case ConversationItem.viewTypeMessage: {
+					View view = getLayoutInflater().inflate(R.layout.listitem_message, parent, false);
+					return new VHMessageStructure(view,
+							view.findViewById(R.id.timedivider),
+							view.findViewById(R.id.sender),
+							view.findViewById(R.id.stub_profile),
+							view.findViewById(R.id.messagepart_container),
+							R.id.profile_default,
+							R.id.profile_image,
+							view.findViewById(R.id.activitystatus),
+							view.findViewById(R.id.sendeffect_replay),
+							view.findViewById(R.id.send_error)
+					);
 				}
-				case itemTypeReplySuggestions:
-					return new ReplySuggestionsViewHolder(LayoutInflater.from(Messaging.this).inflate(R.layout.listitem_replysuggestions, parent, false));
+				case ConversationItem.viewTypeAction: {
+					View view = getLayoutInflater().inflate(R.layout.listitem_action, parent, false);
+					return new VHMessageAction(view, view.findViewById(R.id.message));
+				}
+				case itemTypeTopProgressBar: {
+					View view = getLayoutInflater().inflate(R.layout.listitem_loading, parent, false);
+					((ProgressBar) view.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(getUIColor()));
+					return new LoadingViewHolder(view);
+				}
+				case itemTypeConversationActions: {
+					View view = getLayoutInflater().inflate(R.layout.listitem_replysuggestions, parent, false);
+					return new VHConversationActions(view, (HorizontalScrollView) view, view.findViewById(R.id.container));
+				}
 				default:
 					throw new IllegalArgumentException("Invalid view type received: " + viewType);
 			}
@@ -3415,8 +2349,23 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		@Override
 		public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
-			if(holder instanceof MessageInfo.ViewHolder) {
-				((MessageInfo.ViewHolder) holder).cleanupState();
+			if(holder instanceof DisposableViewHolder) {
+				((DisposableViewHolder) holder).getCompositeDisposable().clear();
+			}
+		}
+		
+		@Override
+		public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+			//Cancelling all view holder tasks
+			LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+			int firstVisibleIndex = layoutManager.findFirstVisibleItemPosition();
+			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
+			
+			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
+				RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(i);
+				if(holder instanceof DisposableViewHolder) {
+					((DisposableViewHolder) holder).getCompositeDisposable().clear();
+				}
 			}
 		}
 		
@@ -3424,45 +2373,1462 @@ public class Messaging extends AppCompatCompositeActivity {
 		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
 			//Returning if there are no items or the item is the loading spinner
 			int itemType = getItemViewType(position);
-			if(conversationItems == null || itemType == itemTypeLoadingBar) return;
+			if(itemType == itemTypeTopProgressBar) return;
 			
 			//Checking if the item is the suggestions
-			if(itemType == itemTypeReplySuggestions) {
-				ReplySuggestionsViewHolder viewHolder = (ReplySuggestionsViewHolder) holder;
-				viewHolder.setSuggestions(Messaging.this, viewModel, viewModel.lastSmartReplyResult);
+			if(itemType == itemTypeConversationActions) {
+				VHConversationActions viewHolder = (VHConversationActions) holder;
+				viewHolder.setActions(Messaging.this, conversationActions, getUIColor(), messageText -> {
+					MessageSendHelper.prepareSendMessages(Messaging.this, viewModel.conversationInfo, messageText, Collections.emptyList(), pluginCS.getConnectionManager()).subscribe();
+					/* MessageSendHelper.prepareMessages(Messaging.this, viewModel.conversationInfo, messageText, Collections.emptyList())
+							.flatMapCompletable(message -> MessageSendHelper.sendMessage(Messaging.this, viewModel.conversationInfo, message, pluginCS.getConnectionManager())).subscribe(); */
+					handleMessageSent();
+				});
 				viewHolder.resetScroll();
-			} else {
+			}
+			//Otherwise checking if the item is a message
+			else if(itemType == MessageViewType.message) {
 				//Getting the item
-				ConversationItem conversationItem;
-				if(viewModel.isProgressiveLoadInProgress()) conversationItem = conversationItems.get(position - 1);
-				else conversationItem = conversationItems.get(position);
+				MessageInfo messageInfo = (MessageInfo) getItemAt(position);
 				
-				//Checking if the item is a message
-				boolean isMessage = false;
-				if(conversationItem instanceof MessageInfo) {
-					((MessageInfo.ViewHolder) holder).setPoolSource(poolSource);
-					isMessage = true;
+				//Getting the adjacent messages
+				Pair<MessageInfo, MessageInfo> adjacentMessages = getAdjacentMessages(mapSourceIndex(position));
+				
+				//Binding the message view
+				bindMessage((VHMessageStructure) holder, viewModel.conversationInfo, messageInfo, adjacentMessages.first, adjacentMessages.second);
+				
+				//Playing the message's effect if it hasn't been viewed yet
+				if(messageInfo.getSendStyle() != null && !messageInfo.isSendStyleViewed()) {
+					messageInfo.setSendStyleViewed(true);
+					playScreenEffect(messageInfo.getSendStyle(), holder.itemView);
+					Completable.fromAction(() -> DatabaseManager.getInstance().markSendStyleViewed(messageInfo.getLocalID()))
+							.subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).subscribe();
 				}
+			}
+			//Otherwise checking if the item is an action
+			else if(itemType == MessageViewType.action) {
+				//Getting the data
+				VHMessageAction viewHolder = (VHMessageAction) holder;
+				ConversationAction conversationAction = (ConversationAction) getItemAt(position);
 				
-				//Creating the view
-				conversationItem.bindView(holder, Messaging.this);
+				//Setting the immediate text
+				viewHolder.label.setText(conversationAction.getMessageDirect(Messaging.this));
 				
-				//Setting the view source
-				conversationItem.setViewHolderSource(new Constants.ViewHolderSourceImpl<RecyclerView.ViewHolder>(recyclerView, conversationItem.getLocalID()));
+				//Building and applying the complete action
+				if(conversationAction.supportsBuildMessageAsync()) {
+					viewHolder.getCompositeDisposable().add(
+							conversationAction.buildMessageAsync(Messaging.this)
+									.subscribe((Consumer<String>) viewHolder.label::setText)
+					);
+				}
+			}
+		}
+		
+		@Override
+		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position, @NonNull List<Object> payloads) {
+			if(payloads.isEmpty()) {
+				onBindViewHolder(holder, position);
+			} else {
+				//Getting the conversation info
+				ConversationItem conversationItem = getItemAt(position);
 				
-				//Checking if the item is a message
-				if(isMessage) {
-					MessageInfo messageInfo = (MessageInfo) conversationItem;
-					//Playing the message's effect if it hasn't been viewed yet
-					if(messageInfo.getSendStyle() != null && !messageInfo.getSendStyleViewed()) {
-						messageInfo.setSendStyleViewed(true);
-						messageInfo.playEffect((MessageInfo.ViewHolder) holder);
-					/* if(Constants.validateScreenEffect(messageInfo.getSendStyle())) playScreenEffect(messageInfo.getSendStyle());
-					else messageInfo.playEffect(); */
-						new TaskMarkMessageSendStyleViewed().execute(messageInfo);
+				for(Object objectPayload : payloads) {
+					MessageListPayload payload = (MessageListPayload) objectPayload;
+					switch(payload.getType()) {
+						case MessageListPayloadType.state: {
+							//Updating the message state
+							bindMessageState((VHMessageStructure) holder, (MessageInfo) conversationItem, true);
+							
+							break;
+						}
+						case MessageListPayloadType.status: {
+							//Animating the change
+							//TransitionManager.beginDelayedTransition((ViewGroup) holder.itemView);
+							
+							//Updating the message status
+							updateMessageActivityStatus((VHMessageStructure) holder, (MessageInfo) conversationItem);
+							
+							break;
+						}
+						case MessageListPayloadType.attachment: {
+							//Rebuilding the attachment view
+							int attachmentIndex = ((MessageListPayload.Attachment) payload).getAttachmentIndex();
+							MessageInfo messageInfo = (MessageInfo) conversationItem;
+							VHMessageStructure viewHolderStructure = (VHMessageStructure) holder;
+							int componentIndex = attachmentIndex + (messageInfo.getMessageTextInfo() != null ? 1 : 0);
+							bindMessageComponent(viewHolderStructure, viewHolderStructure.messageComponents.get(componentIndex), viewModel.conversationInfo, messageInfo, messageInfo.getAttachments().get(attachmentIndex));
+							
+							break;
+						}
+						case MessageListPayloadType.attachmentRebuild: {
+							//Rebuilding the message's components
+							bindMessageComponentList((VHMessageStructure) holder, viewModel.conversationInfo, (MessageInfo) conversationItem);
+							updateMessageViewColoring(viewModel.conversationInfo, (VHMessageStructure) holder, (MessageInfo) conversationItem);
+							
+							Pair<MessageInfo, MessageInfo> adjacentMessages = getAdjacentMessages(mapSourceIndex(position));
+							updateMessageViewEdges((VHMessageStructure) holder, viewModel.conversationInfo, (MessageInfo) conversationItem, adjacentMessages.first, adjacentMessages.second);
+							
+							break;
+						}
+						case MessageListPayloadType.flow: {
+							Pair<MessageInfo, MessageInfo> adjacentMessages = getAdjacentMessages(mapSourceIndex(position));
+							
+							//Updating the view edges
+							updateMessageViewEdges((VHMessageStructure) holder, viewModel.conversationInfo, (MessageInfo) conversationItem, adjacentMessages.first, adjacentMessages.second);
+							
+							break;
+						}
+						case MessageListPayloadType.color: {
+							//Updating the message color
+							updateMessageViewColoring(viewModel.conversationInfo, (VHMessageStructure) holder, (MessageInfo) conversationItem);
+							
+							break;
+						}
+						case MessageListPayloadType.tapback: {
+							//Rebuilding the tapback view
+							int componentIndex = ((MessageListPayload.Tapback) payload).getComponentIndex();
+							MessageComponent messageComponent = ((MessageInfo) conversationItem).getComponents().get(componentIndex);
+							VHMessageComponent componentViewHolder = ((VHMessageStructure) holder).messageComponents.get(componentIndex);
+							
+							VBMessageComponent.buildTapbackView(Messaging.this, messageComponent.getTapbacks(), componentViewHolder.tapbackContainer);
+							
+							break;
+						}
+						case MessageListPayloadType.sticker: {
+							MessageListPayload.Sticker stickerPayload = (MessageListPayload.Sticker) payload;
+							
+							//Adding the sticker
+							int componentIndex = stickerPayload.getComponentIndex();
+							VHMessageComponent componentViewHolder = ((VHMessageStructure) holder).messageComponents.get(componentIndex);
+							
+							VBMessageComponent.addStickerView(Messaging.this, stickerPayload.getStickerInfo(), componentViewHolder.stickerContainer);
+							
+							break;
+						}
 					}
 				}
 			}
+		}
+		
+		/**
+		 * Gets the {@link MessageInfo} directly before and after a certain position. May be NULL if not present.
+		 * @param position The source array index of the origin item
+		 * @return A pair of the message before this one and the message after this one
+		 */
+		private Pair<MessageInfo, MessageInfo> getAdjacentMessages(int position) {
+			MessageInfo messageBefore = null, messageAfter = null;
+			
+			if(position - 1 >= 0) {
+				ConversationItem conversationItemBefore = conversationItems.get(position - 1);
+				if(conversationItemBefore.getItemType() == ConversationItemType.message) messageBefore = (MessageInfo) conversationItemBefore;
+			}
+			if(position + 1 < conversationItems.size()) {
+				ConversationItem conversationItemAfter = conversationItems.get(position + 1);
+				if(conversationItemAfter.getItemType() == ConversationItemType.message) messageAfter = (MessageInfo) conversationItemAfter;
+			}
+			
+			return new Pair<>(messageBefore, messageAfter);
+		}
+		
+		private void bindMessage(VHMessageStructure viewHolder, ConversationInfo conversationInfo, MessageInfo messageInfo, @Nullable MessageInfo messageAbove, @Nullable MessageInfo messageBelow) {
+			//Setting the alignment
+			{
+				ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) viewHolder.containerMessagePart.getLayoutParams();
+				if(messageInfo.isOutgoing()) {
+					params.startToStart = ConstraintLayout.LayoutParams.UNSET;
+					params.endToEnd = R.id.barrier_alert;
+				} else {
+					params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+					params.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+				}
+			}
+			
+			//Binding the message components
+			bindMessageComponentList(viewHolder, conversationInfo, messageInfo);
+			
+			//Checking if the message is outgoing
+			if(messageInfo.isOutgoing()) {
+				//Hiding the user info
+				if(viewHolder.profileGroup != null) viewHolder.profileGroup.setVisibility(View.GONE);
+				
+				//Hiding the sender
+				viewHolder.labelSender.setVisibility(View.GONE);
+			} else {
+				//Inflating the profile stub and getting the profile view
+				viewHolder.inflateProfile();
+				
+				//Showing the profile view
+				viewHolder.profileGroup.setVisibility(View.VISIBLE);
+				
+				//Clearing the profile image
+				viewHolder.profileImage.setImageBitmap(null);
+				viewHolder.profileDefault.setVisibility(View.VISIBLE);
+				
+				//Checking if the chat is a group chat
+				if(conversationInfo.isGroupChat()) {
+					//Setting the sender's name (temporarily)
+					viewHolder.labelSender.setText(messageInfo.getSender());
+					
+					//Showing the sender
+					viewHolder.labelSender.setVisibility(View.VISIBLE);
+				} else {
+					//Hiding the sender
+					viewHolder.labelSender.setVisibility(View.GONE);
+				}
+				
+				viewHolder.getCompositeDisposable().add(
+						MainApplication.getInstance().getUserCacheHelper().getUserInfo(Messaging.this, messageInfo.getSender()).onErrorComplete().subscribe(userInfo -> {
+							//Setting the sender's name
+							viewHolder.labelSender.setText(userInfo.getContactName());
+							
+							//Loading the profile thumbnail
+							viewHolder.inflateProfile();
+							Glide.with(Messaging.this)
+									.load(ContactHelper.getContactImageURI(userInfo.getContactID()))
+									.listener(new RequestListener<Drawable>() {
+										@Override
+										public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+											return false;
+										}
+										
+										@Override
+										public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+											//Swapping to the profile view
+											viewHolder.profileDefault.setVisibility(View.GONE);
+											viewHolder.profileImage.setVisibility(View.VISIBLE);
+											
+											return false;
+										}
+									})
+									.into(viewHolder.profileImage);
+						})
+				);
+			}
+			
+			//Checking if the message has no send effect
+			if(messageInfo.getSendStyle() == null || (!SendStyleHelper.validateAnimatedBubbleEffect(messageInfo.getSendStyle()) && !SendStyleHelper.validateScreenEffect(messageInfo.getSendStyle()))) {
+				//Hiding the "replay" button
+				viewHolder.buttonSendEffectReplay.setVisibility(View.GONE);
+			} else {
+				//Showing and configuring the "replay" button
+				viewHolder.buttonSendEffectReplay.setVisibility(View.VISIBLE);
+				viewHolder.buttonSendEffectReplay.setOnClickListener(clickedView -> playScreenEffect(messageInfo.getSendStyle(), viewHolder.itemView));
+			}
+			
+			//Setting the text switcher's animations
+			viewHolder.labelActivityStatus.setInAnimation(AnimationUtils.loadAnimation(Messaging.this, R.anim.fade_in_delayed));
+			viewHolder.labelActivityStatus.setOutAnimation(AnimationUtils.loadAnimation(Messaging.this, R.anim.fade_out));
+			
+			//Updating the message state
+			bindMessageState(viewHolder, messageInfo, false);
+			
+			//Updating the view edges
+			updateMessageViewEdges(viewHolder, conversationInfo, messageInfo, messageAbove, messageBelow);
+			
+			//Updating the view color
+			updateMessageViewColoring(conversationInfo, viewHolder, messageInfo);
+			
+			//Updating the view state display
+			updateMessageActivityStatus(viewHolder, messageInfo);
+			
+			//Updating the time divider
+			updateMessageTimeDivider(viewHolder, messageInfo, messageAbove);
+		}
+		
+		/**
+		 * Updates the ghost and error display state of a message view
+		 * @param viewHolder The view holder of the message
+		 * @param messageInfo The message to bind
+		 * @param animate Whether to animate the view changes
+		 */
+		private void bindMessageState(VHMessageStructure viewHolder, MessageInfo messageInfo, boolean animate) {
+			if(animate) {
+				//Animating the message part container's alpha
+				if(messageInfo.getMessageState() == MessageState.ghost) viewHolder.containerMessagePart.animate().alpha(0.5F);
+				else viewHolder.containerMessagePart.animate().alpha(1);
+			} else {
+				//Setting the message part container's alpha
+				if(messageInfo.getMessageState() == MessageState.ghost) viewHolder.containerMessagePart.setAlpha(0.5F);
+				else viewHolder.containerMessagePart.setAlpha(1);
+			}
+			
+			//Hiding the error and returning if there wasn't any problem
+			if(!messageInfo.hasError()) {
+				viewHolder.buttonSendError.setVisibility(View.GONE);
+			} else {
+				//Showing the error
+				viewHolder.buttonSendError.setVisibility(View.VISIBLE);
+				
+				//Showing the dialog when the button is clicked
+				viewHolder.buttonSendError.setOnClickListener(view -> {
+					//Configuring the dialog
+					MaterialAlertDialogBuilder dialogBuilder = new MaterialAlertDialogBuilder(Messaging.this)
+							.setTitle(R.string.message_messageerror_title)
+							.setNeutralButton(R.string.action_deletemessage, (dialog, which) ->
+									MessageActionTask.deleteMessages(Messaging.this, viewModel.conversationInfo, Collections.singletonList(messageInfo)).subscribe())
+							.setNegativeButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss());
+					
+					//Getting the error display
+					Pair<String, Boolean> errorDisplay = ErrorLanguageHelper.getErrorDisplay(Messaging.this, viewModel.conversationInfo, messageInfo.getErrorCode());
+					
+					//Setting the message
+					dialogBuilder.setMessage(errorDisplay.first);
+					
+					//Showing the retry button (if requested)
+					if(errorDisplay.second) {
+						dialogBuilder.setPositiveButton(R.string.action_retry, (dialog, which) -> {
+							//Re-sending the message
+							MessageActionTask.updateMessageErrorCode(viewModel.conversationInfo, messageInfo, MessageSendErrorCode.none, null)
+									.andThen(MessageSendHelper.sendMessage(Messaging.this, viewModel.conversationInfo, messageInfo, pluginCS.getConnectionManager()))
+									.subscribe();
+						});
+					}
+					
+					//Showing the dialog
+					dialogBuilder.create().show();
+				});
+				
+				viewHolder.buttonSendError.setOnLongClickListener(view -> {
+					if(messageInfo.isErrorDetailsAvailable()) {
+						//Fetching the error details from the database
+						pluginRXD.ui().add(Single.create((SingleEmitter<String> emitter) -> {
+							String errorDetails = DatabaseManager.getInstance().getMessageErrorDetails(messageInfo.getLocalID());
+							if(errorDetails != null) emitter.onSuccess(errorDetails);
+							else emitter.onError(new Exception("No error details available"));
+						}).subscribeOn(Schedulers.single())
+								.observeOn(AndroidSchedulers.mainThread()).subscribe(
+										details -> {
+											//Showing the error details
+											View dialogView = getLayoutInflater().inflate(R.layout.dialog_simplescroll, null);
+											TextView textView = dialogView.findViewById(R.id.text);
+											textView.setTypeface(Typeface.MONOSPACE);
+											textView.setText(details);
+											
+											//Showing the dialog
+											new MaterialAlertDialogBuilder(Messaging.this)
+													.setTitle(R.string.message_messageerror_details_title)
+													.setView(dialogView)
+													.setNeutralButton(R.string.action_copy, (dialog, which) -> {
+														ClipboardManager clipboard = (ClipboardManager) MainApplication.getInstance().getSystemService(Context.CLIPBOARD_SERVICE);
+														clipboard.setPrimaryClip(ClipData.newPlainText("Error details", details));
+														Toast.makeText(MainApplication.getInstance(), R.string.message_textcopied, Toast.LENGTH_SHORT).show();
+														dialog.dismiss();
+													})
+													.setPositiveButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss())
+													.create().show();
+										},
+										error -> {
+											//Notifying the user via a toast
+											Toast.makeText(Messaging.this, R.string.message_messageerror_details_unavailable, Toast.LENGTH_SHORT).show();
+										}
+								));
+					} else {
+						//Notifying the user via a toast
+						Toast.makeText(Messaging.this, R.string.message_messageerror_details_unavailable, Toast.LENGTH_SHORT).show();
+					}
+					
+					return true;
+				});
+			}
+		}
+		
+		/**
+		 * Updates the activity status label of a message
+		 * @param viewHolder The view holder of the message
+		 * @param messageInfo The message
+		 */
+		private void updateMessageActivityStatus(VHMessageStructure viewHolder, MessageInfo messageInfo) {
+			//Setting up the label
+			if((viewModel.latestMessageDelivered != null && messageInfo.getLocalID() == viewModel.latestMessageDelivered.getLocalID()) ||
+					(viewModel.latestMessageRead != null && messageInfo.getLocalID() == viewModel.latestMessageRead.getLocalID())) {
+				viewHolder.labelActivityStatus.setVisibility(View.VISIBLE);
+				
+				String message;
+				if(messageInfo.getMessageState() == MessageState.delivered) {
+					message = getResources().getString(R.string.state_delivered);
+				} else if(messageInfo.getMessageState() == MessageState.read) {
+					message = getResources().getString(R.string.state_read) + LanguageHelper.bulletSeparator + LanguageHelper.getDeliveryStatusTime(Messaging.this, messageInfo.getDateRead());
+				} else {
+					message = getResources().getString(R.string.part_unknown);
+				}
+				viewHolder.labelActivityStatus.setCurrentText(message);
+			} else {
+				viewHolder.labelActivityStatus.setVisibility(View.GONE);
+			}
+		}
+		
+		/**
+		 * Updates the time divider of a message
+		 * @param viewHolder The view holder of the message
+		 * @param messageInfo The message
+		 * @param messageAbove The message directly above this message, or NULL if none is present
+		 */
+		private void updateMessageTimeDivider(VHMessageStructure viewHolder, MessageInfo messageInfo, @Nullable MessageInfo messageAbove) {
+			//Checking if the time divider should be visible
+			if(messageAbove == null || messageInfo.getDate() - messageAbove.getDate() >= TimingConstants.conversationSessionTimeMillis) {
+				//Showing the time divider
+				viewHolder.labelTimeDivider.setText(LanguageHelper.generateTimeDividerString(Messaging.this, messageInfo.getDate()));
+				viewHolder.labelTimeDivider.setVisibility(View.VISIBLE);
+			} else {
+				//Hiding the time divider
+				viewHolder.labelTimeDivider.setVisibility(View.GONE);
+			}
+		}
+		
+		private void updateMessageViewEdges(VHMessageStructure viewHolder, ConversationInfo conversationInfo, MessageInfo messageInfo, @Nullable MessageInfo messageAbove, @Nullable MessageInfo messageBelow) {
+			boolean isLTR = getResources().getBoolean(R.bool.is_left_to_right);
+			/*
+			 * true + true = true
+			 * true + false = false
+			 * false + true = false
+			 * false + false = true
+		 	 */
+			boolean alignToRight = messageInfo.isOutgoing() == isLTR;
+			boolean isAnchoredTop = messageAbove != null && Objects.equals(messageInfo.getSender(), messageAbove.getSender()) && messageInfo.getDate() - messageAbove.getDate() < TimingConstants.conversationBurstTimeMillis;
+			boolean isAnchoredBottom = messageBelow != null && Objects.equals(messageInfo.getSender(), messageBelow.getSender()) && messageBelow.getDate() - messageInfo.getDate() < TimingConstants.conversationBurstTimeMillis;
+			
+			//Getting the dimension values
+			int pxPaddingAnchored = getResources().getDimensionPixelSize(R.dimen.messagebubble_padding_anchored);
+			int pxPaddingUnanchored = getResources().getDimensionPixelSize(R.dimen.messagebubble_padding);
+			
+			//Updating the padding
+			viewHolder.itemView.setPadding(viewHolder.itemView.getPaddingLeft(), isAnchoredTop ? pxPaddingAnchored : pxPaddingUnanchored, viewHolder.itemView.getPaddingRight(), isAnchoredBottom ? pxPaddingAnchored : pxPaddingUnanchored);
+			
+			//Checking if the message is incoming
+			if(!messageInfo.isOutgoing()) {
+				//Setting the user information
+				boolean showUserInfo = !isAnchoredTop; //If the message isn't anchored to the top
+				if(conversationInfo.isGroupChat()) viewHolder.labelSender.setVisibility(showUserInfo ? View.VISIBLE : View.GONE);
+				if(viewHolder.profileGroup != null) viewHolder.profileGroup.setVisibility(showUserInfo ? View.VISIBLE : View.GONE);
+			}
+			
+			//Updating the view edges between components
+			for(ListIterator<VHMessageComponent> iterator = viewHolder.messageComponents.listIterator(); iterator.hasNext();) {
+				int i = iterator.nextIndex();
+				VHMessageComponent componentViewHolder = iterator.next();
+				componentViewHolder.updateViewEdges(Messaging.this, i > 0 || isAnchoredTop, iterator.hasNext() || isAnchoredBottom, alignToRight);
+				componentViewHolder.itemView.setPadding(0, i > 0 ? pxPaddingAnchored : 0, 0, 0);
+			}
+		}
+		
+		private void updateMessageViewColoring(ConversationInfo conversationInfo, VHMessageStructure viewHolder, MessageInfo messageInfo) {
+			//Getting the colors
+			int textColor;
+			int textColorSecondary;
+			int backgroundColor;
+			
+			MemberInfo memberInfo;
+			
+			if(messageInfo.isOutgoing()) {
+				memberInfo = null;
+				if(Preferences.getPreferenceAdvancedColor(Messaging.this)) {
+					textColor = ResourceHelper.resolveColorAttr(Messaging.this, android.R.attr.textColorPrimary);
+					textColorSecondary = ResourceHelper.resolveColorAttr(Messaging.this, android.R.attr.textColorSecondary);
+					backgroundColor = getResources().getColor(R.color.colorMessageOutgoing, null);
+				} else {
+					textColor = ResourceHelper.resolveColorAttr(Messaging.this, R.attr.colorOnPrimary);
+					textColorSecondary = ColorUtils.setAlphaComponent(textColor, ColorConstants.secondaryAlphaInt);
+					backgroundColor = ColorHelper.getServiceColor(getResources(), conversationInfo.getServiceHandler(), conversationInfo.getServiceType());
+				}
+			} else {
+				//Finding the member
+				memberInfo = conversationInfo.getMembers().stream().filter(member -> member.getAddress().equals(messageInfo.getSender())).findAny().orElse(null);
+				
+				if(Preferences.getPreferenceAdvancedColor(Messaging.this)) {
+					int targetColor = memberInfo == null ? ConversationColorHelper.backupUserColor : memberInfo.getColor();
+					textColor = ColorMathHelper.multiplyColorLightness(targetColor, ThemeHelper.isNightMode(getResources()) ? 1.5F : 0.7F);
+					textColorSecondary = ColorUtils.setAlphaComponent(textColor, 179);
+					backgroundColor = ColorUtils.setAlphaComponent(targetColor, 50);
+				} else {
+					textColor = ResourceHelper.resolveColorAttr(Messaging.this, android.R.attr.textColorPrimary);
+					textColorSecondary = ResourceHelper.resolveColorAttr(Messaging.this, android.R.attr.textColorSecondary);
+					backgroundColor = getResources().getColor(R.color.colorMessageOutgoing, null);
+				}
+			}
+			
+			//Setting the user tint
+			if(!messageInfo.isOutgoing() && viewHolder.profileGroup != null) {
+				int memberColor = memberInfo == null ? ConversationColorHelper.backupUserColor : memberInfo.getColor();
+				viewHolder.profileDefault.setColorFilter(memberColor, android.graphics.PorterDuff.Mode.MULTIPLY);
+			}
+			
+			//Updating the components
+			for(VHMessageComponent viewHolderComponent : viewHolder.messageComponents) {
+				viewHolderComponent.updateViewColoring(Messaging.this, textColor, textColorSecondary, backgroundColor);
+			}
+		}
+		
+		private void bindMessageComponentList(@NonNull VHMessageStructure viewHolder, ConversationInfo conversationInfo, MessageInfo messageInfo) {
+			/*
+			 * This function behaves as the following:
+			 * 1. Index the existing components from the view holder
+			 * 2. Clear all components from the view holder
+			 * 3. Build the component view for the new message first using our indexed components, and then pulling from the component pool
+			 * 4. Release any excess indexed components back into the pool
+			 */
+			
+			//Pulling views
+			SparseArray<List<VHMessageComponent>> componentViewHolderList = new SparseArray<>();
+			if(!viewHolder.messageComponents.isEmpty()) {
+				//Sorting the components by type into the map
+				for(VHMessageComponent componentViewHolder : viewHolder.messageComponents) {
+					List<VHMessageComponent> list = componentViewHolderList.get(componentViewHolder.getComponentType());
+					if(list == null) {
+						list = new ArrayList<>();
+						componentViewHolderList.put(componentViewHolder.getComponentType(), list);
+					}
+					
+					list.add(componentViewHolder);
+				}
+				
+				//Clearing and removing the components
+				viewHolder.messageComponents.clear();
+				viewHolder.containerMessagePart.removeAllViews();
+			}
+			
+			//Building the component views
+			List<MessageComponent> messageComponentList = new ArrayList<>();
+			if(messageInfo.getMessageTextInfo() != null) messageComponentList.add(messageInfo.getMessageTextInfo());
+			messageComponentList.addAll(messageInfo.getAttachments());
+			
+			for(MessageComponent component : messageComponentList) {
+				int componentType = getMessageComponentType(component);
+				
+				List<VHMessageComponent> list = componentViewHolderList.get(componentType);
+				VHMessageComponent componentViewHolder;
+				if(list != null && list.isEmpty()) {
+					//If we can re-use one of our existing view holders, do that
+					componentViewHolder = list.get(0);
+					list.remove(0);
+				} else {
+					//Otherwise get a view holder from the pool
+					componentViewHolder = getPoolComponent(componentType, viewHolder.containerMessagePart);
+				}
+				
+				//Adding the component view holder to the message view holder
+				viewHolder.messageComponents.add(componentViewHolder);
+				viewHolder.containerMessagePart.addView(componentViewHolder.itemView);
+				
+				//Binding the component view
+				bindMessageComponent(viewHolder, componentViewHolder, conversationInfo, messageInfo, component);
+			}
+			
+			//Sending any excess component views back to the pool
+			for(int i = 0; i < componentViewHolderList.size(); i++) {
+				int itemViewType = componentViewHolderList.keyAt(i);
+				List<VHMessageComponent> list = componentViewHolderList.valueAt(i);
+				for(VHMessageComponent componentViewHolder : list) {
+					releasePoolComponent(itemViewType, componentViewHolder);
+				}
+			}
+		}
+		
+		/**
+		 * Binds a message component to its view holder
+		 * @param viewHolderStructure The view holder of this message's structure
+		 * @param viewHolder The view holder of this message component
+		 * @param messageComponent The message component to bind
+		 */
+		private void bindMessageComponent(VHMessageStructure viewHolderStructure, VHMessageComponent viewHolder, ConversationInfo conversationInfo, MessageInfo messageInfo, MessageComponent messageComponent) {
+			//if(viewHolder.getComponentType() != messageComponent.getComponentType()) throw new IllegalArgumentException("Trying to bind message component to view holder of different type: " + viewHolder.getComponentType() + " != " + messageComponent.getComponentType() + "!");
+			
+			//Binding the common data
+			bindMessageComponentCommon(viewHolder, messageInfo, messageComponent);
+			
+			if(viewHolder.getComponentType() == MessageComponentType.text) {
+				bindMessageComponentText(viewHolderStructure, (VHMessageComponentText) viewHolder, conversationInfo, messageInfo, (MessageComponentText) messageComponent);
+			} else {
+				bindMessageAttachmentCommon(viewHolderStructure, (VHMessageComponentAttachment) viewHolder, messageInfo, (AttachmentInfo) messageComponent);
+			}
+		}
+		
+		/**
+		 * Binds the views common across all components
+		 * @param viewHolder The view holder for the component
+		 * @param messageInfo The message info of the component
+		 * @param component The component to bind
+		 */
+		private void bindMessageComponentCommon(VHMessageComponent viewHolder, MessageInfo messageInfo, MessageComponent component) {
+			//Setting the message alignment
+			((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (messageInfo.isOutgoing() ? Gravity.END : Gravity.START);
+			
+			//Building the sticker and tapback views
+			VBMessageComponent.buildStickerView(Messaging.this, component.getStickers(), viewHolder.stickerContainer);
+			VBMessageComponent.buildTapbackView(Messaging.this, component.getTapbacks(), viewHolder.tapbackContainer);
+			
+			//Resetting the click listener (can be set later on by different content types)
+			viewHolder.itemView.setOnClickListener(null);
+			
+			//Open the popup menu on long click
+			viewHolder.itemView.setOnLongClickListener(view -> {
+				openPopupMenu(viewHolder.itemView, messageInfo, component);
+				return true;
+			});
+		}
+		
+		private void bindMessageComponentText(VHMessageStructure viewHolderStructure, VHMessageComponentText viewHolder, ConversationInfo conversationInfo, MessageInfo messageInfo, MessageComponentText component) {
+			//Resetting the click listener
+			viewHolder.labelBody.setOnLongClickListener(null);
+			
+			//Checking if there is body text
+			if(component.getText() != null) {
+				//Showing the body label
+				viewHolder.labelBody.setVisibility(View.VISIBLE);
+				
+				//Checking if the string consists exclusively of emoji characters
+				if(StringHelper.stringContainsOnlyEmoji(component.getText())) {
+					//Increasing the text size
+					viewHolder.labelBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
+					
+					//Setting the message text
+					viewHolder.labelBody.setText(component.getText());
+				} else {
+					//Resetting the text size
+					viewHolder.labelBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+					
+					//Setting the message text
+					viewHolder.labelBody.setText(component.getText());
+					viewHolderStructure.getCompositeDisposable().add(
+							viewModel.taskLinkify(component.getLocalID(), Messaging.this, component.getText())
+									.onErrorComplete().subscribe(spannable -> {
+								viewHolder.labelBody.setText(spannable);
+								viewHolder.labelBody.setTransformationMethod(new CustomTabsLinkTransformationMethod());
+								viewHolder.labelBody.setMovementMethod(LinkMovementMethod.getInstance());
+								viewHolder.labelBody.setOnLongClickListener(view -> {
+									openPopupMenu(viewHolder.itemView, messageInfo, component);
+									return true;
+								});
+							})
+					);
+				}
+			} else {
+				//Hiding the body label
+				viewHolder.labelBody.setVisibility(View.GONE);
+			}
+			
+			//Checking if there is subject text
+			if(component.getSubject() != null) {
+				//Showing the subject label
+				viewHolder.labelSubject.setVisibility(View.VISIBLE);
+				
+				//Setting the subject text
+				viewHolder.labelSubject.setText(component.getSubject());
+			} else {
+				//Hiding the subject label
+				viewHolder.labelSubject.setVisibility(View.GONE);
+			}
+			
+			//Removing the preview view
+			if(viewHolder.messagePreviewViewHolder != null) {
+				viewHolder.messagePreviewContainer.removeView(viewHolder.messagePreviewViewHolder.itemView);
+				previewPool.release(viewHolder.messagePreviewViewHolder);
+				viewHolder.messagePreviewViewHolder = null;
+				viewHolder.messagePreviewContainer.setVisibility(View.GONE);
+			}
+			
+			//Setting the invisible ink view touch listener
+			viewHolder.inkView.setOnTouchListener((View view, MotionEvent event) -> {
+				if(event.getAction() == MotionEvent.ACTION_DOWN) {
+					((InvisibleInkView) view).reveal();
+				}
+				
+				return view.onTouchEvent(event);
+			});
+			
+			//Setting the message alignment
+			((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (messageInfo.isOutgoing() ? Gravity.END : Gravity.START);
+			
+			//Enforcing the maximum content width
+			{
+				int maxWidth = WindowHelper.getMaxMessageWidth(getResources());
+				viewHolder.labelBody.setMaxWidth(maxWidth);
+				viewHolder.labelSubject.setMaxWidth(maxWidth);
+				viewHolder.messagePreviewContainer.getLayoutParams().width = maxWidth;
+			}
+			
+			//Resetting the message text bubble's width to its default
+			viewHolder.groupMessage.getLayoutParams().width = ViewGroup.LayoutParams.WRAP_CONTENT;
+			
+			//Checking if previews are enabled
+			if(Preferences.getPreferenceMessagePreviews(Messaging.this)) {
+				int messagePreviewState = component.getMessagePreviewState();
+				
+				//Checking if a message preview is available
+				if(messagePreviewState == MessagePreviewState.available) {
+					//Requesting the message preview information
+					viewHolderStructure.getCompositeDisposable().add(
+							viewModel.taskMessagePreview(component.getMessagePreviewID())
+									.doOnError(error -> Log.w(TAG, "Failed to load message preview ID " + component.getMessagePreviewID() + " from disk", error))
+									.onErrorComplete()
+									.subscribe(preview -> bindMessagePreview(viewHolderStructure, conversationInfo, messageInfo, viewHolder, preview))
+					);
+				}
+				//Checking if a message preview should be fetched
+				else if(messagePreviewState == MessagePreviewState.notTried && component.getText() != null) {
+					//Finding any URL spans
+					Matcher matcher = Patterns.WEB_URL.matcher(component.getText());
+					int matchOffset = 0;
+					String targetURL = null;
+					
+					while(matcher.find(matchOffset)) {
+						//Getting the URL
+						String urlString = matcher.group();
+						
+						//Updating the offset
+						matchOffset = matcher.end();
+						
+						//Ignoring email addresses
+						int matchStart = matcher.start();
+						if(matchStart > 0 && component.getText().charAt(matchStart - 1) == '@') continue;
+						
+						//Skipping the URL if it has a custom scheme (the WEB_URL matcher will not include the scheme in the URL if it is unknown)
+						String schemeOutside = component.getText().substring(0, matcher.start());
+						if(schemeOutside.matches("\\w(?:\\w|\\d|\\+|-|\\.)*://$")) continue; //https://regex101.com/r/hW5bOW/1
+						
+						if(urlString.contains("…")) continue; //Crashes okhttp for some reason
+						
+						if(!urlString.contains("://")) urlString = "https://" + urlString; //Adding the scheme if it doesn't have one
+						else if(urlString.startsWith("http://")) urlString = urlString.replaceFirst("http://", "https://"); //Replacing HTTP schemes with HTTPS schemes
+						else if(!urlString.startsWith("https://")) continue; //Ignoring URLs of other schemes
+						
+						//Setting the url
+						targetURL = urlString;
+						break;
+					}
+					
+					//Checking if a URL was found
+					if(targetURL != null) {
+						//Fetching the data
+						String finalTargetURL = targetURL;
+						viewHolder.getCompositeDisposable().add(
+								viewModel.taskLinkPreview(component.getLocalID(), targetURL)
+										.observeOn(Schedulers.single())
+										.map(metadata -> {
+											//Downloading the preview image
+											byte[] imageBytes = null;
+											if(metadata.getImageURL() != null) {
+												try(BufferedInputStream in = new BufferedInputStream(new URL(metadata.getImageURL()).openStream());
+													ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+													DataStreamHelper.copyStream(in, out);
+													imageBytes = out.toByteArray();
+													if(imageBytes.length > previewImageMaxSize) imageBytes = DataCompressionHelper.compressBitmap(imageBytes, "image/webp", previewImageMaxSize);
+												} catch(IOException exception) {
+													exception.printStackTrace();
+													//Not returning, as the preview should simply be displayed without an image if the image failed to download
+												}
+											}
+											
+											//Creating the message preview
+											String caption;
+											if(metadata.getSiteName() != null && !metadata.getSiteName().isEmpty()) caption = metadata.getSiteName();
+											else {
+												try {
+													caption = LanguageHelper.getDomainName(finalTargetURL);
+													if(caption == null) throw new IllegalStateException("Cannot find domain name of " + caption);
+												} catch(URISyntaxException exception) {
+													//Logging the error
+													exception.printStackTrace();
+													
+													//Updating the message state
+													DatabaseManager.getInstance().setMessagePreviewState(component.getLocalID(), MessagePreviewState.unavailable);
+													
+													//Returning
+													throw exception;
+												}
+											}
+											
+											//Creating the message preview
+											MessagePreviewInfo messagePreview = new MessagePreviewInfo(MessagePreviewType.link, component.getLocalID(), imageBytes, finalTargetURL, metadata.getTitle(), metadata.getDescription(), caption);
+											
+											//Writing the metadata to disk
+											DatabaseManager.getInstance().setMessagePreviewData(component.getLocalID(), messagePreview);
+											
+											return messagePreview;
+										})
+										.observeOn(AndroidSchedulers.mainThread())
+										//Updating the state
+										.subscribe(preview -> {
+											component.setMessagePreviewState(MessagePreviewState.available);
+											component.setMessagePreviewID(preview.getLocalID());
+											viewModel.taskManagerMessagePreview.add(preview.getLocalID(), preview);
+											bindMessagePreview(viewHolderStructure, conversationInfo, messageInfo, viewHolder, preview);
+										}, error -> {
+											component.setMessagePreviewState(MessagePreviewState.unavailable);
+										})
+						);
+					} else {
+						//Updating the preview
+						component.setMessagePreviewState(MessagePreviewState.unavailable);
+						
+						//Updating the state on disk
+						Completable.create(emitter -> {
+							DatabaseManager.getInstance().setMessagePreviewState(messageInfo.getLocalID(), MessagePreviewState.unavailable);
+						}).subscribeOn(Schedulers.single()).subscribe();
+					}
+				}
+			}
+			
+			//Setting up the message effects
+			if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) {
+				viewHolder.inkView.setVisibility(View.VISIBLE);
+				viewHolder.inkView.setState(true);
+			} else {
+				viewHolder.inkView.setVisibility(View.GONE);
+			}
+		}
+		
+		/**
+		 * Sets the visible view on an attachment component, and hides all other views
+		 * @param viewHolder The attachment component's view holder
+		 * @param shownView The view to show
+		 */
+		private void setAttachmentView(VHMessageComponentAttachment viewHolder, View shownView) {
+			viewHolder.groupPrompt.setVisibility(viewHolder.groupPrompt == shownView ? View.VISIBLE : View.GONE);
+			viewHolder.groupProgress.setVisibility(viewHolder.groupProgress == shownView ? View.VISIBLE : View.GONE);
+			viewHolder.groupOpen.setVisibility(viewHolder.groupOpen == shownView ? View.VISIBLE : View.GONE);
+			viewHolder.groupContentFrame.setVisibility(viewHolder.groupContentFrame == shownView ? View.VISIBLE : View.GONE);
+		}
+		
+		private void bindMessageAttachmentCommon(VHMessageStructure viewHolderStructure, VHMessageComponentAttachment viewHolder, MessageInfo messageInfo, AttachmentInfo component) {
+			//Checking if we already have content
+			if(component.getFile() != null) {
+				//Showing the open view
+				setAttachmentView(viewHolder, viewHolder.groupOpen);
+				viewHolder.labelOpen.setText(component.getFileName());
+				viewHolder.itemView.setOnClickListener(view -> IntentHelper.openAttachmentFile(Messaging.this, component.getFile(), component.getContentType()));
+				
+				//Setting up the content view
+				bindMessageComponentContent(viewHolderStructure, viewHolder, messageInfo, component);
+			} else {
+				//Getting the current download state
+				BehaviorSubject<ReduxEventAttachmentDownload> downloadObservable = ConnectionTaskManager.getDownload(component.getLocalID());
+				
+				//Checking if there is a download in progress
+				if(downloadObservable != null && !(downloadObservable.getValue() instanceof ReduxEventAttachmentDownload.Complete)) {
+					//Showing the progress view
+					setAttachmentView(viewHolder, viewHolder.groupProgress);
+					viewHolder.progressProgress.setIndeterminate(true);
+					
+					//Subscribing to download updates
+					attachmentSubscribeDownload(viewHolderStructure, viewHolder, messageInfo, component, downloadObservable);
+				} else {
+					//Showing the download prompt view
+					setAttachmentView(viewHolder, viewHolder.groupPrompt);
+					
+					viewHolder.labelPromptType.setText(LanguageHelper.getHumanReadableContentType(getResources(), component.getContentType()));
+					if(component.getFileSize() == -1) viewHolder.labelPromptSize.setVisibility(View.GONE);
+					else {
+						viewHolder.labelPromptSize.setVisibility(View.VISIBLE);
+						viewHolder.labelPromptSize.setText(Formatter.formatShortFileSize(Messaging.this, component.getFileSize()));
+					}
+					
+					//Setting the download click listener
+					viewHolder.itemView.setOnClickListener(view -> downloadAttachmentContent(viewHolderStructure, viewHolder, messageInfo, component));
+				}
+			}
+		}
+		
+		/**
+		 * Initiates a download request for an attachment's content and updates the attachment's view to reflect the new state
+		 * @param viewHolderStructure The view holder structure
+		 * @param viewHolder The view holder of the component
+		 * @param messageInfo The message of the attachment
+		 * @param component The attachment to download
+		 */
+		private void downloadAttachmentContent(VHMessageStructure viewHolderStructure, VHMessageComponentAttachment viewHolder, MessageInfo messageInfo, AttachmentInfo component) {
+			if(component.getGUID() != null) {
+				if(pluginCS.isServiceBound()) {
+					//Switching to the download view
+					setAttachmentView(viewHolder, viewHolder.groupProgress);
+					viewHolder.progressProgress.setIndeterminate(true);
+					
+					//Starting the download
+					attachmentSubscribeDownload(viewHolderStructure, viewHolder, messageInfo, component, ConnectionTaskManager.downloadAttachment(pluginCS.getConnectionManager(), messageInfo.getLocalID(), component.getLocalID(), component.getGUID(), component.getFileName()));
+				} else {
+					Toast.makeText(Messaging.this, R.string.message_connectionerror, Toast.LENGTH_SHORT).show();
+				}
+			}
+		}
+		
+		/**
+		 * Subscribes a message component to its download progress
+		 * @param viewHolderStructure The view holder structure
+		 * @param viewHolder The view holder of the component
+		 * @param attachmentInfo The attachment to subscribe
+		 * @param observable The download task observable
+		 */
+		private void attachmentSubscribeDownload(VHMessageStructure viewHolderStructure, VHMessageComponentAttachment viewHolder, MessageInfo messageInfo, AttachmentInfo attachmentInfo, Observable<ReduxEventAttachmentDownload> observable) {
+			viewHolderStructure.getCompositeDisposable().add(
+					observable.onErrorComplete().subscribe(event -> {
+						viewHolder.progressProgress.setIndeterminate(false);
+						if(event instanceof ReduxEventAttachmentDownload.Progress) {
+							ReduxEventAttachmentDownload.Progress progressEvent = (ReduxEventAttachmentDownload.Progress) event;
+							
+							//Updating the progress bar
+							viewHolder.progressProgress.setProgress((int) ((float) progressEvent.getBytesProgress() / progressEvent.getBytesTotal() * viewHolder.progressProgress.getMax()));
+						}
+					})
+			);
+		}
+		
+		private void bindMessageComponentContent(VHMessageStructure viewHolderStructure, VHMessageComponentAttachment viewHolder, MessageInfo messageInfo, AttachmentInfo component) {
+			if(FileHelper.compareMimeTypes(component.getContentType(), MIMEConstants.mimeTypeImage) || FileHelper.compareMimeTypes(component.getContentType(), MIMEConstants.mimeTypeVideo)) {
+				bindMessageComponentVisual((VHMessageComponentVisual) viewHolder, messageInfo, component);
+			} else if(FileHelper.compareMimeTypes(component.getContentType(), MIMEConstants.mimeTypeAudio)) {
+				bindMessageComponentAudio(viewModel.audioPlaybackManager, viewHolderStructure, (VHMessageComponentAudio) viewHolder, component);
+			} else if(FileHelper.compareMimeTypes(component.getContentType(), MIMEConstants.mimeTypeVCard)) {
+				bindMessageComponentContact(viewHolderStructure, (VHMessageComponentContact) viewHolder, component);
+			} else if(FileHelper.compareMimeTypes(component.getContentType(), MIMEConstants.mimeTypeVLocation)) {
+				bindMessageComponentLocation(viewHolderStructure, (VHMessageComponentLocation) viewHolder, component);
+			}
+		}
+		
+		private void bindMessageComponentVisual(VHMessageComponentVisual viewHolder, MessageInfo messageInfo, AttachmentInfo component) {
+			//Resetting the image view
+			viewHolder.imageView.layout(0, 0, 0, 0);
+			
+			//Loading the image
+			RequestBuilder<Drawable> requestBuilder = Glide.with(Messaging.this)
+					.load(component.getFile())
+					.signature(new ObjectKey(component.getGUID() != null ? component.getGUID() : component.getLocalID()))
+					.transition(DrawableTransitionOptions.withCrossFade());
+			if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(SendStyleHelper.invisibleInkBlurRadius, SendStyleHelper.invisibleInkBlurSampling)));
+			//requestBuilder.into(viewHolder.imageView);
+			requestBuilder.into(new DrawableImageViewTarget(viewHolder.imageView){
+				@Override
+				protected void setResource(@Nullable Drawable resource) {
+					super.setResource(resource);
+					
+					//Switching to the content view
+					setAttachmentView(viewHolder, viewHolder.groupContentFrame);
+					
+					//Setting the click listener
+					viewHolder.itemView.setOnClickListener(view -> openAttachmentFileMediaViewer(component, viewHolder.imageView, new float[]{0, 0, 0, 0, 0, 0, 0, 0}));
+					
+					//Updating the image view layout
+					viewHolder.imageView.requestLayout();
+					//viewHolder.imageView.post(viewHolder.imageView::requestLayout);
+					
+					if(FileHelper.compareMimeTypes(component.getContentType(), MIMEConstants.mimeTypeVideo)) {
+						//Showing the play indicator
+						viewHolder.playIndicator.setVisibility(View.VISIBLE);
+						
+						//Computing the image brightness
+						Bitmap bitmap = ((BitmapDrawable) resource).getBitmap();
+						boolean isLight = ColorMathHelper.calculateBrightness(bitmap, bitmap.getWidth() / 16) > 200;
+						
+						//Updating the play icon color
+						viewHolder.playIndicator.setImageTintList(isLight ? ColorStateList.valueOf(0xFF212121) : ColorStateList.valueOf(0xFFFFFFFF));
+					} else {
+						//Hiding the play indicator
+						viewHolder.playIndicator.setVisibility(View.GONE);
+					}
+					
+					//Updating the ink view
+					if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) {
+						viewHolder.inkView.setVisibility(View.VISIBLE);
+						viewHolder.inkView.setState(true);
+					} else {
+						viewHolder.inkView.setVisibility(View.GONE);
+					}
+				}
+			});
+		}
+		
+		private void bindMessageComponentAudio(AudioPlaybackManager playbackManager, VHMessageStructure viewHolderStructure, VHMessageComponentAudio viewHolder, AttachmentInfo component) {
+			//Loading the metadata
+			viewHolderStructure.getCompositeDisposable().add(
+					component.<FileDisplayMetadata.Media>getDisplayMetadata(() -> Single.create(emitter -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, Union.ofA(component.getFile())))))
+					.subscribe(metadata -> {
+						//Switching to the content view
+						setAttachmentView(viewHolder, viewHolder.groupContentFrame);
+						
+						//Checking if we are currently playing this message
+						if(playbackManager.compareRequest(component)) {
+							//Subscribing to playback updates
+							attachAudioPlayback(playbackManager.emitter(), viewHolderStructure, viewHolder, metadata.getMediaDuration());
+						} else {
+							//Showing the idle state
+							viewHolder.setPlaybackIdle(metadata.getMediaDuration());
+						}
+						
+						//Setting the click listener
+						viewHolder.itemView.setOnClickListener(view -> {
+							if(playbackManager.compareRequest(component)) {
+								//Toggling playback if we're already playing this audio file
+								playbackManager.togglePlaying();
+							} else {
+								//Otherwise, starting a new playback session
+								Observable<AudioPlaybackManager.Progress> playbackObservable = playbackManager.play(Messaging.this, component, component.getFile());
+								attachAudioPlayback(playbackObservable, viewHolderStructure, viewHolder, metadata.getMediaDuration());
+							}
+						});
+					})
+			);
+		}
+		
+		/**
+		 * Subscribes an audio component view holder to the current playback of an audio playback manager
+		 * @param playbackObservable The audio playback observable to subscribe to
+		 * @param viewHolderStructure The view holder of this message's structure
+		 * @param viewHolder The view holder of the audio component
+		 * @param audioDuration The total length of the audio file
+		 */
+		private void attachAudioPlayback(Observable<AudioPlaybackManager.Progress> playbackObservable, VHMessageStructure viewHolderStructure, VHMessageComponentAudio viewHolder, long audioDuration) {
+			viewHolderStructure.getCompositeDisposable().add(playbackObservable.subscribe(update -> {
+				viewHolder.setPlaybackProgress(update.getPlaybackProgress(), audioDuration, update.isPlaying());
+			}, error -> {}, () -> {
+				//Returning to idle when playback is finished
+				viewHolder.setPlaybackIdle(audioDuration);
+			}));
+		}
+		
+		private void bindMessageComponentContact(VHMessageStructure viewHolderStructure, VHMessageComponentContact viewHolder, AttachmentInfo component) {
+			//Loading the metadata
+			viewHolderStructure.getCompositeDisposable().add(
+					component.<FileDisplayMetadata.Contact>getDisplayMetadata(() -> Single.create(emitter -> emitter.onSuccess(new FileDisplayMetadata.Contact(Messaging.this, Union.ofA(component.getFile())))))
+					.subscribe(metadata -> {
+						//Switching to the content view
+						setAttachmentView(viewHolder, viewHolder.groupContentFrame);
+						
+						//Setting the contact name label
+						if(metadata.getContactName() == null) viewHolder.labelName.setText(R.string.part_content_contact);
+						else viewHolder.labelName.setText(metadata.getContactName());
+						
+						//Setting the contact's picture
+						if(metadata.getContactIcon() == null) {
+							viewHolder.iconPlaceholder.setVisibility(View.VISIBLE);
+							viewHolder.iconProfile.setVisibility(View.GONE);
+						} else {
+							viewHolder.iconPlaceholder.setVisibility(View.GONE);
+							viewHolder.iconProfile.setVisibility(View.VISIBLE);
+							viewHolder.iconProfile.setImageBitmap(metadata.getContactIcon());
+						}
+						
+						//Setting the click listener
+						viewHolder.itemView.setOnClickListener(view -> IntentHelper.openAttachmentFile(Messaging.this, component.getFile(), component.getContentType()));
+					})
+			);
+		}
+		
+		private void bindMessageComponentLocation(VHMessageStructure viewHolderStructure, VHMessageComponentLocation viewHolder, AttachmentInfo component) {
+			//Setting the width
+			viewHolder.groupContent.getLayoutParams().width = WindowHelper.getMaxMessageWidth(getResources());
+			
+			//Loading the metadata and waiting for the map view to be initialized
+			viewHolderStructure.getCompositeDisposable().add(
+					Single.zip(
+							component.<FileDisplayMetadata.LocationDetailed>getDisplayMetadata(() -> Single.fromCallable(() -> new FileDisplayMetadata.LocationDetailed(Messaging.this, Union.ofA(component.getFile())))),
+							viewHolder.getGoogleMap(),
+							Pair::new
+					).subscribe(results -> {
+						//Getting the results
+						FileDisplayMetadata.LocationDetailed metadata = results.first;
+						GoogleMap googleMap = results.second;
+						
+						//Switching to the content view
+						setAttachmentView(viewHolder, viewHolder.groupContentFrame);
+						
+						//Setting the location title
+						if(metadata.getLocationName() != null) viewHolder.labelTitle.setText(metadata.getLocationName());
+						else viewHolder.labelTitle.setText(R.string.message_locationtitle_unknown);
+						
+						//Setting the address
+						if(metadata.getLocationAddress() != null) viewHolder.labelAddress.setText(metadata.getLocationAddress());
+						else {
+							if(metadata.getLocationCoords() != null) viewHolder.labelAddress.setText(LanguageHelper.coordinatesToString(metadata.getLocationCoords()));
+							else viewHolder.labelAddress.setText(R.string.message_locationaddress_unknown);
+						}
+						
+						//Setting the map preview
+						if(metadata.getLocationCoords() == null || !Preferences.getPreferenceMessagePreviews(viewHolder.itemView.getContext())) {
+							viewHolder.mapContainer.setVisibility(View.GONE);
+						} else {
+							//Showing the map view and setting it as non-clickable (so that the card view parent will handle clicks instead)
+							viewHolder.mapContainer.setVisibility(View.VISIBLE);
+							viewHolder.mapView.setClickable(false);
+							
+							//Setting the map location
+							LatLng targetLocation = metadata.getLocationCoords();
+							googleMap.clear();
+							googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(targetLocation, 15));
+							MarkerOptions markerOptions = new MarkerOptions().position(targetLocation);
+							googleMap.addMarker(markerOptions);
+							
+							//Setting the map theme
+							googleMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(Messaging.this, ThemeHelper.isNightMode(getResources()) ? R.raw.map_dark : R.raw.map_light));
+							googleMap.getUiSettings().setMapToolbarEnabled(false);
+						}
+						
+						//Setting the click listener
+						viewHolder.itemView.setOnClickListener(view -> IntentHelper.launchUri(viewHolder.groupContent.getContext(), metadata.getMapLink()));
+					})
+			);
+		}
+		
+		private void bindMessagePreview(VHMessageStructure structureViewHolder, ConversationInfo conversationInfo, MessageInfo messageInfo, VHMessageComponentText componentViewHolder, MessagePreviewInfo preview) {
+			//Expanding the message text bubble to match the view
+			componentViewHolder.groupMessage.getLayoutParams().width = 0;
+			
+			//Showing the preview container
+			componentViewHolder.messagePreviewContainer.setVisibility(View.VISIBLE);
+			
+			//There will be a switch statement or something here if we add more preview types
+			bindMessagePreviewLink(componentViewHolder, preview);
+			
+			//Updating the view edges
+			Pair<MessageInfo, MessageInfo> adjacentMessages = getAdjacentMessages(conversationItems.indexOf(messageInfo));
+			updateMessageViewEdges(structureViewHolder, conversationInfo, messageInfo, adjacentMessages.first, adjacentMessages.second);
+		}
+		
+		private void bindMessagePreviewLink(VHMessageComponentText componentViewHolder, MessagePreviewInfo preview) {
+			//Getting a preview view holder from the pool
+			VHMessagePreviewLink viewHolder = previewPool.acquire();
+			
+			//If we don't have a view holder, make a new one
+			if(viewHolder == null) {
+				View view = getLayoutInflater().inflate(R.layout.layout_messagepreview_linklarge, componentViewHolder.messagePreviewContainer, false);
+				viewHolder = new VHMessagePreviewLink(view,
+						view.findViewById(R.id.view_border),
+						view.findViewById(R.id.image_header),
+						view.findViewById(R.id.label_title),
+						view.findViewById(R.id.label_description),
+						view.findViewById(R.id.label_address)
+				);
+			}
+			
+			//Applying the view holder
+			componentViewHolder.messagePreviewContainer.addView(viewHolder.itemView);
+			componentViewHolder.messagePreviewViewHolder = viewHolder;
+			
+			//Loading the image (or disabling it if there is none)
+			byte[] data = preview.getData();
+			if(data == null) {
+				viewHolder.imageHeader.setVisibility(View.GONE);
+			} else {
+				viewHolder.imageHeader.setVisibility(View.VISIBLE);
+				Glide.with(Messaging.this).load(data).into(viewHolder.imageHeader);
+			}
+			
+			//Setting the title
+			viewHolder.labelTitle.setText(preview.getTitle());
+			
+			//Setting the description (or disabling it if there is none)
+			String subtitle = preview.getSubtitle();
+			if(subtitle == null || subtitle.isEmpty()) {
+				viewHolder.labelDescription.setVisibility(View.GONE);
+			} else {
+				viewHolder.labelDescription.setVisibility(View.VISIBLE);
+				viewHolder.labelDescription.setText(subtitle);
+			}
+			
+			//Setting the address (as the site name, or otherwise the host)
+			viewHolder.labelAddress.setText(preview.getCaption());
+			
+			//Setting the click listener
+			viewHolder.itemView.setOnClickListener(view -> {
+				Uri targetUri = Uri.parse(preview.getTarget());
+				//To keep consistent with standard Linkify
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) IntentHelper.launchUri(Messaging.this, targetUri);
+				else IntentHelper.launchCustomTabs(Messaging.this, targetUri);
+			});
+		}
+		
+		private void openAttachmentFileMediaViewer(AttachmentInfo attachmentInfo, View transitionView, float[] radiiRaw) {
+			//Assembling a list of all attachment files
+			ArrayList<AttachmentInfo> attachments = viewModel.conversationItemList.stream()
+					.filter(item -> item.getItemType() == ConversationItemType.message)
+					.flatMap(item -> ((MessageInfo) item).getAttachments().stream())
+					.filter(attachment ->
+							attachment.getFile() != null &&
+									(FileHelper.compareMimeTypes(attachment.getContentType(), MIMEConstants.mimeTypeImage) || FileHelper.compareMimeTypes(attachment.getContentType(), MIMEConstants.mimeTypeVideo))
+					).collect(Collectors.toCollection(ArrayList::new));
+			int itemIndex = attachments.indexOf(attachmentInfo);
+			
+			//Launching the media viewer
+			if(itemIndex == -1) return;
+			startActivity(new Intent(Messaging.this, MediaViewer.class)
+					.putParcelableArrayListExtra(MediaViewer.intentParamDataList, attachments)
+					.putExtra(MediaViewer.intentParamIndex, itemIndex)
+			);
+		}
+		
+		/**
+		 * Displays a popup menu for a message component
+		 * @param targetView The view to display the popup menu on
+		 * @param messageInfo The message component's message info
+		 * @param messageComponent The message component to display the popup menu for
+		 */
+		private void openPopupMenu(View targetView, MessageInfo messageInfo, MessageComponent messageComponent) {
+			//Creating a new popup menu
+			PopupMenu popupMenu = new PopupMenu(Messaging.this, targetView);
+			
+			//Inflating the menu
+			popupMenu.inflate(R.menu.menu_conversationitem_contextual);
+			
+			//Getting the component type
+			int componentType = getMessageComponentType(messageComponent);
+			
+			Menu menu = popupMenu.getMenu();
+			if(componentType == MessageComponentType.text) {
+				//Removing attachment-specific options
+				menu.removeItem(R.id.action_save);
+				menu.removeItem(R.id.action_deletedata);
+			} else {
+				AttachmentInfo attachmentInfo = (AttachmentInfo) messageComponent;
+				
+				//Removing text-specific options
+				menu.removeItem(R.id.action_copytext);
+				
+				//Disabling the share, save, and delete option if there is no data
+				if(attachmentInfo.getFile() == null) {
+					menu.findItem(R.id.action_share).setEnabled(false);
+					menu.findItem(R.id.action_save).setEnabled(false);
+					menu.findItem(R.id.action_deletedata).setEnabled(false);
+				}
+				//Remove the delete option if the file was not sent over AirMessage Bridge
+				if(viewModel.conversationInfo.getServiceHandler() != ServiceHandler.appleBridge) {
+					menu.removeItem(R.id.action_deletedata);
+				}
+			}
+			
+			//Removing the tapback info option if there are no tapbacks
+			if(messageComponent.getTapbacks().isEmpty()) menu.removeItem(R.id.action_tapbackdetails);
+			
+			//Setting the click listener
+			popupMenu.setOnMenuItemClickListener(menuItem -> {
+				int itemId = menuItem.getItemId();
+				if(itemId == R.id.action_tapbackdetails) {
+					//Displaying the tapback list
+					openTapbackDialog(viewModel.conversationInfo, messageComponent.getTapbacks());
+					
+					return true;
+				} else if(itemId == R.id.action_details) {
+					Date sentDate = new Date(messageInfo.getDate());
+					
+					//Building the message
+					StringBuilder stringBuilder = new StringBuilder();
+					stringBuilder.append(getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : getResources().getString(R.string.part_you))).append('\n'); //Sender
+					stringBuilder.append(getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getTimeFormat(Messaging.this).format(sentDate) + LanguageHelper.bulletSeparator + DateFormat.getLongDateFormat(Messaging.this).format(sentDate))).append('\n'); //Time sent
+					if(messageComponent instanceof AttachmentInfo) {
+						long fileSize = ((AttachmentInfo) messageComponent).getFileSize();
+						stringBuilder.append(getResources().getString(R.string.message_messagedetails_size, fileSize != -1 ? Formatter.formatFileSize(Messaging.this, fileSize) : getResources().getString(R.string.part_nodata))).append('\n'); //Attachment file size
+					}
+					stringBuilder.append(getResources().getString(R.string.message_messagedetails_sendeffect, messageInfo.getSendStyle() == null ? getResources().getString(R.string.part_none) :messageInfo.getSendStyle())); //Send effect
+					
+					//Showing a dialog
+					new MaterialAlertDialogBuilder(Messaging.this)
+							.setTitle(R.string.message_messagedetails_title)
+							.setMessage(stringBuilder.toString())
+							.create()
+							.show();
+					
+					return true;
+				} else if(itemId == R.id.action_copytext) {
+					//Copying the message text to the clipboard
+					getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText(null, LanguageHelper.textComponentToString(getResources(), (MessageComponentText) messageComponent)));
+					
+					//Showing a confirmation toast
+					Toast.makeText(Messaging.this, R.string.message_textcopied, Toast.LENGTH_SHORT).show();
+					
+					//Returning true
+					return true;
+				} else if(itemId == R.id.action_share) {
+					//Checking if this is a text component
+					if(componentType == MessageComponentType.text) {
+						String shareText = LanguageHelper.textComponentToString(getResources(), (MessageComponentText) messageComponent);
+						
+						//Starting the intent immediately if the user is "you"
+						if(messageInfo.getSender() == null) {
+							shareMessageText(null, shareText, messageInfo.getDate());
+						} else {
+							//Requesting the user info
+							pluginRXD.activity().add(
+									MainApplication.getInstance().getUserCacheHelper().getUserInfo(Messaging.this, messageInfo.getSender()).subscribe(userInfo -> {
+										shareMessageText(userInfo.getContactName(), shareText, messageInfo.getDate());
+									}, error -> {
+										//Defaulting to the user's address
+										shareMessageText(messageInfo.getSender(), shareText, messageInfo.getDate());
+									})
+							);
+						}
+					} else {
+						AttachmentInfo attachmentInfo = (AttachmentInfo) messageComponent;
+						
+						//Sharing the attachment file
+						Intent intent = new Intent();
+						intent.setAction(Intent.ACTION_SEND);
+						intent.putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(Messaging.this, AttachmentStorageHelper.getFileAuthority(Messaging.this), attachmentInfo.getFile()));
+						intent.setType(attachmentInfo.getContentType());
+						startActivity(Intent.createChooser(intent, getResources().getText(R.string.action_sharemessage)));
+					}
+					
+					return true;
+				} else if(itemId == R.id.action_save) {
+					AttachmentInfo attachmentInfo = (AttachmentInfo) messageComponent;
+					
+					//Opening the file picker to save the file
+					currentTargetSAFFile = attachmentInfo.getFile();
+					ExternalStorageHelper.createFileSAF(Messaging.this, intentSaveFileSAF, attachmentInfo.getContentType(), attachmentInfo.getFileName());
+					
+					return true;
+				} else if(itemId == R.id.action_deletedata) {
+					AttachmentInfo attachmentInfo = (AttachmentInfo) messageComponent;
+					
+					//Deleting the attachment file
+					MessageActionTask.deleteAttachmentFile(messageInfo.getLocalID(), attachmentInfo).subscribe();
+					
+					//Removing the download from the cache
+					ConnectionTaskManager.removeDownload(attachmentInfo.getLocalID());
+					
+					return true;
+				}
+				
+				//Returning false
+				return false;
+			});
+			
+			//Setting the context menu as closed when the menu closes
+			/* popupMenu.setOnDismissListener(closedMenu -> {
+				contextMenuOpen = false;
+				updateStickerVisibility();
+				composite
+			}); */
+			
+			//Showing the menu
+			popupMenu.show();
+		}
+		
+		/**
+		 * Shares the contents of a text message
+		 * @param sender The name of the user who sent this message, or NULL if the local user sent the message
+		 * @param message The message body
+		 * @param date The date the message was sent
+		 */
+		private void shareMessageText(@Nullable String sender, @NonNull String message, long date) {
+			//Creating the intent
+			Intent intent = new Intent();
+			
+			//Setting the action
+			intent.setAction(Intent.ACTION_SEND);
+			
+			//Getting the text
+			String text = sender == null ?
+					getResources().getString(R.string.message_shareable_text_you, DateFormat.getLongDateFormat(Messaging.this).format(date), DateFormat.getTimeFormat(Messaging.this).format(date), message) :
+					getResources().getString(R.string.message_shareable_text, DateFormat.getLongDateFormat(Messaging.this).format(date), DateFormat.getTimeFormat(Messaging.this).format(date), sender, message);
+			
+			//Setting the text
+			intent.putExtra(Intent.EXTRA_TEXT, text);
+			
+			//Setting the intent type
+			intent.setType("text/plain");
+			
+			//Starting the intent
+			startActivity(Intent.createChooser(intent, getResources().getString(R.string.action_sharemessage)));
+		}
+		
+		/**
+		 * Creates and displays a dialog that shows information for a list of tapbacks
+		 */
+		private void openTapbackDialog(ConversationInfo conversationInfo, List<TapbackInfo> tapbacks) {
+			//Creating the composite disposable for the dialog lifecycle
+			CompositeDisposable compositeDisposable = new CompositeDisposable();
+			
+			//Creating the view
+			View dialogView = getLayoutInflater().inflate(R.layout.dialog_simplelist, null);
+			LinearLayout viewGroup = dialogView.findViewById(R.id.list);
+			
+			//Sorting the tapback list by kind
+			Map<Integer, Integer> tapbackCounts = new HashMap<>();
+			for(TapbackInfo tapback : tapbacks) {
+				if(tapbackCounts.containsKey(tapback.getCode())) tapbackCounts.put(tapback.getCode(), tapbackCounts.get(tapback.getCode()) + 1);
+				else tapbackCounts.put(tapback.getCode(), 1);
+			}
+			
+			//Grouping matching tapback types
+			Map<Integer, List<TapbackInfo>> tapbackResponses = new HashMap<>();
+			for(TapbackInfo tapback : tapbacks) {
+				if(tapbackResponses.containsKey(tapback.getCode())) tapbackResponses.get(tapback.getCode()).add(tapback);
+				else tapbackResponses.put(tapback.getCode(), new ArrayList<>(Collections.singletonList(tapback)));
+			}
+			
+			//Sorting the tapback counts by value (descending)
+			tapbackCounts = CollectionHelper.sortMapByValueDesc(tapbackCounts);
+			
+			//Iterating over the tapback groups
+			for(Map.Entry<Integer, Integer> entry : tapbackCounts.entrySet()) {
+				//Getting the display info
+				TapbackDisplayData displayInfo = LanguageHelper.getTapbackDisplay(entry.getKey());
+				
+				//Adding the header
+				TextView headerLabel = (TextView) getLayoutInflater().inflate(R.layout.listitem_tapbackinfo_header, viewGroup, false);
+				headerLabel.setText(getResources().getString(displayInfo.getLabel()));
+				headerLabel.setCompoundDrawablesRelativeWithIntrinsicBounds(displayInfo.getIconResource(), 0, 0, 0);
+				headerLabel.setCompoundDrawableTintList(ColorStateList.valueOf(getColor(displayInfo.getColor())));
+				viewGroup.addView(headerLabel);
+				
+				//Getting all tapbacks of this type
+				for(TapbackInfo tapback : tapbackResponses.get(entry.getKey())) {
+					//Getting the tapback information
+					String sender = tapback.getSender();
+					
+					//Creating the user view
+					ViewGroup userView = (ViewGroup) getLayoutInflater().inflate(R.layout.listitem_tapbackinfo_user, viewGroup, false);
+					viewGroup.addView(userView);
+					TextView nameLabel = userView.findViewById(R.id.label_name);
+					
+					//Checking if the sender is the user
+					if(sender == null) {
+						//Setting the name to "you"
+						nameLabel.setText(R.string.part_you);
+						
+						//Setting the default user tint
+						((ImageView) userView.findViewById(R.id.profile_default)).setColorFilter(getResources().getColor(R.color.colorPrimary, null), android.graphics.PorterDuff.Mode.MULTIPLY);
+					} else {
+						//Setting the sender's name (temporarily)
+						nameLabel.setText(sender);
+						
+						//Setting the default user tint
+						MemberInfo memberInfo = conversationInfo.getMembers().stream().filter(member -> member.getAddress().equals(sender)).findAny().orElse(null);
+						int userTint = memberInfo == null ? ConversationColorHelper.backupUserColor : memberInfo.getColor();
+						((ImageView) userView.findViewById(R.id.profile_default)).setColorFilter(userTint, android.graphics.PorterDuff.Mode.MULTIPLY);
+						
+						//Setting the sender's name
+						compositeDisposable.add(MainApplication.getInstance().getUserCacheHelper().getUserInfo(Messaging.this, sender).onErrorComplete().subscribe(userInfo -> {
+							//Setting the contact name
+							nameLabel.setText(userInfo.getContactName());
+							
+							//Setting the user's profile image
+							ImageView profileDefault = userView.findViewById(R.id.profile_default);
+							ImageView profileImage = userView.findViewById(R.id.profile_image);
+							Glide.with(Messaging.this)
+									.load(ContactHelper.getContactImageURI(userInfo.getContactID()))
+									.listener(new RequestListener<Drawable>() {
+										@Override
+										public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+											return false;
+										}
+										
+										@Override
+										public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+											//Swapping to the profile view
+											profileDefault.setVisibility(View.GONE);
+											profileImage.setVisibility(View.VISIBLE);
+											
+											return false;
+										}
+									})
+									.into(profileImage);
+						}));
+					}
+				}
+			}
+			
+			//Showing the dialog
+			new MaterialAlertDialogBuilder(Messaging.this)
+					.setView(dialogView)
+					.setOnDismissListener(dialog -> compositeDisposable.clear())
+					.create().show();
 		}
 		
 		@Override
@@ -3473,57 +3839,221 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		@Override
 		public int getItemCount() {
-			if(conversationItems == null) return 0;
 			int size = conversationItems.size();
-			if(viewModel.isProgressiveLoadInProgress()) size += 1;
-			if(viewModel.isSmartReplyAvailable()) size += 1;
+			if(conversationActions != null) size += 1;
+			if(showTopProgressBar) size += 1;
 			return size;
 		}
 		
 		@Override
 		public int getItemViewType(int position) {
-			if(conversationItems == null) return 0;
-			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
-			if(isViewReplySuggestions(position)) return itemTypeReplySuggestions;
-			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getItemViewType();
+			if(isViewTopProgressBar(position)) return itemTypeTopProgressBar;
+			if(isViewConversationActions(position)) return itemTypeConversationActions;
+			return getItemAt(position).getItemViewType();
 		}
 		
 		@Override
 		public long getItemId(int position) {
-			if(conversationItems == null) return 0;
-			if(isViewLoadingSpinner(position)) return itemTypeLoadingBar;
-			if(isViewReplySuggestions(position)) return itemTypeReplySuggestions;
-			return conversationItems.get(position - (viewModel.isProgressiveLoadInProgress() ? 1 : 0)).getLocalID();
+			if(isViewTopProgressBar(position)) return itemTypeTopProgressBar;
+			if(isViewConversationActions(position)) return itemTypeConversationActions;
+			return getItemAt(position).getLocalID();
 		}
 		
-		private boolean isViewLoadingSpinner(int position) {
-			return viewModel.isProgressiveLoadInProgress() && position == 0;
+		/**
+		 * Gets if the view at the specified position is the top progress bar
+		 */
+		private boolean isViewTopProgressBar(int position) {
+			return showTopProgressBar && position == 0;
 		}
 		
-		private boolean isViewReplySuggestions(int position) {
-			return viewModel.isSmartReplyAvailable() && position + 1 == getItemCount();
+		/**
+		 * Gets if the view at the specified position is the conversation action selector
+		 */
+		private boolean isViewConversationActions(int position) {
+			return conversationActions != null && position + 1 == getItemCount();
 		}
 		
-		public final class PoolSource {
-			static final int poolSize = 12;
-			
-			public MessageComponent.ViewHolder getComponent(MessageComponent<MessageComponent.ViewHolder> component, ViewGroup parent, Context context) {
-				Pools.SimplePool<MessageComponent.ViewHolder> pool = (Pools.SimplePool<MessageComponent.ViewHolder>) componentPoolList.get(component.getItemViewType());
-				if(pool == null) return component.createViewHolder(context, parent);
-				else {
-					MessageComponent.ViewHolder viewHolder = pool.acquire();
-					return viewHolder == null ? component.createViewHolder(context, parent) : viewHolder;
-				}
+		/**
+		 * Gets a component from the view pool
+		 * @param componentType The type of this component
+		 * @param parent The parent view to inflate the component under
+		 * @param <T> The view holder for this component
+		 * @return The view holder for this component
+		 */
+		public <T extends VHMessageComponent> T getPoolComponent(@MessageComponentType int componentType, ViewGroup parent) {
+			Pools.SimplePool<T> pool = (Pools.SimplePool<T>) componentPoolList.get(componentType);
+			if(pool == null) return createComponentViewHolder(componentType, parent);
+			else {
+				T viewHolder = pool.acquire();
+				return viewHolder == null ? createComponentViewHolder(componentType, parent) : viewHolder;
 			}
-			
-			public void releaseComponent(int componentViewType, MessageComponent.ViewHolder viewHolder) {
-				Pools.SimplePool<MessageComponent.ViewHolder> pool = (Pools.SimplePool<MessageComponent.ViewHolder>) componentPoolList.get(componentViewType);
-				if(pool == null) {
-					pool = new Pools.SimplePool<>(poolSize);
-					componentPoolList.put(componentViewType, pool);
-				}
-				pool.release(viewHolder);
+		}
+		
+		/**
+		 * Releases a component back into the pool
+		 * @param componentType The type of this component
+		 * @param viewHolder The view holder to release back into the pool
+		 * @param <T> The view holder for this component
+		 */
+		public <T extends VHMessageComponent> void releasePoolComponent(@MessageComponentType int componentType, T viewHolder) {
+			Pools.SimplePool<T> pool = (Pools.SimplePool<T>) componentPoolList.get(componentType);
+			if(pool == null) {
+				pool = new Pools.SimplePool<>(poolSize);
+				componentPoolList.put(componentType, pool);
 			}
+			pool.release(viewHolder);
+		}
+		
+		/**
+		 * Inflates a view and creates a new view holder for the given component type
+		 * @param componentType The component type to inflate the view for
+		 * @param parent The parent view to inflate the component under
+		 * @param <T> The view holder for this component
+		 * @return A newly created view holder of this component type
+		 */
+		@SuppressWarnings("unchecked")
+		private <T extends VHMessageComponent> T createComponentViewHolder(@MessageComponentType int componentType, ViewGroup parent) {
+			switch(componentType) {
+				case MessageComponentType.text: {
+					View view = getLayoutInflater().inflate(R.layout.listitem_contenttext, parent, false);
+					return (T) new VHMessageComponentText(view,
+							view.findViewById(R.id.container),
+							view.findViewById(R.id.sticker_container),
+							view.findViewById(R.id.tapback_container),
+							view.findViewById(R.id.content),
+							view.findViewById(R.id.group_message),
+							view.findViewById(R.id.label_body),
+							view.findViewById(R.id.label_subject),
+							view.findViewById(R.id.content_ink),
+							view.findViewById(R.id.group_messagepreview)
+					);
+				}
+				case MessageComponentType.attachmentDocument: {
+					View view = getEmptyAttachmentView(getLayoutInflater(), parent);
+					return (T) new VHMessageComponentDocument(view,
+							view.findViewById(R.id.container),
+							view.findViewById(R.id.sticker_container),
+							view.findViewById(R.id.tapback_container),
+							view.findViewById(R.id.downloadprompt),
+							view.findViewById(R.id.label_size),
+							view.findViewById(R.id.label_type),
+							view.findViewById(R.id.prompt_icon),
+							view.findViewById(R.id.downloadprogress),
+							view.findViewById(R.id.download_progress),
+							view.findViewById(R.id.progress_icon),
+							view.findViewById(R.id.opencontent),
+							view.findViewById(R.id.open_label),
+							view.findViewById(R.id.frame_content)
+					);
+				}
+				case MessageComponentType.attachmentVisual: {
+					View view = buildAttachmentView(getLayoutInflater(), parent, R.layout.listitem_contentvisual);
+					return (T) new VHMessageComponentVisual(view,
+							view.findViewById(R.id.container),
+							view.findViewById(R.id.sticker_container),
+							view.findViewById(R.id.tapback_container),
+							view.findViewById(R.id.downloadprompt),
+							view.findViewById(R.id.label_size),
+							view.findViewById(R.id.label_type),
+							view.findViewById(R.id.prompt_icon),
+							view.findViewById(R.id.downloadprogress),
+							view.findViewById(R.id.download_progress),
+							view.findViewById(R.id.progress_icon),
+							view.findViewById(R.id.opencontent),
+							view.findViewById(R.id.open_label),
+							view.findViewById(R.id.frame_content),
+							view.findViewById(R.id.content),
+							view.findViewById(R.id.content_view),
+							view.findViewById(R.id.content_ink),
+							view.findViewById(R.id.icon_play)
+					);
+				}
+				case MessageComponentType.attachmentAudio: {
+					View view = buildAttachmentView(getLayoutInflater(), parent, R.layout.listitem_contentaudio);
+					return (T) new VHMessageComponentAudio(view,
+							view.findViewById(R.id.container),
+							view.findViewById(R.id.sticker_container),
+							view.findViewById(R.id.tapback_container),
+							view.findViewById(R.id.downloadprompt),
+							view.findViewById(R.id.label_size),
+							view.findViewById(R.id.label_type),
+							view.findViewById(R.id.prompt_icon),
+							view.findViewById(R.id.downloadprogress),
+							view.findViewById(R.id.download_progress),
+							view.findViewById(R.id.progress_icon),
+							view.findViewById(R.id.opencontent),
+							view.findViewById(R.id.open_label),
+							view.findViewById(R.id.frame_content),
+							view.findViewById(R.id.content),
+							view.findViewById(R.id.content_icon),
+							view.findViewById(R.id.content_duration),
+							view.findViewById(R.id.content_progress)
+					);
+				}
+				case MessageComponentType.attachmentContact: {
+					View view = buildAttachmentView(getLayoutInflater(), parent, R.layout.listitem_contentcontact);
+					return (T) new VHMessageComponentContact(view,
+							view.findViewById(R.id.container),
+							view.findViewById(R.id.sticker_container),
+							view.findViewById(R.id.tapback_container),
+							view.findViewById(R.id.downloadprompt),
+							view.findViewById(R.id.label_size),
+							view.findViewById(R.id.label_type),
+							view.findViewById(R.id.prompt_icon),
+							view.findViewById(R.id.downloadprogress),
+							view.findViewById(R.id.download_progress),
+							view.findViewById(R.id.progress_icon),
+							view.findViewById(R.id.opencontent),
+							view.findViewById(R.id.open_label),
+							view.findViewById(R.id.frame_content),
+							view.findViewById(R.id.content),
+							view.findViewById(R.id.image_profile),
+							view.findViewById(R.id.icon_placeholder),
+							view.findViewById(R.id.label_name)
+					);
+				}
+				case MessageComponentType.attachmentLocation: {
+					View view = buildAttachmentView(getLayoutInflater(), parent, R.layout.listitem_contentlocation);
+					return (T) new VHMessageComponentLocation(view,
+							view.findViewById(R.id.container),
+							view.findViewById(R.id.sticker_container),
+							view.findViewById(R.id.tapback_container),
+							view.findViewById(R.id.downloadprompt),
+							view.findViewById(R.id.label_size),
+							view.findViewById(R.id.label_type),
+							view.findViewById(R.id.prompt_icon),
+							view.findViewById(R.id.downloadprogress),
+							view.findViewById(R.id.download_progress),
+							view.findViewById(R.id.progress_icon),
+							view.findViewById(R.id.opencontent),
+							view.findViewById(R.id.open_label),
+							view.findViewById(R.id.frame_content),
+							view.findViewById(R.id.content),
+							view.findViewById(R.id.view_border),
+							view.findViewById(R.id.map_container),
+							view.findViewById(R.id.map_header),
+							view.findViewById(R.id.label_title),
+							view.findViewById(R.id.label_address)
+					);
+				}
+				default:
+					throw new IllegalArgumentException("Illegal component type " + componentType);
+			}
+		}
+		
+		private View getEmptyAttachmentView(LayoutInflater layoutInflater, ViewGroup parent) {
+			return layoutInflater.inflate(R.layout.listitem_contentstructure, parent, false);
+		}
+		
+		private View buildAttachmentView(LayoutInflater layoutInflater, ViewGroup parent, @LayoutRes int contentLayout) {
+			//Inflating the structure view
+			View structureView = getEmptyAttachmentView(layoutInflater, parent);
+			
+			//Adding the content layout
+			layoutInflater.inflate(contentLayout, structureView.findViewById(R.id.frame_content), true);
+			
+			//Returning the view
+			return structureView;
 		}
 		
 		/* void scrollNotifyItemInserted(int position) {
@@ -3561,511 +4091,258 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Scrolling to the bottom
 			recyclerView.smoothScrollToPosition(getItemCount() - 1);
 		}
+		
+		@MessageComponentType
+		private int getMessageComponentType(MessageComponent component) {
+			if(component instanceof MessageComponentText) {
+				return MessageComponentType.text;
+			} else if(component instanceof AttachmentInfo) {
+				AttachmentInfo attachmentInfo = (AttachmentInfo) component;
+				if(FileHelper.compareMimeTypes(attachmentInfo.getContentType(), MIMEConstants.mimeTypeImage) || FileHelper.compareMimeTypes(attachmentInfo.getContentType(), MIMEConstants.mimeTypeVideo)) return MessageComponentType.attachmentVisual;
+				else if(FileHelper.compareMimeTypes(attachmentInfo.getContentType(), MIMEConstants.mimeTypeAudio)) return MessageComponentType.attachmentAudio;
+				else if(FileHelper.compareMimeTypes(attachmentInfo.getContentType(), MIMEConstants.mimeTypeVCard)) return MessageComponentType.attachmentContact;
+				else if(FileHelper.compareMimeTypes(attachmentInfo.getContentType(), MIMEConstants.mimeTypeVLocation)) return MessageComponentType.attachmentLocation;
+				else return MessageComponentType.attachmentDocument;
+			} else {
+				throw new IllegalArgumentException("Unknown component type");
+			}
+		}
 	}
 	
-	private abstract class AttachmentsRecyclerAdapter<VH extends AttachmentTileViewHolder> extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+	private static class MessageTargetUpdate {
+		private final MessageInfo newMessage;
+		private final List<MessageInfo> oldMessages;
+		
+		/**
+		 * Creates a new container class for message target updates
+		 * @param newMessage The new message that is the receiver of the target update
+		 * @param oldMessages Any old messages that have lost their status as receiver of the target update
+		 */
+		public MessageTargetUpdate(MessageInfo newMessage, List<MessageInfo> oldMessages) {
+			this.newMessage = newMessage;
+			this.oldMessages = oldMessages;
+		}
+		
+		public MessageInfo getNewMessage() {
+			return newMessage;
+		}
+		
+		public List<MessageInfo> getOldMessages() {
+			return oldMessages;
+		}
+	}
+	
+	@Retention(RetentionPolicy.SOURCE)
+	@IntDef({MessageListPayloadType.state, MessageListPayloadType.status, MessageListPayloadType.attachment,MessageListPayloadType.attachmentRebuild, MessageListPayloadType.flow, MessageListPayloadType.color, MessageListPayloadType.tapback, MessageListPayloadType.sticker})
+	private @interface MessageListPayloadType {
+		int state = 0; //Change in a message's send or error state
+		int status = 1; //Change in a message's activity status
+		int attachment = 2; //When an attachment's file is updated
+		int attachmentRebuild = 3; //When a message's attachments must be rebuilt
+		int flow = 4; //Change in shape (when the messages adjacent to this message are changed)
+		int color = 5; //Change in color
+		int tapback = 6; //Update of a tapback
+		int sticker = 7; //Addition of a sticker
+	}
+	
+	private static abstract class MessageListPayload {
+		@MessageListPayloadType
+		abstract int getType();
+		
+		private static class BasicImpl extends MessageListPayload {
+			@MessageListPayloadType
+			private final int type;
+			
+			public BasicImpl(int type) {
+				this.type = type;
+			}
+			
+			@Override
+			int getType() {
+				return type;
+			}
+		}
+		
+		private static final MessageListPayload state = new BasicImpl(MessageListPayloadType.state);
+		private static final MessageListPayload status = new BasicImpl(MessageListPayloadType.status);
+		private static final MessageListPayload attachmentRebuild = new BasicImpl(MessageListPayloadType.attachmentRebuild);
+		private static final MessageListPayload flow = new BasicImpl(MessageListPayloadType.flow);
+		private static final MessageListPayload color = new BasicImpl(MessageListPayloadType.color);
+		
+		private static class Attachment extends MessageListPayload {
+			private final int attachmentIndex;
+			
+			public Attachment(int attachmentIndex) {
+				this.attachmentIndex = attachmentIndex;
+			}
+			
+			@Override
+			int getType() {
+				return MessageListPayloadType.attachment;
+			}
+			
+			public int getAttachmentIndex() {
+				return attachmentIndex;
+			}
+		}
+		
+		private static class Tapback extends MessageListPayload {
+			private final int componentIndex;
+			
+			public Tapback(int componentIndex) {
+				this.componentIndex = componentIndex;
+			}
+			
+			public int getComponentIndex() {
+				return componentIndex;
+			}
+			
+			@Override
+			int getType() {
+				return MessageListPayloadType.tapback;
+			}
+		}
+		
+		private static class Sticker extends MessageListPayload {
+			private final int componentIndex;
+			private final StickerInfo stickerInfo;
+			
+			public Sticker(int componentIndex, StickerInfo stickerInfo) {
+				this.componentIndex = componentIndex;
+				this.stickerInfo = stickerInfo;
+			}
+			
+			public int getComponentIndex() {
+				return componentIndex;
+			}
+			
+			public StickerInfo getStickerInfo() {
+				return stickerInfo;
+			}
+			
+			@Override
+			int getType() {
+				return MessageListPayloadType.sticker;
+			}
+		}
+	}
+	
+	private class AttachmentsQueueRecyclerAdapter extends RecyclerView.Adapter<VHAttachmentQueued> {
 		//Creating the reference values
-		private static final int itemTypeActionButton = 0;
-		private static final int itemTypeContent = 1;
-		private static final int itemTypeOverflowButton = 2;
-		
-		static final int payloadUpdateIndex = 0;
-		static final int payloadUpdateSelection = 1;
-		
-		//Creating the list values
-		private List<SimpleAttachmentInfo> fileList;
-		
-		AttachmentsRecyclerAdapter(List<SimpleAttachmentInfo> list) {
-			fileList = list;
-		}
-		
-		abstract boolean usesActionButton();
-		
-		abstract void onOverflowButtonClick();
-		
-		abstract View inflateActionButton(@NonNull ViewGroup parent);
-		
-		@Override
-		public int getItemCount() {
-			int customButtonCount = usesActionButton() ? 2 : 1;
-			return fileList == null ? customButtonCount : fileList.size() + customButtonCount;
-		}
-		
-		@Override
-		public int getItemViewType(int position) {
-			if(usesActionButton() && position == 0) return itemTypeActionButton;
-			else {
-				if(position + 1 == getItemCount()) return itemTypeOverflowButton;
-				else return itemTypeContent;
-			}
-		}
-		
-		SimpleAttachmentInfo getItemAt(int index) {
-			if(usesActionButton()) index--;
-			if(index < 0 || index >= fileList.size()) return null;
-			return fileList.get(index);
-		}
-		
-		void setList(List<SimpleAttachmentInfo> list) {
-			fileList = list;
-			notifyDataSetChanged();
-		}
-		
-		@NonNull
-		@Override
-		public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-			switch(viewType) {
-				case itemTypeActionButton: {
-					return new ViewHolderImpl(inflateActionButton(parent));
-				}
-				case itemTypeOverflowButton: {
-					View overflowButton = getLayoutInflater().inflate(R.layout.listitem_attachment_overflow, parent, false);
-					overflowButton.setOnClickListener(view -> onOverflowButtonClick());
-					return new ViewHolderImpl(overflowButton);
-				}
-				case itemTypeContent: {
-					return createContentViewHolder(parent);
-				}
-				default:
-					throw new IllegalArgumentException("Invalid view type received: " + viewType);
-			}
-		}
-		
-		abstract VH createContentViewHolder(@NonNull ViewGroup parent);
-		
-		@Override
-		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder viewHolder, int position) {
-			//Filtering out non-content items
-			if(getItemViewType(position) != itemTypeContent) return;
-			
-			//Getting the item
-			SimpleAttachmentInfo item = getItemAt(position);
-			
-			//Checking if the item is invalid
-			if(item == null) {
-				//Removing the click listener
-				viewHolder.itemView.setOnClickListener(null);
-				
-				//Returning
-				return;
-			}
-			
-			//Setting the adapter information
-			item.setAdapterInformation(this, position);
-			
-			//Binding the content view
-			int draftIndex = getDraftItemIndex(item);
-			bindContentViewHolder((VH) viewHolder, item, draftIndex);
-			
-			//Assigning the click listener
-			assignItemClickListener((AttachmentTileViewHolder) viewHolder, item, draftIndex);
-		}
-		
-		abstract void bindContentViewHolder(VH viewHolder, SimpleAttachmentInfo item, int draftIndex);
-		
-		@Override
-		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position, @NonNull List<Object> payloads) {
-			//Filtering out non-content items
-			if(getItemViewType(position) != itemTypeContent) return;
-			
-			//Ignoring the request if the payloads are empty
-			if(payloads.isEmpty()) {
-				super.onBindViewHolder(holder, position, payloads);
-				return;
-			}
-			
-			for(Object objectPayload : payloads) {
-				int payload = (int) objectPayload;
-				
-				switch(payload) {
-					case payloadUpdateIndex: {
-						if(!(holder instanceof AttachmentTileViewHolder)) break;
-						
-						AttachmentTileViewHolder tileHolder = (AttachmentTileViewHolder) holder;
-						if(tileHolder.labelSelection == null) break;
-						
-						//Getting the item information
-						SimpleAttachmentInfo item = getItemAt(position);
-						int itemIndex;
-						if(item != null && (itemIndex = getDraftItemIndex(item)) != -1) {
-							//Setting the index
-							tileHolder.labelSelection.setText(Constants.intToFormattedString(getResources(), itemIndex + 1));
-						}
-						
-						break;
-					}
-					case payloadUpdateSelection: {
-						if(!(holder instanceof AttachmentTileViewHolder)) break;
-						
-						AttachmentTileViewHolder tileHolder = (AttachmentTileViewHolder) holder;
-						if(tileHolder.labelSelection == null) break;
-						
-						//Getting the item information
-						SimpleAttachmentInfo item = getItemAt(position);
-						if(item == null) break;
-						
-						//Setting the selection
-						int draftIndex = getDraftItemIndex(item);
-						if(draftIndex != -1) tileHolder.setSelected(getResources(), true, draftIndex + 1);
-						else tileHolder.setDeselected(getResources(), true);
-						
-						//Updating the click listener
-						assignItemClickListener((AttachmentTileViewHolder) holder, item, draftIndex);
-						
-						break;
-					}
-				}
-			}
-		}
-		
-		private void assignItemClickListener(AttachmentTileViewHolder viewHolder, SimpleAttachmentInfo item, int draftIndex) {
-			viewHolder.itemView.setOnClickListener(new View.OnClickListener() {
-				private int newDraftIndex;
-				
-				{
-					newDraftIndex = draftIndex;
-				}
-				
-				@Override
-				public void onClick(View view) {
-					//Checking if the item is not selected
-					if(newDraftIndex == -1) {
-						//Adding the item
-						newDraftIndex = queueAttachment(item, getTileHelper(), false);
-						
-						//Returning if the item was not added successfully
-						if(newDraftIndex == -1) return;
-						
-						//Showing the item's selection indicator
-						viewHolder.setSelected(getResources(), true, newDraftIndex + 1);
-					} else {
-						//Removing the item
-						dequeueAttachment(item, false, true);
-						newDraftIndex = -1;
-						
-						//Setting the selection
-						viewHolder.setDeselected(getResources(), true);
-						
-						//Updating the items
-						recalculateIndices();
-					}
-				}
-			});
-		}
-		
-		void recalculateIndices() {
-			notifyItemRangeChanged(0, fileList.size(), payloadUpdateIndex);
-		}
-		
-		void linkToQueue(List<QueuedFileInfo> queueList) {
-			//Iterating over the queue and item lists
-			for(QueuedFileInfo queuedItem : queueList)
-				for(ListIterator<SimpleAttachmentInfo> loadedIterator = fileList.listIterator(); loadedIterator.hasNext(); ) {
-					//Getting the item information
-					int loadedIndex = loadedIterator.nextIndex();
-					if(usesActionButton()) loadedIndex += 1; //The action button takes up the first slot at the start
-					SimpleAttachmentInfo loadedItem = loadedIterator.next();
-					
-					//Skipping the remainder of the iteration if the items don't match
-					if(!loadedItem.compare(queuedItem)) continue;
-					
-					//Updating the items' adapter information
-					queuedItem.getItem().setAdapterInformation(this, loadedIndex);
-					loadedItem.setAdapterInformation(this, loadedIndex);
-				}
-		}
-		
-		/* private int getItemIndex(SimpleAttachmentInfo item) {
-			int index = fileList.indexOf(item);
-			if(usesActionButton()) index -= 1;
-			return index;
-		} */
-		
-		abstract AttachmentTileHelper<?> getTileHelper();
-		
-		private class ViewHolderImpl extends RecyclerView.ViewHolder {
-			ViewHolderImpl(View itemView) {
-				super(itemView);
-			}
-		}
-	}
-	
-	private ValueAnimator currentListAttachmentQueueValueAnimator = null;
-	
-	int queueAttachment(SimpleAttachmentInfo item, AttachmentTileHelper<?> tileHelper, boolean updateListing) {
-		//Checking if there is no more room for new attachments
-		if(viewModel.draftQueueList.size() >= draftCountLimit) {
-			//Displaying a toast message
-			Toast.makeText(this, R.string.message_draft_limitreached, Toast.LENGTH_SHORT).show();
-			
-			//Returning
-			return -1;
-		}
-		
-		//Getting the connection service
-		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-		if(connectionManager == null) {
-			//Starting the service
-			((MainApplication) getApplication()).startConnectionService();
-			
-			return -1;
-		}
-		
-		//Adding the item
-		boolean listStartedEmpty = viewModel.draftQueueList.isEmpty();
-		
-		QueuedFileInfo draft = new QueuedFileInfo(tileHelper, item);
-		viewModel.draftQueueList.add(draft);
-		int draftIndex = viewModel.draftQueueList.size() - 1;
-		listAttachmentQueue.getAdapter().notifyItemInserted(draftIndex);
-		
-		//Updating the listing
-		if(updateListing && item.file != null && item.getListAdapter() != null) item.getListAdapter().notifyItemChanged(item.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
-		
-		//Recording the current update time
-		long updateTime = System.currentTimeMillis();
-		
-		//Creating the processing request
-		FilePushRequest request = item.getFile() != null ?
-													new FilePushRequest(item.getFile(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, FilePushRequest.stateLinked, updateTime, false, viewModel.getFileTargetCompression()) :
-													new FilePushRequest(item.getUri(), item.getFileType(), item.getFileName(), item.getModificationDate(), viewModel.conversationInfo, -1, -1, FilePushRequest.stateLinked, updateTime, false, viewModel.getFileTargetCompression());
-		request.getCallbacks().onFail = (result, details) -> {
-			//Dequeuing the attachment
-			dequeueAttachment(item, true, false);
-			
-			//Getting the error display
-			Constants.Tuple2<String, Boolean> errorDisplay = MessageInfo.getErrorDisplay(this, viewModel.conversationInfo, result);
-			
-			//Displaying a toast
-			Toast.makeText(this, errorDisplay.item1, Toast.LENGTH_SHORT).show();
-		};
-		request.getCallbacks().onDraftPreparationFinished = (file, draftFile) -> {
-			//Setting the draft file
-			draft.setDraftFile(draftFile);
-			
-			//Adding the draft file to the conversation in memory
-			if(viewModel.conversationInfo != null) viewModel.conversationInfo.addDraftFileUpdate(Messaging.this, draftFile, updateTime);
-			
-			//Updating the attachment
-			listAttachmentQueue.getAdapter().notifyItemChanged(viewModel.draftQueueList.indexOf(draft), AttachmentsQueueRecyclerAdapter.payloadUpdateState);
-		};
-		draft.setFilePushRequest(request);
-		
-		//Adding the processing request
-		connectionManager.addFileProcessingRequest(request);
-		
-		//Animating the list
-		if(listStartedEmpty) {
-			if(currentListAttachmentQueueValueAnimator != null)
-				currentListAttachmentQueueValueAnimator.cancel();
-			
-			listAttachmentQueue.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-			ValueAnimator anim = ValueAnimator.ofInt(0, listAttachmentQueue.getMeasuredHeight());
-			anim.addListener(new AnimatorListenerAdapter() {
-				@Override
-				public void onAnimationStart(Animator animation) {
-					listAttachmentQueue.setVisibility(View.VISIBLE);
-					listAttachmentQueue.getLayoutParams().height = 0;
-				}
-				
-				@Override
-				public void onAnimationEnd(Animator animation) {
-					listAttachmentQueue.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
-					listAttachmentQueue.requestLayout();
-					//for(int iChild = 0; iChild < listAttachmentQueue.getChildCount(); iChild++) listAttachmentQueue.getChildAt(iChild).invalidate();
-					//Constants.recursiveInvalidate(listAttachmentQueue);
-				}
-			});
-			anim.addUpdateListener(valueAnimator -> {
-				listAttachmentQueue.getLayoutParams().height = (int) valueAnimator.getAnimatedValue();
-				listAttachmentQueue.requestLayout();
-				//listAttachmentQueue.invalidate();
-				//for(int iChild = 0; iChild < listAttachmentQueue.getChildCount(); iChild++) listAttachmentQueue.getChildAt(iChild).invalidate();
-				//Constants.recursiveInvalidate(listAttachmentQueue);
-			});
-			anim.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
-			anim.start();
-			currentListAttachmentQueueValueAnimator = anim;
-		}
-		
-		//Updating the send button
-		updateSendButton(false);
-		
-		//Returning the index
-		return draftIndex;
-	}
-	
-	int dequeueAttachment(SimpleAttachmentInfo attachmentInfo, boolean updateListing, boolean updateElsewhere) {
-		//Removing the item
-		int queuedItemIndex = -1;
-		QueuedFileInfo queuedItem = null;
-		for(ListIterator<QueuedFileInfo> iterator = viewModel.draftQueueList.listIterator(); iterator.hasNext();) {
-			int index = iterator.nextIndex();
-			QueuedFileInfo item = iterator.next();
-			
-			if(attachmentInfo.compare(item)) {
-				iterator.remove();
-				listAttachmentQueue.getAdapter().notifyItemRemoved(index);
-				
-				queuedItemIndex = index;
-				queuedItem = item;
-				break;
-			}
-		}
-		
-		//Returning if no item was found
-		if(queuedItemIndex == -1) return -1;
-		
-		//Dequeuing the item
-		return dequeueAttachment(queuedItem, queuedItemIndex, updateListing, updateElsewhere);
-	}
-	
-	int dequeueAttachment(QueuedFileInfo queuedItem, boolean updateListing, boolean updateElsewhere) {
-		//Getting the item index
-		int queuedItemIndex = viewModel.draftQueueList.indexOf(queuedItem);
-		
-		//Returning if no item was found
-		if(queuedItemIndex == -1) return -1;
-		
-		//Removing the item
-		viewModel.draftQueueList.remove(queuedItemIndex);
-		listAttachmentQueue.getAdapter().notifyItemRemoved(queuedItemIndex);
-		
-		//Dequeuing the item
-		return dequeueAttachment(queuedItem, queuedItemIndex, updateListing, updateElsewhere);
-	}
-	
-	private int dequeueAttachment(QueuedFileInfo queuedItem, int queuedItemIndex, boolean updateListing, boolean updateElsewhere) {
-		//Removing the draft from the conversation and from disk
-		if(updateElsewhere && queuedItem.getDraftFile() != null) {
-			//Getting the connection manager
-			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-			if(connectionManager == null) {
-				//Starting the service
-				((MainApplication) getApplication()).startConnectionService();
-				
-				return -1;
-			}
-			
-			//Adding the request
-			long updateTime = System.currentTimeMillis();
-			FileProcessingRequest request = new FileRemovalRequest(queuedItem.getDraftFile(), updateTime);
-			final QueuedFileInfo finalQueuedItem = queuedItem;
-			request.getCallbacks().onRemovalFinish = () -> {
-				//Removing the draft from the conversation in memory
-				if(viewModel.conversationInfo != null) viewModel.conversationInfo.removeDraftFileUpdate(Messaging.this, finalQueuedItem.getDraftFile(), updateTime);
-			};
-			connectionManager.addFileProcessingRequest(request);
-		}
-		
-		//Updating the listings
-		if(updateListing) {
-			//Updating the relevant adapters
-			List<AttachmentsRecyclerAdapter<?>> adapterList = new ArrayList<>();
-			for(int i = queuedItemIndex; i < viewModel.draftQueueList.size(); i++) {
-				QueuedFileInfo listedItem = viewModel.draftQueueList.get(i);
-				if(listedItem.getItem().getListAdapter() == null || adapterList.contains(listedItem.getItem().getListAdapter())) continue;
-				adapterList.add(listedItem.getItem().getListAdapter());
-			}
-			for(AttachmentsRecyclerAdapter<?> adapter : adapterList) adapter.recalculateIndices();
-			
-			//Updating the item selection
-			SimpleAttachmentInfo attachmentInfo = queuedItem.getItem();
-			if(attachmentInfo.getListAdapter() != null) attachmentInfo.getListAdapter().notifyItemChanged(attachmentInfo.getListIndex(), AttachmentsRecyclerAdapter.payloadUpdateSelection);
-		}
-		
-		//Animating the list
-		if(viewModel.draftQueueList.isEmpty()) {
-			if(currentListAttachmentQueueValueAnimator != null) currentListAttachmentQueueValueAnimator.cancel();
-			//listAttachmentQueue.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-			
-			ValueAnimator anim = ValueAnimator.ofInt(listAttachmentQueue.getHeight(), 0);
-			anim.addListener(new AnimatorListenerAdapter() {
-				@Override
-				public void onAnimationEnd(Animator animation) {
-					listAttachmentQueue.setVisibility(View.GONE);
-					//listAttachmentQueue.requestLayout();
-				}
-			});
-			anim.addUpdateListener(valueAnimator -> {
-				listAttachmentQueue.getLayoutParams().height = (int) valueAnimator.getAnimatedValue();
-				listAttachmentQueue.requestLayout();
-				//listAttachmentQueue.invalidate();
-			});
-			anim.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
-			anim.start();
-			currentListAttachmentQueueValueAnimator = anim;
-		}
-		
-		//Updating the send button
-		updateSendButton(false);
-		
-		//Returning the removed item index
-		return queuedItemIndex;
-	}
-	
-	
-	private class AttachmentsQueueRecyclerAdapter extends RecyclerView.Adapter<AttachmentsQueueRecyclerAdapter.QueueTileViewHolder> {
-		//Creating the reference values
-		static final int payloadUpdateState = 0;
+		static final int payloadUpdateState = 1;
 		
 		//Creating the list value
-		private List<QueuedFileInfo> itemList;
+		private final List<FileQueued> itemList;
 		
-		AttachmentsQueueRecyclerAdapter(List<QueuedFileInfo> list) {
+		AttachmentsQueueRecyclerAdapter(List<FileQueued> list) {
 			itemList = list;
 		}
 		
 		@NonNull
 		@Override
-		public QueueTileViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+		public VHAttachmentQueued onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 			//Inflating the layout
 			View layout = getLayoutInflater().inflate(R.layout.listitem_attachment_queuetile, parent, false);
-			FrameLayout container = layout.findViewById(R.id.container);
+			ViewGroup container = layout.findViewById(R.id.container);
 			
 			//Creating the tile view
-			RecyclerView.ViewHolder tileViewHolder;
+			View contentView;
+			VHAttachmentTileContent content;
 			switch(viewType) {
-				case AttachmentTileHelper.viewTypeMedia:
-					tileViewHolder = attachmentsMediaTileHelper.createViewHolder(container);
+				case AttachmentType.document: {
+					contentView = getLayoutInflater().inflate(R.layout.listitem_attachment_documenttile, container, false);
+					content = new VHAttachmentTileContentDocument(contentView, contentView.findViewById(R.id.label_name), contentView.findViewById(R.id.icon), contentView.findViewById(R.id.label_size));
 					break;
-				case AttachmentTileHelper.viewTypeDocument:
-					tileViewHolder = attachmentsDocumentTileHelper.createViewHolder(container);
+				}
+				case AttachmentType.media: {
+					contentView = getLayoutInflater().inflate(R.layout.listitem_attachment_mediatile, container, false);
+					content = new VHAttachmentTileContentMedia(contentView.findViewById(R.id.image), contentView.findViewById(R.id.image_flag_gif), contentView.findViewById(R.id.group_flag_video), contentView.findViewById(R.id.label_flag_video));
 					break;
-				case AttachmentTileHelper.viewTypeAudio:
-					tileViewHolder = attachmentsAudioTileHelper.createViewHolder(container);
+				}
+				case AttachmentType.audio: {
+					contentView = getLayoutInflater().inflate(R.layout.listitem_attachment_audiotile, container, false);
+					content = new VHAttachmentTileContentAudio(contentView, contentView.findViewById(R.id.progress), contentView.findViewById(R.id.image_play));
 					break;
-				case AttachmentTileHelper.viewTypeContact:
-					tileViewHolder = attachmentsContactTileHelper.createViewHolder(container);
+				}
+				case AttachmentType.contact: {
+					contentView = getLayoutInflater().inflate(R.layout.listitem_attachment_contacttile, container, false);
+					content = new VHAttachmentTileContentContact(contentView.findViewById(R.id.icon_placeholder), contentView.findViewById(R.id.image_profile), contentView.findViewById(R.id.label_name));
 					break;
-				case AttachmentTileHelper.viewTypeLocation:
-					tileViewHolder = attachmentsLocationTileHelper.createViewHolder(container);
+				}
+				case AttachmentType.location: {
+					contentView = getLayoutInflater().inflate(R.layout.listitem_attachment_locationtile, container, false);
+					content = new VHAttachmentTileContentLocation(contentView.findViewById(R.id.label_name));
 					break;
+				}
 				default:
 					throw new IllegalArgumentException("Invalid view type received: " + viewType);
 			}
 			
-			//Creating the queue tile
-			return new QueueTileViewHolder(layout, tileViewHolder);
+			container.addView(contentView);
+			return new VHAttachmentQueued(layout, layout.findViewById(R.id.button_remove), container, content);
 		}
 		
 		@Override
-		public void onBindViewHolder(@NonNull QueueTileViewHolder holder, int position) {
-			//Binding the tile view
-			QueuedFileInfo fileInfo = itemList.get(position);
-			fileInfo.getTileHelper().bindView(Messaging.this, holder.contentViewHolder, fileInfo.item);
+		public void onBindViewHolder(@NonNull VHAttachmentQueued holder, int position) {
+			//Getting the item
+			FileQueued fileInfo = itemList.get(position);
+			Union<File, Uri> fileSource = fileInfo.getFile().map(FileLinked::getFile, file -> Union.ofA(file.getFile()));
+			
+			//Binding the content view
+			holder.content.bind(Messaging.this,
+					holder.getCompositeDisposable(),
+					fileSource,
+					fileInfo.getFile().map(FileLinked::getFileName, FileDraft::getFileName),
+					fileInfo.getFile().map(FileLinked::getFileType, FileDraft::getFileType),
+					fileInfo.getFile().map(FileLinked::getFileSize, FileDraft::getFileSize),
+					fileInfo.getFile().map(file -> -1L, FileDraft::getLocalID),
+					fileInfo.getMediaStoreID()
+			);
+			
+			//Loading the metadata
+			int itemViewType = getItemViewType(position);
+			if(itemViewType == AttachmentType.media) {
+				if(FileHelper.compareMimeTypes(fileInfo.getFile().map(FileLinked::getFileType, FileDraft::getFileType), MIMEConstants.mimeTypeVideo)) {
+					holder.getCompositeDisposable().add(
+							viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
+									Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, fileSource)))
+											.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
+									.subscribe(metadata -> ((VHAttachmentTileContentMedia) holder.content).applyMetadata((FileDisplayMetadata.Media) metadata))
+					);
+				}
+			} else if(itemViewType == AttachmentType.audio) {
+				holder.getCompositeDisposable().add(
+						viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
+								Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, fileSource)))
+										.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
+								.subscribe(metadata ->
+										((VHAttachmentTileContentAudio) holder.content).onLoaded(Messaging.this, holder.getCompositeDisposable(), viewModel.audioPlaybackManager, fileSource, (FileDisplayMetadata.Media) metadata, fileInfo.getReferenceID()))
+				);
+			} else if(itemViewType == AttachmentType.contact) {
+				holder.getCompositeDisposable().add(
+						viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
+								Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Contact(Messaging.this, fileSource)))
+										.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
+								.subscribe(metadata -> ((VHAttachmentTileContentContact) holder.content).applyMetadata((FileDisplayMetadata.Contact) metadata))
+				);
+			} else if(itemViewType == AttachmentType.location) {
+				holder.getCompositeDisposable().add(
+						viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
+								Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.LocationSimple(Messaging.this, fileSource)))
+										.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
+								.subscribe(metadata -> ((VHAttachmentTileContentLocation) holder.content).applyMetadata((FileDisplayMetadata.LocationSimple) metadata))
+				);
+			}
 			
 			//Hooking up the remove button
-			holder.buttonRemove.setOnClickListener(view -> dequeueAttachment(fileInfo, true, true));
+			holder.buttonRemove.setOnClickListener(view -> viewModel.dequeueFile(fileInfo));
 			
 			//Setting the view state
-			holder.setAppearenceState(fileInfo.getFilePushRequest() == null || !fileInfo.getFilePushRequest().isInProcessing(), false);
+			holder.setAppearanceState(!fileInfo.getFile().isA(), false);
 		}
 		
 		@Override
-		public void onBindViewHolder(@NonNull QueueTileViewHolder holder, int position, @NonNull List<Object> payloads) {
-			super.onBindViewHolder(holder, position, payloads);
-			
+		public void onBindViewHolder(@NonNull VHAttachmentQueued holder, int position, @NonNull List<Object> payloads) {
 			//Ignoring the request if the payloads are empty
 			if(payloads.isEmpty()) {
 				super.onBindViewHolder(holder, position, payloads);
@@ -4078,10 +4355,10 @@ public class Messaging extends AppCompatCompositeActivity {
 				switch(payload) {
 					case payloadUpdateState: {
 						//Getting the item information
-						QueuedFileInfo fileInfo = itemList.get(position);
+						FileQueued fileInfo = itemList.get(position);
 						
-						//Updating the view
-						holder.setAppearenceState(fileInfo.getFilePushRequest() == null || !fileInfo.getFilePushRequest().isInProcessing(), true);
+						//Setting the view state
+						holder.setAppearanceState(!fileInfo.getFile().isA(), false);
 						
 						break;
 					}
@@ -4096,1027 +4373,13 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		@Override
 		public int getItemViewType(int position) {
-			return itemList.get(position).getTileHelper().getViewType();
-		}
-		
-		class QueueTileViewHolder extends RecyclerView.ViewHolder {
-			private final ImageButton buttonRemove;
-			private final FrameLayout container;
-			private final RecyclerView.ViewHolder contentViewHolder;
-			
-			QueueTileViewHolder(View itemView, RecyclerView.ViewHolder contentViewHolder) {
-				super(itemView);
-				
-				//Setting the content view holder
-				this.contentViewHolder = contentViewHolder;
-				
-				//Getting the views
-				buttonRemove = itemView.findViewById(R.id.button_remove);
-				container = itemView.findViewById(R.id.container);
-				
-				//Adding the child view
-				container.addView(contentViewHolder.itemView);
-				
-				//Scaling the child view
-				float scale = getResources().getDimension(R.dimen.queuetile_size) / getResources().getDimension(R.dimen.contenttile_size);
-				contentViewHolder.itemView.setPivotX(0.5F);
-				contentViewHolder.itemView.setPivotY(0.5F);
-				contentViewHolder.itemView.setScaleX(scale);
-				contentViewHolder.itemView.setScaleY(scale);
-				
-				int contentWidth = (int) (contentViewHolder.itemView.getLayoutParams().width * scale);
-				container.getLayoutParams().width = contentWidth;
-				itemView.getLayoutParams().width = contentWidth + Constants.dpToPx(30);
-			}
-			
-			void setAppearenceState(boolean state, boolean animate) {
-				if(animate) TransitionManager.beginDelayedTransition((ViewGroup) itemView);
-				buttonRemove.setVisibility(state ? View.VISIBLE : View.INVISIBLE);
-				container.setAlpha(state ? 1 : 0.5F);
-			}
+			return itemList.get(position).getAttachmentType();
 		}
 	}
 	
-	private class QueuedFileInfo {
-		private final AttachmentTileHelper tileHelper;
-		private final SimpleAttachmentInfo item;
-		private FilePushRequest filePushRequest;
-		private DraftFile draftFile;
-		
-		QueuedFileInfo(AttachmentTileHelper tileHelper, SimpleAttachmentInfo item) {
-			this.tileHelper = tileHelper;
-			this.item = item;
-		}
-		
-		QueuedFileInfo(DraftFile draft) {
-			tileHelper = findAppropriateTileHelper(draft.getFileType());
-			item = new SimpleAttachmentInfo(draft);
-			draftFile = draft;
-		}
-		
-		AttachmentTileHelper getTileHelper() {
-			return tileHelper;
-		}
-		
-		SimpleAttachmentInfo getItem() {
-			return item;
-		}
-		
-		FilePushRequest getFilePushRequest() {
-			return filePushRequest;
-		}
-		
-		void setFilePushRequest(FilePushRequest request) {
-			filePushRequest = request;
-		}
-		
-		DraftFile getDraftFile() {
-			return draftFile;
-		}
-		
-		void setDraftFile(DraftFile draftFile) {
-			this.draftFile = draftFile;
-		}
-	}
-	
-	private static abstract class AttachmentTileHelper<VH extends RecyclerView.ViewHolder> {
-		//Creating the reference values
-		static final int viewTypeMedia = 0;
-		static final int viewTypeDocument = 1;
-		static final int viewTypeAudio = 2;
-		static final int viewTypeContact = 3;
-		static final int viewTypeLocation = 4;
-		
-		abstract VH createViewHolder(ViewGroup parent);
-		
-		abstract void bindView(Context context, VH viewHolder, SimpleAttachmentInfo item);
-		
-		abstract int getViewType();
-	}
-	
-	AttachmentTileHelper<?> findAppropriateTileHelper(String mimeType) {
-		if(mimeType == null) return attachmentsDocumentTileHelper;
-		
-		if(Constants.compareMimeTypes(mimeType, mimeTypeImage) || Constants.compareMimeTypes(mimeType, mimeTypeVideo)) return attachmentsMediaTileHelper;
-		else if(Constants.compareMimeTypes(mimeType, mimeTypeAudio)) return attachmentsAudioTileHelper;
-		else if(ContactAttachmentInfo.checkFileApplicability(mimeType, null)) return attachmentsContactTileHelper;
-		else if(Constants.compareMimeTypes(mimeType, mimeTypeVLocation)) return attachmentsLocationTileHelper;
-		
-		return attachmentsDocumentTileHelper;
-	}
-	
-	private static abstract class AttachmentTileViewHolder extends RecyclerView.ViewHolder {
-		//Creating the reference values
-		private static final float selectedScale = 0.85F;
-		
-		//Creating the view values
-		private ViewGroup groupSelection;
-		private TextView labelSelection;
-		
-		AttachmentTileViewHolder(View itemView) {
-			super(itemView);
-		}
-		
-		void setSelected(Resources resources, boolean animate, int index) {
-			//Returning if the view state is already selected
-			if(groupSelection != null && groupSelection.getVisibility() == View.VISIBLE) return;
-			
-			//Inflating the view if it hasn't yet been
-			if(groupSelection == null) {
-				groupSelection = (ViewGroup) ((ViewStub) itemView.findViewById(R.id.viewstub_selection)).inflate();
-				labelSelection = groupSelection.findViewById(R.id.label_selectionindex);
-			}
-			
-			//Showing the view
-			if(animate) {
-				int duration = resources.getInteger(android.R.integer.config_shortAnimTime);
-				groupSelection.animate().withStartAction(() -> groupSelection.setVisibility(View.VISIBLE)).alpha(1).setDuration(duration).start();
-				{
-					ValueAnimator animator = ValueAnimator.ofFloat(itemView.getScaleX(), selectedScale);
-					animator.setDuration(duration);
-					animator.addUpdateListener(animation -> {
-						float value = (float) animation.getAnimatedValue();
-						itemView.setScaleX(value);
-						itemView.setScaleY(value);
-					});
-					animator.start();
-				}
-				/* {
-					ScaleAnimation animation = new ScaleAnimation(itemView.getScaleX(), selectedScale, itemView.getScaleY(), selectedScale, 0.5F, 0.5F);
-					animation.setDuration(duration);
-					animation.setFillAfter(true);
-					animation.setFillEnabled(true);
-					animation.setAnimationListener(new Animation.AnimationListener() {
-						@Override
-						public void onAnimationStart(Animation animation) {}
-						
-						@Override
-						public void onAnimationEnd(Animation animation) {
-							itemView.setScaleX(0.5F);
-							itemView.setScaleY(0.5F);
-						}
-						
-						@Override
-						public void onAnimationRepeat(Animation animation) {}
-					});
-					itemView.startAnimation(animation);
-				} */
-				/* itemView.animate().scaleX(selectedScale).scaleY(selectedScale).withEndAction(() -> {
-					itemView.setScaleX(selectedScale);
-					itemView.setScaleY(selectedScale);
-				}).setDuration(duration).start(); */
-			} else {
-				groupSelection.setVisibility(View.VISIBLE);
-				groupSelection.setAlpha(1);
-				itemView.setScaleX(selectedScale);
-				itemView.setScaleY(selectedScale);
-			}
-			
-			labelSelection.setText(Constants.intToFormattedString(resources, index));
-		}
-		
-		void setDeselected(Resources resources, boolean animate) {
-			//Returning if the view state is already deselected
-			if(groupSelection == null || groupSelection.getVisibility() == View.GONE) return;
-			
-			//Hiding the view
-			if(animate) {
-				int duration = resources.getInteger(android.R.integer.config_shortAnimTime);
-				groupSelection.animate().withEndAction(() -> groupSelection.setVisibility(View.GONE)).alpha(0).setDuration(duration).start();
-				{
-					ValueAnimator animator = ValueAnimator.ofFloat(itemView.getScaleX(), 1);
-					animator.setDuration(duration);
-					animator.addUpdateListener(animation -> {
-						float value = (float) animation.getAnimatedValue();
-						itemView.setScaleX(value);
-						itemView.setScaleY(value);
-					});
-					animator.start();
-				}
-				/* {
-					ScaleAnimation animation = new ScaleAnimation(itemView.getScaleX(), 1, itemView.getScaleY(), 1, 0.5F, 0.5F);
-					animation.setDuration(duration);
-					animation.setFillAfter(true);
-					animation.setFillEnabled(true);
-					itemView.startAnimation(animation);
-				} */
-				/* itemView.animate().scaleX(selectedScale * 2F).scaleY(selectedScale * 2F).withEndAction(() -> {
-					itemView.setScaleX(selectedScale * 2F);
-					itemView.setScaleY(selectedScale * 2F);
-				}).setDuration(duration).start(); */
-			} else {
-				groupSelection.setVisibility(View.GONE);
-				groupSelection.setAlpha(1);
-				itemView.setScaleX(1);
-				itemView.setScaleY(1);
-			}
-		}
-	}
-	
-	private class AttachmentsGalleryRecyclerAdapter extends AttachmentsRecyclerAdapter<AttachmentsMediaTileViewHolder> {
-		//Creating the reference values
-		private final AttachmentTileHelper<AttachmentsMediaTileViewHolder> tileHelper = attachmentsMediaTileHelper;
-		
-		AttachmentsGalleryRecyclerAdapter(List<SimpleAttachmentInfo> list) {
-			super(list);
-		}
-		
-		@Override
-		boolean usesActionButton() {
-			return true;
-		}
-		
-		/* @Override
-		View inflateActionButton(@NonNull ViewGroup parent) {
-			View actionButton = getLayoutInflater().inflate(R.layout.listitem_attachment_actiontile, parent, false);
-			TextView label = actionButton.findViewById(R.id.label);
-			label.setText(R.string.part_camera);
-			label.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.camera, 0, 0);
-			actionButton.setOnClickListener(view -> requestTakePicture());
-			return actionButton;
-		} */
-		
-		View inflateActionButton(@NonNull ViewGroup parent) {
-			View actionButton = getLayoutInflater().inflate(R.layout.listitem_attachment_actiontile_double, parent, false);
-			{
-				ViewGroup group = actionButton.findViewById(R.id.group_1);
-				TextView label = group.findViewById(R.id.label_1);
-				label.setText(R.string.action_short_picture);
-				label.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.camera_outlined, 0, 0);
-				group.setOnClickListener(view -> requestCamera(false));
-			}
-			{
-				ViewGroup group = actionButton.findViewById(R.id.group_2);
-				TextView label = group.findViewById(R.id.label_2);
-				label.setText(R.string.action_short_video);
-				label.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.videocam_outlined, 0, 0);
-				group.setOnClickListener(view -> requestCamera(true));
-			}
-			return actionButton;
-		}
-		
-		@Override
-		void onOverflowButtonClick() {
-			requestGalleryFile();
-		}
-		
-		@Override
-		AttachmentsMediaTileViewHolder createContentViewHolder(@NonNull ViewGroup parent) {
-			return tileHelper.createViewHolder(parent);
-		}
-		
-		@Override
-		void bindContentViewHolder(AttachmentsMediaTileViewHolder viewHolder, SimpleAttachmentInfo file, int draftIndex) {
-			//Binding the view through the tile helper
-			tileHelper.bindView(Messaging.this, viewHolder, file);
-			
-			//Setting the selection state
-			if(draftIndex == -1) viewHolder.setDeselected(getResources(), false);
-			else viewHolder.setSelected(getResources(), false, draftIndex + 1);
-		}
-		
-		@Override
-		AttachmentTileHelper<?> getTileHelper() {
-			return tileHelper;
-		}
-	}
-	
-	/**
-	 * Retrieves the index of the selected attachment item
-	 *
-	 * @param item the selected item
-	 * @return the index of the selected
-	 */
-	private int getDraftItemIndex(SimpleAttachmentInfo item) {
-		for(int i = 0; i < viewModel.draftQueueList.size(); i++) {
-			if(item.compare(viewModel.draftQueueList.get(i))) return i;
-		}
-		return -1;
-	}
-	
-	private static class AttachmentsMediaTileViewHolder extends AttachmentTileViewHolder {
-		//Creating the view values
-		private final ImageView imageThumbnail;
-		private final ImageView imageFlagGIF;
-		private final ViewGroup groupVideo;
-		private final TextView labelVideo;
-		
-		AttachmentsMediaTileViewHolder(View itemView) {
-			super(itemView);
-			imageThumbnail = itemView.findViewById(R.id.image);
-			imageFlagGIF = itemView.findViewById(R.id.image_flag_gif);
-			
-			groupVideo = itemView.findViewById(R.id.group_flag_video);
-			labelVideo = groupVideo.findViewById(R.id.label_flag_video);
-		}
-	}
-	
-	private static final AttachmentTileHelper<AttachmentsMediaTileViewHolder> attachmentsMediaTileHelper = new AttachmentTileHelper<AttachmentsMediaTileViewHolder>() {
-		@Override
-		AttachmentsMediaTileViewHolder createViewHolder(ViewGroup parent) {
-			return new AttachmentsMediaTileViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_attachment_mediatile, parent, false));
-		}
-		
-		@Override
-		void bindView(Context context, AttachmentsMediaTileViewHolder viewHolder, SimpleAttachmentInfo item) {
-			//Returning if the item is invalid
-			if(item == null) return;
-			
-			//Returning if the context is invalid
-			//if(isFinishing() || isDestroyed()) return;
-			if(!Constants.validateContext(context)) return;
-			
-			//Setting the image thumbnail
-			Glide.with(context)
-					.load(item.getFile() != null ? item.getFile() : item.getUri())
-					.signature(new MediaStoreSignature(item.fileType != null ? item.fileType : "", item.modificationDate != -1 ? item.modificationDate : 0, 0))
-					.apply(RequestOptions.centerCropTransform())
-					.transition(DrawableTransitionOptions.withCrossFade())
-					.into(viewHolder.imageThumbnail);
-			
-			//Setting the image flags
-			if(Constants.compareMimeTypes(item.getFileType(), mimeTypeGIF)) {
-				viewHolder.imageFlagGIF.setVisibility(View.VISIBLE);
-				viewHolder.groupVideo.setVisibility(View.GONE);
-			} else if(Constants.compareMimeTypes(item.getFileType(), mimeTypeVideo)) {
-				viewHolder.imageFlagGIF.setVisibility(View.GONE);
-				viewHolder.groupVideo.setVisibility(View.VISIBLE);
-				viewHolder.labelVideo.setText(DateUtils.formatElapsedTime(((SimpleAttachmentInfo.VideoExtension) item.getExtension()).mediaDuration / 1000));
-			} else {
-				viewHolder.imageFlagGIF.setVisibility(View.GONE);
-				viewHolder.groupVideo.setVisibility(View.GONE);
-			}
-		}
-		
-		@Override
-		int getViewType() {
-			return viewTypeMedia;
-		}
-	};
-	
-	private static class AttachmentsDocumentTileViewHolder extends AttachmentTileViewHolder {
-		//Creating the view values
-		private TextView documentName;
-		private ImageView documentIcon;
-		private TextView documentSize;
-		
-		AttachmentsDocumentTileViewHolder(View itemView) {
-			super(itemView);
-			documentName = itemView.findViewById(R.id.label);
-			documentIcon = itemView.findViewById(R.id.icon);
-			documentSize = itemView.findViewById(R.id.label_size);
-		}
-	}
-	
-	private static final AttachmentTileHelper<AttachmentsDocumentTileViewHolder> attachmentsDocumentTileHelper = new AttachmentTileHelper<AttachmentsDocumentTileViewHolder>() {
-		@Override
-		AttachmentsDocumentTileViewHolder createViewHolder(ViewGroup parent) {
-			return new AttachmentsDocumentTileViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_attachment_documenttile, parent, false));
-		}
-		
-		@Override
-		void bindView(Context context, AttachmentsDocumentTileViewHolder viewHolder, SimpleAttachmentInfo item) {
-			//Returning if the file is invalid
-			if(item == null) return;
-			
-			//Getting the type-based details
-			int iconResource = R.drawable.file;
-			int viewColorBG = R.color.tile_grey_bg;
-			int viewColorFG = R.color.tile_grey_fg;
-			if(item.getFileType() != null) {
-				switch(item.getFileType()) {
-					default:
-						if(item.getFileType().split("/")[0].startsWith("text")) {
-							iconResource = R.drawable.file_document;
-							viewColorBG = R.color.tile_indigo_bg;
-							viewColorFG = R.color.tile_indigo_fg;
-						}
-						break;
-					case "application/zip":
-					case "application/x-tar":
-					case "application/x-rar-compressed":
-					case "application/x-7z-compressed":
-					case "application/x-bzip":
-					case "application/x-bzip2":
-						iconResource = R.drawable.file_zip;
-						viewColorBG = R.color.tile_brown_bg;
-						viewColorFG = R.color.tile_brown_fg;
-						break;
-					case "application/pdf":
-						iconResource = R.drawable.file_pdf;
-						viewColorBG = R.color.tile_red_bg;
-						viewColorFG = R.color.tile_red_fg;
-						break;
-					case "text/xml":
-					case "application/xml":
-					case "text/html":
-						iconResource = R.drawable.file_xml;
-						viewColorBG = R.color.tile_orange_bg;
-						viewColorFG = R.color.tile_orange_fg;
-						break;
-					case "text/vcard":
-						iconResource = R.drawable.file_user;
-						viewColorBG = R.color.tile_cyan_bg;
-						viewColorFG = R.color.tile_cyan_fg;
-						break;
-					case "application/msword":
-					case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-					case "application/vnd.openxmlformats-officedocument.wordprocessingml.template":
-					case "application/vnd.ms-word.document.macroEnabled.12":
-					case "application/vnd.ms-word.template.macroEnabled.12":
-						iconResource = R.drawable.file_msword;
-						viewColorBG = R.color.tile_blue_bg;
-						viewColorFG = R.color.tile_blue_fg;
-						break;
-					case "application/vnd.ms-excel":
-					case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-					case "application/vnd.openxmlformats-officedocument.spreadsheetml.template":
-					case "application/vnd.ms-excel.sheet.macroEnabled.12":
-					case "application/vnd.ms-excel.sheet.binary.macroEnabled.12":
-					case "application/vnd.ms-excel.template.macroEnabled.12":
-					case "application/vnd.ms-excel.addin.macroEnabled.12":
-						iconResource = R.drawable.file_msexcel;
-						viewColorBG = R.color.tile_green_bg;
-						viewColorFG = R.color.tile_green_fg;
-						break;
-					case "application/vnd.ms-powerpoint":
-					case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-					case "application/vnd.openxmlformats-officedocument.presentationml.template":
-					case "application/vnd.openxmlformats-officedocument.presentationml.slideshow":
-					case "application/vnd.ms-powerpoint.addin.macroEnabled.12":
-					case "application/vnd.ms-powerpoint.presentation.macroEnabled.12":
-					case "application/vnd.ms-powerpoint.template.macroEnabled.12":
-					case "application/vnd.ms-powerpoint.slideshow.macroEnabled.12":
-						iconResource = R.drawable.file_mspowerpoint;
-						viewColorBG = R.color.tile_yellow_bg;
-						viewColorFG = R.color.tile_yellow_fg;
-						break;
-				}
-			}
-			
-			//Resolving the color resources
-			viewColorBG = context.getResources().getColor(viewColorBG, null);
-			viewColorFG = context.getResources().getColor(viewColorFG, null);
-			if(Constants.isNightMode(context.getResources())) {
-				int temp = viewColorBG;
-				viewColorBG = viewColorFG;
-				viewColorFG = temp;
-			}
-			
-			//Filling in the view data
-			viewHolder.documentName.setText(item.getFileName());
-			viewHolder.documentName.setTextColor(viewColorFG);
-			
-			viewHolder.documentIcon.setImageResource(iconResource);
-			viewHolder.documentIcon.setImageTintList(ColorStateList.valueOf(viewColorFG));
-			
-			viewHolder.documentSize.setText(Formatter.formatFileSize(context, item.getFileSize()));
-			viewHolder.documentSize.setTextColor(viewColorFG);
-			
-			viewHolder.itemView.setBackgroundTintList(ColorStateList.valueOf(viewColorBG));
-		}
-		
-		@Override
-		int getViewType() {
-			return viewTypeDocument;
-		}
-	};
-	
-	private static class AttachmentsAudioTileViewHolder extends AttachmentTileViewHolder {
-		//Creating the reference values
-		static final int resourceDrawablePlay = R.drawable.play;
-		static final int resourceDrawablePause = R.drawable.pause;
-		
-		//Creating the view values
-		private ProgressBar progressBar;
-		private ImageView imagePlay;
-		//private TextView labelDuration;
-		
-		AttachmentsAudioTileViewHolder(View itemView) {
-			super(itemView);
-			progressBar = itemView.findViewById(R.id.progress);
-			imagePlay = itemView.findViewById(R.id.image_play);
-			//labelDuration = itemView.findViewById(R.id.label_duration);
-		}
-	}
-	
-	private static final AttachmentTileHelper<AttachmentsAudioTileViewHolder> attachmentsAudioTileHelper = new AttachmentTileHelper<AttachmentsAudioTileViewHolder>() {
-		@Override
-		AttachmentsAudioTileViewHolder createViewHolder(ViewGroup parent) {
-			return new AttachmentsAudioTileViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_attachment_audiotile, parent, false));
-		}
-		
-		@Override
-		void bindView(Context context, AttachmentsAudioTileViewHolder viewHolder, SimpleAttachmentInfo item) {
-			//Returning if the item is invalid
-			if(item == null) return;
-			
-			Messaging activity = (Messaging) context;
-			
-			//Getting the extension
-			SimpleAttachmentInfo.AudioExtension extension = (SimpleAttachmentInfo.AudioExtension) item.getExtension();
-			
-			//Binding the view
-			extension.updateViewPlaying(viewHolder);
-			extension.updateViewProgress(viewHolder);
-			
-			//Creating the view holder source
-			Constants.ViewHolderSource<AttachmentsAudioTileViewHolder> viewHolderSource = () -> {
-				if(activity.listAttachmentQueue == null) return null;
-				int itemIndex = findAttachmentInQueue(activity, item);
-				if(itemIndex == -1) return null;
-				return (AttachmentsAudioTileViewHolder) ((AttachmentsQueueRecyclerAdapter.QueueTileViewHolder) activity.listAttachmentQueue.findViewHolderForAdapterPosition(itemIndex)).contentViewHolder;
-			};
-			
-			//Finding the queued file info
-			QueuedFileInfo queuedInfo = null;
-			for(QueuedFileInfo allQueued : activity.viewModel.draftQueueList) {
-				if(allQueued.getItem() != item) continue;
-				queuedInfo = allQueued;
-				break;
-			}
-			if(queuedInfo == null) return;
-			
-			//Setting the click listener
-			final QueuedFileInfo finalQueuedFileInfo = queuedInfo;
-			viewHolder.itemView.setOnClickListener(view -> extension.play(activity.viewModel.audioPlaybackManager, finalQueuedFileInfo, viewHolderSource, view.getContext()));
-		}
-		
-		private int findAttachmentInQueue(Messaging activity, SimpleAttachmentInfo item) {
-			int queuedIndex;
-			QueuedFileInfo queuedItem;
-			for(ListIterator<QueuedFileInfo> iterator = activity.viewModel.draftQueueList.listIterator(); iterator.hasNext(); ) {
-				queuedIndex = iterator.nextIndex();
-				queuedItem = iterator.next();
-				if(queuedItem.getItem() == item) return queuedIndex;
-			}
-			
-			return -1;
-		}
-		
-		@Override
-		int getViewType() {
-			return viewTypeAudio;
-		}
-	};
-	
-	private static class AttachmentsLocationTileViewHolder extends AttachmentTileViewHolder {
-		//Creating the view values
-		final TextView labelName;
-		
-		AttachmentsLocationTileViewHolder(View itemView) {
-			super(itemView);
-			
-			labelName = itemView.findViewById(R.id.label_name);
-		}
-	}
-	
-	private static final AttachmentTileHelper<AttachmentsLocationTileViewHolder> attachmentsLocationTileHelper = new AttachmentTileHelper<AttachmentsLocationTileViewHolder>() {
-		@Override
-		AttachmentsLocationTileViewHolder createViewHolder(ViewGroup parent) {
-			return new AttachmentsLocationTileViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_attachment_locationtile, parent, false));
-		}
-		
-		@Override
-		void bindView(Context context, AttachmentsLocationTileViewHolder viewHolder, SimpleAttachmentInfo item) {
-			//Returning if the file is invalid
-			if(item == null) return;
-			
-			//Getting the extension data
-			SimpleAttachmentInfo.LocationExtension extension = (SimpleAttachmentInfo.LocationExtension) item.getExtension();
-			
-			//Setting the location name label
-			if(extension.locationName == null) viewHolder.labelName.setText(R.string.part_content_location);
-			else viewHolder.labelName.setText(extension.locationName);
-		}
-		
-		@Override
-		int getViewType() {
-			return viewTypeLocation;
-		}
-	};
-	
-	private static class AttachmentsContactTileViewHolder extends AttachmentTileViewHolder {
-		//Creating the view values
-		final ImageView iconProfile;
-		final ImageView iconPlaceholder;
-		final TextView labelName;
-		
-		AttachmentsContactTileViewHolder(View itemView) {
-			super(itemView);
-			
-			iconProfile = itemView.findViewById(R.id.image_profile);
-			iconPlaceholder = itemView.findViewById(R.id.icon_placeholder);
-			labelName = itemView.findViewById(R.id.label_name);
-		}
-	}
-	
-	private static final AttachmentTileHelper<AttachmentsContactTileViewHolder> attachmentsContactTileHelper = new AttachmentTileHelper<AttachmentsContactTileViewHolder>() {
-		@Override
-		AttachmentsContactTileViewHolder createViewHolder(ViewGroup parent) {
-			return new AttachmentsContactTileViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.listitem_attachment_contacttile, parent, false));
-		}
-		
-		@Override
-		void bindView(Context context, AttachmentsContactTileViewHolder viewHolder, SimpleAttachmentInfo item) {
-			//Returning if the file is invalid
-			if(item == null) return;
-			
-			//Getting the extension data
-			SimpleAttachmentInfo.ContactExtension extension = (SimpleAttachmentInfo.ContactExtension) item.getExtension();
-			
-			//Setting the contact name label
-			if(extension.contactName == null) viewHolder.labelName.setText(R.string.part_content_contact);
-			else viewHolder.labelName.setText(extension.contactName);
-			
-			//Setting the contact's picture
-			if(extension.contactIcon == null) {
-				viewHolder.iconPlaceholder.setVisibility(View.VISIBLE);
-				viewHolder.iconProfile.setVisibility(View.GONE);
-			} else {
-				viewHolder.iconPlaceholder.setVisibility(View.GONE);
-				viewHolder.iconProfile.setVisibility(View.VISIBLE);
-				viewHolder.iconProfile.setImageBitmap(extension.contactIcon);
-			}
-		}
-		
-		@Override
-		int getViewType() {
-			return viewTypeContact;
-		}
-	};
-	
-	private static class SimpleAttachmentInfo {
-		private final File file;
-		private final Uri uri;
-		private final String fileType;
-		private final String fileName;
-		private final long fileSize;
-		private final long modificationDate;
-		
-		private Extension extension;
-		
-		private AttachmentsRecyclerAdapter<?> listAdapter;
-		private int listIndex;
-		
-		/* SimpleDraftInfo(File file, String fileType, String fileName, long fileSize) {
-			this.file = file;
-			this.fileType = fileType;
-			this.fileName = fileName;
-			this.fileSize = fileSize;
-			this.modificationDate = 0;
-		} */
-		
-		SimpleAttachmentInfo(File file, String fileType, String fileName, long fileSize, long modificationDate) {
-			this.file = file;
-			this.fileType = fileType;
-			this.fileName = fileName;
-			this.fileSize = fileSize;
-			this.modificationDate = modificationDate;
-			
-			this.uri = null;
-			
-			assignExtension();
-		}
-		
-		SimpleAttachmentInfo(Uri uri, String fileType, String fileName, long fileSize, long modificationDate) {
-			this.uri = uri;
-			this.fileType = fileType;
-			this.fileName = fileName;
-			this.fileSize = fileSize;
-			this.modificationDate = modificationDate;
-			
-			this.file = null;
-			
-			assignExtension();
-		}
-		
-		SimpleAttachmentInfo(DraftFile draft) {
-			this(draft.getFile() != null ? draft.getFile() : draft.getOriginalFile(), draft.getFileType(), draft.getFileName(), draft.getFileSize(), draft.getModificationDate());
-		}
-		
-		private void assignExtension() {
-			if(Constants.compareMimeTypes(fileType, mimeTypeAudio)) extension = new AudioExtension();
-			else if(Constants.compareMimeTypes(fileType, mimeTypeVideo)) extension = new VideoExtension();
-			else if(Constants.compareMimeTypes(fileType, mimeTypeVLocation)) extension = new LocationExtension();
-			else if(ContactAttachmentInfo.checkFileApplicability(fileType, null)) extension = new ContactExtension();
-			//else if(Constants.compareMimeTypes(fileType, mimeTypeVLocation)) extension = new LocationExtension();
-			else extension = null;
-			
-			if(extension != null) extension.initialize();
-		}
-		
-		File getFile() {
-			return file;
-		}
-		
-		String getFileType() {
-			return fileType;
-		}
-		
-		String getFileName() {
-			return fileName;
-		}
-		
-		long getFileSize() {
-			return fileSize;
-		}
-		
-		long getModificationDate() {
-			return modificationDate;
-		}
-		
-		Uri getUri() {
-			return uri;
-		}
-		
-		void setAdapterInformation(AttachmentsRecyclerAdapter<?> adapter, int index) {
-			listAdapter = adapter;
-			listIndex = index;
-		}
-		
-		AttachmentsRecyclerAdapter<?> getListAdapter() {
-			return listAdapter;
-		}
-		
-		int getListIndex() {
-			return listIndex;
-		}
-		
-		public boolean compare(QueuedFileInfo item) {
-			if(item.getDraftFile() == null) return compare(item.item);
-			return this.getModificationDate() == item.getItem().getModificationDate() &&
-				   ((this.getUri() != null && this.getUri().equals(item.getDraftFile().getOriginalUri())) ||
-					(this.getFile() != null && this.getFile().equals(item.getDraftFile().getOriginalFile())));
-		}
-		
-		public boolean compare(SimpleAttachmentInfo item) {
-			return this.getModificationDate() == item.getModificationDate() &&
-				   ((this.getUri() != null && this.getUri().equals(item.getUri())) ||
-					(this.getFile() != null && this.getFile().equals(item.getFile())));
-		}
-		
-		abstract class Extension {
-			abstract void initialize();
-		}
-		
-		Extension getExtension() {
-			return extension;
-		}
-		
-		class AudioExtension extends Extension {
-			//Creating the attachment info values
-			private long mediaDuration = -1;
-			
-			//Creating the playback values
-			private boolean isSelected = false;
-			private boolean isPlaying = false;
-			private long mediaProgress = 0;
-			
-			@Override
-			void initialize() {
-				if(file != null) mediaDuration = Constants.getMediaDuration(file);
-				else if(uri != null) mediaDuration = Constants.getMediaDuration(MainApplication.getInstance(), uri);
-			}
-			
-			void play(AudioPlaybackManager playbackManager, QueuedFileInfo queuedInfo, Constants.ViewHolderSource<AttachmentsAudioTileViewHolder> viewSource, Context context) {
-				//Returning if the file is invalid
-				File targetFile = queuedInfo.getDraftFile().getFile();
-				if(targetFile == null) return;
-				
-				if(isSelected) {
-					//Toggling play
-					playbackManager.togglePlaying();
-					
-					//Returning
-					return;
-				}
-				
-				//Playing the file
-				playbackManager.play(targetFile, new AudioPlaybackManager.Callbacks() {
-					@Override
-					public void onPlay() {
-						isPlaying = true;
-						
-						AttachmentsAudioTileViewHolder viewHolder = viewSource.get();
-						if(viewHolder != null) updateViewPlaying(viewHolder);
-					}
-					
-					@Override
-					public void onProgress(long time) {
-						mediaProgress = time;
-						
-						AttachmentsAudioTileViewHolder viewHolder = viewSource.get();
-						if(viewHolder != null) updateViewProgress(viewHolder);
-					}
-					
-					@Override
-					public void onPause() {
-						isPlaying = false;
-						
-						AttachmentsAudioTileViewHolder viewHolder = viewSource.get();
-						if(viewHolder != null) updateViewPlaying(viewHolder);
-					}
-					
-					@Override
-					public void onStop() {
-						isPlaying = false;
-						isSelected = false;
-						mediaProgress = 0;
-						
-						AttachmentsAudioTileViewHolder viewHolder = viewSource.get();
-						if(viewHolder != null) {
-							updateViewPlaying(viewHolder);
-							updateViewProgress(viewHolder);
-						}
-					}
-				}, context);
-				
-				isSelected = true;
-			}
-			
-			void updateViewPlaying(AttachmentsAudioTileViewHolder viewHolder) {
-				viewHolder.imagePlay.setImageResource(isPlaying ? AttachmentsAudioTileViewHolder.resourceDrawablePause : AttachmentsAudioTileViewHolder.resourceDrawablePlay);
-			}
-			
-			void updateViewProgress(AttachmentsAudioTileViewHolder viewHolder) {
-				viewHolder.progressBar.setProgress((int) ((float) mediaProgress / (float) mediaDuration * 100F));
-				//viewHolder.labelDuration.setText(Constants.getFormattedDuration((int) Math.floor(mediaProgress <= 0 ? mediaDuration / 1000L : mediaProgress / 1000L)));
-			}
-		}
-		
-		class VideoExtension extends Extension {
-			//Creating the attachment info values
-			private long mediaDuration = -1;
-			
-			@Override
-			void initialize() {
-				//Getting the media duration
-				if(file != null) mediaDuration = Constants.getMediaDuration(file);
-				else if(uri != null) mediaDuration = Constants.getMediaDuration(MainApplication.getInstance(), uri);
-			}
-			
-			long getMediaDuration() {
-				return mediaDuration;
-			}
-		}
-		
-		class LocationExtension extends Extension {
-			private String locationName = null;
-			
-			@Override
-			void initialize() {
-				try {
-					//Getting the input stream
-					InputStream fileStream;
-					if(file != null) fileStream = new FileInputStream(file);
-					else if(uri != null) fileStream = MainApplication.getInstance().getContentResolver().openInputStream(uri);
-					else return;
-					if(fileStream == null) return;
-					
-					//Parsing the file
-					VCard vcard = Ezvcard.parse(fileStream).first();
-					
-					//Getting the name
-					if(vcard.getFormattedName() != null) locationName = vcard.getFormattedName().getValue();
-				} catch(IOException exception) {
-					exception.printStackTrace();
-				}
-			}
-		}
-		
-		class ContactExtension extends Extension {
-			private String contactName = null;
-			private Bitmap contactIcon = null;
-			
-			@Override
-			void initialize() {
-				try {
-					//Getting the input stream
-					InputStream fileStream;
-					if(file != null) fileStream = new FileInputStream(file);
-					else if(uri != null) fileStream = MainApplication.getInstance().getContentResolver().openInputStream(uri);
-					else return;
-					if(fileStream == null) return;
-					
-					//Parsing the file
-					VCard vcard = Ezvcard.parse(fileStream).first();
-					if(vcard == null) return;
-					String name = null;
-					Bitmap bitmap = null;
-					
-					//Getting the name
-					if(vcard.getFormattedName() != null) name = vcard.getFormattedName().getValue();
-					
-					//Getting the bitmap
-					if(!vcard.getPhotos().isEmpty()) {
-						//Reading the profile picture
-						Photo photo = vcard.getPhotos().get(0);
-						byte[] photoData = photo.getData();
-						if(photoData != null) bitmap = BitmapFactory.decodeByteArray(photoData, 0, photoData.length);
-					}
-					
-					//Setting the information
-					contactName = name;
-					contactIcon = bitmap;
-				} catch(IOException exception) {
-					exception.printStackTrace();
-				}
-			}
-		}
-	}
-	
-	private static class TaskMarkMessageSendStyleViewed extends AsyncTask<MessageInfo, Void, Void> {
-		@Override
-		protected Void doInBackground(MessageInfo... items) {
-			for(MessageInfo item : items)
-				DatabaseManager.getInstance().markSendStyleViewed(item.getLocalID());
-			return null;
-		}
-	}
-	
-	static class LoadingViewHolder extends RecyclerView.ViewHolder {
+	private static class LoadingViewHolder extends RecyclerView.ViewHolder {
 		LoadingViewHolder(View itemView) {
 			super(itemView);
-		}
-	}
-	
-	static class ReplySuggestionsViewHolder extends RecyclerView.ViewHolder {
-		HorizontalScrollView scrollView;
-		LinearLayout container;
-		
-		ReplySuggestionsViewHolder(View itemView) {
-			super(itemView);
-			scrollView = (HorizontalScrollView) itemView;
-			container = itemView.findViewById(R.id.container);
-		}
-		
-		void resetScroll() {
-			scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_RIGHT));
-		}
-		
-		void setSuggestions(Context context, ActivityViewModel viewModel, AMConversationAction[] suggestions) {
-			//Gathering active views
-			List<TextView> childViewList = new ArrayList<>(suggestions.length);
-			for(int i = 0; i < container.getChildCount(); i++) {
-				TextView childView = (TextView) container.getChildAt(i);
-				if(i < suggestions.length) {
-					childView.setVisibility(View.VISIBLE);
-					childViewList.add(childView);
-				} else childView.setVisibility(View.GONE);
-			}
-			
-			//Adding more views if necessary
-			while(childViewList.size() < suggestions.length) {
-				TextView item = (TextView) LayoutInflater.from(context).inflate(R.layout.listitem_replysuggestions_item, container, false);
-				item.setTextColor(viewModel.conversationInfo.getDisplayConversationColor(context));
-				container.addView(item);
-				childViewList.add(item);
-			}
-			
-			//Creating a reference to the view model
-			WeakReference<ActivityViewModel> viewModelReference = new WeakReference<>(viewModel);
-			
-			//Configuring the suggestion
-			for(int i = 0; i < suggestions.length; i++) {
-				TextView childView = childViewList.get(i);
-				AMConversationAction conversationAction = suggestions[i];
-				
-				if(conversationAction.isReplyAction()) {
-					childView.setCompoundDrawables(null, null, null, null);
-					childView.setText(conversationAction.getReplyString());
-					childView.setOnClickListener(view -> {
-						//Getting the view model
-						ActivityViewModel newViewModel = viewModelReference.get();
-						if(newViewModel == null) return;
-						
-						//Clearing the suggestions
-						//newViewModel.smartReplyAvailable.setValue(false);
-						
-						//Creating a message
-						MessageInfo message = new MessageInfo(-1, -1, null, newViewModel.conversationInfo, null, conversationAction.getReplyString().toString(), null, null, false, System.currentTimeMillis(), Constants.messageStateCodeGhost, Constants.messageErrorCodeOK, false, -1);
-						
-						//Writing the messages to the database
-						new AddGhostMessageTask(newViewModel.getApplication(), newViewModel.conversationInfo, new GhostMessageFinishHandler()).execute(message);
-					});
-				} else {
-					//Getting the remote action
-					AMConversationAction.AMRemoteAction remoteAction = conversationAction.getRemoteAction();
-					
-					//Configuring the remote action
-					childView.setCompoundDrawablesRelative(remoteAction.getIcon().loadDrawable(context), null, null, null);
-					childView.setText(remoteAction.getTitle());
-					childView.setOnClickListener(view -> {
-						//Launching the intent
-						try {
-							remoteAction.getActionIntent().send();
-						} catch(PendingIntent.CanceledException exception) {
-							exception.printStackTrace();
-							return;
-						}
-					});
-				}
-			}
 		}
 	}
 	
@@ -5165,143 +4428,112 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	private static class ActivityViewModel extends AndroidViewModel {
-		static final int messagesStateIdle = 0;
-		static final int messagesStateLoadingConversation = 1;
-		static final int messagesStateLoadingMessages = 2;
-		static final int messagesStateFailedMatching = 3; //When given the recipients of the conversation to find the conversation ID
-		static final int messagesStateFailedConversation = 4;
-		static final int messagesStateFailedMessages = 5;
-		static final int messagesStateReady = 6;
-		
-		/* static final int smartReplyStateDisabled = 0;
-		static final int smartReplyStateLoading = 1;
-		static final int smartReplyStateAvailable = 2; */
-		
-		static final int attachmentsLocationStatePermission = 0; //Permission not granted
-		static final int attachmentsLocationStatePrompt = 1; //User action required
-		static final int attachmentsLocationStateUnavailable = 2; //Functionality not available
-		static final int attachmentsLocationStateFetching = 3; //Fetching the current location
-		static final int attachmentsLocationStateOK = 4; //Location loaded
-		
-		static final int attachmentsStateIdle = 0;
-		static final int attachmentsStateLoading = 1;
-		static final int attachmentsStateLoaded = 2;
-		static final int attachmentsStateFailed = 3;
-		
-		static final int soundMessageIncoming = 0;
-		static final int soundMessageOutgoing = 1;
-		static final int soundMessageError = 2;
-		static final int soundRecordingStart = 3;
-		static final int soundRecordingEnd = 4;
-		
-		static final int attachmentTypeGallery = 0;
-		//static final int attachmentTypeDocument = 1;
-		private static final int attachmentsTileCount = 24;
+		static final int stateLoadingConversation = 1;
+		static final int stateLoadingMessages = 2;
+		static final int stateFailedMatching = 3; //When given the recipients of the conversation to find the conversation ID
+		static final int stateFailedConversation = 4;
+		static final int stateFailedMessages = 5;
+		static final int stateReady = 6;
 		
 		//Creating the state values
-		private final MutableLiveData<Integer> messagesState = new MutableLiveData<>();
+		private final MutableLiveData<String> titleLD = new MutableLiveData<>();
+		private final MutableLiveData<Integer> stateLD = new MutableLiveData<>();
 		
-		private final List<QueuedFileInfo> draftQueueList = new ArrayList<>(3);
-		private static final int attachmentTypesCount = 2;
-		private final int[] attachmentStates = new int[attachmentTypesCount];
-		private final ArrayList<SimpleAttachmentInfo>[] attachmentLists = new ArrayList[attachmentTypesCount];
-		private final WeakReference<AttachmentsLoadCallbacks>[] attachmentCallbacks = new WeakReference[attachmentTypesCount];
+		final List<FileQueued> queueList = new ArrayList<>(3);
+		final PublishSubject<Pair<Integer, FileQueued>> subjectQueueListAdd = PublishSubject.create(); //When a queued file is added
+		final PublishSubject<Pair<Integer, FileQueued>> subjectQueueListRemove = PublishSubject.create(); //When a queued file is removed
+		final PublishSubject<Pair<Integer, FileQueued>> subjectQueueListUpdate = PublishSubject.create(); //When a queued file is prepared
 		
-		private boolean isAttachmentsPanelOpen = false;
-		private boolean isDetailsPanelOpen = false;
+		boolean isAttachmentsPanelOpen = false;
 		
+		final PublishSubject<Integer> subjectProgressiveLoadUpdate = PublishSubject.create(); //When a progressive load is completed
 		private final MutableLiveData<Boolean> progressiveLoadInProgress = new MutableLiveData<>();
 		private boolean progressiveLoadReachedLimit = false;
-		private int lastProgressiveLoadCount = -1;
 		
-		private final MutableLiveData<Boolean> smartReplyAvailable = new MutableLiveData<>();
-		private byte smartReplyRequestID = -1;
-		private boolean smartReplyAwaiting = false;
-		private AMConversationAction[] lastSmartReplyResult = null;
-		
-		private final MutableLiveData<Boolean> attachmentsLocationLoading = new MutableLiveData<>();
-		private final MutableLiveData<Integer> attachmentsLocationState = new MutableLiveData<>();
-		private Location attachmentsLocationResult = null;
-		private ResolvableApiException attachmentsLocationResolvable = null;
+		private final MutableLiveData<AMConversationAction[]> conversationActionsLD = new MutableLiveData<>();
 		
 		private int lastUnreadCount = 0;
 		
-		//Creating the conversation values
-		private String[] conversationParticipantsTarget;
-		private long conversationID;
-		private ConversationInfo conversationInfo;
-		private ArrayList<ConversationItem> conversationItemList;
-		private ArrayList<MessageInfo> conversationGhostList;
-		private DatabaseManager.ConversationLazyLoader conversationLazyLoader;
+		private int nextDraftFileReferenceID = 0;
 		
-		//Creating the attachment values
-		File targetFileIntent = null;
-		File targetFileRecording = null;
+		//Creating the conversation values
+		private String[] conversationParticipantsTarget; //Used for fetching conversation
+		private final long conversationIDTarget; //Used for fetching conversation
+		ConversationInfo conversationInfo; //The actual loaded conversation
+		List<ConversationItem> conversationItemList; //The conversation's messages
+		List<MessageInfo> conversationGhostList; //The conversation's ghost messages
+		DatabaseManager.ConversationLazyLoader conversationLazyLoader; //The lazy loader utility for conversation items
+		//The latest read message and latest delivered message
+		MessageInfo latestMessageRead, latestMessageDelivered;
+		private long lastConversationActionTarget = -1;
 		
 		//Creating the sound values
-		private static final float soundVolume = 0.15F;
-		private SoundPool soundPool = new SoundPool.Builder().setAudioAttributes(new AudioAttributes.Builder()
-				.setLegacyStreamType(AudioManager.STREAM_SYSTEM)
-				.build())
-				.setMaxStreams(2)
-				.build();
-		private int soundIDMessageIncoming = soundPool.load(getApplication(), R.raw.message_in, 1);
-		private int soundIDMessageOutgoing = soundPool.load(getApplication(), R.raw.message_out, 1);
-		private int soundIDMessageError = soundPool.load(getApplication(), R.raw.message_error, 1);
-		private int soundIDRecordingStart = soundPool.load(getApplication(), R.raw.recording_start, 1);
-		private int soundIDRecordingEnd = soundPool.load(getApplication(), R.raw.recording_end, 1);
+		private final SoundPool soundPool = SoundHelper.getSoundPool();
+		private final int soundIDMessageIncoming = soundPool.load(getApplication(), R.raw.message_in, 1);
+		private final int soundIDMessageOutgoing = soundPool.load(getApplication(), R.raw.message_out, 1);
+		//private final int soundIDMessageError = soundPool.load(getApplication(), R.raw.message_error, 1);
 		
 		final AudioPlaybackManager audioPlaybackManager = new AudioPlaybackManager(getApplication());
 		
-		private MediaRecorder mediaRecorder = null;
-		private final MutableLiveData<Boolean> isRecording = new MutableLiveData<>();
-		private final MutableLiveData<Integer> recordingDuration = new MutableLiveData<>();
-		private final Handler recordingTimerHandler = new Handler(Looper.getMainLooper());
-		private final Runnable recordingTimerHandlerRunnable = new Runnable() {
-			@Override
-			public void run() {
-				//Adding a second
-				recordingDuration.setValue(recordingDuration.getValue() + 1);
-				
-				//Scheduling the next run
-				recordingTimerHandler.postDelayed(this, 1000);
-			}
-		};
-		private final Handler mediaRecorderHandler = new Handler();
-		private final Runnable mediaRecorderRunnable = () -> {
-			//Starting the recording timer
-			startRecordingTimer();
-			
-			//Starting the media recorder
-			mediaRecorder.start();
-		};
-		private final SparseArray<BiConsumer<Context, Boolean>> permissionRequestResultListenerList = new SparseArray<>();
+		//Creating the task values
+		private final TaskManagerLong<Spannable> taskManagerLinkify = new TaskManagerLong<>();
+		Single<Spannable> taskLinkify(long id, Context context, String text) {
+			return taskManagerLinkify.run(id, () -> {
+				//Smart Linkify is preferred on Android 9+
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+					return Single.fromCallable(() -> {
+						Spannable spannable = new SpannableString(text);
+						
+						TextClassifier textClassifier = context.getSystemService(TextClassificationManager.class).getTextClassifier();
+						TextLinks textLinks = textClassifier.generateLinks(new TextLinks.Request.Builder(text).build());
+						textLinks.apply(spannable, TextLinks.APPLY_STRATEGY_REPLACE, null);
+						
+						return spannable;
+					}).subscribeOn(Schedulers.computation()).observeOn(AndroidSchedulers.mainThread());
+				} else {
+					//Use regular ol' Linkify
+					return Single.fromCallable(() -> {
+						Spannable spannable = new SpannableString(text);
+						Linkify.addLinks(spannable, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES | Linkify.PHONE_NUMBERS);
+						return spannable;
+					});
+				}
+			});
+		}
+		final TaskManagerLong<RichPreviewTask.Metadata> taskManagerLinkPreview = new TaskManagerLong<>();
+		Single<RichPreviewTask.Metadata> taskLinkPreview(long id, String url) {
+			return taskManagerLinkPreview.run(id, () -> RichPreviewTask.fetchMetadata(url));
+		}
+		final TaskManagerLong<MessagePreviewInfo> taskManagerMessagePreview = new TaskManagerLong<>();
+		Single<MessagePreviewInfo> taskMessagePreview(long id) {
+			return taskManagerMessagePreview.run(id, () -> Single.fromCallable(() -> {
+				MessagePreviewInfo messagePreview = DatabaseManager.getInstance().loadMessagePreview(id);
+				if(messagePreview != null) return messagePreview;
+				else throw new RuntimeException("No preview with ID " + id + " found");
+			}).subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()));
+		}
+		final TaskManager<FileDisplayMetadata> taskManagerMetadata = new TaskManager<>();
 		
-		private ActivityViewModel(@NonNull Application application) {
+		//Creating the task subscription values
+		private final CompositeDisposable compositeDisposable = new CompositeDisposable();
+		private Disposable conversationTitleDisposable;
+		private Disposable conversationActionsDisposable;
+		
+		ActivityViewModel(Application application, long conversationIDTarget) {
 			super(application);
 			
-			//Filling the attachment lists
-			Arrays.fill(attachmentStates, attachmentsStateIdle);
-			
-			//Initializing the states
-			attachmentsLocationLoading.setValue(false);
-		}
-		
-		ActivityViewModel(Application application, long conversationID) {
-			this(application);
-			
 			//Setting the values
-			this.conversationID = conversationID;
+			this.conversationIDTarget = conversationIDTarget;
 			
 			//Loading the data
 			loadConversation();
 		}
 		
-		public ActivityViewModel(@NonNull Application application, String[] conversationParticipantsTarget) {
-			this(application);
+		ActivityViewModel(@NonNull Application application, String[] conversationParticipantsTarget) {
+			super(application);
 			
 			//Setting the values
-			this.conversationID = -1;
+			this.conversationIDTarget = -1;
 			this.conversationParticipantsTarget = conversationParticipantsTarget;
 			
 			//Loading the conversation
@@ -5313,559 +4545,312 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Releasing the sounds
 			soundPool.release();
 			
-			//Cleaning up the media recorder
-			if(isRecording()) stopRecording(true, true);
-			if(mediaRecorder != null) mediaRecorder.release();
-			
 			//Releasing the audio player
 			audioPlaybackManager.release();
 			
-			//Checking if the conversation is valid
+			//Updating the conversation's unread message count
 			if(conversationInfo != null) {
-				//Clearing the messages
-				//conversationInfo.clearMessages();
-				
-				//Updating the conversation's unread message count
-				conversationInfo.updateUnreadStatus(MainApplication.getInstance());
-				//new UpdateUnreadMessageCount(MainApplication.getInstance(), conversationID, conversationInfo.getUnreadMessageCount()).execute();
-				DatabaseManager.getInstance().setUnreadMessageCount(conversationID, conversationInfo.getUnreadMessageCount()); //Maybe the task gets killed before it is completed?
+				ConversationActionTask.unreadConversations(Collections.singleton(conversationInfo), conversationInfo.getUnreadMessageCount()).subscribe();
 			}
+			
+			//Clearing task subscriptions
+			compositeDisposable.clear();
+		}
+		
+		/**
+		 * Loads the conversation from its ID
+		 */
+		void loadConversation() {
+			//Updating the state
+			stateLD.setValue(stateLoadingConversation);
+			
+			//Finalize the conversation ID for reliable access
+			final long conversationID = ActivityViewModel.this.conversationIDTarget;
+			compositeDisposable.add(Single.create((SingleEmitter<Pair<ConversationInfo, DatabaseManager.ConversationLazyLoader>> emitter) -> {
+				//Getting the conversation
+				ConversationInfo conversationInfo = DatabaseManager.getInstance().fetchConversationInfo(getApplication(), conversationID);
+				if(conversationInfo == null) {
+					emitter.onError(new Throwable("Conversation not found"));
+					return;
+				}
+				
+				//Creating the lazy loader
+				DatabaseManager.ConversationLazyLoader lazyLoader = new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
+				
+				emitter.onSuccess(new Pair<>(conversationInfo, lazyLoader));
+			}).subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).subscribe(result -> applyConversation(result.first, result.second), (error) -> {
+				//Setting the state to failed if the conversation info couldn't be fetched
+				stateLD.setValue(stateFailedConversation);
+			}));
 		}
 		
 		/**
 		 * Find or create a conversation, based on the data provided
 		 */
-		@SuppressLint("StaticFieldLeak")
 		void findCreateConversationMMSSMS() {
 			//Updating the state
-			messagesState.setValue(messagesStateLoadingConversation);
+			stateLD.setValue(stateLoadingConversation);
 			
-			//Searching for the conversation in memory
-			new AsyncTask<Void, Void, Long>() {
-				@Override
-				protected Long doInBackground(Void... voids) {
-					return Telephony.Threads.getOrCreateThreadId(getApplication(), new HashSet<>(Arrays.asList(conversationParticipantsTarget)));
-				}
-				
-				@Override
-				protected void onPostExecute(Long threadID) {
-					//Getting the conversation
-					conversationInfo = ConversationUtils.findConversationInfoExternalID(threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
-					
-					if(conversationInfo != null) {
-						conversationID = conversationInfo.getLocalID();
+			compositeDisposable.add(Single.create((SingleEmitter<Long> emitter) -> {
+				//Finding or creating a matching conversation in Android's SMS / MMS database
+				emitter.onSuccess(Telephony.Threads.getOrCreateThreadId(getApplication(), new HashSet<>(Arrays.asList(conversationParticipantsTarget))));
+			}).subscribeOn(Schedulers.io())
+					.observeOn(Schedulers.single()).map((threadID) -> {
+						//Finding the conversation in the database
+						ConversationInfo conversationInfo = DatabaseManager.getInstance().findConversationByExternalID(getApplication(), threadID, ServiceHandler.systemMessaging, ServiceType.systemSMS);
 						
-						new AsyncTask<Void, Void, DatabaseManager.ConversationLazyLoader>() {
-							@Override
-							protected DatabaseManager.ConversationLazyLoader doInBackground(Void... voids) {
-								return new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
-							}
+						//Checking if a conversation wasn't found in the database
+						if(conversationInfo == null) {
+							//Creating a new conversation
+							int conversationColor = ConversationColorHelper.getDefaultConversationColor(threadID);
+							List<MemberInfo> coloredMembers = ConversationColorHelper.getColoredMembers(conversationParticipantsTarget, conversationColor, threadID);
+							conversationInfo = new ConversationInfo(-1, null, threadID, ConversationState.ready, ServiceHandler.systemMessaging, ServiceType.systemSMS, conversationColor, coloredMembers, null);
 							
-							@Override
-							protected void onPostExecute(DatabaseManager.ConversationLazyLoader result) {
-								//Setting the lazy loader
-								conversationLazyLoader = result;
-								
-								//Loading the conversation's messages
-								loadMessages();
-							}
-						}.execute();
-					} else {
-						//Fetching or creating the conversation on disk
-						new AsyncTask<Void, Void, Constants.Tuple3<ConversationInfo, Boolean, DatabaseManager.ConversationLazyLoader>>() {
-							@Override
-							protected Constants.Tuple3<ConversationInfo, Boolean, DatabaseManager.ConversationLazyLoader> doInBackground(Void... voids) {
-								ConversationInfo conversationInfo = DatabaseManager.getInstance().findConversationByExternalID(getApplication(), threadID, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS);
-								boolean conversationNew = false;
-								
-								//Creating a new conversation if no existing conversation was found
-								if(conversationInfo == null) {
-									//Creating the conversation
-									int conversationColor = ConversationInfo.getDefaultConversationColor(System.currentTimeMillis());
-									conversationInfo = new ConversationInfo(-1, null, ConversationInfo.ConversationState.READY, ConversationInfo.serviceHandlerSystemMessaging, ConversationInfo.serviceTypeSystemMMSSMS, new ArrayList<>(), null, 0, conversationColor, null, new ArrayList<>(), -1);
-									conversationInfo.setExternalID(threadID);
-									conversationInfo.setConversationMembersCreateColors(conversationParticipantsTarget);
-									
-									//Writing the conversation to disk
-									boolean result = DatabaseManager.getInstance().addReadyConversationInfo(conversationInfo);
-									if(!result) return null;
-									
-									//Adding the conversation created message
-									DatabaseManager.getInstance().addConversationCreatedMessage(conversationInfo, getApplication());
-									
-									conversationNew = true;
-								}
-								
-								//Creating the lazy loader
-								DatabaseManager.ConversationLazyLoader lazyLoader = new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
-								
-								//Returning the data
-								return new Constants.Tuple3<>(conversationInfo, conversationNew, lazyLoader);
-							}
+							//Writing the conversation to disk
+							boolean result = DatabaseManager.getInstance().addConversationInfo(conversationInfo);
+							if(!result) return null;
 							
-							@Override
-							protected void onPostExecute(Constants.Tuple3<ConversationInfo, Boolean, DatabaseManager.ConversationLazyLoader> result) {
-								//Setting the state to failed if the conversation info couldn't be fetched
-								if(result == null) messagesState.setValue(messagesStateFailedConversation);
-								else {
-									//Setting the conversation details
-									conversationInfo = result.item1;
-									conversationID = conversationInfo.getLocalID();
-									boolean conversationNew = result.item2;
-									conversationLazyLoader = result.item3;
-									
-									//Adding the conversation if it is new
-									if(conversationNew) {
-										ConversationUtils.addConversation(conversationInfo);
-										
-										//Updating the conversation activity list
-										LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-									}
-									
-									//Loading the conversation's messages
-									loadMessages();
-								}
-							}
-						}.execute();
-					}
-				}
-			}.execute();
+							//Adding the conversation created message
+							DatabaseManager.getInstance().addConversationCreatedMessage(conversationInfo.getLocalID());
+						}
+						
+						//Creating the lazy loader
+						DatabaseManager.ConversationLazyLoader lazyLoader = new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
+						
+						//Returning the data
+						return new Pair<>(conversationInfo, lazyLoader);
+					}).observeOn(AndroidSchedulers.mainThread()).subscribe(result -> applyConversation(result.first, result.second)));
 		}
 		
 		/**
-		 * Loads the conversation and its messages
+		 * Applies conversation details fetched from disk
+		 * @param conversationInfo The conversation
+		 * @param conversationLazyLoader The conversation's lazy loader for fetching past messages
 		 */
-		@SuppressLint("StaticFieldLeak")
-		void loadConversation() {
-			//Updating the state
-			messagesState.setValue(messagesStateLoadingConversation);
+		private void applyConversation(ConversationInfo conversationInfo, DatabaseManager.ConversationLazyLoader conversationLazyLoader) {
+			//Setting the values
+			this.conversationInfo = conversationInfo;
+			this.conversationLazyLoader = conversationLazyLoader;
 			
-			//Loading the conversation
-			conversationInfo = ConversationUtils.findConversationInfo(conversationID);
-			if(conversationInfo != null) {
-				conversationID = conversationInfo.getLocalID();
-				
-				new AsyncTask<Void, Void, DatabaseManager.ConversationLazyLoader>() {
-					@Override
-					protected DatabaseManager.ConversationLazyLoader doInBackground(Void... voids) {
-						return new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
-					}
-					
-					@Override
-					protected void onPostExecute(DatabaseManager.ConversationLazyLoader result) {
-						//Setting the lazy loader
-						conversationLazyLoader = result;
-						
-						//Loading the conversation's messages
-						loadMessages();
-					}
-				}.execute();
-			} else {
-				new AsyncTask<Void, Void, Constants.Tuple2<ConversationInfo, DatabaseManager.ConversationLazyLoader>>() {
-					@Override
-					protected Constants.Tuple2<ConversationInfo, DatabaseManager.ConversationLazyLoader> doInBackground(Void... args) {
-						//Getting the conversation
-						ConversationInfo conversation = DatabaseManager.getInstance().fetchConversationInfo(getApplication(), conversationID);
-						if(conversation == null) return null;
-						
-						//Creating the lazy loader
-						DatabaseManager.ConversationLazyLoader lazyLoader = new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversation);
-						
-						//Returning the data
-						return new Constants.Tuple2<>(conversation, lazyLoader);
-					}
-					
-					@Override
-					protected void onPostExecute(Constants.Tuple2<ConversationInfo, DatabaseManager.ConversationLazyLoader> result) {
-						//Setting the state to failed if the conversation info couldn't be fetched
-						if(result == null) messagesState.setValue(messagesStateFailedConversation);
-						else {
-							//Setting the conversation details
-							conversationInfo = result.item1;
-							conversationID = conversationInfo.getLocalID();
-							conversationLazyLoader = result.item2;
-							
-							//Loading the conversation's messages
-							loadMessages();
-						}
-					}
-				}.execute();
-			}
+			//Loading the conversation's title
+			titleLD.setValue(ConversationBuildHelper.buildConversationTitleDirect(getApplication(), conversationInfo));
+			updateConversationTitle();
+			
+			//Loading the conversation's drafts
+			queueList.addAll(conversationInfo.getDraftFiles().stream().map(fileDraft -> new FileQueued(fileDraft, nextDraftFileReferenceID++)).collect(Collectors.toList()));
+			
+			//Loading the conversation's messages
+			loadMessages();
 		}
 		
-		@SuppressLint("StaticFieldLeak")
-		void loadMessages() {
+		/**
+		 * Loads the first group of messages from a conversation
+		 */
+		private void loadMessages() {
 			//Updating the state
-			messagesState.setValue(messagesStateLoadingMessages);
+			stateLD.setValue(stateLoadingMessages);
 			
-			//Checking if the conversation already has lists
-			ArrayList<ConversationItem> existingConversationItems = conversationInfo.getConversationItems();
-			ArrayList<MessageInfo> existingGhostMessages = conversationInfo.getGhostMessages();
-			if(existingConversationItems != null && existingGhostMessages != null) {
-				//Setting the lists
-				conversationItemList = existingConversationItems;
-				conversationGhostList = existingGhostMessages;
-				
-				//Marking all messages as read (list will always be scrolled to the bottom)
-				conversationInfo.setUnreadMessageCount(0);
-				
-				//Updating the lazy loader position
-				conversationLazyLoader.setCursorPosition(existingConversationItems.size());
-				
-				//Setting the state
-				messagesState.setValue(messagesStateReady);
-				
-				//Updating the conversation's shortcut usage
-				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-					ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getLocalID());
-				}
-			} else {
-				//Loading the messages
-				new AsyncTask<Void, Void, List<ConversationItem>>() {
-					@Override
-					protected List<ConversationItem> doInBackground(Void... params) {
-						//Loading the conversation items
-						//Constants.Tuple3<List<ConversationItem>, Long, Integer> result = DatabaseManager.getInstance().loadConversationChunk(conversationInfo, false, -1, -1);
-						List<ConversationItem> conversationItems = conversationLazyLoader.loadNextChunk();
-						
-						//Setting up the conversation item relations
-						ConversationUtils.setupConversationItemRelations(conversationItems, conversationInfo);
-						
-						//Returning the conversation items
-						return conversationItems;
-					}
-					
-					@Override
-					protected void onPostExecute(List<ConversationItem> result) {
+			//Loading the messages
+			compositeDisposable.add(
+					Single.fromCallable(() -> conversationLazyLoader.loadNextChunk(getApplication()))
+							.subscribeOn(Schedulers.single())
+							.observeOn(AndroidSchedulers.mainThread()).subscribe((result) -> {
 						//Checking if the result is invalid
 						if(result == null) {
 							//Setting the state
-							messagesState.setValue(messagesStateFailedMessages);
+							stateLD.setValue(stateFailedMessages);
 							
 							//Returning
 							return;
 						}
 						
 						//Creating the lists
-						conversationItemList = new ArrayList<>();
-						conversationGhostList = new ArrayList<>();
+						conversationItemList = result;
+						conversationGhostList = conversationItemList.stream().filter(conversationItem ->
+								conversationItem instanceof MessageInfo && ((MessageInfo) conversationItem).getMessageState() == MessageState.ghost)
+								.map(conversationItem -> (MessageInfo) conversationItem).collect(Collectors.toList());
 						
-						//Recording the lists in the conversation info
-						conversationInfo.setConversationLists(conversationItemList, conversationGhostList);
-						
-						//Replacing the conversation items
-						conversationInfo.replaceConversationItems(MainApplication.getInstance(), result);
+						//Setting the read and delivered targets
+						for(ListIterator<ConversationItem> iterator = conversationItemList.listIterator(conversationItemList.size()); iterator.hasPrevious();) {
+							ConversationItem conversationItem = iterator.previous();
+							
+							if(conversationItem.getItemType() != ConversationItemType.message) continue;
+							MessageInfo messageInfo = (MessageInfo) conversationItem;
+							if(!messageInfo.isOutgoing()) continue;
+							
+							//Find latest delivered
+							if(latestMessageDelivered == null) {
+								if(messageInfo.getMessageState() == MessageState.read) {
+									latestMessageDelivered = messageInfo;
+									latestMessageRead = messageInfo;
+									break;
+								} else if(messageInfo.getMessageState() == MessageState.delivered) {
+									latestMessageDelivered = messageInfo;
+									continue;
+								}
+							}
+							
+							//Find latest read
+							if(messageInfo.getMessageState() == MessageState.read) {
+								latestMessageRead = messageInfo;
+								break;
+							}
+						}
 						
 						//Marking all messages as read (list will always be scrolled to the bottom)
 						conversationInfo.setUnreadMessageCount(0);
 						
 						//Setting the state
-						messagesState.setValue(messagesStateReady);
-						
-						//Updating the conversation's shortcut usage
-						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-							ShortcutUtils.reportShortcutUsed(getApplication(), conversationInfo.getLocalID());
-						}
-						
-						//Adding the conversation to the conversation list (for temporary usage, so that the conversation can be found for certain operations even if the conversations activity hasn't been launched yet)
-						if(ConversationUtils.getConversations() != null && !ConversationUtils.getConversations().isLoaded()) {
-							ConversationUtils.getConversations().add(conversationInfo);
-						}
-					}
-				}.execute();
-			}
+						stateLD.setValue(stateReady);
+					})
+			);
 		}
 		
-		@SuppressLint("StaticFieldLeak")
+		/**
+		 * Loads the next group of messages from the database
+		 */
 		void loadNextChunk() {
 			//Returning if the conversation isn't ready, a load is already in progress or there are no conversation items
-			if(messagesState.getValue() != messagesStateReady || isProgressiveLoadInProgress() || progressiveLoadReachedLimit || conversationInfo.getConversationItems().isEmpty())
-				return;
+			if(stateLD.getValue() != stateReady || isProgressiveLoadInProgress() || progressiveLoadReachedLimit || conversationItemList.isEmpty()) return;
 			
 			//Setting the flags
 			progressiveLoadInProgress.setValue(true);
 			
-			new AsyncTask<Void, Void, List<ConversationItem>>() {
-				@Override
-				protected List<ConversationItem> doInBackground(Void... params) {
-					//Loading the conversation items
-					//return DatabaseManager.getInstance().loadConversationChunk(conversationInfo, true, firstSortIDFinal, firstSortIDOffsetFinal);
-					return conversationLazyLoader.loadNextChunk();
-				}
-				
-				@Override
-				protected void onPostExecute(List<ConversationItem> result) {
-					//Setting the progressive load count
-					lastProgressiveLoadCount = result.size();
-					
-					//Checking if there are no new conversation items
-					if(result.isEmpty()) {
-						//Disabling the progressive load (there are no more items to load)
-						progressiveLoadReachedLimit = true;
-					} else {
-						//Loading the items
-						List<ConversationItem> allItems = conversationInfo.getConversationItems();
-						if(allItems == null) return;
+			compositeDisposable.add(Single.fromCallable(() -> conversationLazyLoader.loadNextChunk(getApplication()))
+					.subscribeOn(Schedulers.single())
+					.observeOn(AndroidSchedulers.mainThread()).subscribe((result) -> {
+						//Checking if there are no new conversation items
+						if(result.isEmpty()) {
+							//Disabling the progressive load (there are no more items to load)
+							progressiveLoadReachedLimit = true;
+						} else {
+							//Adding the items
+							conversationItemList.addAll(0, result);
+						}
 						
-						//Adding the items
-						conversationInfo.addChunk(result);
+						//Finishing the progressive load
+						progressiveLoadInProgress.setValue(false);
 						
-						//Updating the items' relations
-						ConversationUtils.addConversationItemRelations(conversationInfo, allItems, result, MainApplication.getInstance(), true);
-					}
-					
-					//Finishing the progressive load
-					progressiveLoadInProgress.setValue(false);
-				}
-			}.execute();
+						//Setting the progressive load count
+						subjectProgressiveLoadUpdate.onNext(result.size());
+					}));
 		}
 		
-		@SuppressLint("StaticFieldLeak")
+		/**
+		 * Gets the {@link ConversationInfo} loaded in this view model
+		 */
+		ConversationInfo getConversationInfo() {
+			return conversationInfo;
+		}
+		
+		/**
+		 * Sets the new draft message of this conversation
+		 */
 		void applyDraftMessage(String message) {
+			//Ignoring if the state is not loaded
+			if(stateLD.getValue() != stateReady) return;
+			
 			//Invalidating the message if it is empty
-			if(message != null && message.isEmpty()) message = null;
-			final String finalMessage = message;
+			final String finalMessage = StringHelper.nullifyEmptyString(message);
 			
 			//Recording the update time
 			long updateTime = System.currentTimeMillis();
 			
-			//Checking if the conversation is valid
-			if(conversationInfo != null) {
-				//Returning if the draft message hasn't changed
-				if(Objects.equals(conversationInfo.getDraftMessage(), finalMessage)) return;
+			//Writing the message to disk
+			ConversationActionTask.setConversationDraft(conversationInfo, finalMessage, updateTime).subscribe();
+		}
+		
+		@Nullable
+		MessageTargetUpdate tryApplyDeliveredTarget(MessageInfo messageInfo) {
+			//Ignoring if the message is incoming or isn't delivered
+			if(!messageInfo.isOutgoing() || messageInfo.getMessageState() != MessageState.delivered) return null;
+			
+			//Checking if the provided message can replace the current message
+			if(latestMessageDelivered == null || messageInfo.getDate() > latestMessageDelivered.getDate()) {
+				List<MessageInfo> oldMessages = new ArrayList<>();
 				
-				//Assigning the message to the conversation in memory
-				conversationInfo.setDraftMessageUpdate(getApplication(), finalMessage, updateTime);
+				//Setting the delivered target
+				if(latestMessageDelivered != null) oldMessages.add(latestMessageDelivered);
+				latestMessageDelivered = messageInfo;
+				
+				return new MessageTargetUpdate(messageInfo, oldMessages);
+			} else {
+				return null;
+			}
+		}
+		
+		@Nullable
+		MessageTargetUpdate tryApplyReadTarget(MessageInfo messageInfo) {
+			//Ignoring if the message is incoming or isn't delivered
+			if(!messageInfo.isOutgoing() || messageInfo.getMessageState() != MessageState.read) return null;
+			
+			//Checking if the provided message can replace the current message
+			if(latestMessageRead == null || messageInfo.getDate() > latestMessageRead.getDate()) {
+				List<MessageInfo> oldMessages = new ArrayList<>();
+				
+				//Setting the read target
+				if(latestMessageRead != null) oldMessages.add(latestMessageRead);
+				latestMessageRead = messageInfo;
+				
+				//Clearing the delivered target if this read target is surpassing it
+				if(latestMessageDelivered != null && latestMessageDelivered.getDate() <= messageInfo.getDate()) {
+					oldMessages.add(latestMessageDelivered);
+					latestMessageDelivered = null;
+				}
+				
+				return new MessageTargetUpdate(messageInfo, oldMessages);
+			} else {
+				return null;
+			}
+		}
+		
+		/**
+		 * Clears the conversation's draft message and draft files
+		 */
+		void clearDrafts() {
+			//Clearing the queued list
+			queueList.clear();
+			
+			//Clearing the conversation's drafts in memory
+			if(conversationInfo != null) {
+				conversationInfo.setDraftMessage(null);
+				conversationInfo.getDraftFiles().clear();
+				conversationInfo.setDraftUpdateTime(-1);
 			}
 			
-			//Writing the message to disk
-			new AsyncTask<Void, Void, Void>() {
-				@Override
-				protected Void doInBackground(Void... params) {
-					DatabaseManager.getInstance().updateConversationDraftMessage(conversationID, finalMessage, updateTime);
-					return null;
-				}
-			}.execute();
+			//Clearing the conversation's drafts on disk
+			Completable.fromAction(() -> {
+				DatabaseManager.getInstance().clearDraftReferences(conversationIDTarget);
+				DatabaseManager.getInstance().updateConversationDraftMessage(conversationIDTarget, null, -1);
+			}).subscribeOn(Schedulers.single())
+					.observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationDraftFileClear(conversationInfo)))
+					.subscribe();
 		}
 		
-		@SuppressLint("StaticFieldLeak")
-		void clearDraftMessage() {
-			//Clearing the conversation's drafts in memory
-			if(conversationInfo != null) conversationInfo.clearDraftsUpdate(getApplication());
-			
-			//Clearing the draft message on disk
-			new AsyncTask<Void, Void, Void>() {
-				@Override
-				protected Void doInBackground(Void... params) {
-					DatabaseManager.getInstance().updateConversationDraftMessage(conversationID, null, -1);
-					return null;
-				}
-			}.execute();
-		}
-		
+		/**
+		 * Gets if we are currently loading past messages in the background
+		 */
 		boolean isProgressiveLoadInProgress() {
 			Boolean value = progressiveLoadInProgress.getValue();
 			return value == null ? false : value;
 		}
 		
-		boolean isSmartReplyAvailable() {
-			Boolean value = smartReplyAvailable.getValue();
-			return value == null ? false : value;
-		}
-		
-		void playSound(int id) {
-			switch(id) {
-				case soundMessageIncoming:
-					soundPool.play(soundIDMessageIncoming, soundVolume, soundVolume, 0, 0, 1);
-					break;
-				case soundMessageOutgoing:
-					soundPool.play(soundIDMessageOutgoing, soundVolume, soundVolume, 0, 0, 1);
-					break;
-				case soundMessageError:
-					soundPool.play(soundIDMessageError, soundVolume, soundVolume, 1, 0, 1);
-					break;
-				case soundRecordingStart:
-					soundPool.play(soundIDRecordingStart, soundVolume, soundVolume, 1, 0, 1);
-					break;
-				case soundRecordingEnd:
-					soundPool.play(soundIDRecordingEnd, soundVolume, soundVolume, 1, 0, 1);
-					break;
-				default:
-					throw new IllegalArgumentException("Unknown sound ID " + id);
-			}
-		}
-		
-		/* int getRecordingDuration() {
-			Integer value = recordingDuration.getValue();
-			if(value == null) return 0;
-			return value;
-		} */
-		
-		boolean startRecording(Activity activity) {
-			//Setting up the media recorder
-			boolean result = setupMediaRecorder(activity);
+		/**
+		 * Builds and updates the title of the conversation
+		 */
+		void updateConversationTitle() {
+			//Cancelling the title task
+			if(conversationTitleDisposable != null && !conversationTitleDisposable.isDisposed()) conversationTitleDisposable.dispose();
 			
-			//Returning false if the media recorder couldn't be set up
-			if(!result) return false;
-			
-			//Finding a target file
-			targetFileRecording = MainApplication.getDraftTarget(getApplication(), conversationID, Constants.recordingName);
-			
-			/* try {
-				//Creating the targets
-				if(!targetFileRecording.getParentFile().mkdir()) throw new IOException();
-				//if(!targetFile.createNewFile()) throw new IOException();
-			} catch(IOException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				
-				//Returning
-				return false;
-			} */
-			
-			//Setting the media recorder file
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-				mediaRecorder.setOutputFile(targetFileRecording);
-			else mediaRecorder.setOutputFile(targetFileRecording.getAbsolutePath());
-			
-			try {
-				//Preparing the media recorder
-				mediaRecorder.prepare();
-			} catch(IOException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				
-				//Returning
-				return false;
-			}
-			
-			//Updating the state
-			isRecording.setValue(true);
-			
-			//Queueing a delay for the audio recorder
-			mediaRecorderHandler.postDelayed(mediaRecorderRunnable, 70);
-			
-			//Returning true
-			return true;
+			//Building and setting the conversation title
+			compositeDisposable.add(conversationTitleDisposable = ConversationBuildHelper.buildConversationTitle(getApplication(), conversationInfo).subscribe(titleLD::setValue, (error) -> {}));
 		}
 		
 		/**
-		 * Stops the current recording session
-		 *
-		 * @param cleanup whether or not to clean up the media recorder (usually wanted, unless the media recorder encountered an error)
-		 * @param discard whether or not to discard the recorded file
-		 * @return the file's availability (to be able to use or send)
+		 * Updates the conversation actions based on the current conversation state
 		 */
-		private boolean stopRecording(boolean cleanup, boolean discard) {
-			//Returning if the input state is not recording
-			if(!isRecording()) return true;
-			
-			//Removing the timer callback
-			mediaRecorderHandler.removeCallbacks(mediaRecorderRunnable);
-			
-			try {
-				//Stopping the timer
-				stopRecordingTimer();
-				
-				if(cleanup) {
-					try {
-						//Stopping the media recorder
-						mediaRecorder.stop();
-					} catch(RuntimeException stopException) { //The media recorder couldn't capture any media
-						//Showing a toast
-						Toast.makeText(MainApplication.getInstance(), R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
-						
-						//Invalidating the recording file reference
-						targetFileRecording = null;
-						
-						//Returning false
-						return false;
-					}
-				}
-				
-				//Checking if the recording was under a second
-				if(recordingDuration.getValue() < 1) {
-					//Showing a toast
-					Toast.makeText(MainApplication.getInstance(), R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show();
-					
-					//Discarding the file
-					discard = true;
-				}
-				
-				//Checking if the recording should be discarded
-				if(discard) {
-					//Deleting the file and invalidating its reference
-					targetFileRecording.delete();
-					targetFileRecording = null;
-					
-					//Returning false
-					return false;
-				}
-				
-				//Playing a sound
-				playSound(soundRecordingEnd);
-				
-				//Returning true
-				return true;
-			} finally {
-				//Updating the state
-				isRecording.setValue(false);
-			}
-		}
-		
-		boolean isRecording() {
-			return Boolean.TRUE.equals(isRecording.getValue());
-		}
-		
-		private boolean setupMediaRecorder(Activity activity) {
-			//Returning false if the required permissions have not been granted
-			if(Constants.requestPermission(activity, new String[]{Manifest.permission.RECORD_AUDIO}, permissionRequestAudio)) {
-				//Notifying the user via a toast
-				Toast.makeText(activity, R.string.message_permissiondetails_microphone_missing, Toast.LENGTH_SHORT).show();
-				
-				//Returning false
-				return false;
-			}
-			
-			//Setting the media recorder
-			if(mediaRecorder == null) mediaRecorder = new MediaRecorder();
-			else mediaRecorder.reset();
-			
-			//Configuring the media recorder
-			mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
-			mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.AMR_NB);
-			mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-			mediaRecorder.setMaxDuration(10 * 60 * 1000); //10 minutes
-			
-			mediaRecorder.setOnInfoListener((recorder, what, extra) -> {
-				if(what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED ||
-				   what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
-					//Stopping recording
-					stopRecording(false, false);
-				}
-			});
-			mediaRecorder.setOnErrorListener((recorder, what, extra) -> {
-				stopRecording(false, true);
-				mediaRecorder.release();
-				mediaRecorder = null;
-			});
-			
-			//Returning true
-			return true;
-		}
-		
-		private void startRecordingTimer() {
-			recordingDuration.setValue(0);
-			recordingTimerHandler.postDelayed(recordingTimerHandlerRunnable, 1000);
-		}
-		
-		private void stopRecordingTimer() {
-			recordingTimerHandler.removeCallbacks(recordingTimerHandlerRunnable);
-		}
-		
-		@SuppressLint("StaticFieldLeak")
-		private void updateSmartReply() {
-			//Returning if smart reply is disabled or the conversation has no messages
+		void updateConversationActions() {
+			//Ignoring if smart reply is disabled or the conversation has no messages
 			if(!Preferences.getPreferenceReplySuggestions(getApplication()) || conversationItemList == null || conversationItemList.isEmpty()) return;
 			
 			//Finding the last message
@@ -5877,18 +4862,23 @@ public class Messaging extends AppCompatCompositeActivity {
 				break;
 			}
 			
+			//Ignoring if the last message hasn't changed
+			if(lastMessage != null && lastConversationActionTarget == lastMessage.getLocalID()) return;
+			
+			//Cancelling the last smart reply task
+			if(conversationActionsDisposable != null && !conversationActionsDisposable.isDisposed()) conversationActionsDisposable.dispose();
+			
 			//Checking if the last message isn't valid
 			if(lastMessage == null || lastMessage.getMessageText() == null ||
-			   lastMessage.isOutgoing() || Constants.appleSendStyleBubbleInvisibleInk.equals(lastMessage.getSendStyle())) {
-				//Cancelling the smart reply
-				smartReplyAvailable.setValue(false);
-				smartReplyAwaiting = false;
+					lastMessage.isOutgoing() || SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(lastMessage.getSendStyle())) {
+				//Hiding the conversation actions
+				conversationActionsLD.setValue(null);
 				
 				return;
 			}
 			
 			//Collecting the last 10 messages
-			List<MessageInfo> messageHistory = new ArrayList<>(Constants.smartReplyHistoryLength);
+			List<MessageInfo> messageHistory = new ArrayList<>(SmartReplyHelper.smartReplyHistoryLength);
 			for(int i  = conversationItemList.size() - 1; i >= 0; i--) {
 				ConversationItem item = conversationItemList.get(i);
 				if(!(item instanceof MessageInfo)) continue;
@@ -5896,322 +4886,45 @@ public class Messaging extends AppCompatCompositeActivity {
 				if(message.getMessageText() == null) continue;
 				messageHistory.add(message);
 				
-				if(messageHistory.size() == Constants.smartReplyHistoryLength) break;
+				if(messageHistory.size() == SmartReplyHelper.smartReplyHistoryLength) break;
 			}
 			
-			//Sorting the list by date
-			Collections.sort(messageHistory, (item1, item2) -> Long.compare(item1.getDate(), item2.getDate()));
+			//Requesting smart reply
+			compositeDisposable.add(
+					conversationActionsDisposable = SmartReplyHelper.generateResponses(getApplication(), messageHistory)
+							.subscribe(responses -> {
+								if(responses.length > 0) conversationActionsLD.setValue(responses);
+								else conversationActionsLD.setValue(null);
+							})
+			);
 			
-			//Starting the smart reply request
-			smartReplyAwaiting = true;
-			short requestID = ++smartReplyRequestID;
+			lastConversationActionTarget = lastMessage.getLocalID();
+		}
+		
+		/**
+		 * Clears the current conversation actions, for use after a mutating action has been used
+		 */
+		void clearConversationActions() {
+			//Cancelling the smart reply task
+			if(conversationActionsDisposable != null && !conversationActionsDisposable.isDisposed()) conversationActionsDisposable.dispose();
 			
-			if(false && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-				TextClassifier textClassifier = ((TextClassificationManager) getApplication().getSystemService(Context.TEXT_CLASSIFICATION_SERVICE)).getTextClassifier();
-				new AsyncTask<Void, Void, ConversationActions>() {
-					@Override
-					protected ConversationActions doInBackground(Void... args) {
-						//Requesting conversation actions
-						return textClassifier.suggestConversationActions(new ConversationActions.Request.Builder(Constants.messageToTextClassifierMessageList(messageHistory))
-								//.setMaxSuggestions(3)
-								//.setHints(Collections.singletonList(ConversationActions.Request.HINT_FOR_IN_APP))
-								.build());
-					}
-					
-					@Override
-					protected void onPostExecute(ConversationActions conversationActions) {
-						//Ignoring if the request ID doesn't line up
-						if(smartReplyRequestID != requestID) return;
-						
-						List<ConversationAction> actionList = conversationActions.getConversationActions();
-						if(actionList.isEmpty()) {
-							//Cancelling the smart reply request
-							smartReplyAvailable.setValue(false);
-							smartReplyAwaiting = false;
-						} else {
-							//Mapping the suggestions to an array
-							AMConversationAction[] suggestions = new AMConversationAction[actionList.size()];
-							for(int i = 0; i < actionList.size(); i++) {
-								ConversationAction action = actionList.get(i);
-								
-								//Text replies
-								if(action.getType().equals(ConversationAction.TYPE_TEXT_REPLY)) {
-									suggestions[i] = AMConversationAction.createReplyAction(action.getTextReply());
-								}
-								//Action replies
-								else {
-									RemoteAction remoteAction = action.getAction();
-									suggestions[i] = AMConversationAction.createRemoteAction(new AMConversationAction.AMRemoteAction(remoteAction.shouldShowIcon() ? remoteAction.getIcon() : null, remoteAction.getTitle(), remoteAction.getActionIntent()));
-								}
-							}
-							
-							//Finishing the smart reply
-							lastSmartReplyResult = suggestions;
-							smartReplyAvailable.setValue(true);
-							smartReplyAwaiting = false;
-						}
-					}
-				}.execute();
-			} else {
-				FirebaseNaturalLanguage.getInstance().getSmartReply().suggestReplies(Constants.messageToFirebaseMessageList(messageHistory)).addOnSuccessListener(result -> {
-					//Ignoring if the request ID doesn't line up
-					if(smartReplyRequestID != requestID) return;
-					
-					if(result.getStatus() != SmartReplySuggestionResult.STATUS_SUCCESS) {
-						//Cancelling the smart reply request
-						smartReplyAvailable.setValue(false);
-						smartReplyAwaiting = false;
-					} else {
-						//Mapping the suggestions to an array
-						AMConversationAction[] suggestions = new AMConversationAction[result.getSuggestions().size()];
-						for(int i = 0; i < suggestions.length; i++) suggestions[i] = AMConversationAction.createReplyAction(result.getSuggestions().get(i).getText());
-						
-						//Finishing the smart reply
-						lastSmartReplyResult = suggestions;
-						smartReplyAvailable.setValue(true);
-						smartReplyAwaiting = false;
-					}
-					
-				}).addOnFailureListener(exception -> {
-					//Ignoring if the request ID doesn't line up
-					if(smartReplyRequestID != requestID) return;
-					
-					//Cancelling the smart reply request
-					smartReplyAvailable.setValue(false);
-					smartReplyAwaiting = false;
-				});
-			}
+			//Clearing the current actions
+			conversationActionsLD.setValue(null);
 		}
 		
-		void indexAttachmentsGallery(AttachmentsLoadCallbacks listener, AttachmentsRecyclerAdapter<?> adapter) {
-			indexAttachmentsFromMediaStore(listener, attachmentTypeGallery, MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + " = " + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO, adapter);
-		}
-		
-		int getAttachmentState(int itemType) {
-			return attachmentStates[itemType];
-		}
-		
-		ArrayList<SimpleAttachmentInfo> getAttachmentFileList(int itemType) {
-			return attachmentLists[itemType];
-		}
-		
-		@SuppressLint("StaticFieldLeak")
-		private void indexAttachmentsFromMediaStore(AttachmentsLoadCallbacks listener, int itemType, String msQuerySelection, AttachmentsRecyclerAdapter<?> adapter) {
-			//Updating the listener
-			attachmentCallbacks[itemType] = new WeakReference<>(listener);
-			
-			//Returning if the state is incapable of handling the request
-			int currentState = attachmentStates[itemType];
-			if(currentState == attachmentsStateLoading || currentState == attachmentsStateLoaded)
-				return;
-			
-			//Setting the state
-			attachmentStates[itemType] = attachmentsStateLoading;
-			
-			//Starting the asynchronous task
-			new AsyncTask<Void, Void, ArrayList<SimpleAttachmentInfo>>() {
-				@Override
-				protected ArrayList<SimpleAttachmentInfo> doInBackground(Void... params) {
-					try {
-						//Creating the list
-						ArrayList<SimpleAttachmentInfo> list = new ArrayList<>();
-						
-						//Querying the media files
-						Uri queryUri = MediaStore.Files.getContentUri("external");
-						String[] queryProjection = new String[]{MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.MIME_TYPE, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.SIZE, MediaStore.Files.FileColumns.DATE_MODIFIED};
-						Cursor cursor;
-						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-							Bundle queryArgs = new Bundle();
-							queryArgs.putInt(ContentResolver.QUERY_ARG_LIMIT, attachmentsTileCount);
-							queryArgs.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, msQuerySelection);
-							queryArgs.putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, new String[]{MediaStore.Files.FileColumns.DATE_ADDED});
-							queryArgs.putString(ContentResolver.QUERY_ARG_SORT_DIRECTION, "DESC");
-							queryArgs.putStringArray(ContentResolver.EXTRA_HONORED_ARGS, new String[]{ContentResolver.QUERY_ARG_SORT_COLUMNS, ContentResolver.QUERY_ARG_SORT_DIRECTION});
-							
-							cursor = getApplication().getContentResolver().query(queryUri, queryProjection, queryArgs, null);
-						} else {
-							cursor = getApplication().getContentResolver().query(queryUri, queryProjection, msQuerySelection, null, MediaStore.Files.FileColumns.DATE_ADDED + " DESC" + ' ' + "LIMIT " + attachmentsTileCount);
-						}
-						
-						if(cursor == null) return null;
-						
-						try {
-							//int indexData = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA);
-							int iLocalID = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID);
-							int iType = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE);
-							int iDisplayName = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME);
-							int iSize = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE);
-							int iModificationDate = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED);
-							
-							while(cursor.moveToNext()) {
-								Uri uri = ContentUris.withAppendedId(MediaStore.Files.getContentUri("external"), cursor.getInt(iLocalID));
-								//Getting the file information
-								//File file = new File(cursor.getString(iData));
-								String fileType = cursor.getString(iType);
-								if(fileType == null) fileType = "application/octet-stream";
-								String fileName;
-								{
-									String originalFileName = cursor.getString(iDisplayName);
-									fileName = originalFileName == null ? "file" : Constants.cleanFileName(originalFileName);
-								}
-								long fileSize = cursor.getLong(iSize);
-								long modificationDate = cursor.getLong(iModificationDate);
-								//list.add(new SimpleAttachmentInfo(file, fileType, fileName, fileSize, modificationDate));
-								list.add(new SimpleAttachmentInfo(uri, fileType, fileName, fileSize, modificationDate));
-							}
-						} finally {
-							cursor.close();
-						}
-						
-						//Returning the list
-						return list;
-					} catch(SQLiteException exception) {
-						//Logging the exception
-						exception.printStackTrace();
-						FirebaseCrashlytics.getInstance().recordException(exception);
-						
-						//Returning null
-						return null;
-					}
-				}
-				
-				@Override
-				protected void onPostExecute(ArrayList<SimpleAttachmentInfo> files) {
-					//Getting the callback listener
-					AttachmentsLoadCallbacks listener = attachmentCallbacks[itemType].get();
-					
-					//Checking if the data is invalid
-					if(files == null) {
-						//Setting the state
-						attachmentStates[itemType] = attachmentsStateFailed;
-						
-						//Telling the listener
-						if(listener != null) listener.onLoadFinished(false);
-					} else {
-						//Setting the state
-						attachmentStates[itemType] = attachmentsStateLoaded;
-						
-						//Setting the items
-						attachmentLists[itemType] = files;
-						
-						//Telling the listener
-						if(listener != null) listener.onLoadFinished(true);
-						
-						//Linking the queued items with the newly loaded items
-						adapter.linkToQueue(draftQueueList);
-					}
-				}
-			}.execute();
-		}
-		
-		interface AttachmentsLoadCallbacks {
-			void onLoadFinished(boolean successful);
-		}
-		
-		void addPermissionsRequestListener(int requestCode, BiConsumer<Context, Boolean> callback) {
-			permissionRequestResultListenerList.put(requestCode, callback);
-		}
-		
-		void callPermissionsRequestListener(int requestCode, boolean result) {
-			BiConsumer<Context, Boolean> listener = permissionRequestResultListenerList.get(requestCode);
-			if(listener == null) return;
-			listener.accept(getApplication(), result);
-			permissionRequestResultListenerList.remove(requestCode);
-		}
-		
-		void updateAttachmentsLocationState() {
-			//Checking if the permission has not been granted
-			if(ContextCompat.checkSelfPermission(getApplication(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-				attachmentsLocationState.setValue(attachmentsLocationStatePermission);
-				return;
-			}
-			
-			//Setting the state as loading
-			attachmentsLocationLoading.setValue(true);
-			
-			FusedLocationProviderClient locationProvider = LocationServices.getFusedLocationProviderClient(getApplication());
-			LocationRequest locationRequest = LocationRequest.create();
-			//Requesting location services status
-			LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(locationRequest);
-			Task<LocationSettingsResponse> task = LocationServices.getSettingsClient(getApplication()).checkLocationSettings(builder.build());
-			task.addOnCompleteListener(taskResult -> {
-				//Restoring the loading state
-				attachmentsLocationLoading.setValue(false);
-				try {
-					//Getting the result
-					taskResult.getResult(ApiException.class); //Forces exception to be thrown if needed
-					
-					//Updating the state
-					attachmentsLocationState.setValue(attachmentsLocationStateFetching);
-					
-					//Getting user's location
-					locationProvider.getLastLocation().addOnSuccessListener(location -> {
-						if(location == null) {
-							//Pulling an update from location services
-							locationProvider.requestLocationUpdates(locationRequest, new LocationCallback() {
-								@Override
-								public void onLocationResult(LocationResult locationResult) {
-									//Returning if there is no result (and waiting for another update)
-									if(locationResult == null) return;
-									
-									//Removing the updater
-									locationProvider.removeLocationUpdates(this);
-									
-									//Setting the location
-									attachmentsLocationResult = locationResult.getLastLocation();
-									attachmentsLocationState.setValue(attachmentsLocationStateOK);
-								}
-							}, null);
-						} else {
-							//Setting the location
-							attachmentsLocationResult = location;
-							attachmentsLocationState.setValue(attachmentsLocationStateOK);
-						}
-					});
-				} catch (ApiException exception) {
-					switch (exception.getStatusCode()) {
-						case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
-							//Setting the resolvable
-							attachmentsLocationResolvable = (ResolvableApiException) exception;
-							attachmentsLocationState.setValue(attachmentsLocationStatePrompt);
-							break;
-						case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-							attachmentsLocationState.setValue(attachmentsLocationStateUnavailable);
-							break;
-					}
-				}
-			});
-		}
-		
-		boolean isAttachmentsLocationLoading() {
-			return attachmentsLocationLoading.getValue();
-		}
-		
-		int getAttachmentsLocationState() {
-			return attachmentsLocationState.getValue();
-		}
-		
-		void attachmentsLocationLaunchPrompt(Activity activity, int requestCode) {
-			try {
-				attachmentsLocationResolvable.startResolutionForResult(activity, requestCode);
-			} catch(IntentSender.SendIntentException exception) {
-				exception.printStackTrace();
-			}
-		}
-		
-		boolean doFilesRequireCompression() {
-			return conversationInfo.getServiceHandler() != ConversationInfo.serviceHandlerAMBridge || !ConversationInfo.serviceTypeAppleMessage.equals(conversationInfo.getService());
-		}
-		
-		int getFileTargetCompression() {
+		/**
+		 * Gets the maximum file size for attachments for the current messaging service
+		 * @return The maximum file size in bytes, or -1 if unlimited
+		 */
+		private int getFileCompressionTarget() {
 			//Apple continuity MMS messaging
-			if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge && ConversationInfo.serviceTypeAppleTextMessageForwarding.equals(conversationInfo.getService())) {
+			if(conversationInfo.getServiceHandler() == ServiceHandler.appleBridge && ServiceType.appleSMS.equals(conversationInfo.getServiceType())) {
 				//Defaulting to 300 KB
 				return 300 * 1024;
 			}
 			
 			//Android system MMS messaging
-			if(conversationInfo.getServiceHandler() == ConversationInfo.serviceHandlerSystemMessaging && ConversationInfo.serviceTypeSystemMMSSMS.equals(conversationInfo.getService())) {
+			if(conversationInfo.getServiceHandler() == ServiceHandler.systemMessaging && ServiceType.systemSMS.equals(conversationInfo.getServiceType())) {
 				//Returning the carrier-specific information
 				return MMSSMSHelper.getMaxMessageSize(getApplication());
 			}
@@ -6219,776 +4932,92 @@ public class Messaging extends AppCompatCompositeActivity {
 			//No compression required
 			return -1;
 		}
-	}
-	
-	public static class AudioPlaybackManager {
-		//Creating the constants
-		public static final String requestTypeAttachment = "attachment-";
-		public static final String requestTypeDraft = "draft-";
 		
-		//Creating the values
-		private String requestID = "";
-		private final SimpleExoPlayer exoPlayer;
-		private Callbacks callbacks = null;
-		private final Handler mediaPlayerHandler = new Handler(Looper.getMainLooper());
-		private final Runnable mediaPlayerHandlerRunnable = new Runnable() {
-			@Override
-			public void run() {
-				//Notifying the listener
-				callbacks.onProgress(exoPlayer.getCurrentPosition());
-				
-				//Running again
-				mediaPlayerHandler.postDelayed(this, 10);
-			}
-		};
-		
-		public AudioPlaybackManager(Context context) {
-			//Creating the exo player
-			exoPlayer = ExoPlayerFactory.newSimpleInstance(context);
+		/**
+		 * Adds a file to the queue and prepares it as a draft
+		 */
+		void queueFile(FileLinked file) {
+			//Creating the queued data
+			FileQueued fileQueued = new FileQueued(file, nextDraftFileReferenceID++);
+			int additionIndex = queueList.size();
+			queueList.add(fileQueued);
+			subjectQueueListAdd.onNext(new Pair<>(additionIndex, fileQueued));
 			
-			exoPlayer.addListener(new Player.EventListener() {
-				@Override
-				public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
-					if(playWhenReady && playbackState == Player.STATE_READY) {
-						//Starting the timer
-						startTimer();
-						
-						//Notifying the listener
-						if(callbacks != null) callbacks.onPlay();
-					} else if(playWhenReady && playbackState == Player.STATE_ENDED) {
-						//Cancelling the timer
-						stopTimer();
-						
-						//Notifying the listener
-						if(callbacks != null) callbacks.onStop();
-					}
-				}
-			});
+			long updateTime = System.currentTimeMillis();
+			
+			//Preparing the attachment
+			fileQueued.setPrepareDisposable(
+					DraftActionTask.prepareLinkedToDraft(getApplication(), file, conversationInfo.getLocalID(), getFileCompressionTarget(), file.getFile().isA(), updateTime)
+							.flatMapMaybe(draft -> {
+								//Checking if this file is to be deleted
+								if(fileQueued.shouldRemove()) {
+									return deleteDraftFile(draft, System.currentTimeMillis()).andThen(Maybe.empty()); //Don't do anything after; removing the file from the queue should have already been taken care of for us
+								} else {
+									//Continue and add the draft file
+									return Maybe.just(draft);
+								}
+							})
+							.doOnSuccess(draft -> {
+								//Sending an update
+								ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationDraftFileUpdate(conversationInfo, draft, true, updateTime));
+							})
+							.subscribe(draft -> {
+								//Queuing the file
+								int currentIndex = queueList.indexOf(fileQueued);
+								fileQueued.setDraft(draft);
+								subjectQueueListUpdate.onNext(new Pair<>(currentIndex, fileQueued));
+							}, error -> {
+								//Logging the error
+								Log.w(TAG, "Failed to queue draft", error);
+								FirebaseCrashlytics.getInstance().recordException(error);
+								
+								//Dequeuing the file
+								int currentIndex = queueList.indexOf(fileQueued);
+								queueList.remove(fileQueued);
+								subjectQueueListRemove.onNext(new Pair<>(currentIndex, fileQueued));
+							})
+			);
 		}
 		
-		public void release() {
-			//Cancelling the timer
-			if(exoPlayer.getPlaybackState() == Player.STATE_READY) mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
+		/**
+		 * Cancels any running tasks and removes the file from the queue
+		 */
+		void dequeueFile(FileQueued file) {
+			//Disposing of the queued file's tasks
+			file.dispose();
 			
-			//Releasing the player
-			exoPlayer.release();
-		}
-		
-		public boolean play(File file, Callbacks callbacks, Context context) {
-			return play(null, file, callbacks, context);
-		}
-		
-		public boolean play(String requestID, File file, Callbacks callbacks, Context context) {
-			//Returning true if the request ID matches (or the request ID is null)
-			if(this.requestID != null && this.requestID.equals(requestID)) return true;
-			
-			//Stopping the current media player
-			stop();
-			
-			//Setting the media player source
-			DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(context, Util.getUserAgent(context, context.getResources().getString(R.string.app_name)));
-			MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.fromFile(file));
-			exoPlayer.prepare(mediaSource);
-			exoPlayer.setPlayWhenReady(true);
-			
-			//Setting the request information
-			this.requestID = requestID;
-			this.callbacks = callbacks;
-			
-			//Returning true
-			return true;
-		}
-		
-		public void togglePlaying() {
-			//Checking if the media player is playing
-			if(exoPlayer.getPlayWhenReady() && exoPlayer.getPlaybackState() != Player.STATE_ENDED) {
-				//Pausing the media player
-				exoPlayer.setPlayWhenReady(false);
-				
-				//Cancelling the playback timer
-				stopTimer();
-				
-				//Notifying the listener
-				callbacks.onPause();
+			if(file.getFile().isA()) {
+				//If this file is still linked, mark it to be removed when it completes
+				file.setShouldRemove(true);
 			} else {
-				//Playing the media player
-				if(exoPlayer.getPlaybackState() == Player.STATE_ENDED) {
-					exoPlayer.seekTo(0);
-				}
-				exoPlayer.setPlayWhenReady(true);
+				long updateTime = System.currentTimeMillis();
 				
-				//Starting the playback timer
-				startTimer();
+				//If this file is queued, delete just delete it
+				deleteDraftFile(file.getFile().getB(), updateTime).subscribe();
 				
-				//Notifying the listener
-				callbacks.onPlay();
-			}
-		}
-		
-		public void stop() {
-			//if(!mediaPlayer.isPlaying()) return;
-			
-			exoPlayer.stop();
-			if(callbacks != null) callbacks.onStop();
-			stopTimer();
-		}
-		
-		public boolean compareRequestID(String requestID) {
-			if(this.requestID == null) return false;
-			return this.requestID.equals(requestID);
-		}
-		
-		public interface Callbacks {
-			void onPlay();
-			
-			void onProgress(long time);
-			
-			void onPause();
-			
-			void onStop();
-		}
-		
-		private void startTimer() {
-			mediaPlayerHandlerRunnable.run();
-		}
-		
-		private void stopTimer() {
-			mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
-		}
-	}
-	
-	/* static class AudioMessageManager {
-		//Creating the values
-		private MediaPlayer mediaPlayer = new MediaPlayer();
-		private String currentFilePath = "";
-		private WeakReference<ConversationUtils.AudioAttachmentInfo> attachmentReference;
-		private Handler mediaPlayerHandler = new Handler(Looper.getMainLooper());
-		private Runnable mediaPlayerHandlerRunnable = new Runnable() {
-			@Override
-			public void run() {
-				//Updating the attachment
-				ConversationUtils.AudioAttachmentInfo attachment = getAttachmentInfo();
-				if(attachment != null) attachment.setMediaProgress(mediaPlayer.getCurrentPosition());
-				
-				//Running again
-				mediaPlayerHandler.postDelayed(this, 10);
-			}
-		};
-		
-		AudioMessageManager() {
-			//Setting the media player listeners
-			mediaPlayer.setOnPreparedListener(player -> {
-				//Playing the media
-				player.start();
-				
-				//Starting the timer
-				mediaPlayerHandlerRunnable.run();
-				
-				//Updating the attachment
-				ConversationUtils.AudioAttachmentInfo attachment = getAttachmentInfo();
-				if(attachment != null) attachment.setMediaPlaying(true);
-			});
-			mediaPlayer.setOnCompletionListener(player -> {
-				//Cancelling the timer
-				mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
-				
-				//Updating the attachment
-				ConversationUtils.AudioAttachmentInfo attachment = getAttachmentInfo();
-				if(attachment != null) attachment.resetPlaying();
-			});
-		}
-		
-		private ConversationUtils.AudioAttachmentInfo getAttachmentInfo() {
-			if(attachmentReference == null) return null;
-			return attachmentReference.get();
-		}
-		
-		void release() {
-			//Cancelling the timer
-			if(mediaPlayer.isPlaying()) mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
-			
-			//Releasing the media player
-			mediaPlayer.release();
-		}
-		
-		void prepareMediaPlayer(long messageID, File file, ConversationUtils.AudioAttachmentInfo attachmentInfo) {
-			//Returning if the attachment is already playing
-			if(currentFilePath.equals(file.getPath())) return;
-			
-			//Cancelling the timer
-			if(mediaPlayer.isPlaying()) mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
-			
-			//Resetting the media player
-			mediaPlayer.reset();
-			
-			//Resetting the old view
-			{
-				ConversationUtils.AudioAttachmentInfo oldAttachmentInfo = getAttachmentInfo();
-				if(oldAttachmentInfo != null) oldAttachmentInfo.resetPlaying();
+				//Sending an update
+				ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationDraftFileUpdate(conversationInfo, file.getFile().getB(), false, updateTime));
 			}
 			
-			try {
-				//Creating the media player
-				mediaPlayer.setDataSource(file.getPath());
-			} catch(IOException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				
-				//Returning
-				return;
-			}
-			
-			//Setting the attachment reference
-			attachmentReference = new WeakReference<>(attachmentInfo);
-			
-			//Setting the values
-			currentFilePath = file.getPath();
-			
-			//Preparing the media player
-			mediaPlayer.prepareAsync();
+			//Removing the file from the queue
+			int currentIndex = queueList.indexOf(file);
+			queueList.remove(file);
+			subjectQueueListRemove.onNext(new Pair<>(currentIndex, file));
 		}
 		
-		boolean isCurrentMessage(File file) {
-			return currentFilePath.equals(file.getPath());
-		}
-		
-		void togglePlaying() {
-			//Checking if the media player is playing
-			if(mediaPlayer.isPlaying()) {
-				//Pausing the media player
-				mediaPlayer.pause();
-				
-				//Cancelling the playback timer
-				mediaPlayerHandler.removeCallbacks(mediaPlayerHandlerRunnable);
-			} else {
-				//Playing the media player
-				mediaPlayer.start();
-				
-				//Starting the playback timer
-				mediaPlayerHandlerRunnable.run();
-			}
-			
-			//Telling the attachment
-			ConversationUtils.AudioAttachmentInfo attachment = getAttachmentInfo();
-			if(attachment != null) attachment.setMediaPlaying(mediaPlayer.isPlaying());
-		}
-	} */
-	
-	private static class UpdateUnreadMessageCount extends AsyncTask<Void, Void, Void> {
-		private final WeakReference<Context> contextReference;
-		private final long conversationID;
-		private final int count;
-		
-		UpdateUnreadMessageCount(Context context, long conversationID, int count) {
-			contextReference = new WeakReference<>(context);
-			
-			this.conversationID = conversationID;
-			this.count = count;
-		}
-		
-		@Override
-		protected Void doInBackground(Void... voids) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return null;
-			
-			//Updating the time
-			DatabaseManager.getInstance().setUnreadMessageCount(conversationID, count);
-			
-			//Returning
-			return null;
-		}
-	}
-	
-	private static class AddGhostMessageTask extends AsyncTask<MessageInfo, MessageInfo, Void> {
-		private final WeakReference<Context> contextReference;
-		private final ConversationInfo conversationInfo;
-		private final Consumer<MessageInfo> onFinishListener;
-		
-		AddGhostMessageTask(Context context, ConversationInfo conversationInfo, Consumer<MessageInfo> onFinishListener) {
-			//Setting the references
-			contextReference = new WeakReference<>(context);
-			
-			//Setting the other values
-			this.conversationInfo = conversationInfo;
-			this.onFinishListener = onFinishListener;
-		}
-		
-		@Override
-		protected Void doInBackground(MessageInfo... messages) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return null;
-			
-			//Adding the items to the database
-			for(MessageInfo message : messages) {
-				DatabaseManager.getInstance().addConversationItem(message, message.getConversationInfo().getServiceHandler() == ConversationInfo.serviceHandlerAMBridge);
-				publishProgress(message);
-			}
-			
-			//Returning
-			return null;
-		}
-		
-		@Override
-		protected void onProgressUpdate(MessageInfo... messages) {
-			for(MessageInfo message : messages) onFinishListener.accept(message);
-		}
-		
-		@Override
-		protected void onPostExecute(Void aVoid) {
-			//Getting the context
-			Context context = contextReference.get();
-			if(context == null) return;
-			
-			//Re-sorting this conversation
-			ConversationUtils.sortConversation(conversationInfo);
-			
-			//Updating the conversation activity list
-			LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ConversationsBase.localBCConversationUpdate));
-		}
-	}
-	
-	private static class WriteVLocationTask extends AsyncTask<Void, Void, SimpleAttachmentInfo> {
-		private final File targetFile;
-		private final LatLng targetLocation;
-		private final String locationAddress;
-		private final String locationName;
-		private final WeakReference<Messaging> activityReference;
-		
-		WriteVLocationTask(File targetFile, LatLng targetLocation, String locationAddress, String locationName, Messaging activity) {
-			this.targetFile = targetFile;
-			this.targetLocation = targetLocation;
-			this.locationAddress = locationAddress;
-			this.locationName = locationName;
-			
-			activityReference = new WeakReference<>(activity);
-		}
-		
-		@Override
-		protected SimpleAttachmentInfo doInBackground(Void... voids) {
-			//Creating the vCard
-			VCard vcard = new VCard();
-			vcard.setProductId("-//" + Build.MANUFACTURER + "//" + "Android" + " " + Build.VERSION.RELEASE + "//" + Locale.getDefault().getLanguage().toUpperCase());
-			vcard.setFormattedName(locationName);
-			
-			//Constructing the URL
-			String stringLoc = targetLocation.latitude + "," + targetLocation.longitude;
-			Uri.Builder uriBuilder = new Uri.Builder()
-					.scheme("https")
-					.authority("maps.apple.com")
-					.appendQueryParameter("ll", stringLoc)
-					.appendQueryParameter("q", locationAddress != null ? locationName : stringLoc);
-			if(locationAddress != null) uriBuilder.appendQueryParameter("address", locationAddress);
-			Url url = new Url(uriBuilder.build().toString());
-			
-			//Adding the URL
-			url.setGroup("item1");
-			vcard.addUrl(url);
-			
-			//Adding the type identifier
-			RawProperty typeProperty = vcard.addExtendedProperty("X-ABLabel", "map url");
-			typeProperty.setGroup("item1");
-			
-			//Writing the vCard
-			try(VCardWriter writer = new VCardWriter(targetFile, VCardVersion.V3_0)) {
-				writer.write(vcard);
-			} catch(IOException exception) {
-				exception.printStackTrace();
-				return null;
-			}
-			
-			//Returning the attachment data
-			return new SimpleAttachmentInfo(targetFile, VLocationAttachmentInfo.MIME_TYPE, targetFile.getName(), targetFile.length(), -1);
-		}
-		
-		@Override
-		protected void onPostExecute(SimpleAttachmentInfo attachmentInfo) {
-			//Ignoring the result if the file couldn't be written
-			if(attachmentInfo == null) return;
-			
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Queuing the file
-			activity.queueAttachment(attachmentInfo, activity.findAppropriateTileHelper(attachmentInfo.getFileType()), true);
-		}
-	}
-	
-	private static class ActivityCallbacks extends ConversationInfo.ActivityCallbacks {
-		//Creating the references
-		private final WeakReference<Messaging> activityReference;
-		
-		ActivityCallbacks(Messaging activity) {
-			//Setting the references
-			activityReference = new WeakReference<>(activity);
-		}
-		
-		@Override
-		public void listUpdateFully() {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Updating the adapter
-			activity.messageList.getRecycledViewPool().clear();
-			activity.messageListAdapter.notifyDataSetChanged();
-			//activity.messageList.scheduleLayoutAnimation();
-		}
-		
-		@Override
-		public void listUpdateInserted(int index) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Updating the adapter
-			activity.messageListAdapter.notifyItemInserted(index);
-		}
-		
-		@Override
-		public void listUpdateRemoved(int index) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Updating the adapter
-			activity.messageListAdapter.notifyItemRemoved(index);
-		}
-		
-		@Override
-		public void listUpdateMove(int from, int to) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Updating the adapter
-			activity.messageListAdapter.notifyItemChanged(from);
-			activity.messageListAdapter.notifyItemMoved(from, to);
-		}
-		
-		@Override
-		public void listUpdateUnread() {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Notifying the scroll listener
-			activity.messageListScrollListener.onScrolled(activity.messageList, 0, 0);
-		}
-		
-		@Override
-		public void listScrollToBottom() {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Updating the adapter
-			activity.messageListAdapter.scrollToBottom();
-		}
-		
-		@Override
-		public void listAttemptScrollToBottom(int... newIndices) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Checking if the new message will cause the list to scroll
-			boolean newMessageAdded = false;
-			for(int index : newIndices) {
-				if(activity.messageListAdapter.isDirectlyBelowFrame(index)) {
-					newMessageAdded = true;
-					break;
-				}
-			}
-			
-			//Scrolling down to the item (or the bottom of the list, same thing)
-			if(newMessageAdded) activity.messageListAdapter.scrollToBottom();
-		}
-		
-		@Override
-		public void chatUpdateTitle() {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Building the conversation title
-			activity.viewModel.conversationInfo.buildTitle(activity, new ConversationTitleResultCallback(activity));
-		}
-		
-		@Override
-		public void chatUpdateUnreadCount() {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Updating the unread indicator
-			activity.updateUnreadIndicator();
-		}
-		
-		@Override
-		public void chatUpdateMemberAdded(MemberInfo member, int index) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Adding the member
-			activity.addMemberView(member, index, true);
-		}
-		
-		@Override
-		public void chatUpdateMemberRemoved(MemberInfo member, int index) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Removing the member
-			activity.removeMemberView(member);
-		}
-		
-		@Override
-		public void itemsAdded(List<ConversationItem> list) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Returning if the activity is not in the foreground
-			if(!activity.hasWindowFocus()) return;
-			
-			boolean messageIncoming = false;
-			boolean messageOutgoing = false;
-			
-			for(ConversationItem item : list) {
-				//Ignoring items other than messages
-				if(!(item instanceof MessageInfo)) continue;
-				
-				//Tracking the message types
-				MessageInfo messageInfo = (MessageInfo) item;
-				if(messageInfo.isOutgoing()) messageOutgoing = true;
-				else messageIncoming = true;
-				if(messageIncoming && messageOutgoing) break;
-			}
-			
-			//Playing sounds
-			if(Preferences.getPreferenceMessageSounds(activity)) {
-				if(messageIncoming) activity.viewModel.playSound(ActivityViewModel.soundMessageIncoming);
-				if(messageOutgoing) activity.viewModel.playSound(ActivityViewModel.soundMessageOutgoing);
-			}
-			
-			//Updating the reply suggestions
-			activity.viewModel.updateSmartReply();
-		}
-		
-		@Override
-		public void tapbackAdded(TapbackInfo item) {
-		
-		}
-		
-		@Override
-		public void stickerAdded(StickerInfo item) {
-		
-		}
-		
-		@Override
-		public void messageSendFailed(MessageInfo message) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Returning if the activity is not in the foreground
-			if(!activity.hasWindowFocus()) return;
-			
-			//Playing a sound
-			if(Preferences.getPreferenceMessageSounds(activity)) activity.viewModel.playSound(ActivityViewModel.soundMessageError);
-		}
-		
-		@Override
-		public AudioPlaybackManager getAudioPlaybackManager() {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return null;
-			
-			//Returning the view model's audio message manager
-			return activity.viewModel.audioPlaybackManager;
-		}
-		
-		@Override
-		public void playScreenEffect(String screenEffect, View target) {
-			Messaging activity = activityReference.get();
-			if(activity != null) activity.playScreenEffect(screenEffect, target);
-		}
-		
-		@Override
-		public void requestPermission(String permission, int requestCode, BiConsumer<Context, Boolean> resultListener) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Requesting the permission
-			activity.requestPermissions(new String[]{permission}, requestCode + permissionRequestMessageCustomOffset);
-			activity.viewModel.addPermissionsRequestListener(requestCode, resultListener);
-		}
-		
-		@Override
-		public void saveFile(File file) {
-			//Getting the activity
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			
-			//Opening the file picker
-			activity.currentTargetSAFFile = file;
-			Constants.createFileSAF(activity, intentSaveFileSAF, Constants.getMimeType(file), file.getName());
-		}
-	}
-	
-	private static class ConversationTitleResultCallback implements Constants.TaskedResultCallback<String> {
-		private final WeakReference<Messaging> activityReference;
-		
-		public ConversationTitleResultCallback(Messaging activity) {
-			activityReference = new WeakReference<>(activity);
-		}
-		
-		@Override
-		public void onResult(String result, boolean wasTasked) {
-			Messaging activity = activityReference.get();
-			if(activity == null) return;
-			activity.setActionBarTitle(result);
-			activity.detailsUpdateConversationTitle(result);
-		}
-	}
-	
-	void detailSwitchConversationColor(int newColor) {
-		//Updating the conversation color
-		viewModel.conversationInfo.setConversationColor(newColor);
-		if(!viewModel.conversationInfo.isGroupChat())
-			viewModel.conversationInfo.updateViewUser(this);
-		
-		//Coloring the UI
-		colorUI(findViewById(android.R.id.content));
-		
-		//Updating the conversation color on disk
-		DatabaseManager.getInstance().updateConversationColor(viewModel.conversationInfo.getLocalID(), newColor);
-		
-		//Updating the member if there is only one member as well
-		if(viewModel.conversationInfo.getConversationMembers().size() == 1)
-			detailSwitchMemberColor(viewModel.conversationInfo.getConversationMembers().get(0), newColor);
-	}
-	
-	void detailSwitchMemberColor(MemberInfo member, int newColor) {
-		//Updating the user's color
-		member.setColor(newColor);
-		
-		//Updating the view
-		View memberView = memberListViews.get(member);
-		((ImageView) memberView.findViewById(R.id.button_change_color)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
-		((ImageView) memberView.findViewById(R.id.profile_default)).setColorFilter(member.getColor(), android.graphics.PorterDuff.Mode.MULTIPLY);
-		
-		//Updating the message colors
-		if(viewModel.conversationItemList != null)
-			for(ConversationItem conversationItem : viewModel.conversationItemList)
-				conversationItem.updateViewColor(this);
-		
-		//Updating the listing color
-		viewModel.conversationInfo.updateViewUser(this);
-		
-		//Updating the member color on disk
-		DatabaseManager.getInstance().updateMemberColor(viewModel.conversationInfo.getLocalID(), member.getName(), newColor);
-	}
-	
-	private static final String colorDialogTag = "colorPickerDialog";
-	
-	void showColorDialog(MemberInfo member, int currentColor) {
-		//Starting a fragment transaction
-		FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
-		
-		//Removing the previous fragment if it already exists
-		Fragment previousFragment = getSupportFragmentManager().findFragmentByTag(colorDialogTag);
-		if(previousFragment != null) fragmentTransaction.remove(previousFragment);
-		fragmentTransaction.addToBackStack(null);
-		
-		//Creating and showing the dialog fragment
-		ColorPickerDialog newFragment = ColorPickerDialog.newInstance(member, currentColor);
-		newFragment.show(fragmentTransaction, colorDialogTag);
-		currentColorPickerDialog = newFragment;
-		currentColorPickerDialogMember = member;
-	}
-	
-	public static class ColorPickerDialog extends DialogFragment {
-		//Creating the instantiation values
-		private MemberInfo member = null;
-		private int selectedColor;
-		
-		@Override
-		public void onCreate(Bundle savedInstanceState) {
-			super.onCreate(savedInstanceState);
-			
-			//Getting the arguments
-			if(getArguments().containsKey(Constants.intentParamData))
-				member = (MemberInfo) getArguments().getSerializable(Constants.intentParamData);
-			selectedColor = getArguments().getInt(Constants.intentParamCurrent);
-		}
-		
-		@Override
-		public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-			//Configuring the dialog
-			getDialog().setTitle(member == null ? R.string.action_editconversationcolor : R.string.action_editcontactcolor);
-			
-			//Inflating the view
-			View dialogView = inflater.inflate(R.layout.dialog_colorpicker, container, false);
-			ViewGroup contentViewGroup = dialogView.findViewById(R.id.colorpicker_itemview);
-			
-			int padding = Constants.dpToPx(24);
-			contentViewGroup.setPadding(padding, padding, padding, padding);
-			
-			//Adding the elements
-			for(int i = 0; i < ConversationInfo.standardUserColors.length; i++) {
-				//Getting the color
-				final int standardColor = ConversationInfo.standardUserColors[i];
-				
-				//Inflating the layout
-				View item = inflater.inflate(R.layout.dialog_colorpicker_item, contentViewGroup, false);
-				
-				//Configuring the layout
-				ImageView colorView = item.findViewById(R.id.colorpickeritem_color);
-				colorView.setColorFilter(standardColor);
-				
-				final boolean isSelectedColor = selectedColor == standardColor;
-				if(isSelectedColor) item.findViewById(R.id.colorpickeritem_selection).setVisibility(View.VISIBLE);
-				
-				//Setting the click listener
-				colorView.setOnClickListener(view -> {
-					//Telling the activity
-					if(!isSelectedColor) {
-						if(member == null)
-							((Messaging) getActivity()).detailSwitchConversationColor(standardColor);
-						else
-							((Messaging) getActivity()).detailSwitchMemberColor(member, standardColor);
-					}
-					
-					getDialog().dismiss();
-				});
-				
-				//Adding the view to the layout
-				contentViewGroup.addView(item);
-			}
-			
-			//Returning the view
-			return dialogView;
-		}
-		
-		static ColorPickerDialog newInstance(MemberInfo memberInfo, int selectedColor) {
-			//Creating the instance
-			ColorPickerDialog instance = new ColorPickerDialog();
-			
-			//Adding the member info
-			Bundle bundle = new Bundle();
-			bundle.putSerializable(Constants.intentParamData, memberInfo);
-			bundle.putSerializable(Constants.intentParamCurrent, selectedColor);
-			instance.setArguments(bundle);
-			
-			//Returning the instance
-			return instance;
+		/**
+		 * Deletes a draft file from disk
+		 */
+		private static Completable deleteDraftFile(FileDraft draft, long updateTime) {
+			return Completable.fromAction(() -> {
+				//Deleting the draft file
+				AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraft, draft.getFile());
+			}).subscribeOn(Schedulers.io())
+					.observeOn(Schedulers.single())
+					.doOnComplete(() -> {
+						//Removing the item from the database
+						DatabaseManager.getInstance().removeDraftReference(draft.getLocalID(), updateTime);
+					}).observeOn(AndroidSchedulers.mainThread());
 		}
 	}
 	
@@ -7036,7 +5065,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Getting the data
 				Uri uri = inputContentInfo.getContentUri();
 				ClipDescription itemDesc = inputContentInfo.getDescription();
-				String type = itemDesc.getMimeTypeCount() > 0 ? itemDesc.getMimeType(0) : Constants.defaultMIMEType;
+				String type = itemDesc.getMimeTypeCount() > 0 ? itemDesc.getMimeType(0) : MIMEConstants.defaultMIMEType;
 				
 				//Determining the correct file extension
 				String extension = null;
@@ -7087,53 +5116,88 @@ public class Messaging extends AppCompatCompositeActivity {
 		void process(Uri content, String type, String name, long size);
 	}
 	
-	private static class GhostMessageFinishHandler implements Consumer<MessageInfo> {
-		@Override
-		public void accept(MessageInfo messageInfo) {
-			//Adding the message to the conversation in memory
-			messageInfo.getConversationInfo().addGhostMessage(MainApplication.getInstance(), messageInfo);
-			
-			//Sending the message
-			messageInfo.sendMessage(MainApplication.getInstance());
-		}
-	}
-	
-	@RequiresApi(api = Build.VERSION_CODES.R)
-	private static class AnimatingInsetsCallback extends WindowInsetsAnimation.Callback implements View.OnApplyWindowInsetsListener {
-		private final View view;
+	/**
+	 * Represents a file that's either being processed into a {@link FileDraft} or already is one
+	 */
+	private static class FileQueued {
+		private Union<FileLinked, FileDraft> file;
+		private Disposable disposablePrepare;
+		private boolean shouldRemove = false;
+		@AttachmentType private final int attachmentType;
+		private final int referenceID;
 		
-		private boolean isAnimating = false;
-		
-		public AnimatingInsetsCallback(View view) {
-			super(DISPATCH_MODE_CONTINUE_ON_SUBTREE);
-			
-			this.view = view;
+		public FileQueued(FileLinked fileLinked, int referenceID) {
+			this.file = Union.ofA(fileLinked);
+			this.attachmentType = FileHelper.getAttachmentType(fileLinked.getFileType());
+			this.referenceID = referenceID;
 		}
 		
-		@Override
-		public WindowInsets onApplyWindowInsets(View view, WindowInsets windowInsets) {
-			if(isAnimating) return windowInsets;
-			Insets insets = windowInsets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
-			view.setPadding(insets.left, view.getPaddingTop(), insets.right, insets.bottom);
-			
-			return WindowInsets.CONSUMED;
+		public FileQueued(FileDraft fileDraft, int referenceID) {
+			this.file = Union.ofB(fileDraft);
+			this.attachmentType = FileHelper.getAttachmentType(fileDraft.getFileType());
+			this.referenceID = referenceID;
 		}
 		
-		@NonNull
-		@Override
-		public WindowInsets onProgress(@NonNull WindowInsets windowInsets, @NonNull List<WindowInsetsAnimation> list) {
-			view.setPadding(view.getPaddingLeft(), view.getPaddingTop(), view.getPaddingRight(), windowInsets.getInsets(WindowInsets.Type.ime() | WindowInsets.Type.systemBars()).bottom);
-			return WindowInsets.CONSUMED;
+		/**
+		 * Gets the {@link FileLinked} or {@link FileDraft} of this queued entry
+		 */
+		public Union<FileLinked, FileDraft> getFile() {
+			return file;
 		}
 		
-		@Override
-		public void onPrepare(@NonNull WindowInsetsAnimation animation) {
-			isAnimating = true;
+		/**
+		 * Gets the media store ID of this queued file, or -1 if unavailable
+		 */
+		public long getMediaStoreID() {
+			return file.map(file -> file.getMediaStoreData() != null ? file.getMediaStoreData().getMediaStoreID() : -1, FileDraft::getMediaStoreID);
 		}
 		
-		@Override
-		public void onEnd(@NonNull WindowInsetsAnimation animation) {
-			isAnimating = false;
+		/**
+		 * Gets an integer ID that is guaranteed to be unique for the lifecycle of this draft
+		 */
+		public int getReferenceID() {
+			return referenceID;
+		}
+		
+		/**
+		 * Gets the {@link AttachmentType} of this queued entry
+		 */
+		@AttachmentType
+		public int getAttachmentType() {
+			return attachmentType;
+		}
+		
+		/**
+		 * Cancels any tasks associated with this item
+		 */
+		public void dispose() {
+			if(disposablePrepare != null && !disposablePrepare.isDisposed()) disposablePrepare.dispose();
+		}
+		
+		public void setShouldRemove(boolean shouldRemove) {
+			this.shouldRemove = shouldRemove;
+		}
+		
+		/**
+		 * Gets whether this queued file should be cleaned up
+		 */
+		public boolean shouldRemove() {
+			return shouldRemove;
+		}
+		
+		/**
+		 * Sets the prepare disposable for this file
+		 */
+		public void setPrepareDisposable(Disposable disposable) {
+			if(disposablePrepare != null) throw new IllegalStateException("Trying to assign a disposable, but one already exists!");
+			disposablePrepare = disposable;
+		}
+		
+		/**
+		 * Replaces the linked file with a draft file
+		 */
+		public void setDraft(FileDraft fileDraft) {
+			file = Union.ofB(fileDraft);
 		}
 	}
 }

@@ -3,12 +3,20 @@ package me.tagavari.airmessage.messaging;
 import android.app.PendingIntent;
 import android.graphics.drawable.Icon;
 
+import androidx.annotation.Nullable;
+
+/**
+ * Represents a suggested action that can be taken in a conversation
+ *
+ * Actions can either be reply actions that send a specified message,
+ * or remote actions that launch an external intent
+ */
 public class AMConversationAction {
 	private final boolean isReplyAction;
 	private final CharSequence replyString;
-	private final AMRemoteAction remoteAction;
+	private final RemoteAction remoteAction;
 	
-	private AMConversationAction(boolean isReplyAction, CharSequence replyString, AMRemoteAction remoteAction) {
+	private AMConversationAction(boolean isReplyAction, CharSequence replyString, RemoteAction remoteAction) {
 		this.isReplyAction = isReplyAction;
 		this.replyString = replyString;
 		this.remoteAction = remoteAction;
@@ -18,7 +26,7 @@ public class AMConversationAction {
 		return new AMConversationAction(true, replyString, null);
 	}
 	
-	public static AMConversationAction createRemoteAction(AMRemoteAction remoteAction) {
+	public static AMConversationAction createRemoteAction(RemoteAction remoteAction) {
 		return new AMConversationAction(false, null, remoteAction);
 	}
 	
@@ -30,21 +38,22 @@ public class AMConversationAction {
 		return replyString;
 	}
 	
-	public AMRemoteAction getRemoteAction() {
+	public RemoteAction getRemoteAction() {
 		return remoteAction;
 	}
 	
-	public static class AMRemoteAction {
-		private final Icon icon;
+	public static class RemoteAction {
+		@Nullable private final Icon icon;
 		private final CharSequence title;
 		private final PendingIntent actionIntent;
 		
-		public AMRemoteAction(Icon icon, CharSequence title, PendingIntent actionIntent) {
+		public RemoteAction(@Nullable Icon icon, CharSequence title, PendingIntent actionIntent) {
 			this.icon = icon;
 			this.title = title;
 			this.actionIntent = actionIntent;
 		}
 		
+		@Nullable
 		public Icon getIcon() {
 			return icon;
 		}

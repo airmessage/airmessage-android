@@ -1,10 +1,5 @@
 package me.tagavari.airmessage.fragment;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -22,19 +17,34 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.google.android.material.textfield.TextInputLayout;
 
-import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.extension.FragmentCommunicationSwap;
-import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.util.StateUtils;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
-public class FragmentOnboardingManual extends FragmentCommunication<FragmentCommunicationSwap> {
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.activity.Preferences;
+import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.connection.ConnectionOverride;
+import me.tagavari.airmessage.constants.ExternalLinkConstants;
+import me.tagavari.airmessage.constants.RegexConstants;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.ConnectionState;
+import me.tagavari.airmessage.enums.ProxyType;
+import me.tagavari.airmessage.extension.FragmentCommunicationNetworkConfig;
+import me.tagavari.airmessage.helper.ErrorDetailsHelper;
+import me.tagavari.airmessage.helper.IntentHelper;
+import me.tagavari.airmessage.helper.ResourceHelper;
+import me.tagavari.airmessage.helper.StringHelper;
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
+import me.tagavari.airmessage.redux.ReduxEventConnection;
+import me.tagavari.airmessage.service.ConnectionService;
+import me.tagavari.airmessage.util.DirectConnectionParams;
+
+public class FragmentOnboardingManual extends FragmentCommunication<FragmentCommunicationNetworkConfig> {
 	//Creating the constants
 	private static final int stateIdle = 0;
 	private static final int stateConnecting = 1;
@@ -51,7 +61,9 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 	
 	//Creating the fragment values
 	private FragmentViewModel viewModel;
-	private boolean isCompleting = false; //If this activity is finishing with a successful state
+	
+	//Creating the disposable values
+	private final CompositeDisposable compositeDisposable = new CompositeDisposable();
 	
 	//Creating the listener values
 	private final TextWatcher addressInputWatcher = new TextWatcher() {
@@ -64,7 +76,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 			updateNextButton(s.toString(), inputFallback.getEditText().getText().toString(), inputPassword.getEditText().getText().toString());
 			
 			//Checking for the error solution as long as there is an error
-			if(inputAddress.getError() != null && Constants.regExValidAddress.matcher(s).find()) inputAddress.setError(null);
+			if(inputAddress.getError() != null && RegexConstants.internetAddress.matcher(s).find()) inputAddress.setError(null);
 		}
 		
 		@Override
@@ -80,7 +92,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 			updateNextButton(inputAddress.getEditText().getText().toString(), s.toString(), inputPassword.getEditText().getText().toString());
 			
 			//Checking for the error solution as long as there is an error
-			if(inputFallback.getError() != null && (s.length() == 0 || Constants.regExValidAddress.matcher(s).find())) inputFallback.setError(null);
+			if(inputFallback.getError() != null && (s.length() == 0 || RegexConstants.internetAddress.matcher(s).find())) inputFallback.setError(null);
 		}
 		
 		@Override
@@ -112,11 +124,14 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 			if(hasFocus) return;
 			
 			String input = textInputLayout.getEditText().getText().toString();
-			textInputLayout.setError(!input.isEmpty() && !Constants.regExValidAddress.matcher(input).find() ?
-									 getResources().getString(R.string.part_invalidaddress) : null);
+			textInputLayout.setError(!input.isEmpty() && !RegexConstants.internetAddress.matcher(input).find() ? getResources().getString(R.string.part_invalidaddress) : null);
 		}
 	}
 	private final View.OnClickListener nextButtonListener = view -> {
+		//Ignoring if the connection state is not idle
+		if(getCommunicationsCallback().getConnectionManager() == null ||
+				getCommunicationsCallback().getConnectionManager().getState() != ConnectionState.disconnected) return;
+		
 		//Updating the state
 		viewModel.currentState = stateConnecting;
 		viewModel.errorDetails = null;
@@ -127,11 +142,8 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 	};
 	private final View.OnClickListener cancelButtonListener = view -> {
 		//Resetting the connection
-		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-		ConnectionManager.hostname = null;
-		ConnectionManager.hostnameFallback = null;
-		ConnectionManager.password = null;
-		if(connectionManager != null) connectionManager.disconnect();
+		ConnectionManager connectionManager = getCommunicationsCallback().getConnectionManager();
+		if(connectionManager != null) connectionManager.disconnect(ConnectionErrorCode.user);
 		
 		//Reverting the state to idle
 		viewModel.currentState = stateIdle;
@@ -142,39 +154,19 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		complete();
 	};
 	
-	private BroadcastReceiver serviceBroadcastReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			//Checking if the activity is waiting for a response
-			if(viewModel.currentState == stateConnecting) {
-				//Ignoring the broadcast if the launch ID doesn't match or the result is connecting
-				int state;
-				if(intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) != viewModel.connectionLaunchID || (state = intent.getIntExtra(Constants.intentParamState, -1)) == ConnectionManager.stateConnecting) return;
-				
-				//Getting the result
-				if(state == ConnectionManager.stateConnected) {
-					//Setting the state as connected
-					viewModel.currentState = stateConnected;
-				} else {
-					//Setting the state as idle
-					viewModel.currentState = stateIdle;
-					
-					//Setting the error
-					int errorCode = intent.getIntExtra(Constants.intentParamCode, -1);
-					viewModel.errorDetails = StateUtils.getErrorDetails(errorCode, true);
-				}
-				
-				//Updating the state
-				applyState();
-			}
-			//Checking if the activity is connected, and the service is disconnected
-			else if(viewModel.currentState == stateConnected && intent.getIntExtra(Constants.intentParamState, -1) == ConnectionManager.stateDisconnected) {
-				//Cancelling the connection
-				viewModel.currentState = stateIdle;
-				applyState();
-			}
-		}
-	};
+	//Creating the state values
+	private boolean isComplete = false;
+	
+	@Override
+	public void onCreate(@Nullable Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		
+		//Getting the view model
+		viewModel = new ViewModelProvider(this).get(FragmentViewModel.class);
+		
+		//Subscribing to connection updates
+		compositeDisposable.add(ReduxEmitterNetwork.getConnectionStateSubject().subscribe(this::onConnectionUpdate));
+	}
 	
 	@Nullable
 	@Override
@@ -184,9 +176,6 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 	
 	@Override
 	public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-		//Getting the view model
-		viewModel = new ViewModelProvider(this).get(FragmentViewModel.class);
-		
 		//Setting up the toolbar
 		configureToolbar(view.findViewById(R.id.toolbar));
 		
@@ -222,62 +211,27 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		buttonCancel.setOnClickListener(cancelButtonListener);
 		
 		//Filling in the input fields with previous information
-		SharedPreferences sharedPreferences = MainApplication.getInstance().getConnectivitySharedPrefs();
-		inputAddress.getEditText().setText(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null));
-		inputFallback.getEditText().setText(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyHostnameFallback, null));
-		inputPassword.getEditText().setText(sharedPreferences.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, null));
+		try {
+			DirectConnectionParams details = SharedPreferencesManager.getDirectConnectionDetails(getContext());
+			inputAddress.getEditText().setText(details.getAddress());
+			inputFallback.getEditText().setText(details.getFallbackAddress());
+			inputPassword.getEditText().setText(details.getPassword());
+		} catch(IOException | GeneralSecurityException exception) {
+			exception.printStackTrace();
+		}
 		
 		//Updating the state
 		applyState();
 	}
 	
 	@Override
-	public void onCreate(@Nullable Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		
-		//Registering the receiver
-		LocalBroadcastManager.getInstance(requireContext()).registerReceiver(serviceBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
-	}
-	
-	@Override
-	public void onStart() {
-		super.onStart();
-		
-		//Enabling configuration mode
-		ConnectionService connectionService = ConnectionService.getInstance();
-		if(connectionService != null) {
-			connectionService.setConfigurationMode(true);
-		}
-		
-		//Terminating existing connections
-		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-		if(connectionManager != null) {
-			if(connectionManager.isConnected()) connectionManager.disconnect();
-		}
-	}
-	
-	@Override
 	public void onStop() {
 		super.onStop();
 		
-		//Disabling configuration mode
-		ConnectionService connectionService = ConnectionService.getInstance();
-		if(connectionService != null && !requireActivity().isChangingConfigurations()) {
-			connectionService.setConfigurationMode(false);
-		}
-		
-		if(!isCompleting && viewModel.originalHostname != null && viewModel.originalPassword != null && !requireActivity().isChangingConfigurations()) {
-			//Restoring the connection values
-			ConnectionManager.hostname = viewModel.originalHostname;
-			ConnectionManager.hostnameFallback = viewModel.originalHostnameFallback;
-			ConnectionManager.password = viewModel.originalPassword;
-			
-			//Resetting the connection
-			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-			if(connectionManager != null) {
-				if(connectionManager.isConnected()) connectionManager.disconnect();
-				else connectionManager.connect(requireContext());
-			}
+		//Disconnecting
+		if(!isComplete) {
+			ConnectionManager connectionManager = getCommunicationsCallback().getConnectionManager();
+			if(connectionManager != null) connectionManager.disconnect(ConnectionErrorCode.user);
 		}
 	}
 	
@@ -285,12 +239,12 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 	public void onDestroy() {
 		super.onDestroy();
 		
-		//Unregistering the receiver
-		LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(serviceBroadcastReceiver);
+		//Clearing the composite disposable
+		compositeDisposable.clear();
 	}
 	
 	private void configureToolbar(Toolbar toolbar) {
-		int colorSecondary = Constants.resolveColorAttr(getContext(), android.R.attr.textColorSecondary);
+		int colorSecondary = ResourceHelper.resolveColorAttr(getContext(), android.R.attr.textColorSecondary);
 		{
 			Drawable drawable = getResources().getDrawable(R.drawable.close, null);
 			drawable.setColorFilter(colorSecondary, PorterDuff.Mode.SRC_IN);
@@ -304,11 +258,38 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 			toolbar.getMenu().getItem(i).getIcon().setColorFilter(colorSecondary, PorterDuff.Mode.SRC_IN);
 		}
 		toolbar.setOnMenuItemClickListener(item -> {
-			Constants.launchUri(getContext(), Constants.serverSetupAddress);
+			IntentHelper.launchUri(getContext(), ExternalLinkConstants.serverSetupAddress);
 			return true;
 		});
 		
-		toolbar.setNavigationOnClickListener(navigationView -> callback.popStack());
+		toolbar.setNavigationOnClickListener(navigationView -> getCommunicationsCallback().popStack());
+	}
+	
+	private void onConnectionUpdate(ReduxEventConnection event) {
+		//Checking if the activity is waiting for a response
+		if(viewModel.currentState == stateConnecting) {
+			//Getting the result
+			if(event.getState() == ConnectionState.connected) {
+				//Setting the state as connected
+				viewModel.currentState = stateConnected;
+			} else if(event.getState() == ConnectionState.disconnected) {
+				//Setting the state as idle
+				viewModel.currentState = stateIdle;
+				
+				//Setting the error
+				int errorCode = ((ReduxEventConnection.Disconnected) event).getCode();
+				viewModel.errorDetails = ErrorDetailsHelper.getErrorDetails(errorCode, true);
+			}
+			
+			//Updating the state
+			applyState();
+		}
+		//Checking if the activity is connected, and the service is disconnected
+		else if(viewModel.currentState == stateConnected && event.getState() == ConnectionState.disconnected) {
+			//Cancelling the connection
+			viewModel.currentState = stateIdle;
+			applyState();
+		}
 	}
 	
 	private void applyState() {
@@ -320,7 +301,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 	 * @param currentState The current state of the activity
 	 * @param errorDetails The error details to display, NULL if unavailable
 	 */
-	private void applyState(int currentState, StateUtils.ErrorDetails errorDetails) {
+	private void applyState(int currentState, ErrorDetailsHelper.ErrorDetails errorDetails) {
 		TransitionManager.beginDelayedTransition(groupContent);
 		
 		//Setting the input field states
@@ -357,7 +338,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 	 * Applies the current task's error details to the UI
 	 * @param errorDetails The error details to display, NULL if unavailable
 	 */
-	private void applyErrorDetails(StateUtils.ErrorDetails errorDetails) {
+	private void applyErrorDetails(ErrorDetailsHelper.ErrorDetails errorDetails) {
 		//Hiding the view if there is no error
 		if(errorDetails == null) {
 			groupError.setVisibility(View.GONE);
@@ -376,7 +357,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		} else {
 			buttonError.setVisibility(View.GONE);
 			buttonError.setText(errorDetails.getButton().getLabel());
-			buttonError.setOnClickListener(view -> errorDetails.getButton().getClickListener().accept(requireActivity()));
+			buttonError.setOnClickListener(view -> errorDetails.getButton().getClickListener().accept(getActivity(), getCommunicationsCallback().getConnectionManager()));
 		}
 	}
 	
@@ -389,68 +370,53 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 	
 	private void updateNextButton(String address, String fallback, String password) {
 		buttonNext.setEnabled(
-				Constants.regExValidAddress.matcher(address).find() &&
-				(fallback.isEmpty() || Constants.regExValidAddress.matcher(fallback).find()) &&
+				RegexConstants.internetAddress.matcher(address).find() &&
+				(fallback.isEmpty() || RegexConstants.internetAddress.matcher(fallback).find()) &&
 				!password.isEmpty());
 	}
 	
 	private void startConnection() {
-		//Saving the new server information
-		viewModel.currentHostname = inputAddress.getEditText().getText().toString();
-		viewModel.currentHostnameFallback = inputFallback.getEditText().getText().toString();
-		if(viewModel.currentHostnameFallback.isEmpty()) viewModel.currentHostnameFallback = null;
-		viewModel.currentPassword = inputPassword.getEditText().getText().toString();
+		//Collecting the new server connection information
+		DirectConnectionParams params = new DirectConnectionParams(
+				inputAddress.getEditText().getText().toString(),
+				StringHelper.nullifyEmptyString(inputFallback.getEditText().getText().toString()),
+				inputPassword.getEditText().getText().toString()
+		);
 		
-		//Setting the values in the service class
-		ConnectionManager.hostname = viewModel.currentHostname;
-		ConnectionManager.hostnameFallback = viewModel.currentHostnameFallback;
-		ConnectionManager.password = viewModel.currentPassword;
+		viewModel.connectionParams = params;
 		
-		//Setting the proxy type
-		ConnectionManager.proxyType = ConnectionManager.proxyTypeDirect;
+		//Getting the connection manager
+		ConnectionManager connectionManager = getCommunicationsCallback().getConnectionManager();
+		if(connectionManager == null) return;
 		
-		//Telling the service to connect
-		requireActivity().startService(new Intent(requireContext(), ConnectionService.class)
-				.setAction(ConnectionService.selfIntentActionConnect)
-				.putExtra(Constants.intentParamLaunchID, viewModel.connectionLaunchID = ConnectionManager.getNextLaunchID())
-				.putExtra(ConnectionService.selfIntentExtraConfig, true));
+		//Setting the override and connecting
+		connectionManager.setConnectionOverride(new ConnectionOverride<>(ProxyType.direct, params));
+		connectionManager.connect();
 	}
 	
 	private void complete() {
 		//Saving the connection data in the shared preferences
-		SharedPreferences.Editor editor = MainApplication.getInstance().getConnectivitySharedPrefs().edit();
-		editor.putInt(MainApplication.sharedPreferencesConnectivityKeyAccountType, Constants.connectivityAccountTypeDirect);
-		editor.putBoolean(MainApplication.sharedPreferencesConnectivityKeyConnectServerConfirmed, true);
+		SharedPreferencesManager.setProxyType(getContext(), ProxyType.direct);
+		try {
+			SharedPreferencesManager.setDirectConnectionDetails(getContext(), viewModel.connectionParams);
+		} catch(IOException | GeneralSecurityException exception) {
+			exception.printStackTrace();
+			return;
+		}
+		SharedPreferencesManager.setConnectionConfigured(getContext(), true);
 		
-		editor.putString(MainApplication.sharedPreferencesConnectivityKeyHostname, viewModel.currentHostname);
-		editor.putString(MainApplication.sharedPreferencesConnectivityKeyHostnameFallback, viewModel.currentHostnameFallback);
-		editor.putString(MainApplication.sharedPreferencesConnectivityKeyPassword, viewModel.currentPassword);
-		editor.apply();
+		//Enabling connect on boot
+		Preferences.updateConnectionServiceBootEnabled(getContext(), Preferences.getPreferenceStartOnBoot(getContext()));
 		
 		//Finishing the activity
-		isCompleting = true;
-		callback.launchConversations();
+		isComplete = true;
+		getCommunicationsCallback().launchConversations();
 	}
 	
 	public static class FragmentViewModel extends ViewModel {
-		private final String originalHostname;
-		private final String originalHostnameFallback;
-		private final String originalPassword;
+		DirectConnectionParams connectionParams;
 		
-		private String currentHostname;
-		private String currentHostnameFallback;
-		private String currentPassword;
-		
-		private int currentState = stateIdle;
-		private StateUtils.ErrorDetails errorDetails;
-		
-		private byte connectionLaunchID;
-		
-		public FragmentViewModel() {
-			//Recording the original connection information
-			originalHostname = ConnectionManager.hostname;
-			originalHostnameFallback = ConnectionManager.hostnameFallback;
-			originalPassword = ConnectionManager.password;
-		}
+		int currentState = stateIdle;
+		ErrorDetailsHelper.ErrorDetails errorDetails;
 	}
 }

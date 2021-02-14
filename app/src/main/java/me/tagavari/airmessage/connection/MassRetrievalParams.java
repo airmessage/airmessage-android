@@ -23,7 +23,7 @@ public class MassRetrievalParams {
 		restrictAttachments = false;
 		timeSinceAttachments = -1;
 		restrictAttachmentSizes = true;
-		attachmentSizeLimit = 16 * 1024 * 1024; //16 MiB
+		attachmentSizeLimit = 1024 * 1024; //1 MiB
 		attachmentFilterWhitelist = Arrays.asList("image/*", "video/*", "audio/*");
 		attachmentFilterBlacklist = new ArrayList<>();
 		attachmentFilterDLOutside = false;

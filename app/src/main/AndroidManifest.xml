@@ -2,13 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:tools="http://schemas.android.com/tools"
 	package="me.tagavari.airmessage">
-	
+
 	<!-- Normal permissions -->
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-	
+
 	<!-- Dangerous permissions -->
 	<uses-permission android:name="android.permission.RECORD_AUDIO" />
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -55,7 +55,6 @@
 		<!-- Conversation list -->
 		<activity
 			android:label="@string/app_name"
-			android:launchMode="singleTop"
 			android:name=".activity.Conversations"
 			android:theme="@style/DayNight.NoActionBar.Protected"
 			android:windowSoftInputMode="adjustResize">
@@ -63,7 +62,7 @@
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
-			
+
 			<meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
@@ -115,7 +114,7 @@
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.NOTIFICATION_PREFERENCES" />
 			</intent-filter>
-			
+
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
@@ -186,6 +185,15 @@
 			</intent-filter>
 		</activity>
 
+		<!-- Open source licenses -->
+		<activity
+			android:exported="false"
+			android:name=".activity.Licenses"
+			android:label="@string/screen_licenses"
+			android:theme="@style/DayNight.NoActionBar">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
 		<!-- Crash report -->
 		<activity
 			android:exported="false"
@@ -199,13 +207,13 @@
 		<receiver
 			android:enabled="true"
 			android:exported="false"
-			android:name=".util.NotificationUtils$NotificationBroadcastReceiver" />
+			android:name=".receiver.MessageNotificationActionReceiver" />
 
 		<!-- Message notification deletion receiver (for updating the status notification) -->
 		<receiver
 			android:enabled="true"
 			android:exported="false"
-			android:name=".util.NotificationUtils$MessageNotificationDeleteReceiver" />
+			android:name=".receiver.MessageNotificationDeleteReceiver" />
 
 		<!-- Server connection manager service -->
 		<service
@@ -213,7 +221,7 @@
 			android:exported="false"
 			android:description="@string/servicedesc_connectionservice" />
 
-		<!-- Server connection manager service -->
+		<!-- Text message import service -->
 		<service
 			android:name=".service.SystemMessageImportService"
 			android:exported="false"
@@ -346,13 +354,5 @@
 		<meta-data
 			android:name="com.google.android.gms.car.application"
 			android:resource="@xml/automotive_app_desc" />
-
-		<!-- GMS open source notices activities -->
-		<activity
-			android:name="com.google.android.gms.oss.licenses.OssLicensesMenuActivity"
-			android:theme="@style/DayNight" />
-		<activity
-			android:name="com.google.android.gms.oss.licenses.OssLicensesActivity"
-			android:theme="@style/DayNight" />
 	</application>
 </manifest>

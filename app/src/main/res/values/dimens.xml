@@ -9,9 +9,12 @@
 
 	<dimen name="messagebubble_padding_x">12dp</dimen> <!-- The horizontal padding of a message bubble -->
 	<dimen name="messagebubble_padding_y">8dp</dimen> <!-- The vertical padding of a message bubble -->
-	<dimen name="messagebubble_minheight">40dp</dimen> <!-- The vertical padding of a message bubble -->
+	<dimen name="messagebubble_minheight">40dp</dimen> <!-- The minimum height of a message bubble -->
 	<dimen name="messagebubble_radius">20dp</dimen> <!-- The corner radius of a message bubble -->
 	<dimen name="messagebubble_radius_anchored">5dp</dimen> <!-- The corner radius of an anchored message bubble -->
+	<dimen name="messagebubble_padding">5dp</dimen> <!-- The padding between unrelated message bubbles -->
+	<dimen name="messagebubble_padding_anchored">1dp</dimen> <!-- The padding between anchored message bubbles -->
+	<dimen name="messagebubble_borderwidth">1dp</dimen> <!-- The width of the border used on content bubbles -->
 
 	<dimen name="conversationwindow_minheight">250dp</dimen> <!-- The minimum height of the conversation window before the app bar is hidden -->
     <dimen name="dialogwidth_max">500dp</dimen> <!-- The maximum width of floating app dialogs -->
@@ -19,7 +22,7 @@
 	
 	<dimen name="contenttile_size">100dp</dimen> <!-- The width / height of a content tile in the messaging activity's attachment menu -->
 	<dimen name="contenttile_size_double">208dp</dimen> <!-- Double-column span -->
-	<dimen name="contenttile_ring_innerRadius">35dp</dimen> <!-- The inner radius of circular shapes occupying the content tile -->
+	<dimen name="contenttile_ring_innerRadius">15dp</dimen> <!-- The inner radius of circular shapes occupying the content tile -->
 	<dimen name="contenttile_margin">8dp</dimen> <!-- The amount of margin between content tiles in the messaging activity's attachment menu -->
 	<dimen name="contenttile_radius">4dp</dimen>
 	<dimen name="contentpanel_height">224dp</dimen> <!-- The height of the attachment panel -->

@@ -1,8 +1,12 @@
 package me.tagavari.airmessage.activity;
 
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
@@ -14,23 +18,53 @@ import androidx.fragment.app.FragmentTransaction;
 
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.constants.ColorConstants;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.extension.FragmentBackOverride;
-import me.tagavari.airmessage.extension.FragmentCommunicationSwap;
+import me.tagavari.airmessage.extension.FragmentCommunicationNetworkConfig;
 import me.tagavari.airmessage.fragment.FragmentCommunication;
 import me.tagavari.airmessage.fragment.FragmentOnboardingWelcome;
+import me.tagavari.airmessage.helper.ResourceHelper;
+import me.tagavari.airmessage.helper.ThemeHelper;
 import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.util.Constants;
 
-public class Onboarding extends AppCompatActivity implements FragmentCommunicationSwap {
+public class Onboarding extends AppCompatActivity implements FragmentCommunicationNetworkConfig {
+	//Constants
 	private static final String keyFragment = "fragment";
 	
-	private FragmentCommunication<FragmentCommunicationSwap> currentFragment;
+	//Dimensions
+	private static final int paneMaxHeight = ResourceHelper.dpToPx(600);
 	
-	private static final int paneMaxHeight = Constants.dpToPx(600);
+	//Fragment state
+	private FragmentCommunication<FragmentCommunicationNetworkConfig> currentFragment;
 	
+	//Listeners
 	private final FragmentManager.OnBackStackChangedListener onBackStackChangedListener = () -> {
-		currentFragment = (FragmentCommunication<FragmentCommunicationSwap>) getSupportFragmentManager().findFragmentById(R.id.frame_content);
+		currentFragment = (FragmentCommunication<FragmentCommunicationNetworkConfig>) getSupportFragmentManager().findFragmentById(R.id.frame_content);
 	};
+	
+	//Service bindings
+	private ConnectionManager connectionManager = null;
+	private final ServiceConnection serviceConnection = new ServiceConnection() {
+		@Override
+		public void onServiceConnected(ComponentName name, IBinder service) {
+			ConnectionService.ConnectionBinder binder = (ConnectionService.ConnectionBinder) service;
+			
+			connectionManager = binder.getConnectionManager();
+			
+			//Disconnecting and disabling reconnections
+			connectionManager.setDisableReconnections(true);
+			connectionManager.disconnect(ConnectionErrorCode.user);
+		}
+		
+		@Override
+		public void onServiceDisconnected(ComponentName name) {
+			connectionManager = null;
+		}
+	};
+	
+	//Activity state
+	boolean isComplete = false;
 	
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -41,12 +75,12 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 		
 		if(savedInstanceState == null) {
 			//Initializing the first fragment
-			FragmentCommunication<FragmentCommunicationSwap> fragment = new FragmentOnboardingWelcome();
+			FragmentCommunication<FragmentCommunicationNetworkConfig> fragment = new FragmentOnboardingWelcome();
 			swapFragment(fragment, false);
 			currentFragment = fragment;
 		} else {
 			//Restoring the fragment
-			currentFragment = (FragmentCommunication<FragmentCommunicationSwap>) getSupportFragmentManager().getFragment(savedInstanceState, keyFragment);
+			currentFragment = (FragmentCommunication<FragmentCommunicationNetworkConfig>) getSupportFragmentManager().getFragment(savedInstanceState, keyFragment);
 		}
 		
 		//Registering the back stack change listener
@@ -63,10 +97,26 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 		});
 		
 		//Configuring the AMOLED theme
-		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
+		if(ThemeHelper.shouldUseAMOLED(this)) setDarkAMOLED();
 		
 		//Preventing the connection service from launching on boot
 		Preferences.updateConnectionServiceBootEnabled(this, false);
+	}
+	
+	@Override
+	protected void onStart() {
+		super.onStart();
+		
+		//Binding to the connection service
+		bindService(new Intent(this, ConnectionService.class), serviceConnection, Context.BIND_AUTO_CREATE);
+	}
+	
+	@Override
+	protected void onStop() {
+		super.onStop();
+		
+		//Unbinding from the connection service
+		unbindService(serviceConnection);
 	}
 	
 	@Override
@@ -79,7 +129,7 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 	
 	@Override
 	public void onAttachFragment(@NonNull Fragment childFragment) {
-		if(childFragment instanceof FragmentCommunication) ((FragmentCommunication<FragmentCommunicationSwap>) childFragment).setCallback(this);
+		if(childFragment instanceof FragmentCommunication) ((FragmentCommunication<FragmentCommunicationNetworkConfig>) childFragment).setCommunicationsCallback(this);
 	}
 	
 	@Override
@@ -97,11 +147,12 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 		if(currentFragment != null && currentFragment.isAdded()) getSupportFragmentManager().putFragment(outState, keyFragment, currentFragment);
 	}
 	
-	public void swapFragment(FragmentCommunication<FragmentCommunicationSwap> fragment) {
+	@Override
+	public void swapFragment(FragmentCommunication<FragmentCommunicationNetworkConfig> fragment) {
 		swapFragment(fragment, true);
 	}
 	
-	public void swapFragment(FragmentCommunication<FragmentCommunicationSwap> fragment, boolean addToBackStack) {
+	public void swapFragment(FragmentCommunication<FragmentCommunicationNetworkConfig> fragment, boolean addToBackStack) {
 		FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
 		if(currentFragment != null) transaction.setCustomAnimations(R.anim.windowslide_in, R.anim.windowslide_out, R.anim.windowslideback_in, R.anim.windowslideback_out);
 		transaction.replace(R.id.frame_content, fragment);
@@ -109,31 +160,39 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 		transaction.commit();
 	}
 	
+	@Override
 	public void popStack() {
 		FragmentManager fragmentManager = getSupportFragmentManager();
 		if(fragmentManager.getBackStackEntryCount() > 0) fragmentManager.popBackStack();
 	}
 	
+	@Override
 	public void launchConversations() {
+		isComplete = true;
+		
+		//Restoring the connection manager state
+		connectionManager.setConnectionOverride(null);
+		connectionManager.setDisableReconnections(false);
+		
 		//Starting the new activity
 		startActivity(new Intent(this, Conversations.class));
 		
 		//Enabling transitions
-		overridePendingTransition(R.anim.fade_in_light, R.anim.activity_slide_up);
-		
-		//Restoring the connection service's start-on-boot state (if the proxy type is direct)
-		//If the proxy type is connect, we'll leave it disabled (as set in this activity's onCreate())
-		if(ConnectionManager.proxyType == ConnectionManager.proxyTypeDirect) {
-			Preferences.updateConnectionServiceBootEnabled(this, Preferences.getPreferenceStartOnBoot(this));
-		}
+		//overridePendingTransition(R.anim.fade_in_light, R.anim.activity_slide_up);
 		
 		//Finishing the activity
 		finish();
 	}
 	
+	@Nullable
+	@Override
+	public ConnectionManager getConnectionManager() {
+		return connectionManager;
+	}
+	
 	void setDarkAMOLED() {
-		findViewById(android.R.id.content).getRootView().setBackgroundColor(Constants.colorAMOLED);
-		getWindow().setStatusBarColor(Constants.colorAMOLED);
-		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) getWindow().setNavigationBarColor(Constants.colorAMOLED); //Leaving the transparent navigation bar on Android 10
+		findViewById(android.R.id.content).getRootView().setBackgroundColor(ColorConstants.colorAMOLED);
+		getWindow().setStatusBarColor(ColorConstants.colorAMOLED);
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) getWindow().setNavigationBarColor(ColorConstants.colorAMOLED); //Leaving the transparent navigation bar on Android 10
 	}
 }

@@ -1,345 +1,145 @@
 package me.tagavari.airmessage.connection.comm4;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
+import androidx.annotation.Nullable;
+
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.security.GeneralSecurityException;
 
-import javax.net.ssl.SSLHandshakeException;
-
-import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.DataProxy;
-import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.constants.NetworkConstants;
+import me.tagavari.airmessage.constants.RegexConstants;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.util.DirectConnectionParams;
 
-class ProxyDirectTCP extends DataProxy<PacketStructIn, PacketStructOut> {
+/**
+ * Establishes a direct connection with the server
+ */
+class ProxyDirectTCP extends DataProxy<HeaderPacket> {
+	//Creating the handler
+	private final Handler handler = new Handler(Looper.getMainLooper());
+	
 	//Creating the state values
 	private boolean isRunning = false;
-	private ConnectionThread connectionThread;
+	private ProxyDirectTCPReader readerThread;
+	private ProxyDirectTCPWriter writerThread;
 	
-	@Override
-	public void start() {
-		//Returning if this proxy is already running
-		if(isRunning) return;
-		
-		//Parsing the hostname
-		String cleanHostname = ConnectionManager.hostname;
-		int port = Constants.defaultPort;
-		if(ConnectionManager.regExValidPort.matcher(cleanHostname).find()) {
-			String[] targetDetails = ConnectionManager.hostname.split(":");
-			cleanHostname = targetDetails[0];
-			port = Integer.parseInt(targetDetails[1]);
+	//Creating the listeners
+	private final ProxyDirectTCPReader.Listener readerThreadListener = new ProxyDirectTCPReader.Listener() {
+		@Override
+		public void onOpen(DataOutputStream outputStream) {
+			//Starting the writer thread
+			writerThread = new ProxyDirectTCPWriter(ProxyDirectTCP.this::stopAsync, outputStream);
+			writerThread.start();
+			
+			notifyOpen();
 		}
 		
-		String cleanHostnameFallback = null;
-		int portFallback = -1;
+		@Override
+		public void onClose(int reason) {
+			stopAsync(reason);
+		}
 		
-		if(ConnectionManager.hostnameFallback != null) {
-			cleanHostnameFallback = ConnectionManager.hostnameFallback;
-			portFallback = Constants.defaultPort;
-			
-			if(ConnectionManager.regExValidPort.matcher(cleanHostnameFallback).find()) {
-				String[] targetDetails = ConnectionManager.hostnameFallback.split(":");
-				cleanHostnameFallback = targetDetails[0];
-				portFallback = Integer.parseInt(targetDetails[1]);
+		@Override
+		public void onMessage(byte[] data, int type) {
+			notifyMessage(new HeaderPacket(data, type));
+		}
+	};
+	
+	@Override
+	public void start(Context context, @Nullable Object override) {
+		//Returning if this proxy is already running
+		if(isRunning) {
+			FirebaseCrashlytics.getInstance().recordException(new IllegalStateException("Tried to start proxy, but it is already running!"));
+			return;
+		}
+		
+		DirectConnectionParams connectionParams;
+		
+		if(override == null) {
+			try {
+				connectionParams = SharedPreferencesManager.getDirectConnectionDetails(context);
+			} catch(IOException | GeneralSecurityException exception) {
+				exception.printStackTrace();
+				notifyClose(ConnectionErrorCode.internalError);
+				return;
 			}
+		} else {
+			connectionParams = (DirectConnectionParams) override;
+		}
+		
+		String hostname, hostnameFallback;
+		int port, portFallback;
+		
+		//Parsing the address
+		if(RegexConstants.port.matcher(connectionParams.getAddress()).find()) {
+			String[] targetDetails = connectionParams.getAddress().split(":");
+			hostname = targetDetails[0];
+			port = Integer.parseInt(targetDetails[1]);
+		} else {
+			hostname = connectionParams.getAddress();
+			port = NetworkConstants.defaultPort;
+		}
+		
+		//Parsing the fallback address
+		if(connectionParams.getFallbackAddress() != null) {
+			if(RegexConstants.port.matcher(connectionParams.getFallbackAddress()).find()) {
+				String[] targetDetails = connectionParams.getFallbackAddress().split(":");
+				hostnameFallback = targetDetails[0];
+				portFallback = Integer.parseInt(targetDetails[1]);
+			} else {
+				hostnameFallback = connectionParams.getFallbackAddress();
+				portFallback = NetworkConstants.defaultPort;
+			}
+		} else {
+			hostnameFallback = null;
+			portFallback = -1;
 		}
 		
 		//Starting the connection thread
-		connectionThread = new ConnectionThread(cleanHostname, port, cleanHostnameFallback, portFallback);
-		connectionThread.start();
+		readerThread = new ProxyDirectTCPReader(readerThreadListener, hostname, port, hostnameFallback, portFallback);
+		readerThread.start();
 		
 		//Updating the running state
 		isRunning = true;
 	}
 	
-	@Override
-	public void stop(int code) {
-		//Running on the main thread
-		new Handler(Looper.getMainLooper()).post(() -> {
-			//Returning if this proxy is not running
-			if(!isRunning) return;
-			
-			//Closing the connection thread
-			connectionThread.interrupt();
-			connectionThread = null;
-			
-			//Calling the listener
-			onClose(code);
-			
-			//Updating the running state
-			isRunning = false;
-		});
+	private void stopAsync(@ConnectionErrorCode int code) {
+		handler.post(() -> stop(code));
 	}
 	
 	@Override
-	public boolean send(PacketStructOut packet) {
+	public void stop(@ConnectionErrorCode int code) {
+		//Returning if this proxy is not running
+		if(!isRunning) return;
+		
+		//Stopping the threads
+		if(readerThread != null) readerThread.interrupt();
+		if(writerThread != null) writerThread.interrupt();
+		
+		//Calling the listener
+		notifyClose(code);
+		
+		//Updating the running state
+		isRunning = false;
+	}
+	
+	@Override
+	public boolean send(HeaderPacket packet) {
 		//Queuing the packet
-		if(connectionThread == null) return false;
-		return connectionThread.queuePacket(packet);
+		if(writerThread == null) return false;
+		writerThread.queuePacket(packet);
+		return true;
 	}
 	
-	public boolean isUsingFallback() {
-		return connectionThread != null && connectionThread.isUsingFallback();
-	}
-	
-	protected class ConnectionThread extends Thread {
-		//Creating the constants
-		private static final int socketTimeout = 1000 * 10; //10 seconds
-		
-		//Creating the reference connection values
-		private final String hostname;
-		private final int port;
-		private final String hostnameFallback;
-		private final int portFallback;
-		
-		private Socket socket;
-		private DataInputStream inputStream;
-		private DataOutputStream outputStream;
-		private WriterThread writerThread = null;
-		
-		private boolean usingFallback;
-		
-		private ConnectionThread(String hostname, int port, String hostnameFallback, int portFallback) {
-			this.hostname = hostname;
-			this.port = port;
-			this.hostnameFallback = hostnameFallback;
-			this.portFallback = portFallback;
-		}
-		
-		@Override
-		public void run() {
-			try {
-				//Returning if the thread is interrupted
-				if(isInterrupted()) return;
-				
-				if(hostnameFallback != null) {
-					try {
-						//Connecting to the primary server
-						socket = new Socket();
-						socket.connect(new InetSocketAddress(hostname, port), socketTimeout);
-						usingFallback = false;
-					} catch(IOException exception) {
-						//Printing the stack trace
-						exception.printStackTrace();
-						
-						//Connecting to the fallback server
-						socket = new Socket();
-						socket.connect(new InetSocketAddress(hostnameFallback, portFallback), socketTimeout);
-						usingFallback = true;
-					}
-				} else {
-					//Connecting to the primary server
-					socket = new Socket();
-					socket.connect(new InetSocketAddress(hostname, port), socketTimeout);
-					usingFallback = false;
-				}
-				
-				//Returning if the thread is interrupted
-				if(isInterrupted()) {
-					try {
-						socket.close();
-					} catch(IOException exception) {
-						exception.printStackTrace();
-					}
-					
-					return;
-				}
-				
-				//Getting the streams
-				inputStream = new DataInputStream(socket.getInputStream());
-				outputStream = new DataOutputStream(socket.getOutputStream());
-				
-				//Starting the writer thread
-				writerThread = new WriterThread();
-				writerThread.start();
-			} catch(IOException exception) {
-				//Printing the stack trace
-				exception.printStackTrace();
-				
-				//Updating the state
-				closeConnection(ConnectionManager.connResultConnection);
-				
-				//Returning
-				return;
-			}
-			
-			//Calling the connection listener
-			onOpen();
-			
-			//Reading from the input stream
-			readLoop:
-			while(!isInterrupted()) {
-				try {
-					//Reading the header data
-					int messageType = inputStream.readInt();
-					int contentLen = inputStream.readInt();
-					
-					//Checking if the content length is greater than the maximum packet allocation
-					if(contentLen > ConnectionManager.maxPacketAllocation) {
-						//Logging the error
-						Logger.getGlobal().log(Level.WARNING, "Rejecting large packet (type: " + messageType + " - size: " + contentLen + ")");
-						
-						//Closing the connection
-						closeConnection(ConnectionManager.connResultConnection);
-						break;
-					}
-					
-					//Reading the content
-					byte[] content = new byte[contentLen];
-					if(contentLen > 0) {
-						int bytesRemaining = contentLen;
-						int offset = 0;
-						int readCount;
-						while(bytesRemaining > 0) {
-							readCount = inputStream.read(content, offset, bytesRemaining);
-							if(readCount == -1) { //No data read, stream is closed
-								closeConnection(ConnectionManager.connResultConnection);
-								break readLoop;
-							}
-							
-							offset += readCount;
-							bytesRemaining -= readCount;
-						}
-					}
-					
-					//Processing the data
-					onMessage(new PacketStructIn(messageType, content));
-				} catch(SSLHandshakeException exception) {
-					//Closing the connection
-					exception.printStackTrace();
-					closeConnection(ConnectionManager.connResultConnection);
-					
-					//Breaking
-					break;
-				} catch(IOException | RuntimeException exception) {
-					//Closing the connection
-					exception.printStackTrace();
-					closeConnection(ConnectionManager.connResultConnection);
-					
-					//Breaking
-					break;
-				}
-			}
-			
-			//Closing the socket
-			try {
-				socket.close();
-			} catch(IOException exception) {
-				exception.printStackTrace();
-			}
-		}
-		
-		boolean queuePacket(PacketStructOut packet) {
-			if(writerThread == null) return false;
-			writerThread.uploadQueue.add(packet);
-			return true;
-		}
-		
-		@Override
-		public void interrupt() {
-			//Interrupting the writer thread before interrupting this thread
-			if(writerThread != null) writerThread.interrupt();
-			super.interrupt();
-		}
-		
-		void closeConnection(int reason) {
-			//Interrupting this thread
-			interrupt();
-			
-			//Updating the state
-			new Handler(Looper.getMainLooper()).post(() -> {
-				if(isRunning) {
-					onClose(reason);
-					isRunning = false;
-				}
-			});
-		}
-		
-		synchronized boolean sendDataSync(int messageType, byte[] data, boolean flush) {
-			try {
-				//Writing the message
-				outputStream.writeInt(messageType);
-				outputStream.writeInt(data.length);
-				outputStream.write(data);
-				if(flush) outputStream.flush();
-				
-				//Returning true
-				return true;
-			} catch(IOException exception) {
-				//Logging the exception
-				exception.printStackTrace();
-				
-				//Closing the connection
-				if(socket.isConnected()) {
-					closeConnection(ConnectionManager.connResultConnection);
-				} else {
-					FirebaseCrashlytics.getInstance().recordException(exception);
-				}
-				
-				//Returning false
-				return false;
-			}
-		}
-		
-		boolean isUsingFallback() {
-			return usingFallback;
-		}
-		
-		class WriterThread extends Thread {
-			//Creating the queue
-			final BlockingQueue<PacketStructOut> uploadQueue = new LinkedBlockingQueue<>();
-			
-			@Override
-			public void run() {
-				PacketStructOut packet;
-				
-				try {
-					while(!isInterrupted()) {
-						try {
-							packet = uploadQueue.take();
-							
-							try {
-								sendDataSync(packet.type, packet.content, false);
-							} finally {
-								if(packet.sentRunnable != null) packet.sentRunnable.run();
-							}
-							
-							while((packet = uploadQueue.poll()) != null) {
-								try {
-									sendDataSync(packet.type, packet.content, false);
-								} finally {
-									if(packet.sentRunnable != null) packet.sentRunnable.run();
-								}
-							}
-							
-							outputStream.flush();
-						} catch(IOException exception) {
-							exception.printStackTrace();
-							
-							if(socket.isConnected()) {
-								closeConnection(ConnectionManager.connResultConnection);
-							} else {
-								FirebaseCrashlytics.getInstance().recordException(exception);
-							}
-						}
-					}
-				} catch(InterruptedException exception) {
-					//exception.printStackTrace();
-					//closeConnection(intentResultCodeConnection, false); //Can only be interrupted from closeConnection, so this is pointless
-					
-					return;
-				}
-			}
-		}
+	boolean isUsingFallback() {
+		return readerThread != null && readerThread.isUsingFallback();
 	}
 }

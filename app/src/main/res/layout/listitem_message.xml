@@ -22,21 +22,13 @@
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent" />
 
-	<!-- Profile picture guideline -->
-	<!-- <android.support.constraint.Guideline
-		android:id="@+id/guideline_start"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:orientation="vertical"
-		app:layout_constraintGuide_begin="56dp" /> -->
-
 	<!-- End barrier -->
 	<androidx.constraintlayout.widget.Barrier
 		android:id="@+id/barrier_alert"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		app:barrierDirection="start"
-		app:constraint_referenced_ids="send_progress,send_error" />
+		app:constraint_referenced_ids="send_error" />
 	
 	<!-- User icon -->
 	<FrameLayout
@@ -75,6 +67,7 @@
 		android:id="@+id/messagepart_container"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
+		android:translationZ="1dp"
 		android:layout_gravity="start"
 		android:orientation="vertical"
 		android:layout_marginStart="56dp"
@@ -82,20 +75,6 @@
 		app:layout_constraintStart_toStartOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/sender"
 		android:clipToPadding="false" />
-
-	<!-- Send progress -->
-	<com.pnikosis.materialishprogress.ProgressWheel
-		android:id="@+id/send_progress"
-		android:layout_width="24dp"
-		android:layout_height="24dp"
-		android:padding="2dp"
-		android:layout_marginTop="10dp"
-		android:layout_marginEnd="8dp"
-		app:layout_constraintEnd_toEndOf="parent"
-		app:layout_constraintTop_toTopOf="@id/messagepart_container"
-		app:matProg_barColor="@color/colorMessageOutgoingAccent"
-		app:matProg_barWidth="2dp"
-		app:matProg_progressIndeterminate="true" />
 
 	<!-- Send warning -->
 	<ImageButton
@@ -154,13 +133,12 @@
 		android:layout_marginStart="0dp"
 		app:layout_constraintEnd_toEndOf="@id/messagepart_container"
 		app:layout_constraintTop_toBottomOf="@id/activitystatus">
-		
 		<ImageView
 			android:layout_width="14sp"
 			android:layout_height="14sp"
 			android:layout_gravity="center"
 			android:src="@drawable/replay"
-			android:tint="@color/colorPrimary" />
+			app:tint="@color/colorPrimary" />
 		
 		<TextView
 			android:layout_width="wrap_content"

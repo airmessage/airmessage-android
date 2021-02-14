@@ -18,6 +18,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.provider.Telephony;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -34,9 +35,7 @@ import androidx.annotation.RequiresApi;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.util.Consumer;
-import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.EditTextPreference;
@@ -49,33 +48,41 @@ import androidx.preference.PreferenceScreen;
 import androidx.preference.SwitchPreference;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.gms.oss.licenses.OssLicensesMenuActivity;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import me.tagavari.airmessage.MainApplication;
+import io.reactivex.rxjava3.disposables.Disposable;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
+import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
 import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
-import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.connection.ConnectionTaskManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.messaging.AttachmentInfo;
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.ConversationItem;
-import me.tagavari.airmessage.messaging.MessageInfo;
+import me.tagavari.airmessage.constants.ColorConstants;
+import me.tagavari.airmessage.data.MessagesDataHelper;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.ProxyType;
+import me.tagavari.airmessage.helper.LanguageHelper;
+import me.tagavari.airmessage.helper.MMSSMSHelper;
+import me.tagavari.airmessage.helper.NotificationHelper;
+import me.tagavari.airmessage.helper.PlatformHelper;
+import me.tagavari.airmessage.helper.ThemeHelper;
+import me.tagavari.airmessage.helper.WindowHelper;
 import me.tagavari.airmessage.receiver.StartBootReceiver;
 import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.util.ConversationUtils;
 
 public class Preferences extends AppCompatCompositeActivity implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
+	private static final String TAG = Preferences.class.getSimpleName();
+	
 	//Creating the reference values
 	private static final int permissionRequestLocation = 0;
 	private static final int permissionRequestSMS = 1;
@@ -83,10 +90,15 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	private static final int activityRequestDefaultMessagingApp = 1;
 	
 	//Creating the plugin values
-	private PluginQNavigation pluginQNavigation;
+	private PluginConnectionService pluginCS;
 	
 	public Preferences() {
-		addPlugin(pluginQNavigation = new PluginQNavigation());
+		addPlugin(pluginCS = new PluginConnectionService());
+		addPlugin(new PluginQNavigation());
+	}
+	
+	PluginConnectionService getPluginCS() {
+		return pluginCS;
 	}
 	
 	@Override
@@ -113,10 +125,15 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 		
 		//Configuring the AMOLED theme
-		if(Constants.shouldUseAMOLED(this)) setDarkAMOLED();
+		if(ThemeHelper.shouldUseAMOLED(this)) setDarkAMOLED();
 		
 		//Setting the status bar color
-		Constants.updateChromeOSStatusBar(this);
+		PlatformHelper.updateChromeOSStatusBar(this);
+	}
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
 	}
 	
 	@Override
@@ -148,18 +165,16 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		return false;
 	}
 	
-	void setDarkAMOLED() {
-		Constants.setActivityAMOLEDBase(this);
-		findViewById(R.id.appbar).setBackgroundColor(Constants.colorAMOLED);
+	private void setDarkAMOLED() {
+		ThemeHelper.setActivityAMOLEDBase(this);
+		findViewById(R.id.appbar).setBackgroundColor(ColorConstants.colorAMOLED);
 	}
-	
-	/* @Override
-	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-	} */
 	
 	public static class SettingsFragment extends PreferenceFragmentCompat {
 		static final String FRAGMENT_TAG = "preferencefragment";
+		
+		//Creating the subscription values
+		private Disposable syncSubscription;
 		
 		Preference.OnPreferenceClickListener notificationSoundClickListener = preference -> {
 			Intent intent = new Intent(RingtoneManager.ACTION_RINGTONE_PICKER);
@@ -217,29 +232,11 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					})
 					//Setting the positive button
 					.setPositiveButton(R.string.action_delete, (DialogInterface dialogInterface, int which) -> {
-						//Clearing the attachments in memory
-						List<ConversationInfo> conversations = ConversationUtils.getConversations();
-						if(conversations != null) {
-							for(ConversationInfo conversationInfo : conversations) {
-								//Ignoring non-AM bridge conversations
-								if(conversationInfo.getServiceHandler() != ConversationInfo.serviceHandlerAMBridge) continue;
-								
-								List<ConversationItem> conversationItems = conversationInfo.getConversationItems();
-								if(conversationItems == null) continue;
-								for(ConversationItem item : conversationItems) {
-									if(!(item instanceof MessageInfo)) continue;
-									for(AttachmentInfo attachmentInfo : ((MessageInfo) item).getAttachments()) {
-										attachmentInfo.discardFile(getActivity());
-									}
-								}
-							}
-						}
+						//Deleting the attachment files on disk and in the database
+						MessagesDataHelper.deleteAMBAttachments(getContext()).subscribe();
 						
 						//Displaying a snackbar
 						Snackbar.make(getView(), R.string.message_confirm_deleteattachments_started, Snackbar.LENGTH_SHORT).show();
-						
-						//Deleting the attachment files on disk and in the database
-						new ConversationsBase.DeleteAttachmentsTask(getActivity().getApplicationContext()).execute();
 					})
 					//Creating the dialog
 					.create();
@@ -252,8 +249,8 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		};
 		Preference.OnPreferenceClickListener syncMessagesClickListener = preference -> {
 			//Checking if the connection manager
-			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-			if(connectionManager == null || !connectionManager.isConnected()) {
+			PluginConnectionService pluginCS = getPluginCS();
+			if(!pluginCS.isServiceBound() || !pluginCS.getConnectionManager().isConnected()) {
 				//Displaying a snackbar
 				Snackbar.make(getView(), R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
 				
@@ -262,7 +259,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			}
 			
 			//Checking if there is already a mass retrieval in progress
-			if(connectionManager.isMassRetrievalInProgress()) {
+			if(pluginCS.getConnectionManager().isMassRetrievalInProgress()) {
 				//Displaying a snackbar
 				Snackbar.make(getView(), R.string.message_confirm_resyncmessages_inprogress, Snackbar.LENGTH_SHORT).show();
 				
@@ -278,7 +275,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					//Setting the negative button
 					.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> dialogInterface.dismiss())
 					//Setting the positive button
-					.setPositiveButton(R.string.action_sync, (DialogInterface dialogInterface, int which) -> new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), getView(), new MassRetrievalParams()).execute())
+					.setPositiveButton(R.string.action_sync, (DialogInterface dialogInterface, int which) -> requestSyncMessages(new MassRetrievalParams()))
 					.setNeutralButton(R.string.action_advanced, (DialogInterface dialogInterface, int which) -> {
 						dialogInterface.dismiss();
 						
@@ -304,15 +301,12 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Showing the dialog
 			dialog.show();
 			
-			//Setting up the button
-			//dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setEnabled(false);
-			
 			//Returning true
 			return true;
 		};
 		Preference.OnPreferenceChangeListener themeChangeListener = (preference, newValue) -> {
 			//Applying the dark mode
-			((MainApplication) getActivity().getApplication()).applyDarkMode((String) newValue);
+			ThemeHelper.applyDarkMode((String) newValue);
 			
 			//Recreating the activity
 			getActivity().recreate();
@@ -331,7 +325,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName()))); //App details page (fallback)
 				}
 			} else {
-				if(Constants.isDefaultMessagingApp(getContext())) {
+				if(MMSSMSHelper.isDefaultMessagingApp(getContext())) {
 					//Requesting permissions
 					requestPermissions(new String[]{Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.RECEIVE_MMS, Manifest.permission.READ_PHONE_STATE}, permissionRequestSMS);
 				} else {
@@ -389,15 +383,15 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Adding the preferences
 			addPreferencesFromResource(R.xml.preferences_notification);
 			addPreferencesFromResource(R.xml.preferences_main);
-			int accountType = MainApplication.getInstance().getConnectivitySharedPrefs().getInt(MainApplication.sharedPreferencesConnectivityKeyAccountType, -1);
-			if(accountType == Constants.connectivityAccountTypeDirect) addPreferencesFromResource(R.xml.preferences_server);
-			else if(accountType == Constants.connectivityAccountTypeConnect) addPreferencesFromResource(R.xml.preferences_account);
+			int accountType = SharedPreferencesManager.getProxyType(getContext());
+			if(accountType == ProxyType.direct) addPreferencesFromResource(R.xml.preferences_server);
+			else if(accountType == ProxyType.connect) addPreferencesFromResource(R.xml.preferences_account);
 			addPreferencesFromResource(R.xml.preferences_footer);
 			
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 				//Creating the notification channel intent
 				Intent intent = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS);
-				intent.putExtra(Settings.EXTRA_CHANNEL_ID, MainApplication.notificationChannelMessage);
+				intent.putExtra(Settings.EXTRA_CHANNEL_ID, NotificationHelper.notificationChannelMessage);
 				intent.putExtra(Settings.EXTRA_APP_PACKAGE, getActivity().getPackageName());
 				
 				//Setting the listener
@@ -418,7 +412,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					
 					return true;
 				});
-				amoledSwitch.setEnabled(!themePreference.getValue().equals(MainApplication.darkModeLight));
+				amoledSwitch.setEnabled(!themePreference.getValue().equals(ThemeHelper.darkModeLight));
 				
 				//Checking if the device is running below Android 7.0 (API 24), or doesn't support telephony
 				if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N || !getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEPHONY)) {
@@ -474,7 +468,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			super.onViewCreated(view, savedInstanceState);
 			
 			//Enforcing the maximum content width
-			Constants.enforceContentWidthView(getResources(), getListView());
+			WindowHelper.enforceContentWidthView(getResources(), getListView());
 			
 			//Setting the list padding
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -488,6 +482,29 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//if(Preferences.getPreferenceAMOLED(getContext())) setDarkAMOLED();
 		}
 		
+		@Override
+		public void onResume() {
+			//Calling the super method
+			super.onResume();
+			
+			//Updating the server URL
+			{
+				Preference preference = findPreference(getResources().getString(R.string.preference_server_serverdetails_key));
+				if(preference != null) updateServerURL(preference);
+			}
+			
+			//Updating the notification preference
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) updateMessageNotificationPreference(findPreference(getResources().getString(R.string.preference_messagenotifications_key)));
+		}
+		
+		@Override
+		public void onDestroyView() {
+			super.onDestroyView();
+			
+			//Cancelling task subscriptions
+			if(syncSubscription != null && !syncSubscription.isDisposed()) syncSubscription.dispose();
+		}
+		
 		void setDarkAMOLEDSamsung() {
 			//Configuring the list
 			RecyclerView list = getListView();
@@ -498,7 +515,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		}
 		
 		@Override
-		public void onRequestPermissionsResult(final int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+		public void onRequestPermissionsResult(final int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
 			//Checking if the request code is contacts access
 			if(requestCode == permissionRequestLocation) {
 				//Checking if the result is a success
@@ -574,26 +591,11 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			}
 		}
 		
-		@Override
-		public void onResume() {
-			//Calling the super method
-			super.onResume();
-			
-			//Updating the server URL
-			{
-				Preference preference = findPreference(getResources().getString(R.string.preference_server_serverdetails_key));
-				if(preference != null) updateServerURL(preference);
-			}
-			
-			//Updating the notification preference
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) updateMessageNotificationPreference(findPreference(getResources().getString(R.string.preference_messagenotifications_key)));
-		}
-		
 		@RequiresApi(api = Build.VERSION_CODES.O)
 		private void updateMessageNotificationPreference(Preference preference) {
 			//Getting the summary
 			String summary;
-			switch(((NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE)).getNotificationChannel(MainApplication.notificationChannelMessage).getImportance()) {
+			switch(((NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE)).getNotificationChannel(NotificationHelper.notificationChannelMessage).getImportance()) {
 				case 0:
 					summary = getResources().getString(R.string.notificationchannelimportance_0);
 					break;
@@ -643,7 +645,12 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		
 		private void updateServerURL(Preference preference) {
 			//Setting the summary
-			preference.setSummary(((MainApplication) getActivity().getApplication()).getConnectivitySharedPrefs().getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null));
+			try {
+				preference.setSummary(SharedPreferencesManager.getDirectConnectionAddress(getContext()));
+			} catch(GeneralSecurityException | IOException exception) {
+				exception.printStackTrace();
+				preference.setSummary(R.string.part_unknown);
+			}
 		}
 		
 		private class AdvancedSyncDialogManager {
@@ -739,12 +746,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					TextView labelMessages = view.findViewById(R.id.label_messages);
 					sliderDateAttachments = view.findViewById(R.id.slider_attachments);
 					TextView labelAttachments = view.findViewById(R.id.label_attachments);
-					sliderDateMessages.addOnChangeListener(new Slider.OnChangeListener() {
-						@Override
-						public void onValueChange(@NonNull Slider slider, float value, boolean fromUser) {
-						
-						}
-					});
+					
 					SliderListener sliderListenerMessages = new SliderListener(sliderDateMessages, sliderDateAttachments, true, labelMessages);
 					sliderDateMessages.addOnSliderTouchListener(sliderListenerMessages);
 					sliderDateMessages.addOnChangeListener(sliderListenerMessages);
@@ -757,7 +759,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			
 			private void updateSyncSizeLabel(TextView label, int progress) {
 				if(progress == advancedSyncSizes.length) label.setText(R.string.message_advancedsync_anysize);
-				else label.setText(getResources().getString(R.string.message_advancedsync_constraint_size, Constants.humanReadableByteCountInt(advancedSyncSizes[progress], false)));
+				else label.setText(getResources().getString(R.string.message_advancedsync_constraint_size, LanguageHelper.getHumanReadableByteCountInt(advancedSyncSizes[progress], false)));
 			}
 			
 			private void setAttachmentSpecsEnabled(boolean state, boolean animate) {
@@ -845,7 +847,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					else (filter.isChecked() ? attachmentFilterWhitelist : attachmentFilterBlacklist).addAll(Arrays.asList(filter.filers));
 				}
 				
-				new ConversationsBase.SyncMessagesTask(getActivity().getApplicationContext(), SettingsFragment.this.getView(), new MassRetrievalParams(restrictMessages, timeSinceMessages, downloadAttachments, restrictAttachments, timeSinceAttachments, restrictAttachmentSizes, attachmentSizeLimit, attachmentFilterWhitelist, attachmentFilterBlacklist, attachmentFilterDLOther)).execute();
+				requestSyncMessages(new MassRetrievalParams(restrictMessages, timeSinceMessages, downloadAttachments, restrictAttachments, timeSinceAttachments, restrictAttachmentSizes, attachmentSizeLimit, attachmentFilterWhitelist, attachmentFilterBlacklist, attachmentFilterDLOther));
 			}
 			
 			private class SliderListener implements Slider.OnChangeListener, Slider.OnSliderTouchListener {
@@ -1049,17 +1051,43 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		
 		private void resetConfiguration() {
 			//Setting the server as not confirmed
-			MainApplication.getInstance().getConnectivitySharedPrefs().edit()
-					.putBoolean(MainApplication.sharedPreferencesConnectivityKeyConnectServerConfirmed, false)
-					.apply();
+			SharedPreferencesManager.setConnectionConfigured(getContext(), false);
 			
-			//Disconnecting the connection
-			ConnectionService service = ConnectionService.getInstance();
-			if(service != null) service.shutDownService();
+			//Stopping the connection service
+			getContext().stopService(new Intent(getContext(), ConnectionService.class));
 			
 			//Opening the onboarding activity
 			startActivity(new Intent(getActivity(), Onboarding.class)
 				.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+		}
+		
+		private void requestSyncMessages(MassRetrievalParams params) {
+			//Clearing download tasks
+			ConnectionTaskManager.clearDownloads();
+			
+			//Deleting the messages
+			syncSubscription = MessagesDataHelper.deleteAMBMessages(getContext())
+					.toSingle(() -> {
+						//Requesting a re-sync
+						PluginConnectionService pluginCS = getPluginCS();
+						if(pluginCS.isServiceBound() && pluginCS.getConnectionManager().isConnected()) {
+							pluginCS.getConnectionManager().fetchMassConversationData(params).doOnError(error -> {
+								Log.i(TAG, "Failed to sync messages", error);
+							}).onErrorComplete().subscribe();
+							return true;
+						} else {
+							return false;
+						}
+					})
+					.subscribe(success -> {
+						//Displaying a snackbar
+						if(success) Snackbar.make(getView(), R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_SHORT).show();
+						else Snackbar.make(getView(), R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
+			});
+		}
+		
+		private PluginConnectionService getPluginCS() {
+			return ((Preferences) getActivity()).getPluginCS();
 		}
 		
 		/* @Override
@@ -1078,7 +1106,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	
 	public static Uri getNotificationSound(Context context) {
 		String selectedSound = PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.preference_messagenotifications_sound_key), null);
-		if(selectedSound == null) return Constants.defaultNotificationSound;
+		if(selectedSound == null) return Settings.System.DEFAULT_NOTIFICATION_URI;
 		else if(selectedSound.isEmpty()) return null;
 		else return Uri.parse(selectedSound);
 	}
@@ -1088,16 +1116,11 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	}
 	
 	public static boolean getPreferenceReplySuggestions(Context context) {
-		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_features_replysuggestions_key), false);
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_features_replysuggestions_key), true);
 	}
 	
 	public static boolean getPreferenceAdvancedColor(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_advancedcolor_key), false);
-	}
-	
-	public static boolean getPreferenceShowReadReceipts(Context context) {
-		return true;
-		//return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_showreadreceipts_key), true);
 	}
 	
 	public static boolean getPreferenceMessagePreviews(Context context) {
@@ -1106,6 +1129,10 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	
 	public static boolean getPreferenceMessageSounds(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_features_messagesounds_key), true);
+	}
+	
+	public static boolean getPreferenceAutoDownloadAttachments(Context context) {
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_storage_autodownload_key), true);
 	}
 	
 	public static boolean getPreferenceSMSDeliveryReports(Context context) {
@@ -1123,7 +1150,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	}
 	
 	public static boolean isTextMessageIntegrationActive(Context context) {
-		return Constants.isDefaultMessagingApp(context) &&
+		return MMSSMSHelper.isDefaultMessagingApp(context) &&
 			   context.checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED &&
 			   context.checkSelfPermission(Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
 			   context.checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
@@ -1137,8 +1164,8 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	}
 	
 	public static void updateConnectionServiceBootEnabled(Context context) {
-		int accountType = MainApplication.getInstance().getConnectivitySharedPrefs().getInt(MainApplication.sharedPreferencesConnectivityKeyAccountType, -1);
-		updateConnectionServiceBootEnabled(context, getPreferenceStartOnBoot(context) && accountType == Constants.connectivityAccountTypeDirect); //Don't start on boot if we're using Connect
+		int accountType = SharedPreferencesManager.getProxyType(context);
+		updateConnectionServiceBootEnabled(context, getPreferenceStartOnBoot(context) && accountType == ProxyType.direct); //Don't start on boot if we're using Connect
 	}
 	
 	public static void updateConnectionServiceBootEnabled(Context context, boolean enable) {

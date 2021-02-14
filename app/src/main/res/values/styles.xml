@@ -14,14 +14,15 @@
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorBackground">@color/colorBackground</item>
-		<item name="bottomSheetDialogTheme">@style/BottomSheetStyle</item>
+		<item name="bottomSheetDialogTheme">@style/BottomSheetDialogTheme</item>
 	</style>
+
 	<style name="Base.DayNight.NoActionBar" parent="@style/Theme.MaterialComponents.DayNight.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorBackground">@color/colorBackground</item>
-		<item name="bottomSheetDialogTheme">@style/BottomSheetStyle</item>
+		<item name="bottomSheetDialogTheme">@style/BottomSheetDialogTheme</item>
 	</style>
 	
 	<style name="Pass.DayNight" parent="@style/Base.DayNight" />
@@ -104,7 +105,7 @@
 		<item name="android:textColor">@android:color/primary_text_light</item>
 	</style>
 	
-	<style name="ActivityDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog"> <!-- @android:style/Theme.Material.Light.Dialog.NoActionBar -->
+	<style name="ActivityDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorPrimary</item>
@@ -152,26 +153,33 @@
 		<item name="cornerSize">16dp</item>
 	</style>
 
-	<style name="BottomSheetStyle" parent="@style/ThemeOverlay.MaterialComponents.BottomSheetDialog">
-		<item name="bottomSheetStyle">@style/BottomSheetRounded</item>
+	<style name="BottomSheetDialogTheme" parent="@style/ThemeOverlay.MaterialComponents.BottomSheetDialog">
+		<item name="android:windowIsFloating">false</item>
+		<item name="android:statusBarColor">@android:color/transparent</item>
+		<item name="android:navigationBarColor">@color/colorBackgroundClean</item>
+		<item name="android:colorBackground">@color/colorBackgroundClean</item>
+		<item name="bottomSheetStyle">@style/BottomSheetStyle</item>
 	</style>
 
-	<style name="BottomSheetRounded" parent="@style/Widget.Design.BottomSheet.Modal">
-		<!-- <item name="shapeAppearance">@style/ShapeAppearanceBottomSheet</item> -->
-		<!-- <item name="shapeAppearanceOverlay">@style/ShapeAppearanceBottomSheet</item> -->
-		<item name="android:background">@drawable/dialog_bottomsheet</item>
+	<style name="BottomSheetStyle" parent="Widget.MaterialComponents.BottomSheet">
+		<item name="shapeAppearanceOverlay">@style/ShapeAppearanceRoundedBottomSheet</item>
 	</style>
 
-	<style name="ShapeAppearanceBottomSheet" parent="">
+	<style name="ShapeAppearanceRoundedBottomSheet" parent="">
 		<item name="cornerFamily">rounded</item>
-		<item name="cornerSizeTopRight">16dp</item>
-		<item name="cornerSizeTopLeft">16dp</item>
+		<item name="cornerSizeTopRight">8dp</item>
+		<item name="cornerSizeTopLeft">8dp</item>
 		<item name="cornerSizeBottomRight">0dp</item>
 		<item name="cornerSizeBottomLeft">0dp</item>
 	</style>
 
-	<style name="CircleImageView" parent="">
-		<item name="cornerFamily">rounded</item>
+	<style name="ShapeAppearanceCircle" parent="">
+		<!-- <item name="cornerFamily">rounded</item> -->
 		<item name="cornerSize">50%</item>
+	</style>
+
+	<style name="ShapeAppearanceQueueTile" parent="">
+		<item name="cornerFamily">rounded</item>
+		<item name="cornerSize">4dp</item>
 	</style>
 </resources>

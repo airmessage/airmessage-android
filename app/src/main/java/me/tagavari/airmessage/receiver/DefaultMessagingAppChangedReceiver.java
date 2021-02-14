@@ -10,6 +10,7 @@ import androidx.annotation.RequiresApi;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Preferences;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.service.SystemMessageImportService;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
@@ -20,7 +21,7 @@ public class DefaultMessagingAppChangedReceiver extends BroadcastReceiver {
 		boolean isDefaultApp = intent.getBooleanExtra(Telephony.Sms.Intents.EXTRA_IS_DEFAULT_SMS_APP, false);
 		
 		//Getting if text message conversations are installed in the database
-		boolean conversationsInstalled = ((MainApplication) context.getApplicationContext()).getConnectivitySharedPrefs().getBoolean(MainApplication.sharedPreferencesConnectivityKeyTextMessageConversationsInstalled, false);
+		boolean conversationsInstalled = SharedPreferencesManager.getTextMessageConversationsInstalled(context);
 		
 		//Checking if this is the default app
 		if(isDefaultApp) {

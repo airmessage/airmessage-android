@@ -193,6 +193,8 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
+			android:paddingLeft="16dp"
+			android:paddingRight="16dp"
 			android:orientation="vertical"
 			android:visibility="gone">
 			<TextView
@@ -202,6 +204,7 @@
 				android:layout_marginLeft="10dp"
 				android:layout_marginRight="10dp"
 				android:text="@string/message_permissiondetails_contacts_suggestions"
+				android:textAlignment="center"
 				android:textColor="?android:attr/textColorSecondary" />
 			
 			<com.google.android.material.button.MaterialButton
@@ -220,10 +223,11 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
+			android:paddingLeft="16dp"
+			android:paddingRight="16dp"
 			android:gravity="center"
 			android:orientation="vertical"
 			android:visibility="gone">
-			
 			<TextView
 				android:id="@+id/group_error_label"
 				android:layout_width="wrap_content"

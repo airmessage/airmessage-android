@@ -1,14 +1,10 @@
 package me.tagavari.airmessage.fragment;
 
 import android.app.Dialog;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,52 +17,45 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.view.OnApplyWindowInsetsListener;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.preference.PreferenceManager;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
-import java.util.List;
-
-import me.tagavari.airmessage.MainApplication;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.activity.ConversationsBase;
 import me.tagavari.airmessage.connection.ConnectionManager;
+import me.tagavari.airmessage.connection.ConnectionTaskManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.messaging.ConversationInfo;
+import me.tagavari.airmessage.data.MessagesDataHelper;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.helper.ResourceHelper;
+import me.tagavari.airmessage.helper.WindowHelper;
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
+import me.tagavari.airmessage.redux.ReduxEventConnection;
 import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.util.Constants;
-import me.tagavari.airmessage.util.ConversationUtils;
 
 public class FragmentSync extends BottomSheetDialogFragment {
+	private static final String TAG = BottomSheetDialogFragment.class.getSimpleName();
+	
 	private static final String savedInstanceKeyServerName = "serverName";
 	private static final String savedInstanceKeyInstallationID = "installationID";
+	private static final String savedInstanceKeyDeleteMessages = "deleteMessages";
 	
-	private final BroadcastReceiver clientConnectionResultBroadcastReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			//Dismissing the dialog if the connection was lost
-			int state = intent.getIntExtra(Constants.intentParamState, -1);
-			if(state == ConnectionManager.stateDisconnected) {
-				dismiss();
-			}
-		}
-	};
+	private final CompositeDisposable compositeDisposable = new CompositeDisposable();
 	
 	private String serverName;
-	private String severInstallationID;
+	private String serverInstallationID;
+	private boolean deleteMessages;
 	
 	public FragmentSync() {
 	}
 	
-	public FragmentSync(String serverName, String severInstallationID) {
+	public FragmentSync(String serverName, String serverInstallationID, boolean deleteMessages) {
 		this.serverName = serverName;
-		this.severInstallationID = severInstallationID;
+		this.serverInstallationID = serverInstallationID;
+		this.deleteMessages = deleteMessages;
 	}
 	
 	@Override
@@ -76,7 +65,8 @@ public class FragmentSync extends BottomSheetDialogFragment {
 		//Restoring the parameters
 		if(savedInstanceState != null) {
 			serverName = savedInstanceState.getString(savedInstanceKeyServerName);
-			severInstallationID = savedInstanceState.getString(savedInstanceKeyInstallationID);
+			serverInstallationID = savedInstanceState.getString(savedInstanceKeyInstallationID);
+			deleteMessages = savedInstanceState.getBoolean(savedInstanceKeyDeleteMessages);
 		}
 	}
 	
@@ -94,22 +84,22 @@ public class FragmentSync extends BottomSheetDialogFragment {
 		//Setting the sync button click listener
 		view.findViewById(R.id.button_sync).setOnClickListener(this::syncMessages);
 		
-		//Updating the "delete messages" section
-		Button buttonDelete = view.findViewById(R.id.button_delete);
-		if(hasServerConversations()) {
+		//Updating the secondary action section
+		Button buttonSecondary = view.findViewById(R.id.button_secondary);
+		if(deleteMessages) {
 			//Showing the description
 			view.findViewById(R.id.label_delete).setVisibility(View.VISIBLE);
 			
 			//Setting the button to "delete messages"
-			buttonDelete.setText(R.string.action_deletemessages);
-			buttonDelete.setOnClickListener(this::deleteMessages);
+			buttonSecondary.setText(R.string.action_deletemessages);
+			buttonSecondary.setOnClickListener(this::deleteMessages);
 		} else {
 			//Hiding the description
 			view.findViewById(R.id.label_delete).setVisibility(View.GONE);
 			
 			//Setting the button text to "skip"
-			buttonDelete.setText(R.string.action_skip);
-			buttonDelete.setOnClickListener(this::skip);
+			buttonSecondary.setText(R.string.action_skip);
+			buttonSecondary.setOnClickListener(this::skip);
 		}
 		
 		//Adding bottom padding to compensate for system bars
@@ -161,15 +151,14 @@ public class FragmentSync extends BottomSheetDialogFragment {
 	public void onStart() {
 		super.onStart();
 		
-		//Adding the broadcast listeners
-		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(requireContext());
-		localBroadcastManager.registerReceiver(clientConnectionResultBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
+		//Subscribing to connection state updates
+		compositeDisposable.add(ReduxEmitterNetwork.getConnectionStateSubject().subscribe(this::onConnectionStateUpdate));
 		
 		//Configuring the header images
 		if(getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
 			requireActivity().getWindow().getDecorView().post(() -> {
 				//Getting the window height
-				float windowHeight = Constants.pxToDp(Constants.getWindowHeight(requireActivity()));
+				float windowHeight = ResourceHelper.pxToDp(WindowHelper.getWindowHeight(requireActivity()));
 				ImageView imageHeader = requireView().findViewById(R.id.image_header);
 				if(windowHeight < 577) {
 					//Short banner
@@ -194,9 +183,8 @@ public class FragmentSync extends BottomSheetDialogFragment {
 	public void onStop() {
 		super.onStop();
 		
-		//Removing the broadcast listeners
-		LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(requireContext());
-		localBroadcastManager.unregisterReceiver(clientConnectionResultBroadcastReceiver);
+		//Unsubscribing from updates
+		compositeDisposable.clear();
 	}
 	
 	@Override
@@ -204,32 +192,32 @@ public class FragmentSync extends BottomSheetDialogFragment {
 		super.onSaveInstanceState(outState);
 		
 		outState.putString(savedInstanceKeyServerName, serverName);
-		outState.putString(savedInstanceKeyInstallationID, severInstallationID);
+		outState.putString(savedInstanceKeyInstallationID, serverInstallationID);
+		outState.putBoolean(savedInstanceKeyDeleteMessages, deleteMessages);
 	}
 	
-	private boolean hasServerConversations() {
-		//Getting the conversations
-		List<ConversationInfo> conversations = ConversationUtils.getConversations();
-		
-		//Returning false if there are no conversations
-		if(conversations == null || conversations.isEmpty()) return false;
-		
-		//Returning true if any conversation relies on AM bridge
-		for(ConversationInfo conversation : conversations) {
-			if(conversation.getServiceHandler() == ConversationInfo.serviceHandlerAMBridge) {
-				return true;
-			}
-		}
-		
-		return false;
+	private void onConnectionStateUpdate(ReduxEventConnection event) {
+		//Dismissing the dialog if the connection was lost
+		if(event instanceof ReduxEventConnection.Disconnected) dismiss();
 	}
 	
 	private void syncMessages(View view) {
 		//Updating the saved installation ID
 		updateInstallationID();
 		
-		//Syncing the messages
-		new ConversationsBase.SyncMessagesTask(MainApplication.getInstance(), null, new MassRetrievalParams()).execute();
+		//Clearing download tasks
+		ConnectionTaskManager.clearDownloads();
+		
+		//Deleting the messages
+		MessagesDataHelper.deleteAMBMessages(getContext()).subscribeOn(Schedulers.single()).subscribe(() -> {
+			//Requesting a re-sync
+			ConnectionManager connectionManager = ConnectionService.getConnectionManager();
+			if(connectionManager != null) {
+				connectionManager.fetchMassConversationData(new MassRetrievalParams())
+						.doOnError(error -> Log.i(TAG, "Failed to sync messages", error))
+						.onErrorComplete().subscribe();
+			}
+		});
 		
 		//Closing the dialog
 		dismiss();
@@ -239,8 +227,11 @@ public class FragmentSync extends BottomSheetDialogFragment {
 		//Updating the saved installation ID
 		updateInstallationID();
 		
+		//Clearing download tasks
+		ConnectionTaskManager.clearDownloads();
+		
 		//Deleting the messages
-		new ConversationsBase.DeleteAMMessagesTask(MainApplication.getInstance()).execute();
+		MessagesDataHelper.deleteAMBMessages(getContext()).subscribeOn(Schedulers.single()).subscribe();
 		
 		//Closing the dialog
 		dismiss();
@@ -256,14 +247,12 @@ public class FragmentSync extends BottomSheetDialogFragment {
 	
 	private void updateInstallationID() {
 		//Writing the new installation ID
-		if(severInstallationID != null) {
-			MainApplication.getInstance().getConnectivitySharedPrefs().edit()
-					.putString(MainApplication.sharedPreferencesConnectivityKeyLastSyncInstallationID, severInstallationID)
-					.apply();
+		if(serverInstallationID != null) {
+			SharedPreferencesManager.setLastSyncInstallationID(getContext(), serverInstallationID);
 		}
 		
 		//Clearing the state
 		ConnectionManager connectionManager = ConnectionService.getConnectionManager();
-		if(connectionManager != null) connectionManager.clearServerSyncNeeded();
+		if(connectionManager != null) connectionManager.clearPendingSync();
 	}
 }

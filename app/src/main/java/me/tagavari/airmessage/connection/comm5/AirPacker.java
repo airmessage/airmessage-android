@@ -64,8 +64,12 @@ public class AirPacker implements AutoCloseable {
 	}
 	
 	public void packPayload(byte[] bytes) throws BufferOverflowException {
-		packInt(bytes.length);
-		byteBuffer.put(bytes);
+		packPayload(bytes, bytes.length);
+	}
+	
+	public void packPayload(byte[] bytes, int length) throws BufferOverflowException {
+		packInt(length);
+		byteBuffer.put(bytes, 0, length);
 	}
 	
 	public void packNullablePayload(byte[] bytes) throws BufferOverflowException {

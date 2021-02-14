@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
+import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper;
 import me.tagavari.airmessage.service.ConnectionService;
 
 public class StartBootReceiver extends BroadcastReceiver {
@@ -14,8 +15,6 @@ public class StartBootReceiver extends BroadcastReceiver {
 		if(!Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) return;
 		
 		//Starting the service
-		Intent serviceIntent = new Intent(context, ConnectionService.class);
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(serviceIntent);
-		else context.startService(serviceIntent);
+		ConnectionServiceLaunchHelper.launchPersistent(context);
 	}
 }

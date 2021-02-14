@@ -1,17 +1,20 @@
 package me.tagavari.airmessage.connection.request;
 
-import me.tagavari.airmessage.messaging.DraftFile;
+import me.tagavari.airmessage.messaging.FileDraft;
 
+/**
+ * Represents a request to delete a draft file
+ */
 public class FileRemovalRequest extends FileProcessingRequest {
-	private final DraftFile draftFile;
+	private final FileDraft draftFile;
 	private final long updateTime;
 	
-	public FileRemovalRequest(DraftFile draftFile, long updateTime) {
+	public FileRemovalRequest(FileDraft draftFile, long updateTime) {
 		this.draftFile = draftFile;
 		this.updateTime = updateTime;
 	}
 	
-	public DraftFile getDraftFile() {
+	public FileDraft getDraftFile() {
 		return draftFile;
 	}
 	

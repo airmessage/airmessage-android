@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string name="define_license_freebsd" translatable="false" />
+	<string name="license_freebsd_licenseName" translatable="false">FreeBSD License</string>
+	<string name="license_freebsd_licenseWebsite" translatable="false">https://www.freebsd.org/copyright/freebsd-license.html</string>
+	<string name="license_freebsd_licenseDescription" translatable="false">raw:license_freebsd</string>
+
+	<string name="define_license_bouncycastle" translatable="false" />
+	<string name="license_bouncycastle_licenseName" translatable="false">Bouncy Castle Licence</string>
+	<string name="license_bouncycastle_licenseWebsite" translatable="false">https://www.bouncycastle.org/licence.html</string>
+	<string name="license_bouncycastle_licenseDescription" translatable="false">raw:license_bouncycastle</string>
+</resources>

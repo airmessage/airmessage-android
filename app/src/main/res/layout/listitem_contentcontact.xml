@@ -24,7 +24,7 @@
 
 		<!-- Profile picture -->
 		<com.google.android.material.imageview.ShapeableImageView
-			app:shapeAppearanceOverlay="@style/CircleImageView"
+			app:shapeAppearanceOverlay="@style/ShapeAppearanceCircle"
 			android:id="@+id/image_profile"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent" />

@@ -19,8 +19,10 @@
 	<string name="progress_sync">Obtention des messages&#8230;</string>
 	<string name="message_loaderror_messages">Échec de chargement des messages</string>
 	<string name="message_loaderror_contacts">Échec de chargement des contacts</string>
-	<string name="message_blankstate_conversations">Lorsque vous commencez une conversation, elle s\'affiche ici</string>
-	<string name="message_blankstate_conversations_archived">Les conversations archivées s\'affichent ici</string>
+	<string name="message_blankstate_conversations">Aucune conversation</string>
+	<string name="message_blankstate_conversations_description">Lorsque vous commencez une conversation, elle s\'affiche ici</string>
+	<string name="message_blankstate_conversations_archived">Aucune conversation archivée</string>
+	<string name="message_blankstate_conversations_archived_description">Les conversations archivées s\'affichent ici</string>
 	<string name="message_blankstate_conversations_basic">Aucune conversation</string>
 	<string name="time_today">Aujourd\'hui</string>
 	<string name="time_yesterday">Hier</string>
@@ -119,7 +121,7 @@
 	<string name="action_deletemessages">Supprimer les messages</string>
 	<string name="message_setup_sync_warning_title">Passer la suppression des messages?</string>
 	<string name="message_setup_sync_description">Utilisez cet option uniquement si vous vous connectez au même ordinateur et au même compte Apple que celui utilisé auparavant.\n\nSi vous conservez vos anciennes conversations, elles risquent de mélanger avec vos nouvelles conversations ou de perdre des fonctionnalités.</string>
-	<string name="message_syncerror">Échec de téléchargement des messages</string>
+	<string name="message_syncerror">Échec de téléchargement des messages (code d\'erreur %d)</string>
 	
 	<string name="imperative_recording_cancel">Glissez pour annuler</string>
 	<string name="imperative_recording_instructions">Tapez et maintenez pour enregistrer</string>
@@ -472,7 +474,9 @@
 	<string name="title_conversation_name">Nom du groupe</string>
 	<string name="action_renamegroup">Renommer ce groupe</string>
 	<string name="part_invalidaddress">Adresse invalide</string>
-	<string name="part_manualconfigurationstatus">Configuration manuelle en cours</string>
+
+	<string name="message_manualconfigurationstatus">Configuration manuelle en cours</string>
+	<string name="message_temporarymodestatus">Vérification de nouveaux messages</string>
 
 	<plurals name="message_newmessages">
 		<item quantity="one">%d nouveaux messages</item>
@@ -499,5 +503,10 @@
 	<string name="message_reset_direct">Utiliser un compte pour accéder à AirMessage?</string>
 	<string name="message_reset_connect">Vous déconnecter d\'AirMessage?</string>
 	<string name="preference_about_licenses_title">Licenses open source</string>
+	<string name="screen_licenses">Licenses open source</string>
 	<string name="preferencegroup_about_title">Informations sur l\'application</string>
+	<string name="message_loaderror_location">Échec du chargement de votre position</string>
+	<string name="message_securityupdate">AirMessage ne peut pas vérifier les mises à jour de sécurité</string>
+	<string name="label_videoplayback">Lire la vidéo</string>
+	<string name="action_resolve">Résoudre</string>
 </resources>

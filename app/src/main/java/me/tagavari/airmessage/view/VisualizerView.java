@@ -13,8 +13,8 @@ import android.view.View;
 import java.util.ArrayList;
 import java.util.List;
 
-import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.helper.ResourceHelper;
 
 public class VisualizerView extends View {
 	//Creating the reference values
@@ -57,8 +57,8 @@ public class VisualizerView extends View {
 		int paintColor;
 		try {
 			paintColor = attributes.getColor(R.styleable.VisualizerView_renderColor, Color.WHITE);
-			lineWidth = attributes.getDimensionPixelSize(R.styleable.VisualizerView_lineWidth, Constants.dpToPx(1));
-			lineSpacing = attributes.getDimensionPixelSize(R.styleable.VisualizerView_lineSpacing, Constants.dpToPx(1));
+			lineWidth = attributes.getDimensionPixelSize(R.styleable.VisualizerView_lineWidth, ResourceHelper.dpToPx(1));
+			lineSpacing = attributes.getDimensionPixelSize(R.styleable.VisualizerView_lineSpacing, ResourceHelper.dpToPx(1));
 		} finally {
 			attributes.recycle();
 		}

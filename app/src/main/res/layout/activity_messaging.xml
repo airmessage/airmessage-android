@@ -212,7 +212,7 @@
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:src="@drawable/add_rounded"
-					android:tint="?attr/colorOnPrimary"
+					app:tint="?attr/colorOnPrimary"
 					android:layout_gravity="center" />
 			</FrameLayout>
 
@@ -246,6 +246,7 @@
 					app:layout_constraintRight_toRightOf="parent"
 					app:layout_constraintBottom_toTopOf="@id/messagebox"
 					app:layout_constraintTop_toTopOf="parent"
+					app:layoutManager="me.tagavari.airmessage.activity.Messaging$SpeedyLinearLayoutManager"
 					android:clipChildren="true"
 					android:clipToPadding="true"
 					android:theme="@style/OverscrollNeutralizer"
@@ -294,11 +295,10 @@
 			android:visibility="gone"
 			android:orientation="vertical">
 			<View style="@style/Divider" />
-			<ViewStub
-				android:id="@+id/viewstub_attachments"
+			<FrameLayout
+				android:id="@+id/fragmentcontainer_attachments"
 				android:layout_width="match_parent"
 				android:layout_height="0px"
-				android:layout="@layout/pane_attachments"
 				android:layout_weight="1" />
 			<View style="@style/Divider" />
 		</LinearLayout>
@@ -400,22 +400,6 @@
 		android:visibility="gone"
 		android:alpha="0.97" />
 
-	<!-- Scrim -->
-	<View
-		android:id="@+id/scrim"
-		android:layout_width="0px"
-		android:layout_height="0px"
-		android:background="#52000000"
-		android:clickable="true"
-		android:soundEffectsEnabled="false"
-		android:visibility="gone"
-		android:alpha="0"
-		android:elevation="16dp"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toTopOf="parent" />
-
 	<!-- Info page -->
 	<me.tagavari.airmessage.view.RoundedFrameLayout
 		android:id="@+id/panel_messaginginfo"
@@ -433,6 +417,6 @@
 			android:id="@+id/viewstub_messaginginfo"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
-			android:layout="@layout/pane_messaginginfo" />
+			android:layout="@layout/fragment_messagingdetails" />
 	</me.tagavari.airmessage.view.RoundedFrameLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

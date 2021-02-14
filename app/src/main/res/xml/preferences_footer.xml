@@ -13,7 +13,7 @@
 			<intent
 				android:action="android.intent.action.VIEW"
 				android:targetPackage="@string/applicationId"
-				android:targetClass="com.google.android.gms.oss.licenses.OssLicensesMenuActivity" />
+				android:targetClass="me.tagavari.airmessage.activity.Licenses" />
 		</androidx.preference.Preference>
 	</androidx.preference.PreferenceCategory>
 </androidx.preference.PreferenceScreen>

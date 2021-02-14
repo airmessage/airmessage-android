@@ -6,6 +6,8 @@
     <color name="colorAccent">@color/colorPrimary</color>
 	<color name="colorAccentDark">@color/colorPrimaryDark</color>
 
+	<color name="colorSelectionOverlay">#26448AFF</color>
+
 	<color name="colorWarning">#FF6D00</color>
 	<color name="colorSuccess">#00c853</color>
 
