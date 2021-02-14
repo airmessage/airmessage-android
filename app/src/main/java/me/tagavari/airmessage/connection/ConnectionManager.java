@@ -117,7 +117,8 @@ public class ConnectionManager {
 	private final BroadcastReceiver pingBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			testConnection();
+			if(isConnected()) testConnection();
+			else pingExpiryRunnable.run();
 		}
 	};
 	private final BroadcastReceiver passiveReconnectBroadcastReceiver = new BroadcastReceiver() {
