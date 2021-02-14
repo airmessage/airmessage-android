@@ -905,7 +905,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	 */
 	private void updateMessageList(ReduxEventMessaging event) {
 		//Ignoring the event if we aren't loaded yet
-		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return;
+		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady || messageListAdapter == null) return;
 		
 		if(event instanceof ReduxEventMessaging.Message) {
 			ReduxEventMessaging.Message messageEvent = (ReduxEventMessaging.Message) event;
@@ -1815,7 +1815,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void rebuildContactViews() {
 		//Returning if the messages are not ready
-		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return;
+		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady || messageListAdapter == null) return;
 		
 		//Updating the title
 		if(viewModel.conversationInfo.getTitle() == null) viewModel.updateConversationTitle();
