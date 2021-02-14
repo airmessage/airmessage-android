@@ -2,13 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:tools="http://schemas.android.com/tools"
 	package="me.tagavari.airmessage">
-	
+
 	<!-- Normal permissions -->
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-	
+
 	<!-- Dangerous permissions -->
 	<uses-permission android:name="android.permission.RECORD_AUDIO" />
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -31,6 +31,17 @@
 	<!-- Features -->
 	<uses-feature android:name="android.hardware.telephony" android:required="false" />
 
+	<!-- Activity queries -->
+	<queries>
+		<!-- Camera -->
+		<intent>
+			<action android:name="android.media.action.IMAGE_CAPTURE" />
+		</intent>
+		<intent>
+			<action android:name="android.media.action.VIDEO_CAPTURE" />
+		</intent>
+	</queries>
+
 	<application
 		android:allowBackup="true"
 		android:fullBackupContent="@xml/backup_rules"
@@ -44,7 +55,6 @@
 		<!-- Conversation list -->
 		<activity
 			android:label="@string/app_name"
-			android:launchMode="singleTop"
 			android:name=".activity.Conversations"
 			android:theme="@style/DayNight.NoActionBar.Protected"
 			android:windowSoftInputMode="adjustResize">
@@ -52,7 +62,7 @@
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
-			
+
 			<meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
@@ -62,7 +72,9 @@
 			android:name=".activity.Messaging"
 			android:parentActivityName=".activity.Conversations"
 			android:theme="@style/DayNight.NoActionBar"
-			android:windowSoftInputMode="adjustResize">
+			android:windowSoftInputMode="adjustResize"
+			android:allowEmbedded="true"
+			android:resizeableActivity="true">
 			<!-- Direct MMS / SMS message handling -->
 			<intent-filter>
 				<category android:name="android.intent.category.DEFAULT" />
@@ -102,7 +114,7 @@
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.NOTIFICATION_PREFERENCES" />
 			</intent-filter>
-			
+
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
@@ -111,18 +123,20 @@
 			android:exported="false"
 			android:name=".ImageDraw"
 			android:theme="@style/AppTheme.ImageDraw" /> -->
-		<!-- Server setup -->
+
+		<!-- Onboarding -->
 		<activity
 			android:exported="false"
-			android:name=".activity.ServerSetup"
-			android:theme="@style/AppTheme.Setup">
-			<!--
-            <intent-filter>
-				<action android:name="me.tagavari.airmessage.activity.ServerSetup" />
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
-            -->
-			
+			android:name=".activity.Onboarding"
+			android:theme="@style/AppTheme.Onboarding">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
+		<!-- Server configuration -->
+		<activity
+			android:exported="false"
+			android:name=".activity.ServerConfigStandalone"
+			android:theme="@style/AppTheme.Onboarding">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
@@ -171,6 +185,15 @@
 			</intent-filter>
 		</activity>
 
+		<!-- Open source licenses -->
+		<activity
+			android:exported="false"
+			android:name=".activity.Licenses"
+			android:label="@string/screen_licenses"
+			android:theme="@style/DayNight.NoActionBar">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
 		<!-- Crash report -->
 		<activity
 			android:exported="false"
@@ -184,44 +207,44 @@
 		<receiver
 			android:enabled="true"
 			android:exported="false"
-			android:name=".util.NotificationUtils$NotificationBroadcastReceiver" />
+			android:name=".receiver.MessageNotificationActionReceiver" />
 
 		<!-- Message notification deletion receiver (for updating the status notification) -->
 		<receiver
 			android:enabled="true"
 			android:exported="false"
-			android:name=".util.NotificationUtils$MessageNotificationDeleteReceiver" />
+			android:name=".receiver.MessageNotificationDeleteReceiver" />
 
 		<!-- Server connection manager service -->
 		<service
-			android:description="@string/servicedesc_connectionservice"
+			android:name=".service.ConnectionService"
 			android:exported="false"
-			android:name=".service.ConnectionService" />
+			android:description="@string/servicedesc_connectionservice" />
 
-		<!-- Server connection manager service -->
+		<!-- Text message import service -->
 		<service
-			android:description="@string/servicedesc_systemmessageimport"
+			android:name=".service.SystemMessageImportService"
 			android:exported="false"
-			android:name=".service.SystemMessageImportService" />
+			android:description="@string/servicedesc_systemmessageimport" />
 
 		<!-- File export service -->
 		<service
-			android:description="@string/servicedesc_fileexportservice"
+			android:name=".service.FileExportService"
 			android:exported="false"
-			android:name=".service.FileExportService" />
+			android:description="@string/servicedesc_fileexportservice" />
 
 		<!-- File-URI export service -->
 		<service
-			android:description="@string/servicedesc_fileexportservice"
+			android:name=".service.UriExportService"
 			android:exported="false"
-			android:name=".service.UriExportService" />
+			android:description="@string/servicedesc_fileexportservice" />
 
 		<!-- File provider -->
 		<provider
-			android:authorities="${applicationId}.fileprovider"
+			android:name="androidx.core.content.FileProvider"
 			android:exported="false"
-			android:grantUriPermissions="true"
-			android:name="androidx.core.content.FileProvider">
+			android:authorities="${applicationId}.fileprovider"
+			android:grantUriPermissions="true">
 			<meta-data
 				android:name="android.support.FILE_PROVIDER_PATHS"
 				android:resource="@xml/provider_paths" />
@@ -229,9 +252,9 @@
 
 		<!-- Start service on boot -->
 		<receiver
-			android:enabled="true"
+			android:name=".receiver.StartBootReceiver"
 			android:exported="false"
-			android:name=".receiver.StartBootReceiver">
+			android:enabled="false">
 			<intent-filter>
 				<action android:name="android.intent.action.BOOT_COMPLETED" />
 			</intent-filter>
@@ -308,6 +331,15 @@
 			</intent-filter>
 		</receiver>
 
+		<!-- FCM listener service -->
+		<service
+			android:name=".service.FCMService"
+			android:exported="false">
+			<intent-filter>
+				<action android:name="com.google.firebase.MESSAGING_EVENT" />
+			</intent-filter>
+		</service>
+
 		<!-- Disables automatic Crashlytics initialization -->
 		<meta-data
 			android:name="firebase_crashlytics_collection_enabled"
@@ -316,7 +348,7 @@
 		<!-- Google Maps API -->
 		<meta-data
 			android:name="com.google.android.geo.API_KEY"
-			android:value="AIzaSyCuqxy6XwkYtc1H3s-vealUkfyUBxSb45w" />
+			android:value="AIzaSyBokl_A-bqfpChMhBFbh6YTCrPgS-DuIso" />
 
 		<!-- Android Auto integration -->
 		<meta-data

@@ -5,9 +5,10 @@ https://stackoverflow.com/questions/36320781/android-custom-popup-menu-with-swit
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:baselineAligned="false"
 	android:background="?android:attr/colorBackgroundFloating"
-	android:orientation="horizontal" >
+	android:orientation="horizontal">
 	<!-- Conversation Icon -->
 	<RelativeLayout
 		android:layout_width="@dimen/profile_size"
@@ -15,18 +16,19 @@ https://stackoverflow.com/questions/36320781/android-custom-popup-menu-with-swit
 		android:layout_gravity="center"
 		android:layout_marginLeft="16dp"
 		android:layout_marginRight="16dp">
-		
 		<ImageView
 			android:id="@+id/profile_default"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:src="@drawable/user" />
 		
-		<de.hdodenhof.circleimageview.CircleImageView
+		<com.google.android.material.imageview.ShapeableImageView
 			android:id="@+id/profile_image"
 			android:layout_width="match_parent"
-			android:layout_height="match_parent" />
+			android:layout_height="match_parent"
+			app:shapeAppearanceOverlay="@style/ShapeAppearanceCircle" />
 	</RelativeLayout>
+
 	<!-- Sender and email address -->
 	<LinearLayout
 		android:layout_width="0dp"
@@ -35,7 +37,6 @@ https://stackoverflow.com/questions/36320781/android-custom-popup-menu-with-swit
 		android:layout_marginEnd="16dp"
 		android:layout_weight="1"
 		android:orientation="vertical">
-		
 		<TextView
 			android:id="@+id/label_member"
 			android:layout_width="wrap_content"

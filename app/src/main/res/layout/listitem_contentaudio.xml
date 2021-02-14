@@ -36,7 +36,7 @@
 		android:theme="@style/Theme.AppCompat.Light"
 		android:layout_width="80dp"
 		android:layout_height="5dp"
-		android:width="0dip"
+		android:width="0dp"
 		android:layout_marginStart="8dp"
 		android:indeterminate="false"
 		android:max="100"

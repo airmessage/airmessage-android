@@ -13,4 +13,9 @@
 			android:targetClass="me.tagavari.airmessage.activity.NewMessage" />
 		<categories android:name="android.shortcut.conversation" />
 	</shortcut>
+
+	<share-target android:targetClass="me.tagavari.airmessage.activity.ShareHandler">
+		<data android:mimeType="*/*" />
+		<category android:name="me.tagavari.airmessage.directshare.category.DEFAULT" />
+	</share-target>
 </shortcuts>

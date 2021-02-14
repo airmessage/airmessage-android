@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
+	tools:context=".activity.ShareHandler"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:maxWidth="280dp"
-	android:orientation="vertical"
-	tools:context=".activity.ShareHandler">
-	
+	android:orientation="vertical">
+	<!-- Header -->
 	<TextView
 		android:layout_width="match_parent"
 		android:layout_height="64dp"
@@ -22,22 +23,14 @@
 		android:textSize="20sp" />
 
 	<View style="@style/Divider" />
-	
+
+	<!-- Content view -->
 	<RelativeLayout
 		android:layout_width="match_parent"
 		android:layout_height="0dp"
 		android:layout_weight="1"
 		android:minHeight="50dp">
 		<!-- List view -->
-		<!-- <ListView
-			android:id="@+id/list"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:divider="@null"
-			android:dividerHeight="0dp"
-			android:minHeight="100dp"
-			android:theme="@style/OverscrollNeutralizer"
-			android:visibility="gone" /> -->
 		<androidx.recyclerview.widget.RecyclerView
 			android:id="@+id/list"
 			android:layout_width="match_parent"
@@ -48,6 +41,7 @@
 			android:theme="@style/OverscrollNeutralizer"
 			android:visibility="gone"
 			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
 		<!-- Loading text -->
 		<TextView
 			android:id="@+id/loading_text"
@@ -58,16 +52,17 @@
 			android:textAlignment="center"
 			android:textColor="?android:attr/textColorSecondary"
 			android:visibility="gone" />
+
 		<!-- No conversations text -->
 		<TextView
 			android:id="@+id/no_conversations"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
-			android:alpha="0"
 			android:text="@string/message_blankstate_conversations_basic"
 			android:textAlignment="center"
 			android:visibility="gone" />
+
 		<!-- Sync view -->
 		<LinearLayout
 			android:id="@+id/syncview"
@@ -76,14 +71,6 @@
 			android:layout_centerInParent="true"
 			android:orientation="vertical"
 			android:visibility="gone">
-			<!-- <ImageView
-				android:id="@+id/syncview_icon"
-				android:layout_width="96dp"
-				android:layout_height="96dp"
-				android:layout_gravity="center"
-				android:scaleType="fitXY"
-				android:src="@drawable/sync"
-				android:tint="?android:attr/textColorSecondary" /> -->
 			<TextView
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
@@ -101,6 +88,7 @@
 				android:progressBackgroundTint="@color/colorPrimary"
 				android:progressTint="@color/colorPrimary" />
 		</LinearLayout>
+
 		<!-- Error view -->
 		<LinearLayout
 			android:id="@+id/errorview"
@@ -109,62 +97,33 @@
 			android:layout_centerInParent="true"
 			android:orientation="vertical"
 			android:visibility="gone">
-			
 			<TextView
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
 				android:text="@string/message_loaderror_messages"
-				android:tint="?android:attr/textColorSecondary" />
+				android:tint="?android:attr/textColorSecondary"
+				android:layout_marginBottom="8dp" />
 			
 			<com.google.android.material.button.MaterialButton
+				android:id="@+id/button_retry"
 				style="@style/Widget.MaterialComponents.Button.TextButton"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center"
 				android:text="@string/action_retry" />
 		</LinearLayout>
-		<!-- Connection view -->
-		<!-- <LinearLayout
-			android:id="@+id/serverwarning"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_centerInParent="true"
-			android:orientation="vertical"
-			android:visibility="gone">
-			
-			<TextView
-				android:id="@+id/serverwarning_message"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center"
-				android:layout_marginBottom="12dp"
-				android:layout_marginLeft="16dp"
-				android:layout_marginRight="16dp"
-				android:layout_marginTop="12dp"
-				android:text="@string/message_serverstatus_noconnection"
-				android:textAlignment="center"
-				android:textColor="?android:attr/textColorSecondary" />
-			
-			<com.google.android.material.button.MaterialButton
-				android:id="@+id/serverwarning_button"
-				style="@style/Widget.MaterialComponents.Button.TextButton"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center"
-				android:text="@string/action_retry" />
-		</LinearLayout> -->
 	</RelativeLayout>
 
 	<View style="@style/Divider" />
-	
+
+	<!-- Button bar -->
 	<LinearLayout
 		android:layout_width="wrap_content"
 		android:layout_height="52dp"
 		android:layout_gravity="end"
 		android:orientation="horizontal"
 		android:padding="8dp">
-		
 		<com.google.android.material.button.MaterialButton
 			style="@style/Widget.MaterialComponents.Button.TextButton"
 			android:layout_width="wrap_content"

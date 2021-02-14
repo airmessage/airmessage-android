@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.preference.PreferenceScreen
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto">
+	<androidx.preference.PreferenceCategory
+		android:key="@string/preferencegroup_server_key"
+		android:title="@string/preferencegroup_server_title"
+		app:iconSpaceReserved="false">
+		<androidx.preference.Preference
+			android:key="@string/preference_server_serverdetails_key"
+			android:title="@string/preference_server_serverdetails_title"
+			app:iconSpaceReserved="false">
+			<intent
+				android:action="android.intent.action.VIEW"
+				android:targetPackage="@string/applicationId"
+				android:targetClass="me.tagavari.airmessage.activity.ServerConfigStandalone" />
+		</androidx.preference.Preference>
+
+		<!-- <androidx.preference.SwitchPreference
+			android:key="@string/preference_server_foregroundservice_key"
+			android:title="@string/preference_server_foregroundservice_title"
+			android:summary="@string/preference_server_foregroundservice_description"
+			android:defaultValue="true" /> -->
+		<me.tagavari.airmessage.view.MultiLineSwitchPreference
+			android:defaultValue="true"
+			android:key="@string/preference_server_connectionboot_key"
+			android:title="@string/preference_server_connectionboot_title"
+			app:iconSpaceReserved="false" />
+		<!-- <androidx.preference.SwitchPreference
+			android:key="@string/preference_server_disconnectionnotification_key"
+			android:title="@string/preference_server_disconnectionnotification_title"
+			android:summary="@string/preference_server_disconnectionnotification_description"
+			android:defaultValue="true" /> -->
+		<!-- <androidx.preference.SwitchPreference
+			android:defaultValue="true"
+			android:key="@string/preference_server_dropreconnect_key"
+			android:summary="@string/preference_server_dropreconnect_description"
+			android:title="@string/preference_server_dropreconnect_title" />
+		<androidx.preference.SwitchPreference
+			android:defaultValue="true"
+			android:key="@string/preference_server_networkreconnect_key"
+			android:summary="@string/preference_server_networkreconnect_description"
+			android:title="@string/preference_server_networkreconnect_title" /> -->
+		<androidx.preference.Preference
+			android:key="@string/preference_server_reset_key"
+			android:title="@string/preference_server_reset_title"
+			app:iconSpaceReserved="false" />
+	</androidx.preference.PreferenceCategory>
+</androidx.preference.PreferenceScreen>

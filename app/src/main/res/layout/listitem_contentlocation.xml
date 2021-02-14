@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<com.google.android.material.card.MaterialCardView
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:id="@+id/content"
 	android:layout_width="match_parent"
 	android:layout_height="wrap_content"
-	android:focusable="true"
-	android:clickable="true"
-	android:foreground="?android:attr/selectableItemBackground">
+	app:cardElevation="0dp"
+	app:cardUseCompatPadding="false">
 	<!-- Content -->
 	<LinearLayout
 		android:layout_width="match_parent"
@@ -15,9 +14,11 @@
 		android:orientation="vertical">
 		<!-- Image preview -->
 		<me.tagavari.airmessage.view.RoundedFrameLayout
-			android:id="@+id/frame_header"
+			android:id="@+id/map_container"
 			android:layout_width="match_parent"
-			android:layout_height="128dp">
+			android:layout_height="128dp"
+			app:cardElevation="0dp"
+			app:cardUseCompatPadding="false">
 			<com.google.android.gms.maps.MapView
 				android:id="@+id/map_header"
 				android:layout_width="match_parent"
@@ -75,4 +76,4 @@
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
 		android:background="@drawable/rectangle_chatpreviewfull" />
-</FrameLayout>
+</com.google.android.material.card.MaterialCardView>

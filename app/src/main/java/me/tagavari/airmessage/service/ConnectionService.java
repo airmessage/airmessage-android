@@ -1,504 +1,325 @@
 package me.tagavari.airmessage.service;
 
-import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.os.Build;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.SystemClock;
+import android.os.Looper;
 
-import androidx.core.app.NotificationCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.annotation.Nullable;
 
-import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Timer;
 
-import me.tagavari.airmessage.BuildConfig;
-import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.activity.Conversations;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.subjects.CompletableSubject;
 import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.connection.exception.AMRequestException;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.ConnectionState;
+import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.helper.NotificationHelper;
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
+import me.tagavari.airmessage.util.ConversationTarget;
 
 public class ConnectionService extends Service {
 	//Creating the constants
-	public static final long keepAliveMillis = 10 * 60 * 1000; //30 * 60 * 1000; //10 minutes
-	public static final long keepAliveWindowMillis = 5 * 60 * 1000; //5 minutes
-	public static final long[] dropReconnectDelayMillis = {1000, 5 * 1000, 10 * 1000, 30 * 1000}; //1 second, 5 seconds, 10 seconds, 30 seconds
-	public static final long passiveReconnectFrequencyMillis = 20 * 60 * 1000; //20 minutes
-	public static final long passiveReconnectWindowMillis = 5 * 60 * 1000; //5 minutes
-	
 	public static final String selfIntentActionConnect = "connect";
 	public static final String selfIntentActionDisconnect = "disconnect";
 	public static final String selfIntentActionStop = "stop";
 	
-	private static final String BCPingTimer = "me.tagavari.airmessage.connection.ConnectionService-StartPing";
-	private static final String BCReconnectTimer = "me.tagavari.airmessage.connection.ConnectionService-StartReconnect";
+	public static final String selfIntentExtraConfig = "configuration_mode";
+	public static final String selfIntentExtraTemporary = "temporary_mode";
+	public static final String selfIntentExtraForeground = "foreground";
 	
-	private static final int notificationID = MainApplication.notificationIDConnectionService;
-	private static final int notificationAlertID = MainApplication.notificationIDConnectionServiceAlert;
+	private static final long temporaryModeExpiry = 10 * 1000; //10 seconds
 	
-	//Creating the access values
-	private static WeakReference<ConnectionService> serviceReference = null;
+	private static final List<PendingMessage> pendingMessageList = new ArrayList<>();
 	
-	//Creating the intent values
-	private PendingIntent pingPendingIntent;
-	private PendingIntent reconnectPendingIntent;
+	//Creating the instance value
+	private static ConnectionService instanceReference = null;
 	
-	//Drop reconnect values
-	private int dropReconnectIndex = 0;
-	private boolean dropReconnectRunning = false;
-	private Handler handler;
+	//Creating the binder
+	private final IBinder binder = new ConnectionBinder();
 	
-	//private final List<FileUploadRequest> fileUploadRequestQueue = new ArrayList<>();
-	//private Thread fileUploadRequestThread = null;
+	//Creating the state values
+	private boolean isBound = false;
+	private boolean isForeground;
+	private boolean configurationMode = false;
+	private boolean temporaryMode = false;
+	private Runnable temporaryModeRunnable = this::stopSelf;
 	
-	//Creating the broadcast receivers
-	private final BroadcastReceiver pingBroadcastReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			//Ignoring if there is no connection
-			if(connectionManager.getCurrentState() != ConnectionManager.stateConnected) return;
-			
-			//Pinging the server
-			connectionManager.getCurrentCommunicationsManager().sendPing();
-			
-			//Rescheduling the ping
-			schedulePing();
-		}
-	};
-	private final Runnable connectRunnable = new Runnable() {
-		@Override
-		public void run() {
-			dropReconnectRunning = false;
-			
-			//Returning if the service isn't running
-			if(getInstance() == null) return;
-			
-			//Connecting to the server
-			connectionManager.connect(MainApplication.getInstance(), ConnectionManager.getNextLaunchID());
-		}
-	};
-	private final BroadcastReceiver reconnectionBroadcastReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			//Returning if there is already a connection in progress
-			if(connectionManager.getCurrentState() != ConnectionManager.stateDisconnected) return;
-			
-			//Connecting to the server
-			connectionManager.connect(context, ConnectionManager.getNextLaunchID());
-		}
-	};
-	private final BroadcastReceiver networkStateChangeBroadcastReceiver = new BroadcastReceiver() {
-		private long lastDisconnectionTime = -1;
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			//Returning if automatic reconnects are disabled
-			//if(!PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_server_networkreconnect_key), false)) return;
-			
-			//Getting the current active network
-			NetworkInfo activeNetwork = intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK_INFO);
-			//NetworkInfo activeNetwork = context.getSystemService(ConnectivityManager.class).getActiveNetworkInfo();
-			//if(activeNetwork == null) return;
-			
-			if(activeNetwork.isConnected()) {
-				//Reconnecting
-				connectionManager.reconnect(context);
-				
-				//Also reset drop reconnect
-				dropReconnectIndex = 0;
-			} else {
-				//Disconnecting
-				connectionManager.disconnect();
-				
-				//Marking the time
-				lastDisconnectionTime = SystemClock.elapsedRealtime();
-			}
-		}
-	};
-	private final BroadcastReceiver serverConnectionStateChangeBroadcastReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			int state = intent.getIntExtra(Constants.intentParamState, -1);
-			if(state == -1) return;
-			
-			if(state == ConnectionManager.stateConnected) {
-				postConnectedNotification(true, connectionManager.isConnectedFallback());
-				
-				//Also reset drop reconnect
-				dropReconnectIndex = 0;
-				disconnectedSoundSinceReconnect = false;
-			}
-			else if(state == ConnectionManager.stateConnecting) postConnectedNotification(false, false);
-			else if(state == ConnectionManager.stateDisconnected) {
-				//Only play a sound if we haven't played one since reconnecting, and we've failed drop reconnect
-				postDisconnectedNotification(disconnectedSoundSinceReconnect || dropReconnectIndex < dropReconnectDelayMillis.length);
-			}
-		}
-	};
+	private boolean isInitialConnectionUpdate = true;
 	
-	//Creating the other values
-	private static boolean disconnectedSoundSinceReconnect = false;
+	//Creating the connection values
+	private ConnectionManager connectionManager;
 	
-	private final ConnectionManager connectionManager = new ConnectionManager(new ConnectionManager.ServiceCallbacks() {
-		@Override
-		public void schedulePing() {
-		ConnectionService.this.schedulePing();
-		}
-		
-		@Override
-		public void cancelSchedulePing() {
-		ConnectionService.this.cancelSchedulePing();
-		}
-		
-		@Override
-		public void schedulePassiveReconnection() {
-			scheduleReconnection();
-		}
-		
-		@Override
-		public void cancelSchedulePassiveReconnection() {
-			cancelScheduleReconnection();
-		}
-	});
+	//Creating the disposable values
+	private final CompositeDisposable compositeDisposable = new CompositeDisposable();
 	
+	//Creating the handler
+	private final Handler handler = new Handler(Looper.getMainLooper());
+	
+	/**
+	 * Gets the current instance of the connection service
+	 */
+	@Nullable
 	public static ConnectionService getInstance() {
-		return serviceReference == null ? null : serviceReference.get();
+		return instanceReference;
 	}
 	
+	/**
+	 * Gets the current instance of the connection service's connection manager
+	 */
+	@Nullable
 	public static ConnectionManager getConnectionManager() {
-		ConnectionService service = getInstance();
-		if(service == null) return null;
-		return service.connectionManager;
+		if(instanceReference == null) return null;
+		return instanceReference.connectionManager;
 	}
 	
-	public static int getStaticActiveCommunicationsVersion() {
-		//Getting the instance
-		ConnectionManager connectionManager = getConnectionManager();
-		if(connectionManager == null) return -1;
+	/**
+	 * Add a message request that will be sent when the service connects
+	 * @param message The message text to send
+	 * @param conversationGUID The GUID of the conversation to send the message to
+	 * @return A completable to represent this task
+	 */
+	public static Completable addPendingMessage(String message, String conversationGUID) {
+		CompletableSubject subject = CompletableSubject.create();
+		pendingMessageList.add(new PendingMessage(subject, message, conversationGUID));
+		return subject;
+	}
+	
+	@Nullable
+	@Override
+	public IBinder onBind(Intent intent) {
+		//Updating the state value
+		isBound = true;
 		
-		//Returning the active communications version
-		return connectionManager.getActiveCommunicationsVersion();
-	}
-	
-	public static int getStaticActiveCommunicationsSubVersion() {
-		//Getting the instance
-		ConnectionManager connectionManager = getConnectionManager();
-		if(connectionManager == null) return -1;
-		
-		//Returning the active communications version
-		return connectionManager.getActiveCommunicationsSubVersion();
-	}
-	
-	/**
-	 * Schedules the next keepalive ping
-	 */
-	private void schedulePing() {
-		((AlarmManager) getSystemService(Context.ALARM_SERVICE)).setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-				SystemClock.elapsedRealtime() + keepAliveMillis - keepAliveWindowMillis,
-				keepAliveWindowMillis * 2,
-				pingPendingIntent);
-	}
-	
-	/**
-	 * Cancels the timer that sends keepalive pings
-	 */
-	void cancelSchedulePing() {
-		((AlarmManager) getSystemService(Context.ALARM_SERVICE)).cancel(pingPendingIntent);
-	}
-	
-	/**
-	 * Schedules a pending intent to passively attempt to reconnect to the server
-	 */
-	void scheduleReconnection() {
-		//Scheduling immediate handler reconnection
-		if(dropReconnectIndex < dropReconnectDelayMillis.length && !dropReconnectRunning) {
-			dropReconnectRunning = true;
-			handler.postDelayed(connectRunnable, dropReconnectDelayMillis[dropReconnectIndex++]);
+		//Disabling temporary mode and returning to the background
+		if(temporaryMode) {
+			setTemporaryMode(false);
+			setServiceForegroundState(false);
 		}
 		
-		//Scheduling passive reconnection
-		reschedulePassiveReconnection();
+		//Returning access to the connection manager
+		return binder;
 	}
 	
-	private void reschedulePassiveReconnection() {
-		((AlarmManager) getSystemService(Context.ALARM_SERVICE)).setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-				SystemClock.elapsedRealtime() + passiveReconnectFrequencyMillis - passiveReconnectWindowMillis,
-				passiveReconnectWindowMillis * 2,
-				reconnectPendingIntent);
-	}
-	
-	/**
-	 * Cancels the pending intent to passively reconnect to the server
-	 */
-	void cancelScheduleReconnection() {
-		//Cancelling handler reconnection
-		handler.removeCallbacks(connectRunnable);
-		dropReconnectRunning = false;
+	@Override
+	public boolean onUnbind(Intent intent) {
+		//Updating the state value
+		isBound = false;
 		
-		//Cancelling passive reconnection
-		((AlarmManager) getSystemService(Context.ALARM_SERVICE)).cancel(reconnectPendingIntent);
-	}
-	
-	public static boolean staticCheckSupportsFeature(String feature) {
-		ConnectionManager connectionManager = getConnectionManager();
-		if(connectionManager == null) return false;
-		return connectionManager.checkSupportsFeature(feature);
+		//Just use onBind()
+		return false;
 	}
 	
 	@Override
 	public void onCreate() {
-		//Setting the instance
-		serviceReference = new WeakReference<>(this);
+		super.onCreate();
 		
 		//Initializing the connection manager
-		connectionManager.init(this);
+		connectionManager = new ConnectionManager(this);
 		
-		//Registering the broadcast receivers
-		registerReceiver(networkStateChangeBroadcastReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
-		registerReceiver(pingBroadcastReceiver, new IntentFilter(BCPingTimer));
-		registerReceiver(reconnectionBroadcastReceiver, new IntentFilter(BCReconnectTimer));
-		LocalBroadcastManager.getInstance(this).registerReceiver(serverConnectionStateChangeBroadcastReceiver, new IntentFilter(ConnectionManager.localBCStateUpdate));
+		//Setting the service
+		instanceReference = this;
 		
-		//Setting the reference values
-		pingPendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(BCPingTimer), PendingIntent.FLAG_UPDATE_CURRENT);
-		reconnectPendingIntent = PendingIntent.getBroadcast(this, 1, new Intent(BCReconnectTimer), PendingIntent.FLAG_UPDATE_CURRENT);
-		
-		handler = new Handler();
-		
-		//Starting the service as a foreground service (if enabled in the preferences)
-		if(foregroundServiceRequested()) startForeground(notificationID, getBackgroundNotification(false, false));
+		//Subscribing to updates in connection changes
+		compositeDisposable.addAll(
+				ReduxEmitterNetwork.getConnectionStateSubject().subscribe(event -> updateState(event.getState())),
+				ReduxEmitterNetwork.getConnectionConfigurationSubject().subscribe(this::setConfigurationMode)
+		);
 	}
 	
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		//Getting the intent action
-		String intentAction = intent == null ? null : intent.getAction();
-		
-		//Checking if a stop has been requested
-		if(selfIntentActionStop.equals(intentAction)) {
-			//Setting the service as shutting down
-			connectionManager.setFlagShutdownRequested(true);
+		if(intent != null) {
+			//Updating configuration mode
+			if(intent.hasExtra(selfIntentExtraConfig)) setConfigurationMode(intent.getBooleanExtra(selfIntentExtraConfig, false));
 			
-			//Disconnecting
-			connectionManager.disconnect();
+			//If the service is bound, don't enable temporary mode and just let Android take care of finishing the service
+			setTemporaryMode(intent.getBooleanExtra(selfIntentExtraTemporary, false) && !isBound);
 			
-			//Stopping the service
-			stopSelf();
+			//Checking if a quit has been requested
+			if(selfIntentActionStop.equals(intent.getAction())) {
+				//Shutting down the connection service
+				stopSelf();
+				
+				//Returning not sticky
+				return START_NOT_STICKY;
+			} else if(selfIntentActionDisconnect.equals(intent.getAction())) {
+				//Disconnecting
+				connectionManager.disconnect(ConnectionErrorCode.user);
+			} else if(selfIntentActionConnect.equals(intent.getAction())) {
+				//Reconnecting
+				connectionManager.connect();
+			}
 			
-			//Returning not sticky
-			return START_NOT_STICKY;
-		}
-		//Checking if a disconnection has been requested
-		else if(selfIntentActionDisconnect.equals(intentAction)) {
-			//Removing the reconnection flag
-			connectionManager.setFlagDropReconnect(false);
-			
-			//Disconnecting
-			connectionManager.disconnect();
-			
-			//Updating the notification
-			postDisconnectedNotification(true);
-		}
-		//Reconnecting the client if requested
-		else if(connectionManager.getCurrentState() == ConnectionManager.stateDisconnected || selfIntentActionConnect.equals(intentAction)) {
-			connectionManager.connect(this, intent != null && intent.hasExtra(Constants.intentParamLaunchID) ? intent.getByteExtra(Constants.intentParamLaunchID, (byte) 0) : ConnectionManager.getNextLaunchID());
+			//Starting the service in the foreground if required
+			if(intent.getBooleanExtra(selfIntentExtraForeground, false)) {
+				setServiceForegroundState(true);
+			}
 		}
 		
-		//Setting the service as not shutting down
-		connectionManager.setFlagShutdownRequested(false);
-		
-		//Calling the listeners
-		//for(ServiceStartCallback callback : startCallbacks) callback.onServiceStarted(this);
-		//startCallbacks.clear();
-		
-		//Returning sticky service
+		//Keep this service running
 		return START_STICKY;
 	}
 	
 	@Override
 	public void onDestroy() {
-		super.onDestroy();
+		//Unsubscribing from connection updates
+		compositeDisposable.clear();
 		
-		//Disconnecting
-		connectionManager.disconnect();
+		//Cleaning up the connection manager
+		connectionManager.disconnect(ConnectionErrorCode.user);
+		connectionManager.close(this);
 		
-		//Disabling the reconnect timer
-		cancelScheduleReconnection();
-		
-		//Unregistering the broadcast receivers
-		unregisterReceiver(networkStateChangeBroadcastReceiver);
-		unregisterReceiver(pingBroadcastReceiver);
-		unregisterReceiver(reconnectionBroadcastReceiver);
-		LocalBroadcastManager.getInstance(this).unregisterReceiver(serverConnectionStateChangeBroadcastReceiver);
-		
-		//Removing the notification
-		clearNotification();
-		
-		//Clearing the instance
-		serviceReference = null;
+		//Removing the connection service reference
+		instanceReference = null;
 	}
 	
-	/* void setForegroundState(boolean foregroundState) {
-		int currentState = getCurrentState();
-		
-		if(foregroundState) {
-			Notification notification;
-			if(currentState == stateConnected) notification = getBackgroundNotification(true);
-			else if(currentState == stateConnecting) notification = getBackgroundNotification(false);
-			else notification = getOfflineNotification(true);
-			
-			startForeground(-1, notification);
-		} else {
-			if(disconnectedNotificationRequested() && currentState == stateDisconnected) {
-				stopForeground(false);
-				postDisconnectedNotification(true);
-			} else {
-				stopForeground(true);
-			}
-		}
-	} */
-	
-	private boolean foregroundServiceRequested() {
-		return true;
-		//return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_foregroundservice_key), false);
-	}
-	
-	private boolean disconnectedNotificationRequested() {
-		return true;
-		//return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getResources().getString(R.string.preference_server_disconnectionnotification_key), true);
-	}
-	
-	private void postConnectedNotification(boolean isConnected, boolean isFallback) {
-		if(isConnected && !foregroundServiceRequested()) return;
-		
-		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		if(!isStatusNotificationEnabled(notificationManager)) {
-			//Clearing the separate disconnection notification
-			notificationManager.cancel(notificationAlertID);
-		} else {
-			//Updating the status ID
-			notificationManager.notify(notificationID, getBackgroundNotification(isConnected, isFallback));
-		}
-	}
-	
-	private void postDisconnectedNotification(boolean silent) {
-		if((!foregroundServiceRequested() && !disconnectedNotificationRequested())) return;
-		
-		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		if(!isStatusNotificationEnabled(notificationManager)) {
-			//Posting the notification under a separate ID
-			notificationManager.notify(notificationAlertID, getOfflineNotification(silent, MainApplication.notificationChannelStatusImportant));
-		} else {
-			//Updating the status notification
-			String channelID = isStatusImportantNotificationEnabled(notificationManager) && !silent ? MainApplication.notificationChannelStatusImportant : MainApplication.notificationChannelStatus; //Reverting to the regular status channel if the important channel is disabled
-			notificationManager.notify(notificationID, getOfflineNotification(silent, channelID));
+	/**
+	 * Handles responses to a change in connection state
+	 */
+	private void updateState(@ConnectionState int state) {
+		//Updating the foreground notification
+		if(isForeground) {
+			Notification notification = getDisplayNotification(state);
+			NotificationManager notificationManager = getSystemService(NotificationManager.class);
+			notificationManager.notify(NotificationHelper.notificationIDConnectionService, notification);
 		}
 		
-		if(!silent) disconnectedSoundSinceReconnect = true;
-	}
-	
-	private void clearNotification() {
-		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.cancel(notificationID);
-		notificationManager.cancel(notificationAlertID);
-	}
-	
-	private boolean isStatusNotificationEnabled(NotificationManager notificationManager) {
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-			return notificationManager.getNotificationChannel(MainApplication.notificationChannelStatus).getImportance() != NotificationManager.IMPORTANCE_NONE;
-		} else return true; //Nothing we can do anyways, if the user has blocked all app notifications
-	}
-	
-	private boolean isStatusImportantNotificationEnabled(NotificationManager notificationManager) {
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-			return notificationManager.getNotificationChannel(MainApplication.notificationChannelStatusImportant).getImportance() != NotificationManager.IMPORTANCE_NONE;
-		} else return true; //Nothing we can do anyways, if the user has blocked all app notifications
-	}
-	
-	/* private void finishService() {
-		//Returning to a background service
-		stopForeground(true);
-		
-		//Scheduling the task
-		new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-			@Override
-			public void run() {
-				//Showing the offline notification
-				if(PreferenceManager.getDefaultSharedPreferences(ConnectionService.this).getBoolean(getResources().getString(R.string.preference_server_disconnectionnotification_key), true)) {
-					NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-					notificationManager.notify(NotificationUtils.notificationTagStatus, -1, getOfflineNotification());
+		//Ignore connection updates triggered directly when the service attaches to the observable
+		if(!isInitialConnectionUpdate && !pendingMessageList.isEmpty()) {
+			if(state == ConnectionState.connected) {
+				//Sending any pending messages
+				for(PendingMessage pendingMessage : pendingMessageList) {
+					connectionManager.sendMessage(new ConversationTarget.AppleLinked(pendingMessage.conversationGUID), pendingMessage.message).subscribe(pendingMessage.completableSubject);
 				}
-				
-				//Stopping the service
-				stopSelf();
+				pendingMessageList.clear();
+			} else if(state == ConnectionState.disconnected) {
+				//Failing any pending messages
+				for(PendingMessage pendingMessage : pendingMessageList) {
+					pendingMessage.completableSubject.onError(new AMRequestException(MessageSendErrorCode.localNetwork));
+				}
+				pendingMessageList.clear();
 			}
-		}, 1);
-	} */
-	
-	private Notification getBackgroundNotification(boolean isConnected, boolean isFallback) {
-		//Building the notification
-		NotificationCompat.Builder builder = new NotificationCompat.Builder(this, MainApplication.notificationChannelStatus)
-				.setSmallIcon(R.drawable.push)
-				.setContentTitle(getResources().getString(isConnected ? (isFallback ? R.string.message_connection_connectedfallback : R.string.message_connection_connected) : R.string.progress_connectingtoserver))
-				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
-				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT));
+		}
 		
-		//Disconnect (only available in debug)
-		if(BuildConfig.DEBUG) builder.addAction(R.drawable.wifi_off, getResources().getString(R.string.action_disconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionDisconnect), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT));
-		
-		Notification notification = builder
-				.addAction(R.drawable.close_circle, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
-				.setShowWhen(false)
-				.setPriority(Notification.PRIORITY_MIN)
-				.setOnlyAlertOnce(true)
-				.build();
-		
-		//Setting the notification as ongoing
-		notification.flags = Notification.FLAG_ONGOING_EVENT;
-		
-		//Returning the notification
-		return notification;
+		isInitialConnectionUpdate = false;
 	}
 	
-	private Notification getOfflineNotification(boolean silent, String channelID) {
-		//Building and returning the notification
-		return new NotificationCompat.Builder(this, channelID)
-				.setSmallIcon(R.drawable.warning)
-				.setContentTitle(getResources().getString(R.string.message_connection_disconnected))
-				.setContentText(getResources().getString(R.string.imperative_tapopenapp))
-				.setColor(getResources().getColor(R.color.colorServerDisconnected, null))
-				.setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, Conversations.class), PendingIntent.FLAG_UPDATE_CURRENT))
-				.addAction(R.drawable.wifi, getResources().getString(R.string.action_reconnect), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
-				.addAction(R.drawable.close_circle, getResources().getString(R.string.action_quit), PendingIntent.getService(this, 0, new Intent(this, ConnectionService.class).setAction(selfIntentActionStop), PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_CANCEL_CURRENT))
-				.setShowWhen(false)
-				.setPriority(NotificationCompat.PRIORITY_HIGH)
-				.setOnlyAlertOnce(silent)
-				.build();
-	}
-	
-	@Override
-	public IBinder onBind(Intent intent) {
-		//Returning
-		return null;
-		//Starting the service
-		//startService(intent);
+	/**
+	 * Updates whether this service is a foreground service or a background service
+	 */
+	public void setServiceForegroundState(boolean foreground) {
+		//Ignoring if no changes are to be made
+		if(isForeground == foreground) return;
 		
-		//Returning the binder
-		//return binder;
+		//Setting the value
+		isForeground = foreground;
+		
+		if(foreground) {
+			//Starting the foreground state
+			startForeground(NotificationHelper.notificationIDConnectionService, getDisplayNotification());
+		} else {
+			//Stopping the foreground state
+			stopForeground(true);
+		}
 	}
 	
-	/* class ConnectionBinder extends Binder {
-		ConnectionService getService() {
+	/**
+	 * Sets if this service should update its notification to reflect configuration mode status
+	 */
+	public void setConfigurationMode(boolean configurationMode) {
+		if(this.configurationMode == configurationMode) return;
+		
+		//Updating the value
+		this.configurationMode = configurationMode;
+		
+		//Updating the foreground notification
+		if(isForeground) {
+			Notification notification = getDisplayNotification(connectionManager.getState());
+			NotificationManager notificationManager = getSystemService(NotificationManager.class);
+			notificationManager.notify(NotificationHelper.notificationIDConnectionService, notification);
+		}
+	}
+	
+	/**
+	 * Sets if this service should automatically stop itself after a set amount of time
+	 */
+	public void setTemporaryMode(boolean temporaryMode) {
+		if(this.temporaryMode == temporaryMode) return;
+		
+		//Updating the value
+		this.temporaryMode = temporaryMode;
+		
+		//Updating the timer
+		if(temporaryMode) {
+			handler.postDelayed(temporaryModeRunnable, temporaryModeExpiry);
+		} else {
+			handler.removeCallbacks(temporaryModeRunnable);
+		}
+	}
+	
+	/**
+	 * Refreshes the temporary mode expiry clock
+	 */
+	public void refreshTemporaryMode() {
+		handler.removeCallbacks(temporaryModeRunnable);
+		handler.postDelayed(temporaryModeRunnable, temporaryModeExpiry);
+	}
+	
+	/**
+	 * Gets the notification to display based on the current state of the service
+	 * @return A notification to represent this service
+	 */
+	private Notification getDisplayNotification() {
+		return getDisplayNotification(connectionManager.getState());
+	}
+	
+	/**
+	 * Gets the notification to display based on the current state of the service
+	 * @param connectionState The state of the connection
+	 * @return A notification to represent this service
+	 */
+	private Notification getDisplayNotification(@ConnectionState int connectionState) {
+		if(configurationMode) {
+			return NotificationHelper.getConnectionConfigurationNotification(this);
+		} if(temporaryMode) {
+			return NotificationHelper.getTemporaryModeNotification(this);
+		} else if(connectionState == ConnectionState.disconnected) {
+			return NotificationHelper.getConnectionOfflineNotification(this, false);
+		} else {
+			return NotificationHelper.getConnectionBackgroundNotification(this, connectionState == ConnectionState.connected, false);
+		}
+	}
+	
+	public class ConnectionBinder extends Binder {
+		public ConnectionService getConnectionService() {
 			return ConnectionService.this;
 		}
-	} */
+		
+		public ConnectionManager getConnectionManager() {
+			return connectionManager;
+		}
+	}
+	
+	private static class PendingMessage {
+		final CompletableSubject completableSubject;
+		final String message;
+		final String conversationGUID;
+		
+		public PendingMessage(CompletableSubject completableSubject, String message, String conversationGUID) {
+			this.completableSubject = completableSubject;
+			this.message = message;
+			this.conversationGUID = conversationGUID;
+		}
+	}
 }

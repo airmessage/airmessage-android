@@ -2,17 +2,20 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
+	tools:context=".activity.NewMessage"
+	android:id="@+id/root"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:orientation="vertical"
-	tools:context=".activity.NewMessage">
+	android:fitsSystemWindows="true"
+	android:clipChildren="false"
+	android:clipToPadding="false">
 	<!-- App bar -->
 	<com.google.android.material.appbar.AppBarLayout
 		android:id="@+id/appbar"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:background="@color/colorToolbar"
-		android:fitsSystemWindows="true">
+		android:background="@color/colorToolbar">
 		<!-- Toolbar -->
 		<com.google.android.material.appbar.MaterialToolbar
 			android:id="@+id/toolbar"
@@ -155,7 +158,9 @@
 	<!-- Contact list -->
 	<RelativeLayout
 		android:layout_width="match_parent"
-		android:layout_height="match_parent">
+		android:layout_height="match_parent"
+		android:clipChildren="false"
+		android:clipToPadding="false">
 		<!-- Contacts list -->
 		<!-- <ListView
 			android:id="@+id/list_contacts"
@@ -171,6 +176,7 @@
 			android:scrollbars="vertical"
 			android:theme="@style/OverscrollNeutralizer"
 			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+			android:clipChildren="false"
 			android:clipToPadding="false" />
 		<!-- Loading text -->
 		<!-- <TextView
@@ -187,9 +193,10 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
+			android:paddingLeft="16dp"
+			android:paddingRight="16dp"
 			android:orientation="vertical"
 			android:visibility="gone">
-			
 			<TextView
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
@@ -197,6 +204,7 @@
 				android:layout_marginLeft="10dp"
 				android:layout_marginRight="10dp"
 				android:text="@string/message_permissiondetails_contacts_suggestions"
+				android:textAlignment="center"
 				android:textColor="?android:attr/textColorSecondary" />
 			
 			<com.google.android.material.button.MaterialButton
@@ -208,16 +216,18 @@
 				android:text="@string/action_enable"
 				android:textColor="@color/colorPrimary" />
 		</LinearLayout>
+
 		<!-- Error view -->
 		<LinearLayout
 			android:id="@+id/group_error"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:layout_centerInParent="true"
+			android:paddingLeft="16dp"
+			android:paddingRight="16dp"
 			android:gravity="center"
 			android:orientation="vertical"
 			android:visibility="gone">
-			
 			<TextView
 				android:id="@+id/group_error_label"
 				android:layout_width="wrap_content"

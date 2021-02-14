@@ -9,14 +9,10 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.transition.ChangeBounds;
-import android.transition.Transition;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
-import android.webkit.MimeTypeMap;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -34,8 +30,9 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.load.resource.gif.GifDrawable;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
+import com.bumptech.glide.signature.ObjectKey;
 import com.github.chrisbanes.photoview.PhotoView;
-import com.google.android.exoplayer2.ExoPlayerFactory;
+import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.source.MediaSource;
@@ -48,20 +45,20 @@ import com.google.android.exoplayer2.util.Util;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.extension.MediaSharedElementCallback;
-import me.tagavari.airmessage.messaging.ConversationAttachmentList;
-import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.constants.MIMEConstants;
+import me.tagavari.airmessage.helper.AttachmentStorageHelper;
+import me.tagavari.airmessage.helper.ExternalStorageHelper;
+import me.tagavari.airmessage.helper.FileHelper;
+import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.view.RoundedFrameLayout;
 
 public class MediaViewer extends AppCompatActivity {
 	//Creating the constants
-	public static final String PARAM_INDEX = "index";
-	public static final String PARAM_DATALIST = "data_list";
-	public static final String PARAM_RADIIRAW = "radii_raw";
-	public static final String PARAM_SELECTEDID = "selected_id";
+	public static final String intentParamIndex = "index";
+	public static final String intentParamDataList = "dataList";
 	
 	private static final String INSTANCEPARAM_RESTORE = "restore";
 	
@@ -75,29 +72,19 @@ public class MediaViewer extends AppCompatActivity {
 	
 	private boolean uiVisible = true;
 	
-	private boolean activityExiting = false;
-	
-	public static long selectedID = -1;
-	private ConversationAttachmentList.Item selectedItem;
+	private AttachmentInfo selectedItem;
 	
 	private boolean autoPlay = false;
 	
 	private File targetExportFile = null;
 	
-	private Rect systemInsetsRect = new Rect();
+	private final Rect systemInsetsRect = new Rect();
 	private final List<Consumer<Rect>> systemInsetsRectUpdateListeners = new ArrayList<>();
 	
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
 		//Calling the super method
 		super.onCreate(savedInstanceState);
-		
-		postponeEnterTransition();
-		
-		//Configuring the shared element transition
-		getWindow().requestFeature(Window.FEATURE_CONTENT_TRANSITIONS);
-		getWindow().setSharedElementEnterTransition(new ChangeBounds().setDuration(150));
-		setEnterSharedElementCallback(new MediaSharedElementCallback());
 		
 		//Configuring the system UI
 		getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
@@ -127,45 +114,8 @@ public class MediaViewer extends AppCompatActivity {
 		}
 		
 		//Getting the activity parameters
-		int selectionIndex = getIntent().getIntExtra(PARAM_INDEX, 0);
-		List<ConversationAttachmentList.Item> itemList = getIntent().getParcelableArrayListExtra(PARAM_DATALIST);
-		float[] radiiRaw = getIntent().getFloatArrayExtra(PARAM_RADIIRAW);
-		
-		//Configuring the shared element transition
-		getWindow().getSharedElementEnterTransition().addListener(new Transition.TransitionListener() {
-					@Override
-					public void onTransitionStart(Transition transition) {
-						ValueAnimator animator = activityExiting ? ValueAnimator.ofFloat(1, 0) : ValueAnimator.ofFloat(0, 1);
-						animator.addUpdateListener(valueAnimator -> {
-							float fraction = (float) valueAnimator.getAnimatedValue();
-							float[] radii = new float[8];
-							for(int i = 0; i < radii.length; i++) radii[i] = Constants.lerp(fraction, radiiRaw[i], 0);
-							frameRounder.setRadiiRaw(radii);
-						});
-						animator.setDuration(250);
-						animator.start();
-					}
-					
-					@Override
-					public void onTransitionEnd(Transition transition) {
-					
-					}
-					
-					@Override
-					public void onTransitionCancel(Transition transition) {}
-					
-					@Override
-					public void onTransitionPause(Transition transition) {}
-					
-					@Override
-					public void onTransitionResume(Transition transition) {}
-				});
-		/* setEnterSharedElementCallback(new SharedElementCallback() {
-			@Override
-			public void onMapSharedElements(List<String> names, Map<String, View> sharedElements) {
-				sharedElements.put(names.get(0), viewPager);
-			}
-		}); */
+		int selectionIndex = getIntent().getIntExtra(intentParamIndex, 0);
+		List<AttachmentInfo> itemList = getIntent().getParcelableArrayListExtra(intentParamDataList);
 		
 		ViewCompat.setOnApplyWindowInsetsListener(toolbar, (view, insets) -> {
 			//Updating the toolbar
@@ -190,13 +140,10 @@ public class MediaViewer extends AppCompatActivity {
 		//Initializing the view pager
 		viewPager.setAdapter(recyclerAdapter = new RecyclerAdapter(itemList));
 		viewPager.setCurrentItem(selectionIndex, false);
-		//viewPager.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-		//new RVPagerSnapHelperListenable().attachToRecyclerView(recyclerView, new PagerListener());
 		viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
 			@Override
 			public void onPageSelected(int position) {
 				selectedItem = itemList.get(position);
-				selectedID = selectedItem.localID;
 			}
 			
 			@Override
@@ -205,7 +152,6 @@ public class MediaViewer extends AppCompatActivity {
 			}
 		});
 		selectedItem = itemList.get(selectionIndex);
-		selectedID = selectedItem.localID;
 	}
 	
 	@Override
@@ -241,16 +187,16 @@ public class MediaViewer extends AppCompatActivity {
 	
 	@Override
 	public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-		switch(item.getItemId()) {
-			case android.R.id.home:
-				super.onBackPressed();
-				return true;
-			case R.id.action_share:
-				shareItem(selectedItem.file);
-				return true;
-			case R.id.action_save:
-				saveItem(selectedItem.file);
-				return true;
+		int itemId = item.getItemId();
+		if(itemId == android.R.id.home) {
+			super.onBackPressed();
+			return true;
+		} else if(itemId == R.id.action_share) {
+			shareItem(selectedItem);
+			return true;
+		} else if(itemId == R.id.action_save) {
+			saveItem(selectedItem);
+			return true;
 		}
 		return super.onOptionsItemSelected(item);
 	}
@@ -260,33 +206,9 @@ public class MediaViewer extends AppCompatActivity {
 		super.onActivityResult(requestCode, resultCode, data);
 		
 		if(requestCode == activityResultCreateFileSAF) {
-			if(resultCode == RESULT_OK) Constants.exportUri(this, targetExportFile, data.getData());
+			if(resultCode == RESULT_OK) ExternalStorageHelper.exportFile(this, targetExportFile, data.getData());
 		}
 	}
-	
-	@Override
-	public void onBackPressed() {
-		activityExiting = true;
-		super.onBackPressed();
-	}
-	
-	@Override
-	public void finishAfterTransition() {
-		Intent data = new Intent();
-		data.putExtra(PARAM_SELECTEDID, selectedID);
-		setResult(RESULT_OK, data);
-		
-		super.finishAfterTransition();
-	}
-	
-	/* @Override
-	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-		if(requestCode == permissionRequestExportFile) {
-			if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-				Constants.exportFile(this, targetExportFile);
-			}
-		}
-	} */
 	
 	private void toggleUI() {
 		if(uiVisible) hideUI();
@@ -351,10 +273,10 @@ public class MediaViewer extends AppCompatActivity {
 		recyclerAdapter.showLocalUI();
 	}
 	
-	private boolean shareItem(File file) {
+	private boolean shareItem(AttachmentInfo attachment) {
 		//Getting the file mime type
-		String fileName = file.getName();
-		int substringStart = file.getName().lastIndexOf(".") + 1;
+		String fileName = attachment.getFile().getName();
+		int substringStart = attachment.getFile().getName().lastIndexOf(".") + 1;
 		
 		//Returning if the file cannot be substringed
 		if(fileName.length() <= substringStart) return false;
@@ -366,16 +288,13 @@ public class MediaViewer extends AppCompatActivity {
 		intent.setAction(Intent.ACTION_SEND);
 		
 		//Creating a content URI
-		Uri content = FileProvider.getUriForFile(this, MainApplication.getFileAuthority(MainApplication.getInstance()), file);
+		Uri content = FileProvider.getUriForFile(this, AttachmentStorageHelper.getFileAuthority(this), attachment.getFile());
 		
 		//Setting the intent file
 		intent.putExtra(Intent.EXTRA_STREAM, content);
 		
-		//Getting the mime type
-		String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substring(substringStart));
-		
 		//Setting the type
-		intent.setType(mimeType);
+		intent.setType(attachment.getContentType());
 		
 		//Starting the activity
 		startActivity(Intent.createChooser(intent, getResources().getText(R.string.action_sharemessage)));
@@ -384,9 +303,9 @@ public class MediaViewer extends AppCompatActivity {
 		return true;
 	}
 	
-	private boolean saveItem(File file) {
-		targetExportFile = file;
-		Constants.createFileSAF(this, activityResultCreateFileSAF, Constants.getMimeType(file), file.getName());
+	private boolean saveItem(AttachmentInfo attachment) {
+		targetExportFile = attachment.getFile();
+		ExternalStorageHelper.createFileSAF(this, activityResultCreateFileSAF, attachment.getContentType(), attachment.getFile().getName());
 		
 		//Returning true
 		return true;
@@ -397,11 +316,11 @@ public class MediaViewer extends AppCompatActivity {
 		private static final int viewTypeVideo = 1;
 		
 		private Player currentPlayer = null;
-		private final List<ConversationAttachmentList.Item> itemList;
+		private final List<AttachmentInfo> itemList;
 		private final List<SimpleExoPlayer> playerList = new ArrayList<>();
 		private final List<PlayerView> playerViewList = new ArrayList<>();
 		
-		RecyclerAdapter(List<ConversationAttachmentList.Item> itemList) {
+		RecyclerAdapter(List<AttachmentInfo> itemList) {
 			this.itemList = itemList;
 			
 			setHasStableIds(true);
@@ -432,15 +351,15 @@ public class MediaViewer extends AppCompatActivity {
 		
 		@Override
 		public long getItemId(int position) {
-			return itemList.get(position).localID;
+			return itemList.get(position).getLocalID();
 		}
 		
 		@Override
 		public int getItemViewType(int position) {
-			ConversationAttachmentList.Item item = itemList.get(position);
-			if(Constants.compareMimeTypes(item.type, "image/*")) return viewTypeImage;
-			else if(Constants.compareMimeTypes(item.type, "video/*")) return viewTypeVideo;
-			else throw new IllegalArgumentException("Unsupported item type provided: " + item.type);
+			AttachmentInfo item = itemList.get(position);
+			if(FileHelper.compareMimeTypes(item.getContentType(), MIMEConstants.mimeTypeImage)) return viewTypeImage;
+			else if(FileHelper.compareMimeTypes(item.getContentType(), MIMEConstants.mimeTypeVideo)) return viewTypeVideo;
+			else throw new IllegalArgumentException("Unsupported item type provided: " + item.getContentType());
 		}
 		
 		@NonNull
@@ -459,21 +378,21 @@ public class MediaViewer extends AppCompatActivity {
 		@Override
 		public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
 			//Getting the item
-			ConversationAttachmentList.Item item = itemList.get(position);
+			AttachmentInfo item = itemList.get(position);
 			
-			boolean shouldAutoPlay = autoPlay && selectedID == item.localID;
+			boolean shouldAutoPlay = autoPlay && selectedItem == item;
 			if(shouldAutoPlay) autoPlay = false;
 			
 			switch(getItemViewType(position)) {
 				case viewTypeImage: {
 					//Loading the image
 					ImageViewHolder imageViewHolder = (ImageViewHolder) holder;
-					imageViewHolder.loadImage(item.file);
+					imageViewHolder.loadImage(item);
 					break;
 				}
 				case viewTypeVideo: {
 					VideoViewHolder videoViewHolder = (VideoViewHolder) holder;
-					videoViewHolder.playVideo(item.file, shouldAutoPlay);
+					videoViewHolder.playVideo(item.getFile(), shouldAutoPlay);
 					if(shouldAutoPlay) hideUI();
 					break;
 				}
@@ -490,30 +409,28 @@ public class MediaViewer extends AppCompatActivity {
 				imageView.setOnPhotoTapListener((view, x, y) -> toggleUI());
 			}
 			
-			void loadImage(File file) {
-				new Handler().post(() -> {
-					//Loading the image file with Glide
-					Glide.with(MediaViewer.this)
-							.load(file)
-							.transition(DrawableTransitionOptions.withCrossFade())
-							.listener(new RequestListener<Drawable>() {
-								@Override
-								public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
-									startPostponedEnterTransition();
-									return false;
+			void loadImage(AttachmentInfo attachment) {
+				//Loading the image file with Glide
+				Glide.with(MediaViewer.this)
+						.load(attachment.getFile())
+						.transition(DrawableTransitionOptions.withCrossFade(100))
+						.signature(new ObjectKey(attachment.getLocalID()))
+						.listener(new RequestListener<Drawable>() {
+							@Override
+							public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+								return false;
+							}
+							
+							@Override
+							public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, com.bumptech.glide.load.DataSource dataSource, boolean isFirstResource) {
+								if(resource instanceof GifDrawable) {
+									resource.setVisible(true, true);
 								}
 								
-								@Override
-								public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, com.bumptech.glide.load.DataSource dataSource, boolean isFirstResource) {
-									if(resource instanceof GifDrawable) {
-										new Handler().post(() -> resource.setVisible(true, true));
-									}
-									startPostponedEnterTransition();
-									return false;
-								}
-							})
-							.into(imageView);
-				});
+								return false;
+							}
+						})
+						.into(imageView);
 			}
 		}
 		
@@ -524,7 +441,7 @@ public class MediaViewer extends AppCompatActivity {
 				super(itemView);
 				
 				//Creating the player instance
-				player = ExoPlayerFactory.newSimpleInstance(MediaViewer.this);
+				player = new SimpleExoPlayer.Builder(MediaViewer.this).build();
 				
 				//Adding the player to the list
 				playerList.add(player);
@@ -567,11 +484,10 @@ public class MediaViewer extends AppCompatActivity {
 			
 			void playVideo(File file, boolean autoPlay) {
 				DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(MediaViewer.this, Util.getUserAgent(MediaViewer.this, getResources().getString(R.string.app_name)));
-				MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.fromFile(file));
-				player.prepare(videoSource);
+				MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(MediaItem.fromUri(Uri.fromFile(file)));
+				player.setMediaSource(videoSource);
+				player.prepare();
 				player.setPlayWhenReady(autoPlay);
-				
-				startPostponedEnterTransition();
 			}
 		}
 	}
