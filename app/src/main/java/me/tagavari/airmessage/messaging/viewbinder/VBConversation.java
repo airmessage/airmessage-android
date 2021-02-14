@@ -62,6 +62,16 @@ public class VBConversation {
 	 * @return A completable representing this task's state
 	 */
 	public static Completable bindUsers(Context context, ViewGroup iconGroup, List<MemberInfo> members) {
+		if(members.isEmpty()) {
+			//Hide all views
+			for(int i = 0; i < maxUsersToDisplay; i++) {
+				View child = iconGroup.getChildAt(i);
+				if(child instanceof ViewGroup) child.setVisibility(View.GONE);
+			}
+			
+			return Completable.complete();
+		}
+		
 		//Getting the view data
 		int usersToDisplay = Math.min(members.size(), maxUsersToDisplay);
 		int viewIndex = usersToDisplay - 1;
