@@ -2362,9 +2362,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
 			
 			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-				RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(i);
+				RecyclerView.ViewHolder holder = recyclerView.findViewHolderForLayoutPosition(i);
 				if(holder instanceof DisposableViewHolder) {
-					((DisposableViewHolder) holder).getCompositeDisposable().clear();
+					((DisposableViewHolder) holder).getCompositeDisposable().dispose();
 				}
 			}
 		}

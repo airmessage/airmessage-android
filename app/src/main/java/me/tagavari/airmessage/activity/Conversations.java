@@ -1571,7 +1571,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
 			
 			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-				DisposableViewHolder holder = (DisposableViewHolder) recyclerView.findViewHolderForAdapterPosition(i);
+				DisposableViewHolder holder = (DisposableViewHolder) recyclerView.findViewHolderForLayoutPosition(i);
 				if(holder != null) holder.getCompositeDisposable().clear();
 			}
 		}
@@ -1777,7 +1777,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
 			
 			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-				RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(i);
+				RecyclerView.ViewHolder holder = recyclerView.findViewHolderForLayoutPosition(i);
 				if(holder instanceof DisposableViewHolder) {
 					((DisposableViewHolder) holder).getCompositeDisposable().clear();
 				}
