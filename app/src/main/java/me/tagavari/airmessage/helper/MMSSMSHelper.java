@@ -231,8 +231,7 @@ public class MMSSMSHelper {
 	 * @return A single for a pair of the new conversation and message
 	 */
 	private static Single<MessageInfo> updateTextConversationMessage(ConversationInfo conversationInfo, boolean conversationIsNew, MessageInfo newMessage) {
-		//Triplet<Boolean: whether the conversation is freshly created, ConversationInfo: the conversation for the message, List<ConversationItem>: a list of newly added messages>
-		return Single.create((SingleEmitter<MessageInfo> emitter) -> {
+		return Single.fromCallable(() -> {
 			//Writing the message to the database
 			long messageID = DatabaseManager.getInstance().addConversationItem(conversationInfo.getLocalID(), newMessage, conversationInfo.getServiceHandler() == ServiceHandler.appleBridge);
 			if(messageID == -1) throw new Exception("Failed to add message to database");
@@ -241,7 +240,7 @@ public class MMSSMSHelper {
 			MessageInfo localMessage = newMessage.clone();
 			localMessage.setLocalID(messageID);
 			
-			emitter.onSuccess(localMessage);
+			return localMessage;
 		}).subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).flatMap(messageInfo -> {
 			//Getting the values
 			if(conversationIsNew) {
