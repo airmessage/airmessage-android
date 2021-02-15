@@ -820,13 +820,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		if(button == null) {
 			infoBarConnection.removeButton();
 		} else {
-			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> {
-				if(pluginCS.isServiceBound()) {
-					button.getClickListener().accept(this, pluginCS.getConnectionManager());
-				} else {
-					Toast.makeText(this, R.string.message_serviceavailabilityerror, Toast.LENGTH_SHORT).show();
-				}
-			});
+			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().accept(this, pluginCS.getConnectionManager()));
 		}
 		
 		//Showing the info bar
