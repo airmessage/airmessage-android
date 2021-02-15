@@ -2333,7 +2333,6 @@ public class Messaging extends AppCompatCompositeActivity {
 					View view = getLayoutInflater().inflate(R.layout.listitem_loading, parent, false);
 					CircularProgressIndicator progressIndicator = view.findViewById(R.id.progressbar);
 					progressIndicator.setIndicatorColor(getUIColor());
-					progressIndicator.setTrackColor(getUIColor());
 					return new LoadingViewHolder(view);
 				}
 				case itemTypeConversationActions: {
