@@ -72,7 +72,7 @@ public class MassRetrievalRequest {
 			}
 			this.conversationList = conversationInfoList;
 			return conversationInfoList;
-		}).subscribeOn(requestScheduler);
+		}).subscribeOn(requestScheduler).observeOn(AndroidSchedulers.mainThread());
 	}
 	
 	/**
