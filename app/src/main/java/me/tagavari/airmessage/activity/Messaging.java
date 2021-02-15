@@ -3518,7 +3518,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				viewHolder.imageHeader.setVisibility(View.GONE);
 			} else {
 				viewHolder.imageHeader.setVisibility(View.VISIBLE);
-				Glide.with(Messaging.this).load(data).into(viewHolder.imageHeader);
+				if(!isDestroyed()) Glide.with(Messaging.this).load(data).into(viewHolder.imageHeader);
 			}
 			
 			//Setting the title
