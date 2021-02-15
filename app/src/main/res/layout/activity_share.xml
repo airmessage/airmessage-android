@@ -78,15 +78,13 @@
 				android:text="@string/progress_sync"
 				android:tint="?android:attr/textColorSecondary" />
 			
-			<ProgressBar
+			<com.google.android.material.progressindicator.LinearProgressIndicator
 				android:id="@+id/syncview_progress"
-				style="?android:attr/progressBarStyleHorizontal"
 				android:layout_width="150dp"
 				android:layout_height="wrap_content"
 				android:layout_marginTop="10dp"
-				android:indeterminateTint="@color/colorPrimary"
-				android:progressBackgroundTint="@color/colorPrimary"
-				android:progressTint="@color/colorPrimary" />
+				app:trackCornerRadius="2dp"
+				android:indeterminate="true" />
 		</LinearLayout>
 
 		<!-- Error view -->

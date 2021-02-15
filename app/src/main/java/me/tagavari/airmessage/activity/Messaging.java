@@ -104,11 +104,8 @@ import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
-import com.bumptech.glide.request.target.CustomViewTarget;
 import com.bumptech.glide.request.target.DrawableImageViewTarget;
 import com.bumptech.glide.request.target.Target;
-import com.bumptech.glide.request.target.ViewTarget;
-import com.bumptech.glide.request.transition.Transition;
 import com.bumptech.glide.signature.ObjectKey;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -118,6 +115,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.io.BufferedInputStream;
@@ -2335,7 +2333,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 				case itemTypeTopProgressBar: {
 					View view = getLayoutInflater().inflate(R.layout.listitem_loading, parent, false);
-					((ProgressBar) view.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(getUIColor()));
+					CircularProgressIndicator progressIndicator = view.findViewById(R.id.progressbar);
+					progressIndicator.setIndicatorColor(getUIColor());
+					progressIndicator.setTrackColor(getUIColor());
 					return new LoadingViewHolder(view);
 				}
 				case itemTypeConversationActions: {

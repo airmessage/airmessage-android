@@ -10,7 +10,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
-import me.tagavari.airmessage.enums.AttachmentType;
 import me.tagavari.airmessage.enums.MessageComponentType;
 import me.tagavari.airmessage.helper.MessageShapeHelper;
 

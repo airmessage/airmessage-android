@@ -70,10 +70,9 @@ public class MassRetrievalRequest {
 				ConversationInfo item = DatabaseManager.getInstance().addReadyConversationInfoAMBridge(structConversation);
 				if(item != null) conversationInfoList.add(item);
 			}
+			this.conversationList = conversationInfoList;
 			return conversationInfoList;
-		}).subscribeOn(requestScheduler).observeOn(AndroidSchedulers.mainThread()).doOnSuccess(conversations -> {
-			this.conversationList = conversations;
-		});
+		}).subscribeOn(requestScheduler);
 	}
 	
 	/**
