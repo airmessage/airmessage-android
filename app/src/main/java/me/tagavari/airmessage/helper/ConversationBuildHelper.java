@@ -94,13 +94,6 @@ public class ConversationBuildHelper {
 	 */
 	@CheckReturnValue
 	public static Single<Bitmap> generateShortcutIcon(Context context, ConversationInfo conversationInfo) {
-		//Returning if the conversation has no members
-		if(conversationInfo.getMembers().isEmpty()) {
-			return Single.error(new Throwable("No members available"));
-		}
-		
-		//if(true) return MainApplication.getInstance().getUserCacheHelper().getUserInfo(context, conversationInfo.getMembers().get(0).getAddress()).flatMap(user -> BitmapHelper.loadBitmap(context, ContactHelper.getContactImageURI(user.getContactID())));
-		
 		//Rendering and returning the view
 		ArrayList<MemberInfo> memberInfos = new ArrayList<>(conversationInfo.getMembers());
 		return Observable.fromIterable(memberInfos)
@@ -112,7 +105,7 @@ public class ConversationBuildHelper {
 						.flatMap(userInfo -> BitmapHelper.loadBitmap(context, ContactHelper.getContactImageURI(userInfo.getContactID()), true).map(Union::<Integer, Bitmap>ofB))
 						.onErrorReturnItem(Union.<Integer, Bitmap>ofA(member.getColor()))
 				)
-				.toList()
+				.toList(memberInfos.size())
 				.map(contactDataList -> {
 					//Calculating layer sizes
 					int layerSizeOuter = ResourceHelper.dpToPx(108);
