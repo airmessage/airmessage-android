@@ -2429,6 +2429,10 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(payloads.isEmpty()) {
 				onBindViewHolder(holder, position);
 			} else {
+				//Ignoring if the item isn't a message
+				int itemType = getItemViewType(position);
+				if(itemType == itemTypeTopProgressBar || itemType == itemTypeConversationActions) return;
+				
 				//Getting the conversation info
 				ConversationItem conversationItem = getItemAt(position);
 				
