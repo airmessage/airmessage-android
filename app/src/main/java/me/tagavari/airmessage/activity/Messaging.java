@@ -4322,13 +4322,15 @@ public class Messaging extends AppCompatCompositeActivity {
 					);
 				}
 			} else if(itemViewType == AttachmentType.audio) {
-				holder.getCompositeDisposable().add(
-						viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
-								Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, fileSource)))
-										.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
-								.subscribe(metadata ->
-										((VHAttachmentTileContentAudio) holder.content).onLoaded(Messaging.this, holder.getCompositeDisposable(), viewModel.audioPlaybackManager, fileSource, (FileDisplayMetadata.Media) metadata, fileInfo.getReferenceID()))
-				);
+				//If the file isn't prepared, wait until we prepare it to load metadata (otherwise this causes ExoPlayer playback issues)
+				if(fileInfo.getFile().isB()) {
+					holder.getCompositeDisposable().add(
+							viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
+									Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, fileSource)))
+											.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
+									.subscribe(metadata -> ((VHAttachmentTileContentAudio) holder.content).onLoaded(Messaging.this, holder.getCompositeDisposable(), viewModel.audioPlaybackManager, fileSource, (FileDisplayMetadata.Media) metadata, fileInfo.getReferenceID()))
+					);
+				}
 			} else if(itemViewType == AttachmentType.contact) {
 				holder.getCompositeDisposable().add(
 						viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
@@ -4370,6 +4372,18 @@ public class Messaging extends AppCompatCompositeActivity {
 						
 						//Setting the view state
 						holder.setAppearanceState(!fileInfo.getFile().isA(), false);
+						
+						//Refreshing metadata if the item is an audio file
+						if(getItemViewType(position) == AttachmentType.audio && fileInfo.getFile().isB()) {
+							Union<File, Uri> fileSource = Union.ofA(fileInfo.getFile().getB().getFile());
+							
+							holder.getCompositeDisposable().add(
+									viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
+											Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, fileSource)))
+													.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
+											.subscribe(metadata -> ((VHAttachmentTileContentAudio) holder.content).onLoaded(Messaging.this, holder.getCompositeDisposable(), viewModel.audioPlaybackManager, fileSource, (FileDisplayMetadata.Media) metadata, fileInfo.getReferenceID()))
+							);
+						}
 						
 						break;
 					}
