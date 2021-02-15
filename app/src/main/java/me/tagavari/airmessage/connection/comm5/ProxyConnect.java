@@ -53,7 +53,7 @@ import me.tagavari.airmessage.util.DirectConnectionParams;
  */
 class ProxyConnect extends DataProxy<EncryptedPacket> {
 	//Creating the constants
-	private static final URI connectHostname = URI.create("wss://connect2.airmessage.org");
+	private static final URI connectHostname = URI.create("wss://connect.airmessage.org");
 	private static final long handshakeTimeout = 8 * 1000;
 	
 	//Creating the state values
