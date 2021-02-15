@@ -17,7 +17,13 @@ import me.tagavari.airmessage.constants.ExternalLinkConstants;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
 
 public class ErrorDetailsHelper {
-	private static final BiConsumer<Activity, ConnectionManager> actionReconnectService = (activity, connectionManager) -> connectionManager.connect();
+	private static final BiConsumer<Activity, ConnectionManager> actionReconnectService = (activity, connectionManager) -> {
+		if(connectionManager == null) {
+			ConnectionServiceLaunchHelper.launchAutomatic(activity);
+		} else {
+			connectionManager.connect();
+		}
+	};
 	
 	/**
 	 * Gets user-readable error details in response to an error code

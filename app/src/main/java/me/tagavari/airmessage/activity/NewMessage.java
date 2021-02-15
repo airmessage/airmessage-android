@@ -52,6 +52,7 @@ import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.lang.ref.WeakReference;
@@ -634,7 +635,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 		contactListView.setEnabled(enabled);
 		
 		View scrim = findViewById(R.id.scrim_content);
-		ProgressBar progressBar  = findViewById(R.id.progressbar_content);
+		LinearProgressIndicator progressBar  = findViewById(R.id.progressbar_content);
 		if(animate) {
 			if(enabled) {
 				scrim.animate().alpha(0).withEndAction(() -> scrim.setVisibility(View.GONE)).start();

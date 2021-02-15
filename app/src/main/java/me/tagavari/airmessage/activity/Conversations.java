@@ -48,6 +48,7 @@ import com.google.android.gms.security.ProviderInstaller;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.lang.ref.WeakReference;
@@ -172,7 +173,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	private ImageButton viewSearchClear;
 	
 	private ViewGroup viewGroupSync;
-	private ProgressBar progressBarSync;
+	private LinearProgressIndicator progressBarSync;
 	
 	private ViewGroup viewGroupError;
 	
@@ -367,8 +368,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		//Subscribing to mass retrieval updates
 		viewModel.massRetrievalProgressLD.observe(this, progress -> {
-			progressBarSync.setIndeterminate(false);
-			progressBarSync.setProgress(progress);
+			progressBarSync.setProgressCompat(progress, true);
 		});
 		viewModel.massRetrievalTotalLD.observe(this, total -> {
 			progressBarSync.setMax(total);
@@ -728,6 +728,7 @@ public class Conversations extends AppCompatCompositeActivity {
 				break;
 			case ActivityViewModel.stateSyncing:
 				viewGroupSync.animate().withStartAction(() -> viewGroupSync.setVisibility(View.VISIBLE)).alpha(1);
+				progressBarSync.setIndeterminate(true);
 				break;
 			case ActivityViewModel.stateReady:
 				viewMainList.animate().withStartAction(() -> viewMainList.setVisibility(View.VISIBLE)).alpha(1);
@@ -820,13 +821,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		if(button == null) {
 			infoBarConnection.removeButton();
 		} else {
-			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> {
-				if(pluginCS.isServiceBound()) {
-					button.getClickListener().accept(this, pluginCS.getConnectionManager());
-				} else {
-					Toast.makeText(this, R.string.message_serviceavailabilityerror, Toast.LENGTH_SHORT).show();
-				}
-			});
+			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().accept(this, pluginCS.getConnectionManager()));
 		}
 		
 		//Showing the info bar
@@ -1571,7 +1566,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
 			
 			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-				DisposableViewHolder holder = (DisposableViewHolder) recyclerView.findViewHolderForAdapterPosition(i);
+				DisposableViewHolder holder = (DisposableViewHolder) recyclerView.findViewHolderForLayoutPosition(i);
 				if(holder != null) holder.getCompositeDisposable().clear();
 			}
 		}
@@ -1777,7 +1772,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
 			
 			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-				RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(i);
+				RecyclerView.ViewHolder holder = recyclerView.findViewHolderForLayoutPosition(i);
 				if(holder instanceof DisposableViewHolder) {
 					((DisposableViewHolder) holder).getCompositeDisposable().clear();
 				}

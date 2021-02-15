@@ -293,7 +293,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
 			
 			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-				DisposableViewHolder holder = (DisposableViewHolder) recyclerView.findViewHolderForAdapterPosition(i);
+				DisposableViewHolder holder = (DisposableViewHolder) recyclerView.findViewHolderForLayoutPosition(i);
 				if(holder != null) holder.getCompositeDisposable().clear();
 			}
 		}

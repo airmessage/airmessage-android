@@ -34,6 +34,9 @@ public class VHAttachmentTileContentAudio extends VHAttachmentTileContent {
 	
 	@Override
 	public void bind(@NonNull Context context, @NonNull CompositeDisposable compositeDisposable, @NonNull Union<File, Uri> source, @NonNull String fileName, @NonNull String fileType, long fileSize, long draftID, long dateModified) {
+		//Clearing the click listener
+		itemView.setOnClickListener(null);
+		
 		//Resetting the view
 		setPlaybackIdle();
 	}

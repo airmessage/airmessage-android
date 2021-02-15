@@ -81,6 +81,12 @@ class ProxyDirectTCP extends DataProxy<EncryptedPacket> {
 		int port, portFallback;
 		EncryptionManager encryptionManager;
 		
+		//Checking if the connection params are valid
+		if(connectionParams.getAddress() == null || connectionParams.getPassword() == null) {
+			notifyClose(ConnectionErrorCode.internalError);
+			return;
+		}
+		
 		//Parsing the address
 		if(RegexConstants.port.matcher(connectionParams.getAddress()).find()) {
 			String[] targetDetails = connectionParams.getAddress().split(":");

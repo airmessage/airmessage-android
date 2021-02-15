@@ -127,7 +127,7 @@ public class ShortcutHelper {
 						shortcutManager.updateShortcuts(Collections.singletonList(conversationShortcut));
 					} else {
 						//Removing the oldest shortcut if we are at the shortcut limit
-						if(dynamicShortcuts.size() == dynamicShortcutLimit) {
+						while(dynamicShortcuts.size() >= dynamicShortcutLimit) {
 							shortcutManager.removeDynamicShortcuts(Collections.singletonList(dynamicShortcuts.get(dynamicShortcuts.size() - 1).getId()));
 						}
 						

@@ -69,7 +69,6 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -104,11 +103,7 @@ import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
-import com.bumptech.glide.request.target.CustomViewTarget;
-import com.bumptech.glide.request.target.DrawableImageViewTarget;
 import com.bumptech.glide.request.target.Target;
-import com.bumptech.glide.request.target.ViewTarget;
-import com.bumptech.glide.request.transition.Transition;
 import com.bumptech.glide.signature.ObjectKey;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -118,6 +113,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.io.BufferedInputStream;
@@ -905,7 +901,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	 */
 	private void updateMessageList(ReduxEventMessaging event) {
 		//Ignoring the event if we aren't loaded yet
-		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return;
+		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady || messageListAdapter == null) return;
 		
 		if(event instanceof ReduxEventMessaging.Message) {
 			ReduxEventMessaging.Message messageEvent = (ReduxEventMessaging.Message) event;
@@ -1815,7 +1811,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private void rebuildContactViews() {
 		//Returning if the messages are not ready
-		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return;
+		if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady || messageListAdapter == null) return;
 		
 		//Updating the title
 		if(viewModel.conversationInfo.getTitle() == null) viewModel.updateConversationTitle();
@@ -2335,7 +2331,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 				case itemTypeTopProgressBar: {
 					View view = getLayoutInflater().inflate(R.layout.listitem_loading, parent, false);
-					((ProgressBar) view.findViewById(R.id.progressbar)).setIndeterminateTintList(ColorStateList.valueOf(getUIColor()));
+					CircularProgressIndicator progressIndicator = view.findViewById(R.id.progressbar);
+					progressIndicator.setIndicatorColor(getUIColor());
+					progressIndicator.setTrackColor(getUIColor());
 					return new LoadingViewHolder(view);
 				}
 				case itemTypeConversationActions: {
@@ -2362,9 +2360,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			int lastVisibleIndex = layoutManager.findLastVisibleItemPosition();
 			
 			for(int i = firstVisibleIndex; i <= lastVisibleIndex; i++) {
-				RecyclerView.ViewHolder holder = recyclerView.findViewHolderForAdapterPosition(i);
+				RecyclerView.ViewHolder holder = recyclerView.findViewHolderForLayoutPosition(i);
 				if(holder instanceof DisposableViewHolder) {
-					((DisposableViewHolder) holder).getCompositeDisposable().clear();
+					((DisposableViewHolder) holder).getCompositeDisposable().dispose();
 				}
 			}
 		}
@@ -2429,6 +2427,10 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(payloads.isEmpty()) {
 				onBindViewHolder(holder, position);
 			} else {
+				//Ignoring if the item isn't a message
+				int itemType = getItemViewType(position);
+				if(itemType == itemTypeTopProgressBar || itemType == itemTypeConversationActions) return;
+				
 				//Getting the conversation info
 				ConversationItem conversationItem = getItemAt(position);
 				
@@ -2456,7 +2458,9 @@ public class Messaging extends AppCompatCompositeActivity {
 							MessageInfo messageInfo = (MessageInfo) conversationItem;
 							VHMessageStructure viewHolderStructure = (VHMessageStructure) holder;
 							int componentIndex = attachmentIndex + (messageInfo.getMessageTextInfo() != null ? 1 : 0);
-							bindMessageComponent(viewHolderStructure, viewHolderStructure.messageComponents.get(componentIndex), viewModel.conversationInfo, messageInfo, messageInfo.getAttachments().get(attachmentIndex));
+							if(componentIndex < viewHolderStructure.messageComponents.size()) {
+								bindMessageComponent(viewHolderStructure, viewHolderStructure.messageComponents.get(componentIndex), viewModel.conversationInfo, messageInfo, messageInfo.getAttachments().get(attachmentIndex));
+							}
 							
 							break;
 						}
@@ -3293,46 +3297,53 @@ public class Messaging extends AppCompatCompositeActivity {
 					.signature(new ObjectKey(component.getGUID() != null ? component.getGUID() : component.getLocalID()))
 					.transition(DrawableTransitionOptions.withCrossFade());
 			if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(SendStyleHelper.invisibleInkBlurRadius, SendStyleHelper.invisibleInkBlurSampling)));
-			//requestBuilder.into(viewHolder.imageView);
-			requestBuilder.into(new DrawableImageViewTarget(viewHolder.imageView){
-				@Override
-				protected void setResource(@Nullable Drawable resource) {
-					super.setResource(resource);
-					
-					//Switching to the content view
-					setAttachmentView(viewHolder, viewHolder.groupContentFrame);
-					
-					//Setting the click listener
-					viewHolder.itemView.setOnClickListener(view -> openAttachmentFileMediaViewer(component, viewHolder.imageView, new float[]{0, 0, 0, 0, 0, 0, 0, 0}));
-					
-					//Updating the image view layout
-					viewHolder.imageView.requestLayout();
-					//viewHolder.imageView.post(viewHolder.imageView::requestLayout);
-					
-					if(FileHelper.compareMimeTypes(component.getContentType(), MIMEConstants.mimeTypeVideo)) {
-						//Showing the play indicator
-						viewHolder.playIndicator.setVisibility(View.VISIBLE);
+			requestBuilder
+					.override(getResources().getDimensionPixelSize(R.dimen.image_width_preferred))
+					.listener(new RequestListener<Drawable>() {
+						@Override
+						public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+							return false;
+						}
 						
-						//Computing the image brightness
-						Bitmap bitmap = ((BitmapDrawable) resource).getBitmap();
-						boolean isLight = ColorMathHelper.calculateBrightness(bitmap, bitmap.getWidth() / 16) > 200;
-						
-						//Updating the play icon color
-						viewHolder.playIndicator.setImageTintList(isLight ? ColorStateList.valueOf(0xFF212121) : ColorStateList.valueOf(0xFFFFFFFF));
-					} else {
-						//Hiding the play indicator
-						viewHolder.playIndicator.setVisibility(View.GONE);
-					}
-					
-					//Updating the ink view
-					if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) {
-						viewHolder.inkView.setVisibility(View.VISIBLE);
-						viewHolder.inkView.setState(true);
-					} else {
-						viewHolder.inkView.setVisibility(View.GONE);
-					}
-				}
-			});
+						@Override
+						public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+							//Switching to the content view
+							setAttachmentView(viewHolder, viewHolder.groupContentFrame);
+							
+							//Setting the click listener
+							viewHolder.itemView.setOnClickListener(view -> openAttachmentFileMediaViewer(component, viewHolder.imageView, new float[]{0, 0, 0, 0, 0, 0, 0, 0}));
+							
+							//Updating the image view layout
+							viewHolder.imageView.requestLayout();
+							//viewHolder.imageView.post(viewHolder.imageView::requestLayout);
+							
+							if(FileHelper.compareMimeTypes(component.getContentType(), MIMEConstants.mimeTypeVideo)) {
+								//Showing the play indicator
+								viewHolder.playIndicator.setVisibility(View.VISIBLE);
+								
+								//Computing the image brightness
+								Bitmap bitmap = ((BitmapDrawable) resource).getBitmap();
+								boolean isLight = ColorMathHelper.calculateBrightness(bitmap, bitmap.getWidth() / 16) > 200;
+								
+								//Updating the play icon color
+								viewHolder.playIndicator.setImageTintList(isLight ? ColorStateList.valueOf(0xFF212121) : ColorStateList.valueOf(0xFFFFFFFF));
+							} else {
+								//Hiding the play indicator
+								viewHolder.playIndicator.setVisibility(View.GONE);
+							}
+							
+							//Updating the ink view
+							if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) {
+								viewHolder.inkView.setVisibility(View.VISIBLE);
+								viewHolder.inkView.setState(true);
+							} else {
+								viewHolder.inkView.setVisibility(View.GONE);
+							}
+							
+							return false;
+						}
+					})
+					.into(viewHolder.imageView);
 		}
 		
 		private void bindMessageComponentAudio(AudioPlaybackManager playbackManager, VHMessageStructure viewHolderStructure, VHMessageComponentAudio viewHolder, AttachmentInfo component) {
@@ -4311,13 +4322,15 @@ public class Messaging extends AppCompatCompositeActivity {
 					);
 				}
 			} else if(itemViewType == AttachmentType.audio) {
-				holder.getCompositeDisposable().add(
-						viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
-								Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, fileSource)))
-										.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
-								.subscribe(metadata ->
-										((VHAttachmentTileContentAudio) holder.content).onLoaded(Messaging.this, holder.getCompositeDisposable(), viewModel.audioPlaybackManager, fileSource, (FileDisplayMetadata.Media) metadata, fileInfo.getReferenceID()))
-				);
+				//If the file isn't prepared, wait until we prepare it to load metadata (otherwise this causes ExoPlayer playback issues)
+				if(fileInfo.getFile().isB()) {
+					holder.getCompositeDisposable().add(
+							viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
+									Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, fileSource)))
+											.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
+									.subscribe(metadata -> ((VHAttachmentTileContentAudio) holder.content).onLoaded(Messaging.this, holder.getCompositeDisposable(), viewModel.audioPlaybackManager, fileSource, (FileDisplayMetadata.Media) metadata, fileInfo.getReferenceID()))
+					);
+				}
 			} else if(itemViewType == AttachmentType.contact) {
 				holder.getCompositeDisposable().add(
 						viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
@@ -4359,6 +4372,18 @@ public class Messaging extends AppCompatCompositeActivity {
 						
 						//Setting the view state
 						holder.setAppearanceState(!fileInfo.getFile().isA(), false);
+						
+						//Refreshing metadata if the item is an audio file
+						if(getItemViewType(position) == AttachmentType.audio && fileInfo.getFile().isB()) {
+							Union<File, Uri> fileSource = Union.ofA(fileInfo.getFile().getB().getFile());
+							
+							holder.getCompositeDisposable().add(
+									viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
+											Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, fileSource)))
+													.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
+											.subscribe(metadata -> ((VHAttachmentTileContentAudio) holder.content).onLoaded(Messaging.this, holder.getCompositeDisposable(), viewModel.audioPlaybackManager, fileSource, (FileDisplayMetadata.Media) metadata, fileInfo.getReferenceID()))
+							);
+						}
 						
 						break;
 					}

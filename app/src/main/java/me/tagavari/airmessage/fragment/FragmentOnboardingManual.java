@@ -163,9 +163,6 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		
 		//Getting the view model
 		viewModel = new ViewModelProvider(this).get(FragmentViewModel.class);
-		
-		//Subscribing to connection updates
-		compositeDisposable.add(ReduxEmitterNetwork.getConnectionStateSubject().subscribe(this::onConnectionUpdate));
 	}
 	
 	@Nullable
@@ -219,6 +216,9 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		} catch(IOException | GeneralSecurityException exception) {
 			exception.printStackTrace();
 		}
+		
+		//Subscribing to connection updates
+		compositeDisposable.add(ReduxEmitterNetwork.getConnectionStateSubject().subscribe(this::onConnectionUpdate));
 		
 		//Updating the state
 		applyState();
