@@ -258,12 +258,14 @@ public class ConversationInfo implements Parcelable {
 		ConversationPreview draftPreview = getDraftPreview();
 		if(messagePreview == null && draftPreview == null) {
 			return null;
-		} if((messagePreview != null && draftPreview == null) || messagePreview.getDate() > draftPreview.getDate()) {
-			return messagePreview;
-		} else if((draftPreview != null && messagePreview == null) || draftPreview.getDate() > messagePreview.getDate()) {
+		} else if(messagePreview == null) {
 			return draftPreview;
+		} else if(draftPreview == null) {
+			return messagePreview;
+		} if(messagePreview.getDate() > draftPreview.getDate()) {
+			return messagePreview;
 		} else {
-			return null;
+			return draftPreview;
 		}
 	}
 	
