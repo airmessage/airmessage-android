@@ -2456,7 +2456,9 @@ public class Messaging extends AppCompatCompositeActivity {
 							MessageInfo messageInfo = (MessageInfo) conversationItem;
 							VHMessageStructure viewHolderStructure = (VHMessageStructure) holder;
 							int componentIndex = attachmentIndex + (messageInfo.getMessageTextInfo() != null ? 1 : 0);
-							bindMessageComponent(viewHolderStructure, viewHolderStructure.messageComponents.get(componentIndex), viewModel.conversationInfo, messageInfo, messageInfo.getAttachments().get(attachmentIndex));
+							if(componentIndex < viewHolderStructure.messageComponents.size()) {
+								bindMessageComponent(viewHolderStructure, viewHolderStructure.messageComponents.get(componentIndex), viewModel.conversationInfo, messageInfo, messageInfo.getAttachments().get(attachmentIndex));
+							}
 							
 							break;
 						}
