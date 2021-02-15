@@ -69,7 +69,6 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -104,7 +103,6 @@ import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
-import com.bumptech.glide.request.target.DrawableImageViewTarget;
 import com.bumptech.glide.request.target.Target;
 import com.bumptech.glide.signature.ObjectKey;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -3299,47 +3297,53 @@ public class Messaging extends AppCompatCompositeActivity {
 					.signature(new ObjectKey(component.getGUID() != null ? component.getGUID() : component.getLocalID()))
 					.transition(DrawableTransitionOptions.withCrossFade());
 			if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) requestBuilder.apply(RequestOptions.bitmapTransform(new BlurTransformation(SendStyleHelper.invisibleInkBlurRadius, SendStyleHelper.invisibleInkBlurSampling)));
-			//requestBuilder.into(viewHolder.imageView);
-			requestBuilder.into(new DrawableImageViewTarget(viewHolder.imageView) {
-				@Override
-				protected void setResource(@Nullable Drawable resource) {
-					super.setResource(resource);
-					if(resource == null) return;
-					
-					//Switching to the content view
-					setAttachmentView(viewHolder, viewHolder.groupContentFrame);
-					
-					//Setting the click listener
-					viewHolder.itemView.setOnClickListener(view -> openAttachmentFileMediaViewer(component, viewHolder.imageView, new float[]{0, 0, 0, 0, 0, 0, 0, 0}));
-					
-					//Updating the image view layout
-					viewHolder.imageView.requestLayout();
-					//viewHolder.imageView.post(viewHolder.imageView::requestLayout);
-					
-					if(FileHelper.compareMimeTypes(component.getContentType(), MIMEConstants.mimeTypeVideo)) {
-						//Showing the play indicator
-						viewHolder.playIndicator.setVisibility(View.VISIBLE);
+			requestBuilder
+					.override(getResources().getDimensionPixelSize(R.dimen.image_width_preferred))
+					.listener(new RequestListener<Drawable>() {
+						@Override
+						public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+							return false;
+						}
 						
-						//Computing the image brightness
-						Bitmap bitmap = ((BitmapDrawable) resource).getBitmap();
-						boolean isLight = ColorMathHelper.calculateBrightness(bitmap, bitmap.getWidth() / 16) > 200;
-						
-						//Updating the play icon color
-						viewHolder.playIndicator.setImageTintList(isLight ? ColorStateList.valueOf(0xFF212121) : ColorStateList.valueOf(0xFFFFFFFF));
-					} else {
-						//Hiding the play indicator
-						viewHolder.playIndicator.setVisibility(View.GONE);
-					}
-					
-					//Updating the ink view
-					if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) {
-						viewHolder.inkView.setVisibility(View.VISIBLE);
-						viewHolder.inkView.setState(true);
-					} else {
-						viewHolder.inkView.setVisibility(View.GONE);
-					}
-				}
-			});
+						@Override
+						public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+							//Switching to the content view
+							setAttachmentView(viewHolder, viewHolder.groupContentFrame);
+							
+							//Setting the click listener
+							viewHolder.itemView.setOnClickListener(view -> openAttachmentFileMediaViewer(component, viewHolder.imageView, new float[]{0, 0, 0, 0, 0, 0, 0, 0}));
+							
+							//Updating the image view layout
+							viewHolder.imageView.requestLayout();
+							//viewHolder.imageView.post(viewHolder.imageView::requestLayout);
+							
+							if(FileHelper.compareMimeTypes(component.getContentType(), MIMEConstants.mimeTypeVideo)) {
+								//Showing the play indicator
+								viewHolder.playIndicator.setVisibility(View.VISIBLE);
+								
+								//Computing the image brightness
+								Bitmap bitmap = ((BitmapDrawable) resource).getBitmap();
+								boolean isLight = ColorMathHelper.calculateBrightness(bitmap, bitmap.getWidth() / 16) > 200;
+								
+								//Updating the play icon color
+								viewHolder.playIndicator.setImageTintList(isLight ? ColorStateList.valueOf(0xFF212121) : ColorStateList.valueOf(0xFFFFFFFF));
+							} else {
+								//Hiding the play indicator
+								viewHolder.playIndicator.setVisibility(View.GONE);
+							}
+							
+							//Updating the ink view
+							if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) {
+								viewHolder.inkView.setVisibility(View.VISIBLE);
+								viewHolder.inkView.setState(true);
+							} else {
+								viewHolder.inkView.setVisibility(View.GONE);
+							}
+							
+							return false;
+						}
+					})
+					.into(viewHolder.imageView);
 		}
 		
 		private void bindMessageComponentAudio(AudioPlaybackManager playbackManager, VHMessageStructure viewHolderStructure, VHMessageComponentAudio viewHolder, AttachmentInfo component) {
