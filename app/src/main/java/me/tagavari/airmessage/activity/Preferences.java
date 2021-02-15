@@ -3,6 +3,7 @@ package me.tagavari.airmessage.activity;
 import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.NotificationManager;
 import android.app.role.RoleManager;
 import android.content.ActivityNotFoundException;
@@ -250,7 +251,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		Preference.OnPreferenceClickListener syncMessagesClickListener = preference -> {
 			//Checking if the connection manager
 			PluginConnectionService pluginCS = getPluginCS();
-			if(!pluginCS.isServiceBound() || !pluginCS.getConnectionManager().isConnected()) {
+			if(pluginCS == null || !pluginCS.isServiceBound() || !pluginCS.getConnectionManager().isConnected()) {
 				//Displaying a snackbar
 				Snackbar.make(getView(), R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
 				
@@ -1070,7 +1071,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					.toSingle(() -> {
 						//Requesting a re-sync
 						PluginConnectionService pluginCS = getPluginCS();
-						if(pluginCS.isServiceBound() && pluginCS.getConnectionManager().isConnected()) {
+						if(pluginCS != null && pluginCS.isServiceBound() && pluginCS.getConnectionManager().isConnected()) {
 							pluginCS.getConnectionManager().fetchMassConversationData(params).doOnError(error -> {
 								Log.i(TAG, "Failed to sync messages", error);
 							}).onErrorComplete().subscribe();
@@ -1087,7 +1088,9 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		}
 		
 		private PluginConnectionService getPluginCS() {
-			return ((Preferences) getActivity()).getPluginCS();
+			Activity activity = getActivity();
+			if(activity == null) return null;
+			else return ((Preferences) activity).getPluginCS();
 		}
 		
 		/* @Override
