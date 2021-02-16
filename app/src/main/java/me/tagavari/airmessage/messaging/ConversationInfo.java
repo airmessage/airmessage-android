@@ -262,7 +262,7 @@ public class ConversationInfo implements Parcelable {
 			return draftPreview;
 		} else if(draftPreview == null) {
 			return messagePreview;
-		} if(messagePreview.getDate() > draftPreview.getDate()) {
+		} else if(messagePreview.getDate() > draftPreview.getDate()) {
 			return messagePreview;
 		} else {
 			return draftPreview;
