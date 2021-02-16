@@ -27,12 +27,9 @@ import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.ObservableEmitter;
-import io.reactivex.rxjava3.core.ObservableSource;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
-import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.schedulers.Schedulers;
-import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.exception.AMRequestException;
 import me.tagavari.airmessage.constants.RegexConstants;
@@ -178,7 +175,13 @@ public class MessageSendHelper {
 				if(connectionManager != null) {
 					//Send the messages over the connection
 					return sendMessageAMBridge(conversationInfo, message, connectionManager)
-							.onErrorReturn(error -> new Pair<>(message, (AMRequestException) error));
+							.onErrorReturn(error -> {
+								if(error instanceof AMRequestException) {
+									return new Pair<>(message, (AMRequestException) error);
+								} else {
+									return new Pair<>(message, new AMRequestException(MessageSendErrorCode.localUnknown, error));
+								}
+							});
 				} else {
 					//Fail immediately
 					return Maybe.just(new Pair<>(message, new AMRequestException(MessageSendErrorCode.localNetwork)));
@@ -200,7 +203,7 @@ public class MessageSendHelper {
 	 * @param conversationInfo The message's conversation
 	 * @param messageInfo The message to send
 	 * @param connectionManager The connection manager to use (or NULL if unavailable)
-	 * @return A compleatble to represent this request
+	 * @return A completable to represent this request
 	 */
 	@CheckReturnValue
 	public static Completable sendMessageAMBridge(ConversationInfo conversationInfo, MessageInfo messageInfo, ConnectionManager connectionManager) {
