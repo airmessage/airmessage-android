@@ -2301,6 +2301,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	 * @param conversationItem The conversation item to add
 	 * @return A result containing created, updated and deleted messages
 	 */
+	@Nullable
 	public ReplaceInsertResult mergeOrWriteConversationItem(Context context, long conversationID, Blocks.ConversationItem conversationItem) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
@@ -2419,6 +2420,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Adding the conversation item normally
 		ConversationItem addedItem = addConversationStruct(context, conversationID, conversationItem);
+		if(addedItem == null) return null;
 		return new ReplaceInsertResult(addedItem, Collections.singletonList(addedItem), Collections.emptyList(), Collections.emptyList());
 	}
 	
@@ -2637,6 +2639,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	 * @param conversationItem The message to add
 	 * @return A completed conversation item
 	 */
+	@Nullable
 	public ConversationItem addConversationStruct(Context context, long conversationID, Blocks.ConversationItem conversationItem) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();

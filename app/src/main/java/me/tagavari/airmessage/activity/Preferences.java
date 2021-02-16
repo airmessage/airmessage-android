@@ -1082,8 +1082,11 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					})
 					.subscribe(success -> {
 						//Displaying a snackbar
-						if(success) Snackbar.make(getView(), R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_SHORT).show();
-						else Snackbar.make(getView(), R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
+						View view = getView();
+						if(view != null) {
+							if(success) Snackbar.make(view, R.string.message_confirm_resyncmessages_started, Snackbar.LENGTH_SHORT).show();
+							else Snackbar.make(view, R.string.message_serverstatus_noconnection, Snackbar.LENGTH_LONG).show();
+						}
 			});
 		}
 		

@@ -28,7 +28,6 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -1094,7 +1093,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Getting and updating the conversation's preview
 			ConversationPreview conversationPreview = ConversationPreviewHelper.latestItemToPreview(entry.getValue());
-			conversationInfo.setMessagePreview(conversationPreview);
+			if(conversationPreview != null) conversationInfo.setMessagePreview(conversationPreview);
 			conversationInfo.setUnreadMessageCount(entry.getValue().size());
 			
 			//Finding the index to insert the conversation
