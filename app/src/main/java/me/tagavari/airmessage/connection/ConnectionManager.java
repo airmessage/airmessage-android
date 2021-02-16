@@ -674,14 +674,22 @@ public class ConnectionManager {
 			FileFetchRequest fileFetchRequest = subject.getRequestData();
 			compositeDisposable.add(
 					fileFetchRequest.writeChunk(responseIndex, data).subscribe((writtenLength) -> {
-						subject.get().onNext(new ReduxEventAttachmentDownload.Progress(writtenLength, fileFetchRequest.getTotalLength()));
+						//Getting the request
+						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						if(localSubject == null) return;
+						
+						localSubject.get().onNext(new ReduxEventAttachmentDownload.Progress(writtenLength, fileFetchRequest.getTotalLength()));
 					}, (error) -> {
+						//Getting the request
+						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						if(localSubject == null) return;
+						
 						if(error instanceof IOException) {
-							subject.onError(new AMRequestException(AttachmentReqErrorCode.localIO));
+							localSubject.onError(new AMRequestException(AttachmentReqErrorCode.localIO, error));
 						} else if(error instanceof IllegalArgumentException) {
-							subject.onError(new AMRequestException(AttachmentReqErrorCode.localBadResponse));
+							localSubject.onError(new AMRequestException(AttachmentReqErrorCode.localBadResponse, error));
 						} else {
-							subject.onError(new AMRequestException(AttachmentReqErrorCode.unknown));
+							localSubject.onError(new AMRequestException(AttachmentReqErrorCode.unknown, error));
 						}
 						idRequestSubjectMap.remove(requestID);
 					})
@@ -698,11 +706,19 @@ public class ConnectionManager {
 			FileFetchRequest fileFetchRequest = subject.getRequestData();
 			compositeDisposable.add(
 					fileFetchRequest.complete(getContext()).subscribe((attachmentFile) -> {
-						subject.get().onNext(new ReduxEventAttachmentDownload.Complete(attachmentFile));
-						subject.onComplete();
+						//Getting the request
+						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						if(localSubject == null) return;
+						
+						localSubject.get().onNext(new ReduxEventAttachmentDownload.Complete(attachmentFile));
+						localSubject.onComplete();
 						ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.AttachmentFile(fileFetchRequest.getMessageID(), fileFetchRequest.getAttachmentID(), attachmentFile));
 					}, (error) -> {
-						subject.onError(new AMRequestException(AttachmentReqErrorCode.localIO));
+						//Getting the request
+						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						if(localSubject == null) return;
+						
+						localSubject.onError(new AMRequestException(AttachmentReqErrorCode.localIO));
 						idRequestSubjectMap.remove(requestID);
 					})
 			);
