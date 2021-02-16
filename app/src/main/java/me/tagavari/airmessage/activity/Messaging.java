@@ -541,10 +541,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Setting the status bar color
 		PlatformHelper.updateChromeOSStatusBar(this);
 		
-		//Creating the filler values
-		String fillerText = null;
-		Uri[] fillerFiles = null;
-		
 		//Checking if the request is a send intent
 		if(Intent.ACTION_SEND.equals(getIntent().getAction()) || Intent.ACTION_SENDTO.equals(getIntent().getAction())) {
 			long conversationID = -1;
@@ -568,25 +564,6 @@ public class Messaging extends AppCompatCompositeActivity {
 				AddressHelper.normalizeAddresses(recipients);
 			}
 			
-			//Getting the message
-			String message;
-			if(getIntent().hasExtra(Intent.EXTRA_TEXT)) message = getIntent().getStringExtra(Intent.EXTRA_TEXT);
-			else if(getIntent().hasExtra("sms_body")) message = getIntent().getStringExtra("sms_body");
-			else message = null;
-			fillerText = message;
-			
-			//Getting the extra files
-			List<Uri> sendFiles = new ArrayList<>();
-			{
-				Uri data = getIntent().getParcelableExtra(Intent.EXTRA_STREAM);
-				if(data != null) sendFiles.add(data);
-				else {
-					List<Uri> dataList = getIntent().getParcelableArrayListExtra(Intent.EXTRA_STREAM);
-					if(dataList != null) sendFiles.addAll(dataList);
-				}
-			}
-			fillerFiles = sendFiles.toArray(new Uri[0]);
-			
 			//Getting the view model
 			final long finalConversationID = conversationID;
 			final String[] finalRecipients = recipients;
@@ -599,6 +576,24 @@ public class Messaging extends AppCompatCompositeActivity {
 					else return (T) new ActivityViewModel(getApplication(), -1);
 				}
 			}).get(ActivityViewModel.class);
+			
+			if(!viewModel.fillerAssigned) {
+				//Getting the message
+				if(getIntent().hasExtra(Intent.EXTRA_TEXT)) viewModel.fillerText = getIntent().getStringExtra(Intent.EXTRA_TEXT);
+				else if(getIntent().hasExtra("sms_body")) viewModel.fillerText = getIntent().getStringExtra("sms_body");
+				
+				//Getting the extra files
+				List<Uri> sendFiles = new ArrayList<>();
+				Uri data = getIntent().getParcelableExtra(Intent.EXTRA_STREAM);
+				if(data != null) sendFiles.add(data);
+				else {
+					List<Uri> dataList = getIntent().getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+					if(dataList != null) sendFiles.addAll(dataList);
+				}
+				if(!sendFiles.isEmpty()) viewModel.fillerFiles = sendFiles.toArray(new Uri[0]);
+				
+				viewModel.fillerAssigned = true;
+			}
 		} else {
 			//Getting the conversation ID
 			long conversationID = getIntent().getLongExtra(intentParamTargetID, -1);
@@ -613,13 +608,17 @@ public class Messaging extends AppCompatCompositeActivity {
 			}).get(ActivityViewModel.class);
 			
 			//Getting the filler data
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && getIntent().hasExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)) fillerText = getIntent().getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT); //Notification inline reply text (only supported on Android P and above)
-			else if(getIntent().hasExtra(intentParamDataText)) fillerText = getIntent().getStringExtra(intentParamDataText); //Shared text from activity
-			
-			if(getIntent().getBooleanExtra(intentParamDataFile, false)) {
-				ClipData clipData = getIntent().getClipData();
-				fillerFiles = new Uri[clipData.getItemCount()];
-				for(int i = 0; i < clipData.getItemCount(); i++) fillerFiles[i] = clipData.getItemAt(i).getUri();
+			if(!viewModel.fillerAssigned) {
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && getIntent().hasExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)) viewModel.fillerText = getIntent().getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT); //Notification inline reply text (only supported on Android P and above)
+				else if(getIntent().hasExtra(intentParamDataText)) viewModel.fillerText = getIntent().getStringExtra(intentParamDataText); //Shared text from activity
+				
+				if(getIntent().getBooleanExtra(intentParamDataFile, false)) {
+					ClipData clipData = getIntent().getClipData();
+					viewModel.fillerFiles = new Uri[clipData.getItemCount()];
+					for(int i = 0; i < clipData.getItemCount(); i++) viewModel.fillerFiles[i] = clipData.getItemAt(i).getUri();
+				}
+				
+				viewModel.fillerAssigned = true;
 			}
 		}
 		
@@ -691,10 +690,6 @@ public class Messaging extends AppCompatCompositeActivity {
 			});
 			listAttachmentQueue.setClipToOutline(true);
 		}
-		
-		//Setting the filler data
-		if(fillerText != null) messageInputField.setText(fillerText);
-		if(fillerFiles != null) queueURIs(fillerFiles);
 		
 		//Creating the info bars
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
@@ -873,6 +868,16 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Updating the reply suggestions
 				viewModel.updateConversationActions();
+				
+				//Applying filler data
+				if(viewModel.fillerText != null) {
+					messageInputField.setText(viewModel.fillerText);
+					viewModel.fillerText = null;
+				}
+				if(viewModel.fillerFiles != null) {
+					queueURIs(viewModel.fillerFiles);
+					viewModel.fillerFiles = null;
+				}
 				
 				break;
 			}
@@ -4490,6 +4495,11 @@ public class Messaging extends AppCompatCompositeActivity {
 		//The latest read message and latest delivered message
 		MessageInfo latestMessageRead, latestMessageDelivered;
 		private long lastConversationActionTarget = -1;
+		
+		//Creating the filler values
+		boolean fillerAssigned = false;
+		String fillerText = null;
+		Uri[] fillerFiles = null;
 		
 		//Creating the sound values
 		private final SoundPool soundPool = SoundHelper.getSoundPool();
