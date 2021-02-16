@@ -104,15 +104,12 @@ public class MessageNotificationActionReceiver extends BroadcastReceiver {
 						//Updating the notification
 						NotificationHelper.addMessageToNotification(context, conversationInfo, responseMessage, null, System.currentTimeMillis(), null);
 					}).doOnError(error -> {
-						//Logging the error
-						Log.w(TAG, "Failed to send message from notification", error);
-						
 						//Refreshing the notification
 						NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
 						Notification existingNotification = NotificationHelper.getNotification(notificationManager, NotificationHelper.notificationTagMessage, (int) conversationInfo.getLocalID());
 						if(existingNotification != null) notificationManager.notify(NotificationHelper.notificationTagMessage, (int) conversationInfo.getLocalID(), existingNotification);
 					}).andThen(ConversationActionTask.unreadConversations(Collections.singleton(conversationInfo), 0)); //Marking the conversation as read
-				}).subscribe();
+				}).doOnError((error) -> Log.w(TAG, "Failed to send message from notification", error)).onErrorComplete().subscribe();
 	}
 	
 	@CheckReturnValue
