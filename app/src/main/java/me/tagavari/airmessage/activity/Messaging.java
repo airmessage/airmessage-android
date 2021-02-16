@@ -3204,6 +3204,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Showing the open view
 				setAttachmentView(viewHolder, viewHolder.groupOpen);
 				viewHolder.labelOpen.setText(component.getFileName());
+				viewHolder.labelOpen.setMaxWidth(WindowHelper.getMaxMessageWidth(getResources()));
 				viewHolder.itemView.setOnClickListener(view -> IntentHelper.openAttachmentFile(Messaging.this, component.getFile(), component.getContentType()));
 				
 				//Setting up the content view
