@@ -837,18 +837,29 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Setting the message input field hint
 				messageInputField.setHint(getMessageFieldPlaceholder());
 				
-				//Checking if there are drafts files saved in the conversation
-				if(!viewModel.conversationInfo.getDraftFiles().isEmpty()) {
+				if(!viewModel.inputDataRestored) {
+					//Applying filler data
+					if(viewModel.fillerText != null) {
+						messageInputField.setText(viewModel.fillerText);
+						viewModel.fillerText = null;
+					} else {
+						messageInputField.setText(viewModel.conversationInfo.getDraftMessage());
+					}
+					if(viewModel.fillerFiles != null) {
+						queueURIs(viewModel.fillerFiles);
+						viewModel.fillerFiles = null;
+					}
+				
+					viewModel.inputDataRestored = true;
+				}
+				
+				//Checking if there are queued files
+				if(!viewModel.queueList.isEmpty()) {
 					//Showing the file queue
 					showFileQueue(false);
 					
 					//Updating the send button
 					updateSendButton(false);
-				}
-				
-				//Restoring the draft message
-				if(messageInputField.getText().length() == 0) {
-					messageInputField.setText(viewModel.conversationInfo.getDraftMessage());
 				}
 				
 				//Setting the last message count
@@ -868,16 +879,6 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Updating the reply suggestions
 				viewModel.updateConversationActions();
-				
-				//Applying filler data
-				if(viewModel.fillerText != null) {
-					messageInputField.setText(viewModel.fillerText);
-					viewModel.fillerText = null;
-				}
-				if(viewModel.fillerFiles != null) {
-					queueURIs(viewModel.fillerFiles);
-					viewModel.fillerFiles = null;
-				}
 				
 				break;
 			}
@@ -4497,6 +4498,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private long lastConversationActionTarget = -1;
 		
 		//Creating the filler values
+		boolean inputDataRestored = false;
 		boolean fillerAssigned = false;
 		String fillerText = null;
 		Uri[] fillerFiles = null;
