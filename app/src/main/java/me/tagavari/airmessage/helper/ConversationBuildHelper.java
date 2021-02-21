@@ -18,6 +18,7 @@ import android.view.View;
 import androidx.annotation.RequiresApi;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -96,7 +97,7 @@ public class ConversationBuildHelper {
 	public static Single<Bitmap> generateShortcutIcon(Context context, ConversationInfo conversationInfo) {
 		//Rendering and returning the view
 		ArrayList<MemberInfo> memberInfos = new ArrayList<>(conversationInfo.getMembers());
-		return Observable.fromIterable(memberInfos)
+		return (memberInfos.isEmpty() ? Single.just(Collections.<Union<Integer, Bitmap>>emptyList()) : Observable.fromIterable(memberInfos)
 				//Limit to a maximum of 4 members
 				.take(4)
 				//Map each user to their color or their bitmap
@@ -105,7 +106,7 @@ public class ConversationBuildHelper {
 						.flatMap(userInfo -> BitmapHelper.loadBitmap(context, ContactHelper.getContactImageURI(userInfo.getContactID()), true).map(Union::<Integer, Bitmap>ofB))
 						.onErrorReturnItem(Union.<Integer, Bitmap>ofA(member.getColor()))
 				)
-				.toList(memberInfos.size())
+				.toList(memberInfos.size()))
 				.map(contactDataList -> {
 					//Calculating layer sizes
 					int layerSizeOuter = ResourceHelper.dpToPx(108);
