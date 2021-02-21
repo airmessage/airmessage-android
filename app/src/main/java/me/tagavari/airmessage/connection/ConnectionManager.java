@@ -725,13 +725,13 @@ public class ConnectionManager {
 		}
 		
 		@Override
-		public void onFileRequestFail(short requestID, int errorCode) {
+		public void onFileRequestFail(short requestID, @AttachmentReqErrorCode int errorCode) {
 			//Getting the request
 			RequestSubject.Publish<ReduxEventAttachmentDownload> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Failing the request
-			subject.onError(new AMRequestException(AttachmentReqErrorCode.localIO));
+			subject.onError(new AMRequestException(errorCode));
 			idRequestSubjectMap.remove(requestID);
 		}
 		
@@ -1095,7 +1095,7 @@ public class ConnectionManager {
 	 * @param attachmentLocalID The local ID of the attachment
 	 * @param attachmentGUID The GUID of the attachment
 	 * @param attachmentName The name of the attachment file
-	 * @return An observable to track the progress of the download, or an {@link AMRequestException} with a {@link AttachmentReqErrorCode}
+	 * @return An observable to track the progress of the download, or an {@link AMRequestException} with an {@link AttachmentReqErrorCode}
 	 */
 	public Observable<ReduxEventAttachmentDownload> fetchAttachment(long messageLocalID, long attachmentLocalID, String attachmentGUID, String attachmentName) {
 		final Throwable error = new AMRequestException(AttachmentReqErrorCode.localTimeout);
