@@ -379,8 +379,10 @@ public class Conversations extends AppCompatCompositeActivity {
 			else infoBarSecurityUpdate.show();
 		});
 		
-		//Subscribing to messaging updates
-		pluginRXD.activity().add(ReduxEmitterNetwork.getMessageUpdateSubject().subscribe(this::updateConversationList));
+		pluginRXD.activity().addAll(
+				ReduxEmitterNetwork.getMessageUpdateSubject().subscribe(this::updateConversationList), //Subscribing to messaging updates
+				ReduxEmitterNetwork.getTextImportUpdateSubject().subscribe(this::updateStateTextImport) //Subscribing to message import updates
+		);
 	}
 	
 	@Override
@@ -390,8 +392,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		pluginRXD.ui().addAll(
 				ReduxEmitterNetwork.getConnectionStateSubject().subscribe(this::updateStateConnection), //Subscribing to connection state updates
-				ReduxEmitterNetwork.getMassRetrievalUpdateSubject().subscribe(this::updateStateMassRetrieval), //Subscribing to mass retrieval updates
-				ReduxEmitterNetwork.getTextImportUpdateSubject().subscribe(this::updateStateTextImport) //Subscribing to message import updates
+				ReduxEmitterNetwork.getMassRetrievalUpdateSubject().subscribe(this::updateStateMassRetrieval) //Subscribing to mass retrieval updates
 		);
 	}
 	
