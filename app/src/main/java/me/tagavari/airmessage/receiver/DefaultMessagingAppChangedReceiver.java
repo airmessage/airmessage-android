@@ -7,6 +7,7 @@ import android.os.Build;
 import android.provider.Telephony;
 
 import androidx.annotation.RequiresApi;
+import androidx.core.content.ContextCompat;
 
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Preferences;
@@ -31,7 +32,7 @@ public class DefaultMessagingAppChangedReceiver extends BroadcastReceiver {
 				Preferences.setPreferenceTextMessageIntegration(context, true);
 				
 				//Starting the import service
-				context.startService(new Intent(context, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
+				ContextCompat.startForegroundService(context, new Intent(context, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
 			}
 		} else {
 			//Checking if text message integration is in an invalid state (enabled, but permissions are missing)
@@ -40,7 +41,7 @@ public class DefaultMessagingAppChangedReceiver extends BroadcastReceiver {
 				Preferences.setPreferenceTextMessageIntegration(context, false);
 				
 				//Clearing the database of text messages
-				context.startService(new Intent(context, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete));
+				ContextCompat.startForegroundService(context, new Intent(context, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete));
 			}
 		}
 	}
