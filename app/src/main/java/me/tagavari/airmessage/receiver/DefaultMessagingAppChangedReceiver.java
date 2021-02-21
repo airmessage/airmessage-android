@@ -18,6 +18,8 @@ import me.tagavari.airmessage.service.SystemMessageImportService;
 public class DefaultMessagingAppChangedReceiver extends BroadcastReceiver {
 	@Override
 	public void onReceive(Context context, Intent intent) {
+		if(!Telephony.Sms.Intents.ACTION_DEFAULT_SMS_PACKAGE_CHANGED.equals(intent.getAction())) return;
+		
 		//Getting if this is the new default messaging app
 		boolean isDefaultApp = intent.getBooleanExtra(Telephony.Sms.Intents.EXTRA_IS_DEFAULT_SMS_APP, false);
 		
