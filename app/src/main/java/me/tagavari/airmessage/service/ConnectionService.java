@@ -148,8 +148,11 @@ public class ConnectionService extends Service {
 			
 			//Checking if a quit has been requested
 			if(selfIntentActionStop.equals(intent.getAction())) {
-				//Shutting down the connection service
-				stopSelf();
+				if(!isBound) {
+					//Shutting down the connection service
+					stopForeground(true);
+					stopSelf();
+				}
 				
 				//Returning not sticky
 				return START_NOT_STICKY;
