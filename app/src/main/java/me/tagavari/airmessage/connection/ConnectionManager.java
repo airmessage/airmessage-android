@@ -63,6 +63,7 @@ import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
 import me.tagavari.airmessage.enums.ChatCreateErrorCode;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.enums.ConnectionFeature;
+import me.tagavari.airmessage.enums.ConnectionMode;
 import me.tagavari.airmessage.enums.ConnectionState;
 import me.tagavari.airmessage.enums.ConversationState;
 import me.tagavari.airmessage.enums.MassRetrievalErrorCode;
@@ -96,13 +97,13 @@ public class ConnectionManager {
 	private static final long pingExpiryTime = 40 * 1000; //40 seconds
 	private static final long keepAliveMillis = 20 * 60 * 1000; //30 * 60 * 1000; //20 minutes
 	private static final long keepAliveWindowMillis = 5 * 60 * 1000; //5 minutes
-	private static final long[] immediateReconnectDelayMillis = {1000, 5 * 1000, 10 * 1000}; //1 second, 5 seconds, 10 seconds
-	private static final long passiveReconnectFrequencyMillis = 30 * 1000;//20 * 60 * 1000; //20 minutes
+	private static final long[] immediateReconnectDelayMillis = {1000, 2 * 1000}; //1 second, 2 seconds
+	private static final long backgroundReconnectFrequencyMillis = 10 * 60 * 1000; //10 minutes
 	
 	private static final long requestTimeoutSeconds = 24;
 	
 	private static final String intentActionPing = "me.tagavari.airmessage.connection.ConnectionManager-Ping";
-	private static final String intentActionPassiveReconnect = "me.tagavari.airmessage.connection.ConnectionManager-PassiveReconnect";
+	private static final String intentActionBackgroundReconnect = "me.tagavari.airmessage.connection.ConnectionManager-BackgroundReconnect";
 	
 	//Schedulers
 	private final Scheduler uploadScheduler = Schedulers.from(Executors.newSingleThreadExecutor(), true);
@@ -121,10 +122,10 @@ public class ConnectionManager {
 			else pingExpiryRunnable.run();
 		}
 	};
-	private final BroadcastReceiver passiveReconnectBroadcastReceiver = new BroadcastReceiver() {
+	private final BroadcastReceiver backgroundReconnectBroadcastReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			connectSilently();
+			connectFromList(getContext(), 0);
 		}
 	};
 	private final Runnable pingExpiryRunnable = () -> disconnect(ConnectionErrorCode.connection);
@@ -134,15 +135,21 @@ public class ConnectionManager {
 	
 	//Connection values
 	private CommunicationsManager<?> communicationsManager = null;
-	private final Runnable immediateReconnectRunnable = this::connectSilently;
-	private boolean immediateReconnectState = false;
+	private final Runnable immediateReconnectRunnable = () -> connectFromList(getContext(), 0);
 	private int immediateReconnectIndex = 0;
 	
 	//Connection state values
+	/*
+	 * An up-to-date value that represents whether we're disconnected, connecting, or connected
+	 */
 	@ConnectionState private int connState = ConnectionState.disconnected;
-	private boolean isConnecting = false;
-	private boolean isConnectingSilently = false; //Passive connections are background attempts at reconnecting that don't notify the user
-	private boolean connectionEstablished = false;
+	/*
+	 * Represents the way in which we respond to connections and disconnections
+	 * user - display connection state 1:1, switch to immediate if connection established, otherwise switch to background
+	 * immediate - display connection state as "connecting", perform connections rapidly; only to be used after a connection has been established then lost
+	 * background - display connection state as "disconnected", perform connections in the background every so often
+	 */
+	@ConnectionMode private int connMode = ConnectionMode.user;
 	private short currentRequestID = 0;
 	private int currentCommunicationsIndex = 0;
 	
@@ -168,8 +175,8 @@ public class ConnectionManager {
 	public ConnectionManager(Context context) {
 		pingPendingIntent = PendingIntent.getBroadcast(context, 0, new Intent(intentActionPing), PendingIntent.FLAG_UPDATE_CURRENT);
 		context.registerReceiver(pingBroadcastReceiver, new IntentFilter(intentActionPing));
-		reconnectPendingIntent = PendingIntent.getBroadcast(context, 0, new Intent(intentActionPassiveReconnect), PendingIntent.FLAG_UPDATE_CURRENT);
-		context.registerReceiver(passiveReconnectBroadcastReceiver, new IntentFilter(intentActionPassiveReconnect));
+		reconnectPendingIntent = PendingIntent.getBroadcast(context, 0, new Intent(intentActionBackgroundReconnect), PendingIntent.FLAG_UPDATE_CURRENT);
+		context.registerReceiver(backgroundReconnectBroadcastReceiver, new IntentFilter(intentActionBackgroundReconnect));
 	}
 	
 	/**
@@ -184,14 +191,13 @@ public class ConnectionManager {
 		
 		//Unregistering the receivers
 		context.unregisterReceiver(pingBroadcastReceiver);
-		context.unregisterReceiver(passiveReconnectBroadcastReceiver);
+		context.unregisterReceiver(backgroundReconnectBroadcastReceiver);
 		
 		//Cancelling connection test timers
 		cancelConnectionTest(context);
 		
 		//Cancelling all reconnection timers
-		stopImmediateReconnect();
-		stopPassiveReconnect(context);
+		stopCurrentMode();
 	}
 	
 	private Context getContext() {
@@ -202,8 +208,6 @@ public class ConnectionManager {
 	private final CommunicationsManagerListener communicationsManagerListener = new CommunicationsManagerListener() {
 		@Override
 		public void onOpen(String installationID, String deviceName, String systemVersion, String softwareVersion) {
-			connectionEstablished = true;
-			
 			//Recording the server information
 			serverInstallationID = installationID;
 			serverDeviceName = deviceName;
@@ -215,13 +219,11 @@ public class ConnectionManager {
 			SharedPreferencesManager.setLastConnectionTime(getContext(), System.currentTimeMillis());
 			
 			//Updating the state
-			updateStateConnected();
-			isConnecting = false;
-			isConnectingSilently = false;
+			if(connMode != ConnectionMode.user) stopCurrentMode();
+			connMode = ConnectionMode.user;
 			
-			//Resetting the reconnection values
-			stopImmediateReconnect();
-			stopPassiveReconnect(getContext());
+			connState = ConnectionState.connected;
+			emitStateConnected();
 			
 			//Checking if an installation ID was provided
 			boolean isNewServer; //Is this server different from the one we connected to last time?
@@ -285,54 +287,67 @@ public class ConnectionManager {
 		
 		@Override
 		public void onClose(@ConnectionErrorCode int errorCode) {
-			isConnecting = false;
+			//Getting if we have already established a connection
+			boolean connectionEstablished = connState == ConnectionState.connected;
 			
-			//Checking if the disconnection is caused by a protocol error
-			if((errorCode == ConnectionErrorCode.connection || errorCode == ConnectionErrorCode.externalError)) {
-				//Checking if we have yet to establish a connection, and there are older protocol versions available to use
-				if(!connectionEstablished && currentCommunicationsIndex + 1 < communicationsPriorityList.size()) {
-					//Falling back to an older protocol
-					//updateStateConnecting();
-					connectFromList(getContext(), currentCommunicationsIndex + 1);
-					return;
-				}
-				//Checking if we have already established a connection, and we are allowed to run automatic reconnections
-				else if(connectionEstablished && !disableReconnections) {
-					//Trying to start an immediate reconnection
-					boolean result = continueImmediateReconnect();
-					if(result) {
-						//updateStateConnecting();
-						return;
-					}
-				}
-			}
+			//Updating the state
+			connState = ConnectionState.disconnected;
 			
-			if(connState != ConnectionState.disconnected) {
-				//Resetting the connection established state
-				connectionEstablished = false;
-				
+			//Cleaning up after an established connection
+			if(connectionEstablished) {
 				//Failing all pending requests
 				for(RequestSubject<?> subject : new ArrayList<>(idRequestSubjectMap.values())) subject.onExpire();
 				
 				//Clearing the pending sync state
 				isPendingSync = false;
 				
-				//Updating the state
-				updateStateDisconnected(errorCode);
-				
 				//Cancelling connection test timers
 				cancelConnectionTest(getContext());
-				
-				if(!disableReconnections) {
-					//Starting passive reconnection
-					startPassiveReconnect(getContext());
+			}
+			
+			//Checking if the disconnection is recoverable
+			if(errorCode == ConnectionErrorCode.connection || errorCode == ConnectionErrorCode.externalError) {
+				//Checking if we have yet to establish a proper connection, and there are older protocol versions available to use
+				if(!connectionEstablished && currentCommunicationsIndex + 1 < communicationsPriorityList.size()) {
+					//Leave the state as connecting and fall back to an older protocol
+					connectFromList(getContext(), currentCommunicationsIndex + 1);
+					return;
+				}
+				//Checking if we have already established a connection, and we are allowed to run automatic reconnections
+				else if((connectionEstablished || connMode == ConnectionMode.immediate) && !disableReconnections) {
+					//Trying to start an immediate reconnection
+					boolean result;
+					if(connMode != ConnectionMode.immediate) {
+						stopCurrentMode();
+						connMode = ConnectionMode.immediate;
+						
+						result = scheduleImmediateReconnect(true);
+						
+						emitStateConnecting();
+					} else {
+						result = scheduleImmediateReconnect(false);
+					}
+					
+					//If we succeeded in scheduling an immediate reconnect, don't switch to background mode
+					if(result) return;
 				}
 			}
+			
+			if(!disableReconnections) {
+				//Starting background mode
+				if(connMode != ConnectionMode.background) {
+					connMode = ConnectionMode.background;
+					scheduleRepeatingBackgroundReconnect(getContext());
+					emitStateDisconnected(errorCode);
+				} else return; //Don't spam the user with disconnected notifications
+			}
+			
+			emitStateDisconnected(errorCode);
 		}
 		
 		@Override
 		public void onPacket() {
-			if(connectionEstablished) {
+			if(connState == ConnectionState.connected) {
 				//Updating the last connection time
 				SharedPreferencesManager.setLastConnectionTime(getContext(), System.currentTimeMillis());
 				
@@ -812,19 +827,25 @@ public class ConnectionManager {
 		}).findAny().orElse(null);
 	}
 	
+	private int getLastEmittedState() {
+		ReduxEventConnection value = ReduxEmitterNetwork.getConnectionStateSubject().getValue();
+		if(value == null) return -1;
+		else return value.getState();
+	}
+	
 	/**
 	 * Sets the state to connecting
 	 */
-	private void updateStateConnecting() {
-		connState = ConnectionState.connecting;
+	private void emitStateConnecting() {
+		if(getLastEmittedState() == ConnectionState.connecting) return;
 		ReduxEmitterNetwork.getConnectionStateSubject().onNext(new ReduxEventConnection.Connecting());
 	}
 	
 	/**
 	 * Sets the state to connected
 	 */
-	private void updateStateConnected() {
-		connState = ConnectionState.connected;
+	private void emitStateConnected() {
+		if(getLastEmittedState() == ConnectionState.connected) return;
 		ReduxEmitterNetwork.getConnectionStateSubject().onNext(new ReduxEventConnection.Connected());
 	}
 	
@@ -832,8 +853,8 @@ public class ConnectionManager {
 	 * Sets the state to disconnected
 	 * @param code The error code to notify listeners of
 	 */
-	private void updateStateDisconnected(@ConnectionErrorCode int code) {
-		connState = ConnectionState.disconnected;
+	private void emitStateDisconnected(@ConnectionErrorCode int code) {
+		if(getLastEmittedState() == ConnectionState.disconnected) return;
 		ReduxEmitterNetwork.getConnectionStateSubject().onNext(new ReduxEventConnection.Disconnected(code));
 	}
 	
@@ -845,56 +866,80 @@ public class ConnectionManager {
 	}
 	
 	/**
-	 * Connects to the server using the latest communications version
+	 * Connects to the server in user mode
 	 */
 	public void connect() {
-		//Ignoring if we're already connecting
-		if(connState != ConnectionState.disconnected || isConnecting) return;
+		//Cleaning up after the current mode
+		stopCurrentMode();
 		
-		//Checking if a passive reconnection is in progress
-		if(isConnectingSilently) {
-			//Bringing the state from passive to the foreground
-			updateStateConnecting();
-			isConnectingSilently = false;
-			
-			return;
+		//Setting the current mode
+		connMode = ConnectionMode.user;
+		
+		//If we're connected, latch on to that state
+		if(connState == ConnectionState.connected) {
+			emitStateConnected();
+		} else {
+			//Otherwise, initiate a new connection and update the state
+			if(connState == ConnectionState.disconnected) {
+				connectFromList(getContext(), 0);
+			}
+			emitStateConnecting();
 		}
-		
-		//Cancelling the immediate reconnect timer if it's running
-		if(immediateReconnectState) {
-			stopImmediateReconnect();
-		}
-		
-		//Setting the state to connecting
-		updateStateConnecting();
-		isConnecting = true;
-		
-		//Connecting from the top of the priority list
-		connectFromList(getContext(), 0);
 	}
 	
 	/**
-	 * Connects to the server without notifying or updating the state, using the current communications index
-	 *
-	 * If {@link #connect()} is called while a passive reconnection is taking place,
-	 * the state will be updated to match
+	 * Starts or advances an immediate reconnection
+	 * @return TRUE if the immediate reconnection was scheduled, or FALSE if none could be scheduled
 	 */
-	public void connectSilently() {
-		//Ignoring if we're already connecting (though it's OK if the display state doesn't match)
-		if(isConnecting) return;
+	private boolean scheduleImmediateReconnect(boolean isFirst) {
+		//Updating the mode
+		connMode = ConnectionMode.immediate;
 		
-		//Recording the state
-		isConnectingSilently = true;
-		isConnecting = true;
+		//Checking if we aren't already doing immediate reconnect
+		if(isFirst) {
+			//Initialize state
+			immediateReconnectIndex = 0;
+		} else {
+			//Failing if we are at the end of our attempts
+			if(immediateReconnectIndex + 1 >= immediateReconnectDelayMillis.length) {
+				return false;
+			}
+			
+			//Incrementing the index
+			immediateReconnectIndex++;
+		}
 		
-		//Connecting from the top of the priority list
-		connectFromList(getContext(), 0);
+		//Scheduling the immediate reconnection
+		handler.postDelayed(immediateReconnectRunnable, immediateReconnectDelayMillis[immediateReconnectIndex] + random.nextInt(1000));
+		
+		return true;
+	}
+	
+	/**
+	 * Starts the background reconnection clock
+	 */
+	private void scheduleRepeatingBackgroundReconnect(Context context) {
+		context.getSystemService(AlarmManager.class).setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+				SystemClock.elapsedRealtime() + backgroundReconnectFrequencyMillis / 2,
+				backgroundReconnectFrequencyMillis,
+				reconnectPendingIntent);
+	}
+	
+	private void stopCurrentMode() {
+		if(connMode == ConnectionMode.immediate) {
+			handler.removeCallbacks(immediateReconnectRunnable);
+		} else if(connMode == ConnectionMode.background) {
+			getContext().getSystemService(AlarmManager.class).cancel(reconnectPendingIntent);
+		}
 	}
 	
 	/**
 	 * Connects from the specified index down the priority list
 	 */
 	private void connectFromList(Context context, int index) {
+		//Updating the connection state
+		connState = ConnectionState.connecting;
+		
 		//Recording the index
 		currentCommunicationsIndex = index;
 		
@@ -915,58 +960,6 @@ public class ConnectionManager {
 		if(connState != ConnectionState.connected) return;
 		
 		if(communicationsManager != null) communicationsManager.disconnect(code);
-	}
-	
-	/**
-	 * Starts or advances an immediate reconnection
-	 * @return TRUE if the passive reconnection was scheduled, or FALSE if none could be scheduled
-	 */
-	private boolean continueImmediateReconnect() {
-		//Checking if we aren't already doing immediate reconnect
-		if(!immediateReconnectState) {
-			//Initialize state
-			immediateReconnectState = true;
-			immediateReconnectIndex = 0;
-		} else {
-			//Failing if we are at the end of our attempts
-			if(immediateReconnectIndex + 1 >= immediateReconnectDelayMillis.length) {
-				return false;
-			}
-			
-			//Incrementing the index
-			immediateReconnectIndex++;
-		}
-		
-		//Scheduling the passive reconnection
-		handler.postDelayed(immediateReconnectRunnable, immediateReconnectDelayMillis[immediateReconnectIndex] + random.nextInt(1000));
-		
-		return true;
-	}
-	
-	/**
-	 * Stops immediate reconnections
-	 */
-	private void stopImmediateReconnect() {
-		handler.removeCallbacks(immediateReconnectRunnable);
-		immediateReconnectState = false;
-	}
-	
-	/**
-	 * Starts the passive background reconnection clock
-	 */
-	private void startPassiveReconnect(Context context) {
-		context.getSystemService(AlarmManager.class).setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-				SystemClock.elapsedRealtime() + passiveReconnectFrequencyMillis / 2,
-				passiveReconnectFrequencyMillis,
-				reconnectPendingIntent);
-	}
-	
-	/**
-	 * Stops the passive background reconnection clock
-	 */
-	private void stopPassiveReconnect(Context context) {
-		//Cancelling passive reconnection
-		context.getSystemService(AlarmManager.class).cancel(reconnectPendingIntent);
 	}
 	
 	/**
