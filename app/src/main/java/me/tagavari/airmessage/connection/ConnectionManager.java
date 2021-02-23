@@ -306,7 +306,7 @@ public class ConnectionManager {
 			}
 			
 			//Checking if the disconnection is recoverable
-			if(errorCode == ConnectionErrorCode.connection || errorCode == ConnectionErrorCode.externalError) {
+			if(errorCode == ConnectionErrorCode.connection || errorCode == ConnectionErrorCode.internet || errorCode == ConnectionErrorCode.externalError || errorCode == ConnectionErrorCode.connectOtherLocation) {
 				//Checking if we have yet to establish a proper connection, and there are older protocol versions available to use
 				if(!connectionEstablished && currentCommunicationsIndex + 1 < communicationsPriorityList.size()) {
 					//Leave the state as connecting and fall back to an older protocol
