@@ -23,6 +23,8 @@ public class ExternalMessagingProviderChangedReceiver extends BroadcastReceiver 
 	
 	@Override
 	public void onReceive(Context context, Intent intent) {
+		if(!Telephony.Sms.Intents.ACTION_EXTERNAL_PROVIDER_CHANGE.equals(intent.getAction())) return;
+		
 		//Getting the updated message URI from the notification
 		if(intent.getData() == null) return;
 		Uri messageUri = intent.getData();

@@ -160,10 +160,12 @@ import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
 import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
 import me.tagavari.airmessage.compositeplugin.PluginRXDisposable;
 import me.tagavari.airmessage.connection.ConnectionTaskManager;
+import me.tagavari.airmessage.connection.exception.AMRequestException;
 import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.constants.TimingConstants;
 import me.tagavari.airmessage.data.DatabaseManager;
+import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
 import me.tagavari.airmessage.enums.AttachmentType;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.enums.ConnectionState;
@@ -3214,7 +3216,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				BehaviorSubject<ReduxEventAttachmentDownload> downloadObservable = ConnectionTaskManager.getDownload(component.getLocalID());
 				
 				//Checking if there is a download in progress
-				if(downloadObservable != null && !(downloadObservable.getValue() instanceof ReduxEventAttachmentDownload.Complete)) {
+				if(downloadObservable != null && !downloadObservable.hasThrowable() && !(downloadObservable.getValue() instanceof ReduxEventAttachmentDownload.Complete)) {
 					//Showing the progress view
 					setAttachmentView(viewHolder, viewHolder.groupProgress);
 					viewHolder.progressProgress.setIndeterminate(true);
@@ -3269,7 +3271,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		 */
 		private void attachmentSubscribeDownload(VHMessageStructure viewHolderStructure, VHMessageComponentAttachment viewHolder, MessageInfo messageInfo, AttachmentInfo attachmentInfo, Observable<ReduxEventAttachmentDownload> observable) {
 			viewHolderStructure.getCompositeDisposable().add(
-					observable.onErrorComplete().subscribe(event -> {
+					observable.subscribe(event -> {
 						viewHolder.progressProgress.setIndeterminate(false);
 						if(event instanceof ReduxEventAttachmentDownload.Progress) {
 							ReduxEventAttachmentDownload.Progress progressEvent = (ReduxEventAttachmentDownload.Progress) event;
@@ -3277,6 +3279,46 @@ public class Messaging extends AppCompatCompositeActivity {
 							//Updating the progress bar
 							viewHolder.progressProgress.setProgress((int) ((float) progressEvent.getBytesProgress() / progressEvent.getBytesTotal() * viewHolder.progressProgress.getMax()));
 						}
+					}, (error) -> {
+						//Reverting to the download prompt view
+						setAttachmentView(viewHolder, viewHolder.groupPrompt);
+						
+						//Showing a toast
+						String toastText;
+						if(error instanceof AMRequestException) {
+							switch(((AMRequestException) error).getErrorCode()) {
+								case AttachmentReqErrorCode.localTimeout:
+									toastText = getResources().getString(R.string.message_attachmentreqerror_timeout);
+									break;
+								case AttachmentReqErrorCode.localBadResponse:
+									toastText = getResources().getString(R.string.message_attachmentreqerror_badresponse);
+									break;
+								case AttachmentReqErrorCode.localReferencesLost:
+									toastText = getResources().getString(R.string.message_attachmentreqerror_referenceslost);
+									break;
+								case AttachmentReqErrorCode.localIO:
+									toastText = getResources().getString(R.string.message_attachmentreqerror_io);
+									break;
+								case AttachmentReqErrorCode.serverNotFound:
+									toastText = getResources().getString(R.string.message_attachmentreqerror_server_notfound);
+									break;
+								case AttachmentReqErrorCode.serverNotSaved:
+									toastText = getResources().getString(R.string.message_attachmentreqerror_server_notsaved);
+									break;
+								case AttachmentReqErrorCode.serverUnreadable:
+									toastText = getResources().getString(R.string.message_attachmentreqerror_server_unreadable);
+									break;
+								case AttachmentReqErrorCode.serverIO:
+									toastText = getResources().getString(R.string.message_attachmentreqerror_server_io);
+									break;
+								default:
+									toastText = error.getMessage();
+							}
+						} else {
+							toastText = error.getMessage();
+						}
+						
+						Toast.makeText(Messaging.this, getResources().getString(R.string.message_attachmentreqerror_desc, toastText), Toast.LENGTH_SHORT).show();
 					})
 			);
 		}
