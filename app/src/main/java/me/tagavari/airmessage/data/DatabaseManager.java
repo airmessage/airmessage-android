@@ -875,7 +875,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
-	public List<ConversationInfo> fetchConversationsWithState(Context context, @ConversationState int conversationState, int serviceHandler) {
+	public List<ConversationInfo> fetchConversationsWithState(Context context, @ConversationState int conversationState) {
 		//Creating the conversation list
 		List<ConversationInfo> conversationList = new ArrayList<>();
 		
@@ -884,13 +884,14 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Querying the database
 		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData,
-				Contract.ConversationEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER + " = ?",
-				new String[]{Integer.toString(conversationState), Integer.toString(serviceHandler)}, null, null, null);
+				Contract.ConversationEntry.COLUMN_NAME_STATE + " = ?",
+				new String[]{Integer.toString(conversationState)}, null, null, null);
 		
 		//Getting the indexes
 		int indexChatID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry._ID);
 		int indexChatGUID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_GUID);
 		int indexChatExternalID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_EXTERNALID);
+		int indexChatServiceHandler = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER);
 		int indexChatService = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICE);
 		int indexChatName = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_NAME);
 		int indexChatUnreadMessages = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT);
@@ -906,6 +907,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			long chatID = cursor.getLong(indexChatID);
 			String chatGUID = cursor.getString(indexChatGUID);
 			long externalID = cursor.getLong(indexChatExternalID);
+			@ServiceHandler int serviceHandler = cursor.getInt(indexChatServiceHandler);
 			String service = cursor.getString(indexChatService);
 			String chatTitle = cursor.getString(indexChatName);
 			int chatUnreadMessages = cursor.getInt(indexChatUnreadMessages);

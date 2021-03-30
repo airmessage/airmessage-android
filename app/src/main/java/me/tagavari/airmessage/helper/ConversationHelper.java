@@ -8,6 +8,7 @@ import java.util.ListIterator;
 import io.reactivex.rxjava3.core.Completable;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.messaging.ConversationInfo;
+import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.ConversationPreview;
 import me.tagavari.airmessage.util.ConversationValueUpdateResult;
 
@@ -23,6 +24,15 @@ public class ConversationHelper {
 		
 		//Returning the comparison
 		return Long.compare(lastTime2, lastTime1);
+	};
+	
+	public static final Comparator<ConversationItem> conversationItemComparator = (item1, item2) -> {
+		//Returning the comparison
+		if(item1.getServerID() != -1 && item2.getServerID() != -1) return Long.compare(item1.getServerID(), item2.getServerID());
+		else if(item1.getLocalID() != -1 && item2.getLocalID() != -1) return Long.compare(item1.getLocalID(), item2.getLocalID());
+		else if(item1.getLocalID() == -1 && item2.getLocalID() == -1) return Long.compare(item1.getDate(), item2.getDate());
+		else if(item1.getLocalID() == -1) return 1;
+		else return -1; //Item 2's local ID is -1
 	};
 	
 	/**

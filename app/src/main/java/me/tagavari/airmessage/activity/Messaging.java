@@ -189,6 +189,7 @@ import me.tagavari.airmessage.helper.ColorMathHelper;
 import me.tagavari.airmessage.helper.ContactHelper;
 import me.tagavari.airmessage.helper.ConversationBuildHelper;
 import me.tagavari.airmessage.helper.ConversationColorHelper;
+import me.tagavari.airmessage.helper.ConversationHelper;
 import me.tagavari.airmessage.helper.DataCompressionHelper;
 import me.tagavari.airmessage.helper.DataStreamHelper;
 import me.tagavari.airmessage.helper.ErrorDetailsHelper;
@@ -1122,10 +1123,22 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		for(ReplaceInsertResult result : replaceInsertResults) {
 			//Adding new items
-			int insertIndex = viewModel.conversationItemList.size();
-			viewModel.conversationItemList.addAll(result.getNewItems());
-			messageListAdapter.notifyItemRangeInserted(messageListAdapter.mapRecyclerIndex(insertIndex), result.getNewItems().size());
-			if(insertIndex > 0 && viewModel.conversationItemList.get(insertIndex - 1).getItemType() == ConversationItemType.message) messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(insertIndex - 1), MessageListPayload.flow);
+			for(ConversationItem newItem : result.getNewItems()) {
+				int insertIndex = 0;
+				for(ListIterator<ConversationItem> listIterator = viewModel.conversationItemList.listIterator(viewModel.conversationItemList.size()); listIterator.hasPrevious();) {
+					int i = listIterator.previousIndex();
+					ConversationItem item = listIterator.previous();
+					if(ConversationHelper.conversationItemComparator.compare(newItem, item) > 0) {
+						insertIndex = i + 1;
+						break;
+					}
+				}
+				
+				viewModel.conversationItemList.add(insertIndex, newItem);
+				messageListAdapter.notifyItemInserted(messageListAdapter.mapRecyclerIndex(insertIndex));
+				if(insertIndex > 0 && viewModel.conversationItemList.get(insertIndex - 1).getItemType() == ConversationItemType.message) messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(insertIndex - 1), MessageListPayload.flow);
+			}
+			
 			messageTargetCandidates.addAll(result.getNewItems().stream().filter(item -> item.getItemType() == ConversationItemType.message).map(item -> (MessageInfo) item).collect(Collectors.toList()));
 			if(!messageOutgoing) messageOutgoing = result.getNewItems().stream().anyMatch(item -> item.getItemType() == ConversationItemType.message && ((MessageInfo) item).isOutgoing());
 			

@@ -53,7 +53,7 @@ public class ConnectionService extends Service {
 	private boolean isForeground;
 	private boolean configurationMode = false;
 	private boolean temporaryMode = false;
-	private Runnable temporaryModeRunnable = this::stopSelf;
+	private final Runnable temporaryModeRunnable = this::stopSelf;
 	
 	private boolean isInitialConnectionUpdate = true;
 	

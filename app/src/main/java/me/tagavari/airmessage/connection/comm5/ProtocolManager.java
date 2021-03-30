@@ -98,9 +98,11 @@ abstract class ProtocolManager<Packet> {
 	 * Requests an ID range-based message retrieval
 	 *
 	 * @param idLower The ID to retrieve messages beyond (exclusive)
+	 * @param timeLower The lower time range limit
+	 * @param timeUpper The upper time range limit
 	 * @return Whether the request was successfully sent
 	 */
-	abstract boolean requestRetrievalID(long idLower);
+	abstract boolean requestRetrievalID(long idLower, long timeLower, long timeUpper);
 	
 	/**
 	 * Requests a mass message retrieval

@@ -684,7 +684,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	}
 	
 	@Override
-	boolean requestRetrievalID(long idSince) {
+	boolean requestRetrievalID(long idSince, long timeLower, long timeUpper) {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		

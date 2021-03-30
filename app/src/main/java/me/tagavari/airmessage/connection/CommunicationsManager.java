@@ -162,9 +162,11 @@ public abstract class CommunicationsManager<Packet> {
 	/**
 	 * Requests an ID range-based message retrieval
 	 * @param idLower The ID to retrieve messages beyond (exclusive)
+	 * @param timeLower The lower time range limit
+	 * @param timeUpper The upper time range limit
 	 * @return Whether the request was successfully sent
 	 */
-	public abstract boolean requestRetrievalID(long idLower);
+	public abstract boolean requestRetrievalID(long idLower, long timeLower, long timeUpper);
 	
 	/**
 	 * Requests a mass message retrieval

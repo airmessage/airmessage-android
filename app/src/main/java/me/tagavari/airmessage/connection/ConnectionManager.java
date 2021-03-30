@@ -58,6 +58,7 @@ import me.tagavari.airmessage.connection.request.MassRetrievalRequest;
 import me.tagavari.airmessage.connection.task.ChatResponseTask;
 import me.tagavari.airmessage.connection.task.MessageUpdateTask;
 import me.tagavari.airmessage.connection.task.ModifierUpdateTask;
+import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
 import me.tagavari.airmessage.enums.ChatCreateErrorCode;
@@ -173,10 +174,21 @@ public class ConnectionManager {
 	@Nullable private ConnectionOverride<?> connectionOverride = null;
 	
 	public ConnectionManager(Context context) {
+		//Registering broadcast listeners
 		pingPendingIntent = PendingIntent.getBroadcast(context, 0, new Intent(intentActionPing), PendingIntent.FLAG_UPDATE_CURRENT);
 		context.registerReceiver(pingBroadcastReceiver, new IntentFilter(intentActionPing));
 		reconnectPendingIntent = PendingIntent.getBroadcast(context, 0, new Intent(intentActionBackgroundReconnect), PendingIntent.FLAG_UPDATE_CURRENT);
 		context.registerReceiver(backgroundReconnectBroadcastReceiver, new IntentFilter(intentActionBackgroundReconnect));
+		
+		//Loading pending conversations from the database
+		Single.fromCallable(() -> DatabaseManager.getInstance().fetchConversationsWithState(context, ConversationState.incompleteServer))
+				.observeOn(Schedulers.single())
+				.subscribeOn(AndroidSchedulers.mainThread())
+				.doOnSuccess(conversations -> {
+					for(ConversationInfo conversation : conversations) {
+						pendingConversations.put(conversation.getGUID(), conversation);
+					}
+				}).subscribe();
 	}
 	
 	/**
@@ -268,7 +280,7 @@ public class ConnectionManager {
 				//Fetching missed messages
 				if(communicationsManager.isFeatureSupported(ConnectionFeature.idBasedRetrieval) && lastServerMessageID != -1) {
 					//Fetching messages since the last message ID
-					requestMessagesIDRange(lastServerMessageID);
+					requestMessagesIDRange(lastServerMessageID, lastConnectionTime, System.currentTimeMillis());
 				} else {
 					//Fetching the messages since the last connection time
 					requestMessagesTimeRange(lastConnectionTime, System.currentTimeMillis());
@@ -358,6 +370,9 @@ public class ConnectionManager {
 		
 		@Override
 		public void onMessageUpdate(Collection<Blocks.ConversationItem> data) {
+			//List<Blocks.ConversationItem> filteredData = data.stream().filter(item -> !(item instanceof Blocks.MessageInfo && ((Blocks.MessageInfo) item).sender != null)).collect(Collectors.toList());
+			//if(filteredData.isEmpty()) return;
+			
 			//Loading the foreground conversations (needs to be done on the main thread)
 			Single.fromCallable(Messaging::getForegroundConversations)
 					.subscribeOn(AndroidSchedulers.mainThread())
@@ -1161,13 +1176,15 @@ public class ConnectionManager {
 	/**
 	 * Requests messages since above the specified ID from the server
 	 * @param idLower The ID of the message to receive messages since
+	 * @param timeLower The lower time requirement in milliseconds
+	 * @param timeUpper The upper time requirement in milliseconds
 	 */
-	public void requestMessagesIDRange(long idLower) {
+	public void requestMessagesIDRange(long idLower, long timeLower, long timeUpper) {
 		//Failing immediately if there is no network connection
 		if(!isConnected()) return;
 		
 		//Sending the request
-		communicationsManager.requestRetrievalID(idLower);
+		communicationsManager.requestRetrievalID(idLower, timeLower, timeUpper);
 	}
 	
 	/**
