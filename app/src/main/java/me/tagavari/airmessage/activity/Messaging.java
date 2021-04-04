@@ -136,6 +136,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -1030,8 +1031,16 @@ public class Messaging extends AppCompatCompositeActivity {
 			MessageComponent component = componentList.get(tapbackEvent.getMetadata().getComponentIndex());
 			
 			//Updating the component's tapbacks
-			if(tapbackEvent.isAddition()) component.getTapbacks().add(tapbackEvent.getTapbackInfo());
-			else component.getTapbacks().removeIf(tapback -> tapback.getLocalID() == tapbackEvent.getTapbackInfo().getLocalID());
+			if(tapbackEvent.isAddition()) {
+				Optional<TapbackInfo> matchedTapback = component.getTapbacks().stream().filter(tapback -> Objects.equals(tapback.getSender(), tapbackEvent.getTapbackInfo().getSender())).findAny();
+				if(matchedTapback.isPresent()) {
+					matchedTapback.get().setCode(tapbackEvent.getTapbackInfo().getCode());
+				} else {
+					component.getTapbacks().add(tapbackEvent.getTapbackInfo());
+				}
+			} else {
+				component.getTapbacks().removeIf(tapback -> tapback.getLocalID() == tapbackEvent.getTapbackInfo().getLocalID());
+			}
 			
 			//Updating the adapter
 			messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(messageIndex), new MessageListPayload.Tapback(tapbackEvent.getMetadata().getComponentIndex()));
