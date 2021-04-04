@@ -69,6 +69,7 @@ import me.tagavari.airmessage.enums.ConnectionState;
 import me.tagavari.airmessage.enums.ConversationState;
 import me.tagavari.airmessage.enums.MassRetrievalErrorCode;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.enums.TrackableRequestCategory;
 import me.tagavari.airmessage.helper.ConversationColorHelper;
 import me.tagavari.airmessage.messaging.AttachmentInfo;
@@ -370,25 +371,28 @@ public class ConnectionManager {
 		
 		@Override
 		public void onMessageUpdate(Collection<Blocks.ConversationItem> data) {
-			//List<Blocks.ConversationItem> filteredData = data.stream().filter(item -> !(item instanceof Blocks.MessageInfo && ((Blocks.MessageInfo) item).sender != null)).collect(Collectors.toList());
-			//if(filteredData.isEmpty()) return;
+			//Filtering out data that would be received over FCM
+			Collection<Blocks.ConversationItem> filteredData;
+			if(communicationsManager.getDataProxyType() == ProxyType.connect) {
+				filteredData = data.stream().filter(item -> !(item instanceof Blocks.MessageInfo && ((Blocks.MessageInfo) item).sender != null)).collect(Collectors.toList());
+			} else {
+				filteredData = data;
+			}
+			if(filteredData.isEmpty()) return;
 			
 			//Loading the foreground conversations (needs to be done on the main thread)
 			Single.fromCallable(Messaging::getForegroundConversations)
 					.subscribeOn(AndroidSchedulers.mainThread())
-					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, data, Preferences.getPreferenceAutoDownloadAttachments(getContext())))
+					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, filteredData, Preferences.getPreferenceAutoDownloadAttachments(getContext())))
 					.observeOn(AndroidSchedulers.mainThread())
 					.doOnSuccess(response -> {
-						//Adding the conversations as pending conversations and retrieving pending conversation information
-						pendingConversations.putAll(response.getIncompleteServerConversations().stream().collect(Collectors.toMap(ConversationInfo::getGUID, conversation -> conversation)));
-						
 						//Emitting any generated events
 						for(ReduxEventMessaging event : response.getEvents()) {
 							ReduxEmitterNetwork.getMessageUpdateSubject().onNext(event);
 						}
 						
 						//Fetching pending conversations
-						fetchPendingConversations();
+						addPendingConversations(response.getIncompleteServerConversations());
 						
 						//Downloading attachments
 						if(response.getCollectedAttachments() != null) {
@@ -662,8 +666,17 @@ public class ConnectionManager {
 		
 		@Override
 		public void onModifierUpdate(Collection<Blocks.ModifierInfo> data) {
+			//Filtering out data that would be received over FCM
+			Collection<Blocks.ModifierInfo> filteredData;
+			if(communicationsManager.getDataProxyType() == ProxyType.connect) {
+				filteredData = data.stream().filter(item -> !(item instanceof Blocks.TapbackModifierInfo && ((Blocks.TapbackModifierInfo) item).sender != null)).collect(Collectors.toList());
+			} else {
+				filteredData = data;
+			}
+			if(filteredData.isEmpty()) return;
+			
 			//Writing modifiers to disk
-			ModifierUpdateTask.create(getContext(), data).doOnSuccess(result -> {
+			ModifierUpdateTask.create(getContext(), filteredData).doOnSuccess(result -> {
 				//Pushing emitter updates
 				for(ActivityStatusUpdate statusUpdate : result.getActivityStatusUpdates()) {
 					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.MessageState(statusUpdate.getMessageID(), statusUpdate.getMessageState(), statusUpdate.getDateRead()));
@@ -1153,8 +1166,8 @@ public class ConnectionManager {
 	 * Requests data for pending conversations from the server
 	 */
 	public void fetchPendingConversations() {
-		//Failing immediately if there is no network connection
-		if(!isConnected()) return;
+		//Ignoring if there is no network connection, or if there are no pending conversations
+		if(!isConnected() || pendingConversations.isEmpty()) return;
 		
 		//Sending the request
 		communicationsManager.requestConversationInfo(pendingConversations.keySet());
@@ -1341,6 +1354,17 @@ public class ConnectionManager {
 		isPendingSync = false;
 	}
 	
+	/**
+	 * Adds pending conversations to the list, and tries to fetch their details from the server
+	 * @param conversations The list of conversations to register as pending conversations
+	 */
+	public void addPendingConversations(List<ConversationInfo> conversations) {
+		//Adding the conversations
+		pendingConversations.putAll(conversations.stream().collect(Collectors.toMap(ConversationInfo::getGUID, conversation -> conversation)));
+		
+		//Fetching pending conversations
+		fetchPendingConversations();
+	}
 	
 	/**
 	 * Schedules the next keepalive ping
