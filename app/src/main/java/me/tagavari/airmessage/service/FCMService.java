@@ -116,7 +116,12 @@ public class FCMService extends FirebaseMessagingService {
 							
 							//If we have incomplete conversations, query the server to complete them
 							if(!response.getIncompleteServerConversations().isEmpty()) {
-								startConnectionService();
+								ConnectionManager connectionManager = ConnectionService.getConnectionManager();
+								if(connectionManager != null) {
+									connectionManager.addPendingConversations(response.getIncompleteServerConversations());
+								} else {
+									startConnectionService();
+								}
 							}
 						}).subscribe();
 				
