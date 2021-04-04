@@ -420,7 +420,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Start(addedConversations, messageCount);
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Start(massRetrievalRequest.getRequestID(), addedConversations, messageCount);
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
@@ -453,7 +453,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Progress(addedItems, massRetrievalRequest.getMessagesReceived(), massRetrievalRequest.getTotalMessageCount());
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Progress(massRetrievalRequest.getRequestID(), addedItems, massRetrievalRequest.getMessagesReceived(), massRetrievalRequest.getTotalMessageCount());
 								
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
@@ -463,7 +463,7 @@ public class ConnectionManager {
 								if(localSubject == null) return;
 								
 								if(error instanceof IllegalArgumentException) {
-									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse, error));
 								} else {
 									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
 								}
@@ -487,7 +487,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Complete();
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Complete(massRetrievalRequest.getRequestID());
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 								localSubject.onComplete();
@@ -537,7 +537,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File(massRetrievalRequest.getRequestID());
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
@@ -572,7 +572,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File(massRetrievalRequest.getRequestID());
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
@@ -607,7 +607,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File(massRetrievalRequest.getRequestID());
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
@@ -1221,7 +1221,7 @@ public class ConnectionManager {
 		isMassRetrievalInProgress = true;
 		
 		//Adding the request
-		MassRetrievalRequest massRetrievalRequest = new MassRetrievalRequest();
+		MassRetrievalRequest massRetrievalRequest = new MassRetrievalRequest(requestID);
 		return this.<ReduxEventMassRetrieval>queueObservableIDRequest(requestID, error, massRetrievalRequest).doOnError((observableError) -> {
 			//Getting the error code
 			int errorCode;
@@ -1236,7 +1236,7 @@ public class ConnectionManager {
 			massRetrievalRequest.cancel();
 			
 			//Emitting an update
-			ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(new ReduxEventMassRetrieval.Error(errorCode));
+			ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(new ReduxEventMassRetrieval.Error(requestID, errorCode));
 			Log.w(TAG, "Mass retrieval failed", observableError);
 		}).doOnTerminate(() -> {
 			//Updating the mass retrieval state

@@ -33,6 +33,8 @@ public class MassRetrievalRequest {
 	
 	private final Scheduler requestScheduler = Schedulers.from(Executors.newSingleThreadExecutor(), true);
 	
+	private final short requestID;
+	
 	//Conversations state
 	private boolean initialInfoReceived = false;
 	private volatile List<ConversationInfo> conversationList;
@@ -48,6 +50,14 @@ public class MassRetrievalRequest {
 	private int attachmentExpectedRequestIndex = 0;
 	private OutputStream attachmentOutputStream;
 	
+	public MassRetrievalRequest(short requestID) {
+		this.requestID = requestID;
+	}
+	
+	public short getRequestID() {
+		return requestID;
+	}
+	
 	/**
 	 * Handles the initial mass retrieval information sent from the server
 	 * @param conversationList The list of conversations to save
@@ -55,6 +65,7 @@ public class MassRetrievalRequest {
 	 * @return A single to return the list of added conversations
 	 */
 	public Single<List<ConversationInfo>> handleInitialInfo(Collection<Blocks.ConversationInfo> conversationList, int totalMessageCount) {
+		System.out.println("Handing initial info");
 		if(initialInfoReceived) {
 			return Single.error(new IllegalStateException("Initial info already received"));
 		}
@@ -83,6 +94,7 @@ public class MassRetrievalRequest {
 	 * @return A single to return the list of added items
 	 */
 	public Single<List<ConversationItem>> handleMessages(Context context, int responseIndex, Collection<Blocks.ConversationItem> itemList) {
+		System.out.println("Handing " + itemList.size() + " messages");
 		if(!initialInfoReceived) {
 			return Single.error(new IllegalStateException("Initial info not yet received"));
 		}
