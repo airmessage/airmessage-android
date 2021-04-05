@@ -1,17 +1,22 @@
 //Load keystore
 def keystorePropertiesFile = rootProject.file(".signing/keystore.properties")
-def keystoreProperties = new Properties()
-keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+def keystoreProperties = null
+if(keystorePropertiesFile.exists()) {
+	keystoreProperties = new Properties()
+	keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
 
 apply plugin: "com.android.application"
 
 android {
 	signingConfigs {
-		config {
-			storeFile file(keystoreProperties["storeFile"])
-			storePassword keystoreProperties["storePassword"]
-			keyAlias keystoreProperties["keyAlias"]
-			keyPassword keystoreProperties["keyPassword"]
+		if(keystoreProperties) {
+			config {
+				storeFile file(keystoreProperties["storeFile"])
+				storePassword keystoreProperties["storePassword"]
+				keyAlias keystoreProperties["keyAlias"]
+				keyPassword keystoreProperties["keyPassword"]
+			}
 		}
 	}
 	compileSdkVersion 30
@@ -51,7 +56,9 @@ android {
 
 			resValue "string", "applicationId", "me.tagavari.airmessage"
 
-			signingConfig signingConfigs.config
+			if(keystoreProperties) {
+				signingConfig signingConfigs.config
+			}
 		}
 	}
 	lintOptions {
