@@ -3561,7 +3561,10 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Fetching the local ID of the tapback
 		long tapbackID;
-		try(Cursor cursor = database.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID}, Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_SENDER + " = ?", new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex), tapback.sender}, null, null, null, "1")) {
+		try(Cursor cursor = database.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID},
+				Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_SENDER + (tapback.sender == null ? " IS NULL" : " = ?"),
+				tapback.sender == null ? new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex)} : new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex), tapback.sender},
+				null, null, null, "1")) {
 			if(!cursor.moveToNext()) return null;
 			tapbackID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.TapbackEntry._ID));
 		}
