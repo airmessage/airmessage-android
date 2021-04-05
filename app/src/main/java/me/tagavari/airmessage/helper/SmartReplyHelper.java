@@ -126,6 +126,8 @@ public class SmartReplyHelper {
 	 */
 	@CheckReturnValue
 	public static Single<String[]> generateResponsesMLKit(List<TextMessage> messages) {
+		if(messages.isEmpty()) return Single.just(new String[0]);
+		
 		return Single.create(emitter -> SmartReply.getClient().suggestReplies(messages)
 				.addOnSuccessListener(result -> {
 					if(result.getStatus() == SmartReplySuggestionResult.STATUS_SUCCESS) {
