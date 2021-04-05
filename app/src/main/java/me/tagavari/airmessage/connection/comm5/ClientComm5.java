@@ -180,6 +180,8 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 				return new ClientProtocol1(this, getDataProxy());
 			case 2:
 				return new ClientProtocol2(this, getDataProxy());
+			case 3:
+				return new ClientProtocol3(this, getDataProxy());
 		}
 	}
 	
@@ -226,9 +228,9 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	}
 	
 	@Override
-	public boolean requestRetrievalID(long idLower) {
+	public boolean requestRetrievalID(long idLower, long timeLower, long timeUpper) {
 		if(protocolManager == null) return false;
-		return protocolManager.requestRetrievalID(idLower);
+		return protocolManager.requestRetrievalID(idLower, timeLower, timeUpper);
 	}
 	
 	@Override

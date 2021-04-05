@@ -875,7 +875,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
-	public List<ConversationInfo> fetchConversationsWithState(Context context, @ConversationState int conversationState, int serviceHandler) {
+	public List<ConversationInfo> fetchConversationsWithState(Context context, @ConversationState int conversationState) {
 		//Creating the conversation list
 		List<ConversationInfo> conversationList = new ArrayList<>();
 		
@@ -884,13 +884,14 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Querying the database
 		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData,
-				Contract.ConversationEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER + " = ?",
-				new String[]{Integer.toString(conversationState), Integer.toString(serviceHandler)}, null, null, null);
+				Contract.ConversationEntry.COLUMN_NAME_STATE + " = ?",
+				new String[]{Integer.toString(conversationState)}, null, null, null);
 		
 		//Getting the indexes
 		int indexChatID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry._ID);
 		int indexChatGUID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_GUID);
 		int indexChatExternalID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_EXTERNALID);
+		int indexChatServiceHandler = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER);
 		int indexChatService = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICE);
 		int indexChatName = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_NAME);
 		int indexChatUnreadMessages = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT);
@@ -906,6 +907,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			long chatID = cursor.getLong(indexChatID);
 			String chatGUID = cursor.getString(indexChatGUID);
 			long externalID = cursor.getLong(indexChatExternalID);
+			@ServiceHandler int serviceHandler = cursor.getInt(indexChatServiceHandler);
 			String service = cursor.getString(indexChatService);
 			String chatTitle = cursor.getString(indexChatName);
 			int chatUnreadMessages = cursor.getInt(indexChatUnreadMessages);
@@ -3130,21 +3132,32 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
-		//Creating the content values
+		//Finding an existing tapback on the same message by the same sender
+		long tapbackID = -1;
+		try(Cursor cursor = database.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID},
+				Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_SENDER + (tapback.sender == null ? " IS NULL" : " = ?"),
+				tapback.sender == null ? new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex)} : new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex), tapback.sender},
+				null, null, null, "1")) {
+			if(cursor.moveToNext()) {
+				tapbackID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.TapbackEntry._ID));
+			}
+		}
+		
+		//Creating the content values with the code
 		ContentValues contentValues = new ContentValues();
-		contentValues.put(Contract.TapbackEntry.COLUMN_NAME_MESSAGE, messageID);
-		contentValues.put(Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX, tapback.messageIndex);
-		contentValues.put(Contract.TapbackEntry.COLUMN_NAME_SENDER, tapback.sender);
 		contentValues.put(Contract.TapbackEntry.COLUMN_NAME_CODE, tapback.tapbackType);
 		
-		//Inserting the entry
-		long tapbackID;
-		try {
+		if(tapbackID != -1) {
+			//Updating the matching entry
+			database.update(Contract.TapbackEntry.TABLE_NAME, contentValues, Contract.TapbackEntry._ID + " = ?", new String[]{Long.toString(tapbackID)});
+		} else {
+			//Completing the content values
+			contentValues.put(Contract.TapbackEntry.COLUMN_NAME_MESSAGE, messageID);
+			contentValues.put(Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX, tapback.messageIndex);
+			contentValues.put(Contract.TapbackEntry.COLUMN_NAME_SENDER, tapback.sender);
+			
+			//Inserting the entry
 			tapbackID = database.insert(Contract.TapbackEntry.TABLE_NAME, null, contentValues);
-		} catch(SQLiteConstraintException exception) {
-			//Printing the stack trace
-			exception.printStackTrace();
-			return null;
 		}
 		
 		//Returning the tapback

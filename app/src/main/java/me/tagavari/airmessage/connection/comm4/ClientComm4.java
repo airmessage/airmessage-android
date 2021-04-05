@@ -215,7 +215,7 @@ public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 	}
 	
 	@Override
-	public boolean requestRetrievalID(long idLower) {
+	public boolean requestRetrievalID(long idLower, long timeLower, long timeUpper) {
 		throw new UnsupportedOperationException("Not supported");
 	}
 	

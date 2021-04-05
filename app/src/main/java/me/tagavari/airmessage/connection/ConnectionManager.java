@@ -58,6 +58,7 @@ import me.tagavari.airmessage.connection.request.MassRetrievalRequest;
 import me.tagavari.airmessage.connection.task.ChatResponseTask;
 import me.tagavari.airmessage.connection.task.MessageUpdateTask;
 import me.tagavari.airmessage.connection.task.ModifierUpdateTask;
+import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
 import me.tagavari.airmessage.enums.ChatCreateErrorCode;
@@ -68,6 +69,7 @@ import me.tagavari.airmessage.enums.ConnectionState;
 import me.tagavari.airmessage.enums.ConversationState;
 import me.tagavari.airmessage.enums.MassRetrievalErrorCode;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.enums.TrackableRequestCategory;
 import me.tagavari.airmessage.helper.ConversationColorHelper;
 import me.tagavari.airmessage.messaging.AttachmentInfo;
@@ -173,10 +175,21 @@ public class ConnectionManager {
 	@Nullable private ConnectionOverride<?> connectionOverride = null;
 	
 	public ConnectionManager(Context context) {
+		//Registering broadcast listeners
 		pingPendingIntent = PendingIntent.getBroadcast(context, 0, new Intent(intentActionPing), PendingIntent.FLAG_UPDATE_CURRENT);
 		context.registerReceiver(pingBroadcastReceiver, new IntentFilter(intentActionPing));
 		reconnectPendingIntent = PendingIntent.getBroadcast(context, 0, new Intent(intentActionBackgroundReconnect), PendingIntent.FLAG_UPDATE_CURRENT);
 		context.registerReceiver(backgroundReconnectBroadcastReceiver, new IntentFilter(intentActionBackgroundReconnect));
+		
+		//Loading pending conversations from the database
+		Single.fromCallable(() -> DatabaseManager.getInstance().fetchConversationsWithState(context, ConversationState.incompleteServer))
+				.observeOn(Schedulers.single())
+				.subscribeOn(AndroidSchedulers.mainThread())
+				.doOnSuccess(conversations -> {
+					for(ConversationInfo conversation : conversations) {
+						pendingConversations.put(conversation.getGUID(), conversation);
+					}
+				}).subscribe();
 	}
 	
 	/**
@@ -268,7 +281,7 @@ public class ConnectionManager {
 				//Fetching missed messages
 				if(communicationsManager.isFeatureSupported(ConnectionFeature.idBasedRetrieval) && lastServerMessageID != -1) {
 					//Fetching messages since the last message ID
-					requestMessagesIDRange(lastServerMessageID);
+					requestMessagesIDRange(lastServerMessageID, lastConnectionTime, System.currentTimeMillis());
 				} else {
 					//Fetching the messages since the last connection time
 					requestMessagesTimeRange(lastConnectionTime, System.currentTimeMillis());
@@ -358,22 +371,28 @@ public class ConnectionManager {
 		
 		@Override
 		public void onMessageUpdate(Collection<Blocks.ConversationItem> data) {
+			//Filtering out data that would be received over FCM
+			Collection<Blocks.ConversationItem> filteredData;
+			if(communicationsManager.getDataProxyType() == ProxyType.connect) {
+				filteredData = data.stream().filter(item -> !(item instanceof Blocks.MessageInfo && ((Blocks.MessageInfo) item).sender != null)).collect(Collectors.toList());
+			} else {
+				filteredData = data;
+			}
+			if(filteredData.isEmpty()) return;
+			
 			//Loading the foreground conversations (needs to be done on the main thread)
 			Single.fromCallable(Messaging::getForegroundConversations)
 					.subscribeOn(AndroidSchedulers.mainThread())
-					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, data, Preferences.getPreferenceAutoDownloadAttachments(getContext())))
+					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, filteredData, Preferences.getPreferenceAutoDownloadAttachments(getContext())))
 					.observeOn(AndroidSchedulers.mainThread())
 					.doOnSuccess(response -> {
-						//Adding the conversations as pending conversations and retrieving pending conversation information
-						pendingConversations.putAll(response.getIncompleteServerConversations().stream().collect(Collectors.toMap(ConversationInfo::getGUID, conversation -> conversation)));
-						
 						//Emitting any generated events
 						for(ReduxEventMessaging event : response.getEvents()) {
 							ReduxEmitterNetwork.getMessageUpdateSubject().onNext(event);
 						}
 						
 						//Fetching pending conversations
-						fetchPendingConversations();
+						addPendingConversations(response.getIncompleteServerConversations());
 						
 						//Downloading attachments
 						if(response.getCollectedAttachments() != null) {
@@ -401,7 +420,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Start(addedConversations, messageCount);
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Start(massRetrievalRequest.getRequestID(), addedConversations, messageCount);
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
@@ -434,7 +453,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Progress(addedItems, massRetrievalRequest.getMessagesReceived(), massRetrievalRequest.getTotalMessageCount());
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Progress(massRetrievalRequest.getRequestID(), addedItems, massRetrievalRequest.getMessagesReceived(), massRetrievalRequest.getTotalMessageCount());
 								
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
@@ -444,7 +463,7 @@ public class ConnectionManager {
 								if(localSubject == null) return;
 								
 								if(error instanceof IllegalArgumentException) {
-									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse, error));
 								} else {
 									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
 								}
@@ -468,7 +487,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Complete();
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Complete(massRetrievalRequest.getRequestID());
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 								localSubject.onComplete();
@@ -518,7 +537,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File(massRetrievalRequest.getRequestID());
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
@@ -553,7 +572,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File(massRetrievalRequest.getRequestID());
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
@@ -588,7 +607,7 @@ public class ConnectionManager {
 								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
-								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File(massRetrievalRequest.getRequestID());
 								localSubject.get().onNext(event);
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
@@ -647,8 +666,17 @@ public class ConnectionManager {
 		
 		@Override
 		public void onModifierUpdate(Collection<Blocks.ModifierInfo> data) {
+			//Filtering out data that would be received over FCM
+			Collection<Blocks.ModifierInfo> filteredData;
+			if(communicationsManager.getDataProxyType() == ProxyType.connect) {
+				filteredData = data.stream().filter(item -> !(item instanceof Blocks.TapbackModifierInfo && ((Blocks.TapbackModifierInfo) item).sender != null)).collect(Collectors.toList());
+			} else {
+				filteredData = data;
+			}
+			if(filteredData.isEmpty()) return;
+			
 			//Writing modifiers to disk
-			ModifierUpdateTask.create(getContext(), data).doOnSuccess(result -> {
+			ModifierUpdateTask.create(getContext(), filteredData).doOnSuccess(result -> {
 				//Pushing emitter updates
 				for(ActivityStatusUpdate statusUpdate : result.getActivityStatusUpdates()) {
 					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.MessageState(statusUpdate.getMessageID(), statusUpdate.getMessageState(), statusUpdate.getDateRead()));
@@ -1138,8 +1166,8 @@ public class ConnectionManager {
 	 * Requests data for pending conversations from the server
 	 */
 	public void fetchPendingConversations() {
-		//Failing immediately if there is no network connection
-		if(!isConnected()) return;
+		//Ignoring if there is no network connection, or if there are no pending conversations
+		if(!isConnected() || pendingConversations.isEmpty()) return;
 		
 		//Sending the request
 		communicationsManager.requestConversationInfo(pendingConversations.keySet());
@@ -1161,13 +1189,15 @@ public class ConnectionManager {
 	/**
 	 * Requests messages since above the specified ID from the server
 	 * @param idLower The ID of the message to receive messages since
+	 * @param timeLower The lower time requirement in milliseconds
+	 * @param timeUpper The upper time requirement in milliseconds
 	 */
-	public void requestMessagesIDRange(long idLower) {
+	public void requestMessagesIDRange(long idLower, long timeLower, long timeUpper) {
 		//Failing immediately if there is no network connection
 		if(!isConnected()) return;
 		
 		//Sending the request
-		communicationsManager.requestRetrievalID(idLower);
+		communicationsManager.requestRetrievalID(idLower, timeLower, timeUpper);
 	}
 	
 	/**
@@ -1191,7 +1221,7 @@ public class ConnectionManager {
 		isMassRetrievalInProgress = true;
 		
 		//Adding the request
-		MassRetrievalRequest massRetrievalRequest = new MassRetrievalRequest();
+		MassRetrievalRequest massRetrievalRequest = new MassRetrievalRequest(requestID);
 		return this.<ReduxEventMassRetrieval>queueObservableIDRequest(requestID, error, massRetrievalRequest).doOnError((observableError) -> {
 			//Getting the error code
 			int errorCode;
@@ -1206,7 +1236,7 @@ public class ConnectionManager {
 			massRetrievalRequest.cancel();
 			
 			//Emitting an update
-			ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(new ReduxEventMassRetrieval.Error(errorCode));
+			ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(new ReduxEventMassRetrieval.Error(requestID, errorCode));
 			Log.w(TAG, "Mass retrieval failed", observableError);
 		}).doOnTerminate(() -> {
 			//Updating the mass retrieval state
@@ -1324,6 +1354,17 @@ public class ConnectionManager {
 		isPendingSync = false;
 	}
 	
+	/**
+	 * Adds pending conversations to the list, and tries to fetch their details from the server
+	 * @param conversations The list of conversations to register as pending conversations
+	 */
+	public void addPendingConversations(List<ConversationInfo> conversations) {
+		//Adding the conversations
+		pendingConversations.putAll(conversations.stream().collect(Collectors.toMap(ConversationInfo::getGUID, conversation -> conversation)));
+		
+		//Fetching pending conversations
+		fetchPendingConversations();
+	}
 	
 	/**
 	 * Schedules the next keepalive ping

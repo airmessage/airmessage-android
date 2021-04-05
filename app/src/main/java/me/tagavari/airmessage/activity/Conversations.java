@@ -766,11 +766,12 @@ public class Conversations extends AppCompatCompositeActivity {
 		if(event instanceof ReduxEventMassRetrieval.Complete) {
 			viewModel.finishStateSyncing();
 		} else if(event instanceof ReduxEventMassRetrieval.Error) {
-			boolean wasSyncing = viewModel.finishStateSyncing();
+			viewModel.finishStateSyncing();
 			
 			//Showing a snackbar
-			if(wasSyncing) {
+			if(event.getRequestID() != viewModel.lastMassRetrievalErrorID) {
 				Snackbar.make(findViewById(R.id.root), getResources().getString(R.string.message_syncerror, ((ReduxEventMassRetrieval.Error) event).getCode()), Snackbar.LENGTH_LONG).show();
+				viewModel.lastMassRetrievalErrorID = event.getRequestID();
 			}
 		} else {
 			viewModel.setStateSyncing();
@@ -1325,6 +1326,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		final MutableLiveData<Integer> playServicesErrorCode = new MutableLiveData<>(null);
 		final List<Long> actionModeSelections = new ArrayList<>();
 		boolean isSearching = false;
+		short lastMassRetrievalErrorID = -1;
 		
 		public ActivityViewModel(@NonNull Application application, boolean isViewArchived) {
 			super(application);
