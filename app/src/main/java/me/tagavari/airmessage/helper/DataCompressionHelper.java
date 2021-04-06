@@ -8,10 +8,10 @@ import androidx.exifinterface.media.ExifInterface;
 
 import com.otaliastudios.transcoder.Transcoder;
 import com.otaliastudios.transcoder.TranscoderOptions;
+import com.otaliastudios.transcoder.resize.AtMostResizer;
 import com.otaliastudios.transcoder.strategy.DefaultAudioStrategy;
 import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy;
 import com.otaliastudios.transcoder.strategy.TrackStrategy;
-import com.otaliastudios.transcoder.strategy.size.AtMostResizer;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Collections;
