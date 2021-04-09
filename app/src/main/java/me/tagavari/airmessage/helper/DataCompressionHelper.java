@@ -4,9 +4,11 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 
+import androidx.annotation.NonNull;
 import androidx.exifinterface.media.ExifInterface;
 
 import com.otaliastudios.transcoder.Transcoder;
+import com.otaliastudios.transcoder.TranscoderListener;
 import com.otaliastudios.transcoder.TranscoderOptions;
 import com.otaliastudios.transcoder.resize.AtMostResizer;
 import com.otaliastudios.transcoder.strategy.DefaultAudioStrategy;
@@ -282,7 +284,7 @@ public class DataCompressionHelper {
 		
 		TrackStrategy videoStrategy = new DefaultVideoStrategy.Builder()
 				.frameRate(12)
-				.bitRate(24000)
+				.bitRate(240000)
 				.addResizer(new AtMostResizer(144, 176))
 				.build();
 		
@@ -301,6 +303,27 @@ public class DataCompressionHelper {
 		transcoder.addDataSource(fileDescriptor)
 				.setAudioTrackStrategy(audioStrategy)
 				.setVideoTrackStrategy(videoStrategy)
+				.setListener(new TranscoderListener() {
+					@Override
+					public void onTranscodeProgress(double progress) {
+					
+					}
+					
+					@Override
+					public void onTranscodeCompleted(int successCode) {
+					
+					}
+					
+					@Override
+					public void onTranscodeCanceled() {
+					
+					}
+					
+					@Override
+					public void onTranscodeFailed(@NonNull Throwable exception) {
+					
+					}
+				})
 				.transcode().get();
 		
 		//Cleaning up the temporary file
