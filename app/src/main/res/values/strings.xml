@@ -9,6 +9,7 @@
 
 	<string name="action_send">Send</string>
 	<string name="action_next">Next</string>
+	<string name="action_done">Done</string>
 	<string name="action_back">Back</string>
 	<string name="action_skip">Skip</string>
 	<string name="action_delete">Delete</string>
@@ -24,6 +25,7 @@
 	<string name="action_undo">Undo</string>
 	<string name="action_replay">Replay</string>
 	<string name="action_refresh">Refresh</string>
+	<string name="action_resolve">Resolve</string>
 	<string name="action_sync">Sync</string>
 	<string name="action_resync">Resync</string>
 	<string name="action_advanced">Advanced</string>
@@ -69,6 +71,12 @@
 	<string name="action_connectiontroubleshootingguide">View help</string>
 	<string name="action_tapbackdetails">View tapback details</string>
 	<string name="action_renamegroup">Rename this group</string>
+	<string name="action_manualconfiguration">Use manual configuration</string>
+	<string name="action_signin_google">Sign in with Google</string>
+	<string name="action_signin_email">Sign in with email</string>
+	<string name="action_signout">Sign out</string>
+	<string name="action_switchtoaccount">Switch to account</string>
+	<string name="action_checkconnection">Check connection</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -82,6 +90,8 @@
 	<string name="screen_newconversation">New conversation</string>
 	<string name="screen_conversationdetails">Conversation details</string>
 	<string name="screen_newmessage">New message</string>
+	<string name="screen_manualconfiguration">Manual configuration</string>
+	<string name="screen_licenses">Open source licenses</string>
 
 	<string name="title_conversation_name">Group name</string>
 	<string name="title_conversation_members">People in this conversation</string>
@@ -91,8 +101,14 @@
 	<string name="dialog_feedback_email">Send E-Mail</string>
 	<string name="dialog_feedback_community">Open community subreddit</string>
 
-	<string name="message_blankstate_conversations">Once you start a new conversation, you\'ll see it listed here</string>
-	<string name="message_blankstate_conversations_archived">Archived conversations appear here</string>
+	<string name="dialog_signout_message">Are you sure you want to sign out?</string>
+
+	<string name="dialog_skipsetup_message">Skip setup?</string>
+
+	<string name="message_blankstate_conversations">No conversations</string>
+	<string name="message_blankstate_conversations_description">Once you start a new conversation, you\'ll see it listed here</string>
+	<string name="message_blankstate_conversations_archived">No archived conversations</string>
+	<string name="message_blankstate_conversations_archived_description">Archived conversations appear here</string>
 	<string name="message_blankstate_conversations_basic">No conversations</string>
 	<string name="message_blankstate_blocked">No blocked addresses</string>
 
@@ -105,8 +121,11 @@
 	<string name="message_loaderror_contacts">Failed to load contacts</string>
 	<string name="message_loaderror_blocked">Failed to load blocked addresses</string>
 
+	<string name="message_signinerror">Sign-in error</string>
+
 	<string name="message_loaderror_gallery">Failed to load gallery images</string>
 	<string name="message_loaderror_documents">Failed to load documents</string>
+	<string name="message_loaderror_location">Failed to load your location</string>
 
 	<string name="message_intenterror_open">Couldn\'t open file</string>
 	<string name="message_intenterror_camera">No camera app found</string>
@@ -146,13 +165,14 @@
 	<string name="message_attachmentreqerror_server_unreadable">Attachment file unreadable</string>
 	<string name="message_attachmentreqerror_server_io">External error (I/O)</string>
 
-	<string name="message_syncerror">Couldn\'t sync messages</string>
+	<string name="message_syncerror">Couldn\'t sync messages (error code %d)</string>
 
 	<string name="message_senderrornotify">Message not sent</string>
 	<string name="message_senderrornotify_desc">Your message to %s failed to send</string>
 	<string name="message_senderror">Not sent</string>
 
-	<string name="message_connectionerrror">Couldn\'t connect to server</string>
+	<string name="message_connectionerror">Couldn\'t connect to server</string>
+	<string name="message_serviceavailabilityerror">Connection service not available</string>
 
 	<string name="message_permissionrejected">Permission request rejected</string>
 	<string name="message_permissiondetails_contacts_listing">Allow access to contacts to show names and pictures</string>
@@ -163,16 +183,24 @@
 	<string name="message_textmessageimport">Started importing text messages</string>
 
 	<string name="message_serverstatus_limitedfunctionality">%s. Functionality will be limited.</string>
-	<string name="message_serverstatus_internalexception">An internal error occurred</string>
-	<string name="message_serverstatus_badrequest">A connection compatibility error occurred</string>
 	<string name="message_serverstatus_noconnection">No connection to server</string>
+	<string name="message_serverstatus_nointernet">No internet connection</string>
+	<string name="message_serverstatus_internalexception">An internal error occurred</string>
+	<string name="message_serverstatus_externalexception">An external error occurred</string>
+	<string name="message_serverstatus_badrequest">A connection compatibility error occurred</string>
 	<string name="message_serverstatus_clientoutdated">App is out-of-date</string>
 	<string name="message_serverstatus_serveroutdated">Server is out-of-date</string>
-	<string name="message_serverstatus_authfail">Couldn\'t log in to server</string>
+	<string name="message_serverstatus_authfail">Password not accepted</string>
+	<string name="message_serverstatus_nogroup">Personal server not available</string>
+	<string name="message_serverstatus_nocapacity">Connected device limit reached</string>
+	<string name="message_serverstatus_accountvalidation">Connected account can\'t be used</string>
+<!--	<string name="message_serverstatus_nosubscription">Connected account isn\'t subscribed</string>-->
+	<string name="message_serverstatus_noenrollment">Connected account isn\'t enrolled</string>
+	<string name="message_serverstatus_otherlocation">Server computer swapped</string>
 	<string name="message_serverstatus_unknown">An unknown error occurred</string>
 
 	<string name="message_serverupdate">A server update is available</string>
-	<string name="message_appvaliditywarning">This installation of AirMessage could not be verified. Your messaging data may be at risk. Please install AirMessage from the Play Store.</string>
+	<string name="message_securityupdate">AirMessage can\'t check for security updates</string>
 	<string name="message_searchnoresults">No results</string>
 
 	<string name="message_eventtype_chatrename_change">%1$s named the conversation \"%2$s\"</string>
@@ -217,13 +245,14 @@
 	<string name="message_tapback_remove_question_you">You removed a question mark from \"%s\"</string>
 
 	<string name="message_setup_connect_address">Server address</string>
+	<string name="message_setup_connect_fallbackaddress">Fallback address (optional)</string>
 	<string name="message_setup_connect_noserver">Don\'t have a server?</string>
 	<string name="message_setup_connect_serverguidelink">Take a look at the install guide</string>
 	<string name="message_setup_connect_connectionerror">Connection failed</string>
 	<string name="message_setup_connect_password">Password</string>
 	<string name="message_setup_sync_download_title">Download message history</string>
-	<string name="message_setup_sync_download_description">Copy your recent messages from your computer and continue right where you left off.\n\nIf you choose not to, only new messages will appear on this device.</string>
-	<string name="message_setup_sync_delete_description">Alternatively, you can start fresh and simply clear away your old messages from this device</string>
+	<string name="message_setup_sync_download_description">You\'re now connected to <b>%s</b>.\n\nWould you like to copy your recent messages from your computer to this device?</string>
+	<string name="message_setup_sync_delete_description">Alternatively, you can start fresh and simply clear away your old messages from this device.</string>
 	<string name="message_setup_sync_warning_title">Skip clearing messages?</string>
 	<string name="message_setup_sync_description">Only use this if you are connecting to the same computer and Apple account that was previously being used.\n\nRetaining your old conversations may cause them to merge with your new conversations or lose functionality.</string>
 
@@ -267,6 +296,7 @@
 
 	<string name="message_connection_connected">Connected to server</string>
 	<string name="message_connection_connectedfallback">Connected to server via fallback</string>
+	<string name="message_connection_connectedcomputer">Connected to %s</string>
 	<string name="message_connection_disconnected">Connection lost</string>
 
 	<string name="message_conversation_archived">Conversation archived</string>
@@ -292,7 +322,7 @@
 	<string name="message_messagedetails_size">Size: %s</string>
 	<string name="message_messagedetails_datesent">Sent: %s</string>
 	<string name="message_messagedetails_sendeffect">Send effect: %s</string>
-	
+
 	<string name="message_locationtitle_unknown">Unnamed location</string>
 	<string name="message_locationaddress_unknown">Unknown address</string>
 
@@ -333,6 +363,15 @@
 		<item quantity="other">%d years</item>
 	</plurals>
 
+	<string name="message_onboardinginstructions_title">Get started in 2 easy steps</string>
+	<string name="message_onboardinginstructions_macmini_title">Set up your server</string>
+	<string name="message_onboardinginstructions_macmini_desc">A server installed on a Mac computer is required to route your messages for you.\n\nVisit airmessage.org on your computer to download.</string>
+	<string name="message_onboardinginstructions_airmessage_title">Connect your account</string>
+	<string name="message_onboardinginstructions_airmessage_desc">Log in with your account to get your messages on this device.</string>
+
+	<string name="message_manualconfigurationstatus">Manual configuration in progress</string>
+	<string name="message_temporarymodestatus">Checking for new messages</string>
+
 	<plurals name="message_newmessages">
 		<item quantity="one">%d new message</item>
 		<item quantity="other">%d new messages</item>
@@ -340,8 +379,13 @@
 
 	<string name="message_newmessages_nocount">New messages</string>
 
+	<string name="message_reset_direct">Switch to account-based access?</string>
+	<string name="message_reset_connect">Sign out of AirMessage?</string>
+
 	<string name="message_generalloading">Please wait&#8230;</string>
 	<string name="message_notsupported">This feature is unavailable</string>
+
+	<string name="message_connecterror">Your server couldn\'t be reached</string>
 
 	<string name="progress_loadingmessages">Loading messages&#8230;</string>
 	<string name="progress_loading">Loading&#8230;</string>
@@ -349,6 +393,7 @@
 	<string name="progress_connectingtoserver">Connecting to server&#8230;</string>
 	<string name="progress_importtextmessages">Importing text messages&#8230;</string>
 	<string name="progress_cleantextmessages">Cleaning up local text messages&#8230;</string>
+	<string name="progress_connectionverification">Checking your connection&#8230;</string>
 
 	<string name="time_now">Just now</string>
 	<string name="time_minutes">%d min</string>
@@ -403,6 +448,8 @@
 	<string name="part_tapback_exclamation">Exclamation</string>
 	<string name="part_tapback_question">Question mark</string>
 
+	<string name="part_invalidaddress">Invalid address</string>
+
 	<string name="label_email_home">Home</string>
 	<string name="label_email_work">Work</string>
 	<string name="label_email_other">Other</string>
@@ -415,6 +462,8 @@
 	<string name="label_phone_pager">Pager</string>
 	<string name="label_phone_other">Other</string>
 	<string name="label_addressdetails">%1$s - %2$s</string>
+
+	<string name="label_videoplayback">Play video</string>
 
 	<string name="state_sent">Sent</string>
 	<string name="state_delivered">Delivered</string>

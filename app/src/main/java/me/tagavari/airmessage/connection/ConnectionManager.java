@@ -1,977 +1,1391 @@
 package me.tagavari.airmessage.connection;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.util.SparseArray;
+import android.content.IntentFilter;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
+import android.util.Log;
+import android.util.Pair;
 
-import androidx.core.util.Consumer;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.annotation.Nullable;
+import androidx.arch.core.util.Function;
 
-import com.crashlytics.android.Crashlytics;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
+import java.io.File;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
+import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
-import java.util.ListIterator;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Pattern;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.CompletableTransformer;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.core.ObservableTransformer;
+import io.reactivex.rxjava3.core.Scheduler;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.core.SingleTransformer;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import io.reactivex.rxjava3.subjects.CompletableSubject;
+import io.reactivex.rxjava3.subjects.PublishSubject;
+import io.reactivex.rxjava3.subjects.SingleSubject;
 import me.tagavari.airmessage.MainApplication;
+import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.connection.caladium.ClientCommCaladium;
-import me.tagavari.airmessage.connection.request.ChatCreationResponseManager;
-import me.tagavari.airmessage.connection.request.ConversationInfoRequest;
-import me.tagavari.airmessage.connection.request.FileDownloadRequest;
-import me.tagavari.airmessage.connection.request.FileProcessingRequest;
-import me.tagavari.airmessage.connection.request.FilePushRequest;
-import me.tagavari.airmessage.connection.request.FileRemovalRequest;
-import me.tagavari.airmessage.connection.request.MessageResponseManager;
-import me.tagavari.airmessage.connection.task.FetchConversationRequestsTask;
-import me.tagavari.airmessage.connection.task.MessageUpdateAsyncTask;
-import me.tagavari.airmessage.connection.task.ModifierUpdateAsyncTask;
-import me.tagavari.airmessage.connection.task.QueueTask;
-import me.tagavari.airmessage.connection.task.SaveConversationInfoAsyncTask;
-import me.tagavari.airmessage.connection.thread.FileProcessingThread;
-import me.tagavari.airmessage.connection.thread.MassRetrievalThread;
-import me.tagavari.airmessage.connection.thread.MessageProcessingThread;
-import me.tagavari.airmessage.data.DatabaseManager;
+import me.tagavari.airmessage.connection.comm4.ClientComm4;
+import me.tagavari.airmessage.connection.comm5.ClientComm5;
+import me.tagavari.airmessage.connection.exception.AMRequestException;
+import me.tagavari.airmessage.connection.listener.CommunicationsManagerListener;
+import me.tagavari.airmessage.connection.request.FileFetchRequest;
+import me.tagavari.airmessage.connection.request.MassRetrievalRequest;
+import me.tagavari.airmessage.connection.task.ChatResponseTask;
+import me.tagavari.airmessage.connection.task.MessageUpdateTask;
+import me.tagavari.airmessage.connection.task.ModifierUpdateTask;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
+import me.tagavari.airmessage.enums.ChatCreateErrorCode;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.ConnectionFeature;
+import me.tagavari.airmessage.enums.ConnectionMode;
+import me.tagavari.airmessage.enums.ConnectionState;
+import me.tagavari.airmessage.enums.ConversationState;
+import me.tagavari.airmessage.enums.MassRetrievalErrorCode;
+import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.TrackableRequestCategory;
+import me.tagavari.airmessage.helper.ConversationColorHelper;
+import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.ConversationItem;
-import me.tagavari.airmessage.messaging.DraftFile;
 import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.messaging.StickerInfo;
+import me.tagavari.airmessage.messaging.TapbackInfo;
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
+import me.tagavari.airmessage.redux.ReduxEventAttachmentDownload;
+import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.redux.ReduxEventConnection;
+import me.tagavari.airmessage.redux.ReduxEventMassRetrieval;
+import me.tagavari.airmessage.redux.ReduxEventMessaging;
+import me.tagavari.airmessage.util.ActivityStatusUpdate;
+import me.tagavari.airmessage.util.CompoundErrorDetails;
+import me.tagavari.airmessage.util.ConversationTarget;
+import me.tagavari.airmessage.util.ModifierMetadata;
+import me.tagavari.airmessage.util.RequestSubject;
+import me.tagavari.airmessage.util.TrackableRequest;
 
 public class ConnectionManager {
-	/* COMMUNICATIONS VERSION CHANGES
-	 *  1 - Original release
-	 *  2 - Serialization changes
-	 *  3 - Original rework without WS layer
-	 *  4 - Better stability and security, with sub-version support
-	 */
-	public static final int mmCommunicationsVersion = 4;
-	public static final int mmCommunicationsSubVersion = 6;
+	private static final String TAG = ConnectionManager.class.getSimpleName();
 	
-	public static final int maxPacketAllocation = 50 * 1024 * 1024; //50 MB
+	//Constants
+	private static final List<CommunicationsManagerFactory> communicationsPriorityList = Arrays.asList(ClientComm5::new, ClientComm4::new);
 	
-	public static final String localBCStateUpdate = "LocalMSG-ConnectionService-State";
-	public static final String localBCMassRetrieval = "LocalMSG-ConnectionService-MassRetrievalProgress";
+	private static final long pingExpiryTime = 40 * 1000; //40 seconds
+	private static final long keepAliveMillis = 20 * 60 * 1000; //30 * 60 * 1000; //20 minutes
+	private static final long keepAliveWindowMillis = 5 * 60 * 1000; //5 minutes
+	private static final long[] immediateReconnectDelayMillis = {1000, 2 * 1000}; //1 second, 2 seconds
+	private static final long backgroundReconnectFrequencyMillis = 10 * 60 * 1000; //10 minutes
 	
-	public static final int intentResultCodeSuccess = 0;
-	public static final int intentResultCodeInternalException = 1;
-	public static final int intentResultCodeBadRequest = 2;
-	public static final int intentResultCodeClientOutdated = 3;
-	public static final int intentResultCodeServerOutdated = 4;
-	public static final int intentResultCodeUnauthorized = 5;
-	public static final int intentResultCodeConnection = 6;
+	private static final long requestTimeoutSeconds = 24;
 	
-	public static final int intentExtraStateMassRetrievalStarted = 0;
-	public static final int intentExtraStateMassRetrievalProgress = 1;
-	public static final int intentExtraStateMassRetrievalFinished = 2;
-	public static final int intentExtraStateMassRetrievalFailed = 3;
+	private static final String intentActionPing = "me.tagavari.airmessage.connection.ConnectionManager-Ping";
+	private static final String intentActionBackgroundReconnect = "me.tagavari.airmessage.connection.ConnectionManager-BackgroundReconnect";
 	
-	public static final int stateDisconnected = 0;
-	public static final int stateConnecting = 1;
-	public static final int stateConnected = 2;
+	//Schedulers
+	private final Scheduler uploadScheduler = Schedulers.from(Executors.newSingleThreadExecutor(), true);
 	
-	public static final int largestFileSize = 1024 * 1024 * 100; //100 MB
-	public static final int attachmentChunkSize = 1024 * 1024; //1 MiB
+	//Handler
+	private final Handler handler = new Handler(Looper.getMainLooper());
 	
-	public static final Pattern regExValidPort = Pattern.compile("(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]?))$");
+	//Random
+	private final Random random = new Random();
 	
-	//Creating the service values
-	private final ServiceCallbacks serviceCallbacks;
-	
-	//Creating the communications values
-	final List<Class<?>> communicationsClassPriorityList = Collections.singletonList(ClientCommCaladium.class);
-	final List<CommunicationsManagerSource> communicationsInstancePriorityList = Collections.singletonList(ClientCommCaladium::new);
-	
-	//Creating the file processing values
-	private final BlockingQueue<FileProcessingRequest> fileProcessingRequestQueue = new LinkedBlockingQueue<>();
-	private final AtomicReference<FileProcessingRequest> fileProcessingRequestCurrent = new AtomicReference<>(null);
-	private AtomicBoolean fileProcessingThreadRunning = new AtomicBoolean(false);
-	private FileProcessingThread fileProcessingThread = null;
-	
-	//Creating the message processing values
-	private final BlockingQueue<QueueTask<?, ?>> messageProcessingQueue = new LinkedBlockingQueue<>();
-	private AtomicBoolean messageProcessingQueueThreadRunning = new AtomicBoolean(false);
-	
-	//Creating the mass retrieval values
-	private MassRetrievalThread massRetrievalThread = null;
-	private MassRetrievalParams currentMassRetrievalParams = null;
-	
-	//Creating the download request values
-	private final ArrayList<FileDownloadRequest> fileDownloadRequests = new ArrayList<>();
-	
-	//Creating the connection values
-	public static String hostname = null;
-	public static String hostnameFallback = null;
-	public static String password = null;
-	
-	private CommunicationsManager currentCommunicationsManager = null;
-	private static byte currentLaunchID = 0;
-	private static byte nextLaunchID = 0;
-	private int lastConnectionResult = -1;
-	
-	private boolean flagMarkEndTime = false; //Marks the time that the connection is closed, so that missed messages can be fetched since that time when reconnecting
-	private boolean flagDropReconnect = false; //Automatically starts a new connection when the connection is closed
-	private boolean flagShutdownRequested = false; //Disables forwarding when disconnecting
-	
-	private int activeCommunicationsVersion = -1;
-	private int activeCommunicationsSubVersion = -1;
-	
-	//Creating the quick request variables
-	private final SparseArray<MessageResponseManager> messageSendRequests = new SparseArray<>();
-	private final SparseArray<ChatCreationResponseManager> chatCreationRequests = new SparseArray<>();
-	private short currentRequestID = 0;
-	
-	private final ArrayList<ConversationInfoRequest> pendingConversations = new ArrayList<>();
-	
-	public ConnectionManager(ServiceCallbacks serviceCallbacks) {
-		//Setting the service information
-		this.serviceCallbacks = serviceCallbacks;
-	}
-	
-	public ServiceCallbacks getServiceCallbacks() {
-		return serviceCallbacks;
-	}
-	
-	public void init(Context context) {
-		//Loading data from the database
-		new FetchConversationRequestsTask(context, new ConversationRequestsListener(this)).execute();
-	}
-	
-	private static class ConversationRequestsListener extends StaticInterfaceListener implements Consumer<List<ConversationInfo>> {
-		public ConversationRequestsListener(ConnectionManager manager) {
-			super(manager);
-		}
-		
+	//Receivers
+	private final BroadcastReceiver pingBroadcastReceiver = new BroadcastReceiver() {
 		@Override
-		public void accept(List<ConversationInfo> conversations) {
-			//Getting the connection manager
-			ConnectionManager manager = getManager();
-			if(manager == null) return;
-			
-			//Copying the conversations to the pending list
-			synchronized(manager.pendingConversations) {
-				for(ConversationInfo conversation : conversations)
-					manager.pendingConversations.add(new ConversationInfoRequest(conversation, true));
-			}
-			
-			//Requesting a conversation info fetch
-			manager.retrievePendingConversationInfo();
+		public void onReceive(Context context, Intent intent) {
+			if(isConnected()) testConnection();
+			else pingExpiryRunnable.run();
 		}
-	}
-	
-	public boolean connect(Context context, byte launchID) {
-		//Returning if a connection is already running
-		if(getCurrentState() != stateDisconnected) return false;
-		
-		//Updating the launch ID
-		currentLaunchID = launchID;
-		
-		//Returning if there is no internet connection
-		{
-			NetworkInfo activeNetwork = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
-			boolean isConnected = activeNetwork != null && activeNetwork.isConnected();
-			if(!isConnected) {
-				//Updating the notification
-				//postDisconnectedNotification(true);
-				
-				//Notifying the connection listeners
-				broadcastState(context, stateDisconnected, intentResultCodeConnection, launchID);
-				
-				return false;
-			}
+	};
+	private final BroadcastReceiver backgroundReconnectBroadcastReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			connectFromList(getContext(), 0);
 		}
-		
-		//Checking if there is no hostname
-		if(hostname == null) {
-			//Retrieving the data from the shared preferences
-			SharedPreferences sharedPrefs = MainApplication.getInstance().getConnectivitySharedPrefs();
-			hostname = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyHostname, null);
-			hostnameFallback = Preferences.getPreferenceFallbackServer(context);
-			password = sharedPrefs.getString(MainApplication.sharedPreferencesConnectivityKeyPassword, null);
-		}
-		
-		//Checking if the hostname is invalid (nothing was found in memory or on disk)
-		if(hostname == null) {
-			//Updating the notification
-			//postDisconnectedNotification(true);
-			
-			//Notifying the connection listeners
-			broadcastState(context, stateDisconnected, intentResultCodeConnection, launchID);
-			
-			return false;
-		}
-		
-		//Connecting through the top of the priority queue
-		boolean result = communicationsInstancePriorityList.get(0).get(this, context).connect(launchID);
-		
-		if(result) {
-			//Updating the notification
-			//postConnectedNotification(false, false);
-			
-			//Notifying the connection listeners
-			broadcastState(context, stateConnecting, 0, launchID);
-		} else {
-			//Updating the notification
-			//postDisconnectedNotification(false);
-			
-			//Notifying the connection listeners
-			broadcastState(context, stateDisconnected, intentResultCodeInternalException, launchID);
-		}
-		
-		//Returning the result
-		return result;
-	}
+	};
+	private final Runnable pingExpiryRunnable = () -> disconnect(ConnectionErrorCode.connection);
 	
-	public void disconnect() {
-		if(currentCommunicationsManager != null) currentCommunicationsManager.disconnect();
-	}
+	//Intents
+	private final PendingIntent pingPendingIntent, reconnectPendingIntent;
 	
-	public void reconnect(Context context) {
-		connect(context, getNextLaunchID());
-	}
+	//Connection values
+	private CommunicationsManager<?> communicationsManager = null;
+	private final Runnable immediateReconnectRunnable = () -> connectFromList(getContext(), 0);
+	private int immediateReconnectIndex = 0;
 	
-	void updateCommunicationsManager(CommunicationsManager communicationsManager) {
-		//Disconnecting the current communications manager
-		if(currentCommunicationsManager != null && currentCommunicationsManager.getState() != stateDisconnected) currentCommunicationsManager.disconnect();
-		
-		//Updating the communications manager information
-		currentCommunicationsManager = communicationsManager;
-	}
+	//Connection state values
+	/*
+	 * An up-to-date value that represents whether we're disconnected, connecting, or connected
+	 */
+	@ConnectionState private int connState = ConnectionState.disconnected;
+	/*
+	 * Represents the way in which we respond to connections and disconnections
+	 * user - display connection state 1:1, switch to immediate if connection established, otherwise switch to background
+	 * immediate - display connection state as "connecting", perform connections rapidly; only to be used after a connection has been established then lost
+	 * background - display connection state as "disconnected", perform connections in the background every so often
+	 */
+	@ConnectionMode private int connMode = ConnectionMode.user;
+	private short currentRequestID = 0;
+	private int currentCommunicationsIndex = 0;
 	
-	public boolean getFlagMarkEndTime() {
-		return flagMarkEndTime;
-	}
+	//Request state values
+	private final Map<String, ConversationInfo> pendingConversations = new HashMap<>();
+	private boolean isMassRetrievalInProgress = false;
+	private boolean isPendingSync = false;
 	
-	public void setFlagMarkEndTime(boolean flagMarkEndTime) {
-		this.flagMarkEndTime = flagMarkEndTime;
-	}
+	//Server information
+	@Nullable
+	private String serverInstallationID, serverDeviceName, serverSystemVersion, serverSoftwareVersion;
 	
-	public boolean getFlagDropReconnect() {
-		return flagDropReconnect;
-	}
+	//Composite disposable
+	private final CompositeDisposable compositeDisposable = new CompositeDisposable();
 	
-	public void setFlagDropReconnect(boolean flagDropReconnect) {
-		this.flagDropReconnect = flagDropReconnect;
-	}
+	//Response values
+	private final Map<Short, RequestSubject<?>> idRequestSubjectMap = new HashMap<>(); //For ID-based requests
 	
-	public boolean getFlagShutdownRequested() {
-		return flagShutdownRequested;
-	}
+	//State values
+	private boolean disableReconnections = false;
+	@Nullable private ConnectionOverride<?> connectionOverride = null;
 	
-	public void setFlagShutdownRequested(boolean flagShutdownRequested) {
-		this.flagShutdownRequested = flagShutdownRequested;
-	}
-	
-	public boolean isConnectedFallback() {
-		if(currentCommunicationsManager == null) return false;
-		return currentCommunicationsManager.isConnectedFallback();
-	}
-	
-	public CommunicationsManager getCurrentCommunicationsManager() {
-		return currentCommunicationsManager;
-	}
-	
-	public int getCurrentState() {
-		if(currentCommunicationsManager == null) return stateDisconnected;
-		else return currentCommunicationsManager.getState();
-	}
-	
-	public void setActiveCommunicationsInfo(int version, int subversion) {
-		activeCommunicationsVersion = version;
-		activeCommunicationsSubVersion = subversion;
-	}
-	
-	public int getActiveCommunicationsVersion() {
-		return activeCommunicationsVersion;
-	}
-	
-	public int getActiveCommunicationsSubVersion() {
-		return activeCommunicationsSubVersion;
-	}
-	
-	public boolean checkSupportsFeature(String feature) {
-		if(currentCommunicationsManager == null) return false;
-		return currentCommunicationsManager.checkSupportsFeature(feature);
-	}
-	
-	public short getCurrentRequestID() {
-		return currentRequestID;
-	}
-	
-	public void setCurrentRequestID(short currentRequestID) {
-		this.currentRequestID = currentRequestID;
-	}
-	
-	public short getNextRequestID() {
-		return ++currentRequestID;
-	}
-	
-	public static byte getCurrentLaunchID() {
-		return currentLaunchID;
-	}
-	
-	public static byte getNextLaunchID() {
-		return ++nextLaunchID;
-	}
-	
-	public int getLastConnectionResult() {
-		return lastConnectionResult;
-	}
-	
-	public void setLastConnectionResult(int lastConnectionResult) {
-		this.lastConnectionResult = lastConnectionResult;
-	}
-	
-	public int compareLaunchID(byte launchID) {
-		return Integer.compare(currentLaunchID, launchID);
-	}
-	
-	public void addMessageSendRequest(short requestID, MessageResponseManager responseManager) {
-		messageSendRequests.put(requestID, responseManager);
-	}
-	
-	public void removeMessageSendRequest(MessageResponseManager responseManager) {
-		int index = messageSendRequests.indexOfValue(responseManager);
-		if(index != -1) messageSendRequests.removeAt(index);
-	}
-	
-	public SparseArray<MessageResponseManager> getMessageSendRequestsList() {
-		return messageSendRequests;
-	}
-	
-	public void addMessagingProcessingTask(QueueTask<?, ?> task) {
-		//Adding the task
-		messageProcessingQueue.add(task);
-		
-		//Starting the thread if it isn't running
-		if(messageProcessingQueueThreadRunning.compareAndSet(false, true)) new MessageProcessingThread(messageProcessingQueue, new AtomicBooleanFinishTrigger(messageProcessingQueueThreadRunning)).start();
-	}
-	
-	public void addFileProcessingRequest(FileProcessingRequest request) {
-		//Adding the task
-		fileProcessingRequestQueue.add(request);
-		
-		//Starting the thread if it isn't running
-		if(fileProcessingThreadRunning.compareAndSet(false, true)) {
-			fileProcessingThread = new FileProcessingThread(MainApplication.getInstance(), fileProcessingRequestQueue, new FileProcessingRequestUpdateConsumer(this), new AtomicBooleanFinishTrigger(fileProcessingThreadRunning));
-			fileProcessingThread.start();
-		}
-	}
-	
-	public FileProcessingRequest searchFileProcessingQueue(long draftID) {
-		List<FileProcessingRequest> queueList = new ArrayList<>(fileProcessingRequestQueue);
-		for(ListIterator<FileProcessingRequest> iterator = queueList.listIterator(queueList.size()); iterator.hasPrevious();) {
-			FileProcessingRequest request = iterator.previous();
-			if(request instanceof FilePushRequest) {
-				if(((FilePushRequest) request).getDraftID() == draftID) return request;
-			} else if(request instanceof FileRemovalRequest) {
-				if(((FileRemovalRequest) request).getDraftFile().getLocalID() == draftID) return request;
-			}
-		}
-		
-		FileProcessingRequest request = fileProcessingRequestCurrent.get();
-		if(request != null) {
-			if(request instanceof FilePushRequest) {
-				if(((FilePushRequest) request).getDraftID() == draftID) return request;
-			} else if(request instanceof FileRemovalRequest) {
-				if(((FileRemovalRequest) request).getDraftFile().getLocalID() == draftID) return request;
-			}
-		}
-		
-		return null;
-	}
-	
-	public static void removeDraftFileSync(DraftFile draftFile, long updateTime) {
-		//Deleting the file and the file's parent directory (since each draft file is stored in its own folder to prevent name collisions)
-		draftFile.getFile().delete();
-		draftFile.getFile().getParentFile().delete();
-		
-		//Removing the draft reference from the database
-		DatabaseManager.getInstance().removeDraftReference(draftFile.getLocalID(), updateTime);
+	public ConnectionManager(Context context) {
+		pingPendingIntent = PendingIntent.getBroadcast(context, 0, new Intent(intentActionPing), PendingIntent.FLAG_UPDATE_CURRENT);
+		context.registerReceiver(pingBroadcastReceiver, new IntentFilter(intentActionPing));
+		reconnectPendingIntent = PendingIntent.getBroadcast(context, 0, new Intent(intentActionBackgroundReconnect), PendingIntent.FLAG_UPDATE_CURRENT);
+		context.registerReceiver(backgroundReconnectBroadcastReceiver, new IntentFilter(intentActionBackgroundReconnect));
 	}
 	
 	/**
-	 * Sends a broadcast to the listeners
-	 *
-	 * @param state the state of the connection
-	 * @param code the error code, if the state is disconnected
-	 * @param launchID the launch ID of the connection
+	 * Cleans up this connection manager
 	 */
-	public void broadcastState(Context context, int state, int code, byte launchID) {
-		//Notifying the connection listeners
-		LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCStateUpdate)
-				.putExtra(Constants.intentParamState, state)
-				.putExtra(Constants.intentParamCode, code)
-				.putExtra(Constants.intentParamLaunchID, launchID));
-	}
-	
-	public void processMessageUpdate(List<Blocks.ConversationItem> structConversationItems, boolean sendNotifications) {
-		//Creating and running the task
-		//new MessageUpdateAsyncTask(this, getApplicationContext(), structConversationItems, sendNotifications).execute();
-		addMessagingProcessingTask(new MessageUpdateAsyncTask(this, MainApplication.getInstance(), structConversationItems, sendNotifications));
-	}
-	
-	public void processChatInfoResponse(List<Blocks.ConversationInfo> structConversations) {
-		//Creating the list values
-		final ArrayList<ConversationInfo> unavailableConversations = new ArrayList<>();
-		final ArrayList<ConversationInfoRequest> availableConversations = new ArrayList<>();
+	public void close(Context context) {
+		//Clearing all subscriptions
+		compositeDisposable.clear();
 		
-		//Iterating over the conversations
-		for(Blocks.ConversationInfo structConversationInfo : structConversations) {
-			//Finding the conversation in the pending list
-			ConversationInfoRequest request = null;
-			synchronized(pendingConversations) {
-				for(Iterator<ConversationInfoRequest> iterator = pendingConversations.iterator(); iterator.hasNext(); ) {
-					//Getting the current request
-					ConversationInfoRequest allRequests = iterator.next();
-					
-					//Skipping the remainder of the iteration if the pending conversation's GUID doesn't match the new conversation information's GUID
-					if(!allRequests.getConversationInfo().getGuid().equals(structConversationInfo.guid)) continue;
-					
-					//Setting the request
-					request = allRequests;
-					
-					//Removing the request (it will be processed no matter what)
-					iterator.remove();
-					
-					//Breaking from the loop
-					break;
-				}
+		//Shutting down schedulers
+		uploadScheduler.shutdown();
+		
+		//Unregistering the receivers
+		context.unregisterReceiver(pingBroadcastReceiver);
+		context.unregisterReceiver(backgroundReconnectBroadcastReceiver);
+		
+		//Cancelling connection test timers
+		cancelConnectionTest(context);
+		
+		//Cancelling all reconnection timers
+		stopCurrentMode();
+	}
+	
+	private Context getContext() {
+		return MainApplication.getInstance();
+	}
+	
+	//Listener values
+	private final CommunicationsManagerListener communicationsManagerListener = new CommunicationsManagerListener() {
+		@Override
+		public void onOpen(String installationID, String deviceName, String systemVersion, String softwareVersion) {
+			//Recording the server information
+			serverInstallationID = installationID;
+			serverDeviceName = deviceName;
+			serverSystemVersion = systemVersion;
+			serverSoftwareVersion = softwareVersion;
+			
+			//Updating shared preferences
+			long lastConnectionTime = SharedPreferencesManager.getLastConnectionTime(getContext());
+			SharedPreferencesManager.setLastConnectionTime(getContext(), System.currentTimeMillis());
+			
+			//Updating the state
+			if(connMode != ConnectionMode.user) stopCurrentMode();
+			connMode = ConnectionMode.user;
+			
+			connState = ConnectionState.connected;
+			emitStateConnected();
+			
+			//Checking if an installation ID was provided
+			boolean isNewServer; //Is this server different from the one we connected to last time?
+			boolean isNewServerSinceSync; //Is this server different from the one we connected to last time, since we last synced our messages?
+			if(installationID != null) {
+				//Getting the last installation ID
+				String lastInstallationID = SharedPreferencesManager.getLastConnectionInstallationID(getContext());
+				String lastInstallationIDSinceSync = SharedPreferencesManager.getLastSyncInstallationID(getContext());
 				
-				//Skipping the remainder of the iteration if no matching pending conversation could be found or the conversation is not in a valid state
-				if(request == null || request.getConversationInfo().getState() != ConversationInfo.ConversationState.INCOMPLETE_SERVER) continue;
+				//If the installation ID changed, we are connected to a new server
+				isNewServer = !installationID.equals(lastInstallationID);
+				
+				//Updating the saved value
+				if(isNewServer) SharedPreferencesManager.setLastConnectionInstallationID(getContext(), installationID);
+				
+				//"notrigger" is assigned to this value when upgrading from 0.5.X to prevent sync prompts after upgrading
+				if("notrigger".equals(lastInstallationIDSinceSync)) {
+					//Don't sync messages
+					isNewServerSinceSync = false;
+					
+					//Update the saved value for next time
+					SharedPreferencesManager.setLastSyncInstallationID(getContext(), installationID);
+				} else {
+					isNewServerSinceSync = !installationID.equals(lastInstallationIDSinceSync);
+				}
+			} else {
+				//No way to tell
+				isNewServer = false;
+				isNewServerSinceSync = false;
+			}
+			
+			//Retrieving the pending conversation info
+			fetchPendingConversations();
+			
+			//Checking if we are connected to a new server
+			if(isNewServer) {
+				//Resetting the last message ID
+				SharedPreferencesManager.removeLastServerMessageID(getContext());
+			} else {
+				long lastServerMessageID = SharedPreferencesManager.getLastServerMessageID(getContext());
+				
+				//Fetching missed messages
+				if(communicationsManager.isFeatureSupported(ConnectionFeature.idBasedRetrieval) && lastServerMessageID != -1) {
+					//Fetching messages since the last message ID
+					requestMessagesIDRange(lastServerMessageID);
+				} else {
+					//Fetching the messages since the last connection time
+					requestMessagesTimeRange(lastConnectionTime, System.currentTimeMillis());
+				}
+			}
+			
+			//Checking if we are connected to a new server since syncing (and thus should prompt the user to sync)
+			if(isNewServerSinceSync) {
+				//Setting the state
+				isPendingSync = true;
+				
+				//Sending an update
+				ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.Sync(serverInstallationID, serverDeviceName));
+			}
+		}
+		
+		@Override
+		public void onClose(@ConnectionErrorCode int errorCode) {
+			//Getting if we have already established a connection
+			boolean connectionEstablished = connState == ConnectionState.connected;
+			
+			//Updating the state
+			connState = ConnectionState.disconnected;
+			
+			//Cleaning up after an established connection
+			if(connectionEstablished) {
+				//Failing all pending requests
+				for(RequestSubject<?> subject : new ArrayList<>(idRequestSubjectMap.values())) subject.onExpire();
+				
+				//Clearing the pending sync state
+				isPendingSync = false;
+				
+				//Cancelling connection test timers
+				cancelConnectionTest(getContext());
+			}
+			
+			//Checking if the disconnection is recoverable
+			if(errorCode == ConnectionErrorCode.connection || errorCode == ConnectionErrorCode.internet || errorCode == ConnectionErrorCode.externalError || errorCode == ConnectionErrorCode.connectOtherLocation) {
+				//Checking if we have yet to establish a proper connection, and there are older protocol versions available to use
+				if(!connectionEstablished && currentCommunicationsIndex + 1 < communicationsPriorityList.size()) {
+					//Leave the state as connecting and fall back to an older protocol
+					connectFromList(getContext(), currentCommunicationsIndex + 1);
+					return;
+				}
+				//Checking if we have already established a connection, and we are allowed to run automatic reconnections
+				else if((connectionEstablished || connMode == ConnectionMode.immediate) && !disableReconnections) {
+					//Trying to start an immediate reconnection
+					boolean result;
+					if(connMode != ConnectionMode.immediate) {
+						stopCurrentMode();
+						connMode = ConnectionMode.immediate;
+						
+						result = scheduleImmediateReconnect(true);
+						
+						emitStateConnecting();
+					} else {
+						result = scheduleImmediateReconnect(false);
+					}
+					
+					//If we succeeded in scheduling an immediate reconnect, don't switch to background mode
+					if(result) return;
+				}
+			}
+			
+			if(!disableReconnections) {
+				//Starting background mode
+				if(connMode != ConnectionMode.background) {
+					connMode = ConnectionMode.background;
+					scheduleRepeatingBackgroundReconnect(getContext());
+					emitStateDisconnected(errorCode);
+				} else return; //Don't spam the user with disconnected notifications
+			}
+			
+			emitStateDisconnected(errorCode);
+		}
+		
+		@Override
+		public void onPacket() {
+			if(connState == ConnectionState.connected) {
+				//Updating the last connection time
+				SharedPreferencesManager.setLastConnectionTime(getContext(), System.currentTimeMillis());
+				
+				//Resetting connection tests
+				resetConnectionTest(getContext());
+			}
+		}
+		
+		@Override
+		public void onMessageUpdate(Collection<Blocks.ConversationItem> data) {
+			//Loading the foreground conversations (needs to be done on the main thread)
+			Single.fromCallable(Messaging::getForegroundConversations)
+					.subscribeOn(AndroidSchedulers.mainThread())
+					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, data, Preferences.getPreferenceAutoDownloadAttachments(getContext())))
+					.observeOn(AndroidSchedulers.mainThread())
+					.doOnSuccess(response -> {
+						//Adding the conversations as pending conversations and retrieving pending conversation information
+						pendingConversations.putAll(response.getIncompleteServerConversations().stream().collect(Collectors.toMap(ConversationInfo::getGUID, conversation -> conversation)));
+						
+						//Emitting any generated events
+						for(ReduxEventMessaging event : response.getEvents()) {
+							ReduxEmitterNetwork.getMessageUpdateSubject().onNext(event);
+						}
+						
+						//Fetching pending conversations
+						fetchPendingConversations();
+						
+						//Downloading attachments
+						if(response.getCollectedAttachments() != null) {
+							for(Pair<MessageInfo, AttachmentInfo> attachmentData : response.getCollectedAttachments()) {
+								//Ignoring outgoing attachments
+								if(attachmentData.first.isOutgoing()) continue;
+								ConnectionTaskManager.downloadAttachment(ConnectionManager.this, attachmentData.first.getLocalID(), attachmentData.second.getLocalID(), attachmentData.second.getGUID(), attachmentData.second.getFileName());
+							}
+						}
+					}).subscribe();
+		}
+		
+		@Override
+		public void onMassRetrievalStart(short requestID, Collection<Blocks.ConversationInfo> conversations, int messageCount) {
+			//Getting the request
+			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			//Initializing the request
+			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
+			compositeDisposable.add(
+					massRetrievalRequest.handleInitialInfo(conversations, messageCount)
+							.subscribe((addedConversations) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Start(addedConversations, messageCount);
+								localSubject.get().onNext(event);
+								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
+							}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								if(error instanceof IllegalArgumentException) {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse, error));
+								} else {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
+								}
+								idRequestSubjectMap.remove(requestID);
+							})
+			);
+		}
+		
+		@Override
+		public void onMassRetrievalUpdate(short requestID, int responseIndex, Collection<Blocks.ConversationItem> data) {
+			//Getting the request
+			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			//Saving the data
+			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
+			compositeDisposable.add(
+					massRetrievalRequest.handleMessages(getContext(), responseIndex, data)
+							.subscribe((addedItems) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Progress(addedItems, massRetrievalRequest.getMessagesReceived(), massRetrievalRequest.getTotalMessageCount());
+								
+								localSubject.get().onNext(event);
+								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
+							}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								if(error instanceof IllegalArgumentException) {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
+								} else {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
+								}
+								idRequestSubjectMap.remove(requestID);
+							})
+			);
+		}
+		
+		@Override
+		public void onMassRetrievalComplete(short requestID) {
+			//Getting the request
+			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			//Completing the request
+			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
+			compositeDisposable.add(
+					massRetrievalRequest.complete()
+							.subscribe(() -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Complete();
+								localSubject.get().onNext(event);
+								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
+								localSubject.onComplete();
+							}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								massRetrievalRequest.cancel();
+								localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
+								idRequestSubjectMap.remove(requestID);
+							})
+			);
+		}
+		
+		@Override
+		public void onMassRetrievalFail(short requestID) {
+			//Getting the request
+			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			//Cancelling the request
+			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
+			try {
+				massRetrievalRequest.cancel();
+			} catch(IOException exception) {
+				exception.printStackTrace();
+			}
+			
+			//Failing the request
+			subject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
+			idRequestSubjectMap.remove(requestID);
+		}
+		
+		@Override
+		public void onMassRetrievalFileStart(short requestID, String fileGUID, String fileName, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
+			//Getting the request
+			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			//Initializing the attachment request
+			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
+			compositeDisposable.add(
+					massRetrievalRequest.initializeAttachment(getContext(), fileGUID, fileName, streamWrapper)
+							.subscribe(() -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								localSubject.get().onNext(event);
+								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
+							}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								if(error instanceof IOException) {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localIO, error));
+								} else if(error instanceof IllegalArgumentException) {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse, error));
+								} else {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
+								}
+								idRequestSubjectMap.remove(requestID);
+							})
+			);
+		}
+		
+		@Override
+		public void onMassRetrievalFileProgress(short requestID, int responseIndex, String fileGUID, byte[] fileData) {
+			//Getting the request
+			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			//Writing the data
+			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
+			compositeDisposable.add(
+					massRetrievalRequest.writeChunkAttachment(fileGUID, responseIndex, fileData)
+							.subscribe(() -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								localSubject.get().onNext(event);
+								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
+							}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								if(error instanceof IOException) {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localIO, error));
+								} else if(error instanceof IllegalArgumentException) {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse, error));
+								} else {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown, error));
+								}
+								idRequestSubjectMap.remove(requestID);
+							})
+			);
+		}
+		
+		@Override
+		public void onMassRetrievalFileComplete(short requestID, String fileGUID) {
+			//Getting the request
+			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			//Writing the data
+			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
+			compositeDisposable.add(
+					massRetrievalRequest.finishAttachment(getContext(), fileGUID)
+							.subscribe(() -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File();
+								localSubject.get().onNext(event);
+								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
+							}, (error) -> {
+								//Getting the request
+								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								if(localSubject == null) return;
+								
+								if(error instanceof IOException) {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localIO));
+								} else if(error instanceof IllegalArgumentException) {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.localBadResponse));
+								} else {
+									localSubject.onError(new AMRequestException(MassRetrievalErrorCode.unknown));
+								}
+								idRequestSubjectMap.remove(requestID);
+							})
+			);
+		}
+		
+		@Override
+		public void onConversationUpdate(Collection<Blocks.ConversationInfo> data) {
+			List<ConversationInfo> unavailableConversations = new ArrayList<>();
+			List<ConversationInfo> availableConversations = new ArrayList<>();
+			
+			for(Blocks.ConversationInfo structConversationInfo : data) {
+				//Finding the conversation in the pending list
+				ConversationInfo conversationInfo = pendingConversations.get(structConversationInfo.guid);
+				if(conversationInfo == null) continue;
+				pendingConversations.remove(structConversationInfo.guid);
+				
+				//Ignoring if the conversation is not in the state 'incomplete server'
+				if(conversationInfo.getState() != ConversationState.incompleteServer) continue;
 				
 				//Checking if the conversation is available
 				if(structConversationInfo.available) {
 					//Setting the conversation details
-					ConversationInfo conversationInfo = request.getConversationInfo();
-					conversationInfo.setService(structConversationInfo.service);
-					conversationInfo.setTitle(MainApplication.getInstance(), structConversationInfo.name);
-					//conversationInfo.setConversationColor(ConversationInfo.getRandomColor());
-					conversationInfo.setConversationColor(ConversationInfo.getDefaultConversationColor(request.getConversationInfo().getGuid()));
-					conversationInfo.setConversationMembersCreateColors(structConversationInfo.members);
-					conversationInfo.setState(ConversationInfo.ConversationState.READY);
+					conversationInfo.setServiceType(structConversationInfo.service);
+					conversationInfo.setTitle(structConversationInfo.name);
+					conversationInfo.setConversationColor(ConversationColorHelper.getDefaultConversationColor(conversationInfo.getGUID()));
+					conversationInfo.setMembers(ConversationColorHelper.getColoredMembers(structConversationInfo.members, conversationInfo.getConversationColor(), conversationInfo.getGUID()));
+					conversationInfo.setState(ConversationState.ready);
 					
 					//Marking the conversation as valid (and to be saved)
-					availableConversations.add(request);
+					availableConversations.add(conversationInfo);
 				}
 				//Otherwise marking the conversation as invalid
-				else unavailableConversations.add(request.getConversationInfo());
+				else unavailableConversations.add(conversationInfo);
 			}
+			
+			//Creating and running the asynchronous task
+			ChatResponseTask.create(getContext(), availableConversations, unavailableConversations)
+					.doOnSuccess(result -> {
+						ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationUpdate(result.getAvailableConversationItems(), result.getTransferredConversations()));
+					}).subscribe();
 		}
 		
-		//Creating and running the asynchronous task
-		//new SaveConversationInfoAsyncTask(getApplicationContext(), unavailableConversations, availableConversations).execute();
-		addMessagingProcessingTask(new SaveConversationInfoAsyncTask(MainApplication.getInstance(), unavailableConversations, availableConversations));
-	}
-	
-	public void processModifierUpdate(List<Blocks.ModifierInfo> structModifiers, Packager packager) {
-		//Creating and running the task
-		//new ModifierUpdateAsyncTask(getApplicationContext(), structModifiers).execute();
-		addMessagingProcessingTask(new ModifierUpdateAsyncTask(MainApplication.getInstance(), structModifiers, packager));
-	}
-	
-	/* boolean requestAttachmentInfo(String fileGuid, short requestID) {
-		//Preparing to serialize the request
-		try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream out = new ObjectOutputStream(bos)) {
-			//Adding the data
-			out.writeByte(SharedValues.wsFrameAttachmentReq); //Message type - attachment request
-			out.writeShort(requestID); //Request ID
-			out.writeUTF(fileGuid); //File GUID
-			out.writeInt(attachmentChunkSize); //Chunk size
-			out.flush();
-			
-			//Sending the message
-			wsClient.send(bos.toByteArray());
-		} catch(IOException | NotYetConnectedException exception) {
-			//Printing the stack trace
-			exception.printStackTrace();
-			Crashlytics.logException(exception);
-			
-			//Returning false
-			return false;
+		@Override
+		public void onModifierUpdate(Collection<Blocks.ModifierInfo> data) {
+			//Writing modifiers to disk
+			ModifierUpdateTask.create(getContext(), data).doOnSuccess(result -> {
+				//Pushing emitter updates
+				for(ActivityStatusUpdate statusUpdate : result.getActivityStatusUpdates()) {
+					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.MessageState(statusUpdate.getMessageID(), statusUpdate.getMessageState(), statusUpdate.getDateRead()));
+				}
+				for(Pair<StickerInfo, ModifierMetadata> sticker : result.getStickerModifiers()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.StickerAdd(sticker.first, sticker.second));
+				for(Pair<TapbackInfo, ModifierMetadata> tapback : result.getTapbackModifiers()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.TapbackUpdate(tapback.first, tapback.second, true));
+				for(Pair<TapbackInfo, ModifierMetadata> tapback : result.getTapbackRemovals()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.TapbackUpdate(tapback.first, tapback.second, false));
+			}).subscribe();
 		}
 		
-		//Returning true
+		@Override
+		public void onFileRequestStart(short requestID, long length, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
+			//Getting the request
+			RequestSubject.Publish<ReduxEventAttachmentDownload> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			//Initializing the request
+			FileFetchRequest fileFetchRequest = subject.getRequestData();
+			try {
+				fileFetchRequest.initialize(getContext(), length, streamWrapper);
+			} catch(IOException exception) {
+				subject.onError(new AMRequestException(AttachmentReqErrorCode.localIO));
+				idRequestSubjectMap.remove(requestID);
+				return;
+			}
+			
+			//Sending an update
+			subject.get().onNext(new ReduxEventAttachmentDownload.Start(length));
+		}
+		
+		@Override
+		public void onFileRequestData(short requestID, int responseIndex, byte[] data) {
+			//Getting the request
+			RequestSubject.Publish<ReduxEventAttachmentDownload> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			//Writing the data
+			FileFetchRequest fileFetchRequest = subject.getRequestData();
+			compositeDisposable.add(
+					fileFetchRequest.writeChunk(responseIndex, data).subscribe((writtenLength) -> {
+						//Getting the request
+						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						if(localSubject == null) return;
+						
+						localSubject.get().onNext(new ReduxEventAttachmentDownload.Progress(writtenLength, fileFetchRequest.getTotalLength()));
+					}, (error) -> {
+						//Getting the request
+						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						if(localSubject == null) return;
+						
+						if(error instanceof IOException) {
+							localSubject.onError(new AMRequestException(AttachmentReqErrorCode.localIO, error));
+						} else if(error instanceof IllegalArgumentException) {
+							localSubject.onError(new AMRequestException(AttachmentReqErrorCode.localBadResponse, error));
+						} else {
+							localSubject.onError(new AMRequestException(AttachmentReqErrorCode.unknown, error));
+						}
+						idRequestSubjectMap.remove(requestID);
+					})
+			);
+		}
+		
+		@Override
+		public void onFileRequestComplete(short requestID) {
+			//Getting the request
+			RequestSubject.Publish<ReduxEventAttachmentDownload> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			//Completing the request
+			FileFetchRequest fileFetchRequest = subject.getRequestData();
+			compositeDisposable.add(
+					fileFetchRequest.complete(getContext()).subscribe((attachmentFile) -> {
+						//Getting the request
+						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						if(localSubject == null) return;
+						
+						localSubject.get().onNext(new ReduxEventAttachmentDownload.Complete(attachmentFile));
+						localSubject.onComplete();
+						ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.AttachmentFile(fileFetchRequest.getMessageID(), fileFetchRequest.getAttachmentID(), attachmentFile));
+					}, (error) -> {
+						//Getting the request
+						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						if(localSubject == null) return;
+						
+						localSubject.onError(new AMRequestException(AttachmentReqErrorCode.localIO));
+						idRequestSubjectMap.remove(requestID);
+					})
+			);
+		}
+		
+		@Override
+		public void onFileRequestFail(short requestID, @AttachmentReqErrorCode int errorCode) {
+			//Getting the request
+			RequestSubject.Publish<ReduxEventAttachmentDownload> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			//Failing the request
+			subject.onError(new AMRequestException(errorCode));
+			idRequestSubjectMap.remove(requestID);
+		}
+		
+		@Override
+		public void onIDUpdate(long messageID) {
+			SharedPreferencesManager.setLastServerMessageID(getContext(), messageID);
+		}
+		
+		@Override
+		public void onSendMessageSuccess(short requestID) {
+			//Resolving the completable
+			RequestSubject.EmptyCompletable<?> subject = (RequestSubject.EmptyCompletable<?>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			subject.onComplete();
+			
+			idRequestSubjectMap.remove(requestID);
+		}
+		
+		@Override
+		public void onSendMessageFail(short requestID, CompoundErrorDetails.MessageSend error) {
+			//Failing the completable
+			RequestSubject<?> subject = idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			subject.onError(error.toException());
+			
+			idRequestSubjectMap.remove(requestID);
+		}
+		
+		@Override
+		public void onCreateChatSuccess(short requestID, String chatGUID) {
+			//Resolving the completable
+			RequestSubject.Single<String> subject = (RequestSubject.Single<String>) idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			subject.get().onSuccess(chatGUID);
+			
+			idRequestSubjectMap.remove(requestID);
+		}
+		
+		@Override
+		public void onCreateChatError(short requestID, CompoundErrorDetails.ChatCreate error) {
+			//Failing the completable
+			RequestSubject<?> subject = idRequestSubjectMap.get(requestID);
+			if(subject == null) return;
+			
+			subject.onError(error.toException());
+			
+			idRequestSubjectMap.remove(requestID);
+		}
+	};
+	
+	/**
+	 * Finds an existing request
+	 * @param category The category of the trackable request
+	 * @param key The key of the trackable request
+	 * @param <S> The result value of the request subject
+	 * @param <R> The type of the request subject
+	 * @param <K> The type of the key
+	 * @return A matching request subject of type R, or NULL if not found
+	 */
+	@Nullable
+	public <S, R extends RequestSubject<S>, K> R findRequest(@TrackableRequestCategory int category, K key) {
+		return (R) idRequestSubjectMap.values().stream().filter(requestSubject -> {
+			//Ignoring if this subject isn't trackable
+			if(!(requestSubject.getRequestData() instanceof TrackableRequest)) return false;
+			
+			//Ignoring if this trackable request is for a different category
+			TrackableRequest<?> trackableRequest = requestSubject.getRequestData();
+			if(trackableRequest.getCategory() != category) return false;
+			
+			//Ignoring if the keys don't match
+			K trackableKey = (K) trackableRequest.getValue();
+			if(!Objects.equals(key, trackableKey)) return false;
+			
+			return true;
+		}).findAny().orElse(null);
+	}
+	
+	private int getLastEmittedState() {
+		ReduxEventConnection value = ReduxEmitterNetwork.getConnectionStateSubject().getValue();
+		if(value == null) return -1;
+		else return value.getState();
+	}
+	
+	/**
+	 * Sets the state to connecting
+	 */
+	private void emitStateConnecting() {
+		if(getLastEmittedState() == ConnectionState.connecting) return;
+		ReduxEmitterNetwork.getConnectionStateSubject().onNext(new ReduxEventConnection.Connecting());
+	}
+	
+	/**
+	 * Sets the state to connected
+	 */
+	private void emitStateConnected() {
+		if(getLastEmittedState() == ConnectionState.connected) return;
+		ReduxEmitterNetwork.getConnectionStateSubject().onNext(new ReduxEventConnection.Connected());
+	}
+	
+	/**
+	 * Sets the state to disconnected
+	 * @param code The error code to notify listeners of
+	 */
+	private void emitStateDisconnected(@ConnectionErrorCode int code) {
+		if(getLastEmittedState() == ConnectionState.disconnected) return;
+		ReduxEmitterNetwork.getConnectionStateSubject().onNext(new ReduxEventConnection.Disconnected(code));
+	}
+	
+	/**
+	 * Gets the next request ID
+	 */
+	private short generateRequestID() {
+		return ++currentRequestID;
+	}
+	
+	/**
+	 * Connects to the server in user mode
+	 */
+	public void connect() {
+		//Cleaning up after the current mode
+		stopCurrentMode();
+		
+		//Setting the current mode
+		connMode = ConnectionMode.user;
+		
+		//If we're connected, latch on to that state
+		if(connState == ConnectionState.connected) {
+			emitStateConnected();
+		} else {
+			//Otherwise, initiate a new connection and update the state
+			if(connState == ConnectionState.disconnected) {
+				connectFromList(getContext(), 0);
+			}
+			emitStateConnecting();
+		}
+	}
+	
+	/**
+	 * Starts or advances an immediate reconnection
+	 * @return TRUE if the immediate reconnection was scheduled, or FALSE if none could be scheduled
+	 */
+	private boolean scheduleImmediateReconnect(boolean isFirst) {
+		//Updating the mode
+		connMode = ConnectionMode.immediate;
+		
+		//Checking if we aren't already doing immediate reconnect
+		if(isFirst) {
+			//Initialize state
+			immediateReconnectIndex = 0;
+		} else {
+			//Failing if we are at the end of our attempts
+			if(immediateReconnectIndex + 1 >= immediateReconnectDelayMillis.length) {
+				return false;
+			}
+			
+			//Incrementing the index
+			immediateReconnectIndex++;
+		}
+		
+		//Scheduling the immediate reconnection
+		handler.postDelayed(immediateReconnectRunnable, immediateReconnectDelayMillis[immediateReconnectIndex] + random.nextInt(1000));
+		
 		return true;
-	} */
-	
-	public boolean retrievePendingConversationInfo() {
-		//Returning if the connection is not ready
-		if(getCurrentState() != stateConnected) return false;
-		
-		//Sending a request and returning the result
-		return currentCommunicationsManager.sendConversationInfoRequest(pendingConversations);
 	}
 	
+	/**
+	 * Starts the background reconnection clock
+	 */
+	private void scheduleRepeatingBackgroundReconnect(Context context) {
+		context.getSystemService(AlarmManager.class).setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+				SystemClock.elapsedRealtime() + backgroundReconnectFrequencyMillis / 2,
+				backgroundReconnectFrequencyMillis,
+				reconnectPendingIntent);
+	}
+	
+	private void stopCurrentMode() {
+		if(connMode == ConnectionMode.immediate) {
+			handler.removeCallbacks(immediateReconnectRunnable);
+		} else if(connMode == ConnectionMode.background) {
+			getContext().getSystemService(AlarmManager.class).cancel(reconnectPendingIntent);
+		}
+	}
+	
+	/**
+	 * Connects from the specified index down the priority list
+	 */
+	private void connectFromList(Context context, int index) {
+		//Updating the connection state
+		connState = ConnectionState.connecting;
+		
+		//Recording the index
+		currentCommunicationsIndex = index;
+		
+		//Getting the parameters
+		int proxyType = connectionOverride == null ? SharedPreferencesManager.getProxyType(context) : connectionOverride.getProxyType();
+		Object overrideValue = connectionOverride == null ? null : connectionOverride.getValue();
+		
+		//Creating and starting the communications manager
+		communicationsManager = communicationsPriorityList.get(index).create(communicationsManagerListener, proxyType);
+		communicationsManager.connect(context, overrideValue);
+	}
+	
+	/**
+	 * Disconnects from the server
+	 */
+	public void disconnect(@ConnectionErrorCode int code) {
+		//Ignoring if we're not connected
+		if(connState != ConnectionState.connected) return;
+		
+		if(communicationsManager != null) communicationsManager.disconnect(code);
+	}
+	
+	/**
+	 * Gets the current connection state
+	 */
+	@ConnectionState
+	public int getState() {
+		return connState;
+	}
+	
+	/**
+	 * Gets if this connection manager is connected to the server (can send and receive messages)
+	 */
+	public boolean isConnected() {
+		return connState == ConnectionState.connected;
+	}
+	
+	/**
+	 * Sends a FCM push token to AirMessage Cloud to receive push notifications
+	 * @param token The token to send
+	 * @return Whether the token was successfully sent
+	 */
+	public boolean sendPushToken(String token) {
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return false;
+		
+		//Sending the token
+		return communicationsManager.sendPushToken(token);
+	}
+	
+	/**
+	 * Sends a ping to the server and waits for a response
+	 * The connection is closed if no response is received in time.
+	 * This function is to be used when there is no network traffic present to validate the connection.
+	 */
+	public void testConnection() {
+		//Sending the ping
+		communicationsManager.sendPing();
+		
+		//Starting the ping timeout
+		handler.postDelayed(pingExpiryRunnable, pingExpiryTime);
+	}
+	
+	/**
+	 * Resets all connection test timers, and schedules new timers for later
+	 */
+	public void resetConnectionTest(Context context) {
+		//Cancelling the ping timeout
+		handler.removeCallbacks(pingExpiryRunnable);
+		
+		//Resetting the ping timer
+		context.getSystemService(AlarmManager.class).setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+				SystemClock.elapsedRealtime() + keepAliveMillis - keepAliveWindowMillis,
+				keepAliveWindowMillis * 2,
+				pingPendingIntent);
+	}
+	
+	/**
+	 * Cancels all connection test timers
+	 */
+	public void cancelConnectionTest(Context context) {
+		//Cancelling the ping timeout
+		handler.removeCallbacks(pingExpiryRunnable);
+		
+		//Cancelling the ping timer
+		context.getSystemService(AlarmManager.class).cancel(pingPendingIntent);
+	}
+	
+	/**
+	 * Sends a text message to a conversation
+	 * @param conversation The conversation to send to
+	 * @param message The message to send
+	 * @return An completable to track the state of the request, or an {@link AMRequestException} with a {@link MessageSendErrorCode}
+	 */
+	public Completable sendMessage(ConversationTarget conversation, String message) {
+		final Throwable error = new AMRequestException(MessageSendErrorCode.localNetwork);
+		
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return Completable.error(error);
+		
+		//Getting the request ID
+		short requestID = generateRequestID();
+		
+		//Sending the message
+		boolean result = communicationsManager.sendMessage(requestID, conversation, message);
+		if(!result) return Completable.error(error);
+		
+		//Adding the request
+		return queueCompletableIDRequest(requestID, error);
+	}
+	
+	/**
+	 * Sends an attachment file to a conversation
+	 * @param conversation The conversation to send to
+	 * @param file The file to send
+	 * @return An observable to track the progress of the upload, or an {@link AMRequestException} with a {@link MessageSendErrorCode}
+	 */
+	public Observable<ReduxEventAttachmentUpload> sendFile(ConversationTarget conversation, File file) {
+		final Throwable error = new AMRequestException(MessageSendErrorCode.localNetwork);
+		
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return Observable.error(error);
+		
+		//Getting the request ID
+		short requestID = generateRequestID();
+		
+		//Creating the subject
+		PublishSubject<ReduxEventAttachmentUpload> subject = PublishSubject.create();
+		
+		//Adding the request to the list
+		idRequestSubjectMap.put(requestID, new RequestSubject.Publish<>(subject, error));
+		
+		//Sending the file (not passing completions to the subject, since we'll want to handle those when we receive a response instead)
+		Observable.concat(communicationsManager.sendFile(requestID, conversation, file), Observable.never())
+				.subscribeOn(uploadScheduler)
+				.observeOn(AndroidSchedulers.mainThread())
+				.subscribe(subject);
+		
+		//Adding a timeout
+		return subject.compose(composeTimeoutIDObservable(requestID, error));
+	}
+	
+	/**
+	 * Fetches the data of an attachment
+	 * @param messageLocalID the local ID of the attachment's message
+	 * @param attachmentLocalID The local ID of the attachment
+	 * @param attachmentGUID The GUID of the attachment
+	 * @param attachmentName The name of the attachment file
+	 * @return An observable to track the progress of the download, or an {@link AMRequestException} with an {@link AttachmentReqErrorCode}
+	 */
+	public Observable<ReduxEventAttachmentDownload> fetchAttachment(long messageLocalID, long attachmentLocalID, String attachmentGUID, String attachmentName) {
+		final Throwable error = new AMRequestException(AttachmentReqErrorCode.localTimeout);
+		
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return Observable.error(error);
+		
+		//Getting the request ID
+		short requestID = generateRequestID();
+		
+		//Sending the request
+		boolean result = communicationsManager.requestAttachmentDownload(requestID, attachmentGUID);
+		if(!result) return Observable.error(error);
+		
+		//Adding the request
+		FileFetchRequest fileFetchRequest = new FileFetchRequest(messageLocalID, attachmentLocalID, attachmentName);
+		return this.<ReduxEventAttachmentDownload>queueObservableIDRequest(requestID, error, fileFetchRequest).doOnError((observableError) -> {
+			//Cleaning up
+			fileFetchRequest.cancel();
+		});
+	}
+	
+	/**
+	 * Creates a chat
+	 * @param members The addresses of the members of the chat
+	 * @param service The service of the chat
+	 * @return A single representing the GUID of the chat, or an {@link AMRequestException} with a {@link ChatCreateErrorCode}
+	 */
+	public Single<String> createChat(String[] members, String service) {
+		final Throwable error = new AMRequestException(ChatCreateErrorCode.network);
+		
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return Single.error(error);
+		
+		//Getting the request ID
+		short requestID = generateRequestID();
+		
+		//Sending the request
+		boolean result = communicationsManager.requestChatCreation(requestID, members, service);
+		if(!result) return Single.error(error);
+		
+		//Adding the request
+		return queueSingleIDRequest(requestID, error);
+	}
+	
+	/**
+	 * Requests data for pending conversations from the server
+	 */
+	public void fetchPendingConversations() {
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return;
+		
+		//Sending the request
+		communicationsManager.requestConversationInfo(pendingConversations.keySet());
+	}
+	
+	/**
+	 * Requests messages between the time bounds from the server
+	 * @param timeLower The lower time requirement in milliseconds
+	 * @param timeUpper The upper time requirement in milliseconds
+	 */
+	public void requestMessagesTimeRange(long timeLower, long timeUpper) {
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return;
+		
+		//Sending the request
+		communicationsManager.requestRetrievalTime(timeLower, timeUpper);
+	}
+	
+	/**
+	 * Requests messages since above the specified ID from the server
+	 * @param idLower The ID of the message to receive messages since
+	 */
+	public void requestMessagesIDRange(long idLower) {
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return;
+		
+		//Sending the request
+		communicationsManager.requestRetrievalID(idLower);
+	}
+	
+	/**
+	 * Requests a mass message download from the server
+	 * @param params The parameters to define what to download
+	 */
+	public Observable<ReduxEventMassRetrieval> fetchMassConversationData(MassRetrievalParams params) {
+		final Throwable error = new Throwable("Mass retrieval error");
+		
+		//Failing immediately if there is already a mass retrieval in progress or there is no network connection
+		if(isMassRetrievalInProgress || !isConnected()) return Observable.error(error);
+		
+		//Getting the request ID
+		short requestID = generateRequestID();
+		
+		//Sending the request
+		boolean result = communicationsManager.requestRetrievalAll(requestID, params);
+		if(!result) return Observable.error(error);
+		
+		//Updating the mass retrieval state
+		isMassRetrievalInProgress = true;
+		
+		//Adding the request
+		MassRetrievalRequest massRetrievalRequest = new MassRetrievalRequest();
+		return this.<ReduxEventMassRetrieval>queueObservableIDRequest(requestID, error, massRetrievalRequest).doOnError((observableError) -> {
+			//Getting the error code
+			int errorCode;
+			if(observableError instanceof AMRequestException) {
+				errorCode = ((AMRequestException) observableError).getErrorCode();
+			} else {
+				errorCode = MassRetrievalErrorCode.unknown;
+				FirebaseCrashlytics.getInstance().recordException(observableError);
+			}
+			
+			//Cleaning up
+			massRetrievalRequest.cancel();
+			
+			//Emitting an update
+			ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(new ReduxEventMassRetrieval.Error(errorCode));
+			Log.w(TAG, "Mass retrieval failed", observableError);
+		}).doOnTerminate(() -> {
+			//Updating the mass retrieval state
+			isMassRetrievalInProgress = false;
+		});
+	}
+	
+	private CompletableTransformer composeTimeoutIDCompletable(short requestID, Throwable throwable) {
+		return completable -> completable.timeout(requestTimeoutSeconds, TimeUnit.SECONDS, Completable.error(throwable))
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnTerminate(() -> idRequestSubjectMap.remove(requestID));
+	}
+	
+	private <T> SingleTransformer<T, T> composeTimeoutIDSingle(short requestID, Throwable throwable) {
+		return single -> single.timeout(requestTimeoutSeconds, TimeUnit.SECONDS, Single.error(throwable))
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnTerminate(() -> idRequestSubjectMap.remove(requestID));
+	}
+	
+	private <T> ObservableTransformer<T, T> composeTimeoutIDObservable(short requestID, Throwable throwable) {
+		return observable -> observable.timeout(requestTimeoutSeconds, TimeUnit.SECONDS, Observable.error(throwable))
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnTerminate(() -> idRequestSubjectMap.remove(requestID));
+	}
+	
+	/**
+	 * Adds a {@link CompletableSubject} to the map, and takes care of timeouts and cleanup
+	 * @param requestID The ID of this request
+	 * @param throwable The throwable to use in case of a timeout
+	 * @return A completable representing the request
+	 */
+	private Completable queueCompletableIDRequest(short requestID, Throwable throwable) {
+		//Creating the subject
+		CompletableSubject subject = CompletableSubject.create();
+		
+		//Adding the request to the list
+		idRequestSubjectMap.put(requestID, new RequestSubject.Completable(subject, throwable));
+		
+		//Adding a timeout
+		return subject.compose(composeTimeoutIDCompletable(requestID, throwable));
+	}
+	
+	/**
+	 * Adds a {@link SingleSubject} to the map, and takes care of timeouts and cleanup
+	 * @param requestID The ID of this request
+	 * @param throwable The throwable to use in case of a timeout
+	 * @return A completable representing the request
+	 */
+	private <T> Single<T> queueSingleIDRequest(short requestID, Throwable throwable) {
+		//Creating the subject
+		SingleSubject<T> subject = SingleSubject.create();
+		
+		//Adding the request to the list
+		idRequestSubjectMap.put(requestID, new RequestSubject.Single<>(subject, throwable));
+		
+		//Adding a timeout
+		return subject.compose(composeTimeoutIDSingle(requestID, throwable));
+	}
+	
+	/**
+	 * Adds a {@link PublishSubject} to the map, and takes care of timeouts and cleanup
+	 * @param requestID The ID of this request
+	 * @param throwable The throwable to use in case of a timeout
+	 * @return A completable representing the request
+	 */
+	private <T> Observable<T> queueObservableIDRequest(short requestID, Throwable throwable) {
+		return queueObservableIDRequest(requestID, throwable, null);
+	}
+	
+	/**
+	 * Adds a {@link PublishSubject} to the map, and takes care of timeouts and cleanup
+	 * @param requestID The ID of this request
+	 * @param throwable The throwable to use in case of a timeout
+	 * @param data Additional data to keep track of during the request
+	 * @return A completable representing the request
+	 */
+	private <T> Observable<T> queueObservableIDRequest(short requestID, Throwable throwable, Object data) {
+		//Creating the subject
+		PublishSubject<T> subject = PublishSubject.create();
+		
+		//Adding the request to the list
+		idRequestSubjectMap.put(requestID, new RequestSubject.Publish<>(subject, throwable, data));
+		
+		//Adding a timeout
+		return subject.compose(composeTimeoutIDObservable(requestID, throwable));
+	}
+	
+	/**
+	 * Gets the human-readable version of the active communications protocol, or NULL if no protocol is active
+	 */
+	@Nullable
+	public String getCommunicationsVersion() {
+		if(communicationsManager != null) return communicationsManager.getCommunicationsVersion();
+		else return null;
+	}
+	
+	/**
+	 * Gets if a mass retrieval is currently in progress
+	 */
 	public boolean isMassRetrievalInProgress() {
-		return massRetrievalThread != null && massRetrievalThread.isInProgress();
+		return isMassRetrievalInProgress;
 	}
 	
-	public boolean isMassRetrievalWaiting() {
-		return massRetrievalThread != null && massRetrievalThread.isWaiting();
+	/**
+	 * Gets if a sync is needed
+	 */
+	public boolean isPendingSync() {
+		return isPendingSync;
 	}
 	
-	public int getMassRetrievalProgress() {
-		if(massRetrievalThread == null) return -1;
-		return massRetrievalThread.getProgress();
+	/**
+	 * Clears the pending sync state, for use after a sync has been initiated
+	 */
+	public void clearPendingSync() {
+		isPendingSync = false;
 	}
 	
-	public int getMassRetrievalProgressCount() {
-		if(massRetrievalThread == null) return -1;
-		return massRetrievalThread.getProgressCount();
+	
+	/**
+	 * Schedules the next keepalive ping
+	 */
+	private void schedulePing(Context context) {
+		((AlarmManager) context.getSystemService(Context.ALARM_SERVICE)).setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+				SystemClock.elapsedRealtime() + keepAliveMillis - keepAliveWindowMillis,
+				keepAliveWindowMillis * 2,
+				pingPendingIntent);
 	}
 	
-	public void setMassRetrievalParams(MassRetrievalParams params) {
-		currentMassRetrievalParams = params;
+	/**
+	 * Cancels the timer that sends keepalive pings
+	 */
+	void cancelSchedulePing(Context context) {
+		((AlarmManager) context.getSystemService(Context.ALARM_SERVICE)).cancel(pingPendingIntent);
 	}
 	
-	public boolean requestMassRetrieval() {
-		//Returning false if the client isn't ready or a mass retrieval is already in progress
-		if((massRetrievalThread != null && massRetrievalThread.isInProgress()) || getCurrentState() != stateConnected || currentMassRetrievalParams == null) return false;
-		
-		//Picking the next request ID
-		short requestID = getNextRequestID();
-		
-		//Creating the mass retrieval manager
-		massRetrievalThread = new MassRetrievalThread(MainApplication.getInstance());
-		massRetrievalThread.setRequestID(requestID);
-		
-		//Sending the request
-		boolean result = currentCommunicationsManager.requestRetrievalAll(requestID, currentMassRetrievalParams);
-		if(!result) return false;
-		
-		//Starting the thread
-		massRetrievalThread.completeInit(MainApplication.getInstance());
-		
-		//Sending the broadcast
-		//LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(localBCMassRetrieval).putExtra(Constants.intentParamState, intentExtraStateMassRetrievalStarted));
-		
-		//Returning true
-		return true;
+	/**
+	 * Gets the installation ID of the connected server, or NULL if unavailable
+	 */
+	@Nullable
+	public String getServerInstallationID() {
+		return serverInstallationID;
 	}
 	
-	public void cancelMassRetrieval(Context context) {
-		//Forwarding the request
-		if(massRetrievalThread != null) massRetrievalThread.cancel(context);
+	/**
+	 * Gets the device name of the connected server, or NULL if unavailable
+	 */
+	@Nullable
+	public String getServerDeviceName() {
+		return serverDeviceName;
 	}
 	
-	public void finishMassRetrieval() {
-		if(massRetrievalThread != null) massRetrievalThread.finish();
+	/**
+	 * Gets the macOS system version of the connected server, or NULL if unavailable
+	 */
+	@Nullable
+	public String getServerSystemVersion() {
+		return serverSystemVersion;
 	}
 	
-	public MassRetrievalThread getMassRetrievalThread() {
-		return massRetrievalThread;
+	/**
+	 * Gets the AirMessage Server version of the connected server, or NULL if unavailable
+	 */
+	@Nullable
+	public String getServerSoftwareVersion() {
+		return serverSoftwareVersion;
 	}
 	
-	public boolean addDownloadRequest(FileDownloadRequest.Callbacks callbacks, long attachmentID, String attachmentGUID, String attachmentName) {
-		//Getting the request ID
-		short requestID = getNextRequestID();
-		
-		//Returning if there is no connection
-		if(currentCommunicationsManager == null || currentCommunicationsManager.getState() != stateConnected) return false;
-		
-		//Building the tracking request
-		FileDownloadRequest request = new FileDownloadRequest(callbacks, new FileDownloadRequestDeregistrationListener(this), requestID, attachmentID, attachmentGUID, attachmentName);
-		
-		//Sending the request
-		boolean result = currentCommunicationsManager.addDownloadRequest(requestID, attachmentGUID, request::startTimer);
-		if(!result) return false;
-		
-		//Recording the tracking request
-		fileDownloadRequests.add(request);
-		
-		//Returning true
-		return true;
+	/**
+	 * Sets whether automatic reconnections should be disabled
+	 */
+	public void setDisableReconnections(boolean disableReconnections) {
+		this.disableReconnections = disableReconnections;
+		ReduxEmitterNetwork.getConnectionConfigurationSubject().onNext(disableReconnections);
 	}
 	
-	public FileDownloadRequest.ProgressStruct updateDownloadRequestAttachment(long attachmentID, FileDownloadRequest.Callbacks callbacks) {
-		for(FileDownloadRequest request : fileDownloadRequests) {
-			if(request.getAttachmentID() == attachmentID) {
-				request.setCallbacks(callbacks);
-				return request.getProgress();
-			}
-		}
-		
-		return null;
-	}
-	
-	public void removeDownloadRequest(FileDownloadRequest fileDownloadRequest) {
-		fileDownloadRequests.remove(fileDownloadRequest);
-	}
-	
-	public ArrayList<FileDownloadRequest> getFileDownloadRequests() {
-		return fileDownloadRequests;
-	}
-	
-	public boolean sendMessage(String chatGUID, String message, MessageResponseManager responseListener) {
-		//Checking if the client isn't ready
-		if(getCurrentState() != stateConnected) {
-			//Telling the response listener
-			responseListener.onFail(Constants.messageErrorCodeLocalNetwork, null);
-			
-			//Returning false
-			return false;
-		}
-		
-		//Getting the request ID
-		short requestID = getNextRequestID();
-		
-		//Sending the message
-		boolean result = currentCommunicationsManager.sendMessage(requestID, chatGUID, message);
-		
-		//Validating the result
-		if(!result) {
-			//Telling the response listener
-			responseListener.onFail(Constants.messageErrorCodeLocalIO, null);
-			
-			//Returning false
-			return false;
-		}
-		
-		//Adding the request
-		messageSendRequests.put(requestID, responseListener);
-		
-		//Starting the timer
-		responseListener.startTimer();
-		
-		//Returning true
-		return true;
-	}
-	
-	public boolean sendMessage(String[] chatRecipients, String message, String service, MessageResponseManager responseListener) {
-		//Checking if the client isn't ready
-		if(getCurrentState() != stateConnected) {
-			//Telling the response listener
-			responseListener.onFail(Constants.messageErrorCodeLocalNetwork, null);
-			
-			//Returning false
-			return false;
-		}
-		
-		//Getting the request ID
-		short requestID = getNextRequestID();
-		
-		//Sending the message
-		boolean result = currentCommunicationsManager.sendMessage(requestID, chatRecipients, message, service);
-		
-		//Validating the result
-		if(!result) {
-			//Telling the response listener
-			responseListener.onFail(Constants.messageErrorCodeLocalIO, null);
-			
-			//Returning false
-			return false;
-		}
-		
-		//Adding the request
-		messageSendRequests.put(requestID, responseListener);
-		
-		//Starting the timer
-		responseListener.startTimer();
-		
-		//Returning true
-		return true;
-	}
-	
-	public void cancelCurrentTasks() {
-		//Cancelling the file requests
-		List<FileDownloadRequest> requestList = (List<FileDownloadRequest>) fileDownloadRequests.clone();
-		for(FileDownloadRequest request : requestList) request.failDownload(FileDownloadRequest.Callbacks.errorCodeCancelled);
-		
-		//Interrupting the file processing request thread and clearing its contents
-		if(fileProcessingThreadRunning.get()) fileProcessingThread.interrupt();
-		fileProcessingRequestQueue.clear();
-	}
-	
-	public void failDownloadRequest(short requestID, int errorCode) {
-		for(FileDownloadRequest request : fileDownloadRequests) {
-			if(request.getRequestID() != requestID/* || !request.attachmentGUID.equals(fileGUID)*/) continue;
-			request.failDownload(errorCode);
-			break;
-		}
-	}
-	
-	public SparseArray<ChatCreationResponseManager> getChatCreationRequests() {
-		return chatCreationRequests;
-	}
-	
-	public ArrayList<ConversationInfoRequest> getPendingConversations() {
-		return pendingConversations;
-	}
-	
-	public boolean retrieveMessagesSince(long timeLower, long timeUpper) {
-		//Returning false if the connection isn't ready
-		if(getCurrentState() != stateConnected) return false;
-		
-		//Sending the request
-		return currentCommunicationsManager.requestRetrievalTime(timeLower, timeUpper);
-	}
-	
-	public boolean createChat(String[] members, String service, ChatCreationResponseManager responseListener) {
-		//Checking if the client isn't ready
-		if(getCurrentState() != stateConnected) {
-			//Telling the response listener
-			//responseListener.onFail(Constants.messageErrorCodeLocalNetwork, null);
-			responseListener.onFail();
-			
-			//Returning false
-			return false;
-		}
-		
-		//Getting the request ID
-		short requestID = getNextRequestID();
-		
-		//Sending the request
-		boolean result = currentCommunicationsManager.requestChatCreation(requestID, members, service);
-		
-		//Validating the result
-		if(!result) {
-			//Telling the response listener
-			//responseListener.onFail(Constants.messageErrorCodeLocalIO, null);
-			responseListener.onFail();
-			
-			//Returning false
-			return false;
-		}
-		
-		//Adding the request
-		chatCreationRequests.put(requestID, responseListener);
-		
-		//Starting the timer
-		responseListener.startTimer();
-		
-		//Returning true
-		return true;
-	}
-	
-	public static class TransferConversationStruct {
-		private final String guid;
-		private final ConversationInfo.ConversationState state;
-		private final String name;
-		private final List<ConversationItem> conversationItems;
-		
-		public TransferConversationStruct(String guid, ConversationInfo.ConversationState state, String name, List<ConversationItem> conversationItems) {
-			this.guid = guid;
-			this.state = state;
-			this.name = name;
-			this.conversationItems = conversationItems;
-		}
-		
-		public String getGuid() {
-			return guid;
-		}
-		
-		public ConversationInfo.ConversationState getState() {
-			return state;
-		}
-		
-		public String getName() {
-			return name;
-		}
-		
-		public List<ConversationItem> getConversationItems() {
-			return conversationItems;
-		}
-	}
-	
-	public static void cleanConversationItem(Blocks.ConversationItem conversationItem) {
-		///Checking if the item is a message
-		if(conversationItem instanceof Blocks.MessageInfo) {
-			Blocks.MessageInfo messageInfo = (Blocks.MessageInfo) conversationItem;
-			
-			//Creating empty lists
-			if(messageInfo.attachments == null) messageInfo.attachments = new ArrayList<>();
-			if(messageInfo.stickers == null) messageInfo.stickers = new ArrayList<>();
-			if(messageInfo.tapbacks == null) messageInfo.tapbacks = new ArrayList<>();
-			
-			//Invalidating empty strings
-			if(messageInfo.text != null && messageInfo.text.isEmpty()) messageInfo.text = null;
-			if(messageInfo.sendEffect != null && messageInfo.sendEffect.isEmpty()) messageInfo.sendEffect = null;
-			
-			for(Blocks.AttachmentInfo attachmentInfo : messageInfo.attachments) {
-				if(attachmentInfo.type == null) attachmentInfo.type = Constants.defaultMIMEType;
-			}
-		} else if(conversationItem instanceof Blocks.ChatRenameActionInfo) {
-			Blocks.ChatRenameActionInfo action = (Blocks.ChatRenameActionInfo) conversationItem;
-			
-			//Invalidating empty strings
-			if(action.newChatName != null && action.newChatName.isEmpty()) action.newChatName = null;
-		}/* else if(conversationItem instanceof Blocks.GroupActionInfo) {
-			Blocks.GroupActionInfo action = (Blocks.GroupActionInfo) conversationItem;
-		}*/
-	}
-	
-	public static int countUnreadMessages(List<ConversationItem> items) {
-		int count = 0;
-		for(ConversationItem conversationItem : items) {
-			if(conversationItem instanceof MessageInfo && !((MessageInfo) conversationItem).isOutgoing()) count++;
-		}
-		return count;
-	}
-	
-	public static class FileDownloadRequestDeregistrationListener extends StaticInterfaceListener implements Consumer<FileDownloadRequest> {
-		public FileDownloadRequestDeregistrationListener(ConnectionManager manager) {
-			super(manager);
-		}
-		
-		@Override
-		public void accept(FileDownloadRequest request) {
-			ConnectionManager manager = getManager();
-			if(manager != null) manager.removeDownloadRequest(request);
-		}
-	}
-	
-	public static class MessageResponseManagerDeregistrationListener extends StaticInterfaceListener implements Consumer<MessageResponseManager> {
-		public MessageResponseManagerDeregistrationListener(ConnectionManager manager) {
-			super(manager);
-		}
-		
-		@Override
-		public void accept(MessageResponseManager item) {
-			ConnectionManager manager = getManager();
-			if(manager != null) {
-				int index = manager.messageSendRequests.indexOfValue(item);
-				if(index != -1) manager.messageSendRequests.removeAt(index);
-			}
-		}
-	}
-	
-	public static class ChatCreationDeregistrationListener extends StaticInterfaceListener implements Consumer<ChatCreationResponseManager> {
-		public ChatCreationDeregistrationListener(ConnectionManager manager) {
-			super(manager);
-		}
-		
-		@Override
-		public void accept(ChatCreationResponseManager item) {
-			ConnectionManager manager = getManager();
-			if(manager != null) {
-				int index = manager.chatCreationRequests.indexOfValue(item);
-				if(index != -1) manager.chatCreationRequests.removeAt(index);
-			}
-		}
-	}
-	
-	private static class AtomicBooleanFinishTrigger implements Runnable {
-		private final WeakReference<AtomicBoolean> reference;
-		
-		AtomicBooleanFinishTrigger(AtomicBoolean atomicBoolean) {
-			reference = new WeakReference<>(atomicBoolean);
-		}
-		
-		@Override
-		public void run() {
-			AtomicBoolean atomicBoolean = reference.get();
-			if(atomicBoolean != null) atomicBoolean.set(false);
-		}
-	}
-	
-	private static class FileProcessingRequestUpdateConsumer extends StaticInterfaceListener implements Consumer<FileProcessingRequest> {
-		FileProcessingRequestUpdateConsumer(ConnectionManager manager) {
-			super(manager);
-		}
-		
-		@Override
-		public void accept(FileProcessingRequest request) {
-			ConnectionManager manager = getManager();
-			if(manager != null) manager.fileProcessingRequestCurrent.set(request);
-		}
-	}
-	
-	public static abstract class Packager {
-		/**
-		 * Prepares data before being sent, usually by compressing it
-		 *
-		 * @param data the unpackaged data to be sent
-		 * @param length the length of the data in the array
-		 * @return the packaged data, or null if the process was unsuccessful
-		 */
-		public abstract byte[] packageData(byte[] data, int length);
-		
-		/**
-		 * Reverts received data transmissions, usually be decompressing it
-		 *
-		 * @param data the packaged data
-		 * @return the unpackaged data, or null if the process was unsuccessful
-		 */
-		public abstract byte[] unpackageData(byte[] data);
-	}
-	
-	public static class PackagerGZIP extends Packager {
-		@Override
-		public byte[] packageData(byte[] data, int length) {
-			try {
-				return Constants.compressGZIP(data, length);
-			} catch(IOException exception) {
-				exception.printStackTrace();
-				Crashlytics.logException(exception);
-				
-				return null;
-			}
-		}
-		
-		@Override
-		public byte[] unpackageData(byte[] data) {
-			try {
-				return Constants.decompressGZIP(data);
-			} catch(IOException exception) {
-				exception.printStackTrace();
-				
-				return null;
-			}
-		}
-	}
-	
-	interface CommunicationsManagerSource {
-		CommunicationsManager get(ConnectionManager connectionManager, Context context);
-	}
-	
-	public static class PacketStruct {
-		public final int type;
-		public final byte[] content;
-		public Runnable sentRunnable;
-		
-		public PacketStruct(int type, byte[] content) {
-			this.type = type;
-			this.content = content;
-		}
-		
-		public PacketStruct(int type, byte[] content, Runnable sentRunnable) {
-			this(type, content);
-			this.sentRunnable = sentRunnable;
-		}
-	}
-	
-	private static class StaticInterfaceListener {
-		private final WeakReference<ConnectionManager> managerReference;
-		
-		StaticInterfaceListener(ConnectionManager manager) {
-			managerReference = new WeakReference<>(manager);
-		}
-		
-		ConnectionManager getManager() {
-			return managerReference.get();
-		}
-	}
-	
-	public interface ServiceCallbacks {
-		void schedulePing();
-		void cancelSchedulePing();
-		
-		void schedulePassiveReconnection();
-		void cancelSchedulePassiveReconnection();
+	/**
+	 * Sets the override values for new connections
+	 */
+	public void setConnectionOverride(@Nullable ConnectionOverride<?> connectionOverride) {
+		this.connectionOverride = connectionOverride;
 	}
 }

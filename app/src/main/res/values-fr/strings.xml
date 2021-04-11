@@ -10,6 +10,7 @@
 	<string name="dialog_feedback_message">Avez-vous un bogue à signaler, une fonction à suggérer, ou quelque chose d\'autre à dire? Contactez-nous ou discutez avec les autres par les liens ci-dessous.</string>
 	<string name="dialog_feedback_email">Envoyer un courriel</string>
 	<string name="dialog_feedback_community">Ouvrir la communauté subreddit</string>
+	<string name="dialog_skipsetup_message">Sauter la mise en place?</string>
 	<string name="title_conversation_members">Participants à cette conversation</string>
 	<string name="title_conversation_files">Fichiers à cette conversation</string>
 	<string name="message_permissionrejected">Demande d\'autorisation rejetée</string>
@@ -18,8 +19,10 @@
 	<string name="progress_sync">Obtention des messages&#8230;</string>
 	<string name="message_loaderror_messages">Échec de chargement des messages</string>
 	<string name="message_loaderror_contacts">Échec de chargement des contacts</string>
-	<string name="message_blankstate_conversations">Lorsque vous commencez une conversation, elle s\'affiche ici</string>
-	<string name="message_blankstate_conversations_archived">Les conversations archivées s\'affichent ici</string>
+	<string name="message_blankstate_conversations">Aucune conversation</string>
+	<string name="message_blankstate_conversations_description">Lorsque vous commencez une conversation, elle s\'affiche ici</string>
+	<string name="message_blankstate_conversations_archived">Aucune conversation archivée</string>
+	<string name="message_blankstate_conversations_archived_description">Les conversations archivées s\'affichent ici</string>
 	<string name="message_blankstate_conversations_basic">Aucune conversation</string>
 	<string name="time_today">Aujourd\'hui</string>
 	<string name="time_yesterday">Hier</string>
@@ -43,9 +46,8 @@
 	<string name="preference_server_connectionboot_title">Connexion automatique au démarrage de l\'appareil</string>
 	<string name="preference_server_networkreconnect_title">Reconnexion de changement de réseau</string>
 	<string name="preference_server_networkreconnect_description">Essayer de vous reconnecter lorsque l\'appareil se connecte à un nouveau réseau (par exemple: Wi-Fi à cellulaire)</string>
-	<string name="preference_server_help_title">Visiter le site de support</string>
 	<string name="message_serverstatus_limitedfunctionality">%s. La fonctionnalité sera limitée.</string>
-	<string name="message_serverstatus_internalexception">Une erreur interne a eu lieu</string>
+	<string name="message_serverstatus_internalexception">Une erreur interne s’est produite</string>
 	<string name="message_serverstatus_badrequest">Une erreur de compatibilité de connexion a eu lieu</string>
 	<string name="message_serverstatus_noconnection">Aucune connexion au serveur</string>
 	<string name="message_serverstatus_clientoutdated">L\'Appli n\'est pas à jour</string>
@@ -58,6 +60,7 @@
 	<string name="state_delivered">Distribué</string>
 	<string name="action_send">Envoyer</string>
 	<string name="action_next">Suivant</string>
+	<string name="action_done">OK</string>
 	<string name="action_back">Retour</string>
 	<string name="action_skip">Passer</string>
 	<string name="action_delete">Supprimer</string>
@@ -103,6 +106,7 @@
 	<string name="message_eventtype_unknown">Événement inconnu</string>
 	<string name="message_messageeffect_invisibleink">Message envoyé avec une encre invisible</string>
 	<string name="message_setup_connect_address">L\'Adresse du serveur</string>
+	<string name="message_setup_connect_fallbackaddress">Addresse alternative (facultatif)</string>
 	<string name="message_setup_connect_noserver">N\'avez-vous pas de serveur?</string>
 	<string name="message_setup_connect_serverguidelink">Lisez le manuel d\'installation</string>
 	<string name="message_setup_connect_connectionerror">La connexion a échoué</string>
@@ -111,13 +115,13 @@
 	<string name="message_generalloading">Veuillez patienter&#8230;</string>
 	
 	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages</string>
-	<string name="message_setup_sync_download_description">Copiez vos messages récents de votre ordinateur et reprenez là où vous l\'avez laissé.\n\nSi vous choisissez de ne pas le faire, seulement les nouveaux messages apparaîtront sur cet appareil.</string>
+	<string name="message_setup_sync_download_description">Vous êtes maintenant connecté à <b>%s</b>. Voulez-vous copier vos messages récents de votre ordinateur vers cet appareil?</string>
 	<string name="action_downloadmessages">Télécharger les messages</string>
-	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages de cet appareil</string>
+	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages de cet appareil.</string>
 	<string name="action_deletemessages">Supprimer les messages</string>
 	<string name="message_setup_sync_warning_title">Passer la suppression des messages?</string>
 	<string name="message_setup_sync_description">Utilisez cet option uniquement si vous vous connectez au même ordinateur et au même compte Apple que celui utilisé auparavant.\n\nSi vous conservez vos anciennes conversations, elles risquent de mélanger avec vos nouvelles conversations ou de perdre des fonctionnalités.</string>
-	<string name="message_syncerror">Échec de téléchargement des messages</string>
+	<string name="message_syncerror">Échec de téléchargement des messages (code d\'erreur %d)</string>
 	
 	<string name="imperative_recording_cancel">Glissez pour annuler</string>
 	<string name="imperative_recording_instructions">Tapez et maintenez pour enregistrer</string>
@@ -165,7 +169,7 @@
 	<string name="notificationchannel_messageerror">Défauts de livraison</string>
 	<string name="notificationchannel_messageerror_desc">Notifications concernant les messages en échec</string>
 
-	<string name="message_connectionerrror">N\'a pas pu se connecter au serveur</string>
+	<string name="message_connectionerror">N\'a pas pu se connecter au serveur</string>
 	<string name="message_permissiondetails_microphone_missing">L\'autorisation d\'enregistrer de l\'audio est manquante</string>
 	<string name="action_draw">Dessiner</string>
 	<string name="action_addtext">Ajouter du texte</string>
@@ -178,6 +182,7 @@
 	<string name="progress_connectingtoserver">Connexion au serveur&#8230;</string>
 	<string name="message_connection_connected">Connecté au serveur</string>
 	<string name="message_connection_connectedfallback">Connecté au serveur par addresse alternative</string>
+	<string name="message_connection_connectedcomputer">Connecté à %s</string>
 	<string name="message_connection_disconnected">La connexion est perdue</string>
 	<string name="imperative_tapopenapp">Appuyez pour ouvrir l\'appli</string>
 	<string name="part_unknown">Inconnu</string>
@@ -303,7 +308,19 @@
 		<item>Sombre</item>
 		<item>Assortir le système</item>
 	</string-array>
-	
+
+	<string name="message_onboardinginstructions_title">Commencer en 2 étapes faciles:</string>
+	<string name="message_onboardinginstructions_macmini_title">Configurer votre serveur</string>
+	<string name="message_onboardinginstructions_macmini_desc">Une application installée sur un ordinateur Mac est nécessaire pour acheminer vos messages pour vous.\n\nVisitez airmessage.org sur votre ordinateur pour télécharger l\'application.</string>
+	<string name="message_onboardinginstructions_airmessage_title">Se connecter</string>
+	<string name="message_onboardinginstructions_airmessage_desc">Connectez-vous avec votre compte pour recevoir vos messages sur cet appareil.</string>
+
+	<string name="action_signin_google">Se connecter avec Google</string>
+	<string name="action_signin_email">Se connecter avec une address e-mail</string>
+	<string name="screen_manualconfiguration">Configuration manuelle</string>
+	<string name="action_manualconfiguration">Utiliser la configuration manuelle</string>
+	<string name="action_checkconnection">Vérifier la connexion</string>
+
 	<string name="message_serverstatus_authfail">Le mot de passe a été rejeté</string>
 	<string name="message_serverupdate">Une mise à jour de serveur est disponible</string>
 	<string name="action_reconfigure">Reconfigurer</string>
@@ -365,8 +382,6 @@
 	<string name="message_attachmentreqerror_server_notsaved">Pièce jointe non trouvée</string>
 	<string name="message_attachmentreqerror_server_unreadable">Pièce jointe illisible</string>
 	<string name="message_attachmentreqerror_server_io">Erreur externe (I/O)</string>
-	<string name="preference_server_serverfallback_title">Addresse alternative</string>
-	<string name="preference_server_serverfallback_description">Si vous utilisez un routeur qui ne supporte pas le hairpinning, vous pouvez utiliser cette option</string>
 	<string name="preference_appearance_amoled_title">Thème noir</string>
 	<string name="preference_appearance_amoled_description">Activer un thème noir compatible avec AMOLED</string>
 	<string name="action_markallread">Tout marquer comme lu</string>
@@ -387,6 +402,7 @@
 	<string name="message_crashreport_title">Quelque chose a mal tourné&#8230;</string>
 	<string name="message_crashreport_subtitle">Rapport de crash de débogage d\'AirMessage</string>
 	<string name="message_notsupported">Cette fonctionnalité n\'est pas disponible</string>
+	<string name="message_connecterror">Impossible d’atteindre votre serveur</string>
 	<string name="part_content_location">Détails d\'emplacement</string>
 	<string name="part_content_contact">Informations de contact</string>
 	<string name="preference_textmessage_deliveryreport_title">Accusés de réception textos</string>
@@ -434,8 +450,8 @@
 	<string name="part_tapback_exclamation">Points d\'exclamation</string>
 	<string name="part_tapback_question">Point d\'interrogation</string>
 	<string name="progress_cleantextmessages">Nettoyage des messages texte locaux&#8230;</string>
+	<string name="progress_connectionverification">Vérification de votre connexion&#8230;</string>
 	<string name="action_tapbackdetails">Afficher les détails Tapback</string>
-	<string name="message_appvaliditywarning">Cette installation de AirMessage ne peut pas être vérifiée. Vos données de messagerie peuvent être en danger. Veuillez installer AirMessage à partir du Play Store.</string>
 	<string name="preference_features_messagesounds_title">Sons de messagerie in-app</string>
 
 	<string name="label_email_home">Domicile</string>
@@ -457,6 +473,10 @@
 	<string name="message_renamegroup_onlyyouvisibility">Vous êtes la seule personne qui puisse voir ce nom</string>
 	<string name="title_conversation_name">Nom du groupe</string>
 	<string name="action_renamegroup">Renommer ce groupe</string>
+	<string name="part_invalidaddress">Adresse invalide</string>
+
+	<string name="message_manualconfigurationstatus">Configuration manuelle en cours</string>
+	<string name="message_temporarymodestatus">Vérification de nouveaux messages</string>
 
 	<plurals name="message_newmessages">
 		<item quantity="one">%d nouveaux messages</item>
@@ -464,4 +484,29 @@
 	</plurals>
 
 	<string name="message_newmessages_nocount">Nouveaux messages</string>
+	<string name="message_serverstatus_externalexception">Une erreur externe s’est produite</string>
+	<string name="message_serverstatus_nogroup">Votre serveur personnel n\'est pas disponible</string>
+	<string name="message_serverstatus_nocapacity">La limite de l\'appareil connecté a été atteinte</string>
+	<string name="message_serverstatus_accountvalidation">Le compte connecté ne peut pas être utilisé</string>
+<!--	<string name="message_serverstatus_nosubscription">Le compte connecté n\'est pas abonné</string>-->
+	<string name="message_serverstatus_noenrollment">Le compte connecté n\'est pas inscrit</string>
+	<string name="message_serverstatus_otherlocation">L\'ordinateur serveur a été échangé</string>
+	<string name="message_serverstatus_nointernet">Pas de connexion Internet</string>
+	<string name="message_signinerror">Erreur de connexion</string>
+	<string name="action_signout">Déconnecter</string>
+	<string name="dialog_signout_message">Êtes-vous certain de vouloir vous déconnecter?</string>
+	<string name="preferencegroup_account_title">Compte</string>
+	<string name="preference_server_reset_title">Utiliser un compte</string>
+	<string name="preference_account_accountdetails_title">Compte connecté</string>
+	<string name="preference_account_reset_title">Déconnexion</string>
+	<string name="action_switchtoaccount">Utiliser un compte</string>
+	<string name="message_reset_direct">Utiliser un compte pour accéder à AirMessage?</string>
+	<string name="message_reset_connect">Vous déconnecter d\'AirMessage?</string>
+	<string name="preference_about_licenses_title">Licenses open source</string>
+	<string name="screen_licenses">Licenses open source</string>
+	<string name="preferencegroup_about_title">Informations sur l\'application</string>
+	<string name="message_loaderror_location">Échec du chargement de votre position</string>
+	<string name="message_securityupdate">AirMessage ne peut pas vérifier les mises à jour de sécurité</string>
+	<string name="label_videoplayback">Lire la vidéo</string>
+	<string name="action_resolve">Résoudre</string>
 </resources>

@@ -4,6 +4,7 @@
 	<string name="part_you">あなた</string>
 	<string name="action_send">送信</string>
 	<string name="action_next">次へ</string>
+	<string name="action_done">完了</string>
 	<string name="action_back">戻る</string>
 	<string name="action_skip">スキップ</string>
 	<string name="action_delete">削除</string>
@@ -16,7 +17,7 @@
 	<string name="action_dismiss">閉じる</string>
 	<string name="action_undo">先に戻す</string>
 	<string name="action_close">閉める</string>
-	<string name="action_replay">リプレー</string>
+	<string name="action_replay">再生</string>
 	<string name="action_sync">同期</string>
 	<string name="action_advanced">詳細同期</string>
 	<string name="action_resync">再同期</string>
@@ -52,7 +53,7 @@
 	<string name="screen_details">詳細</string>
 	<string name="screen_settings">設定</string>
 	<string name="screen_help">ヘルプ</string>
-	<string name="screen_blockedcontacts">ブロック住</string>
+	<string name="screen_blockedcontacts">ブロックされた連絡先</string>
 	<string name="screen_newconversation">新しい会話</string>
 	<string name="screen_conversationdetails">会話の詳細</string>
 	<string name="screen_newmessage">新しいメッセージ</string>
@@ -60,9 +61,11 @@
 	<string name="title_conversation_files">会話のファイル</string>
 	<string name="dialog_feedback_email">メールを送る</string>
 	<string name="dialog_feedback_community">コミュ二ティページを開く</string>
-	<string name="message_blankstate_conversations">新しい会話を開始すると、ここに表示されます</string>
-	<string name="message_blankstate_conversations_archived">アーカイブされた会話がここに表示されます</string>
-	<string name="message_blankstate_conversations_basic">会話はありません</string>
+	<string name="message_blankstate_conversations">会話なし</string>
+	<string name="message_blankstate_conversations_description">新しい会話を開始すると、ここに表示されます</string>
+	<string name="message_blankstate_conversations_archived">アーカイブされた会話なし</string>
+	<string name="message_blankstate_conversations_archived_description">アーカイブされた会話がここに表示されます</string>
+	<string name="message_blankstate_conversations_basic">会話なし</string>
 	<string name="message_blankstate_blocked">ブロックされた連絡先はありません</string>
 	<string name="message_unknownerror">不明なエラーが発生しました</string>
 	<string name="message_loaderror_conversation">会話ロードを読み込めませんでした</string>
@@ -87,8 +90,8 @@
 	<string name="message_messageerror_desc_air_internal">内部エラーが発生しました</string>
 	<string name="message_messageerror_desc_apple_network">iMessage サーバーに接続できませんでした</string>
 	<string name="message_messageerror_desc_apple_unregistered">%sが iMessage に登録されていません。</string>
-	<string name="message_syncerror">同期できませんでした</string>
-	<string name="message_connectionerrror">サーバーに接続できません</string>
+	<string name="message_syncerror">同期できませんでした（エラーコード %d）</string>
+	<string name="message_connectionerror">サーバーに接続できません</string>
 	<string name="message_permissionrejected">許可要求が拒否されました</string>
 	<string name="message_permissiondetails_contacts_suggestions">暗示を表示のために連絡先へのアクセスを許可してください</string>
 	<string name="message_permissiondetails_contacts_listing">名前と写真を表示のために連絡先へのアクセスを許可してください</string>
@@ -100,7 +103,7 @@
 	<string name="message_serverstatus_noconnection">サーバーから切断されています</string>
 	<string name="message_serverstatus_clientoutdated">アプリが古くなっています</string>
 	<string name="message_serverstatus_serveroutdated">サーバーが古くなっています</string>
-	<string name="message_serverstatus_authfail">サーバーにログインできませんでした</string>
+	<string name="message_serverstatus_authfail">入力したパスワードが間違っています</string>
 	<string name="message_serverstatus_unknown">不明なエラーが発生しました</string>
 	<string name="message_serverupdate">サーバーのアップデートが入手可能です</string>
 	<string name="message_searchnoresults">結果がありません</string>
@@ -120,6 +123,7 @@
 	<string name="message_eventtype_kick_you_object">%sさんは会話からあなたを外しました</string>
 	<string name="message_eventtype_unknown">未知の出来事</string>
 	<string name="message_setup_connect_address">サーバーアドレス</string>
+	<string name="message_setup_connect_fallbackaddress">代替アドレス（オプション）</string>
 	<string name="message_setup_connect_noserver">サーバーありませんか？</string>
 	<string name="message_setup_connect_serverguidelink">インストールガイドを見てください</string>
 	<string name="message_setup_connect_connectionerror">接続できませんでした</string>
@@ -129,20 +133,21 @@
 	<string name="message_confirm_deletemessages_started">すべてのメッセージを削除しました</string>
 	<string name="message_confirm_deleteattachments">すべてのダウンロードした添付を削除しますか？</string>
 	<string name="message_confirm_deleteattachments_started">すべてのダウンロードした添付を削除しました</string>
-	<string name="message_setup_sync_download_description">コンピュータから最近のメッセージをコピーします。\n\nしない場合、このデバイスには新しいメッセージのみが表示されます。</string>
-	<string name="message_setup_sync_delete_description">あるいは、再発足してこのデバイスから古いメッセージを消去します</string>
+	<string name="message_setup_sync_download_description">これで <b>%s</b> に接続されました。最近のメッセージをパソコンからこのデバイスにコピーしますか？</string>
+	<string name="message_setup_sync_delete_description">あるいは、再発足してこのデバイスから古いメッセージを消去します。</string>
 	<string name="message_setup_sync_warning_title">メッセージの削除をスキップしますか？</string>
-	<string name="message_confirm_resyncmessages">最近のメッセージを同時しますか？</string>
-	<string name="message_confirm_resyncmessages_description">このデバイスに保存されているすべてのメッセージが取り替えられます</string>
+	<string name="message_confirm_resyncmessages">最近のメッセージを同期しますか？</string>
+	<string name="message_confirm_resyncmessages_description">このデバイスに保存されているメッセージはすべて置き換えられます</string>
 	<string name="message_confirm_resyncmessages_started">最近のメッセージをダウンロードしています</string>
 	<string name="message_confirm_resyncmessages_inprogress">最近のメッセージをもうダウンロードしています</string>
-	<string name="message_confirm_resyncmessages_advanced">詳細同期</string>
+	<string name="message_confirm_resyncmessages_advanced">高度同期</string>
 	<string name="message_confirm_deleteconversation_current">この会話を削除しますか？</string>
 	<string name="message_confirm_unblock">%sのブロックを解除しますか？</string>
 	<string name="message_shareable_text">%1$sの%2$s、%3$s：%4$s</string>
 	<string name="message_shareable_text_you">%1$sの%2$s、私：%3$s</string>
 	<string name="message_connection_connected">サーバーに接続しています</string>
 	<string name="message_connection_connectedfallback">代替経由でサーバーに接続しています</string>
+	<string name="message_connection_connectedcomputer">%s に接続しています</string>
 	<string name="message_connection_disconnected">サーバーから切断されています</string>
 	<string name="message_conversation_archived">会話をアーカイブしました</string>
 	<string name="message_conversation_unarchived">会話のアーカイブを解除しました</string>
@@ -237,7 +242,6 @@
 	<string name="preference_server_connectionboot_title">起動時に自動的に接続</string>
 	<string name="preference_server_networkreconnect_title">ネットワークを切り替える時に再接続</string>
 	<string name="preference_server_networkreconnect_description">デバイスが新しいネットワークに接続した時に再接続を試みます（例えば：Wi-Fi から Cellular へ）</string>
-	<string name="preference_server_help_title">サポートサイトにアクセス</string>
 	<string name="message_messageerror_desc_apple_unregistered_generic">受信者が iMessage に登録されていません</string>
 	<string name="preference_server_dropreconnect_description">接続を切断された直後に再接続を試みます</string>
 	<string name="preference_server_dropreconnect_title">接続を切断の時に再接続</string>
@@ -275,7 +279,8 @@
 	<string name="servicedesc_connectionservice">AirMessage サーバーの接続を作成し維持してメッセージを送受信します</string>
 	<string name="message_messageeffect_invisibleink">見えないインクのメッセージ</string>
 	<string name="message_setup_sync_description">同じコンピューと Apple アカウントに接続の以外、スキップしないでください。\n\n古い会話を保持すると、新しい会話と結合したり機能が失われたりする可能性があります。</string>
-	<string name="dialog_feedback_message">報告するべきバグし、提案したい機能し、何か言いたい事がありますか？下記のリンクを使用して私達に連絡するか他の人と話し合ってください。</string>
+	<string name="dialog_feedback_message">報告したいバグ、提案したい機能、または他に言いたいことがありますか？下記のリンクを使用して、私たちに連絡したり、他の人と話し合ったりしてください。</string>
+	<string name="dialog_skipsetup_message">セットアップをスキップしますか？</string>
 
 	<string name="dateformat_withinyear">M月d日</string>
 	<string name="dateformat_withinyear_weekday">M月d日EEEE</string>
@@ -292,16 +297,16 @@
 		<item quantity="other">%d件の会話のアーカイブを解除しました</item>
 	</plurals>
 	<plurals name="message_multipleattachments">
-		<item quantity="other">%d個の添付</item>
+		<item quantity="other">%d件の添付</item>
 	</plurals>
 	<plurals name="message_selectioncount">
-		<item quantity="other">%d個選択中</item>
+		<item quantity="other">%d件選択中</item>
 	</plurals>
 	<plurals name="message_multipledestinations">
 		<item quantity="other">%s（他%s個）</item>
 	</plurals>
 	<plurals name="message_blockedmessagecount">
-		<item quantity="other">%d個のメッセージをブロックしました</item>
+		<item quantity="other">%d件のメッセージをブロックしました</item>
 	</plurals>
 	<plurals name="message_advancedsync_time_hour">
 		<item quantity="other">%d時間</item>
@@ -331,6 +336,18 @@
 		<item>システムのデフォルト</item>
 	</string-array>
 
+	<string name="message_onboardinginstructions_title">2つの簡単なステップで始める</string>
+	<string name="message_onboardinginstructions_macmini_title">サーバーの設定</string>
+	<string name="message_onboardinginstructions_macmini_desc">メッセージをルーティングするには、Macコンピューターにインストールされているサーバーが必要です。\n\nairmessage.org にアクセスしてダウンロードしてください。</string>
+	<string name="message_onboardinginstructions_airmessage_title">アカウントの接続</string>
+	<string name="message_onboardinginstructions_airmessage_desc">アカウントでログインして、このデバイスでメッセージを受け取る。</string>
+
+	<string name="action_signin_google">Google でログイン</string>
+	<string name="action_signin_email">メールアドレスでログイン</string>
+	<string name="screen_manualconfiguration">手動設定</string>
+	<string name="action_manualconfiguration">手動設定を使用</string>
+	<string name="action_checkconnection">接続を確認</string>
+
 	<string name="action_copy">コピー</string>
 	<string name="action_copytoclipboard">クリップボードにコピー</string>
 	<string name="action_savetofile">ファイルに保存</string>
@@ -352,8 +369,6 @@
 	<string name="message_attachmentreqerror_server_notsaved">添付ファイルが見つかりません</string>
 	<string name="message_attachmentreqerror_server_unreadable">添付ファイルが読められませんでした</string>
 	<string name="message_attachmentreqerror_server_io">外部エラー（I/O）</string>
-	<string name="preference_server_serverfallback_title">代替アドレス</string>
-	<string name="preference_server_serverfallback_description">NAT ループバックをサポートしていないルーターがある場合は、代替アドレスを入力してください</string>
 	<string name="preference_appearance_amoled_title">真っ黒のテーマ</string>
 	<string name="preference_appearance_amoled_description">AMOLED互換の黒テーマの利用</string>
 	<string name="action_markallread">すべて既読にする</string>
@@ -374,7 +389,8 @@
 	<string name="message_crashreport_title">何かがうまくいきませんでした&#8230;</string>
 	<string name="message_crashreport_subtitle">AirMessage デバッグクラッシュレポート</string>
 	<string name="message_notsupported">この機能は利用できません</string>
-	<string name="part_content_location">場所の詳細</string>
+	<string name="message_connecterror">サーバーに到達できませんでした</string>
+	<string name="part_content_location">場所詳細</string>
 	<string name="part_content_contact">連絡先</string>
 	<string name="preference_textmessage_deliveryreport_title">SMS 受取確認通知</string>
 	<string name="preference_textmessage_enable_title">テキストメッセージ統合</string>
@@ -426,8 +442,8 @@
 	<string name="part_tapback_exclamation">ビックリマーク</string>
 	<string name="part_tapback_question">疑問符</string>
 	<string name="progress_cleantextmessages">ローカルテキストメッセージを片付け中&#8230;</string>
+	<string name="progress_connectionverification">接続を確認中&#8230;</string>
 	<string name="action_tapbackdetails">Tapback の詳細を表示</string>
-	<string name="message_appvaliditywarning">この AirMessage のインストールは確認できません。メッセージングデータが危険にさらされている可能性があります。Play ストアで AirMessage をインストールしてください。</string>
 	<string name="preference_features_messagesounds_title">アプリ内メッセージ音</string>
 
 	<string name="label_email_home">自宅</string>
@@ -449,10 +465,39 @@
 	<string name="title_conversation_name">グループ名</string>
 	<string name="action_renamegroup">このグループ名を変更する</string>
 	<string name="message_renamegroup_onlyyouvisibility">このグループ名はあなたにだけ表示されます</string>
+	<string name="part_invalidaddress">無効なアドレス</string>
+
+	<string name="message_manualconfigurationstatus">手動設定中</string>
+	<string name="message_temporarymodestatus">新着メッセージを確認しています</string>
 
 	<plurals name="message_newmessages">
 		<item quantity="other">%d件の新しいメッセージ</item>
 	</plurals>
 
 	<string name="message_newmessages_nocount">新しいメッセージ</string>
+	<string name="dialog_signout_message">ログアウトしてもよろしいですか？</string>
+	<string name="message_signinerror">サインインエラー</string>
+	<string name="message_serverstatus_externalexception">外部エラーが発生しました</string>
+	<string name="message_serverstatus_nogroup">パーソナルサーバーが接続されていません</string>
+	<string name="message_serverstatus_nocapacity">接続デバイスの制限に達しました</string>
+	<string name="message_serverstatus_accountvalidation">接続されたアカウントは使用できません</string>
+<!--	<string name="message_serverstatus_nosubscription">接続されたアカウントは登録されていません</string>-->
+	<string name="message_serverstatus_noenrollment">接続されたアカウントは登録されていません</string>
+	<string name="message_serverstatus_otherlocation">サーバーコンピュータが交換されました</string>
+	<string name="message_serverstatus_nointernet">インターネットに接続できません</string>
+	<string name="message_reset_connect">AirMessage からログアウトしますか？</string>
+	<string name="message_reset_direct">アカウントで AirMessage にアクセスするように切り替えますか？</string>
+	<string name="action_switchtoaccount">アカウントに切り替える</string>
+	<string name="action_signout">ログアウト</string>
+	<string name="preference_account_reset_title">ログアウト</string>
+	<string name="preference_account_accountdetails_title">接続されたアカウント</string>
+	<string name="preferencegroup_account_title">アカウント</string>
+	<string name="preference_server_reset_title">アカウントに交換</string>
+	<string name="preferencegroup_about_title">アプリ情報</string>
+	<string name="preference_about_licenses_title">オープンソースライセンス</string>
+	<string name="screen_licenses">オープンソースライセンス</string>
+	<string name="message_loaderror_location">位置情報ドキュメントを読み込めませんでした</string>
+	<string name="message_securityupdate">セキュリティアップデートをチェックできません</string>
+	<string name="label_videoplayback">ビデオ再生</string>
+	<string name="action_resolve">解決</string>
 </resources>

@@ -28,7 +28,6 @@
 		android:focusable="true"
 		android:orientation="horizontal"
 		android:id="@+id/area_content">
-		
 		<include
 			android:id="@+id/profile"
 			layout="@layout/reference_user"
@@ -37,6 +36,7 @@
 			android:layout_gravity="center"
 			android:layout_marginLeft="16dp"
 			android:layout_marginRight="16dp" />
+
 		<!-- Sender and email address -->
 		<LinearLayout
 			android:layout_width="0dp"

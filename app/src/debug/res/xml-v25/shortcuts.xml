@@ -1,0 +1,21 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+	<shortcut
+		android:shortcutId="newmessage"
+		android:icon="@drawable/appshortcut_add"
+		android:shortcutShortLabel="@string/action_newconversation">
+		<intent
+			android:action="android.intent.action.VIEW"
+			android:targetPackage="me.tagavari.airmessage.debug"
+			android:targetClass="me.tagavari.airmessage.activity.Conversations" />
+		<intent
+			android:action="android.intent.action.VIEW"
+			android:targetPackage="me.tagavari.airmessage.debug"
+			android:targetClass="me.tagavari.airmessage.activity.NewMessage" />
+		<categories android:name="android.shortcut.conversation" />
+	</shortcut>
+
+	<share-target android:targetClass="me.tagavari.airmessage.activity.ShareHandler">
+		<data android:mimeType="*/*" />
+		<category android:name="me.tagavari.airmessage.directshare.category.DEFAULT" />
+	</share-target>
+</shortcuts>

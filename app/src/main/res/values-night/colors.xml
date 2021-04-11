@@ -2,7 +2,10 @@
 <resources>
 	<color name="colorPrimary">#82B1FF</color>
 
+	<color name="colorSelectionOverlay">#2682B1FF</color>
+
 	<color name="colorWarning">#FFD180</color>
+	<color name="colorSuccess">#a5d6a7</color>
 
 	<color name="colorMessageTextMessageForwarding">#62EFCD</color>
 	<color name="colorMessageTextMessage">#6EFFA0</color>

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="match_parent"
-	android:layout_height="match_parent">
+	android:layout_height="match_parent"
+	xmlns:app="http://schemas.android.com/apk/res-auto">
 	<LinearLayout
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
@@ -27,13 +28,17 @@
 				android:textColor="?android:attr/textColorPrimary"
 				android:textSize="16sp" />
 			
-			<SeekBar
+			<com.google.android.material.slider.Slider
 				android:id="@+id/slider_messages"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:layout_marginBottom="4dp"
-				android:max="21"
-				android:progress="22" />
+				android:valueFrom="0"
+				android:valueTo="21"
+				android:value="21"
+				android:stepSize="1"
+				app:labelBehavior="gone"
+				app:tickColor="@android:color/transparent" />
 			
 			<TextView
 				android:id="@+id/label_messages"
@@ -60,13 +65,17 @@
 				android:textColor="?android:attr/textColorPrimary"
 				android:textSize="16sp" />
 			
-			<SeekBar
+			<com.google.android.material.slider.Slider
 				android:id="@+id/slider_attachments"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:layout_marginBottom="4dp"
-				android:max="21"
-				android:progress="0" />
+				android:valueFrom="0"
+				android:valueTo="21"
+				android:value="0"
+				android:stepSize="1"
+				app:labelBehavior="gone"
+				app:tickColor="@android:color/transparent" />
 			
 			<TextView
 				android:id="@+id/label_attachments"
@@ -82,13 +91,17 @@
 				android:layout_width="0px"
 				android:layout_height="16dp" />
 			
-			<SeekBar
+			<com.google.android.material.slider.Slider
 				android:id="@+id/slider_attachments_size"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
 				android:layout_marginBottom="4dp"
-				android:max="11"
-				android:progress="6" />
+				android:valueFrom="0"
+				android:valueTo="11"
+				android:value="6"
+				android:stepSize="1"
+				app:labelBehavior="gone"
+				app:tickColor="@android:color/transparent" />
 			
 			<TextView
 				android:id="@+id/label_attachments_size"

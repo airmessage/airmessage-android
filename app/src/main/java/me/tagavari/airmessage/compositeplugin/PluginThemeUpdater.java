@@ -28,10 +28,6 @@ public class PluginThemeUpdater extends AppCompatActivityPlugin {
 		//Recreating the activity if the theme has changed
 		if(currentNightMode != getCurrentNightMode() || currentAMOLEDState != Preferences.getPreferenceAMOLED(getActivity())) {
 			getActivity().recreate();
-			/* if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-				((AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE)).set(AlarmManager.RTC, System.currentTimeMillis() + 100, PendingIntent.getActivity(getActivity(), 123456, getActivity().getIntent(), PendingIntent.FLAG_CANCEL_CURRENT));
-				System.exit(0);
-			} else getActivity().recreate(); */
 		}
 	}
 	

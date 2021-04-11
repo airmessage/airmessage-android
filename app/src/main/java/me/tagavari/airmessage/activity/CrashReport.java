@@ -14,7 +14,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.util.Constants;
+import me.tagavari.airmessage.helper.ExternalStorageHelper;
 
 public class CrashReport extends AppCompatActivity {
 	//Creating the constants
@@ -63,7 +63,7 @@ public class CrashReport extends AppCompatActivity {
 		
 		if(requestCode == activityResultSaveFileSAF) {
 			isInSAF = false;
-			if(resultCode == RESULT_OK) Constants.exportUri(this, stackTrace, data.getData());
+			if(resultCode == RESULT_OK) ExternalStorageHelper.exportText(this, stackTrace, data.getData());
 		}
 	}
 	
@@ -80,7 +80,7 @@ public class CrashReport extends AppCompatActivity {
 	
 	private void buttonExport(View view) {
 		isInSAF = true;
-		Constants.createFileSAF(this, activityResultSaveFileSAF, "text/plain", "stacktrace.txt");
+		ExternalStorageHelper.createFileSAF(this, activityResultSaveFileSAF, "text/plain", "stacktrace.txt");
 	}
 	
 	private void buttonRestart(View view) {

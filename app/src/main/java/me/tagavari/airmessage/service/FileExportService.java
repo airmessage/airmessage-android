@@ -17,14 +17,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import me.tagavari.airmessage.util.Constants;
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.util.DataTransformUtils;
+import me.tagavari.airmessage.helper.DataStreamHelper;
+import me.tagavari.airmessage.helper.FileHelper;
 
 /**
  * A service used to export and save attachments to disk
  */
 public class FileExportService extends IntentService {
+	public static final String intentParamPath = "path";
+	
 	private final Handler handler;
 	
 	public FileExportService() {
@@ -37,16 +39,16 @@ public class FileExportService extends IntentService {
 		if(intent == null) return;
 		
 		//Getting the file
-		File sourceFile = new File(intent.getStringExtra(Constants.intentParamData));
+		File sourceFile = new File(intent.getStringExtra(intentParamPath));
 		if(!sourceFile.exists()) {
 			handler.post(() -> Toast.makeText(this, R.string.message_fileexport_fail, Toast.LENGTH_SHORT).show());
 			return;
 		}
-		File targetFile = Constants.findFreeFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), sourceFile.getName(), true);
+		File targetFile = FileHelper.findFreeFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), sourceFile.getName(), true);
 		
 		//Writing the file
 		try(InputStream in = new FileInputStream(sourceFile); OutputStream out = new FileOutputStream(targetFile)) {
-			DataTransformUtils.copyStream(in, out);
+			DataStreamHelper.copyStream(in, out);
 		} catch(IOException exception) {
 			exception.printStackTrace();
 			handler.post(() -> Toast.makeText(this, R.string.message_fileexport_fail, Toast.LENGTH_SHORT).show());
@@ -56,7 +58,7 @@ public class FileExportService extends IntentService {
 		handler.post(() -> {
 			//Telling the download manager
 			DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-			manager.addCompletedDownload(targetFile.getName(), "File copied from AirMessage chat", true, Constants.getMimeType(targetFile), targetFile.getPath(), targetFile.length(), true);
+			manager.addCompletedDownload(targetFile.getName(), "File copied from AirMessage chat", true, FileHelper.getMimeType(targetFile), targetFile.getPath(), targetFile.length(), true);
 			
 			//Displaying a toast
 			Toast.makeText(this, R.string.message_fileexport_success, Toast.LENGTH_SHORT).show();

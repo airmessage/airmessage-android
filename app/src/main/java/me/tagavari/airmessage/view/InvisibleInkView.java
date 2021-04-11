@@ -3,7 +3,6 @@ package me.tagavari.airmessage.view;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -16,7 +15,10 @@ import android.util.AttributeSet;
 import android.view.TextureView;
 import android.view.View;
 
-import com.crashlytics.android.Crashlytics;
+import androidx.annotation.Nullable;
+import androidx.core.graphics.ColorUtils;
+
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -24,8 +26,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import androidx.annotation.Nullable;
-import androidx.core.graphics.ColorUtils;
 import me.tagavari.airmessage.R;
 
 public class InvisibleInkView extends TextureView implements Runnable {
@@ -99,7 +99,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		particlePaint = new Paint();
 		particlePaint.setAntiAlias(true);
 		particlePaint.setStyle(Paint.Style.FILL);
-		//particlePaint.setShader(new RadialGradient(particleRadiusPx, particleRadiusPx, particleRadiusPx, 0xFFFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
 		
 		//Setting the surface listener
 		setSurfaceTextureListener(new SurfaceTextureListener() {
@@ -107,29 +106,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 			public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
 				//Setting the drawing surface as available
 				surfaceAvailable = true;
-				
-				/* //Drawing a black box
-				Canvas canvas = lockCanvas();
-				try {
-					Path clipPath = new Path();
-					RectF clipRect = new RectF();
-					
-					clipPath.reset();
-					clipRect.set(0, 0, viewWidth.get(), viewHeight.get());
-					
-					viewRadiiLock.lock();
-					try {
-						clipPath.addRoundRect(clipRect, viewRadii, Path.Direction.CW);
-					} finally {
-						viewRadiiLock.unlock();
-					}
-					
-					canvas.clipPath(clipPath);
-					
-					canvas.drawPaint(voidPaint);
-				} finally {
-					unlockCanvasAndPost(canvas);
-				} */
 				
 				//Starting the drawing thread
 				if(viewRunning && firstLayoutPassCompleted && viewThread == null) startThread();
@@ -241,7 +217,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 						drawParticleProgress = particle.calculateFrame(timeDiff, drawParticlePositions);
 						
 						//Configuring the paint
-						//particlePaint.setShader(new RadialGradient(drawParticlePositions[0] * (float) viewWidth, drawParticlePositions[1] * (float) viewHeight, particleRadiusPx, Color.argb(calculateAlpha(drawParticleProgress), 255, 255, 255), 0x00FFFFFF, Shader.TileMode.CLAMP));
 						particlePaint.setColor(Color.argb(Math.max(calculateAlpha(drawParticleProgress) - (0xFF - targetAlpha), 0), 0xFF, 0xFF, 0xFF));
 						
 						if(!viewRunning) return;
@@ -254,7 +229,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 			}
 		} catch(Exception exception) {
 			exception.printStackTrace();
-			Crashlytics.logException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 		} finally {
 			stop();
 		}
@@ -285,26 +260,6 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		if(progress < 0.1F) return (int) (progress * 10F * 255F);
 		else return 255 - (int) ((progress - 0.1F) * (10F / 9F) * 255F);
 	}
-	
-	/* @Override
-	protected void onDraw(Canvas canvas) {
-		super.onDraw(canvas);
-		
-		//Calculating the time difference
-		long currentTime = getTime();
-		int timeDiff = (int) (currentTime - lastTimeCheck);
-		lastTimeCheck = currentTime;
-		
-		//Drawing the particles
-		for(Particle particle : particleList) {
-			drawParticleProgress = particle.calculateFrame(timeDiff, drawParticlePositions);
-			//particlePaint.setShader(new RadialGradient(drawParticlePositions[0] * (float) viewWidth, drawParticlePositions[1] * (float) viewHeight, particleRadiusPx, Color.argb(255 - (int) (drawParticleProgress * 255), 255, 255, 255), 0x00FFFFFF, Shader.TileMode.CLAMP));
-			canvas.drawCircle(drawParticlePositions[0] * (float) viewWidth, drawParticlePositions[1] * (float) viewHeight, particleRadiusPx, particlePaint);
-		}
-		
-		//Invalidating the view to draw the next frame
-		invalidate();
-	} */
 	
 	@Override
 	protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
@@ -420,262 +375,20 @@ public class InvisibleInkView extends TextureView implements Runnable {
 		}
 	}
 	
+	public void setRadii(float[] radii) {
+		//Setting the radii
+		viewRadiiLock.lock();
+		try {
+			viewRadii = radii;
+		} finally {
+			viewRadiiLock.unlock();
+		}
+	}
+	
 	public void setBackgroundColor(int color) {
 		//Setting the background color
 		backgroundColor = color;
 	}
-	
-	/**
-	 * Stack Blur v1.0 from
-	 * http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html
-	 * Java Author: Mario Klingemann <mario at quasimondo.com>
-	 * http://incubator.quasimondo.com
-	 *
-	 * created Feburary 29, 2004
-	 * Android port : Yahel Bouaziz <yahel at kayenko.com>
-	 * http://www.kayenko.com
-	 * ported april 5th, 2012
-	 *
-	 * This is a compromise between Gaussian Blur and Box blur
-	 * It creates much better looking blurs than Box Blur, but is
-	 * 7x faster than my Gaussian Blur implementation.
-	 *
-	 * I called it Stack Blur because this describes best how this
-	 * filter works internally: it creates a kind of moving stack
-	 * of colors whilst scanning through the image. Thereby it
-	 * just has to add one new block of color to the right side
-	 * of the stack and remove the leftmost color. The remaining
-	 * colors on the topmost layer of the stack are either added on
-	 * or reduced by one, depending on if they are on the right or
-	 * on the left side of the stack.
-	 *
-	 * If you are using this algorithm in your code please add
-	 * the following line:
-	 * Stack Blur Algorithm by Mario Klingemann <mario@quasimondo.com>
-	 */
-	
-	private static Bitmap stackBlur(Bitmap sentBitmap, float scale, int radius) {
-		int width = Math.round(sentBitmap.getWidth() * scale);
-		int height = Math.round(sentBitmap.getHeight() * scale);
-		sentBitmap = Bitmap.createScaledBitmap(sentBitmap, width, height, false);
-		
-		Bitmap bitmap = sentBitmap.copy(sentBitmap.getConfig(), true);
-		
-		if (radius < 1) {
-			return (null);
-		}
-		
-		int w = bitmap.getWidth();
-		int h = bitmap.getHeight();
-		
-		int[] pix = new int[w * h];
-		bitmap.getPixels(pix, 0, w, 0, 0, w, h);
-		
-		int wm = w - 1;
-		int hm = h - 1;
-		int wh = w * h;
-		int div = radius + radius + 1;
-		
-		int r[] = new int[wh];
-		int g[] = new int[wh];
-		int b[] = new int[wh];
-		int rsum, gsum, bsum, x, y, i, p, yp, yi, yw;
-		int vmin[] = new int[Math.max(w, h)];
-		
-		int divsum = (div + 1) >> 1;
-		divsum *= divsum;
-		int dv[] = new int[256 * divsum];
-		for (i = 0; i < 256 * divsum; i++) {
-			dv[i] = (i / divsum);
-		}
-		
-		yw = yi = 0;
-		
-		int[][] stack = new int[div][3];
-		int stackpointer;
-		int stackstart;
-		int[] sir;
-		int rbs;
-		int r1 = radius + 1;
-		int routsum, goutsum, boutsum;
-		int rinsum, ginsum, binsum;
-		
-		for (y = 0; y < h; y++) {
-			rinsum = ginsum = binsum = routsum = goutsum = boutsum = rsum = gsum = bsum = 0;
-			for (i = -radius; i <= radius; i++) {
-				p = pix[yi + Math.min(wm, Math.max(i, 0))];
-				sir = stack[i + radius];
-				sir[0] = (p & 0xff0000) >> 16;
-				sir[1] = (p & 0x00ff00) >> 8;
-				sir[2] = (p & 0x0000ff);
-				rbs = r1 - Math.abs(i);
-				rsum += sir[0] * rbs;
-				gsum += sir[1] * rbs;
-				bsum += sir[2] * rbs;
-				if (i > 0) {
-					rinsum += sir[0];
-					ginsum += sir[1];
-					binsum += sir[2];
-				} else {
-					routsum += sir[0];
-					goutsum += sir[1];
-					boutsum += sir[2];
-				}
-			}
-			stackpointer = radius;
-			
-			for (x = 0; x < w; x++) {
-				
-				r[yi] = dv[rsum];
-				g[yi] = dv[gsum];
-				b[yi] = dv[bsum];
-				
-				rsum -= routsum;
-				gsum -= goutsum;
-				bsum -= boutsum;
-				
-				stackstart = stackpointer - radius + div;
-				sir = stack[stackstart % div];
-				
-				routsum -= sir[0];
-				goutsum -= sir[1];
-				boutsum -= sir[2];
-				
-				if (y == 0) {
-					vmin[x] = Math.min(x + radius + 1, wm);
-				}
-				p = pix[yw + vmin[x]];
-				
-				sir[0] = (p & 0xff0000) >> 16;
-				sir[1] = (p & 0x00ff00) >> 8;
-				sir[2] = (p & 0x0000ff);
-				
-				rinsum += sir[0];
-				ginsum += sir[1];
-				binsum += sir[2];
-				
-				rsum += rinsum;
-				gsum += ginsum;
-				bsum += binsum;
-				
-				stackpointer = (stackpointer + 1) % div;
-				sir = stack[(stackpointer) % div];
-				
-				routsum += sir[0];
-				goutsum += sir[1];
-				boutsum += sir[2];
-				
-				rinsum -= sir[0];
-				ginsum -= sir[1];
-				binsum -= sir[2];
-				
-				yi++;
-			}
-			yw += w;
-		}
-		for (x = 0; x < w; x++) {
-			rinsum = ginsum = binsum = routsum = goutsum = boutsum = rsum = gsum = bsum = 0;
-			yp = -radius * w;
-			for (i = -radius; i <= radius; i++) {
-				yi = Math.max(0, yp) + x;
-				
-				sir = stack[i + radius];
-				
-				sir[0] = r[yi];
-				sir[1] = g[yi];
-				sir[2] = b[yi];
-				
-				rbs = r1 - Math.abs(i);
-				
-				rsum += r[yi] * rbs;
-				gsum += g[yi] * rbs;
-				bsum += b[yi] * rbs;
-				
-				if (i > 0) {
-					rinsum += sir[0];
-					ginsum += sir[1];
-					binsum += sir[2];
-				} else {
-					routsum += sir[0];
-					goutsum += sir[1];
-					boutsum += sir[2];
-				}
-				
-				if (i < hm) {
-					yp += w;
-				}
-			}
-			yi = x;
-			stackpointer = radius;
-			for (y = 0; y < h; y++) {
-				// Preserve alpha channel: ( 0xff000000 & pix[yi] )
-				pix[yi] = ( 0xff000000 & pix[yi] ) | ( dv[rsum] << 16 ) | ( dv[gsum] << 8 ) | dv[bsum];
-				
-				rsum -= routsum;
-				gsum -= goutsum;
-				bsum -= boutsum;
-				
-				stackstart = stackpointer - radius + div;
-				sir = stack[stackstart % div];
-				
-				routsum -= sir[0];
-				goutsum -= sir[1];
-				boutsum -= sir[2];
-				
-				if (x == 0) {
-					vmin[y] = Math.min(y + r1, hm) * w;
-				}
-				p = x + vmin[y];
-				
-				sir[0] = r[p];
-				sir[1] = g[p];
-				sir[2] = b[p];
-				
-				rinsum += sir[0];
-				ginsum += sir[1];
-				binsum += sir[2];
-				
-				rsum += rinsum;
-				gsum += ginsum;
-				bsum += binsum;
-				
-				stackpointer = (stackpointer + 1) % div;
-				sir = stack[stackpointer];
-				
-				routsum += sir[0];
-				goutsum += sir[1];
-				boutsum += sir[2];
-				
-				rinsum -= sir[0];
-				ginsum -= sir[1];
-				binsum -= sir[2];
-				
-				yi += w;
-			}
-		}
-		
-		bitmap.setPixels(pix, 0, w, 0, 0, w, h);
-		
-		return (bitmap);
-	}
-	
-	/* public static Bitmap renderScriptBlur(Context context, Bitmap image, int imageWidth, int imageHeight, float blurRadius) {
-		Bitmap inputBitmap = Bitmap.createScaledBitmap(image, imageWidth, imageHeight, false);
-		Bitmap outputBitmap = Bitmap.createBitmap(inputBitmap);
-		
-		RenderScript rs = RenderScript.create(context);
-		
-		ScriptIntrinsicBlur intrinsicBlur = ScriptIntrinsicBlur.create(rs, Element.U8_4(rs));
-		Allocation tmpIn = Allocation.createFromBitmap(rs, inputBitmap);
-		Allocation tmpOut = Allocation.createFromBitmap(rs, outputBitmap);
-		
-		intrinsicBlur.setRadius(blurRadius);
-		intrinsicBlur.setInput(tmpIn);
-		intrinsicBlur.forEach(tmpOut);
-		tmpOut.copyTo(outputBitmap);
-		
-		return outputBitmap;
-	} */
 	
 	/**
 	 * A class that represents a particle of the invisible ink

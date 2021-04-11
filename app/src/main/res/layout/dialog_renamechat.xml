@@ -2,13 +2,15 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:padding="16dp">
 	<com.google.android.material.textfield.TextInputLayout
 		android:id="@+id/input"
 		style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
 		android:layout_width="match_parent"
-		android:layout_height="wrap_content">
-
+		android:layout_height="wrap_content"
+		app:helperTextEnabled="true"
+		app:helperText="@string/message_renamegroup_onlyyouvisibility">
 		<com.google.android.material.textfield.TextInputEditText
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
