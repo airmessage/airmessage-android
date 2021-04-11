@@ -15,11 +15,11 @@ object BitmapHelper {
 	 * Loads a bitmap from a URI
 	 */
 	@JvmStatic
-	fun loadBitmap(context: Context, uri: Uri?, useMemory: Boolean): Single<Bitmap> {
+	fun loadBitmap(context: Context, uri: Uri, useMemory: Boolean): Single<Bitmap> {
 		return Single.fromCallable {
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
 				//Bitmaps loaded with ImageDecoder are by default hardware-accelerated, and can't be used on software canvases
-				val bitmap = ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri!!))
+				val bitmap = ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri))
 				if(useMemory) return@fromCallable bitmap.copy(Bitmap.Config.ARGB_8888, true) else return@fromCallable bitmap
 			} else {
 				return@fromCallable MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
