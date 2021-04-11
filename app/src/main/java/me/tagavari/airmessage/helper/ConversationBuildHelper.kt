@@ -49,7 +49,7 @@ object ConversationBuildHelper {
 	 */
 	@JvmStatic
 	@CheckReturnValue
-	fun buildConversationTitle(context: Context, conversationInfo: ConversationInfo): Single<String?> {
+	fun buildConversationTitle(context: Context, conversationInfo: ConversationInfo): Single<String> {
 		//Returning the conversation title if it is valid
 		if(!conversationInfo.title.isNullOrEmpty()) {
 			return Single.just(conversationInfo.title)
@@ -65,7 +65,7 @@ object ConversationBuildHelper {
 	 */
 	@JvmStatic
 	@CheckReturnValue
-	fun buildMemberTitle(context: Context, members: List<MemberInfo>): Single<String?> {
+	fun buildMemberTitle(context: Context, members: List<MemberInfo>): Single<String> {
 		//Returning "unknown" if the conversation has no members
 		if(members.isEmpty()) {
 			return Single.just(context.resources.getString(R.string.part_unknown))
@@ -217,7 +217,7 @@ object ConversationBuildHelper {
 	@JvmStatic
 	@RequiresApi(api = Build.VERSION_CODES.P)
 	@CheckReturnValue
-	fun generatePersonList(context: Context?, conversationInfo: ConversationInfo): Single<List<Person>> {
+	fun generatePersonList(context: Context, conversationInfo: ConversationInfo): Single<List<Person>> {
 		//Returning if the conversation has no members
 		if(conversationInfo.members.isEmpty()) {
 			return Single.just(emptyList())

@@ -1006,7 +1006,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 					
 					byte[] decompressedData;
 					try {
-						decompressedData = StandardCompressionHelper.decompressInflate(data);
+						decompressedData = StandardCompressionHelper.decompressDeflate(data);
 					} catch(IOException exception) {
 						exception.printStackTrace();
 						
