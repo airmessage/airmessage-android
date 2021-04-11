@@ -12,6 +12,7 @@ object AddressHelper {
 	 * @param address The address to format
 	 * @return The user-friendly String representation of the address
 	 */
+	@JvmStatic
 	fun formatAddress(address: String): String {
 		//Returning the E-Mail if the address is one (can't be formatted)
 		if(address.contains("@")) return address
@@ -31,6 +32,7 @@ object AddressHelper {
 	 * @param address The address to normalize
 	 * @return The normalized String representation of the address
 	 */
+	@JvmStatic
 	fun normalizeAddress(address: String): String {
 		//Returning the E-Mail if the address is one (can't be normalized)
 		if(address.contains("@")) return address
@@ -48,6 +50,7 @@ object AddressHelper {
 	/**
 	 * Normalizes an array of addresses
 	 */
+	@JvmStatic
 	fun normalizeAddresses(addresses: Array<String>): Array<String> {
 		//Normalizing the addresses
 		for(i in addresses.indices) addresses[i] = normalizeAddress(addresses[i])
@@ -59,6 +62,7 @@ object AddressHelper {
 	/**
 	 * Gets if the provided address is a valid address
 	 */
+	@JvmStatic
 	fun validateAddress(address: String): Boolean {
 		return validateEmail(address) || validatePhoneNumber(address)
 	}
@@ -66,6 +70,7 @@ object AddressHelper {
 	/**
 	 * Gets if the provided address is a valid email address
 	 */
+	@JvmStatic
 	fun validateEmail(address: String): Boolean {
 		return RegexConstants.email.matcher(address).find()
 	}
@@ -73,6 +78,7 @@ object AddressHelper {
 	/**
 	 * Gets if the provided address is a valid phone number
 	 */
+	@JvmStatic
 	fun validatePhoneNumber(address: String): Boolean {
 		return address.replace("[^\\d+]".toRegex(), "").length >= 3 && address.matches(regexPhoneNumber)
 	}
@@ -80,6 +86,7 @@ object AddressHelper {
 	/**
 	 * Removes all non-phone number characters from a string
 	 */
+	@JvmStatic
 	fun stripPhoneNumber(address: String): String {
 		return address.replace("[^\\d]".toRegex(), "")
 	}
