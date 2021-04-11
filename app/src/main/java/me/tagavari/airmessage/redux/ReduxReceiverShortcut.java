@@ -6,6 +6,7 @@ import android.os.Build;
 import androidx.annotation.RequiresApi;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -14,10 +15,12 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import kotlin.Pair;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.helper.ConversationHelper;
 import me.tagavari.airmessage.helper.ShortcutHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
+import me.tagavari.airmessage.util.ReplaceInsertResult;
 
 //A receiver that handles creating and updating shortcuts
 @RequiresApi(api = Build.VERSION_CODES.N_MR1)
@@ -39,7 +42,7 @@ public final class ReduxReceiverShortcut {
 	
 	private void handleMessaging(ReduxEventMessaging event) {
 		if(event instanceof ReduxEventMessaging.Message) {
-			pushConversations(((ReduxEventMessaging.Message) event).getConversationItems().stream().map(pair -> pair.first).collect(Collectors.toList()));
+			pushConversations(((ReduxEventMessaging.Message) event).getConversationItems().stream().map(Pair::getFirst).collect(Collectors.toList()));
 		} else if(event instanceof ReduxEventMessaging.ConversationUpdate) {
 			List<ConversationInfo> conversationList = new ArrayList<>(((ReduxEventMessaging.ConversationUpdate) event).getNewConversations().keySet());
 			Collections.sort(conversationList, ConversationHelper.conversationComparator);
@@ -47,10 +50,10 @@ public final class ReduxReceiverShortcut {
 		} else if(event instanceof ReduxEventMessaging.ConversationTitle || event instanceof ReduxEventMessaging.ConversationMember || event instanceof ReduxEventMessaging.ConversationMemberColor) {
 			ShortcutHelper.updateShortcut(context, ((ReduxEventMessaging.ReduxConversationAction) event).getConversationInfo()).subscribe();
 		} else if(event instanceof ReduxEventMessaging.ConversationDelete) {
-			ShortcutHelper.disableShortcuts(context, new long[]{((ReduxEventMessaging.ConversationDelete) event).getConversationInfo().getLocalID()});
+			ShortcutHelper.disableShortcuts(context, Collections.singletonList(((ReduxEventMessaging.ConversationDelete) event).getConversationInfo().getLocalID()));
 		} else if(event instanceof ReduxEventMessaging.ConversationServiceHandlerDelete) {
 			ReduxEventMessaging.ConversationServiceHandlerDelete deleteEvent = (ReduxEventMessaging.ConversationServiceHandlerDelete) event;
-			ShortcutHelper.disableShortcuts(context, deleteEvent.getDeletedIDs());
+			ShortcutHelper.disableShortcuts(context, Arrays.stream(deleteEvent.getDeletedIDs()).boxed().collect(Collectors.toList()));
 		}
 	}
 	

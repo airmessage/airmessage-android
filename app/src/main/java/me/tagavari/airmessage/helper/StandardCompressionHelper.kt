@@ -37,6 +37,7 @@ object StandardCompressionHelper {
 	 * @return The compressed data
 	 * @throws IOException If an I/O error has occurred
 	 */
+	@JvmStatic
 	@JvmOverloads
 	@Throws(IOException::class)
 	fun decompressGZIP(data: ByteArray, length: Int = data.size): ByteArray {
@@ -54,6 +55,7 @@ object StandardCompressionHelper {
 	 * @return The compressed data
 	 * @throws IOException If an I/O error has occurred
 	 */
+	@JvmStatic
 	@JvmOverloads
 	@Throws(IOException::class)
 	fun compressDeflate(data: ByteArray, length: Int = data.size): ByteArray {
@@ -79,6 +81,7 @@ object StandardCompressionHelper {
 	 * @return The decompressed data
 	 * @throws IOException If an I/O error has occurred
 	 */
+	@JvmStatic
 	@JvmOverloads
 	@Throws(IOException::class)
 	fun decompressDeflate(data: ByteArray, length: Int = data.size): ByteArray {

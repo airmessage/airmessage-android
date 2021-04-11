@@ -13,9 +13,9 @@ import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.constants.ColorConstants
 
 object ThemeHelper {
-	private const val darkModeFollowSystem = "follow_system"
-	private const val darkModeLight = "off"
-	private const val darkModeDark = "on"
+	const val darkModeFollowSystem = "follow_system"
+	const val darkModeLight = "off"
+	const val darkModeDark = "on"
 	
 	/**
 	 * Gets if the app is currently being displayed in night mode

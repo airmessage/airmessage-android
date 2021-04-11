@@ -95,7 +95,6 @@ import me.tagavari.airmessage.constants.FileNameConstants;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.helper.AttachmentStorageHelper;
 import me.tagavari.airmessage.helper.FileHelper;
-import me.tagavari.airmessage.helper.MathHelper;
 import me.tagavari.airmessage.helper.ResourceHelper;
 import me.tagavari.airmessage.helper.SoundHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;

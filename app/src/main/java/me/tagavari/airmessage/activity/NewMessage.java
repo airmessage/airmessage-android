@@ -17,7 +17,6 @@ import android.text.TextWatcher;
 import android.transition.ChangeBounds;
 import android.transition.Fade;
 import android.transition.TransitionManager;
-import android.util.Pair;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -29,7 +28,6 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.PopupWindow;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -68,6 +66,7 @@ import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.PublishSubject;
+import kotlin.Pair;
 import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
@@ -1327,7 +1326,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 						if(conversationInfo == null) {
 							//Creating the conversation
 							int conversationColor = ConversationColorHelper.getDefaultConversationColor();
-							List<MemberInfo> coloredMembers = ConversationColorHelper.getColoredMembers(participants.toArray(new String[0]), conversationColor);
+							List<MemberInfo> coloredMembers = ConversationColorHelper.getColoredMembers(participants, conversationColor);
 							conversationInfo = new ConversationInfo(-1, null, threadID, ConversationState.ready, ServiceHandler.systemMessaging, ServiceType.systemSMS, conversationColor, coloredMembers, null);
 							
 							//Writing the conversation to disk
@@ -1351,12 +1350,12 @@ public class NewMessage extends AppCompatCompositeActivity {
 			compositeDisposable.add(
 					conversationSingle.doOnSuccess(pair -> {
 						//Notifying listeners of the new conversation
-						if(pair.second) {
-							ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationUpdate(Collections.singletonMap(pair.first, Collections.emptyList()), Collections.emptyList()));
+						if(pair.getSecond()) {
+							ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationUpdate(Collections.singletonMap(pair.getFirst(), Collections.emptyList()), Collections.emptyList()));
 						}
 					}).subscribe(pair -> {
 						//Launching the conversation
-						launchConversation(getApplication(), pair.first.getLocalID());
+						launchConversation(getApplication(), pair.getFirst().getLocalID());
 					}, error -> {
 						//Enabling the UI
 						loadingState.setValue(false);

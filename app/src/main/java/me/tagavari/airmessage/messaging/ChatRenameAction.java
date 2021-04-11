@@ -5,6 +5,8 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.Optional;
+
 import io.reactivex.rxjava3.core.Single;
 import me.tagavari.airmessage.enums.ConversationItemType;
 import me.tagavari.airmessage.R;
@@ -41,7 +43,10 @@ public class ChatRenameAction extends ConversationAction {
 	
 	@Override
 	public Single<String> buildMessageAsync(Context context) {
-		return ContactHelper.getUserDisplayName(context, agent).map(userName -> buildMessage(context, userName.orElse(null), title));
+		return ContactHelper.getUserDisplayName(context, agent)
+				.map(Optional::of)
+				.defaultIfEmpty(Optional.empty())
+				.map(userName -> buildMessage(context, userName.orElse(null), title));
 	}
 	
 	/**

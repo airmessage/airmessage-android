@@ -1,11 +1,9 @@
 package me.tagavari.airmessage.redux;
 
 import android.content.Context;
-import android.util.Pair;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -14,6 +12,7 @@ import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import kotlin.Pair;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.data.DatabaseManager;
@@ -54,16 +53,16 @@ public final class ReduxReceiverNotification {
 						conversationEvent.getNewConversations().entrySet().stream().map(entry -> new Pair<ConversationInfo, Collection<ConversationItem>>(entry.getKey(), entry.getValue()))
 				).forEach(pair -> {
 					//Skipping muted and foreground conversations
-					if(pair.first.isMuted() || foregroundConversations.contains(pair.first.getLocalID())) return;
+					if(pair.getFirst().isMuted() || foregroundConversations.contains(pair.getFirst().getLocalID())) return;
 					
 					//Sending notifications for message items
-					for(ConversationItem conversationItem : pair.second) {
+					for(ConversationItem conversationItem : pair.getSecond()) {
 						if(conversationItem.getItemType() != ConversationItemType.message) continue;
 						
 						MessageInfo messageInfo = (MessageInfo) conversationItem;
 						if(messageInfo.isOutgoing()) continue;
 						
-						NotificationHelper.sendNotification(context, pair.first, messageInfo);
+						NotificationHelper.sendNotification(context, pair.getFirst(), messageInfo);
 					}
 				});
 			} else if(event instanceof ReduxEventMessaging.Message) {
@@ -74,12 +73,12 @@ public final class ReduxReceiverNotification {
 				
 				//Sending notifications for received messages
 				for(Pair<ConversationInfo, List<ReplaceInsertResult>> pair : messageEvent.getConversationItems()) {
-					ConversationInfo conversationInfo = pair.first;
+					ConversationInfo conversationInfo = pair.getFirst();
 					
 					//Ignoring if the conversation is muted or is loaded the foreground
 					if(conversationInfo.isMuted() || foregroundConversations.contains(conversationInfo.getLocalID())) continue;
 					
-					for(ReplaceInsertResult result : pair.second) {
+					for(ReplaceInsertResult result : pair.getSecond()) {
 						//Getting the item
 						ConversationItem conversationItem = result.getTargetItem();
 						
@@ -104,7 +103,7 @@ public final class ReduxReceiverNotification {
 				
 				Single.create((SingleEmitter<Pair<ConversationItem, ConversationInfo>> emitter) -> {
 					Pair<ConversationItem, ConversationInfo> pair = DatabaseManager.getInstance().loadConversationItemWithChat(MainApplication.getInstance(), tapbackEvent.getMetadata().getMessageID());
-					if(pair == null || pair.first.getItemType() != ConversationItemType.message) throw new Exception("Failed to load message ID " + tapbackEvent.getMetadata().getMessageID() + " for tapback");
+					if(pair == null || pair.getFirst().getItemType() != ConversationItemType.message) throw new Exception("Failed to load message ID " + tapbackEvent.getMetadata().getMessageID() + " for tapback");
 					else emitter.onSuccess(pair);
 				}).subscribeOn(Schedulers.single())
 						.observeOn(AndroidSchedulers.mainThread())
@@ -112,14 +111,14 @@ public final class ReduxReceiverNotification {
 						.flatMapSingle(pair -> {
 							//Getting the tapback summary
 							TapbackInfo tapbackInfo = tapbackEvent.getTapbackInfo();
-							String messageSummary = LanguageHelper.messageToString(MainApplication.getInstance().getResources(), (MessageInfo) pair.first);
+							String messageSummary = LanguageHelper.messageToString(MainApplication.getInstance().getResources(), (MessageInfo) pair.getFirst());
 							return LanguageHelper.getTapbackSummary(MainApplication.getInstance(), tapbackInfo.getSender(), tapbackInfo.getCode(), messageSummary)
 									//Preserving the conversation info
-									.map(summary -> new Pair<>(summary, pair.second));
+									.map(summary -> new Pair<>(summary, pair.getSecond()));
 						})
 						.subscribe(pair -> {
 							//Sending the notification
-							NotificationHelper.sendNotification(MainApplication.getInstance(), pair.first, tapbackEvent.getTapbackInfo().getSender(), System.currentTimeMillis(), pair.second);
+							NotificationHelper.sendNotification(MainApplication.getInstance(), pair.getFirst(), tapbackEvent.getTapbackInfo().getSender(), System.currentTimeMillis(), pair.getSecond());
 						});
 			}
 		}));

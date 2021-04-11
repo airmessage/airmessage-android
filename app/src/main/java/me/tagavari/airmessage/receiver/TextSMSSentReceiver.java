@@ -3,12 +3,12 @@ package me.tagavari.airmessage.receiver;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.util.Pair;
 
 import com.klinker.android.send_message.SentReceiver;
 
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import kotlin.Pair;
 import me.tagavari.airmessage.constants.SMSReceiverConstants;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
@@ -31,8 +31,8 @@ public class TextSMSSentReceiver extends SentReceiver {
 		Completable.create(emitter -> {
 			Pair<ConversationItem, ConversationInfo> pair = DatabaseManager.getInstance().loadConversationItemWithChat(context, messageID);
 			if(pair == null) return;
-			ConversationInfo conversationInfo = pair.second;
-			MessageInfo messageInfo = (MessageInfo) pair.first;
+			ConversationInfo conversationInfo = pair.getSecond();
+			MessageInfo messageInfo = (MessageInfo) pair.getFirst();
 			
 			//Updating the message
 			if(resultOK) {

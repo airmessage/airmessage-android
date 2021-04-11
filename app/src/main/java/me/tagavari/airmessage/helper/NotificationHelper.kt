@@ -126,6 +126,7 @@ object NotificationHelper {
 	 * @param conversationInfo The conversation of the message
 	 * @param messageInfo The message to notify the user about
 	 */
+	@JvmStatic
 	fun sendNotification(context: Context, conversationInfo: ConversationInfo, messageInfo: MessageInfo) {
 		//Returning if notifications are disabled or the conversation is muted
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.resources.getString(R.string.preference_messagenotifications_getnotifications_key), false) || conversationInfo.isMuted) return
@@ -153,8 +154,6 @@ object NotificationHelper {
 		//Adding the message
 		addMessageToNotification(context, conversationInfo, message, sender, timestamp, null)
 	}
-	
-	data class NotificationFutureData(val title: String, val shortcutIcon: Optional<IconCompat>, val memberInfo: Optional<UserCacheHelper.UserInfo>, val memberIcon: Optional<Bitmap>, val suggestions: List<String>)
 	
 	/**
 	 * Uses the parameters to asynchronously fetch required notification information and then sends the notification
@@ -809,4 +808,6 @@ object NotificationHelper {
 			)
 		}.build()
 	}
+	
+	data class NotificationFutureData(val title: String, val shortcutIcon: Optional<IconCompat>, val memberInfo: Optional<UserCacheHelper.UserInfo>, val memberIcon: Optional<Bitmap>, val suggestions: List<String>)
 }

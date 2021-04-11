@@ -145,5 +145,5 @@ object ErrorLanguageHelper {
 		return ErrorDisplay(message, showRetryButton)
 	}
 	
-	data class ErrorDisplay(val message: String, val recoverable: Boolean)
+	data class ErrorDisplay(val message: String, val isRecoverable: Boolean)
 }

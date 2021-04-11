@@ -10,7 +10,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
-import android.util.Pair;
 
 import androidx.annotation.Nullable;
 import androidx.arch.core.util.Function;
@@ -45,6 +44,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.CompletableSubject;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.SingleSubject;
+import kotlin.Pair;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.activity.Preferences;
@@ -398,8 +398,8 @@ public class ConnectionManager {
 						if(response.getCollectedAttachments() != null) {
 							for(Pair<MessageInfo, AttachmentInfo> attachmentData : response.getCollectedAttachments()) {
 								//Ignoring outgoing attachments
-								if(attachmentData.first.isOutgoing()) continue;
-								ConnectionTaskManager.downloadAttachment(ConnectionManager.this, attachmentData.first.getLocalID(), attachmentData.second.getLocalID(), attachmentData.second.getGUID(), attachmentData.second.getFileName());
+								if(attachmentData.getFirst().isOutgoing()) continue;
+								ConnectionTaskManager.downloadAttachment(ConnectionManager.this, attachmentData.getFirst().getLocalID(), attachmentData.getSecond().getLocalID(), attachmentData.getSecond().getGUID(), attachmentData.getSecond().getFileName());
 							}
 						}
 					}).subscribe();
@@ -647,7 +647,7 @@ public class ConnectionManager {
 					conversationInfo.setServiceType(structConversationInfo.service);
 					conversationInfo.setTitle(structConversationInfo.name);
 					conversationInfo.setConversationColor(ConversationColorHelper.getDefaultConversationColor(conversationInfo.getGUID()));
-					conversationInfo.setMembers(ConversationColorHelper.getColoredMembers(structConversationInfo.members, conversationInfo.getConversationColor(), conversationInfo.getGUID()));
+					conversationInfo.setMembers(ConversationColorHelper.getColoredMembers(Arrays.asList(structConversationInfo.members), conversationInfo.getConversationColor(), conversationInfo.getGUID()));
 					conversationInfo.setState(ConversationState.ready);
 					
 					//Marking the conversation as valid (and to be saved)
@@ -681,9 +681,9 @@ public class ConnectionManager {
 				for(ActivityStatusUpdate statusUpdate : result.getActivityStatusUpdates()) {
 					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.MessageState(statusUpdate.getMessageID(), statusUpdate.getMessageState(), statusUpdate.getDateRead()));
 				}
-				for(Pair<StickerInfo, ModifierMetadata> sticker : result.getStickerModifiers()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.StickerAdd(sticker.first, sticker.second));
-				for(Pair<TapbackInfo, ModifierMetadata> tapback : result.getTapbackModifiers()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.TapbackUpdate(tapback.first, tapback.second, true));
-				for(Pair<TapbackInfo, ModifierMetadata> tapback : result.getTapbackRemovals()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.TapbackUpdate(tapback.first, tapback.second, false));
+				for(Pair<StickerInfo, ModifierMetadata> sticker : result.getStickerModifiers()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.StickerAdd(sticker.getFirst(), sticker.getSecond()));
+				for(Pair<TapbackInfo, ModifierMetadata> tapback : result.getTapbackModifiers()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.TapbackUpdate(tapback.getFirst(), tapback.getSecond(), true));
+				for(Pair<TapbackInfo, ModifierMetadata> tapback : result.getTapbackRemovals()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.TapbackUpdate(tapback.getFirst(), tapback.getSecond(), false));
 			}).subscribe();
 		}
 		

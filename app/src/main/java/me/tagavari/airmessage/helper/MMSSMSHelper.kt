@@ -109,6 +109,7 @@ object MMSSMSHelper {
 	 * @param participants The participants of the conversation
 	 * @return A pair of the conversation, and a boolean to indicate if this conversation is new
 	 */
+	@JvmStatic
 	fun getOrCreateTextConversation(context: Context, participants: List<String>): Pair<ConversationInfo, Boolean>? {
 		//Getting the Android thread ID
 		val threadID = Telephony.Threads.getOrCreateThreadId(context, participants.toSet())
@@ -135,6 +136,7 @@ object MMSSMSHelper {
 	 * @param threadID The MMS/SMS ID of the thread
 	 * @return A pair of the conversation, and a boolean to indicate if this conversation is new
 	 */
+	@JvmStatic
 	fun getOrCreateTextConversation(context: Context, threadID: Long): Pair<ConversationInfo, Boolean>? {
 		//Trying to find a matching local conversation
 		var conversationInfo = DatabaseManager.getInstance().findConversationByExternalID(context, threadID, ServiceHandler.systemMessaging, ServiceType.systemSMS)
@@ -166,6 +168,7 @@ object MMSSMSHelper {
 	 * @param newMessage The conversation's message
 	 * @return A single for a pair of the new conversation and message
 	 */
+	@JvmStatic
 	fun updateTextConversationMessage(context: Context, participants: List<String>, newMessage: MessageInfo): Single<Pair<ConversationInfo, MessageInfo>> {
 		return Single.fromCallable {
 			getOrCreateTextConversation(context, participants) ?: throw RuntimeException("Failed to create conversation")
@@ -183,6 +186,7 @@ object MMSSMSHelper {
 	 * @param newMessage The conversation's message
 	 * @return A single for a pair of the new conversation and message
 	 */
+	@JvmStatic
 	fun updateTextConversationMessage(context: Context, threadID: Long, newMessage: MessageInfo): Single<Pair<ConversationInfo, MessageInfo>> {
 		return Single.fromCallable {
 			getOrCreateTextConversation(context, threadID) ?: throw RuntimeException("Failed to create conversation")
@@ -459,6 +463,7 @@ object MMSSMSHelper {
 	 * @param messageLocalID The local ID of the message
 	 * @return The transaction to use when sending the message
 	 */
+	@JvmStatic
 	fun getMMSSMSTransaction(context: Context?, conversationLocalID: Long, messageLocalID: Long): Transaction {
 		val settings = Settings()
 		settings.deliveryReports = Preferences.getPreferenceSMSDeliveryReports(context)

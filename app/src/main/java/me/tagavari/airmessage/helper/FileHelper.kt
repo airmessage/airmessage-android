@@ -22,6 +22,7 @@ object FileHelper {
 	 * @param startIndex the number to start the counter at
 	 * @return the first available file found
 	 */
+	@JvmStatic
 	@JvmOverloads
 	fun findFreeFile(directory: File, fileName: String, splitFileExtension: Boolean, separator: String = "_", startIndex: Int = 0): File {
 		//Creating the default file
@@ -63,6 +64,7 @@ object FileHelper {
 	/**
 	 * Gets the content MIME type of a URI
 	 */
+	@JvmStatic
 	fun getMimeType(context: Context, uri: Uri): String {
 		return StringHelper.defaultEmptyString(context.contentResolver.getType(uri), MIMEConstants.defaultMIMEType)
 	}
@@ -81,6 +83,7 @@ object FileHelper {
 	/**
 	 * Gets the file extension from a URL
 	 */
+	@JvmStatic
 	fun fileExtensionFromURL(url: String): String? {
 		val separatorIndex = url.lastIndexOf(".")
 		val queryIndex = url.lastIndexOf("?")
@@ -129,6 +132,7 @@ object FileHelper {
 	/**
 	 * Gets if a file's MIME type should be recognized as a document file
 	 */
+	@JvmStatic
 	fun isAttachmentDocument(type: String): Boolean {
 		return listOf(MIMEConstants.mimeTypeImage,
 				MIMEConstants.mimeTypeVideo,
