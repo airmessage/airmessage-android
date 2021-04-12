@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.task;
 
 import android.content.Context;
-import android.util.Pair;
 
 import androidx.annotation.Nullable;
 
@@ -12,10 +11,10 @@ import java.util.stream.Collectors;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.core.Completable;
-import io.reactivex.rxjava3.core.Emitter;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import kotlin.Pair;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.enums.MessageState;
@@ -23,7 +22,6 @@ import me.tagavari.airmessage.enums.ServiceHandler;
 import me.tagavari.airmessage.helper.AttachmentStorageHelper;
 import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;

@@ -5,6 +5,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 
 import java.util.Objects;
+import java.util.Optional;
 
 import io.reactivex.rxjava3.core.Single;
 import me.tagavari.airmessage.R;
@@ -45,7 +46,11 @@ public class ChatMemberAction extends ConversationAction {
 	
 	@Override
 	public Single<String> buildMessageAsync(Context context) {
-		return Single.zip(ContactHelper.getUserDisplayName(context, agent), ContactHelper.getUserDisplayName(context, other), (agentName, otherName) -> buildMessage(context, agentName.orElse(null), otherName.orElse(null), actionType));
+		return Single.zip(
+				ContactHelper.getUserDisplayName(context, agent).map(Optional::of).defaultIfEmpty(Optional.empty()),
+				ContactHelper.getUserDisplayName(context, other).map(Optional::of).defaultIfEmpty(Optional.empty()),
+				(agentName, otherName) -> buildMessage(context, agentName.orElse(null), otherName.orElse(null), actionType)
+		);
 	}
 	
 	/**

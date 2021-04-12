@@ -60,6 +60,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.math.MathUtils;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.io.File;
@@ -94,7 +95,6 @@ import me.tagavari.airmessage.constants.FileNameConstants;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.helper.AttachmentStorageHelper;
 import me.tagavari.airmessage.helper.FileHelper;
-import me.tagavari.airmessage.helper.MathHelper;
 import me.tagavari.airmessage.helper.ResourceHelper;
 import me.tagavari.airmessage.helper.SoundHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
@@ -712,9 +712,9 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 			valueAnimator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
 			valueAnimator.addUpdateListener(animation -> {
 				float value = (float) animation.getAnimatedValue();
-				view.getLayoutParams().height = (int) MathHelper.lerp(value, sizeStart, sizeTarget);
-				view.setRadius(MathHelper.lerp(value, radiusStart, radiusTarget));
-				view.setCardElevation(MathHelper.lerp(value, elevationStart, elevationTarget));
+				view.getLayoutParams().height = (int) MathUtils.lerp(value, sizeStart, sizeTarget);
+				view.setRadius(MathUtils.lerp(value, radiusStart, radiusTarget));
+				view.setCardElevation(MathUtils.lerp(value, elevationStart, elevationTarget));
 				view.requestLayout();
 			});
 			valueAnimator.start();

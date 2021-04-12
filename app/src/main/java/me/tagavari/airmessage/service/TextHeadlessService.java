@@ -9,6 +9,9 @@ import android.text.TextUtils;
 
 import androidx.annotation.Nullable;
 
+import java.util.Arrays;
+import java.util.List;
+
 import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.helper.MessageSendHelper;
 import me.tagavari.airmessage.messaging.MessageInfo;
@@ -36,13 +39,13 @@ public class TextHeadlessService extends IntentService {
 		//Ignoring if there is missing information
 		if(TextUtils.isEmpty(recipients) || TextUtils.isEmpty(message)) return;
 		
-		String[] participants = TextUtils.split(recipients, ";");
+		List<String> participants = Arrays.asList(TextUtils.split(recipients, ";"));
 		MessageInfo messageInfo = MessageInfo.blankFromText(message);
 		
 		//Adding the message
 		MMSSMSHelper.updateTextConversationMessage(this, participants, messageInfo)
 				//Sending the message
-				.flatMapCompletable(pair -> MessageSendHelper.sendMessageMMSSMS(this, pair.first, pair.second))
+				.flatMapCompletable(pair -> MessageSendHelper.sendMessageMMSSMS(this, pair.getFirst(), pair.getSecond()))
 				.subscribe();
 	}
 	

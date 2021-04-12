@@ -3,6 +3,8 @@ package me.tagavari.airmessage.task;
 import android.content.Context;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
@@ -24,7 +26,7 @@ public class ConversationActionTask {
 	 */
 	@CheckReturnValue
 	public static Completable unreadConversations(Collection<ConversationInfo> conversations, int unreadCount) {
-		long[] conversationIDs = ConversationHelper.conversationsToIDArray(conversations);
+		List<Long> conversationIDs = conversations.stream().map(ConversationInfo::getLocalID).collect(Collectors.toList());
 		
 		return Completable.create(emitter -> {
 			for(long conversationID : conversationIDs) DatabaseManager.getInstance().setUnreadMessageCount(conversationID, unreadCount);
@@ -42,7 +44,7 @@ public class ConversationActionTask {
 	 */
 	@CheckReturnValue
 	public static Completable muteConversations(Collection<ConversationInfo> conversations, boolean mute) {
-		long[] conversationIDs = ConversationHelper.conversationsToIDArray(conversations);
+		List<Long> conversationIDs = conversations.stream().map(ConversationInfo::getLocalID).collect(Collectors.toList());
 		
 		return Completable.create(emitter -> {
 			for(long conversationID : conversationIDs) DatabaseManager.getInstance().updateConversationMuted(conversationID, mute);
@@ -60,7 +62,7 @@ public class ConversationActionTask {
 	 */
 	@CheckReturnValue
 	public static Completable archiveConversations(Collection<ConversationInfo> conversations, boolean archive) {
-		long[] conversationIDs = ConversationHelper.conversationsToIDArray(conversations);
+		List<Long> conversationIDs = conversations.stream().map(ConversationInfo::getLocalID).collect(Collectors.toList());
 		
 		return Completable.create(emitter -> {
 			for(long conversationID : conversationIDs) DatabaseManager.getInstance().updateConversationArchived(conversationID, archive);
@@ -75,7 +77,7 @@ public class ConversationActionTask {
 	 */
 	@CheckReturnValue
 	public static Completable deleteConversations(Context context, Collection<ConversationInfo> conversations) {
-		long[] conversationIDs = ConversationHelper.conversationsToIDArray(conversations);
+		List<Long> conversationIDs = conversations.stream().map(ConversationInfo::getLocalID).collect(Collectors.toList());
 		
 		return Completable.create(emitter -> {
 			for(long conversationID : conversationIDs) DatabaseManager.getInstance().deleteConversation(context, conversationID);

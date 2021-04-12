@@ -2,7 +2,6 @@ package me.tagavari.airmessage.service;
 
 import android.util.Base64;
 import android.util.Log;
-import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
@@ -16,6 +15,7 @@ import java.util.Map;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
+import kotlin.Pair;
 import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.ConnectionManager;
@@ -131,9 +131,9 @@ public class FCMService extends FirebaseMessagingService {
 					for(ActivityStatusUpdate statusUpdate : result.getActivityStatusUpdates()) {
 						ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.MessageState(statusUpdate.getMessageID(), statusUpdate.getMessageState(), statusUpdate.getDateRead()));
 					}
-					for(Pair<StickerInfo, ModifierMetadata> sticker : result.getStickerModifiers()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.StickerAdd(sticker.first, sticker.second));
-					for(Pair<TapbackInfo, ModifierMetadata> tapback : result.getTapbackModifiers()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.TapbackUpdate(tapback.first, tapback.second, true));
-					for(Pair<TapbackInfo, ModifierMetadata> tapback : result.getTapbackRemovals()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.TapbackUpdate(tapback.first, tapback.second, false));
+					for(Pair<StickerInfo, ModifierMetadata> sticker : result.getStickerModifiers()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.StickerAdd(sticker.getFirst(), sticker.getSecond()));
+					for(Pair<TapbackInfo, ModifierMetadata> tapback : result.getTapbackModifiers()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.TapbackUpdate(tapback.getFirst(), tapback.getSecond(), true));
+					for(Pair<TapbackInfo, ModifierMetadata> tapback : result.getTapbackRemovals()) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.TapbackUpdate(tapback.getFirst(), tapback.getSecond(), false));
 				}).subscribe();
 			} else {
 				//Fetch messages from the connection service
