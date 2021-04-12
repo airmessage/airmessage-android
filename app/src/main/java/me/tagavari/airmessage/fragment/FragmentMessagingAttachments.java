@@ -712,9 +712,9 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 			valueAnimator.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime));
 			valueAnimator.addUpdateListener(animation -> {
 				float value = (float) animation.getAnimatedValue();
-				view.getLayoutParams().height = (int) MathUtils.lerp(value, sizeStart, sizeTarget);
-				view.setRadius(MathUtils.lerp(value, radiusStart, radiusTarget));
-				view.setCardElevation(MathUtils.lerp(value, elevationStart, elevationTarget));
+				view.getLayoutParams().height = (int) MathUtils.lerp(sizeStart, sizeTarget, value);
+				view.setRadius(MathUtils.lerp(radiusStart, radiusTarget, value));
+				view.setCardElevation(MathUtils.lerp(elevationStart, elevationTarget, value));
 				view.requestLayout();
 			});
 			valueAnimator.start();
