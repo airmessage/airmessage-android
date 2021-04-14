@@ -61,6 +61,7 @@ public class FCMService extends FirebaseMessagingService {
 			String protocolVersionString = remoteMessageData.get("protocol_version");
 			if(protocolVersionString == null) {
 				Log.w(TAG, "No payload for FCM data version " + payloadVersion);
+				return;
 			}
 			int[] protocolVersion;
 			try {
