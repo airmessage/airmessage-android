@@ -373,7 +373,7 @@ public class ConnectionManager {
 		public void onMessageUpdate(Collection<Blocks.ConversationItem> data) {
 			//Filtering out data that would be received over FCM
 			Collection<Blocks.ConversationItem> filteredData;
-			if(communicationsManager.getDataProxyType() == ProxyType.connect) {
+			if(communicationsManager.getDataProxyType() == ProxyType.connect && communicationsManager.isFeatureSupported(ConnectionFeature.pushNotifications)) {
 				filteredData = data.stream().filter(item -> !(item instanceof Blocks.MessageInfo && ((Blocks.MessageInfo) item).sender != null)).collect(Collectors.toList());
 			} else {
 				filteredData = data;
@@ -668,7 +668,7 @@ public class ConnectionManager {
 		public void onModifierUpdate(Collection<Blocks.ModifierInfo> data) {
 			//Filtering out data that would be received over FCM
 			Collection<Blocks.ModifierInfo> filteredData;
-			if(communicationsManager.getDataProxyType() == ProxyType.connect) {
+			if(communicationsManager.getDataProxyType() == ProxyType.connect && communicationsManager.isFeatureSupported(ConnectionFeature.pushNotifications)) {
 				filteredData = data.stream().filter(item -> !(item instanceof Blocks.TapbackModifierInfo && ((Blocks.TapbackModifierInfo) item).sender != null)).collect(Collectors.toList());
 			} else {
 				filteredData = data;
