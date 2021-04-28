@@ -65,7 +65,6 @@ public class MassRetrievalRequest {
 	 * @return A single to return the list of added conversations
 	 */
 	public Single<List<ConversationInfo>> handleInitialInfo(Collection<Blocks.ConversationInfo> conversationList, int totalMessageCount) {
-		System.out.println("Handing initial info");
 		if(initialInfoReceived) {
 			return Single.error(new IllegalStateException("Initial info already received"));
 		}
@@ -94,7 +93,6 @@ public class MassRetrievalRequest {
 	 * @return A single to return the list of added items
 	 */
 	public Single<List<ConversationItem>> handleMessages(Context context, int responseIndex, Collection<Blocks.ConversationItem> itemList) {
-		System.out.println("Handing " + itemList.size() + " messages");
 		if(!initialInfoReceived) {
 			return Single.error(new IllegalStateException("Initial info not yet received"));
 		}

@@ -29,7 +29,7 @@ object StandardCompressionHelper {
 			}
 		}
 	}
-	
+
 	/**
 	 * Deflates a byte array
 	 * @param data The data to compress
@@ -67,17 +67,11 @@ object StandardCompressionHelper {
 			}
 		}
 	}
-	
+
 	/**
 	 * Inflates a byte array
 	 * @param data The data to decompress
 	 * @param length The length of the data to read and decompress
-	 * @return The decompressed data
-	 * @throws IOException If an I/O error has occurred
-	 */
-	/**
-	 * Inflates a byte array
-	 * @param data The data to decompress
 	 * @return The decompressed data
 	 * @throws IOException If an I/O error has occurred
 	 */

@@ -705,7 +705,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 	
 	@Override
 	boolean isFeatureSupported(@ConnectionFeature int featureID) {
-		return featureID == ConnectionFeature.idBasedRetrieval || featureID == ConnectionFeature.pushNotifications;
+		return featureID == ConnectionFeature.idBasedRetrieval || featureID == ConnectionFeature.payloadPushNotifications;
 	}
 	
 	/**
