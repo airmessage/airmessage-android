@@ -49,7 +49,7 @@ object ConversationHelper {
 		//Finding the correct insertion position for this conversation
 		list.forEachIndexed { i, listedConversation ->
 			val listedPreview = listedConversation.dynamicPreview
-			if(listedPreview != null && listedPreview.date < dynamicPreview.date) {
+			if(listedPreview == null || listedPreview.date < dynamicPreview.date) {
 				return i
 			}
 		}
@@ -69,9 +69,10 @@ object ConversationHelper {
 		//Getting the conversation's dynamic preview
 		val dynamicPreview = conversationInfo.dynamicPreview
 		
-		//If the conversation has no dynamic preview, add the item to the end of the list
+		//If the conversation has no dynamic preview, add it to the end of the list
 		if(dynamicPreview == null) {
-			return list.size
+			val listContains = list.any { listedConversation -> conversationInfo.localID == listedConversation.localID }
+			return if(listContains) list.size - 1 else list.size
 		}
 		
 		//Finding the correct insertion position for this conversation
@@ -84,14 +85,15 @@ object ConversationHelper {
 			}
 			
 			val listedPreview = listedConversation.dynamicPreview
-			if(listedPreview != null && listedPreview.date < dynamicPreview.date) {
+			if(listedPreview == null || listedPreview.date < dynamicPreview.date) {
 				//If we're past the point where this conversation will be removed, compensate by going one index down
 				return if(pastOriginalIndex) i - 1 else i
 			}
 		}
 		
 		//No matches; add this conversation to the end of the list
-		return list.size - 1
+		val listContains = list.any { listedConversation -> conversationInfo.localID == listedConversation.localID }
+		return if(listContains) list.size - 1 else list.size
 	}
 	
 	/**
