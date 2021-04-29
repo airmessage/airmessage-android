@@ -33,6 +33,8 @@ public class MassRetrievalRequest {
 	
 	private final Scheduler requestScheduler = Schedulers.from(Executors.newSingleThreadExecutor(), true);
 	
+	private final short requestID;
+	
 	//Conversations state
 	private boolean initialInfoReceived = false;
 	private volatile List<ConversationInfo> conversationList;
@@ -47,6 +49,14 @@ public class MassRetrievalRequest {
 	private File attachmentTargetFile;
 	private int attachmentExpectedRequestIndex = 0;
 	private OutputStream attachmentOutputStream;
+	
+	public MassRetrievalRequest(short requestID) {
+		this.requestID = requestID;
+	}
+	
+	public short getRequestID() {
+		return requestID;
+	}
 	
 	/**
 	 * Handles the initial mass retrieval information sent from the server

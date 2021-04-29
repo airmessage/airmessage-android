@@ -1,19 +1,14 @@
 package me.tagavari.airmessage.redux;
 
-import android.util.Pair;
-
 import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import io.reactivex.rxjava3.annotations.Nullable;
-import me.tagavari.airmessage.common.Blocks;
+import kotlin.Pair;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.enums.MessageState;
 import me.tagavari.airmessage.enums.ServiceHandler;
-import me.tagavari.airmessage.helper.AttachmentStorageHelper;
-import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.FileDraft;

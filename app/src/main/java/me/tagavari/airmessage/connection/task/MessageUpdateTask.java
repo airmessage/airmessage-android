@@ -1,9 +1,6 @@
 package me.tagavari.airmessage.connection.task;
 
 import android.content.Context;
-import android.util.LongSparseArray;
-import android.util.Pair;
-import android.util.SparseArray;
 
 import androidx.annotation.Nullable;
 
@@ -17,8 +14,8 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import kotlin.Pair;
 import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.connection.ConnectionTaskManager;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.enums.ConversationItemType;
 import me.tagavari.airmessage.enums.ConversationState;

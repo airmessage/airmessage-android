@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.connection.task;
 
 import android.content.Context;
-import android.util.Pair;
 
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
@@ -14,13 +13,13 @@ import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import kotlin.Pair;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.util.ActivityStatusUpdate;
 import me.tagavari.airmessage.util.ModifierMetadata;
-import me.tagavari.airmessage.util.Triplet;
 
 public class ModifierUpdateTask {
 	/**
@@ -72,15 +71,16 @@ public class ModifierUpdateTask {
 					//Getting the tapback modifier
 					Blocks.TapbackModifierInfo tapbackModifierInfo = (Blocks.TapbackModifierInfo) modifierInfo;
 					
-					Pair<TapbackInfo, ModifierMetadata> pair;
-					
 					//Updating the modifier in the database
-					if(tapbackModifierInfo.isAddition) pair = DatabaseManager.getInstance().addMessageTapback(tapbackModifierInfo);
-					//Deleting the modifier in the database
-					else pair = DatabaseManager.getInstance().removeMessageTapback(tapbackModifierInfo);
-					
-					//Adding the tapback to the list
-					if(pair != null) tapbackModifiers.add(pair);
+					if(tapbackModifierInfo.isAddition) {
+						Pair<TapbackInfo, ModifierMetadata> result = DatabaseManager.getInstance().addMessageTapback(tapbackModifierInfo);
+						if(result != null) tapbackModifiers.add(result);
+					}
+					//Deleting the modifier from the database
+					else {
+						Pair<TapbackInfo, ModifierMetadata> result = DatabaseManager.getInstance().removeMessageTapback(tapbackModifierInfo);
+						if(result != null) tapbackRemovals.add(result);
+					}
 				}
 			}
 			

@@ -699,7 +699,7 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 	}
 	
 	@Override
-	boolean requestRetrievalID(long idLower) {
+	boolean requestRetrievalID(long idSince, long timeLower, long timeUpper) {
 		throw new UnsupportedOperationException("Not supported");
 	}
 	

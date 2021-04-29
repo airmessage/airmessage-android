@@ -18,7 +18,6 @@ import android.text.SpannableString;
 import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.TypefaceSpan;
-import android.util.Pair;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -71,6 +70,7 @@ import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import kotlin.Pair;
 import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
@@ -766,11 +766,12 @@ public class Conversations extends AppCompatCompositeActivity {
 		if(event instanceof ReduxEventMassRetrieval.Complete) {
 			viewModel.finishStateSyncing();
 		} else if(event instanceof ReduxEventMassRetrieval.Error) {
-			boolean wasSyncing = viewModel.finishStateSyncing();
+			viewModel.finishStateSyncing();
 			
 			//Showing a snackbar
-			if(wasSyncing) {
+			if(event.getRequestID() != viewModel.lastMassRetrievalErrorID) {
 				Snackbar.make(findViewById(R.id.root), getResources().getString(R.string.message_syncerror, ((ReduxEventMassRetrieval.Error) event).getCode()), Snackbar.LENGTH_LONG).show();
+				viewModel.lastMassRetrievalErrorID = event.getRequestID();
 			}
 		} else {
 			viewModel.setStateSyncing();
@@ -799,7 +800,8 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Adding the imported conversations
 			for(ConversationInfo conversationInfo : ((ReduxEventTextImport.Complete) event).getConversations()) {
-				int insertIndex = ConversationHelper.insertConversation(viewModel.conversationList, conversationInfo);
+				int insertIndex = ConversationHelper.findInsertionIndex(conversationInfo, viewModel.conversationList);
+				viewModel.conversationList.add(insertIndex, conversationInfo);
 				conversationRecyclerAdapter.notifyItemInserted(insertIndex);
 			}
 		} else {
@@ -1047,11 +1049,11 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		for(Pair<ConversationInfo, List<ReplaceInsertResult>> entry : event.getConversationItems()) {
 			//Finding the existing conversation index
-			ConversationInfo conversationInfo = conversationList.stream().filter(conversation -> entry.first.getLocalID() == conversation.getLocalID()).findAny().orElse(null);
+			ConversationInfo conversationInfo = conversationList.stream().filter(conversation -> entry.getFirst().getLocalID() == conversation.getLocalID()).findAny().orElse(null);
 			if(conversationInfo == null) continue;
 			
 			//Updating the conversation's preview
-			updateConversationDetails(conversationInfo, entry.second.stream().map(ReplaceInsertResult::getTargetItem).collect(Collectors.toList()));
+			updateConversationDetails(conversationInfo, entry.getSecond().stream().map(ReplaceInsertResult::getTargetItem).collect(Collectors.toList()));
 		}
 	}
 	
@@ -1325,6 +1327,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		final MutableLiveData<Integer> playServicesErrorCode = new MutableLiveData<>(null);
 		final List<Long> actionModeSelections = new ArrayList<>();
 		boolean isSearching = false;
+		short lastMassRetrievalErrorID = -1;
 		
 		public ActivityViewModel(@NonNull Application application, boolean isViewArchived) {
 			super(application);

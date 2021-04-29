@@ -39,7 +39,6 @@ import android.text.util.Linkify;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.util.Pair;
 import android.util.Patterns;
 import android.util.SparseArray;
 import android.util.TypedValue;
@@ -136,6 +135,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -153,6 +153,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.BehaviorSubject;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 import jp.wasabeef.glide.transformations.BlurTransformation;
+import kotlin.Pair;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
@@ -189,6 +190,7 @@ import me.tagavari.airmessage.helper.ColorMathHelper;
 import me.tagavari.airmessage.helper.ContactHelper;
 import me.tagavari.airmessage.helper.ConversationBuildHelper;
 import me.tagavari.airmessage.helper.ConversationColorHelper;
+import me.tagavari.airmessage.helper.ConversationHelper;
 import me.tagavari.airmessage.helper.DataCompressionHelper;
 import me.tagavari.airmessage.helper.DataStreamHelper;
 import me.tagavari.airmessage.helper.ErrorDetailsHelper;
@@ -916,8 +918,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Getting the conversation items for this conversation
 			List<ReplaceInsertResult> resultList = messageEvent.getConversationItems().stream()
-					.filter(pair -> pair.first.getLocalID() == viewModel.conversationInfo.getLocalID())
-					.findAny().map(pair -> new ArrayList<>(pair.second)).orElse(null);
+					.filter(pair -> pair.getFirst().getLocalID() == viewModel.conversationInfo.getLocalID())
+					.findAny().map(pair -> new ArrayList<>(pair.getSecond())).orElse(null);
 			if(resultList == null) return;
 			
 			applyMessageUpdate(resultList);
@@ -1029,8 +1031,16 @@ public class Messaging extends AppCompatCompositeActivity {
 			MessageComponent component = componentList.get(tapbackEvent.getMetadata().getComponentIndex());
 			
 			//Updating the component's tapbacks
-			if(tapbackEvent.isAddition()) component.getTapbacks().add(tapbackEvent.getTapbackInfo());
-			else component.getTapbacks().removeIf(tapback -> tapback.getLocalID() == tapbackEvent.getTapbackInfo().getLocalID());
+			if(tapbackEvent.isAddition()) {
+				Optional<TapbackInfo> matchedTapback = component.getTapbacks().stream().filter(tapback -> Objects.equals(tapback.getSender(), tapbackEvent.getTapbackInfo().getSender())).findAny();
+				if(matchedTapback.isPresent()) {
+					matchedTapback.get().setCode(tapbackEvent.getTapbackInfo().getCode());
+				} else {
+					component.getTapbacks().add(tapbackEvent.getTapbackInfo());
+				}
+			} else {
+				component.getTapbacks().removeIf(tapback -> tapback.getLocalID() == tapbackEvent.getTapbackInfo().getLocalID());
+			}
 			
 			//Updating the adapter
 			messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(messageIndex), new MessageListPayload.Tapback(tapbackEvent.getMetadata().getComponentIndex()));
@@ -1122,10 +1132,22 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		for(ReplaceInsertResult result : replaceInsertResults) {
 			//Adding new items
-			int insertIndex = viewModel.conversationItemList.size();
-			viewModel.conversationItemList.addAll(result.getNewItems());
-			messageListAdapter.notifyItemRangeInserted(messageListAdapter.mapRecyclerIndex(insertIndex), result.getNewItems().size());
-			if(insertIndex > 0 && viewModel.conversationItemList.get(insertIndex - 1).getItemType() == ConversationItemType.message) messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(insertIndex - 1), MessageListPayload.flow);
+			for(ConversationItem newItem : result.getNewItems()) {
+				int insertIndex = 0;
+				for(ListIterator<ConversationItem> listIterator = viewModel.conversationItemList.listIterator(viewModel.conversationItemList.size()); listIterator.hasPrevious();) {
+					int i = listIterator.previousIndex();
+					ConversationItem item = listIterator.previous();
+					if(ConversationHelper.conversationItemComparator.compare(newItem, item) > 0) {
+						insertIndex = i + 1;
+						break;
+					}
+				}
+				
+				viewModel.conversationItemList.add(insertIndex, newItem);
+				messageListAdapter.notifyItemInserted(messageListAdapter.mapRecyclerIndex(insertIndex));
+				if(insertIndex > 0 && viewModel.conversationItemList.get(insertIndex - 1).getItemType() == ConversationItemType.message) messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(insertIndex - 1), MessageListPayload.flow);
+			}
+			
 			messageTargetCandidates.addAll(result.getNewItems().stream().filter(item -> item.getItemType() == ConversationItemType.message).map(item -> (MessageInfo) item).collect(Collectors.toList()));
 			if(!messageOutgoing) messageOutgoing = result.getNewItems().stream().anyMatch(item -> item.getItemType() == ConversationItemType.message && ((MessageInfo) item).isOutgoing());
 			
@@ -1357,7 +1379,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	 */
 	private void updateQueueAdded(Pair<Integer, FileQueued> pair) {
 		//Updating the adapter
-		listAttachmentQueue.getAdapter().notifyItemInserted(pair.first);
+		listAttachmentQueue.getAdapter().notifyItemInserted(pair.getFirst());
 		
 		//Showing the attachment queue
 		if(!attachmentQueueVisible) {
@@ -1366,7 +1388,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Updating the fragment
 		if(fragmentAttachments != null) {
-			FileQueued fileQueued = pair.second;
+			FileQueued fileQueued = pair.getSecond();
 			if(fileQueued.getMediaStoreID() != -1) fragmentAttachments.onFileQueued(fileQueued.getMediaStoreID());
 		}
 		
@@ -1383,11 +1405,11 @@ public class Messaging extends AppCompatCompositeActivity {
 	 */
 	private void updateQueueRemoved(Pair<Integer, FileQueued> pair) {
 		//Updating the adapter
-		listAttachmentQueue.getAdapter().notifyItemRemoved(pair.first);
+		listAttachmentQueue.getAdapter().notifyItemRemoved(pair.getFirst());
 		
 		//Updating the fragment
 		if(fragmentAttachments != null) {
-			FileQueued fileQueued = pair.second;
+			FileQueued fileQueued = pair.getSecond();
 			if(fileQueued.getMediaStoreID() != -1) fragmentAttachments.onFileDequeued(fileQueued.getMediaStoreID());
 		}
 		
@@ -1409,7 +1431,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	 */
 	private void updateQueueUpdated(Pair<Integer, FileQueued> pair) {
 		//Updating the adapter
-		listAttachmentQueue.getAdapter().notifyItemChanged(pair.first, AttachmentsQueueRecyclerAdapter.payloadUpdateState);
+		listAttachmentQueue.getAdapter().notifyItemChanged(pair.getFirst(), AttachmentsQueueRecyclerAdapter.payloadUpdateState);
 	}
 	
 	/**
@@ -2400,7 +2422,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				Pair<MessageInfo, MessageInfo> adjacentMessages = getAdjacentMessages(mapSourceIndex(position));
 				
 				//Binding the message view
-				bindMessage((VHMessageStructure) holder, viewModel.conversationInfo, messageInfo, adjacentMessages.first, adjacentMessages.second);
+				bindMessage((VHMessageStructure) holder, viewModel.conversationInfo, messageInfo, adjacentMessages.getFirst(), adjacentMessages.getSecond());
 				
 				//Playing the message's effect if it hasn't been viewed yet
 				if(messageInfo.getSendStyle() != null && !messageInfo.isSendStyleViewed()) {
@@ -2477,7 +2499,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							updateMessageViewColoring(viewModel.conversationInfo, (VHMessageStructure) holder, (MessageInfo) conversationItem);
 							
 							Pair<MessageInfo, MessageInfo> adjacentMessages = getAdjacentMessages(mapSourceIndex(position));
-							updateMessageViewEdges((VHMessageStructure) holder, viewModel.conversationInfo, (MessageInfo) conversationItem, adjacentMessages.first, adjacentMessages.second);
+							updateMessageViewEdges((VHMessageStructure) holder, viewModel.conversationInfo, (MessageInfo) conversationItem, adjacentMessages.getFirst(), adjacentMessages.getSecond());
 							
 							break;
 						}
@@ -2485,7 +2507,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							Pair<MessageInfo, MessageInfo> adjacentMessages = getAdjacentMessages(mapSourceIndex(position));
 							
 							//Updating the view edges
-							updateMessageViewEdges((VHMessageStructure) holder, viewModel.conversationInfo, (MessageInfo) conversationItem, adjacentMessages.first, adjacentMessages.second);
+							updateMessageViewEdges((VHMessageStructure) holder, viewModel.conversationInfo, (MessageInfo) conversationItem, adjacentMessages.getFirst(), adjacentMessages.getSecond());
 							
 							break;
 						}
@@ -2680,13 +2702,13 @@ public class Messaging extends AppCompatCompositeActivity {
 							.setNegativeButton(R.string.action_dismiss, (dialog, which) -> dialog.dismiss());
 					
 					//Getting the error display
-					Pair<String, Boolean> errorDisplay = ErrorLanguageHelper.getErrorDisplay(Messaging.this, viewModel.conversationInfo, messageInfo.getErrorCode());
+					ErrorLanguageHelper.ErrorDisplay errorDisplay = ErrorLanguageHelper.getErrorDisplay(Messaging.this, viewModel.conversationInfo, messageInfo.getErrorCode());
 					
 					//Setting the message
-					dialogBuilder.setMessage(errorDisplay.first);
+					dialogBuilder.setMessage(errorDisplay.getMessage());
 					
 					//Showing the retry button (if requested)
-					if(errorDisplay.second) {
+					if(errorDisplay.isRecoverable()) {
 						dialogBuilder.setPositiveButton(R.string.action_retry, (dialog, which) -> {
 							//Re-sending the message
 							MessageActionTask.updateMessageErrorCode(viewModel.conversationInfo, messageInfo, MessageSendErrorCode.none, null)
@@ -3131,20 +3153,15 @@ public class Messaging extends AppCompatCompositeActivity {
 											
 											//Creating the message preview
 											String caption;
-											if(metadata.getSiteName() != null && !metadata.getSiteName().isEmpty()) caption = metadata.getSiteName();
-											else {
-												try {
-													caption = LanguageHelper.getDomainName(finalTargetURL);
-													if(caption == null) throw new IllegalStateException("Cannot find domain name of " + caption);
-												} catch(URISyntaxException exception) {
-													//Logging the error
-													exception.printStackTrace();
-													
+											if(metadata.getSiteName() != null && !metadata.getSiteName().isEmpty()) {
+												caption = metadata.getSiteName();
+											} else {
+												caption = LanguageHelper.getDomainName(finalTargetURL);
+												if(caption == null) {
 													//Updating the message state
 													DatabaseManager.getInstance().setMessagePreviewState(component.getLocalID(), MessagePreviewState.unavailable);
 													
-													//Returning
-													throw exception;
+													throw new IllegalStateException("Cannot find domain name of " + finalTargetURL);
 												}
 											}
 											
@@ -3482,8 +3499,8 @@ public class Messaging extends AppCompatCompositeActivity {
 							Pair::new
 					).subscribe(results -> {
 						//Getting the results
-						FileDisplayMetadata.LocationDetailed metadata = results.first;
-						GoogleMap googleMap = results.second;
+						FileDisplayMetadata.LocationDetailed metadata = results.getFirst();
+						GoogleMap googleMap = results.getSecond();
 						
 						//Switching to the content view
 						setAttachmentView(viewHolder, viewHolder.groupContentFrame);
@@ -3537,7 +3554,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Updating the view edges
 			Pair<MessageInfo, MessageInfo> adjacentMessages = getAdjacentMessages(conversationItems.indexOf(messageInfo));
-			updateMessageViewEdges(structureViewHolder, conversationInfo, messageInfo, adjacentMessages.first, adjacentMessages.second);
+			updateMessageViewEdges(structureViewHolder, conversationInfo, messageInfo, adjacentMessages.getFirst(), adjacentMessages.getSecond());
 		}
 		
 		private void bindMessagePreviewLink(VHMessageComponentText componentViewHolder, MessagePreviewInfo preview) {
@@ -4657,7 +4674,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				DatabaseManager.ConversationLazyLoader lazyLoader = new DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), conversationInfo);
 				
 				emitter.onSuccess(new Pair<>(conversationInfo, lazyLoader));
-			}).subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).subscribe(result -> applyConversation(result.first, result.second), (error) -> {
+			}).subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).subscribe(result -> applyConversation(result.getFirst(), result.getSecond()), (error) -> {
 				//Setting the state to failed if the conversation info couldn't be fetched
 				stateLD.setValue(stateFailedConversation);
 			}));
@@ -4682,7 +4699,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						if(conversationInfo == null) {
 							//Creating a new conversation
 							int conversationColor = ConversationColorHelper.getDefaultConversationColor(threadID);
-							List<MemberInfo> coloredMembers = ConversationColorHelper.getColoredMembers(conversationParticipantsTarget, conversationColor, threadID);
+							List<MemberInfo> coloredMembers = ConversationColorHelper.getColoredMembers(Arrays.asList(conversationParticipantsTarget), conversationColor, threadID);
 							conversationInfo = new ConversationInfo(-1, null, threadID, ConversationState.ready, ServiceHandler.systemMessaging, ServiceType.systemSMS, conversationColor, coloredMembers, null);
 							
 							//Writing the conversation to disk
@@ -4698,7 +4715,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						
 						//Returning the data
 						return new Pair<>(conversationInfo, lazyLoader);
-					}).observeOn(AndroidSchedulers.mainThread()).subscribe(result -> applyConversation(result.first, result.second)));
+					}).observeOn(AndroidSchedulers.mainThread()).subscribe(result -> applyConversation(result.getFirst(), result.getSecond())));
 		}
 		
 		/**
@@ -4972,8 +4989,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			compositeDisposable.add(
 					conversationActionsDisposable = SmartReplyHelper.generateResponses(getApplication(), messageHistory)
 							.subscribe(responses -> {
-								if(responses.length > 0) conversationActionsLD.setValue(responses);
-								else conversationActionsLD.setValue(null);
+								if(responses.isEmpty()) conversationActionsLD.setValue(null);
+								else conversationActionsLD.setValue(responses.toArray(new AMConversationAction[0]));
 							})
 			);
 			

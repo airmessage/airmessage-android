@@ -3,7 +3,6 @@ package me.tagavari.airmessage.receiver;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.util.Pair;
 
 import com.klinker.android.send_message.DeliveredReceiver;
 
@@ -11,6 +10,7 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import kotlin.Pair;
 import me.tagavari.airmessage.constants.SMSReceiverConstants;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
@@ -33,8 +33,8 @@ public class TextSMSDeliveredReceiver extends DeliveredReceiver {
 		}).subscribeOn(Schedulers.single())
 				.observeOn(AndroidSchedulers.mainThread())
 				.flatMapCompletable(pair -> {
-					ConversationInfo conversationInfo = pair.second;
-					MessageInfo messageInfo = (MessageInfo) pair.first;
+					ConversationInfo conversationInfo = pair.getSecond();
+					MessageInfo messageInfo = (MessageInfo) pair.getFirst();
 					
 					//Updating the message
 					if(resultCode == Activity.RESULT_OK) {

@@ -348,7 +348,7 @@
 		<!-- Google Maps API -->
 		<meta-data
 			android:name="com.google.android.geo.API_KEY"
-			android:value="AIzaSyBokl_A-bqfpChMhBFbh6YTCrPgS-DuIso" />
+			android:value="${MAPS_API_KEY}" />
 
 		<!-- Android Auto integration -->
 		<meta-data

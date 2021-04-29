@@ -10,7 +10,6 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.provider.BaseColumns;
 import android.util.Base64;
 import android.util.LongSparseArray;
-import android.util.Pair;
 import android.webkit.MimeTypeMap;
 
 import androidx.annotation.Nullable;
@@ -38,6 +37,7 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
+import kotlin.Pair;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.common.Blocks;
@@ -875,7 +875,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
-	public List<ConversationInfo> fetchConversationsWithState(Context context, @ConversationState int conversationState, int serviceHandler) {
+	public List<ConversationInfo> fetchConversationsWithState(Context context, @ConversationState int conversationState) {
 		//Creating the conversation list
 		List<ConversationInfo> conversationList = new ArrayList<>();
 		
@@ -884,13 +884,14 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Querying the database
 		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData,
-				Contract.ConversationEntry.COLUMN_NAME_STATE + " = ? AND " + Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER + " = ?",
-				new String[]{Integer.toString(conversationState), Integer.toString(serviceHandler)}, null, null, null);
+				Contract.ConversationEntry.COLUMN_NAME_STATE + " = ?",
+				new String[]{Integer.toString(conversationState)}, null, null, null);
 		
 		//Getting the indexes
 		int indexChatID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry._ID);
 		int indexChatGUID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_GUID);
 		int indexChatExternalID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_EXTERNALID);
+		int indexChatServiceHandler = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICEHANDLER);
 		int indexChatService = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_SERVICE);
 		int indexChatName = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_NAME);
 		int indexChatUnreadMessages = cursor.getColumnIndexOrThrow(Contract.ConversationEntry.COLUMN_NAME_UNREADMESSAGECOUNT);
@@ -906,6 +907,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			long chatID = cursor.getLong(indexChatID);
 			String chatGUID = cursor.getString(indexChatGUID);
 			long externalID = cursor.getLong(indexChatExternalID);
+			@ServiceHandler int serviceHandler = cursor.getInt(indexChatServiceHandler);
 			String service = cursor.getString(indexChatService);
 			String chatTitle = cursor.getString(indexChatName);
 			int chatUnreadMessages = cursor.getInt(indexChatUnreadMessages);
@@ -1741,7 +1743,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Picking a random conversation color
 		int conversationColor = ConversationColorHelper.getDefaultConversationColor();
-		List<MemberInfo> coloredMembers = ConversationColorHelper.getColoredMembers(members.toArray(new String[0]), conversationColor);
+		List<MemberInfo> coloredMembers = ConversationColorHelper.getColoredMembers(members, conversationColor);
 		
 		//Setting the content values
 		ContentValues contentValues = new ContentValues();
@@ -1847,7 +1849,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Picking a color
 		int conversationColor = ConversationColorHelper.getDefaultConversationColor(guid);
-		List<MemberInfo> coloredMembers = ConversationColorHelper.getColoredMembers(members.toArray(new String[0]), conversationColor);
+		List<MemberInfo> coloredMembers = ConversationColorHelper.getColoredMembers(members, conversationColor);
 		
 		//Inserting the conversation into the database
 		long localID;
@@ -1913,7 +1915,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Picking a color
 		int conversationColor = ConversationColorHelper.getDefaultConversationColor(structConversationInfo.guid);
-		List<MemberInfo> coloredMembers = ConversationColorHelper.getColoredMembers(structConversationInfo.members, conversationColor, structConversationInfo.guid);
+		List<MemberInfo> coloredMembers = ConversationColorHelper.getColoredMembers(Arrays.asList(structConversationInfo.members), conversationColor, structConversationInfo.guid);
 		
 		//Inserting the conversation into the database
 		long localID;
@@ -2251,8 +2253,8 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//Iterating over the attachments
 		for(Pair<byte[], A> pair : attachments) {
 			//Ignoring if the attachment has no checksum
-			if(pair.first == null) {
-				unmatchedAttachments.add(pair.second);
+			if(pair.getFirst() == null) {
+				unmatchedAttachments.add(pair.getSecond());
 				continue;
 			}
 			
@@ -2261,7 +2263,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 							" JOIN " + Contract.MessageEntry.TABLE_NAME + " ON " + Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + //Query for message + its attachment
 							" WHERE " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_STATE + " = " + MessageState.ghost + //Only select ghost messages
 							" AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_SENDER + " IS NULL" + //Only select outgoing messages
-							" AND " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(pair.first, Base64.NO_WRAP) + "'" + //Only select attachments with a matching checksum
+							" AND " + Contract.AttachmentEntry.TABLE_NAME + '.' + Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " = '" + Base64.encodeToString(pair.getFirst(), Base64.NO_WRAP) + "'" + //Only select attachments with a matching checksum
 							" AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry.COLUMN_NAME_CHAT + " = " + conversationID + //Only select messages in the current conversation
 							(matchedMessageID == -1 ? "" : " AND " + Contract.MessageEntry.TABLE_NAME + '.' + Contract.MessageEntry._ID + " != " + matchedMessageID) + //Don't match the target message, if we have one
 							" ORDER BY " + messageSortOrderDesc + //Find the most recent item
@@ -2269,7 +2271,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					null)) {
 				//Ignoring if there are no results
 				if(!cursor.moveToFirst()) {
-					unmatchedAttachments.add(pair.second);
+					unmatchedAttachments.add(pair.getSecond());
 					continue;
 				}
 				
@@ -2280,12 +2282,12 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				//Checking if we already have a target message
 				if(matchedMessageID != -1) {
 					//Transferring the attachment to the target message and deleting the message
-					matchedAttachments.add(new Pair<>(attachmentID, pair.second));
+					matchedAttachments.add(new Pair<>(attachmentID, pair.getSecond()));
 					deletedMessageIDs.add(messageID);
 				} else {
 					//Setting the target message
 					matchedMessageID = messageID;
-					persistingAttachment = new Pair<>(attachmentID, pair.second);
+					persistingAttachment = new Pair<>(attachmentID, pair.getSecond());
 				}
 			}
 		}
@@ -2355,14 +2357,14 @@ public class DatabaseManager extends SQLiteOpenHelper {
 						Pair<Long, Blocks.AttachmentInfo> pair = result.getPersistingAttachment();
 						//Updating the attachment information
 						ContentValues attachmentContentValues = new ContentValues();
-						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.second.guid);
-						if(pair.second.sort != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.second.sort);
+						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.getSecond().guid);
+						if(pair.getSecond().sort != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.getSecond().sort);
 
 						try {
-							database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)});
+							database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.getFirst())});
 							
 							//Adding the attachment to the list
-							try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)}, null, null, null, "1")) {
+							try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.getFirst())}, null, null, null, "1")) {
 								if(attachmentCursor.moveToNext()) {
 									AttachmentInfo attachmentInfo = loadAttachmentInfo(context, AttachmentInfoIndices.fromCursor(attachmentCursor), attachmentCursor);
 									messageAttachments.add(attachmentInfo);
@@ -2377,17 +2379,17 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					for(Pair<Long, Blocks.AttachmentInfo> pair : result.getTransferAttachments()) {
 						ContentValues attachmentContentValues = new ContentValues();
 						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, result.getTargetMessageID());
-						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.second.guid);
-						if(pair.second.sort != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.second.sort);
+						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.getSecond().guid);
+						if(pair.getSecond().sort != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.getSecond().sort);
 						
 						try {
-							database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)});
+							database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.getFirst())});
 						} catch(SQLiteConstraintException exception) {
 							exception.printStackTrace();
 							continue;
 						}
 						
-						try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)}, null, null, null, "1")) {
+						try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.getFirst())}, null, null, null, "1")) {
 							if(attachmentCursor.moveToNext()) {
 								AttachmentInfo attachmentInfo = loadAttachmentInfo(context, AttachmentInfoIndices.fromCursor(attachmentCursor), attachmentCursor);
 								messageAttachments.add(attachmentInfo);
@@ -2409,8 +2411,8 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					
 					//Creating the final message
 					MessageInfo messageInfo = new MessageInfo(result.getTargetMessageID(), messageStruct.serverID, messageStruct.guid, messageStruct.date, null, messageStruct.text, messageStruct.subject, messageAttachments, messageStruct.sendEffect, sendStyleViewed, messageStruct.dateRead, messageStruct.stateCode, messageStruct.errorCode, false);
-					for(Pair<StickerInfo, ModifierMetadata> pair : stickers) messageInfo.getComponentAt(pair.second.getComponentIndex()).getStickers().add(pair.first);
-					for(Pair<TapbackInfo, ModifierMetadata> pair : tapbacks) messageInfo.getComponentAt(pair.second.getComponentIndex()).getTapbacks().add(pair.first);
+					for(Pair<StickerInfo, ModifierMetadata> pair : stickers) messageInfo.getComponentAt(pair.getSecond().getComponentIndex()).getStickers().add(pair.getFirst());
+					for(Pair<TapbackInfo, ModifierMetadata> pair : tapbacks) messageInfo.getComponentAt(pair.getSecond().getComponentIndex()).getTapbacks().add(pair.getFirst());
 					
 					//Returning the details
 					return new ReplaceInsertResult(messageInfo, Collections.emptyList(), Collections.singletonList(messageInfo), result.getDiscardedMessageIDs());
@@ -2507,13 +2509,13 @@ public class DatabaseManager extends SQLiteOpenHelper {
 						Pair<Long, AttachmentInfo> pair = result.getPersistingAttachment();
 						//Updating the attachment information
 						ContentValues attachmentContentValues = new ContentValues();
-						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.second.getGUID());
-						if(pair.second.getSort() != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.second.getSort());
+						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.getSecond().getGUID());
+						if(pair.getSecond().getSort() != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.getSecond().getSort());
 						
-						database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)});
+						database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.getFirst())});
 						
 						//Adding the attachment to the list
-						try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)}, null, null, null, "1")) {
+						try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.getFirst())}, null, null, null, "1")) {
 							if(attachmentCursor.moveToNext()) {
 								AttachmentInfo attachmentInfo = loadAttachmentInfo(context, AttachmentInfoIndices.fromCursor(attachmentCursor), attachmentCursor);
 								messageAttachments.add(attachmentInfo);
@@ -2525,12 +2527,12 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					for(Pair<Long, AttachmentInfo> pair : result.getTransferAttachments()) {
 						ContentValues attachmentContentValues = new ContentValues();
 						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_MESSAGE, result.getTargetMessageID());
-						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.second.getGUID());
-						if(pair.second.getSort() != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.second.getSort());
+						attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, pair.getSecond().getGUID());
+						if(pair.getSecond().getSort() != -1) attachmentContentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, pair.getSecond().getSort());
 						
-						database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)});
+						database.update(Contract.AttachmentEntry.TABLE_NAME, attachmentContentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.getFirst())});
 						
-						try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.first)}, null, null, null, "1")) {
+						try(Cursor attachmentCursor = database.query(Contract.AttachmentEntry.TABLE_NAME, null, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(pair.getFirst())}, null, null, null, "1")) {
 							if(attachmentCursor.moveToNext()) {
 								AttachmentInfo attachmentInfo = loadAttachmentInfo(context, AttachmentInfoIndices.fromCursor(attachmentCursor), attachmentCursor);
 								messageAttachments.add(attachmentInfo);
@@ -2704,12 +2706,12 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			//Creating the message info
 			MessageInfo messageInfo = new MessageInfo(messageLocalID, messageInfoStruct.serverID, messageInfoStruct.guid, messageInfoStruct.date, messageInfoStruct.sender, messageInfoStruct.text, messageInfoStruct.subject, attachments, messageInfoStruct.sendEffect, false, messageInfoStruct.dateRead, messageInfoStruct.stateCode, messageInfoStruct.errorCode, false);
 			for(Pair<StickerInfo, ModifierMetadata> pair : stickers) {
-				if(pair.second.getComponentIndex() >= messageInfo.getComponentCount()) continue;
-				messageInfo.getComponentAt(pair.second.getComponentIndex()).getStickers().add(pair.first);
+				if(pair.getSecond().getComponentIndex() >= messageInfo.getComponentCount()) continue;
+				messageInfo.getComponentAt(pair.getSecond().getComponentIndex()).getStickers().add(pair.getFirst());
 			}
 			for(Pair<TapbackInfo, ModifierMetadata> pair : tapbacks) {
-				if(pair.second.getComponentIndex() >= messageInfo.getComponentCount()) continue;
-				messageInfo.getComponentAt(pair.second.getComponentIndex()).getTapbacks().add(pair.first);
+				if(pair.getSecond().getComponentIndex() >= messageInfo.getComponentCount()) continue;
+				messageInfo.getComponentAt(pair.getSecond().getComponentIndex()).getTapbacks().add(pair.getFirst());
 			}
 			
 			//Returning the message info
@@ -3130,21 +3132,32 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
-		//Creating the content values
+		//Finding an existing tapback on the same message by the same sender
+		long tapbackID = -1;
+		try(Cursor cursor = database.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID},
+				Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_SENDER + (tapback.sender == null ? " IS NULL" : " = ?"),
+				tapback.sender == null ? new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex)} : new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex), tapback.sender},
+				null, null, null, "1")) {
+			if(cursor.moveToNext()) {
+				tapbackID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.TapbackEntry._ID));
+			}
+		}
+		
+		//Creating the content values with the code
 		ContentValues contentValues = new ContentValues();
-		contentValues.put(Contract.TapbackEntry.COLUMN_NAME_MESSAGE, messageID);
-		contentValues.put(Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX, tapback.messageIndex);
-		contentValues.put(Contract.TapbackEntry.COLUMN_NAME_SENDER, tapback.sender);
 		contentValues.put(Contract.TapbackEntry.COLUMN_NAME_CODE, tapback.tapbackType);
 		
-		//Inserting the entry
-		long tapbackID;
-		try {
+		if(tapbackID != -1) {
+			//Updating the matching entry
+			database.update(Contract.TapbackEntry.TABLE_NAME, contentValues, Contract.TapbackEntry._ID + " = ?", new String[]{Long.toString(tapbackID)});
+		} else {
+			//Completing the content values
+			contentValues.put(Contract.TapbackEntry.COLUMN_NAME_MESSAGE, messageID);
+			contentValues.put(Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX, tapback.messageIndex);
+			contentValues.put(Contract.TapbackEntry.COLUMN_NAME_SENDER, tapback.sender);
+			
+			//Inserting the entry
 			tapbackID = database.insert(Contract.TapbackEntry.TABLE_NAME, null, contentValues);
-		} catch(SQLiteConstraintException exception) {
-			//Printing the stack trace
-			exception.printStackTrace();
-			return null;
 		}
 		
 		//Returning the tapback
@@ -3548,7 +3561,10 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		
 		//Fetching the local ID of the tapback
 		long tapbackID;
-		try(Cursor cursor = database.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID}, Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_SENDER + " = ?", new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex), tapback.sender}, null, null, null, "1")) {
+		try(Cursor cursor = database.query(Contract.TapbackEntry.TABLE_NAME, new String[]{Contract.TapbackEntry._ID},
+				Contract.TapbackEntry.COLUMN_NAME_MESSAGE + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_MESSAGEINDEX + " = ? AND " + Contract.TapbackEntry.COLUMN_NAME_SENDER + (tapback.sender == null ? " IS NULL" : " = ?"),
+				tapback.sender == null ? new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex)} : new String[]{Long.toString(messageID), Integer.toString(tapback.messageIndex), tapback.sender},
+				null, null, null, "1")) {
 			if(!cursor.moveToNext()) return null;
 			tapbackID = cursor.getLong(cursor.getColumnIndexOrThrow(Contract.TapbackEntry._ID));
 		}

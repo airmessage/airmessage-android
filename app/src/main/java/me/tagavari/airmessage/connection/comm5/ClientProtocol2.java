@@ -684,7 +684,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	}
 	
 	@Override
-	boolean requestRetrievalID(long idSince) {
+	boolean requestRetrievalID(long idSince, long timeLower, long timeUpper) {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
@@ -1005,7 +1005,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 					
 					byte[] decompressedData;
 					try {
-						decompressedData = StandardCompressionHelper.decompressInflate(data);
+						decompressedData = StandardCompressionHelper.decompressDeflate(data);
 					} catch(IOException exception) {
 						exception.printStackTrace();
 						
