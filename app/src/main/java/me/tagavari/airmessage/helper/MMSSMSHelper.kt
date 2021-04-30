@@ -218,10 +218,10 @@ object MMSSMSHelper {
 			//Getting the values
 			if(conversationIsNew) {
 				//If we just created a new conversation, emit a conversation update
-				ReduxEmitterNetwork.getMessageUpdateSubject().onNext(ConversationUpdate(mapOf(conversationInfo to listOf(messageInfo)), emptyList()))
+				ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationUpdate(mapOf(conversationInfo to listOf(messageInfo)), emptyList()))
 			} else {
 				//Otherwise, emit a message update
-				ReduxEmitterNetwork.getMessageUpdateSubject().onNext(ReduxEventMessaging.Message(listOf(Pair(conversationInfo, listOf(ReplaceInsertResult.createAddition(messageInfo))))))
+				ReduxEmitterNetwork.messageUpdateSubject.onNext(ReduxEventMessaging.Message(listOf(Pair(conversationInfo, listOf(ReplaceInsertResult.createAddition(messageInfo))))))
 			}
 			
 			//Updating the conversation values in response to the added message
