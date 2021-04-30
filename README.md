@@ -6,6 +6,11 @@ AirMessage lets people use iMessage on the devices they like.
 **AirMessage for Android** is the project's client for Android devices, with an emphasis on feeling like a part of the Android ecosystem.
 AirMessage for Android can be downloaded from the [Google Play Store](https://play.google.com/store/apps/details?id=me.tagavari.airmessage).
 
+Other AirMessage repositories:
+[Server](https://github.com/airmessage/airmessage-server) |
+[Web](https://github.com/airmessage/airmessage-web) |
+[Connect (community)](https://github.com/airmessage/airmessage-connect-java)
+
 ## Getting started
 
 AirMessage for Android uses [RxJava](https://github.com/ReactiveX/RxJava) to manage its internal logic.
