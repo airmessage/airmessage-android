@@ -272,8 +272,8 @@ public class ShareHandler extends AppCompatCompositeActivity {
 			
 			//Binding the view details
 			holder.getCompositeDisposable().addAll(
-					VBConversation.bindTitle(ShareHandler.this, holder.conversationTitle, conversationInfo).subscribe(),
-					VBConversation.bindUsers(ShareHandler.this, holder.iconGroup, conversationInfo).subscribe()
+					VBConversation.bindTitle(ShareHandler.this, holder.getConversationTitle(), conversationInfo).subscribe(),
+					VBConversation.bindUsers(ShareHandler.this, holder.getIconGroup(), conversationInfo).subscribe()
 			);
 			
 			//Setting the view's click listeners

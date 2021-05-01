@@ -278,8 +278,8 @@ object LanguageHelper {
 		//Applying invisible ink
 		val message: String = if(SendStyleHelper.appleSendStyleBubbleInvisibleInk == messageInfo.sendStyle) {
 			resources.getString(R.string.message_messageeffect_invisibleink)
-		} else if(messageInfo.messageTextInfo != null) {
-			textComponentToString(resources, messageInfo.messageTextInfo) ?: ""
+		} else if(messageInfo.messageTextComponent != null) {
+			textComponentToString(resources, messageInfo.messageTextComponent) ?: ""
 		} else if(messageInfo.attachments.isNotEmpty()) {
 			val attachmentCount = messageInfo.attachments.size
 			if(attachmentCount == 1) {

@@ -1154,12 +1154,12 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			}
 			
 			//Creating the conversation item
-			MessageInfo messageInfo = new MessageInfo(localID, serverID, guid, date, sender, messageText, messageSubject, attachments, sendStyle, sendStyleViewed, dateRead, stateCode, errorCode, errorDetailsAvailable);
+			MessageInfo messageInfo = new MessageInfo(localID, serverID, guid, date, sender, messageText, messageSubject, attachments, sendStyle, sendStyleViewed, dateRead, stateCode, errorCode, errorDetailsAvailable, null);
 			loadApplyStickers(context, messageInfo);
 			loadApplyTapbacks(messageInfo);
 			
 			//Setting the message preview state
-			MessageComponentText messageTextInfo = messageInfo.getMessageTextInfo();
+			MessageComponentText messageTextInfo = messageInfo.getMessageTextComponent();
 			if(messageTextInfo != null) {
 				messageTextInfo.setMessagePreviewState(previewState);
 				if(!cursor.isNull(indices.iPreviewID)) messageTextInfo.setMessagePreviewID(cursor.getLong(indices.iPreviewID));
@@ -1217,10 +1217,10 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//Checking if the attachment has data
 		if(file != null && file.exists() && file.isFile()) {
 			//Adding the as a file
-			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, file);
+			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, file, null);
 		} else {
 			//Adding the with its checksum
-			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, fileChecksum);
+			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, null, fileChecksum);
 		}
 	}
 	
@@ -1698,7 +1698,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				//Checking if the message is valid
 				if(message != null) {
 					//Returning the conversation message preview (without the attachments)
-					return new ConversationPreview.Message(date, sender == null, message, subject, new AttachmentPreview[0], sendStyle, hasError);
+					return new ConversationPreview.Message(date, sender == null, message, subject, new ArrayList<>(), sendStyle, hasError);
 				}
 				
 				//Retrieving the attachments
@@ -1715,7 +1715,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					}
 					
 					//Returning the conversation message preview
-					return new ConversationPreview.Message(date, sender == null, null, subject, attachments, sendStyle, hasError);
+					return new ConversationPreview.Message(date, sender == null, null, subject, new ArrayList<>(), sendStyle, hasError);
 				}
 			}
 		} else if(itemType == ConversationItemType.chatCreate) { //Chat creation
@@ -2410,7 +2410,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					List<Pair<TapbackInfo, ModifierMetadata>> tapbacks = addMessageTapbacks(result.getTargetMessageID(), messageStruct.tapbacks);
 					
 					//Creating the final message
-					MessageInfo messageInfo = new MessageInfo(result.getTargetMessageID(), messageStruct.serverID, messageStruct.guid, messageStruct.date, null, messageStruct.text, messageStruct.subject, messageAttachments, messageStruct.sendEffect, sendStyleViewed, messageStruct.dateRead, messageStruct.stateCode, messageStruct.errorCode, false);
+					MessageInfo messageInfo = new MessageInfo(result.getTargetMessageID(), messageStruct.serverID, messageStruct.guid, messageStruct.date, null, messageStruct.text, messageStruct.subject, messageAttachments, messageStruct.sendEffect, sendStyleViewed, messageStruct.dateRead, messageStruct.stateCode, messageStruct.errorCode, false, null);
 					for(Pair<StickerInfo, ModifierMetadata> pair : stickers) messageInfo.getComponentAt(pair.getSecond().getComponentIndex()).getStickers().add(pair.getFirst());
 					for(Pair<TapbackInfo, ModifierMetadata> pair : tapbacks) messageInfo.getComponentAt(pair.getSecond().getComponentIndex()).getTapbacks().add(pair.getFirst());
 					
@@ -2567,7 +2567,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					database.delete(Contract.MessageEntry.TABLE_NAME, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageItem.getLocalID())});
 					
 					//Creating the final message
-					MessageInfo messageInfo = new MessageInfo(result.getTargetMessageID(), messageItem.getServerID(), messageItem.getGuid(), messageItem.getDate(), null, messageItem.getMessageTextInfo(), messageAttachments, messageItem.getSendStyle(), sendStyleViewed, messageItem.getDateRead(), messageItem.getMessageState(), messageItem.getErrorCode(), messageItem.isErrorDetailsAvailable(), null);
+					MessageInfo messageInfo = new MessageInfo(result.getTargetMessageID(), messageItem.getServerID(), messageItem.getGuid(), messageItem.getDate(), null, messageItem.getMessageTextComponent(), messageAttachments, messageItem.getSendStyle(), sendStyleViewed, messageItem.getDateRead(), messageItem.getMessageState(), messageItem.getErrorCode(), messageItem.isErrorDetailsAvailable(), null);
 					loadApplyStickers(context, messageInfo);
 					loadApplyTapbacks(messageInfo);
 					
@@ -2704,7 +2704,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			List<Pair<TapbackInfo, ModifierMetadata>> tapbacks = addMessageTapbacks(messageLocalID, messageInfoStruct.tapbacks);
 			
 			//Creating the message info
-			MessageInfo messageInfo = new MessageInfo(messageLocalID, messageInfoStruct.serverID, messageInfoStruct.guid, messageInfoStruct.date, messageInfoStruct.sender, messageInfoStruct.text, messageInfoStruct.subject, attachments, messageInfoStruct.sendEffect, false, messageInfoStruct.dateRead, messageInfoStruct.stateCode, messageInfoStruct.errorCode, false);
+			MessageInfo messageInfo = new MessageInfo(messageLocalID, messageInfoStruct.serverID, messageInfoStruct.guid, messageInfoStruct.date, messageInfoStruct.sender, messageInfoStruct.text, messageInfoStruct.subject, attachments, messageInfoStruct.sendEffect, false, messageInfoStruct.dateRead, messageInfoStruct.stateCode, messageInfoStruct.errorCode, false, null);
 			for(Pair<StickerInfo, ModifierMetadata> pair : stickers) {
 				if(pair.getSecond().getComponentIndex() >= messageInfo.getComponentCount()) continue;
 				messageInfo.getComponentAt(pair.getSecond().getComponentIndex()).getStickers().add(pair.getFirst());
@@ -2946,7 +2946,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		//Creating and returning the attachment
-		return new AttachmentInfo(localID, attachmentStruct.guid, attachmentStruct.name, attachmentStruct.type, attachmentStruct.size, attachmentStruct.sort, attachmentStruct.checksum);
+		return new AttachmentInfo(localID, attachmentStruct.guid, attachmentStruct.name, attachmentStruct.type, attachmentStruct.size, attachmentStruct.sort, null, attachmentStruct.checksum);
 	}
 	
 	/**

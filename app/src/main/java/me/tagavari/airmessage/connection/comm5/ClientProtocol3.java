@@ -534,7 +534,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 				packer.packString(((ConversationTarget.AppleLinked) conversation).getGuid()); //Chat GUID
 			} else if(conversation instanceof ConversationTarget.AppleUnlinked) {
 				ConversationTarget.AppleUnlinked unlinked = ((ConversationTarget.AppleUnlinked) conversation);
-				packer.packArrayHeader(unlinked.getMembers().length); //Members
+				packer.packArrayHeader(unlinked.getMembers().size()); //Members
 				for(String item : unlinked.getMembers()) packer.packString(item);
 				packer.packString(unlinked.getService()); //Service
 			}
@@ -583,7 +583,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 								packer.packString(((ConversationTarget.AppleLinked) conversation).getGuid()); //Chat GUID
 							} else if(conversation instanceof ConversationTarget.AppleUnlinked) {
 								ConversationTarget.AppleUnlinked unlinked = ((ConversationTarget.AppleUnlinked) conversation);
-								packer.packArrayHeader(unlinked.getMembers().length); //Members
+								packer.packArrayHeader(unlinked.getMembers().size()); //Members
 								for(String item : unlinked.getMembers()) packer.packString(item);
 							}
 							

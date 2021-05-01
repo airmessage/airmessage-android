@@ -122,8 +122,8 @@ object MMSSMSHelper {
 		
 		//Creating a new conversation if no existing conversation was found
 		val conversationColor = getDefaultConversationColor(threadID)
-		val coloredMembers: List<MemberInfo> = getColoredMembers(participants, conversationColor, threadID)
-		conversationInfo = ConversationInfo(-1, null, threadID, ConversationState.ready, ServiceHandler.systemMessaging, ServiceType.systemSMS, conversationColor, coloredMembers, null, 0, false, false, null, null, ArrayList(), -1)
+		val coloredMembers = getColoredMembers(participants, conversationColor, threadID)
+		conversationInfo = ConversationInfo(-1, null, threadID, ConversationState.ready, ServiceHandler.systemMessaging, ServiceType.systemSMS, conversationColor, coloredMembers, null, 0, false, false, null, null, mutableListOf(), -1)
 		
 		//Writing the conversation to disk
 		val result = DatabaseManager.getInstance().addConversationInfo(conversationInfo)
@@ -218,10 +218,10 @@ object MMSSMSHelper {
 			//Getting the values
 			if(conversationIsNew) {
 				//If we just created a new conversation, emit a conversation update
-				ReduxEmitterNetwork.getMessageUpdateSubject().onNext(ConversationUpdate(mapOf(conversationInfo to listOf(messageInfo)), emptyList()))
+				ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationUpdate(mapOf(conversationInfo to listOf(messageInfo)), emptyList()))
 			} else {
 				//Otherwise, emit a message update
-				ReduxEmitterNetwork.getMessageUpdateSubject().onNext(ReduxEventMessaging.Message(listOf(Pair(conversationInfo, listOf(ReplaceInsertResult.createAddition(messageInfo))))))
+				ReduxEmitterNetwork.messageUpdateSubject.onNext(ReduxEventMessaging.Message(listOf(Pair(conversationInfo, listOf(ReplaceInsertResult.createAddition(messageInfo))))))
 			}
 			
 			//Updating the conversation values in response to the added message
@@ -326,7 +326,7 @@ object MMSSMSHelper {
 		val messageText = if(messageTextSB.isNotEmpty()) messageTextSB.toString() else null
 		
 		//Returning the message
-		return MessageInfo(-1, -1, null, date, sender, messageText, messageSubject, messageAttachments, null, false, -1, messageState, messageErrorCode, false)
+		return MessageInfo(-1, -1, null, date, sender, messageText, messageSubject, messageAttachments, null, false, -1, messageState, messageErrorCode, false, null)
 	}
 	
 	/**
@@ -373,7 +373,7 @@ object MMSSMSHelper {
 		}
 		
 		//Creating the message
-		val messageInfo = MessageInfo(-1, -1, null, date, sender, message, null, ArrayList(), null, false, -1, messageState, messageErrorCode, false)
+		val messageInfo = MessageInfo(-1, -1, null, date, sender, message, null, mutableListOf(), null, false, -1, messageState, messageErrorCode, false, null)
 		if(messageErrorCode != MessageSendErrorCode.none) {
 			messageInfo.errorDetails = "SMS error code $errorCode"
 		}

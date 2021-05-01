@@ -1,5 +1,7 @@
 package me.tagavari.airmessage.util;
 
+import java.util.List;
+
 /**
  * Represents a conversation that can be sent to
  */
@@ -17,15 +19,15 @@ public abstract class ConversationTarget {
 	}
 	
 	public static class AppleUnlinked extends ConversationTarget {
-		private final String[] members;
+		private final List<String> members;
 		private final String service;
 		
-		public AppleUnlinked(String[] members, String service) {
+		public AppleUnlinked(List<String>members, String service) {
 			this.members = members;
 			this.service = service;
 		}
 		
-		public String[] getMembers() {
+		public List<String> getMembers() {
 			return members;
 		}
 		
