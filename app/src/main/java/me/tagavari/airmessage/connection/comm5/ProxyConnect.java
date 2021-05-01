@@ -242,12 +242,29 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 						break;
 					}
 					case NHT.nhtClientProxy: {
-						//Reading the data
+						/*
+						 * App-level encryption was added at a later date,
+						 * so we use a hack by checking the first byte of the message.
+						 *
+						 * All message types will have the first byte as 0 or -1,
+						 * so we can check for other values here.
+						 *
+						 * If we find a match, assume that this was intentional from the server.
+						 * Otherwise, backtrack and assume the server doesn't support encryption.
+						 */
+						boolean isEncrypted;
+						byte encryptionValue = bytes.get();
+						if(encryptionValue == -100) isEncrypted = true;
+						else if(encryptionValue == -101) isEncrypted = false;
+						else {
+							isEncrypted = true;
+							bytes.position(bytes.position() - 1);
+						}
 						byte[] data = new byte[bytes.remaining()];
 						bytes.get(data);
 						
 						//Handling the message
-						ProxyConnect.this.notifyMessage(new EncryptedPacket(data, true));
+						ProxyConnect.this.notifyMessage(new EncryptedPacket(data, isEncrypted));
 						
 						break;
 					}
