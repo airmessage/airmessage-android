@@ -80,7 +80,7 @@ object SmartReplyHelper {
 						result.conversationActions.mapNotNull { action: ConversationAction ->
 							if(action.type == ConversationAction.TYPE_TEXT_REPLY) {
 								//Text replies
-								return@mapNotNull AMConversationAction.createReplyAction(action.textReply)
+								return@mapNotNull AMConversationAction.createReplyAction(action.textReply!!)
 							} else {
 								//Action replies
 								return@mapNotNull action.action?.let {

@@ -11,8 +11,7 @@ object WindowHelper {
 	 * Gets the maximum width the primary content should be displayed at
 	 */
 	@JvmStatic
-	fun getMaxContentWidth(resources: Resources) =
-			resources.getDimensionPixelSize(R.dimen.contentwidth_max)
+	fun getMaxContentWidth(resources: Resources) = resources.getDimensionPixelSize(R.dimen.contentwidth_max)
 	
 	/**
 	 * Helper method for calculatePaddingContentWidth() that handles finding the width

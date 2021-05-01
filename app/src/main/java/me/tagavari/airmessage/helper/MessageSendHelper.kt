@@ -132,7 +132,7 @@ object MessageSendHelper {
 			
 			//Adding the attachments
 			for(attachment in attachmentList) {
-				emitter.onNext(MessageInfo(-1, -1, null, System.currentTimeMillis(), null, null, null, ArrayList(listOf(attachment)), null, false, -1, MessageState.ghost, MessageSendErrorCode.none, false))
+				emitter.onNext(MessageInfo(-1, -1, null, System.currentTimeMillis(), null, null, null, mutableListOf(attachment), null, false, -1, MessageState.ghost, MessageSendErrorCode.none, false, null))
 			}
 			emitter.onComplete()
 		}
@@ -142,9 +142,9 @@ object MessageSendHelper {
 	 * Prepares a message to be sent over a standard messaging protocol
 	 */
 	@CheckReturnValue
-	fun prepareMessageStandard(messageText: String?, attachmentList: List<AttachmentInfo>?): Single<MessageInfo> {
-		return Single.create { emitter: SingleEmitter<MessageInfo> ->
-			emitter.onSuccess(MessageInfo(-1, -1, null, System.currentTimeMillis(), null, messageText, null, ArrayList(attachmentList), null, false, -1, MessageState.ghost, MessageSendErrorCode.none, false))
+	fun prepareMessageStandard(messageText: String?, attachmentList: List<AttachmentInfo>): Single<MessageInfo> {
+		return Single.fromCallable {
+			MessageInfo(-1, -1, null, System.currentTimeMillis(), null, messageText, null, attachmentList.toMutableList(), null, false, -1, MessageState.ghost, MessageSendErrorCode.none, false, null)
 		}
 	}
 	

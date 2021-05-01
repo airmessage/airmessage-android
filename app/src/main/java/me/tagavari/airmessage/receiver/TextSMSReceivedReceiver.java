@@ -56,7 +56,7 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 		}).subscribeOn(Schedulers.single()).subscribe();
 		
 		//Adding the message to the conversation
-		MMSSMSHelper.updateTextConversationMessage(context, Collections.singletonList(finalMessageSender), new MessageInfo(-1, -1, null, timestamp, finalMessageSender, messageBody.toString(), null, new ArrayList<>(), null, false, -1, MessageState.sent, MessageSendErrorCode.none, false)).subscribe();
+		MMSSMSHelper.updateTextConversationMessage(context, Collections.singletonList(finalMessageSender), new MessageInfo(-1, -1, null, timestamp, finalMessageSender, messageBody.toString(), null, new ArrayList<>(), null, false, -1, MessageState.sent, MessageSendErrorCode.none, false, null)).subscribe();
 	}
 	
 	/**

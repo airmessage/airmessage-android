@@ -1476,22 +1476,22 @@ public class Conversations extends AppCompatCompositeActivity {
 			
 			//Binding the title and icon
 			holder.getCompositeDisposable().addAll(
-					VBConversation.bindTitle(Conversations.this, holder.conversationTitle, conversationInfo).subscribe(),
-					VBConversation.bindUsers(Conversations.this, holder.iconGroup, conversationInfo).subscribe()
+					VBConversation.bindTitle(Conversations.this, holder.getConversationTitle(), conversationInfo).subscribe(),
+					VBConversation.bindUsers(Conversations.this, holder.getIconGroup(), conversationInfo).subscribe()
 			);
 			
 			//Binding the conversation preview
-			VBConversation.bindPreview(Conversations.this, holder.labelMessage, holder.labelStatus, conversationInfo.getDynamicPreview());
+			VBConversation.bindPreview(Conversations.this, holder.getLabelMessage(), holder.getLabelStatus(), conversationInfo.getDynamicPreview());
 			
 			//Binding the unread status
-			VBConversation.bindUnreadStatus(Conversations.this, holder.conversationTitle, holder.labelMessage, holder.labelUnread, conversationInfo.getUnreadMessageCount());
+			VBConversation.bindUnreadStatus(Conversations.this, holder.getConversationTitle(), holder.getLabelMessage(), holder.getLabelUnread(), conversationInfo.getUnreadMessageCount());
 			
 			//Binding the flags
-			holder.flagMuted.setVisibility(conversationInfo.isMuted() ? View.VISIBLE : View.GONE);
-			holder.flagDraft.setVisibility(conversationInfo.getDraftMessage() != null || !conversationInfo.getDraftFiles().isEmpty() ? View.VISIBLE : View.GONE);
+			holder.getFlagMuted().setVisibility(conversationInfo.isMuted() ? View.VISIBLE : View.GONE);
+			holder.getFlagDraft().setVisibility(conversationInfo.getDraftMessage() != null || !conversationInfo.getDraftFiles().isEmpty() ? View.VISIBLE : View.GONE);
 			
 			//Binding the selection indicator
-			VBConversation.bindSelectionIndicator(holder.itemView, holder.iconGroup, holder.selectionIndicator, holder.selectionHighlight, viewModel.actionModeSelections.contains(conversationInfo.getLocalID()), false);
+			VBConversation.bindSelectionIndicator(holder.itemView, holder.getIconGroup(), holder.getSelectionIndicator(), holder.getSelectionHighlight(), viewModel.actionModeSelections.contains(conversationInfo.getLocalID()), false);
 			
 			//Setting the view's click listeners
 			holder.itemView.setOnClickListener(view -> {
@@ -1533,23 +1533,23 @@ public class Conversations extends AppCompatCompositeActivity {
 				for(Object payload : payloads) {
 					switch((int) payload) {
 						case conversationPayloadPreview:
-							VBConversation.bindPreview(Conversations.this, holder.labelMessage, holder.labelStatus, conversationInfo.getDynamicPreview());
-							holder.flagDraft.setVisibility(conversationInfo.getDraftMessage() != null || !conversationInfo.getDraftFiles().isEmpty() ? View.VISIBLE : View.GONE);
+							VBConversation.bindPreview(Conversations.this, holder.getLabelMessage(), holder.getLabelStatus(), conversationInfo.getDynamicPreview());
+							holder.getFlagDraft().setVisibility(conversationInfo.getDraftMessage() != null || !conversationInfo.getDraftFiles().isEmpty() ? View.VISIBLE : View.GONE);
 							break;
 						case conversationPayloadTitle:
-							holder.getCompositeDisposable().add(VBConversation.bindTitle(Conversations.this, holder.conversationTitle, conversationInfo).subscribe());
+							holder.getCompositeDisposable().add(VBConversation.bindTitle(Conversations.this, holder.getConversationTitle(), conversationInfo).subscribe());
 							break;
 						case conversationPayloadMember:
-							holder.getCompositeDisposable().add(VBConversation.bindUsers(Conversations.this, holder.iconGroup, conversationInfo).subscribe());
+							holder.getCompositeDisposable().add(VBConversation.bindUsers(Conversations.this, holder.getIconGroup(), conversationInfo).subscribe());
 							break;
 						case conversationPayloadMuted:
-							holder.flagMuted.setVisibility(conversationInfo.isMuted() ? View.VISIBLE : View.GONE);
+							holder.getFlagMuted().setVisibility(conversationInfo.isMuted() ? View.VISIBLE : View.GONE);
 							break;
 						case conversationPayloadUnread:
-							VBConversation.bindUnreadStatus(Conversations.this, holder.conversationTitle, holder.labelMessage, holder.labelUnread, conversationInfo.getUnreadMessageCount());
+							VBConversation.bindUnreadStatus(Conversations.this, holder.getConversationTitle(), holder.getLabelMessage(), holder.getLabelUnread(), conversationInfo.getUnreadMessageCount());
 							break;
 						case conversationPayloadSelection:
-							VBConversation.bindSelectionIndicator(holder.itemView, holder.iconGroup, holder.selectionIndicator, holder.selectionHighlight, viewModel.actionModeSelections.contains(conversationInfo.getLocalID()), true);
+							VBConversation.bindSelectionIndicator(holder.itemView, holder.getIconGroup(), holder.getSelectionIndicator(), holder.getSelectionHighlight(), viewModel.actionModeSelections.contains(conversationInfo.getLocalID()), true);
 							break;
 					}
 				}
@@ -1728,19 +1728,19 @@ public class Conversations extends AppCompatCompositeActivity {
 					
 					//Binding the title and icon
 					viewHolder.getCompositeDisposable().addAll(
-							VBConversation.bindTitle(Conversations.this, viewHolder.conversationTitle, conversation).subscribe(),
-							VBConversation.bindUsers(Conversations.this, viewHolder.iconGroup, conversation).subscribe()
+							VBConversation.bindTitle(Conversations.this, viewHolder.getConversationTitle(), conversation).subscribe(),
+							VBConversation.bindUsers(Conversations.this, viewHolder.getIconGroup(), conversation).subscribe()
 					);
 					
 					//Binding the conversation preview
-					VBConversation.bindPreview(Conversations.this, viewHolder.labelMessage, viewHolder.labelStatus, conversation.getDynamicPreview());
+					VBConversation.bindPreview(Conversations.this, viewHolder.getLabelMessage(), viewHolder.getLabelStatus(), conversation.getDynamicPreview());
 					
 					//Binding the unread status
-					VBConversation.bindUnreadStatus(Conversations.this, viewHolder.conversationTitle, viewHolder.labelMessage, viewHolder.labelUnread, conversation.getUnreadMessageCount());
+					VBConversation.bindUnreadStatus(Conversations.this, viewHolder.getConversationTitle(), viewHolder.getLabelMessage(), viewHolder.getLabelUnread(), conversation.getUnreadMessageCount());
 					
 					//Binding the flags
-					viewHolder.flagMuted.setVisibility(conversation.isMuted() ? View.VISIBLE : View.GONE);
-					viewHolder.flagDraft.setVisibility(conversation.getDraftMessage() != null || !conversation.getDraftFiles().isEmpty() ? View.VISIBLE : View.GONE);
+					viewHolder.getFlagMuted().setVisibility(conversation.isMuted() ? View.VISIBLE : View.GONE);
+					viewHolder.getFlagDraft().setVisibility(conversation.getDraftMessage() != null || !conversation.getDraftFiles().isEmpty() ? View.VISIBLE : View.GONE);
 					
 					//Setting the view's click listener
 					holder.itemView.setOnClickListener(view -> {

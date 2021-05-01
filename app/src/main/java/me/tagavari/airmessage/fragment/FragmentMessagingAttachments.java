@@ -931,7 +931,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 			//Binding the content view
 			VHAttachmentLinked attachmentViewHolder = (VHAttachmentLinked) viewHolder;
 			attachmentViewHolder.bind(requireContext(), item.getFile(), item.getFileName(), item.getFileType(), item.getFileSize(), item.getMediaStoreData().getModificationDate(), -1);
-			if(item.getMetadata() != null) ((VHAttachmentTileContentMedia) attachmentViewHolder.content).applyMetadata((FileDisplayMetadata.Media) item.getMetadata());
+			if(item.getMetadata() != null) ((VHAttachmentTileContentMedia) attachmentViewHolder.getContent()).applyMetadata((FileDisplayMetadata.Media) item.getMetadata());
 			
 			//Setting the selection state
 			int queueIndex = getCommunicationsCallback().getQueueIndex(item.getMediaStoreData().getMediaStoreID());
