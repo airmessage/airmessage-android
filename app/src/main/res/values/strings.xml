@@ -387,6 +387,7 @@
 
 	<string name="message_connecterror">Your server couldn\'t be reached</string>
 	<string name="message_passwordrequired">Server password required</string>
+	<string name="message_passwordupdated">Server password updated</string>
 
 	<string name="progress_loadingmessages">Loading messages&#8230;</string>
 	<string name="progress_loading">Loading&#8230;</string>

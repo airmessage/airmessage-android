@@ -1,19 +1,22 @@
 package me.tagavari.airmessage.helper
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.annotation.StringRes
+import androidx.appcompat.app.AppCompatActivity
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.ServerConfigStandalone
 import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.constants.ExternalLinkConstants
+import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.enums.ConnectionErrorCode
+import me.tagavari.airmessage.enums.ProxyType
+import me.tagavari.airmessage.fragment.FragmentDialogConnectAuth
 import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper.launchAutomatic
 import java.util.function.BiConsumer
 
 object ErrorDetailsHelper {
-	private val actionReconnectService = BiConsumer { activity: Activity, connectionManager: ConnectionManager? ->
+	private val actionReconnectService = BiConsumer { activity: AppCompatActivity, connectionManager: ConnectionManager? ->
 		if(connectionManager == null) {
 			launchAutomatic(activity)
 		} else {
@@ -62,7 +65,15 @@ object ErrorDetailsHelper {
 			}
 			ConnectionErrorCode.unauthorized -> {
 				labelRes = R.string.message_serverstatus_authfail
-				if(!onlyConfig) button = ErrorDetails.Button(R.string.action_reconfigure) { activity, _ -> activity.startActivity(Intent(activity, ServerConfigStandalone::class.java)) }
+				if(!onlyConfig) {
+					button = ErrorDetails.Button(R.string.action_reconfigure) { activity, _ ->
+						if(SharedPreferencesManager.getProxyType(activity) == ProxyType.direct) {
+							activity.startActivity(Intent(activity, ServerConfigStandalone::class.java))
+						} else {
+							FragmentDialogConnectAuth().show(activity.supportFragmentManager, null)
+						}
+					}
+				}
 			}
 			ConnectionErrorCode.connectNoGroup -> {
 				labelRes = R.string.message_serverstatus_nogroup
@@ -96,6 +107,6 @@ object ErrorDetailsHelper {
 	 * Represents error details to show to the user, including a description label and an optional button action
 	 */
 	data class ErrorDetails(@StringRes val label: Int, val button: Button?) {
-		data class Button(@StringRes val label: Int, val clickListener: BiConsumer<Activity, ConnectionManager?>)
+		data class Button(@StringRes val label: Int, val clickListener: BiConsumer<AppCompatActivity, ConnectionManager?>)
 	}
 }

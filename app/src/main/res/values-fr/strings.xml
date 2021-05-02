@@ -511,4 +511,5 @@
 	<string name="action_resolve">Résoudre</string>
 	<string name="message_passwordrequired">Mot de passe du serveur requis</string>
 	<string name="action_continue">Continuer</string>
+	<string name="message_passwordupdated">Le mot de passe du serveur a été mis à jour</string>
 </resources>

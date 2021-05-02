@@ -502,4 +502,5 @@
 	<string name="action_resolve">解決</string>
 	<string name="message_passwordrequired">サーバーのパスワードを入力してください</string>
 	<string name="action_continue">続ける</string>
+	<string name="message_passwordupdated">サーバーのパスワードが更新されました</string>
 </resources>
