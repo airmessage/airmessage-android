@@ -3,20 +3,17 @@ package me.tagavari.airmessage.data;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.preference.PreferenceManager;
 import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKeys;
+import me.tagavari.airmessage.enums.ProxyType;
+import me.tagavari.airmessage.util.ConnectionParams;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.UUID;
-
-import me.tagavari.airmessage.enums.ProxyType;
-import me.tagavari.airmessage.util.DirectConnectionParams;
-import me.tagavari.airmessage.util.Triplet;
 
 public class SharedPreferencesManager {
 	private static final int sharedPreferencesSchemaVersion = 1;
@@ -233,11 +230,21 @@ public class SharedPreferencesManager {
 	}
 	
 	/**
+	 * Sets the password used for direct connections
+	 */
+	public static void setDirectConnectionPassword(Context context, @Nullable String password) throws GeneralSecurityException, IOException {
+		getSecureSharedPrefs(context)
+			.edit()
+			.putString(sharedPreferencesSecureKeyPassword, password)
+			.apply();
+	}
+	
+	/**
 	 * Fetches the address, fallback address, and password used for direct connections
 	 */
-	public static DirectConnectionParams getDirectConnectionDetails(Context context) throws GeneralSecurityException, IOException {
+	public static ConnectionParams.Direct getDirectConnectionDetails(Context context) throws GeneralSecurityException, IOException {
 		SharedPreferences prefs = getSecureSharedPrefs(context);
-		return new DirectConnectionParams(
+		return new ConnectionParams.Direct(
 				prefs.getString(sharedPreferencesSecureKeyAddress, null),
 				prefs.getString(sharedPreferencesSecureKeyAddressFallback, null),
 				prefs.getString(sharedPreferencesSecureKeyPassword, null)
@@ -247,7 +254,7 @@ public class SharedPreferencesManager {
 	/**
 	 * Sets the address, fallback address, and password used for direct connections
 	 */
-	public static void setDirectConnectionDetails(Context context, DirectConnectionParams params) throws GeneralSecurityException, IOException {
+	public static void setDirectConnectionDetails(Context context, ConnectionParams.Direct params) throws GeneralSecurityException, IOException {
 		getSecureSharedPrefs(context).edit()
 				.putString(sharedPreferencesSecureKeyAddress, params.getAddress())
 				.putString(sharedPreferencesSecureKeyAddressFallback, params.getFallbackAddress())

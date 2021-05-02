@@ -60,7 +60,7 @@ object ErrorDetailsHelper {
 				labelRes = R.string.message_serverstatus_serveroutdated
 				button = ErrorDetails.Button(R.string.screen_help) { activity, _ -> activity.startActivity(Intent(Intent.ACTION_VIEW, ExternalLinkConstants.serverUpdateAddress)) }
 			}
-			ConnectionErrorCode.directUnauthorized -> {
+			ConnectionErrorCode.unauthorized -> {
 				labelRes = R.string.message_serverstatus_authfail
 				if(!onlyConfig) button = ErrorDetails.Button(R.string.action_reconfigure) { activity, _ -> activity.startActivity(Intent(activity, ServerConfigStandalone::class.java)) }
 			}

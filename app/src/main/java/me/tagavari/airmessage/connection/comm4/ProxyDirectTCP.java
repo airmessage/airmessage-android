@@ -17,7 +17,7 @@ import me.tagavari.airmessage.constants.NetworkConstants;
 import me.tagavari.airmessage.constants.RegexConstants;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.util.DirectConnectionParams;
+import me.tagavari.airmessage.util.ConnectionParams;
 
 /**
  * Establishes a direct connection with the server
@@ -54,14 +54,14 @@ class ProxyDirectTCP extends DataProxy<HeaderPacket> {
 	};
 	
 	@Override
-	public void start(Context context, @Nullable Object override) {
+	public void start(Context context, @Nullable ConnectionParams override) {
 		//Returning if this proxy is already running
 		if(isRunning) {
 			FirebaseCrashlytics.getInstance().recordException(new IllegalStateException("Tried to start proxy, but it is already running!"));
 			return;
 		}
 		
-		DirectConnectionParams connectionParams;
+		ConnectionParams.Direct connectionParams;
 		
 		if(override == null) {
 			try {
@@ -72,7 +72,7 @@ class ProxyDirectTCP extends DataProxy<HeaderPacket> {
 				return;
 			}
 		} else {
-			connectionParams = (DirectConnectionParams) override;
+			connectionParams = (ConnectionParams.Direct) override;
 		}
 		
 		String hostname, hostnameFallback;

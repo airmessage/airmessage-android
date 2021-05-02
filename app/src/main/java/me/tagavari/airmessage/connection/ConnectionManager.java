@@ -83,12 +83,7 @@ import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
 import me.tagavari.airmessage.redux.ReduxEventConnection;
 import me.tagavari.airmessage.redux.ReduxEventMassRetrieval;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;
-import me.tagavari.airmessage.util.ActivityStatusUpdate;
-import me.tagavari.airmessage.util.CompoundErrorDetails;
-import me.tagavari.airmessage.util.ConversationTarget;
-import me.tagavari.airmessage.util.ModifierMetadata;
-import me.tagavari.airmessage.util.RequestSubject;
-import me.tagavari.airmessage.util.TrackableRequest;
+import me.tagavari.airmessage.util.*;
 
 public class ConnectionManager {
 	private static final String TAG = ConnectionManager.class.getSimpleName();
@@ -973,7 +968,7 @@ public class ConnectionManager {
 		
 		//Getting the parameters
 		int proxyType = connectionOverride == null ? SharedPreferencesManager.getProxyType(context) : connectionOverride.getProxyType();
-		Object overrideValue = connectionOverride == null ? null : connectionOverride.getValue();
+		ConnectionParams overrideValue = connectionOverride == null ? null : connectionOverride.getValue();
 		
 		//Creating and starting the communications manager
 		communicationsManager = communicationsPriorityList.get(index).create(communicationsManagerListener, proxyType);

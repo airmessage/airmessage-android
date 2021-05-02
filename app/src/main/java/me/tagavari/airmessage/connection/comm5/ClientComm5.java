@@ -23,8 +23,8 @@ import me.tagavari.airmessage.enums.ConnectionFeature;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.util.ConnectionParams;
 import me.tagavari.airmessage.util.ConversationTarget;
-import me.tagavari.airmessage.util.DirectConnectionParams;
 
 public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	private static final String TAG = ClientComm5.class.getSimpleName();
@@ -56,7 +56,7 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	}
 	
 	@Override
-	public void connect(Context context, @Nullable Object override) {
+	public void connect(Context context, @Nullable ConnectionParams override) {
 		//Saving the password for protocol-level encryption
 		if(override == null) {
 			try {
@@ -65,7 +65,7 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 				exception.printStackTrace();
 			}
 		} else {
-			password = ((DirectConnectionParams) override).getPassword();
+			password = ((ConnectionParams.Security) override).getPassword();
 		}
 		
 		super.connect(context, override);

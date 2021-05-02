@@ -6,7 +6,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 @Retention(RetentionPolicy.SOURCE)
-@IntDef({ConnectionErrorCode.user, ConnectionErrorCode.connection, ConnectionErrorCode.internet, ConnectionErrorCode.internalError, ConnectionErrorCode.externalError, ConnectionErrorCode.badRequest, ConnectionErrorCode.clientOutdated, ConnectionErrorCode.serverOutdated, ConnectionErrorCode.directUnauthorized, ConnectionErrorCode.connectNoGroup, ConnectionErrorCode.connectNoCapacity, ConnectionErrorCode.connectAccountValidation, ConnectionErrorCode.connectNoSubscription, ConnectionErrorCode.connectOtherLocation})
+@IntDef({ConnectionErrorCode.user, ConnectionErrorCode.connection, ConnectionErrorCode.internet, ConnectionErrorCode.internalError, ConnectionErrorCode.externalError, ConnectionErrorCode.badRequest, ConnectionErrorCode.clientOutdated, ConnectionErrorCode.serverOutdated, ConnectionErrorCode.unauthorized, ConnectionErrorCode.connectNoGroup, ConnectionErrorCode.connectNoCapacity, ConnectionErrorCode.connectAccountValidation, ConnectionErrorCode.connectNoSubscription, ConnectionErrorCode.connectOtherLocation})
 public @interface ConnectionErrorCode {
 	//Standard result codes
 	int user = 0; //The user cancelled the connection
@@ -19,9 +19,7 @@ public @interface ConnectionErrorCode {
 	int badRequest = 100;
 	int clientOutdated = 101;
 	int serverOutdated = 102;
-	
-	//Proxy direct
-	int directUnauthorized = 200;
+	int unauthorized = 103;
 	
 	//Proxy connect
 	int connectNoGroup = 300;

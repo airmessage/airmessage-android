@@ -3,6 +3,9 @@ package me.tagavari.airmessage.fragment;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.transition.TransitionManager;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,32 +21,47 @@ import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 
+import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.security.GeneralSecurityException;
+import java.util.Locale;
 
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.ConnectionOverride;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.enums.ConnectionState;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.extension.FragmentBackOverride;
 import me.tagavari.airmessage.extension.FragmentCommunicationNetworkConfig;
 import me.tagavari.airmessage.helper.ErrorDetailsHelper;
 import me.tagavari.airmessage.helper.ResourceHelper;
+import me.tagavari.airmessage.helper.StringHelper;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventConnection;
+import me.tagavari.airmessage.util.ConnectionParams;
 
 public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCommunicationNetworkConfig> implements FragmentBackOverride {
 	//Creating the view values
 	private ViewGroup groupContent;
-	private ViewGroup groupProgress, groupError;
+	
+	private ViewGroup groupProgress;
+	
+	private ViewGroup groupError;
 	private TextView labelError;
 	private Button buttonError;
+	
+	private ViewGroup groupAuth;
+	private TextInputLayout inputAuth;
+	private Button buttonAuth;
 	
 	//Creating the fragment values
 	private FragmentViewModel viewModel;
@@ -64,10 +82,34 @@ public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCom
 		
 		//Getting the views
 		groupContent = view.findViewById(R.id.content);
+		
 		groupProgress = groupContent.findViewById(R.id.layout_progress);
+		
 		groupError = groupContent.findViewById(R.id.layout_error);
 		labelError = groupContent.findViewById(R.id.label_error);
 		buttonError = groupContent.findViewById(R.id.button_error);
+		
+		groupAuth = groupContent.findViewById(R.id.layout_auth);
+		inputAuth = groupContent.findViewById(R.id.input_auth);
+		buttonAuth = groupContent.findViewById(R.id.button_auth);
+		
+		inputAuth.getEditText().addTextChangedListener(new TextWatcher() {
+			@Override
+			public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+			
+			@Override
+			public void onTextChanged(CharSequence s, int start, int before, int count) {
+				buttonAuth.setEnabled(s.length() > 0);
+				inputAuth.setErrorEnabled(false);
+			}
+			
+			@Override
+			public void afterTextChanged(Editable s) {}
+		});
+		buttonAuth.setOnClickListener(buttonView -> {
+			startConnection();
+			viewModel.passwordEntered = true;
+		});
 		
 		//Setting up the toolbar
 		configureToolbar(view.findViewById(R.id.toolbar));
@@ -114,12 +156,19 @@ public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCom
 				//Finishing
 				complete();
 			} else if(event.getState() == ConnectionState.disconnected) {
-				//Setting the state as errored
-				viewModel.state = State.error;
-				
-				//Setting the error
+				//Getting the error code
 				int errorCode = ((ReduxEventConnection.Disconnected) event).getCode();
-				viewModel.errorDetails = ErrorDetailsHelper.getErrorDetails(errorCode, true);
+				
+				if(errorCode == ConnectionErrorCode.unauthorized) {
+					//Setting the state as unauthorized
+					viewModel.state = State.auth;
+				} else {
+					//Setting the state as errored
+					viewModel.state = State.error;
+					
+					//Setting the error
+					viewModel.errorDetails = ErrorDetailsHelper.getErrorDetails(errorCode, true);
+				}
 				
 				//Updating the state
 				applyState();
@@ -137,13 +186,23 @@ public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCom
 			//Showing the progress group
 			groupProgress.setVisibility(View.VISIBLE);
 			groupError.setVisibility(View.GONE);
+			groupAuth.setVisibility(View.GONE);
 		} else if(viewModel.state == State.error) {
 			//Showing the error group
 			groupProgress.setVisibility(View.GONE);
 			groupError.setVisibility(View.VISIBLE);
+			groupAuth.setVisibility(View.GONE);
 			
 			//Updating the error
 			applyErrorDetails(viewModel.errorDetails);
+		} else if(viewModel.state == State.auth) {
+			//Showing the auth group
+			groupProgress.setVisibility(View.GONE);
+			groupError.setVisibility(View.GONE);
+			groupAuth.setVisibility(View.VISIBLE);
+			
+			inputAuth.setError(getResources().getString(R.string.message_serverstatus_authfail));
+			inputAuth.setErrorEnabled(viewModel.passwordEntered);
 		}
 	}
 	
@@ -172,7 +231,14 @@ public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCom
 		if(connectionManager == null) return;
 		
 		//Setting the override and connecting
-		connectionManager.setConnectionOverride(new ConnectionOverride<>(ProxyType.connect, null));
+		String inputPassword = inputAuth.getEditText().getText().toString();
+		ConnectionParams params;
+		if(!TextUtils.isEmpty(inputPassword)) {
+			params = new ConnectionParams.Security(inputPassword.trim());
+		} else {
+			params = null;
+		}
+		connectionManager.setConnectionOverride(new ConnectionOverride<>(ProxyType.connect, params));
 		connectionManager.connect();
 		
 		//Updating the state
@@ -211,6 +277,12 @@ public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCom
 		//Saving the connection data in the shared preferences
 		SharedPreferencesManager.setProxyType(getContext(), ProxyType.connect);
 		SharedPreferencesManager.setConnectionConfigured(getContext(), true);
+		try {
+			SharedPreferencesManager.setDirectConnectionPassword(getContext(), StringHelper.nullifyEmptyString(inputAuth.getEditText().getText().toString().trim()));
+		} catch(GeneralSecurityException | IOException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+		}
 		
 		//Disabling the connection on boot
 		Preferences.updateConnectionServiceBootEnabled(getContext(), false);
@@ -223,6 +295,7 @@ public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCom
 		boolean isFirstLaunch = true;
 		@State int state = State.waiting;
 		ErrorDetailsHelper.ErrorDetails errorDetails = null;
+		boolean passwordEntered = false;
 		
 		public FragmentViewModel() {
 		}
@@ -234,5 +307,6 @@ public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCom
 		int waiting = 0;
 		int connecting = 1;
 		int error = 2;
+		int auth = 3;
 	}
 }

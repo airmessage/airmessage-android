@@ -16,8 +16,8 @@ import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.enums.ConnectionFeature;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.util.ConnectionParams;
 import me.tagavari.airmessage.util.ConversationTarget;
-import me.tagavari.airmessage.util.DirectConnectionParams;
 
 public abstract class CommunicationsManager<Packet> {
 	//Creating the handler
@@ -70,7 +70,7 @@ public abstract class CommunicationsManager<Packet> {
 	/**
 	 * Connects to the server
 	 */
-	public void connect(Context context, @Nullable Object override) {
+	public void connect(Context context, @Nullable ConnectionParams override) {
 		//Connecting the proxy
 		dataProxy.start(context, override);
 	}

@@ -19,6 +19,6 @@ abstract class ReduxEventConnection {
 		@field:ConnectionErrorCode @get:ConnectionErrorCode
 		@param:ConnectionErrorCode val code: Int
 	) : ReduxEventConnection() {
-		override val state = ConnectionState.connected
+		override val state = ConnectionState.disconnected
 	}
 }

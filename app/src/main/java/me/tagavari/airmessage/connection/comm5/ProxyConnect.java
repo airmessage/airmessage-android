@@ -5,19 +5,21 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-
 import androidx.annotation.Nullable;
-
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GetTokenResult;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-import com.google.firebase.iid.FirebaseInstanceId;
-import com.google.firebase.iid.InstanceIdResult;
 import com.google.firebase.messaging.FirebaseMessaging;
-
+import me.tagavari.airmessage.BuildConfig;
+import me.tagavari.airmessage.connection.DataProxy;
+import me.tagavari.airmessage.connection.encryption.EncryptionAES;
+import me.tagavari.airmessage.connection.encryption.EncryptionManager;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.util.ConnectionParams;
 import org.java_websocket.WebSocket;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.exceptions.InvalidDataException;
@@ -26,28 +28,18 @@ import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 
+import javax.net.ssl.*;
+import java.io.IOException;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLParameters;
-import javax.net.ssl.SSLPeerUnverifiedException;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.SSLSocket;
-
-import me.tagavari.airmessage.BuildConfig;
-import me.tagavari.airmessage.connection.DataProxy;
-import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.util.DirectConnectionParams;
 
 /**
  * Handles connecting via WebSocket to AirMessage's Connect servers
@@ -62,12 +54,30 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final Runnable handshakeExpiryRunnable = () -> stop(ConnectionErrorCode.internet);
 	private WSClient client;
+	@Nullable private EncryptionManager encryptionManager;
 	
 	@Override
-	public void start(Context context, @Nullable Object override) {
+	public void start(Context context, @Nullable ConnectionParams override) {
 		if(isRunning) {
 			FirebaseCrashlytics.getInstance().recordException(new IllegalStateException("Tried to start proxy, but it is already running!"));
 			return;
+		}
+		
+		@Nullable String password;
+		if(override == null) {
+			try {
+				password = SharedPreferencesManager.getDirectConnectionPassword(context);
+			} catch(IOException | GeneralSecurityException exception) {
+				exception.printStackTrace();
+				notifyClose(ConnectionErrorCode.internalError);
+				return;
+			}
+		} else {
+			password = ((ConnectionParams.Security) override).getPassword();
+		}
+		
+		if(password != null) {
+			encryptionManager = new EncryptionAES(password);
 		}
 		
 		//Checking if the user is logged in
@@ -122,7 +132,7 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 					.appendQueryParameter("fcm_token", fcmToken)
 					.build();
 			
-			//Starting the server
+			//Starting the connection
 			try {
 				client = new WSClient(new URI(uri.toString()), headers);
 				client.connect();
@@ -252,24 +262,30 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 						 * If we find a match, assume that this was intentional from the server.
 						 * Otherwise, backtrack and assume the server doesn't support encryption.
 						 */
-						boolean isEncrypted;
+						boolean isSecure, isEncrypted;
 						byte encryptionValue = bytes.get();
-						if(encryptionValue == -100) isEncrypted = true;
-						else if(encryptionValue == -101) isEncrypted = false;
+						if(encryptionValue == -100) isSecure = isEncrypted = true;
+						else if(encryptionValue == -101) isSecure = isEncrypted = false;
 						else {
-							isEncrypted = true;
+							isSecure = true;
+							isEncrypted = false;
 							bytes.position(bytes.position() - 1);
 						}
 						byte[] data = new byte[bytes.remaining()];
 						bytes.get(data);
 						
+						//Decrypting the data
+						if(isEncrypted && encryptionManager != null) {
+							data = encryptionManager.decrypt(data);
+						}
+						
 						//Handling the message
-						ProxyConnect.this.notifyMessage(new EncryptedPacket(data, isEncrypted));
+						ProxyConnect.this.notifyMessage(new EncryptedPacket(data, isSecure));
 						
 						break;
 					}
 				}
-			} catch(BufferUnderflowException exception) {
+			} catch(BufferUnderflowException | GeneralSecurityException exception) {
 				exception.printStackTrace();
 				FirebaseCrashlytics.getInstance().recordException(exception);
 			}

@@ -3,15 +3,8 @@ package me.tagavari.airmessage.connection.comm5;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-
 import androidx.annotation.Nullable;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.encryption.EncryptionAES;
 import me.tagavari.airmessage.connection.encryption.EncryptionManager;
@@ -19,7 +12,11 @@ import me.tagavari.airmessage.constants.NetworkConstants;
 import me.tagavari.airmessage.constants.RegexConstants;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.util.DirectConnectionParams;
+import me.tagavari.airmessage.util.ConnectionParams;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 /**
  * Establishes a direct connection with the server
@@ -56,14 +53,14 @@ class ProxyDirectTCP extends DataProxy<EncryptedPacket> {
 	};
 	
 	@Override
-	public void start(Context context, @Nullable Object override) {
+	public void start(Context context, @Nullable ConnectionParams override) {
 		//Returning if this proxy is already running
 		if(isRunning) {
 			FirebaseCrashlytics.getInstance().recordException(new IllegalStateException("Tried to start proxy, but it is already running!"));
 			return;
 		}
 		
-		DirectConnectionParams connectionParams;
+		ConnectionParams.Direct connectionParams;
 		
 		if(override == null) {
 			try {
@@ -74,7 +71,7 @@ class ProxyDirectTCP extends DataProxy<EncryptedPacket> {
 				return;
 			}
 		} else {
-			connectionParams = (DirectConnectionParams) override;
+			connectionParams = (ConnectionParams.Direct) override;
 		}
 		
 		String hostname, hostnameFallback;
