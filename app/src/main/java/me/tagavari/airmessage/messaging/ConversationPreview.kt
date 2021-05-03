@@ -33,21 +33,15 @@ abstract class ConversationPreview(val date: Long) : Serializable {
 				//Applying invisible ink
 				if(SendStyleHelper.appleSendStyleBubbleInvisibleInk == sendStyle) {
 					context.getString(R.string.message_messageeffect_invisibleink)
-				}
-				//Otherwise assigning the message to the message text (without line breaks)
-				else if(message != null || subject != null) {
-					if(message != null && subject != null) {
-						//Both body and subject
-						context.resources.getString(R.string.prefix_wild, subject.replace('\n', ' '), message.replace('\n', ' '))
-					} else if(message != null) {
-						//Only body
-						message.replace('\n', ' ')
-					} else if(subject != null) {
-						//Only subject
-						subject.replace('\n', ' ')
-					} else {
-						error("Illegal branch reached")
-					}
+				} else if(message != null && subject != null) {
+					//Both body and subject
+					context.resources.getString(R.string.prefix_wild, subject.replace('\n', ' '), message.replace('\n', ' '))
+				} else if(message != null) {
+					//Only body
+					message.replace('\n', ' ')
+				} else if(subject != null) {
+					//Only subject
+					subject.replace('\n', ' ')
 				}
 				//Setting the attachments if there are attachments
 				else if(attachments.isNotEmpty()) {

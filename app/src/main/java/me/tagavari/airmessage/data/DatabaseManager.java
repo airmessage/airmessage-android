@@ -1707,15 +1707,15 @@ public class DatabaseManager extends SQLiteOpenHelper {
 						Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " = ?", new String[]{Long.toString(lastItemID)},
 						null, null, null)) {
 					//Getting the attachments
-					AttachmentPreview[] attachments = new AttachmentPreview[attachmentCursor.getCount()];
+					List<AttachmentPreview> attachments = new ArrayList<>(attachmentCursor.getCount());
 					int indexType = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILETYPE);
 					int indexName = attachmentCursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILENAME);
 					for(int i = 0; attachmentCursor.moveToNext(); i++) {
-						attachments[i] = new AttachmentPreview(attachmentCursor.getString(indexName), attachmentCursor.getString(indexType));
+						attachments.add(new AttachmentPreview(attachmentCursor.getString(indexName), attachmentCursor.getString(indexType)));
 					}
 					
 					//Returning the conversation message preview
-					return new ConversationPreview.Message(date, sender == null, null, subject, new ArrayList<>(), sendStyle, hasError);
+					return new ConversationPreview.Message(date, sender == null, null, subject, attachments, sendStyle, hasError);
 				}
 			}
 		} else if(itemType == ConversationItemType.chatCreate) { //Chat creation
