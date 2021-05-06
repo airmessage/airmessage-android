@@ -1,9 +1,11 @@
 package me.tagavari.airmessage.helper
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.FragmentManager
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.ServerConfigStandalone
 import me.tagavari.airmessage.connection.ConnectionManager
@@ -15,8 +17,10 @@ import me.tagavari.airmessage.fragment.FragmentDialogConnectAuth
 import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper.launchAutomatic
 import java.util.function.BiConsumer
 
+typealias ButtonClickListener = (Activity, FragmentManager, ConnectionManager?) -> Unit
+
 object ErrorDetailsHelper {
-	private val actionReconnectService = BiConsumer { activity: AppCompatActivity, connectionManager: ConnectionManager? ->
+	private val actionReconnectService: ButtonClickListener = { activity, _, connectionManager ->
 		if(connectionManager == null) {
 			launchAutomatic(activity)
 		} else {
@@ -57,20 +61,20 @@ object ErrorDetailsHelper {
 			}
 			ConnectionErrorCode.clientOutdated -> {
 				labelRes = R.string.message_serverstatus_clientoutdated
-				button = ErrorDetails.Button(R.string.action_update) { activity, _ -> activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + activity.packageName))) }
+				button = ErrorDetails.Button(R.string.action_update) { activity, _, _ -> activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + activity.packageName))) }
 			}
 			ConnectionErrorCode.serverOutdated -> {
 				labelRes = R.string.message_serverstatus_serveroutdated
-				button = ErrorDetails.Button(R.string.screen_help) { activity, _ -> activity.startActivity(Intent(Intent.ACTION_VIEW, ExternalLinkConstants.serverUpdateAddress)) }
+				button = ErrorDetails.Button(R.string.screen_help) { activity, _, _ -> activity.startActivity(Intent(Intent.ACTION_VIEW, ExternalLinkConstants.serverUpdateAddress)) }
 			}
 			ConnectionErrorCode.unauthorized -> {
 				labelRes = R.string.message_serverstatus_authfail
 				if(!onlyConfig) {
-					button = ErrorDetails.Button(R.string.action_reconfigure) { activity, _ ->
+					button = ErrorDetails.Button(R.string.action_reconfigure) { activity, fragmentManager, _ ->
 						if(SharedPreferencesManager.getProxyType(activity) == ProxyType.direct) {
 							activity.startActivity(Intent(activity, ServerConfigStandalone::class.java))
 						} else {
-							FragmentDialogConnectAuth().show(activity.supportFragmentManager, null)
+							FragmentDialogConnectAuth().show(fragmentManager, null)
 						}
 					}
 				}
@@ -107,6 +111,6 @@ object ErrorDetailsHelper {
 	 * Represents error details to show to the user, including a description label and an optional button action
 	 */
 	data class ErrorDetails(@StringRes val label: Int, val button: Button?) {
-		data class Button(@StringRes val label: Int, val clickListener: BiConsumer<AppCompatActivity, ConnectionManager?>)
+		data class Button(@StringRes val label: Int, val clickListener: (Activity, FragmentManager, ConnectionManager?) -> Unit)
 	}
 }

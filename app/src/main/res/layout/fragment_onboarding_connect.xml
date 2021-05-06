@@ -149,7 +149,6 @@
 				android:layout_marginRight="20dp"
 				android:layout_marginTop="40dp"
 				android:hint="@string/message_setup_connect_password"
-
 				app:passwordToggleEnabled="true">
 				<com.google.android.material.textfield.TextInputEditText
 					android:layout_width="match_parent"

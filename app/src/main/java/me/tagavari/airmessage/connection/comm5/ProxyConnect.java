@@ -261,6 +261,11 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 						 *
 						 * If we find a match, assume that this was intentional from the server.
 						 * Otherwise, backtrack and assume the server doesn't support encryption.
+						 *
+						 * -100 -> The content is encrypted
+						 * -101 -> The content is not encrypted, but the server has encryption enabled
+						 * -102 -> The server has encryption disabled
+						 * Anything else -> The server does not support encryption
 						 */
 						boolean isSecure, isEncrypted;
 						byte encryptionValue = bytes.get();
@@ -269,7 +274,9 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 						else {
 							isSecure = true;
 							isEncrypted = false;
-							bytes.position(bytes.position() - 1);
+							if(encryptionValue != -102) {
+								bytes.position(bytes.position() - 1);
+							}
 						}
 						byte[] data = new byte[bytes.remaining()];
 						bytes.get(data);

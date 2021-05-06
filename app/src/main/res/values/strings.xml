@@ -72,6 +72,7 @@
 	<string name="action_connectiontroubleshootingguide">View help</string>
 	<string name="action_tapbackdetails">View tapback details</string>
 	<string name="action_renamegroup">Rename this group</string>
+	<string name="action_updatepassword">Update server password</string>
 	<string name="action_manualconfiguration">Use manual configuration</string>
 	<string name="action_signin_google">Sign in with Google</string>
 	<string name="action_signin_email">Sign in with email</string>
