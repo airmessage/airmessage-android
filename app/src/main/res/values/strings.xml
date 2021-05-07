@@ -173,6 +173,9 @@
 	<string name="message_senderrornotify_desc">Your message to %s failed to send</string>
 	<string name="message_senderror">Not sent</string>
 
+	<string name="message_decrypterrornotify">Unreadable message received</string>
+	<string name="message_decrypterrornotify_desc">A message was received that could not be decrypted</string>
+
 	<string name="message_connectionerror">Couldn\'t connect to server</string>
 
 	<string name="message_permissionrejected">Permission request rejected</string>
@@ -195,7 +198,6 @@
 	<string name="message_serverstatus_nogroup">Personal server not available</string>
 	<string name="message_serverstatus_nocapacity">Connected device limit reached</string>
 	<string name="message_serverstatus_accountvalidation">Connected account can\'t be used</string>
-<!--	<string name="message_serverstatus_nosubscription">Connected account isn\'t subscribed</string>-->
 	<string name="message_serverstatus_noenrollment">Connected account isn\'t enrolled</string>
 	<string name="message_serverstatus_otherlocation">Server computer swapped</string>
 	<string name="message_serverstatus_unknown">An unknown error occurred</string>
@@ -500,6 +502,8 @@
 	<string name="notificationchannel_message_desc">Concerns notifications about incoming messages</string>
 	<string name="notificationchannel_messageerror">Delivery failures</string>
 	<string name="notificationchannel_messageerror_desc">Concerns notifications about failed messages</string>
+	<string name="notificationchannel_messageerrorreception">Reception failures</string>
+	<string name="notificationchannel_messageerrorreception_desc">Concerns notifications about issues that affect message reception</string>
 	<string name="notificationchannel_status">Background status</string>
 	<string name="notificationchannel_status_desc">Concerns notifications about status messages, such as server connectivity</string>
 	<string name="notificationchannel_statusimportant">Important status alerts</string>

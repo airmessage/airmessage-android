@@ -219,6 +219,8 @@
 
 	<string name="notificationchannel_messageerror">送信の失敗</string>
 	<string name="notificationchannel_messageerror_desc">失敗したメッセージに関する通知</string>
+	<string name="notificationchannel_messageerrorreception">受信の不具合</string>
+	<string name="notificationchannel_messageerrorreception_desc">メッセージの受信に影響する問題に関する通知</string>
 
 	<string name="notificationchannel_status">一般的なステータス</string>
 	<string name="notificationchannel_status_desc">サーバー接続などのステータス通知</string>
@@ -481,7 +483,6 @@
 	<string name="message_serverstatus_nogroup">パーソナルサーバーが接続されていません</string>
 	<string name="message_serverstatus_nocapacity">接続デバイスの制限に達しました</string>
 	<string name="message_serverstatus_accountvalidation">接続されたアカウントは使用できません</string>
-<!--	<string name="message_serverstatus_nosubscription">接続されたアカウントは登録されていません</string>-->
 	<string name="message_serverstatus_noenrollment">接続されたアカウントは登録されていません</string>
 	<string name="message_serverstatus_otherlocation">サーバーコンピュータが交換されました</string>
 	<string name="message_serverstatus_nointernet">インターネットに接続できません</string>
@@ -504,4 +505,6 @@
 	<string name="action_continue">続ける</string>
 	<string name="message_passwordupdated">サーバーのパスワードが更新されました</string>
 	<string name="action_updatepassword">サーバーのパスワードの更新</string>
+	<string name="message_decrypterrornotify">読めないメッセージを受信しました</string>
+	<string name="message_decrypterrornotify_desc">復号化できなかったメッセージを受信しました</string>
 </resources>

@@ -168,6 +168,8 @@
 
 	<string name="notificationchannel_messageerror">Défauts de livraison</string>
 	<string name="notificationchannel_messageerror_desc">Notifications concernant les messages en échec</string>
+	<string name="notificationchannel_messageerrorreception">Défauts de réception</string>
+	<string name="notificationchannel_messageerrorreception_desc">Concerne les notifications de problèmes qui affectent la réception des messages</string>
 
 	<string name="message_connectionerror">N\'a pas pu se connecter au serveur</string>
 	<string name="message_permissiondetails_microphone_missing">L\'autorisation d\'enregistrer de l\'audio est manquante</string>
@@ -488,7 +490,6 @@
 	<string name="message_serverstatus_nogroup">Votre serveur personnel n\'est pas disponible</string>
 	<string name="message_serverstatus_nocapacity">La limite de l\'appareil connecté a été atteinte</string>
 	<string name="message_serverstatus_accountvalidation">Le compte connecté ne peut pas être utilisé</string>
-<!--	<string name="message_serverstatus_nosubscription">Le compte connecté n\'est pas abonné</string>-->
 	<string name="message_serverstatus_noenrollment">Le compte connecté n\'est pas inscrit</string>
 	<string name="message_serverstatus_otherlocation">L\'ordinateur serveur a été échangé</string>
 	<string name="message_serverstatus_nointernet">Pas de connexion Internet</string>
@@ -513,4 +514,6 @@
 	<string name="action_continue">Continuer</string>
 	<string name="message_passwordupdated">Le mot de passe du serveur a été mis à jour</string>
 	<string name="action_updatepassword">Mise à jour du mot de passe du serveur</string>
+	<string name="message_decrypterrornotify">Un message illisible a été reçu</string>
+	<string name="message_decrypterrornotify_desc">Un message a été reçu qui n\'a pas pu être décrypté</string>
 </resources>
