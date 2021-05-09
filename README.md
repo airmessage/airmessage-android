@@ -19,13 +19,14 @@ If you're not familiar with RxJava, the repository's README file is a great plac
 [https://github.com/ReactiveX/RxJava](https://github.com/ReactiveX/RxJava#readme)
 
 AirMessage for Android hooks in to Google Cloud and Firebase to utilize services like FCM, Google Maps, and Crashlytics.
-The app will not build without a valid configuration, so to get started quickly, you can copy the `app/google-services.default.json` file to `app/google-services.json` and the `app/src/debug/google-services.default.json` file to `app/src/debug/google-services.json` to use a pre-configured Firebase project, or you may provide your own Firebase configuration file.
+The app will not build without a valid configuration, so to get started quickly, you can copy the `app/google-services.default.json` file to `app/google-services.json` to use a pre-configured Firebase project, or you may provide your own Firebase configuration file.
 Similarly, the app will use the API key found in `secrets.default.properties` for Google Maps by default, and you can supply your own in `secrets.properties`.
 
 ## Building and running for AirMessage Connect
 
 In order to help developers get started quickly, we host a separate open-source version of AirMessage Connect at `connect-open.airmessage.org`.
-The default configuration is pre-configured to authenticate and connect to this server.
+Firebase requires apps to be signed with a designated keystore file in order to enable Google-sign in, so you can copy the `signingshared/shared.keystore.disabled` file to `signingshared/shared.keystore`, which will cause Gradle to use this keystore file in debug builds instead of your local one.
+
 Since this version of AirMessage Connect is hosted in a separate environment from official servers, you will have to be running a version of AirMessage Server that also connects to the same server.
 
 We kindly ask that you do not use AirMessage's official Connect servers with any unofficial builds of AirMessage-compatible software.
