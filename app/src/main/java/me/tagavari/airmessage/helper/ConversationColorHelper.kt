@@ -31,7 +31,7 @@ object ConversationColorHelper {
 	private fun getConversationRandom(conversationInfo: ConversationInfo): Random {
 		return when {
 			conversationInfo.guid != null -> Random(conversationInfo.guid!!.hashCode().toLong())
-			conversationInfo.externalID != null -> Random(conversationInfo.externalID!!)
+			conversationInfo.externalID != -1L -> Random(conversationInfo.externalID)
 			else -> Random.Default
 		}
 	}

@@ -197,8 +197,8 @@ object ConversationBuildHelper {
 		if(contactData.isA) {
 			val drawable = context.resources.getDrawable(R.drawable.user, null)
 			drawable.bounds = drawRect
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) drawable.colorFilter = BlendModeColorFilter(contactData.a!!, BlendMode.MULTIPLY)
-			else drawable.setColorFilter(contactData.a!!, PorterDuff.Mode.MULTIPLY)
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) drawable.colorFilter = BlendModeColorFilter(contactData.a, BlendMode.MULTIPLY)
+			else drawable.setColorFilter(contactData.a, PorterDuff.Mode.MULTIPLY)
 			drawable.draw(canvas)
 		} else {
 			//canvas.drawCircle(drawRect.left + (drawRect.right - drawRect.left) / 2, drawRect.top + (drawRect.bottom - drawRect.top) / 2, (drawRect.right - drawRect.left) / 2, backgroundPaint);

@@ -283,7 +283,7 @@ object DataCompressionHelper {
 			transcoder = Transcoder.into(outputFile.path)
 		} else {
 			//Write to the temporary file
-			temporaryFile = FileHelper.findFreeFile(outputFile.parentFile, "transcoder_temp", false)
+			temporaryFile = FileHelper.findFreeFile(outputFile.parentFile!!, "transcoder_temp", false)
 			transcoder = Transcoder.into(temporaryFile.path)
 		}
 		transcoder.addDataSource(fileDescriptor!!)

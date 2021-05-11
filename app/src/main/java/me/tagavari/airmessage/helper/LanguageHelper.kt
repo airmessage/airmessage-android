@@ -279,7 +279,7 @@ object LanguageHelper {
 		val message: String = if(SendStyleHelper.appleSendStyleBubbleInvisibleInk == messageInfo.sendStyle) {
 			resources.getString(R.string.message_messageeffect_invisibleink)
 		} else if(messageInfo.messageTextComponent != null) {
-			textComponentToString(resources, messageInfo.messageTextComponent) ?: ""
+			textComponentToString(resources, messageInfo.messageTextComponent!!) ?: ""
 		} else if(messageInfo.attachments.isNotEmpty()) {
 			val attachmentCount = messageInfo.attachments.size
 			if(attachmentCount == 1) {
@@ -319,16 +319,18 @@ object LanguageHelper {
 	 * Gets a human-readable representation of a message text component, with both the subject and body text
 	 */
 	@JvmStatic
-	fun textComponentToString(resources: Resources, textComponent: MessageComponentText?): String? {
-		return if(textComponent!!.text != null || textComponent.subject != null) {
+	fun textComponentToString(resources: Resources, textComponent: MessageComponentText): String? {
+		return if(textComponent.text != null && textComponent.subject != null) {
+			//Subject + text
+			resources.getString(R.string.prefix_wild,
+				textComponent.subject.replace('\n', ' '),
+				textComponent.text.replace('\n', ' '))
+		} else if(textComponent.text != null) {
 			//Only text
-			if(textComponent.text != null) {
-				textComponent.text!!.replace('\n', ' ')
-			} else if(textComponent.subject != null) {
-				textComponent.subject!!.replace('\n', ' ')
-			} else {
-				resources.getString(R.string.prefix_wild, textComponent.subject!!.replace('\n', ' '), textComponent.text!!.replace('\n', ' '))
-			}
+			textComponent.text.replace('\n', ' ')
+		} else if(textComponent.subject != null) {
+			//Only subject
+			textComponent.subject.replace('\n', ' ')
 		} else {
 			null
 		}

@@ -125,7 +125,7 @@ class MessageInfo @JvmOverloads constructor(
 	override fun writeToParcel(out: Parcel, flags: Int) {
 		//Superclass
 		out.writeLong(localID)
-		out.writeLong(serverID ?: -1)
+		out.writeLong(serverID)
 		out.writeString(guid)
 		out.writeLong(date)
 		out.writeString(sender)

@@ -17,11 +17,11 @@ data class FileDraft constructor(
 	val mediaStoreID: Long? = null,
 	val modificationDate: Long? = null
 ) : Serializable, Parcelable {
-	override fun equals(obj: Any?): Boolean {
-		if(obj == null || obj.javaClass != this.javaClass) return false
+	override fun equals(other: Any?): Boolean {
+		if(other == null || other.javaClass != this.javaClass) return false
 		
 		//Require other draft files to have a defined MediaStore ID, and have the MediaStore ID and modification date match
-		val other = obj as FileDraft
+		other as FileDraft
 		return other.mediaStoreID != -1L && mediaStoreID == other.mediaStoreID && modificationDate == other.modificationDate
 	}
 	

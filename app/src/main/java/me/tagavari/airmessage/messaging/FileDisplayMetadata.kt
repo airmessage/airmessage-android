@@ -63,7 +63,7 @@ abstract class FileDisplayMetadata(context: Context, file: Union<File, Uri>) {
 		
 		init {
 			try {
-				(if(file.isA) FileInputStream(file.a) else context.contentResolver.openInputStream(file.b!!))
+				(if(file.isA) FileInputStream(file.a) else context.contentResolver.openInputStream(file.b))
 					.use { inputStream ->
 						if(inputStream != null) {
 							//Parsing the file

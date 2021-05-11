@@ -16,9 +16,9 @@ class FileLinked @JvmOverloads constructor(
 	val mediaStoreData: MediaStore? = null
 ) {
 	
-	override fun equals(obj: Any?): Boolean {
-		if(obj == null || obj.javaClass != this.javaClass) return false
-		val other = obj as FileLinked
+	override fun equals(other: Any?): Boolean {
+		if(other == null || other.javaClass != this.javaClass) return false
+		other as FileLinked
 		
 		//If we don't have any mediastore data, we can't compare
 		if(mediaStoreData == null || other.mediaStoreData == null) return false

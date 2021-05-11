@@ -40,7 +40,7 @@ data class ConversationInfo @JvmOverloads constructor(
 		get() {
 			val draftUpdateTime = draftUpdateTime
 			
-			return if(draftUpdateTime == null || draftMessage == null && draftFiles.isEmpty()) {
+			return if(draftUpdateTime == -1L || draftMessage == null && draftFiles.isEmpty()) {
 				null
 			} else {
 				ConversationPreview.Draft(
@@ -71,7 +71,7 @@ data class ConversationInfo @JvmOverloads constructor(
 	 * Gets if this conversation has a draft message or draft files
 	 */
 	val hasDraft: Boolean
-		get() = draftUpdateTime != null
+		get() = draftUpdateTime != -1L
 	
 	/**
 	 * Clears the draft message and draft files, and sets this conversation as not having a draft
@@ -91,12 +91,12 @@ data class ConversationInfo @JvmOverloads constructor(
 				if(BuildConfig.DEBUG && serviceType == null) error("Service type is null")
 				AppleUnlinked(members.map { it.address }, serviceType!!)
 			} else {
-				if(BuildConfig.DEBUG && externalID == null) error("GUID ID is null")
+				if(BuildConfig.DEBUG && guid == null) error("GUID ID is null")
 				AppleLinked(guid!!)
 			}
 		} else {
-			if(BuildConfig.DEBUG && externalID == null) error("External ID is null")
-			SystemSMS(externalID!!)
+			if(BuildConfig.DEBUG && externalID == -1L) error("External ID is null")
+			SystemSMS(externalID)
 		}
 	
 	fun clone(): ConversationInfo {
