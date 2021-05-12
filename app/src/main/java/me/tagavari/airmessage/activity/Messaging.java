@@ -4724,6 +4724,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		 * @param conversationLazyLoader The conversation's lazy loader for fetching past messages
 		 */
 		private void applyConversation(ConversationInfo conversationInfo, DatabaseManager.ConversationLazyLoader conversationLazyLoader) {
+			//Logging the event
+			FirebaseCrashlytics.getInstance().log("Loaded conversation ID " + conversationInfo.getLocalID() + " over service " + (conversationInfo.getServiceHandler() == ServiceHandler.appleBridge ? "appleBridge" : "systemMessaging") + "-" + conversationInfo.getServiceType());
+			
 			//Setting the values
 			this.conversationInfo = conversationInfo;
 			this.conversationLazyLoader = conversationLazyLoader;

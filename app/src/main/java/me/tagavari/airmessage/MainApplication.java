@@ -15,6 +15,7 @@ import androidx.preference.PreferenceManager;
 
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
+import me.tagavari.airmessage.enums.ProxyType;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.PrintWriter;
@@ -155,6 +156,10 @@ public class MainApplication extends Application {
 		
 		//Disable Crashlytics in debug mode
 		FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG);
+		
+		if(SharedPreferencesManager.isConnectionConfigured(this)) {
+			FirebaseCrashlytics.getInstance().setCustomKey("proxy_type", SharedPreferencesManager.getProxyType(this) == ProxyType.direct ? "direct" : "connect");
+		}
 	}
 	
 	public UserCacheHelper getUserCacheHelper() {
