@@ -61,6 +61,8 @@ public class ExternalMessagingProviderChangedReceiver extends BroadcastReceiver 
 		else messageInfo = MMSSMSHelper.readSMSMessage(cursor);
 		
 		//Saving the message
-		MMSSMSHelper.updateTextConversationMessage(context, threadID, messageInfo).subscribe();
+		if(messageInfo != null) {
+			MMSSMSHelper.updateTextConversationMessage(context, threadID, messageInfo).subscribe();
+		}
 	}
 }
