@@ -28,6 +28,7 @@ import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.connection.encryption.EncryptionAES;
 import me.tagavari.airmessage.connection.exception.AMRequestException;
+import me.tagavari.airmessage.connection.exception.LargeAllocationException;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
@@ -137,7 +138,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 				//This data is always encrypted
 				processDataSecure(messageType, unpacker);
 			}
-		} catch(BufferUnderflowException exception) {
+		} catch(BufferUnderflowException | LargeAllocationException exception) {
 			exception.printStackTrace();
 		}
 	}
@@ -231,7 +232,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 		return true;
 	}
 	
-	private void handleMessageAuthentication(AirUnpacker unpacker) throws BufferUnderflowException {
+	private void handleMessageAuthentication(AirUnpacker unpacker) throws BufferUnderflowException, LargeAllocationException {
 		//Stopping the authentication timer
 		communicationsManager.stopTimeoutTimer();
 		
@@ -254,7 +255,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 		}
 	}
 	
-	private void handleMessageMessageUpdate(AirUnpacker unpacker) throws BufferUnderflowException {
+	private void handleMessageMessageUpdate(AirUnpacker unpacker) throws BufferUnderflowException, LargeAllocationException {
 		List<Blocks.ConversationItem> conversationItems = unpackConversationItems(unpacker);
 		communicationsManager.runListener(listener -> listener.onMessageUpdate(conversationItems));
 	}
@@ -467,7 +468,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 			byte[] transmissionCheck;
 			try {
 				transmissionCheck = unpacker.unpackPayload();
-			} catch(BufferUnderflowException exception) {
+			} catch(BufferUnderflowException | LargeAllocationException exception) {
 				exception.printStackTrace();
 				return false;
 			}
