@@ -75,11 +75,11 @@ object ConversationBuildHelper {
 		return Single.concat(members.map { member: MemberInfo ->
 			//If the member's name is available, use it, otherwise use their address
 			MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address)
-					.map {userInfo -> userInfo.contactName}
+					.map {userInfo -> userInfo.contactName ?: member.address}
 					.onErrorReturnItem(member.address)
 		})
 				//Create a localized list of members
-				.toList().map { nameList: List<String> -> LanguageHelper.createLocalizedList(context.resources, nameList) }
+				.toList().map { nameList -> LanguageHelper.createLocalizedList(context.resources, nameList) }
 	}
 	
 	/**

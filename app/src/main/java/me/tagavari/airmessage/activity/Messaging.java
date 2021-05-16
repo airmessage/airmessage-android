@@ -3422,7 +3422,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						//Checking if we are currently playing this message
 						if(playbackManager.compareRequest(component)) {
 							//Subscribing to playback updates
-							attachAudioPlayback(playbackManager.emitter(), viewHolderStructure, viewHolder, metadata.getMediaDuration());
+							attachAudioPlayback(playbackManager.getEmitter(), viewHolderStructure, viewHolder, metadata.getMediaDuration());
 						} else {
 							//Showing the idle state
 							viewHolder.setPlaybackIdle(metadata.getMediaDuration());

@@ -180,14 +180,14 @@ object NotificationHelper {
 		}
 		
 		//Generate the message sender info
-		val singleMemberInfo: Single<Optional<UserCacheHelper.UserInfo>> = if(conversationInfo.members.isEmpty() || conversationInfo.isGroupChat && sender == null) {
+		val singleMemberInfo: Single<Optional<UserCacheHelper.UserInfo>> = if(conversationInfo.members.isEmpty() || (conversationInfo.isGroupChat && sender == null)) {
 			Single.just(Optional.empty())
 		} else {
 			/*
 			 * If we're in a group chat, get the icon of the sender
 			 * Otherwise, get the icon of the other member in the one-on-one chat
 			 */
-			val memberAddress = if(conversationInfo.isGroupChat) sender else conversationInfo.members[0].address
+			val memberAddress: String = if(conversationInfo.isGroupChat) sender!! else conversationInfo.members[0].address
 			MainApplication.getInstance().userCacheHelper.getUserInfo(context, memberAddress)
 					.map { Optional.of(it) }.onErrorReturnItem(Optional.empty()).cache()
 		}
@@ -231,8 +231,8 @@ object NotificationHelper {
 											sender == null,
 											resultMemberIcon.orElse(null),
 											resultShortcutIcon.orElse(null),
-											resultMemberInfo.map(UserCacheHelper.UserInfo::getContactLookupUri).orElse(null),
-											if(resultSuggestions.size > 0) resultSuggestions else null
+											resultMemberInfo.map { it.contactLookupUri}.orElse(null),
+											resultSuggestions.ifEmpty { null }
 									),
 									conversationInfo,
 									resultTitle,

@@ -17,9 +17,9 @@ object ContactHelper {
 			MainApplication.getInstance().userCacheHelper.getUserInfo(context, address)
 					.map { userInfo -> userInfo.contactName }
 					.toMaybe()
-					.onErrorReturnItem(address)
+					.onErrorReturnItem(address) as Maybe<String>
 		} else {
-			Maybe.empty()
+			return Maybe.empty()
 		}
 	}
 	

@@ -18,7 +18,7 @@ object MessagesDataHelper {
 	@JvmStatic
 	fun deleteAMBAttachments(context: Context): Completable {
 		//Clearing the attachment files from AM bridge
-		return Completable.fromAction { DatabaseManager.instance.clearDeleteAttachmentFilesAMBridge(context) }
+		return Completable.fromAction { DatabaseManager.getInstance().clearDeleteAttachmentFilesAMBridge(context) }
 			.subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread())
 	}
 	
@@ -29,7 +29,7 @@ object MessagesDataHelper {
 	fun deleteAMBMessages(context: Context): Completable {
 		//Removing the messages from the database
 		return Single.fromCallable {
-			DatabaseManager.instance.deleteConversationsByServiceHandler(context, ServiceHandler.appleBridge)
+			DatabaseManager.getInstance().deleteConversationsByServiceHandler(context, ServiceHandler.appleBridge)
 		}
 			.subscribeOn(Schedulers.single())
 			.observeOn(AndroidSchedulers.mainThread())
