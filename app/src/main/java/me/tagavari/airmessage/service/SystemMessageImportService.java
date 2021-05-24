@@ -17,8 +17,10 @@ import androidx.core.app.NotificationCompat;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Completable;
@@ -230,7 +232,7 @@ public class SystemMessageImportService extends Service {
 				.subscribeOn(requestScheduler)
 				.observeOn(AndroidSchedulers.mainThread()).subscribe(deletedIDs -> {
 					//Sending an update
-					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationServiceHandlerDelete(ServiceHandler.systemMessaging, deletedIDs));
+					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationServiceHandlerDelete(ServiceHandler.systemMessaging, Arrays.stream(deletedIDs).boxed().collect(Collectors.toList())));
 					
 					//Updating the shared preferences value
 					SharedPreferencesManager.setTextMessageConversationsInstalled(this, false);

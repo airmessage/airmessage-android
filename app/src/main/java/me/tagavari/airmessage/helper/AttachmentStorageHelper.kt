@@ -85,7 +85,7 @@ object AttachmentStorageHelper {
 	 * @return The file
 	 */
 	@JvmStatic
-	fun getAbsolutePath(context: Context, path: String?): File {
+	fun getAbsolutePath(context: Context, path: String): File {
 		return if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 			getAttachmentDirectory(context).toPath().resolve(path).toFile()
 		} else {

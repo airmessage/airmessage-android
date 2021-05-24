@@ -843,7 +843,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 		return true;
 	}
 	
-	private boolean sendMessage(short requestID, String[] chatMembers, String message, String service) {
+	private boolean sendMessage(short requestID, List<String> chatMembers, String message, String service) {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
@@ -853,7 +853,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 			//Adding the data
 			out.writeShort(requestID); //Request ID
 			
-			outSec.writeInt(chatMembers.length); //Members
+			outSec.writeInt(chatMembers.size()); //Members
 			for(String item : chatMembers) outSec.writeUTF(item);
 			outSec.writeUTF(message); //Message
 			outSec.writeUTF(service); //Service
@@ -984,7 +984,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 		return true;
 	}
 	
-	private boolean uploadFilePacket(short requestID, int requestIndex, String[] conversationMembers, byte[] data, String fileName, String service, boolean isLast) {
+	private boolean uploadFilePacket(short requestID, int requestIndex, List<String> conversationMembers, byte[] data, String fileName, String service, boolean isLast) {
 		//Returning false if there is no connection thread
 		if(!communicationsManager.isConnectionOpened()) return false;
 		
@@ -996,7 +996,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 			out.writeInt(requestIndex); //Request index
 			out.writeBoolean(isLast); //Is last message
 			
-			outSec.writeInt(conversationMembers.length); //Chat members
+			outSec.writeInt(conversationMembers.size()); //Chat members
 			for(String item : conversationMembers) outSec.writeUTF(item);
 			outSec.writeInt(data.length); //File bytes
 			outSec.write(data);

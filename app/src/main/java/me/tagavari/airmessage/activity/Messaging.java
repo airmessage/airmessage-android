@@ -2243,7 +2243,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private final List<ConversationItem> conversationItems;
 		private RecyclerView recyclerView;
 		
-		private AMConversationAction[] conversationActions = null; //Suggested actions at the bottom of the message list
+		private List<AMConversationAction> conversationActions = null; //Suggested actions at the bottom of the message list
 		private boolean showTopProgressBar = false; //A loading spinner displayed at the top of the message list when loading previous message history
 		
 		//Creating the pools
@@ -2261,7 +2261,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		 * Updates the reply suggestions at the bottom of the list.
 		 * Pass NULL to hide suggestions.
 		 */
-		public void setConversationActions(@Nullable AMConversationAction[] conversationActions) {
+		public void setConversationActions(@Nullable List<AMConversationAction> conversationActions) {
 			boolean wasScrolledToBottom = isScrolledToBottom();
 			
 			boolean oldAvailable = this.conversationActions != null;
@@ -2439,13 +2439,13 @@ public class Messaging extends AppCompatCompositeActivity {
 				ConversationAction conversationAction = (ConversationAction) getItemAt(position);
 				
 				//Setting the immediate text
-				viewHolder.label.setText(conversationAction.getMessageDirect(Messaging.this));
+				viewHolder.getLabel().setText(conversationAction.getMessageDirect(Messaging.this));
 				
 				//Building and applying the complete action
-				if(conversationAction.supportsBuildMessageAsync()) {
+				if(conversationAction.getSupportsBuildMessageAsync()) {
 					viewHolder.getCompositeDisposable().add(
 							conversationAction.buildMessageAsync(Messaging.this)
-									.subscribe((Consumer<String>) viewHolder.label::setText)
+									.subscribe((Consumer<String>) viewHolder.getLabel()::setText)
 					);
 				}
 			}
@@ -2486,7 +2486,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							int attachmentIndex = ((MessageListPayload.Attachment) payload).getAttachmentIndex();
 							MessageInfo messageInfo = (MessageInfo) conversationItem;
 							VHMessageStructure viewHolderStructure = (VHMessageStructure) holder;
-							int componentIndex = attachmentIndex + (messageInfo.getMessageTextInfo() != null ? 1 : 0);
+							int componentIndex = attachmentIndex + (messageInfo.getMessageTextComponent() != null ? 1 : 0);
 							if(componentIndex < viewHolderStructure.messageComponents.size()) {
 								bindMessageComponent(viewHolderStructure, viewHolderStructure.messageComponents.get(componentIndex), viewModel.conversationInfo, messageInfo, messageInfo.getAttachments().get(attachmentIndex));
 							}
@@ -2523,7 +2523,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							MessageComponent messageComponent = ((MessageInfo) conversationItem).getComponents().get(componentIndex);
 							VHMessageComponent componentViewHolder = ((VHMessageStructure) holder).messageComponents.get(componentIndex);
 							
-							VBMessageComponent.buildTapbackView(Messaging.this, messageComponent.getTapbacks(), componentViewHolder.tapbackContainer);
+							VBMessageComponent.buildTapbackView(Messaging.this, messageComponent.getTapbacks(), componentViewHolder.getTapbackContainer());
 							
 							break;
 						}
@@ -2534,7 +2534,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							int componentIndex = stickerPayload.getComponentIndex();
 							VHMessageComponent componentViewHolder = ((VHMessageStructure) holder).messageComponents.get(componentIndex);
 							
-							VBMessageComponent.addStickerView(Messaging.this, stickerPayload.getStickerInfo(), componentViewHolder.stickerContainer);
+							VBMessageComponent.addStickerView(Messaging.this, stickerPayload.getStickerInfo(), componentViewHolder.getStickerContainer());
 							
 							break;
 						}
@@ -2566,7 +2566,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private void bindMessage(VHMessageStructure viewHolder, ConversationInfo conversationInfo, MessageInfo messageInfo, @Nullable MessageInfo messageAbove, @Nullable MessageInfo messageBelow) {
 			//Setting the alignment
 			{
-				ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) viewHolder.containerMessagePart.getLayoutParams();
+				ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) viewHolder.getContainerMessagePart().getLayoutParams();
 				if(messageInfo.isOutgoing()) {
 					params.startToStart = ConstraintLayout.LayoutParams.UNSET;
 					params.endToEnd = R.id.barrier_alert;
@@ -2585,7 +2585,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				if(viewHolder.profileGroup != null) viewHolder.profileGroup.setVisibility(View.GONE);
 				
 				//Hiding the sender
-				viewHolder.labelSender.setVisibility(View.GONE);
+				viewHolder.getLabelSender().setVisibility(View.GONE);
 			} else {
 				//Inflating the profile stub and getting the profile view
 				viewHolder.inflateProfile();
@@ -2600,19 +2600,19 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Checking if the chat is a group chat
 				if(conversationInfo.isGroupChat()) {
 					//Setting the sender's name (temporarily)
-					viewHolder.labelSender.setText(messageInfo.getSender());
+					viewHolder.getLabelSender().setText(messageInfo.getSender());
 					
 					//Showing the sender
-					viewHolder.labelSender.setVisibility(View.VISIBLE);
+					viewHolder.getLabelSender().setVisibility(View.VISIBLE);
 				} else {
 					//Hiding the sender
-					viewHolder.labelSender.setVisibility(View.GONE);
+					viewHolder.getLabelSender().setVisibility(View.GONE);
 				}
 				
 				viewHolder.getCompositeDisposable().add(
 						MainApplication.getInstance().getUserCacheHelper().getUserInfo(Messaging.this, messageInfo.getSender()).onErrorComplete().subscribe(userInfo -> {
 							//Setting the sender's name
-							viewHolder.labelSender.setText(userInfo.getContactName());
+							viewHolder.getLabelSender().setText(userInfo.getContactName());
 							
 							//Loading the profile thumbnail
 							viewHolder.inflateProfile();
@@ -2641,16 +2641,16 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Checking if the message has no send effect
 			if(messageInfo.getSendStyle() == null || (!SendStyleHelper.validateAnimatedBubbleEffect(messageInfo.getSendStyle()) && !SendStyleHelper.validateScreenEffect(messageInfo.getSendStyle()))) {
 				//Hiding the "replay" button
-				viewHolder.buttonSendEffectReplay.setVisibility(View.GONE);
+				viewHolder.getButtonSendEffectReplay().setVisibility(View.GONE);
 			} else {
 				//Showing and configuring the "replay" button
-				viewHolder.buttonSendEffectReplay.setVisibility(View.VISIBLE);
-				viewHolder.buttonSendEffectReplay.setOnClickListener(clickedView -> playScreenEffect(messageInfo.getSendStyle(), viewHolder.itemView));
+				viewHolder.getButtonSendEffectReplay().setVisibility(View.VISIBLE);
+				viewHolder.getButtonSendEffectReplay().setOnClickListener(clickedView -> playScreenEffect(messageInfo.getSendStyle(), viewHolder.itemView));
 			}
 			
 			//Setting the text switcher's animations
-			viewHolder.labelActivityStatus.setInAnimation(AnimationUtils.loadAnimation(Messaging.this, R.anim.fade_in_delayed));
-			viewHolder.labelActivityStatus.setOutAnimation(AnimationUtils.loadAnimation(Messaging.this, R.anim.fade_out));
+			viewHolder.getLabelActivityStatus().setInAnimation(AnimationUtils.loadAnimation(Messaging.this, R.anim.fade_in_delayed));
+			viewHolder.getLabelActivityStatus().setOutAnimation(AnimationUtils.loadAnimation(Messaging.this, R.anim.fade_out));
 			
 			//Updating the message state
 			bindMessageState(viewHolder, messageInfo, false);
@@ -2677,23 +2677,23 @@ public class Messaging extends AppCompatCompositeActivity {
 		private void bindMessageState(VHMessageStructure viewHolder, MessageInfo messageInfo, boolean animate) {
 			if(animate) {
 				//Animating the message part container's alpha
-				if(messageInfo.getMessageState() == MessageState.ghost) viewHolder.containerMessagePart.animate().alpha(0.5F);
-				else viewHolder.containerMessagePart.animate().alpha(1);
+				if(messageInfo.getMessageState() == MessageState.ghost) viewHolder.getContainerMessagePart().animate().alpha(0.5F);
+				else viewHolder.getContainerMessagePart().animate().alpha(1);
 			} else {
 				//Setting the message part container's alpha
-				if(messageInfo.getMessageState() == MessageState.ghost) viewHolder.containerMessagePart.setAlpha(0.5F);
-				else viewHolder.containerMessagePart.setAlpha(1);
+				if(messageInfo.getMessageState() == MessageState.ghost) viewHolder.getContainerMessagePart().setAlpha(0.5F);
+				else viewHolder.getContainerMessagePart().setAlpha(1);
 			}
 			
 			//Hiding the error and returning if there wasn't any problem
 			if(!messageInfo.hasError()) {
-				viewHolder.buttonSendError.setVisibility(View.GONE);
+				viewHolder.getButtonSendError().setVisibility(View.GONE);
 			} else {
 				//Showing the error
-				viewHolder.buttonSendError.setVisibility(View.VISIBLE);
+				viewHolder.getButtonSendError().setVisibility(View.VISIBLE);
 				
 				//Showing the dialog when the button is clicked
-				viewHolder.buttonSendError.setOnClickListener(view -> {
+				viewHolder.getButtonSendError().setOnClickListener(view -> {
 					//Configuring the dialog
 					MaterialAlertDialogBuilder dialogBuilder = new MaterialAlertDialogBuilder(Messaging.this)
 							.setTitle(R.string.message_messageerror_title)
@@ -2721,7 +2721,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					dialogBuilder.create().show();
 				});
 				
-				viewHolder.buttonSendError.setOnLongClickListener(view -> {
+				viewHolder.getButtonSendError().setOnLongClickListener(view -> {
 					if(messageInfo.isErrorDetailsAvailable()) {
 						//Fetching the error details from the database
 						pluginRXD.ui().add(Single.create((SingleEmitter<String> emitter) -> {
@@ -2774,7 +2774,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Setting up the label
 			if((viewModel.latestMessageDelivered != null && messageInfo.getLocalID() == viewModel.latestMessageDelivered.getLocalID()) ||
 					(viewModel.latestMessageRead != null && messageInfo.getLocalID() == viewModel.latestMessageRead.getLocalID())) {
-				viewHolder.labelActivityStatus.setVisibility(View.VISIBLE);
+				viewHolder.getLabelActivityStatus().setVisibility(View.VISIBLE);
 				
 				String message;
 				if(messageInfo.getMessageState() == MessageState.delivered) {
@@ -2784,9 +2784,9 @@ public class Messaging extends AppCompatCompositeActivity {
 				} else {
 					message = getResources().getString(R.string.part_unknown);
 				}
-				viewHolder.labelActivityStatus.setCurrentText(message);
+				viewHolder.getLabelActivityStatus().setCurrentText(message);
 			} else {
-				viewHolder.labelActivityStatus.setVisibility(View.GONE);
+				viewHolder.getLabelActivityStatus().setVisibility(View.GONE);
 			}
 		}
 		
@@ -2800,11 +2800,11 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Checking if the time divider should be visible
 			if(messageAbove == null || messageInfo.getDate() - messageAbove.getDate() >= TimingConstants.conversationSessionTimeMillis) {
 				//Showing the time divider
-				viewHolder.labelTimeDivider.setText(LanguageHelper.generateTimeDividerString(Messaging.this, messageInfo.getDate()));
-				viewHolder.labelTimeDivider.setVisibility(View.VISIBLE);
+				viewHolder.getLabelTimeDivider().setText(LanguageHelper.generateTimeDividerString(Messaging.this, messageInfo.getDate()));
+				viewHolder.getLabelTimeDivider().setVisibility(View.VISIBLE);
 			} else {
 				//Hiding the time divider
-				viewHolder.labelTimeDivider.setVisibility(View.GONE);
+				viewHolder.getLabelTimeDivider().setVisibility(View.GONE);
 			}
 		}
 		
@@ -2831,7 +2831,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(!messageInfo.isOutgoing()) {
 				//Setting the user information
 				boolean showUserInfo = !isAnchoredTop; //If the message isn't anchored to the top
-				if(conversationInfo.isGroupChat()) viewHolder.labelSender.setVisibility(showUserInfo ? View.VISIBLE : View.GONE);
+				if(conversationInfo.isGroupChat()) viewHolder.getLabelSender().setVisibility(showUserInfo ? View.VISIBLE : View.GONE);
 				if(viewHolder.profileGroup != null) viewHolder.profileGroup.setVisibility(showUserInfo ? View.VISIBLE : View.GONE);
 			}
 			
@@ -2916,12 +2916,12 @@ public class Messaging extends AppCompatCompositeActivity {
 				
 				//Clearing and removing the components
 				viewHolder.messageComponents.clear();
-				viewHolder.containerMessagePart.removeAllViews();
+				viewHolder.getContainerMessagePart().removeAllViews();
 			}
 			
 			//Building the component views
 			List<MessageComponent> messageComponentList = new ArrayList<>();
-			if(messageInfo.getMessageTextInfo() != null) messageComponentList.add(messageInfo.getMessageTextInfo());
+			if(messageInfo.getMessageTextComponent() != null) messageComponentList.add(messageInfo.getMessageTextComponent());
 			messageComponentList.addAll(messageInfo.getAttachments());
 			
 			for(MessageComponent component : messageComponentList) {
@@ -2935,12 +2935,12 @@ public class Messaging extends AppCompatCompositeActivity {
 					list.remove(0);
 				} else {
 					//Otherwise get a view holder from the pool
-					componentViewHolder = getPoolComponent(componentType, viewHolder.containerMessagePart);
+					componentViewHolder = getPoolComponent(componentType, viewHolder.getContainerMessagePart());
 				}
 				
 				//Adding the component view holder to the message view holder
 				viewHolder.messageComponents.add(componentViewHolder);
-				viewHolder.containerMessagePart.addView(componentViewHolder.itemView);
+				viewHolder.getContainerMessagePart().addView(componentViewHolder.itemView);
 				
 				//Binding the component view
 				bindMessageComponent(viewHolder, componentViewHolder, conversationInfo, messageInfo, component);
@@ -2986,8 +2986,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			((LinearLayout.LayoutParams) viewHolder.itemView.getLayoutParams()).gravity = (messageInfo.isOutgoing() ? Gravity.END : Gravity.START);
 			
 			//Building the sticker and tapback views
-			VBMessageComponent.buildStickerView(Messaging.this, component.getStickers(), viewHolder.stickerContainer);
-			VBMessageComponent.buildTapbackView(Messaging.this, component.getTapbacks(), viewHolder.tapbackContainer);
+			VBMessageComponent.buildStickerView(Messaging.this, component.getStickers(), viewHolder.getStickerContainer());
+			VBMessageComponent.buildTapbackView(Messaging.this, component.getTapbacks(), viewHolder.getTapbackContainer());
 			
 			//Resetting the click listener (can be set later on by different content types)
 			viewHolder.itemView.setOnClickListener(null);
@@ -3001,33 +3001,33 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		private void bindMessageComponentText(VHMessageStructure viewHolderStructure, VHMessageComponentText viewHolder, ConversationInfo conversationInfo, MessageInfo messageInfo, MessageComponentText component) {
 			//Resetting the click listener
-			viewHolder.labelBody.setOnLongClickListener(null);
+			viewHolder.getLabelBody().setOnLongClickListener(null);
 			
 			//Checking if there is body text
 			if(component.getText() != null) {
 				//Showing the body label
-				viewHolder.labelBody.setVisibility(View.VISIBLE);
+				viewHolder.getLabelBody().setVisibility(View.VISIBLE);
 				
 				//Checking if the string consists exclusively of emoji characters
 				if(StringHelper.stringContainsOnlyEmoji(component.getText())) {
 					//Increasing the text size
-					viewHolder.labelBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
+					viewHolder.getLabelBody().setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
 					
 					//Setting the message text
-					viewHolder.labelBody.setText(component.getText());
+					viewHolder.getLabelBody().setText(component.getText());
 				} else {
 					//Resetting the text size
-					viewHolder.labelBody.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+					viewHolder.getLabelBody().setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
 					
 					//Setting the message text
-					viewHolder.labelBody.setText(component.getText());
+					viewHolder.getLabelBody().setText(component.getText());
 					viewHolderStructure.getCompositeDisposable().add(
 							viewModel.taskLinkify(component.getLocalID(), Messaging.this, component.getText())
 									.onErrorComplete().subscribe(spannable -> {
-								viewHolder.labelBody.setText(spannable);
-								viewHolder.labelBody.setTransformationMethod(new CustomTabsLinkTransformationMethod());
-								viewHolder.labelBody.setMovementMethod(LinkMovementMethod.getInstance());
-								viewHolder.labelBody.setOnLongClickListener(view -> {
+								viewHolder.getLabelBody().setText(spannable);
+								viewHolder.getLabelBody().setTransformationMethod(new CustomTabsLinkTransformationMethod());
+								viewHolder.getLabelBody().setMovementMethod(LinkMovementMethod.getInstance());
+								viewHolder.getLabelBody().setOnLongClickListener(view -> {
 									openPopupMenu(viewHolder.itemView, messageInfo, component);
 									return true;
 								});
@@ -3036,31 +3036,31 @@ public class Messaging extends AppCompatCompositeActivity {
 				}
 			} else {
 				//Hiding the body label
-				viewHolder.labelBody.setVisibility(View.GONE);
+				viewHolder.getLabelBody().setVisibility(View.GONE);
 			}
 			
 			//Checking if there is subject text
 			if(component.getSubject() != null) {
 				//Showing the subject label
-				viewHolder.labelSubject.setVisibility(View.VISIBLE);
+				viewHolder.getLabelSubject().setVisibility(View.VISIBLE);
 				
 				//Setting the subject text
-				viewHolder.labelSubject.setText(component.getSubject());
+				viewHolder.getLabelSubject().setText(component.getSubject());
 			} else {
 				//Hiding the subject label
-				viewHolder.labelSubject.setVisibility(View.GONE);
+				viewHolder.getLabelSubject().setVisibility(View.GONE);
 			}
 			
 			//Removing the preview view
 			if(viewHolder.messagePreviewViewHolder != null) {
-				viewHolder.messagePreviewContainer.removeView(viewHolder.messagePreviewViewHolder.itemView);
+				viewHolder.getMessagePreviewContainer().removeView(viewHolder.messagePreviewViewHolder.itemView);
 				previewPool.release(viewHolder.messagePreviewViewHolder);
 				viewHolder.messagePreviewViewHolder = null;
-				viewHolder.messagePreviewContainer.setVisibility(View.GONE);
+				viewHolder.getMessagePreviewContainer().setVisibility(View.GONE);
 			}
 			
 			//Setting the invisible ink view touch listener
-			viewHolder.inkView.setOnTouchListener((View view, MotionEvent event) -> {
+			viewHolder.getInkView().setOnTouchListener((View view, MotionEvent event) -> {
 				if(event.getAction() == MotionEvent.ACTION_DOWN) {
 					((InvisibleInkView) view).reveal();
 				}
@@ -3074,13 +3074,13 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Enforcing the maximum content width
 			{
 				int maxWidth = WindowHelper.getMaxMessageWidth(getResources());
-				viewHolder.labelBody.setMaxWidth(maxWidth);
-				viewHolder.labelSubject.setMaxWidth(maxWidth);
-				viewHolder.messagePreviewContainer.getLayoutParams().width = maxWidth;
+				viewHolder.getLabelBody().setMaxWidth(maxWidth);
+				viewHolder.getLabelSubject().setMaxWidth(maxWidth);
+				viewHolder.getMessagePreviewContainer().getLayoutParams().width = maxWidth;
 			}
 			
 			//Resetting the message text bubble's width to its default
-			viewHolder.groupMessage.getLayoutParams().width = ViewGroup.LayoutParams.WRAP_CONTENT;
+			viewHolder.getGroupMessage().getLayoutParams().width = ViewGroup.LayoutParams.WRAP_CONTENT;
 			
 			//Checking if previews are enabled
 			if(Preferences.getPreferenceMessagePreviews(Messaging.this)) {
@@ -3198,10 +3198,10 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Setting up the message effects
 			if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) {
-				viewHolder.inkView.setVisibility(View.VISIBLE);
-				viewHolder.inkView.setState(true);
+				viewHolder.getInkView().setVisibility(View.VISIBLE);
+				viewHolder.getInkView().setState(true);
 			} else {
-				viewHolder.inkView.setVisibility(View.GONE);
+				viewHolder.getInkView().setVisibility(View.GONE);
 			}
 		}
 		
@@ -3211,19 +3211,19 @@ public class Messaging extends AppCompatCompositeActivity {
 		 * @param shownView The view to show
 		 */
 		private void setAttachmentView(VHMessageComponentAttachment viewHolder, View shownView) {
-			viewHolder.groupPrompt.setVisibility(viewHolder.groupPrompt == shownView ? View.VISIBLE : View.GONE);
-			viewHolder.groupProgress.setVisibility(viewHolder.groupProgress == shownView ? View.VISIBLE : View.GONE);
-			viewHolder.groupOpen.setVisibility(viewHolder.groupOpen == shownView ? View.VISIBLE : View.GONE);
-			viewHolder.groupContentFrame.setVisibility(viewHolder.groupContentFrame == shownView ? View.VISIBLE : View.GONE);
+			viewHolder.getGroupPrompt().setVisibility(viewHolder.getGroupPrompt() == shownView ? View.VISIBLE : View.GONE);
+			viewHolder.getGroupProgress().setVisibility(viewHolder.getGroupProgress() == shownView ? View.VISIBLE : View.GONE);
+			viewHolder.getGroupOpen().setVisibility(viewHolder.getGroupOpen() == shownView ? View.VISIBLE : View.GONE);
+			viewHolder.getGroupContentFrame().setVisibility(viewHolder.getGroupContentFrame() == shownView ? View.VISIBLE : View.GONE);
 		}
 		
 		private void bindMessageAttachmentCommon(VHMessageStructure viewHolderStructure, VHMessageComponentAttachment viewHolder, MessageInfo messageInfo, AttachmentInfo component) {
 			//Checking if we already have content
 			if(component.getFile() != null) {
 				//Showing the open view
-				setAttachmentView(viewHolder, viewHolder.groupOpen);
-				viewHolder.labelOpen.setText(component.getFileName());
-				viewHolder.labelOpen.setMaxWidth(WindowHelper.getMaxMessageWidth(getResources()));
+				setAttachmentView(viewHolder, viewHolder.getGroupOpen());
+				viewHolder.getLabelOpen().setText(component.getFileName());
+				viewHolder.getLabelOpen().setMaxWidth(WindowHelper.getMaxMessageWidth(getResources()));
 				viewHolder.itemView.setOnClickListener(view -> IntentHelper.openAttachmentFile(Messaging.this, component.getFile(), component.getContentType()));
 				
 				//Setting up the content view
@@ -3235,20 +3235,20 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Checking if there is a download in progress
 				if(downloadObservable != null && !downloadObservable.hasThrowable() && !(downloadObservable.getValue() instanceof ReduxEventAttachmentDownload.Complete)) {
 					//Showing the progress view
-					setAttachmentView(viewHolder, viewHolder.groupProgress);
-					viewHolder.progressProgress.setIndeterminate(true);
+					setAttachmentView(viewHolder, viewHolder.getGroupProgress());
+					viewHolder.getProgressProgress().setIndeterminate(true);
 					
 					//Subscribing to download updates
 					attachmentSubscribeDownload(viewHolderStructure, viewHolder, messageInfo, component, downloadObservable);
 				} else {
 					//Showing the download prompt view
-					setAttachmentView(viewHolder, viewHolder.groupPrompt);
+					setAttachmentView(viewHolder, viewHolder.getGroupPrompt());
 					
-					viewHolder.labelPromptType.setText(LanguageHelper.getHumanReadableContentType(getResources(), component.getContentType()));
-					if(component.getFileSize() == -1) viewHolder.labelPromptSize.setVisibility(View.GONE);
+					viewHolder.getLabelPromptType().setText(LanguageHelper.getHumanReadableContentType(getResources(), component.getContentType()));
+					if(component.getFileSize() == -1) viewHolder.getLabelPromptSize().setVisibility(View.GONE);
 					else {
-						viewHolder.labelPromptSize.setVisibility(View.VISIBLE);
-						viewHolder.labelPromptSize.setText(Formatter.formatShortFileSize(Messaging.this, component.getFileSize()));
+						viewHolder.getLabelPromptSize().setVisibility(View.VISIBLE);
+						viewHolder.getLabelPromptSize().setText(Formatter.formatShortFileSize(Messaging.this, component.getFileSize()));
 					}
 					
 					//Setting the download click listener
@@ -3268,8 +3268,8 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(component.getGUID() != null) {
 				if(pluginCS.isServiceBound()) {
 					//Switching to the download view
-					setAttachmentView(viewHolder, viewHolder.groupProgress);
-					viewHolder.progressProgress.setIndeterminate(true);
+					setAttachmentView(viewHolder, viewHolder.getGroupProgress());
+					viewHolder.getProgressProgress().setIndeterminate(true);
 					
 					//Starting the download
 					attachmentSubscribeDownload(viewHolderStructure, viewHolder, messageInfo, component, ConnectionTaskManager.downloadAttachment(pluginCS.getConnectionManager(), messageInfo.getLocalID(), component.getLocalID(), component.getGUID(), component.getFileName()));
@@ -3289,16 +3289,16 @@ public class Messaging extends AppCompatCompositeActivity {
 		private void attachmentSubscribeDownload(VHMessageStructure viewHolderStructure, VHMessageComponentAttachment viewHolder, MessageInfo messageInfo, AttachmentInfo attachmentInfo, Observable<ReduxEventAttachmentDownload> observable) {
 			viewHolderStructure.getCompositeDisposable().add(
 					observable.subscribe(event -> {
-						viewHolder.progressProgress.setIndeterminate(false);
+						viewHolder.getProgressProgress().setIndeterminate(false);
 						if(event instanceof ReduxEventAttachmentDownload.Progress) {
 							ReduxEventAttachmentDownload.Progress progressEvent = (ReduxEventAttachmentDownload.Progress) event;
 							
 							//Updating the progress bar
-							viewHolder.progressProgress.setProgress((int) ((float) progressEvent.getBytesProgress() / progressEvent.getBytesTotal() * viewHolder.progressProgress.getMax()));
+							viewHolder.getProgressProgress().setProgress((int) ((float) progressEvent.getBytesProgress() / progressEvent.getBytesTotal() * viewHolder.getProgressProgress().getMax()));
 						}
 					}, (error) -> {
 						//Reverting to the download prompt view
-						setAttachmentView(viewHolder, viewHolder.groupPrompt);
+						setAttachmentView(viewHolder, viewHolder.getGroupPrompt());
 						
 						//Showing a toast
 						String toastText;
@@ -3354,7 +3354,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		private void bindMessageComponentVisual(VHMessageComponentVisual viewHolder, MessageInfo messageInfo, AttachmentInfo component) {
 			//Resetting the image view
-			viewHolder.imageView.layout(0, 0, 0, 0);
+			viewHolder.getImageView().layout(0, 0, 0, 0);
 			
 			//Loading the image
 			RequestBuilder<Drawable> requestBuilder = Glide.with(Messaging.this)
@@ -3373,42 +3373,42 @@ public class Messaging extends AppCompatCompositeActivity {
 						@Override
 						public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
 							//Switching to the content view
-							setAttachmentView(viewHolder, viewHolder.groupContentFrame);
+							setAttachmentView(viewHolder, viewHolder.getGroupContentFrame());
 							
 							//Setting the click listener
-							viewHolder.itemView.setOnClickListener(view -> openAttachmentFileMediaViewer(component, viewHolder.imageView, new float[]{0, 0, 0, 0, 0, 0, 0, 0}));
+							viewHolder.itemView.setOnClickListener(view -> openAttachmentFileMediaViewer(component, viewHolder.getImageView(), new float[]{0, 0, 0, 0, 0, 0, 0, 0}));
 							
 							//Updating the image view layout
-							viewHolder.imageView.requestLayout();
+							viewHolder.getImageView().requestLayout();
 							//viewHolder.imageView.post(viewHolder.imageView::requestLayout);
 							
 							if(FileHelper.compareMimeTypes(component.getContentType(), MIMEConstants.mimeTypeVideo)) {
 								//Showing the play indicator
-								viewHolder.playIndicator.setVisibility(View.VISIBLE);
+								viewHolder.getPlayIndicator().setVisibility(View.VISIBLE);
 								
 								//Computing the image brightness
 								Bitmap bitmap = ((BitmapDrawable) resource).getBitmap();
 								boolean isLight = ColorMathHelper.calculateBrightness(bitmap, bitmap.getWidth() / 16) > 200;
 								
 								//Updating the play icon color
-								viewHolder.playIndicator.setImageTintList(isLight ? ColorStateList.valueOf(0xFF212121) : ColorStateList.valueOf(0xFFFFFFFF));
+								viewHolder.getPlayIndicator().setImageTintList(isLight ? ColorStateList.valueOf(0xFF212121) : ColorStateList.valueOf(0xFFFFFFFF));
 							} else {
 								//Hiding the play indicator
-								viewHolder.playIndicator.setVisibility(View.GONE);
+								viewHolder.getPlayIndicator().setVisibility(View.GONE);
 							}
 							
 							//Updating the ink view
 							if(SendStyleHelper.appleSendStyleBubbleInvisibleInk.equals(messageInfo.getSendStyle())) {
-								viewHolder.inkView.setVisibility(View.VISIBLE);
-								viewHolder.inkView.setState(true);
+								viewHolder.getInkView().setVisibility(View.VISIBLE);
+								viewHolder.getInkView().setState(true);
 							} else {
-								viewHolder.inkView.setVisibility(View.GONE);
+								viewHolder.getInkView().setVisibility(View.GONE);
 							}
 							
 							return false;
 						}
 					})
-					.into(viewHolder.imageView);
+					.into(viewHolder.getImageView());
 		}
 		
 		private void bindMessageComponentAudio(AudioPlaybackManager playbackManager, VHMessageStructure viewHolderStructure, VHMessageComponentAudio viewHolder, AttachmentInfo component) {
@@ -3417,7 +3417,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					component.<FileDisplayMetadata.Media>getDisplayMetadata(() -> Single.create(emitter -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, Union.ofA(component.getFile())))))
 					.subscribe(metadata -> {
 						//Switching to the content view
-						setAttachmentView(viewHolder, viewHolder.groupContentFrame);
+						setAttachmentView(viewHolder, viewHolder.getGroupContentFrame());
 						
 						//Checking if we are currently playing this message
 						if(playbackManager.compareRequest(component)) {
@@ -3465,20 +3465,20 @@ public class Messaging extends AppCompatCompositeActivity {
 					component.<FileDisplayMetadata.Contact>getDisplayMetadata(() -> Single.create(emitter -> emitter.onSuccess(new FileDisplayMetadata.Contact(Messaging.this, Union.ofA(component.getFile())))))
 					.subscribe(metadata -> {
 						//Switching to the content view
-						setAttachmentView(viewHolder, viewHolder.groupContentFrame);
+						setAttachmentView(viewHolder, viewHolder.getGroupContentFrame());
 						
 						//Setting the contact name label
-						if(metadata.getContactName() == null) viewHolder.labelName.setText(R.string.part_content_contact);
-						else viewHolder.labelName.setText(metadata.getContactName());
+						if(metadata.getContactName() == null) viewHolder.getLabelName().setText(R.string.part_content_contact);
+						else viewHolder.getLabelName().setText(metadata.getContactName());
 						
 						//Setting the contact's picture
 						if(metadata.getContactIcon() == null) {
-							viewHolder.iconPlaceholder.setVisibility(View.VISIBLE);
-							viewHolder.iconProfile.setVisibility(View.GONE);
+							viewHolder.getIconPlaceholder().setVisibility(View.VISIBLE);
+							viewHolder.getIconProfile().setVisibility(View.GONE);
 						} else {
-							viewHolder.iconPlaceholder.setVisibility(View.GONE);
-							viewHolder.iconProfile.setVisibility(View.VISIBLE);
-							viewHolder.iconProfile.setImageBitmap(metadata.getContactIcon());
+							viewHolder.getIconPlaceholder().setVisibility(View.GONE);
+							viewHolder.getIconProfile().setVisibility(View.VISIBLE);
+							viewHolder.getIconProfile().setImageBitmap(metadata.getContactIcon());
 						}
 						
 						//Setting the click listener
@@ -3489,7 +3489,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		private void bindMessageComponentLocation(VHMessageStructure viewHolderStructure, VHMessageComponentLocation viewHolder, AttachmentInfo component) {
 			//Setting the width
-			viewHolder.groupContent.getLayoutParams().width = WindowHelper.getMaxMessageWidth(getResources());
+			viewHolder.getGroupContent().getLayoutParams().width = WindowHelper.getMaxMessageWidth(getResources());
 			
 			//Loading the metadata and waiting for the map view to be initialized
 			viewHolderStructure.getCompositeDisposable().add(
@@ -3503,26 +3503,26 @@ public class Messaging extends AppCompatCompositeActivity {
 						GoogleMap googleMap = results.getSecond();
 						
 						//Switching to the content view
-						setAttachmentView(viewHolder, viewHolder.groupContentFrame);
+						setAttachmentView(viewHolder, viewHolder.getGroupContentFrame());
 						
 						//Setting the location title
-						if(metadata.getLocationName() != null) viewHolder.labelTitle.setText(metadata.getLocationName());
-						else viewHolder.labelTitle.setText(R.string.message_locationtitle_unknown);
+						if(metadata.getLocationName() != null) viewHolder.getLabelTitle().setText(metadata.getLocationName());
+						else viewHolder.getLabelTitle().setText(R.string.message_locationtitle_unknown);
 						
 						//Setting the address
-						if(metadata.getLocationAddress() != null) viewHolder.labelAddress.setText(metadata.getLocationAddress());
+						if(metadata.getLocationAddress() != null) viewHolder.getLabelAddress().setText(metadata.getLocationAddress());
 						else {
-							if(metadata.getLocationCoords() != null) viewHolder.labelAddress.setText(LanguageHelper.coordinatesToString(metadata.getLocationCoords()));
-							else viewHolder.labelAddress.setText(R.string.message_locationaddress_unknown);
+							if(metadata.getLocationCoords() != null) viewHolder.getLabelAddress().setText(LanguageHelper.coordinatesToString(metadata.getLocationCoords()));
+							else viewHolder.getLabelAddress().setText(R.string.message_locationaddress_unknown);
 						}
 						
 						//Setting the map preview
 						if(metadata.getLocationCoords() == null || !Preferences.getPreferenceMessagePreviews(viewHolder.itemView.getContext())) {
-							viewHolder.mapContainer.setVisibility(View.GONE);
+							viewHolder.getMapContainer().setVisibility(View.GONE);
 						} else {
 							//Showing the map view and setting it as non-clickable (so that the card view parent will handle clicks instead)
-							viewHolder.mapContainer.setVisibility(View.VISIBLE);
-							viewHolder.mapView.setClickable(false);
+							viewHolder.getMapContainer().setVisibility(View.VISIBLE);
+							viewHolder.getMapView().setClickable(false);
 							
 							//Setting the map location
 							LatLng targetLocation = metadata.getLocationCoords();
@@ -3537,17 +3537,17 @@ public class Messaging extends AppCompatCompositeActivity {
 						}
 						
 						//Setting the click listener
-						viewHolder.itemView.setOnClickListener(view -> IntentHelper.launchUri(viewHolder.groupContent.getContext(), metadata.getMapLink()));
+						viewHolder.itemView.setOnClickListener(view -> IntentHelper.launchUri(viewHolder.getGroupContent().getContext(), metadata.getMapLink()));
 					})
 			);
 		}
 		
 		private void bindMessagePreview(VHMessageStructure structureViewHolder, ConversationInfo conversationInfo, MessageInfo messageInfo, VHMessageComponentText componentViewHolder, MessagePreviewInfo preview) {
 			//Expanding the message text bubble to match the view
-			componentViewHolder.groupMessage.getLayoutParams().width = 0;
+			componentViewHolder.getGroupMessage().getLayoutParams().width = 0;
 			
 			//Showing the preview container
-			componentViewHolder.messagePreviewContainer.setVisibility(View.VISIBLE);
+			componentViewHolder.getMessagePreviewContainer().setVisibility(View.VISIBLE);
 			
 			//There will be a switch statement or something here if we add more preview types
 			bindMessagePreviewLink(componentViewHolder, preview);
@@ -3563,7 +3563,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//If we don't have a view holder, make a new one
 			if(viewHolder == null) {
-				View view = getLayoutInflater().inflate(R.layout.layout_messagepreview_linklarge, componentViewHolder.messagePreviewContainer, false);
+				View view = getLayoutInflater().inflate(R.layout.layout_messagepreview_linklarge, componentViewHolder.getMessagePreviewContainer(), false);
 				viewHolder = new VHMessagePreviewLink(view,
 						view.findViewById(R.id.view_border),
 						view.findViewById(R.id.image_header),
@@ -3574,32 +3574,32 @@ public class Messaging extends AppCompatCompositeActivity {
 			}
 			
 			//Applying the view holder
-			componentViewHolder.messagePreviewContainer.addView(viewHolder.itemView);
+			componentViewHolder.getMessagePreviewContainer().addView(viewHolder.itemView);
 			componentViewHolder.messagePreviewViewHolder = viewHolder;
 			
 			//Loading the image (or disabling it if there is none)
 			byte[] data = preview.getData();
 			if(data == null) {
-				viewHolder.imageHeader.setVisibility(View.GONE);
+				viewHolder.getImageHeader().setVisibility(View.GONE);
 			} else {
-				viewHolder.imageHeader.setVisibility(View.VISIBLE);
-				if(!isDestroyed()) Glide.with(Messaging.this).load(data).into(viewHolder.imageHeader);
+				viewHolder.getImageHeader().setVisibility(View.VISIBLE);
+				if(!isDestroyed()) Glide.with(Messaging.this).load(data).into(viewHolder.getImageHeader());
 			}
 			
 			//Setting the title
-			viewHolder.labelTitle.setText(preview.getTitle());
+			viewHolder.getLabelTitle().setText(preview.getTitle());
 			
 			//Setting the description (or disabling it if there is none)
 			String subtitle = preview.getSubtitle();
 			if(subtitle == null || subtitle.isEmpty()) {
-				viewHolder.labelDescription.setVisibility(View.GONE);
+				viewHolder.getLabelDescription().setVisibility(View.GONE);
 			} else {
-				viewHolder.labelDescription.setVisibility(View.VISIBLE);
-				viewHolder.labelDescription.setText(subtitle);
+				viewHolder.getLabelDescription().setVisibility(View.VISIBLE);
+				viewHolder.getLabelDescription().setText(subtitle);
 			}
 			
 			//Setting the address (as the site name, or otherwise the host)
-			viewHolder.labelAddress.setText(preview.getCaption());
+			viewHolder.getLabelAddress().setText(preview.getCaption());
 			
 			//Setting the click listener
 			viewHolder.itemView.setOnClickListener(view -> {
@@ -4365,7 +4365,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			Union<File, Uri> fileSource = fileInfo.getFile().map(FileLinked::getFile, file -> Union.ofA(file.getFile()));
 			
 			//Binding the content view
-			holder.content.bind(Messaging.this,
+			holder.getContent().bind(Messaging.this,
 					holder.getCompositeDisposable(),
 					fileSource,
 					fileInfo.getFile().map(FileLinked::getFileName, FileDraft::getFileName),
@@ -4383,7 +4383,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
 									Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, fileSource)))
 											.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
-									.subscribe(metadata -> ((VHAttachmentTileContentMedia) holder.content).applyMetadata((FileDisplayMetadata.Media) metadata))
+									.subscribe(metadata -> ((VHAttachmentTileContentMedia) holder.getContent()).applyMetadata((FileDisplayMetadata.Media) metadata))
 					);
 				}
 			} else if(itemViewType == AttachmentType.audio) {
@@ -4393,7 +4393,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
 									Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, fileSource)))
 											.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
-									.subscribe(metadata -> ((VHAttachmentTileContentAudio) holder.content).onLoaded(Messaging.this, holder.getCompositeDisposable(), viewModel.audioPlaybackManager, fileSource, (FileDisplayMetadata.Media) metadata, fileInfo.getReferenceID()))
+									.subscribe(metadata -> ((VHAttachmentTileContentAudio) holder.getContent()).onLoaded(Messaging.this, holder.getCompositeDisposable(), viewModel.audioPlaybackManager, fileSource, (FileDisplayMetadata.Media) metadata, fileInfo.getReferenceID()))
 					);
 				}
 			} else if(itemViewType == AttachmentType.contact) {
@@ -4401,19 +4401,19 @@ public class Messaging extends AppCompatCompositeActivity {
 						viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
 								Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Contact(Messaging.this, fileSource)))
 										.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
-								.subscribe(metadata -> ((VHAttachmentTileContentContact) holder.content).applyMetadata((FileDisplayMetadata.Contact) metadata))
+								.subscribe(metadata -> ((VHAttachmentTileContentContact) holder.getContent()).applyMetadata((FileDisplayMetadata.Contact) metadata))
 				);
 			} else if(itemViewType == AttachmentType.location) {
 				holder.getCompositeDisposable().add(
 						viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
 								Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.LocationSimple(Messaging.this, fileSource)))
 										.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
-								.subscribe(metadata -> ((VHAttachmentTileContentLocation) holder.content).applyMetadata((FileDisplayMetadata.LocationSimple) metadata))
+								.subscribe(metadata -> ((VHAttachmentTileContentLocation) holder.getContent()).applyMetadata((FileDisplayMetadata.LocationSimple) metadata))
 				);
 			}
 			
 			//Hooking up the remove button
-			holder.buttonRemove.setOnClickListener(view -> viewModel.dequeueFile(fileInfo));
+			holder.getButtonRemove().setOnClickListener(view -> viewModel.dequeueFile(fileInfo));
 			
 			//Setting the view state
 			holder.setAppearanceState(!fileInfo.getFile().isA(), false);
@@ -4446,7 +4446,7 @@ public class Messaging extends AppCompatCompositeActivity {
 									viewModel.taskManagerMetadata.run(fileInfo.getReferenceID(), () ->
 											Single.create((SingleEmitter<FileDisplayMetadata> emitter) -> emitter.onSuccess(new FileDisplayMetadata.Media(Messaging.this, fileSource)))
 													.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()))
-											.subscribe(metadata -> ((VHAttachmentTileContentAudio) holder.content).onLoaded(Messaging.this, holder.getCompositeDisposable(), viewModel.audioPlaybackManager, fileSource, (FileDisplayMetadata.Media) metadata, fileInfo.getReferenceID()))
+											.subscribe(metadata -> ((VHAttachmentTileContentAudio) holder.getContent()).onLoaded(Messaging.this, holder.getCompositeDisposable(), viewModel.audioPlaybackManager, fileSource, (FileDisplayMetadata.Media) metadata, fileInfo.getReferenceID()))
 							);
 						}
 						
@@ -4540,7 +4540,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		private final MutableLiveData<Boolean> progressiveLoadInProgress = new MutableLiveData<>();
 		private boolean progressiveLoadReachedLimit = false;
 		
-		private final MutableLiveData<AMConversationAction[]> conversationActionsLD = new MutableLiveData<>();
+		private final MutableLiveData<List<AMConversationAction>> conversationActionsLD = new MutableLiveData<>();
 		
 		private int lastUnreadCount = 0;
 		
@@ -4724,6 +4724,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		 * @param conversationLazyLoader The conversation's lazy loader for fetching past messages
 		 */
 		private void applyConversation(ConversationInfo conversationInfo, DatabaseManager.ConversationLazyLoader conversationLazyLoader) {
+			//Logging the event
+			FirebaseCrashlytics.getInstance().log("Loaded conversation ID " + conversationInfo.getLocalID() + " over service " + (conversationInfo.getServiceHandler() == ServiceHandler.appleBridge ? "appleBridge" : "systemMessaging") + "-" + conversationInfo.getServiceType());
+			
 			//Setting the values
 			this.conversationInfo = conversationInfo;
 			this.conversationLazyLoader = conversationLazyLoader;
@@ -4990,7 +4993,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					conversationActionsDisposable = SmartReplyHelper.generateResponses(getApplication(), messageHistory)
 							.subscribe(responses -> {
 								if(responses.isEmpty()) conversationActionsLD.setValue(null);
-								else conversationActionsLD.setValue(responses.toArray(new AMConversationAction[0]));
+								else conversationActionsLD.setValue(responses);
 							})
 			);
 			

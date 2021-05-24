@@ -30,8 +30,8 @@ object ConversationColorHelper {
 	const val backupUserColor = 0xFF607D8B.toInt() //Blue grey
 	private fun getConversationRandom(conversationInfo: ConversationInfo): Random {
 		return when {
-			conversationInfo.guid != null -> Random(conversationInfo.guid.hashCode().toLong())
-			conversationInfo.externalID != null -> Random(conversationInfo.externalID)
+			conversationInfo.guid != null -> Random(conversationInfo.guid!!.hashCode().toLong())
+			conversationInfo.externalID != -1L -> Random(conversationInfo.externalID)
 			else -> Random.Default
 		}
 	}
@@ -76,17 +76,17 @@ object ConversationColorHelper {
 	}
 	
 	@JvmStatic
-	fun getColoredMembers(members: List<String>, conversationColor: Int): List<MemberInfo> {
+	fun getColoredMembers(members: List<String>, conversationColor: Int): MutableList<MemberInfo> {
 		return getColoredMembers(members, conversationColor, Random.Default)
 	}
 	
 	@JvmStatic
-	fun getColoredMembers(members: List<String>, conversationColor: Int, conversationGUID: String): List<MemberInfo> {
+	fun getColoredMembers(members: List<String>, conversationColor: Int, conversationGUID: String): MutableList<MemberInfo> {
 		return getColoredMembers(members, conversationColor, Random(conversationGUID.hashCode().toLong()))
 	}
 	
 	@JvmStatic
-	fun getColoredMembers(members: List<String>, conversationColor: Int, conversationExternalID: Long): List<MemberInfo> {
+	fun getColoredMembers(members: List<String>, conversationColor: Int, conversationExternalID: Long): MutableList<MemberInfo> {
 		return getColoredMembers(members, conversationColor, Random(conversationExternalID))
 	}
 	

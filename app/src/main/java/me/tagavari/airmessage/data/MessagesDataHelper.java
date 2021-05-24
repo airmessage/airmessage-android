@@ -10,6 +10,9 @@ import me.tagavari.airmessage.enums.ServiceHandler;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 public class MessagesDataHelper {
 	/**
 	 * Deletes all locally saved attachment files under AirMessage bridge
@@ -29,7 +32,7 @@ public class MessagesDataHelper {
 				.subscribeOn(Schedulers.single())
 				.observeOn(AndroidSchedulers.mainThread()).doOnSuccess(deletedIDs -> {
 					//Emitting an update
-					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationServiceHandlerDelete(ServiceHandler.appleBridge, deletedIDs));
+					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationServiceHandlerDelete(ServiceHandler.appleBridge, Arrays.stream(deletedIDs).boxed().collect(Collectors.toList())));
 				}).ignoreElement();
 	}
 }

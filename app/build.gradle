@@ -1,4 +1,13 @@
 plugins {
+	id "com.android.application"
+	id "kotlin-android"
+	id "kotlin-parcelize"
+
+	id "com.google.gms.google-services"
+	id "com.google.firebase.crashlytics"
+
+	id "com.mikepenz.aboutlibraries.plugin"
+
 	id "com.google.secrets_gradle_plugin" version "0.5"
 }
 
@@ -18,7 +27,6 @@ if(keystorePropertiesFile.exists()) {
 	keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
-apply plugin: "com.android.application"
 
 android {
 	signingConfigs {
@@ -41,13 +49,12 @@ android {
 		}
 	}
 	compileSdkVersion 30
-	buildToolsVersion "29.0.3"
 	defaultConfig {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
 		targetSdkVersion 30
-		versionName "3.1.5"
-		versionCode 111
+		versionName "3.1.6"
+		versionCode 112
 
 		resConfigs "en", "fr", "ja"
 
@@ -111,6 +118,9 @@ android {
 		sourceCompatibility JavaVersion.VERSION_1_8
 		targetCompatibility JavaVersion.VERSION_1_8
 	}
+	kotlinOptions {
+		jvmTarget = JavaVersion.VERSION_1_8.toString()
+	}
 }
 
 dependencies {
@@ -132,7 +142,7 @@ dependencies {
 	implementation "androidx.preference:preference-ktx:1.1.1"
 	implementation "androidx.browser:browser:1.3.0"
 	implementation "androidx.exifinterface:exifinterface:1.3.2"
-	implementation "androidx.security:security-crypto:1.0.0-rc04"
+	implementation "androidx.security:security-crypto:1.0.0"
 
 	//Material components
 	implementation "com.google.android.material:material:1.3.0"
@@ -149,7 +159,7 @@ dependencies {
 
 	//ReactiveX
 	implementation "io.reactivex.rxjava3:rxandroid:3.0.0"
-	implementation "io.reactivex.rxjava3:rxjava:3.0.11"
+	implementation "io.reactivex.rxjava3:rxjava:3.0.12"
 	implementation "io.reactivex.rxjava3:rxkotlin:3.0.1"
 
 	//Layouts and views
@@ -167,13 +177,13 @@ dependencies {
 	implementation platform("com.google.firebase:firebase-bom:26.8.0")
 
 	implementation "com.google.firebase:firebase-core"
-	implementation "com.google.firebase:firebase-messaging"
-	implementation "com.google.firebase:firebase-auth"
-	implementation "com.google.firebase:firebase-analytics"
-	implementation "com.google.firebase:firebase-crashlytics"
+	implementation "com.google.firebase:firebase-messaging-ktx"
+	implementation "com.google.firebase:firebase-auth-ktx"
+	implementation "com.google.firebase:firebase-analytics-ktx"
+	implementation "com.google.firebase:firebase-crashlytics-ktx"
 
 	//GMS
-	implementation "com.google.android.gms:play-services-maps:17.0.0"
+	implementation "com.google.android.gms:play-services-maps:17.0.1"
 	implementation "com.google.android.gms:play-services-location:18.0.0"
 	implementation "com.google.android.gms:play-services-auth:19.0.0"
 
@@ -185,15 +195,15 @@ dependencies {
 	implementation "com.googlecode.ez-vcard:ez-vcard:0.11.2"
 
 	//Backend
-	//implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+	implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 	implementation "org.bouncycastle:bcprov-jdk15to18:1.68"
 
 	implementation "com.github.bumptech.glide:glide:4.12.0"
 	annotationProcessor "com.github.bumptech.glide:compiler:4.12.0"
 	implementation "jp.wasabeef:glide-transformations:4.3.0"
 
-	implementation "com.google.android.exoplayer:exoplayer-core:2.13.2"
-	implementation "com.google.android.exoplayer:exoplayer-ui:2.13.2"
+	implementation "com.google.android.exoplayer:exoplayer-core:2.13.3"
+	implementation "com.google.android.exoplayer:exoplayer-ui:2.13.3"
 
 	implementation "org.jsoup:jsoup:1.13.1"
 
@@ -212,9 +222,3 @@ repositories {
 		url "https://jitpack.io"
 	}
 }
-
-apply plugin: "com.google.gms.google-services"
-apply plugin: "com.google.firebase.crashlytics"
-apply plugin: "kotlin-android"
-apply plugin: "kotlin-parcelize"
-apply plugin: "com.mikepenz.aboutlibraries.plugin"

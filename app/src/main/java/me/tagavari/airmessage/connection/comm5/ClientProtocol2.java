@@ -28,6 +28,7 @@ import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.connection.encryption.EncryptionAES;
 import me.tagavari.airmessage.connection.exception.AMRequestException;
+import me.tagavari.airmessage.connection.exception.LargeAllocationException;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
@@ -138,7 +139,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 				//This data is always encrypted
 				processDataSecure(messageType, unpacker);
 			}
-		} catch(BufferUnderflowException exception) {
+		} catch(BufferUnderflowException | LargeAllocationException exception) {
 			exception.printStackTrace();
 		}
 	}
@@ -232,7 +233,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		return true;
 	}
 	
-	private void handleMessageAuthentication(AirUnpacker unpacker) throws BufferUnderflowException {
+	private void handleMessageAuthentication(AirUnpacker unpacker) throws BufferUnderflowException, LargeAllocationException {
 		//Stopping the authentication timer
 		communicationsManager.stopTimeoutTimer();
 		
@@ -255,7 +256,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		}
 	}
 	
-	private void handleMessageMessageUpdate(AirUnpacker unpacker) throws BufferUnderflowException {
+	private void handleMessageMessageUpdate(AirUnpacker unpacker) throws BufferUnderflowException, LargeAllocationException {
 		List<Blocks.ConversationItem> conversationItems = unpackConversationItems(unpacker);
 		communicationsManager.runListener(listener -> listener.onMessageUpdate(conversationItems));
 	}
@@ -468,7 +469,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			byte[] transmissionCheck;
 			try {
 				transmissionCheck = unpacker.unpackPayload();
-			} catch(BufferUnderflowException exception) {
+			} catch(BufferUnderflowException | LargeAllocationException exception) {
 				exception.printStackTrace();
 				return false;
 			}
@@ -535,7 +536,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 				packer.packString(((ConversationTarget.AppleLinked) conversation).getGuid()); //Chat GUID
 			} else if(conversation instanceof ConversationTarget.AppleUnlinked) {
 				ConversationTarget.AppleUnlinked unlinked = ((ConversationTarget.AppleUnlinked) conversation);
-				packer.packArrayHeader(unlinked.getMembers().length); //Members
+				packer.packArrayHeader(unlinked.getMembers().size()); //Members
 				for(String item : unlinked.getMembers()) packer.packString(item);
 				packer.packString(unlinked.getService()); //Service
 			}
@@ -584,7 +585,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 								packer.packString(((ConversationTarget.AppleLinked) conversation).getGuid()); //Chat GUID
 							} else if(conversation instanceof ConversationTarget.AppleUnlinked) {
 								ConversationTarget.AppleUnlinked unlinked = ((ConversationTarget.AppleUnlinked) conversation);
-								packer.packArrayHeader(unlinked.getMembers().length); //Members
+								packer.packArrayHeader(unlinked.getMembers().size()); //Members
 								for(String item : unlinked.getMembers()) packer.packString(item);
 							}
 							

@@ -239,6 +239,9 @@ public class FragmentMessagingDetails extends BottomSheetDialogFragment {
 		super.onDestroyView();
 		
 		fragmentCD.clear();
+		for(CompositeDisposable compositeDisposable : memberCDMap.values()) {
+			compositeDisposable.clear();
+		}
 	}
 	
 	@Override
