@@ -12,8 +12,8 @@ class ChatRenameAction(
 	serverID: Long,
 	guid: String?,
 	date: Long,
-	val agent: String,
-	val title: String
+	val agent: String?,
+	val title: String?
 ) : ConversationAction(localID, serverID, guid, date) {
 	override val itemType = ConversationItemType.chatRename
 	
