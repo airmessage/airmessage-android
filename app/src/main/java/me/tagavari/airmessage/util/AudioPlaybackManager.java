@@ -47,7 +47,7 @@ public class AudioPlaybackManager {
 		//Creating the exo player
 		exoPlayer = new SimpleExoPlayer.Builder(context).build();
 		
-		exoPlayer.addListener(new Player.EventListener() {
+		exoPlayer.addListener(new Player.Listener() {
 			@Override
 			public void onIsPlayingChanged(boolean isPlaying) {
 				if(isPlaying) {

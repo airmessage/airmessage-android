@@ -53,8 +53,8 @@ android {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
 		targetSdkVersion 30
-		versionName "3.1.6"
-		versionCode 112
+		versionName "3.1.7"
+		versionCode 113
 
 		resConfigs "en", "fr", "ja"
 
@@ -165,7 +165,7 @@ dependencies {
 	//Layouts and views
 	implementation "androidx.constraintlayout:constraintlayout:2.0.4"
 	implementation "androidx.viewpager2:viewpager2:1.0.0"
-	implementation "com.google.android:flexbox:2.0.1"
+	implementation "com.google.android.flexbox:flexbox:3.0.0"
 
 	implementation "nl.dionsegijn:konfetti:1.3.2"
 	implementation "com.github.chrisbanes:PhotoView:2.3.0"
@@ -174,7 +174,7 @@ dependencies {
 	implementation "com.google.mlkit:smart-reply:16.1.1"
 
 	//Firebase
-	implementation platform("com.google.firebase:firebase-bom:26.8.0")
+	implementation platform("com.google.firebase:firebase-bom:28.0.1")
 
 	implementation "com.google.firebase:firebase-core"
 	implementation "com.google.firebase:firebase-messaging-ktx"
@@ -202,8 +202,8 @@ dependencies {
 	annotationProcessor "com.github.bumptech.glide:compiler:4.12.0"
 	implementation "jp.wasabeef:glide-transformations:4.3.0"
 
-	implementation "com.google.android.exoplayer:exoplayer-core:2.13.3"
-	implementation "com.google.android.exoplayer:exoplayer-ui:2.13.3"
+	implementation "com.google.android.exoplayer:exoplayer-core:2.14.0"
+	implementation "com.google.android.exoplayer:exoplayer-ui:2.14.0"
 
 	implementation "org.jsoup:jsoup:1.13.1"
 

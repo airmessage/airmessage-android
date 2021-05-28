@@ -32,6 +32,7 @@ import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
 import com.bumptech.glide.signature.ObjectKey;
 import com.github.chrisbanes.photoview.PhotoView;
+import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
@@ -471,9 +472,9 @@ public class MediaViewer extends AppCompatActivity {
 				systemInsetsRectUpdateListeners.add(insetsUpdateListener); //For future changes
 				
 				//Adding a listener to the player in order to keep track of which player is active
-				player.addListener(new Player.EventListener() {
+				player.addListener(new Player.Listener() {
 					@Override
-					public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
+					public void onPlayWhenReadyChanged(boolean playWhenReady, int reason) {
 						if(playWhenReady) { //When the "play" button is pressed
 							if(currentPlayer != null && currentPlayer != player) currentPlayer.seekTo(0); //Resetting the previous player
 							currentPlayer = player; //Setting the current player
