@@ -9,9 +9,9 @@ import java.io.File
  */
 class FileLinked @JvmOverloads constructor(
 	val file: Union<File, Uri>,
-	val fileName: String?,
-	val fileSize: Long?,
-	val fileType: String?,
+	val fileName: String,
+	val fileSize: Long,
+	val fileType: String,
 	val metadata: FileDisplayMetadata? = null,
 	val mediaStoreData: MediaStore? = null
 ) {
