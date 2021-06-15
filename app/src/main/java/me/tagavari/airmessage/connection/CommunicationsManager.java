@@ -202,6 +202,13 @@ public abstract class CommunicationsManager<Packet> {
 	public abstract int checkCommVerApplicability(int version);
 	
 	/**
+	 * Checks if the specified proxy is supported by the current protocol
+	 * @param proxyType The proxy type to check
+	 * @return Whether or not this protocol manager can handle the specified feature
+	 */
+	public abstract boolean isProxySupported(@ProxyType int proxyType);
+	
+	/**
 	 * Checks if the specified feature is supported by the current protocol
 	 * @param featureID The feature to check
 	 * @return Whether or not this protocol manager can handle the specified feature

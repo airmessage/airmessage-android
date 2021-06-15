@@ -323,11 +323,12 @@ public class ConnectionManager {
 				//Checking if we have yet to establish a proper connection, and there are older protocol versions available to use
 				if(!connectionEstablished && currentCommunicationsIndex + 1 < communicationsPriorityList.size()) {
 					//Leave the state as connecting and fall back to an older protocol
-					connectFromList(getContext(), currentCommunicationsIndex + 1);
-					return;
+					boolean connected = connectFromList(getContext(), currentCommunicationsIndex + 1);
+					if(connected) return;
 				}
+				
 				//Checking if we have already established a connection, and we are allowed to run automatic reconnections
-				else if((connectionEstablished || connMode == ConnectionMode.immediate) && !disableReconnections) {
+				if((connectionEstablished || connMode == ConnectionMode.immediate) && !disableReconnections) {
 					//Trying to start an immediate reconnection
 					boolean result;
 					if(connMode != ConnectionMode.immediate) {
@@ -963,8 +964,9 @@ public class ConnectionManager {
 	
 	/**
 	 * Connects from the specified index down the priority list
+	 * @return Whether the communications manager was started
 	 */
-	private void connectFromList(Context context, int index) {
+	private boolean connectFromList(Context context, int index) {
 		//Updating the connection state
 		connState = ConnectionState.connecting;
 		
@@ -977,7 +979,9 @@ public class ConnectionManager {
 		
 		//Creating and starting the communications manager
 		communicationsManager = communicationsPriorityList.get(index).create(communicationsManagerListener, proxyType);
+		if(!communicationsManager.isProxySupported(proxyType)) return false;
 		communicationsManager.connect(context, overrideValue);
+		return true;
 	}
 	
 	/**
