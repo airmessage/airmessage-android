@@ -247,6 +247,11 @@ public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 	}
 	
 	@Override
+	public boolean isProxySupported(@ProxyType int proxyType) {
+		return proxyType == ProxyType.direct;
+	}
+	
+	@Override
 	public boolean isFeatureSupported(@ConnectionFeature int featureID) {
 		return false;
 	}

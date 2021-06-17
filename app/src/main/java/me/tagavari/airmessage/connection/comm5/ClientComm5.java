@@ -269,6 +269,11 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	}
 	
 	@Override
+	public boolean isProxySupported(@ProxyType int proxyType) {
+		return proxyType == ProxyType.direct || proxyType == ProxyType.connect;
+	}
+	
+	@Override
 	public boolean isFeatureSupported(@ConnectionFeature int featureID) {
 		//Forwarding the request to the protocol manager
 		if(protocolManager == null) return false;

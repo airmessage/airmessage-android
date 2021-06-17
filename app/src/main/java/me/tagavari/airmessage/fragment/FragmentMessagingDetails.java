@@ -1,26 +1,21 @@
 package me.tagavari.airmessage.fragment;
 
 import android.app.Dialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.provider.ContactsContract;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
-import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -28,7 +23,6 @@ import androidx.core.graphics.ColorUtils;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
-
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.GlideException;
@@ -39,11 +33,6 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputLayout;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import me.tagavari.airmessage.MainApplication;
@@ -51,19 +40,16 @@ import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.enums.ServiceHandler;
-import me.tagavari.airmessage.helper.AddressHelper;
-import me.tagavari.airmessage.helper.ColorHelper;
-import me.tagavari.airmessage.helper.ColorMathHelper;
-import me.tagavari.airmessage.helper.ContactHelper;
-import me.tagavari.airmessage.helper.ConversationBuildHelper;
-import me.tagavari.airmessage.helper.ConversationColorHelper;
-import me.tagavari.airmessage.helper.ResourceHelper;
-import me.tagavari.airmessage.helper.ViewHelper;
+import me.tagavari.airmessage.helper.*;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.MemberInfo;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;
 import me.tagavari.airmessage.task.ConversationActionTask;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class FragmentMessagingDetails extends BottomSheetDialogFragment {
 	private static final String savedInstanceKeyConversation = "conversation";

@@ -266,7 +266,7 @@ object MMSSMSHelper {
 		//Reading the common message data
 		val messageID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms._ID))
 		val date = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000
-		val messageSubject = cursorMMS.getString(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.SUBJECT))
+		val messageSubject = cleanMMSSubject(cursorMMS.getString(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.SUBJECT)))
 		val sender = if(isOutgoing) null else getMMSSender(context, messageID)
 		//long threadID = cursorMMS.getLong(cursorMMS.getColumnIndexOrThrow(Telephony.Mms.THREAD_ID));
 		val messageTextSB = StringBuilder()

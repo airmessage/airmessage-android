@@ -39,7 +39,9 @@ public class TextMMSReceivedReceiver extends MmsReceivedReceiver {
 		MessageInfo messageInfo = MMSSMSHelper.readMMSMessage(context, cursorMMS);
 		
 		//Saving the message
-		MMSSMSHelper.updateTextConversationMessage(context, threadID, messageInfo).subscribe();
+		if(messageInfo != null) {
+			MMSSMSHelper.updateTextConversationMessage(context, threadID, messageInfo).subscribe();
+		}
 	}
 	
 	@Override

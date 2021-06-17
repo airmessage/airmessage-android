@@ -11,7 +11,7 @@ import me.tagavari.airmessage.util.Union;
 
 public class FileQueueTask {
 	public static FileLinked uriToFileLinkedSync(Context context, Uri uri) {
-		String displayName = null;
+		String displayName = "file";
 		long fileSize = -1;
 		
 		//Getting the type
@@ -21,10 +21,10 @@ public class FileQueueTask {
 		try(Cursor cursor = context.getContentResolver().query(uri, null, null, null, null, null)) {
 			if(cursor != null && cursor.moveToFirst()) {
 				int columnDisplayName = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-				displayName = cursor.isNull(columnDisplayName) ? null : cursor.getString(columnDisplayName);
+				if(!cursor.isNull(columnDisplayName)) displayName = cursor.getString(columnDisplayName);
 				
 				int columnFileSize = cursor.getColumnIndex(OpenableColumns.SIZE);
-				fileSize = cursor.isNull(columnDisplayName) ? -1 : cursor.getLong(columnFileSize);
+				if(!cursor.isNull(columnDisplayName)) fileSize = cursor.getLong(columnFileSize);
 			}
 		}
 		
