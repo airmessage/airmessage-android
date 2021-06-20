@@ -337,7 +337,7 @@ public class ConnectionManager {
 						
 						result = scheduleImmediateReconnect(true);
 						
-						emitStateConnecting();
+						if(result) emitStateConnecting();
 					} else {
 						result = scheduleImmediateReconnect(false);
 					}
@@ -967,20 +967,23 @@ public class ConnectionManager {
 	 * @return Whether the communications manager was started
 	 */
 	private boolean connectFromList(Context context, int index) {
+		//Getting the parameters
+		int proxyType = connectionOverride == null ? SharedPreferencesManager.getProxyType(context) : connectionOverride.getProxyType();
+		Object overrideValue = connectionOverride == null ? null : connectionOverride.getValue();
+		
+		//Creating and checking the communications manager
+		communicationsManager = communicationsPriorityList.get(index).create(communicationsManagerListener, proxyType);
+		if(!communicationsManager.isProxySupported(proxyType)) return false;
+		
 		//Updating the connection state
 		connState = ConnectionState.connecting;
 		
 		//Recording the index
 		currentCommunicationsIndex = index;
 		
-		//Getting the parameters
-		int proxyType = connectionOverride == null ? SharedPreferencesManager.getProxyType(context) : connectionOverride.getProxyType();
-		Object overrideValue = connectionOverride == null ? null : connectionOverride.getValue();
-		
-		//Creating and starting the communications manager
-		communicationsManager = communicationsPriorityList.get(index).create(communicationsManagerListener, proxyType);
-		if(!communicationsManager.isProxySupported(proxyType)) return false;
+		//Starting the communications manager
 		communicationsManager.connect(context, overrideValue);
+		
 		return true;
 	}
 	
