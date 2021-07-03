@@ -76,8 +76,8 @@ object ErrorDetailsHelper {
 				labelRes = R.string.message_serverstatus_accountvalidation
 				if(!onlyConfig) button = ErrorDetails.Button(R.string.action_retry, actionReconnectService)
 			}
-			ConnectionErrorCode.connectNoSubscription -> {
-				labelRes = R.string.message_serverstatus_noenrollment
+			ConnectionErrorCode.connectNoActivation -> {
+				labelRes = R.string.message_serverstatus_noactivation
 				if(!onlyConfig) button = ErrorDetails.Button(R.string.action_retry, actionReconnectService)
 			}
 			ConnectionErrorCode.connectOtherLocation -> {

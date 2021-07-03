@@ -488,8 +488,7 @@
 	<string name="message_serverstatus_nogroup">Votre serveur personnel n\'est pas disponible</string>
 	<string name="message_serverstatus_nocapacity">La limite de l\'appareil connecté a été atteinte</string>
 	<string name="message_serverstatus_accountvalidation">Le compte connecté ne peut pas être utilisé</string>
-<!--	<string name="message_serverstatus_nosubscription">Le compte connecté n\'est pas abonné</string>-->
-	<string name="message_serverstatus_noenrollment">Le compte connecté n\'est pas inscrit</string>
+	<string name="message_serverstatus_noactivation">Les nouveaux enregistrements sont désactivés</string>
 	<string name="message_serverstatus_otherlocation">L\'ordinateur serveur a été échangé</string>
 	<string name="message_serverstatus_nointernet">Pas de connexion Internet</string>
 	<string name="message_signinerror">Erreur de connexion</string>
