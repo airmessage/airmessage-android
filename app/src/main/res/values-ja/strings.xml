@@ -481,8 +481,7 @@
 	<string name="message_serverstatus_nogroup">パーソナルサーバーが接続されていません</string>
 	<string name="message_serverstatus_nocapacity">接続デバイスの制限に達しました</string>
 	<string name="message_serverstatus_accountvalidation">接続されたアカウントは使用できません</string>
-<!--	<string name="message_serverstatus_nosubscription">接続されたアカウントは登録されていません</string>-->
-	<string name="message_serverstatus_noenrollment">接続されたアカウントは登録されていません</string>
+	<string name="message_serverstatus_noactivation">新規登録はできません</string>
 	<string name="message_serverstatus_otherlocation">サーバーコンピュータが交換されました</string>
 	<string name="message_serverstatus_nointernet">インターネットに接続できません</string>
 	<string name="message_reset_connect">AirMessage からログアウトしますか？</string>
