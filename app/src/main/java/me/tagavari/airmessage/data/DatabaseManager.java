@@ -40,6 +40,7 @@ import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import kotlin.Pair;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Messaging;
+import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.enums.ConversationItemType;
 import me.tagavari.airmessage.enums.ConversationState;
@@ -2410,7 +2411,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					
 					//Writing new attachments
 					for(Blocks.AttachmentInfo attachmentStruct : result.getNewAttachments()) {
-						AttachmentInfo attachmentInfo = addMessageAttachment(result.getTargetMessageID(), attachmentStruct, isHistory);
+						AttachmentInfo attachmentInfo = addMessageAttachment(context, result.getTargetMessageID(), attachmentStruct, isHistory);
 						if(attachmentInfo != null) messageAttachments.add(attachmentInfo);
 					}
 					
@@ -2713,7 +2714,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			}
 			
 			//Adding the attachments
-			ArrayList<AttachmentInfo> attachments = new ArrayList<>(messageInfoStruct.attachments.stream().map(attachment -> addMessageAttachment(messageLocalID, attachment, isHistory)).filter(Objects::nonNull).collect(Collectors.toList()));
+			ArrayList<AttachmentInfo> attachments = new ArrayList<>(messageInfoStruct.attachments.stream().map(attachment -> addMessageAttachment(context, messageLocalID, attachment, isHistory)).filter(Objects::nonNull).collect(Collectors.toList()));
 			
 			//Adding the modifiers
 			List<Pair<StickerInfo, ModifierMetadata>> stickers = addMessageStickers(context, messageLocalID, messageInfoStruct.stickers);
@@ -2934,12 +2935,13 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	
 	/**
 	 * Writes a message attachment block to the database
+	 * @param context The context to use
 	 * @param messageID The ID of the message to add the attachment to
 	 * @param attachmentStruct The attachment to write
 	 * @param isHistory Whether the added attachment should be treated as history, ie. should not receive treatment as a newly received message
 	 * @return The complete attachment info
 	 */
-	private AttachmentInfo addMessageAttachment(long messageID, Blocks.AttachmentInfo attachmentStruct, boolean isHistory) {
+	private AttachmentInfo addMessageAttachment(Context context, long messageID, Blocks.AttachmentInfo attachmentStruct, boolean isHistory) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, attachmentStruct.guid);
@@ -2949,7 +2951,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		if(attachmentStruct.size != -1) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILESIZE, attachmentStruct.size);
 		if(attachmentStruct.checksum != null) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM, Base64.encodeToString(attachmentStruct.checksum, Base64.NO_WRAP));
 		if(attachmentStruct.sort != -1) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, attachmentStruct.sort);
-		boolean shouldAutoDownload = !isHistory; //Don't auto-download historical attachments
+		boolean shouldAutoDownload = !isHistory && Preferences.getPreferenceAutoDownloadAttachments(context); //Don't auto-download historical attachments
 		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SHOULDAUTODOWNLOAD, shouldAutoDownload);
 		
 		//Inserting the attachment into the database
