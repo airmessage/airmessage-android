@@ -75,7 +75,7 @@ import me.tagavari.airmessage.util.ReplaceInsertResult;
 public class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
 	private static final String DATABASE_NAME = "messages.db";
-	private static final int DATABASE_VERSION = 12;
+	private static final int DATABASE_VERSION = 13;
 	
 	//Creating the fetch statements
 	/* private static final String SQL_FETCH_CONVERSATIONS = "SELECT * FROM (" +
@@ -185,7 +185,8 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			Contract.AttachmentEntry.COLUMN_NAME_FILETYPE + " TEXT NOT NULL," +
 			Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + " TEXT," +
 			Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " TEXT," +
-			Contract.AttachmentEntry.COLUMN_NAME_SORT + " INTEGER" +
+			Contract.AttachmentEntry.COLUMN_NAME_SORT + " INTEGER, " +
+			Contract.AttachmentEntry.COLUMN_NAME_SHOULDAUTODOWNLOAD + " INTEGER NOT NULL DEFAULT 0" +
 			");";
 	private static final String SQL_CREATE_TABLE_MESSAGEPREVIEW = "CREATE TABLE " + Contract.MessagePreviewEntry.TABLE_NAME + " (" +
 			Contract.MessagePreviewEntry._ID + " INTEGER PRIMARY KEY UNIQUE," +
@@ -569,6 +570,9 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				
 				//Adding the "sort" column to attachments
 				database.execSQL("ALTER TABLE attachments ADD sort INTEGER;");
+			case 12:
+				//Adding the "should_auto_download" column to attachments
+				database.execSQL("ALTER TABLE attachments ADD should_auto_download INTEGER DEFAULT 0");
 		}
 	}
 	
@@ -657,6 +661,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			static final String COLUMN_NAME_FILEPATH = "path";
 			static final String COLUMN_NAME_FILECHECKSUM = "checksum";
 			static final String COLUMN_NAME_SORT = "sort";
+			static final String COLUMN_NAME_SHOULDAUTODOWNLOAD = "should_auto_download"; //Whether this file should be downloaded automatically when it is loaded
 		}
 		
 		static class MessagePreviewEntry implements BaseColumns {
@@ -1088,9 +1093,9 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	}
 	
 	private static class AttachmentInfoIndices {
-		final int iLocalID, iGuid, iFileName, iFileType, iFileSize, iFilePath, iChecksum, iSort;
+		final int iLocalID, iGuid, iFileName, iFileType, iFileSize, iFilePath, iChecksum, iSort, iShouldAutoDownload;
 		
-		public AttachmentInfoIndices(int iLocalID, int iGuid, int iFileName, int iFileType, int iFileSize, int iFilePath, int iChecksum, int iSort) {
+		public AttachmentInfoIndices(int iLocalID, int iGuid, int iFileName, int iFileType, int iFileSize, int iFilePath, int iChecksum, int iSort, int iShouldAutoDownload) {
 			this.iLocalID = iLocalID;
 			this.iGuid = iGuid;
 			this.iFileName = iFileName;
@@ -1099,6 +1104,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			this.iFilePath = iFilePath;
 			this.iChecksum = iChecksum;
 			this.iSort = iSort;
+			this.iShouldAutoDownload = iShouldAutoDownload;
 		}
 		
 		public static AttachmentInfoIndices fromCursor(Cursor cursor) {
@@ -1110,8 +1116,9 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			int iFilePath = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
 			int iChecksum = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM);
 			int iSort = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_SORT);
+			int iShouldAutoDownload = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_SHOULDAUTODOWNLOAD);
 			
-			return new AttachmentInfoIndices(iLocalID, iGuid, iFileName, iFileType, iFileSize, iFilePath, iChecksum, iSort);
+			return new AttachmentInfoIndices(iLocalID, iGuid, iFileName, iFileType, iFileSize, iFilePath, iChecksum, iSort, iShouldAutoDownload);
 		}
 	}
 	
@@ -1209,6 +1216,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		long sort = cursor.isNull(indices.iSort) ? -1 : cursor.getLong(indices.iSort);
 		String stringChecksum = cursor.getString(indices.iChecksum);
 		byte[] fileChecksum = stringChecksum == null ? null : Base64.decode(stringChecksum, Base64.NO_WRAP);
+		boolean shouldAutoDownload = cursor.getInt(indices.iShouldAutoDownload) == 1;
 		
 		//Getting the identifiers
 		long fileID = cursor.getLong(indices.iLocalID);
@@ -1217,10 +1225,10 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//Checking if the attachment has data
 		if(file != null && file.exists() && file.isFile()) {
 			//Adding the as a file
-			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, file, null);
+			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, file, null, shouldAutoDownload);
 		} else {
 			//Adding the with its checksum
-			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, null, fileChecksum);
+			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, null, fileChecksum, shouldAutoDownload);
 		}
 	}
 	
@@ -2301,10 +2309,11 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	 * @param context The context to use
 	 * @param conversationID The ID of the conversation to use for the message
 	 * @param conversationItem The conversation item to add
+	 * @param isHistory Whether the added message should be treated as history, ie. should not receive treatment as a newly received message
 	 * @return A result containing created, updated and deleted messages
 	 */
 	@Nullable
-	public ReplaceInsertResult mergeOrWriteConversationItem(Context context, long conversationID, Blocks.ConversationItem conversationItem) {
+	public ReplaceInsertResult mergeOrWriteConversationItem(Context context, long conversationID, Blocks.ConversationItem conversationItem, boolean isHistory) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
@@ -2346,6 +2355,8 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, messageStruct.stateCode);
 					messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, messageStruct.errorCode);
 					messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, messageStruct.dateRead);
+					//If this is a history item, don't display a send style when the user loads the conversation
+					messageContentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED, isHistory);
 					
 					//Updating the message values
 					database.update(Contract.MessageEntry.TABLE_NAME, messageContentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(result.getTargetMessageID())});
@@ -2399,7 +2410,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 					
 					//Writing new attachments
 					for(Blocks.AttachmentInfo attachmentStruct : result.getNewAttachments()) {
-						AttachmentInfo attachmentInfo = addMessageAttachment(result.getTargetMessageID(), attachmentStruct);
+						AttachmentInfo attachmentInfo = addMessageAttachment(result.getTargetMessageID(), attachmentStruct, isHistory);
 						if(attachmentInfo != null) messageAttachments.add(attachmentInfo);
 					}
 					
@@ -2421,7 +2432,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		//Adding the conversation item normally
-		ConversationItem addedItem = addConversationStruct(context, conversationID, conversationItem);
+		ConversationItem addedItem = addConversationStruct(context, conversationID, conversationItem, isHistory);
 		if(addedItem == null) return null;
 		return new ReplaceInsertResult(addedItem, Collections.singletonList(addedItem), Collections.emptyList(), Collections.emptyList());
 	}
@@ -2639,10 +2650,11 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	 * @param context The context to use
 	 * @param conversationID The ID of the conversation to add the message to
 	 * @param conversationItem The message to add
+	 * @param isHistory Whether the added message should be treated as history, ie. should not receive treatment as a newly received message
 	 * @return A completed conversation item
 	 */
 	@Nullable
-	public ConversationItem addConversationStruct(Context context, long conversationID, Blocks.ConversationItem conversationItem) {
+	public ConversationItem addConversationStruct(Context context, long conversationID, Blocks.ConversationItem conversationItem, boolean isHistory) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
@@ -2682,7 +2694,11 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_STATE, messageInfoStruct.stateCode);
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_ERROR, messageInfoStruct.errorCode);
 			contentValues.put(Contract.MessageEntry.COLUMN_NAME_DATEREAD, messageInfoStruct.dateRead);
-			if(messageInfoStruct.sendEffect != null) contentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE, messageInfoStruct.sendEffect);
+			if(messageInfoStruct.sendEffect != null) {
+				contentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDSTYLE, messageInfoStruct.sendEffect);
+				//If this is a history item, don't display a send style when the user loads the conversation
+				contentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED, isHistory);
+			}
 			
 			//Inserting the conversation into the database
 			long messageLocalID;
@@ -2697,7 +2713,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			}
 			
 			//Adding the attachments
-			ArrayList<AttachmentInfo> attachments = new ArrayList<>(messageInfoStruct.attachments.stream().map(attachment -> addMessageAttachment(messageLocalID, attachment)).filter(Objects::nonNull).collect(Collectors.toList()));
+			ArrayList<AttachmentInfo> attachments = new ArrayList<>(messageInfoStruct.attachments.stream().map(attachment -> addMessageAttachment(messageLocalID, attachment, isHistory)).filter(Objects::nonNull).collect(Collectors.toList()));
 			
 			//Adding the modifiers
 			List<Pair<StickerInfo, ModifierMetadata>> stickers = addMessageStickers(context, messageLocalID, messageInfoStruct.stickers);
@@ -2920,9 +2936,10 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	 * Writes a message attachment block to the database
 	 * @param messageID The ID of the message to add the attachment to
 	 * @param attachmentStruct The attachment to write
+	 * @param isHistory Whether the added attachment should be treated as history, ie. should not receive treatment as a newly received message
 	 * @return The complete attachment info
 	 */
-	private AttachmentInfo addMessageAttachment(long messageID, Blocks.AttachmentInfo attachmentStruct) {
+	private AttachmentInfo addMessageAttachment(long messageID, Blocks.AttachmentInfo attachmentStruct, boolean isHistory) {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_GUID, attachmentStruct.guid);
@@ -2932,6 +2949,8 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		if(attachmentStruct.size != -1) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILESIZE, attachmentStruct.size);
 		if(attachmentStruct.checksum != null) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM, Base64.encodeToString(attachmentStruct.checksum, Base64.NO_WRAP));
 		if(attachmentStruct.sort != -1) contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SORT, attachmentStruct.sort);
+		boolean shouldAutoDownload = !isHistory; //Don't auto-download historical attachments
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SHOULDAUTODOWNLOAD, shouldAutoDownload);
 		
 		//Inserting the attachment into the database
 		long localID;
@@ -2946,7 +2965,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		//Creating and returning the attachment
-		return new AttachmentInfo(localID, attachmentStruct.guid, attachmentStruct.name, attachmentStruct.type, attachmentStruct.size, attachmentStruct.sort, null, attachmentStruct.checksum);
+		return new AttachmentInfo(localID, attachmentStruct.guid, attachmentStruct.name, attachmentStruct.type, attachmentStruct.size, attachmentStruct.sort, null, attachmentStruct.checksum, shouldAutoDownload);
 	}
 	
 	/**
@@ -3580,6 +3599,24 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.MessageEntry.COLUMN_NAME_SENDSTYLEVIEWED, 1);
 		getWritableDatabase().update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
+	}
+	
+	/**
+	 * Sets the specified attachment's auto download value to false
+	 */
+	public void markAttachmentAutoDownloaded(long attachmentID) {
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SHOULDAUTODOWNLOAD, false);
+		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(attachmentID)});
+	}
+	
+	/**
+	 * Sets all attachments' auto download value to false
+	 */
+	public void clearAutoDownloaded() {
+		ContentValues contentValues = new ContentValues();
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_SHOULDAUTODOWNLOAD, false);
+		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry.COLUMN_NAME_SHOULDAUTODOWNLOAD + " = ?", new String[]{Long.toString(1)});
 	}
 	
 	public void setMessagePreviewState(long messageID, int state) {

@@ -160,6 +160,7 @@ import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
 import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
 import me.tagavari.airmessage.compositeplugin.PluginRXDisposable;
+import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.ConnectionTaskManager;
 import me.tagavari.airmessage.connection.exception.AMRequestException;
 import me.tagavari.airmessage.constants.ColorConstants;
@@ -3253,6 +3254,23 @@ public class Messaging extends AppCompatCompositeActivity {
 					
 					//Setting the download click listener
 					viewHolder.itemView.setOnClickListener(view -> downloadAttachmentContent(viewHolderStructure, viewHolder, messageInfo, component));
+					
+					//Checking if we should auto-download this content
+					if(component.getShouldAutoDownload() && Preferences.getPreferenceAutoDownloadAttachments(Messaging.this)) {
+						//Wait until we're connected, then start downloading
+						viewHolderStructure.getCompositeDisposable().add(
+							ReduxEmitterNetwork.getConnectionStateSubject()
+								.filter((event) -> event.getState() == ConnectionState.connected)
+								.firstOrError()
+								.ignoreElement()
+								.subscribe(() -> {
+									component.setShouldAutoDownload(false);
+									Completable.fromAction(() -> DatabaseManager.getInstance().markAttachmentAutoDownloaded(messageInfo.getLocalID()))
+										.subscribeOn(Schedulers.single()).subscribe();
+									downloadAttachmentContent(viewHolderStructure, viewHolder, messageInfo, component);
+								})
+						);
+					}
 				}
 			}
 		}

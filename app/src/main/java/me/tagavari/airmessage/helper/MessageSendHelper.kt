@@ -67,7 +67,7 @@ object MessageSendHelper {
 						return@map Optional.empty<AttachmentInfo>()
 					}
 					
-					return@map Optional.of(AttachmentInfo(-1, null, draft.fileName, draft.fileType, draft.fileSize, -1, attachmentFile))
+					return@map Optional.of(AttachmentInfo(-1, null, draft.fileName, draft.fileType, draft.fileSize, file = attachmentFile, shouldAutoDownload = false))
 				}
 				.filter { it.isPresent }
 				.map { it.get() }

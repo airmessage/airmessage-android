@@ -115,7 +115,7 @@ public class MassRetrievalRequest {
 				}
 				
 				//Writing the item
-				ConversationItem conversationItem = DatabaseManager.getInstance().addConversationStruct(context, parentConversation.getLocalID(), structItem);
+				ConversationItem conversationItem = DatabaseManager.getInstance().addConversationStruct(context, parentConversation.getLocalID(), structItem, true);
 				if(conversationItem == null) continue;
 				addedItemList.add(conversationItem);
 			}

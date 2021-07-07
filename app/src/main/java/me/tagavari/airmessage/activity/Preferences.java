@@ -61,7 +61,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
@@ -69,6 +72,7 @@ import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
 import me.tagavari.airmessage.connection.ConnectionTaskManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.constants.ColorConstants;
+import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.MessagesDataHelper;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ProxyType;
@@ -80,6 +84,7 @@ import me.tagavari.airmessage.helper.ThemeHelper;
 import me.tagavari.airmessage.helper.WindowHelper;
 import me.tagavari.airmessage.receiver.StartBootReceiver;
 import me.tagavari.airmessage.service.ConnectionService;
+import me.tagavari.airmessage.util.RequestSubject;
 
 public class Preferences extends AppCompatCompositeActivity implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
 	private static final String TAG = Preferences.class.getSimpleName();
@@ -376,6 +381,15 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			dialog.show();
 			
 			//Returning true
+			return true;
+		};
+		Preference.OnPreferenceChangeListener autoDownloadAttachmentsChangeListener = (preference, newValue) -> {
+			//If the user disables auto-download attachments, clear the status in the database
+			if(!((boolean) newValue)) {
+				Completable.fromAction(() -> DatabaseManager.getInstance().clearAutoDownloaded())
+					.subscribeOn(Schedulers.single()).subscribe();
+			}
+			
 			return true;
 		};
 		

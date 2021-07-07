@@ -317,7 +317,7 @@ object MMSSMSHelper {
 					}
 					
 					//Adding the attachment to the list
-					messageAttachments.add(AttachmentInfo(-1, null, cleanFileName(fileName), contentType, totalSize, -1, targetFile))
+					messageAttachments.add(AttachmentInfo(-1, null, cleanFileName(fileName), contentType, totalSize, -1, targetFile, shouldAutoDownload = false))
 				}
 			} while(cursorMMSData.moveToNext())
 		}

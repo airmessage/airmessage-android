@@ -385,7 +385,7 @@ public class ConnectionManager {
 			//Loading the foreground conversations (needs to be done on the main thread)
 			Single.fromCallable(Messaging::getForegroundConversations)
 					.subscribeOn(AndroidSchedulers.mainThread())
-					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, filteredData, Preferences.getPreferenceAutoDownloadAttachments(getContext())))
+					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, filteredData, false))
 					.observeOn(AndroidSchedulers.mainThread())
 					.doOnSuccess(response -> {
 						//Emitting any generated events
@@ -395,15 +395,6 @@ public class ConnectionManager {
 						
 						//Fetching pending conversations
 						addPendingConversations(response.getIncompleteServerConversations());
-						
-						//Downloading attachments
-						if(response.getCollectedAttachments() != null) {
-							for(Pair<MessageInfo, AttachmentInfo> attachmentData : response.getCollectedAttachments()) {
-								//Ignoring outgoing attachments
-								if(attachmentData.getFirst().isOutgoing()) continue;
-								ConnectionTaskManager.downloadAttachment(ConnectionManager.this, attachmentData.getFirst().getLocalID(), attachmentData.getSecond().getLocalID(), attachmentData.getSecond().getGUID(), attachmentData.getSecond().getFileName());
-							}
-						}
 					}).subscribe();
 		}
 		

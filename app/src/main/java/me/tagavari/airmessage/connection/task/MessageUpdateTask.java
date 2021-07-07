@@ -60,7 +60,7 @@ public class MessageUpdateTask {
 				List<ReplaceInsertResult> newItems = conversationInfo.getState() == ConversationState.ready ? new ArrayList<>(entry.getValue().size()) : null;
 				for(Blocks.ConversationItem conversationItem : entry.getValue()) {
 					//Adding the conversation item to the database
-					ReplaceInsertResult replaceInsertResult = DatabaseManager.getInstance().mergeOrWriteConversationItem(context, conversationInfo.getLocalID(), conversationItem);
+					ReplaceInsertResult replaceInsertResult = DatabaseManager.getInstance().mergeOrWriteConversationItem(context, conversationInfo.getLocalID(), conversationItem, false);
 					if(replaceInsertResult == null) continue;
 					
 					ConversationItem targetItem = replaceInsertResult.getTargetItem();

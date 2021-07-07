@@ -2,6 +2,7 @@ package me.tagavari.airmessage.messaging
 
 import android.os.Parcel
 import android.os.Parcelable
+import androidx.core.os.ParcelCompat
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.subjects.SingleSubject
 import java.io.File
@@ -14,6 +15,7 @@ class AttachmentInfo : MessageComponent {
 	var sort: Long
 	var file: File?
 	var fileChecksum: ByteArray?
+	var shouldAutoDownload: Boolean
 	
 	constructor(
 		localID: Long,
@@ -21,9 +23,10 @@ class AttachmentInfo : MessageComponent {
 		fileName: String?,
 		contentType: String?,
 		fileSize: Long,
-		sort: Long,
+		sort: Long = -1,
 		file: File? = null,
-		fileChecksum: ByteArray? = null
+		fileChecksum: ByteArray? = null,
+		shouldAutoDownload: Boolean
 	) : super(localID, guid) {
 		this.fileName = fileName
 		this.contentType = contentType
@@ -31,6 +34,7 @@ class AttachmentInfo : MessageComponent {
 		this.sort = sort
 		this.file = file
 		this.fileChecksum = fileChecksum
+		this.shouldAutoDownload = shouldAutoDownload
 	}
 	
 	@Transient
@@ -44,7 +48,7 @@ class AttachmentInfo : MessageComponent {
 	}
 	
 	fun clone(): AttachmentInfo {
-		return AttachmentInfo(localID, guid, fileName, contentType, fileSize, sort, file, fileChecksum)
+		return AttachmentInfo(localID, guid, fileName, contentType, fileSize, sort, file, fileChecksum, shouldAutoDownload)
 	}
 	
 	override fun describeContents(): Int {
@@ -65,6 +69,7 @@ class AttachmentInfo : MessageComponent {
 		} else {
 			parcel.writeInt(0)
 		}
+		ParcelCompat.writeBoolean(parcel, shouldAutoDownload)
 	}
 	
 	private constructor(parcel: Parcel) : super(parcel) {
@@ -81,6 +86,7 @@ class AttachmentInfo : MessageComponent {
 				null
 			}
 		}
+		shouldAutoDownload = ParcelCompat.readBoolean(parcel)
 	}
 	
 	companion object {
