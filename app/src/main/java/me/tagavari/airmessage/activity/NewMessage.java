@@ -1053,14 +1053,14 @@ public class NewMessage extends AppCompatCompositeActivity {
 							//Creating the dialog
 							AlertDialog dialog = new MaterialAlertDialogBuilder(NewMessage.this)
 									.setTitle(R.string.imperative_selectdestination)
-									.setItems(contactInfo.getAddressDisplayArray(getResources()), ((dialogInterface, index) -> {
+									.setItems(contactInfo.getAddressDisplayList(getResources()).toArray(new String[0]), (dialogInterface, index) -> {
 										//Adding the selected chip
 										AddressInfo address = contactInfo.getAddresses().get(index);
 										addChip(new Chip(address.getAddress(), address.getNormalizedAddress()));
 										
 										//Clearing the text
 										recipientInput.setText("");
-									}))
+									})
 									.create();
 							
 							//Disabling any unavailable items (email addresses, when only phone numbers can be used)

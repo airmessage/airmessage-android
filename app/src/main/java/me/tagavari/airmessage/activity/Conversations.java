@@ -58,6 +58,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -115,7 +116,6 @@ import me.tagavari.airmessage.redux.ReduxEventMessaging;
 import me.tagavari.airmessage.redux.ReduxEventTextImport;
 import me.tagavari.airmessage.task.ConversationActionTask;
 import me.tagavari.airmessage.util.DisposableViewHolder;
-import me.tagavari.airmessage.util.ObjIntConsumer;
 import me.tagavari.airmessage.util.ReplaceInsertResult;
 import me.tagavari.airmessage.util.TransferredConversation;
 
@@ -1005,7 +1005,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	/**
 	 * Runs the provided consumer if the conversation of the provided action is present
 	 */
-	private void getConversationFromAction(ReduxEventMessaging.ReduxConversationAction action, ObjIntConsumer<ConversationInfo> consumer) {
+	private void getConversationFromAction(ReduxEventMessaging.ReduxConversationAction action, BiConsumer<ConversationInfo, Integer> consumer) {
 		IntStream.range(0, viewModel.conversationList.size())
 				.filter(i -> viewModel.conversationList.get(i).getLocalID() == action.getConversationInfo().getLocalID())
 				.findAny()
