@@ -28,21 +28,21 @@ class AudioPlaybackManager(context: Context) {
 			override fun onIsPlayingChanged(isPlaying: Boolean) {
 				if(isPlaying) {
 					//Starting the timer
-					startTimer()
+					this@AudioPlaybackManager.startTimer()
 					
 					//Notifying the listener
-					updateProgress(true)
+					this@AudioPlaybackManager.updateProgress(true)
 				} else {
 					//Cancelling the timer
-					stopTimer()
+					this@AudioPlaybackManager.stopTimer()
 					
 					//Notifying the listener
 					if(playbackState == Player.STATE_ENDED) {
 						//Completing the session
-						stop()
+						this@AudioPlaybackManager.stop()
 					} else {
 						//Notifying the listener
-						updateProgress(false)
+						this@AudioPlaybackManager.updateProgress(false)
 					}
 				}
 			}
