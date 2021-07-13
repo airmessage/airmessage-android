@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.service.notification.StatusBarNotification;
 import android.text.Editable;
 import android.text.Spannable;
@@ -59,6 +60,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.ObjIntConsumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -511,6 +513,8 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		
 		//Returning if there are no results
 		if(grantResults.length == 0) return;
 		
@@ -533,13 +537,13 @@ public class Conversations extends AppCompatCompositeActivity {
 			else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
 				//Showing a snackbar
 				Snackbar.make(findViewById(R.id.root), R.string.message_permissionrejected, Snackbar.LENGTH_LONG)
-						.setAction(R.string.screen_settings, view -> {
-							//Opening the application settings
-							Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-							intent.setData(Uri.parse("package:" + getPackageName()));
-							startActivity(intent);
-						})
-						.show();
+					.setAction(R.string.screen_settings, view -> {
+						//Opening the application settings
+						Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+						intent.setData(Uri.parse("package:" + getPackageName()));
+						startActivity(intent);
+					})
+					.show();
 			}
 		}
 	}
@@ -1005,7 +1009,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	/**
 	 * Runs the provided consumer if the conversation of the provided action is present
 	 */
-	private void getConversationFromAction(ReduxEventMessaging.ReduxConversationAction action, BiConsumer<ConversationInfo, Integer> consumer) {
+	private void getConversationFromAction(ReduxEventMessaging.ReduxConversationAction action, ObjIntConsumer<ConversationInfo> consumer) {
 		IntStream.range(0, viewModel.conversationList.size())
 				.filter(i -> viewModel.conversationList.get(i).getLocalID() == action.getConversationInfo().getLocalID())
 				.findAny()
