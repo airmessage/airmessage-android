@@ -166,6 +166,12 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 		return true;
 	}
 	
+	@Override
+	public boolean isUsingFallback() {
+		//AirMessage Connect doesn't use fallback methods
+		return false;
+	}
+	
 	public void sendTokenAdd(String token) {
 		//Converting the token to bytes
 		byte[] tokenBytes = token.getBytes(StandardCharsets.UTF_8);

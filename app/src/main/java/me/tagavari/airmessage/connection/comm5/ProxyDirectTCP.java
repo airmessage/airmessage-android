@@ -144,14 +144,15 @@ class ProxyDirectTCP extends DataProxy<EncryptedPacket> {
 	}
 	
 	@Override
+	public boolean isUsingFallback() {
+		return readerThread != null && readerThread.isUsingFallback();
+	}
+	
+	@Override
 	public boolean send(EncryptedPacket packet) {
 		//Queuing the packet
 		if(writerThread == null) return false;
 		writerThread.queuePacket(packet);
 		return true;
-	}
-	
-	boolean isUsingFallback() {
-		return readerThread != null && readerThread.isUsingFallback();
 	}
 }

@@ -751,7 +751,14 @@ object NotificationHelper {
 		//Building the notification
 		return NotificationCompat.Builder(context, notificationChannelStatus).apply {
 			setSmallIcon(R.drawable.push)
-			setContentTitle(context.resources.getString(if(isConnected) if(isFallback) R.string.message_connection_connectedfallback else R.string.message_connection_connected else R.string.progress_connectingtoserver))
+			setContentTitle(context.resources.getString(
+				if(isConnected) {
+					if(isFallback) R.string.message_connection_connectedfallback
+					else R.string.message_connection_connected
+				} else {
+					R.string.progress_connectingtoserver
+				}
+			))
 			setContentText(context.resources.getString(R.string.imperative_tapopenapp))
 			
 			setShowWhen(false)

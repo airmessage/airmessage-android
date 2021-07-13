@@ -22,4 +22,9 @@ public final class ProxyNoOp<Packet> extends DataProxy<Packet> {
 	public boolean send(Packet packet) {
 		return false;
 	}
+	
+	@Override
+	public boolean isUsingFallback() {
+		return false;
+	}
 }

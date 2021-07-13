@@ -173,12 +173,6 @@ public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 	}
 	
 	@Override
-	public boolean isConnectedFallback() {
-		if(getDataProxyType() == ProxyType.direct) return ((ProxyDirectTCP) getDataProxy()).isUsingFallback();
-		else return false;
-	}
-	
-	@Override
 	public boolean sendPing() {
 		if(protocolManager == null) return false;
 		else return protocolManager.sendPing();

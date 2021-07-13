@@ -186,12 +186,6 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	}
 	
 	@Override
-	public boolean isConnectedFallback() {
-		if(getDataProxyType() == ProxyType.direct) return ((ProxyDirectTCP) getDataProxy()).isUsingFallback();
-		else return false;
-	}
-	
-	@Override
 	public boolean sendPing() {
 		if(protocolManager == null) return false;
 		else return protocolManager.sendPing();

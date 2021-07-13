@@ -193,7 +193,7 @@ public class ConnectionService extends Service {
 	private void updateState(@ConnectionState int state) {
 		//Updating the foreground notification
 		if(isForeground) {
-			Notification notification = getDisplayNotification(state);
+			Notification notification = getDisplayNotification(state, connectionManager.isUsingFallback());
 			NotificationManager notificationManager = getSystemService(NotificationManager.class);
 			notificationManager.notify(NotificationHelper.notificationIDConnectionService, notification);
 		}
@@ -248,7 +248,7 @@ public class ConnectionService extends Service {
 		
 		//Updating the foreground notification
 		if(isForeground) {
-			Notification notification = getDisplayNotification(connectionManager.getState());
+			Notification notification = getDisplayNotification();
 			NotificationManager notificationManager = getSystemService(NotificationManager.class);
 			notificationManager.notify(NotificationHelper.notificationIDConnectionService, notification);
 		}
@@ -284,15 +284,16 @@ public class ConnectionService extends Service {
 	 * @return A notification to represent this service
 	 */
 	private Notification getDisplayNotification() {
-		return getDisplayNotification(connectionManager.getState());
+		return getDisplayNotification(connectionManager.getState(), connectionManager.isUsingFallback());
 	}
 	
 	/**
 	 * Gets the notification to display based on the current state of the service
 	 * @param connectionState The state of the connection
+	 * @param isFallback Whether the connection is a fallback connection
 	 * @return A notification to represent this service
 	 */
-	private Notification getDisplayNotification(@ConnectionState int connectionState) {
+	private Notification getDisplayNotification(@ConnectionState int connectionState, boolean isFallback) {
 		if(configurationMode) {
 			return NotificationHelper.getConnectionConfigurationNotification(this);
 		} if(temporaryMode) {
@@ -300,7 +301,7 @@ public class ConnectionService extends Service {
 		} else if(connectionState == ConnectionState.disconnected) {
 			return NotificationHelper.getConnectionOfflineNotification(this, false);
 		} else {
-			return NotificationHelper.getConnectionBackgroundNotification(this, connectionState == ConnectionState.connected, false);
+			return NotificationHelper.getConnectionBackgroundNotification(this, connectionState == ConnectionState.connected, isFallback);
 		}
 	}
 	

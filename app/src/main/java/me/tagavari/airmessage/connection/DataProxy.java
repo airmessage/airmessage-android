@@ -32,6 +32,11 @@ public abstract class DataProxy<Packet> {
 	 */
 	public abstract boolean send(Packet packet);
 	
+	/**
+	 * Gets whether this proxy is connected using a fallback method
+	 */
+	public abstract boolean isUsingFallback();
+	
 	private DataProxyListener<Packet> listener = null;
 	public void setListener(DataProxyListener<Packet> listener) {
 		this.listener = listener;

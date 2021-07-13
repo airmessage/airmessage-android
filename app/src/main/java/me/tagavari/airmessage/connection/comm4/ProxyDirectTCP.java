@@ -145,7 +145,8 @@ class ProxyDirectTCP extends DataProxy<HeaderPacket> {
 		return true;
 	}
 	
-	boolean isUsingFallback() {
+	@Override
+	public boolean isUsingFallback() {
 		return readerThread != null && readerThread.isUsingFallback();
 	}
 }

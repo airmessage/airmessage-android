@@ -17,7 +17,6 @@ import me.tagavari.airmessage.enums.ConnectionFeature;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
 import me.tagavari.airmessage.util.ConversationTarget;
-import me.tagavari.airmessage.util.DirectConnectionParams;
 
 public abstract class CommunicationsManager<Packet> {
 	//Creating the handler
@@ -99,12 +98,6 @@ public abstract class CommunicationsManager<Packet> {
 		//Forwarding the event to the listener
 		if(listener != null) listener.onOpen(installationID, deviceName, systemVersion, softwareVersion);
 	}
-	
-	/**
-	 * Get whether the server is connected via a fallback method
-	 * @return Whether the server is connected via a fallback method
-	 */
-	public abstract boolean isConnectedFallback();
 	
 	/**
 	 * Sends a ping packet to the server
@@ -264,5 +257,13 @@ public abstract class CommunicationsManager<Packet> {
 	 */
 	protected DataProxy<Packet> getDataProxy() {
 		return dataProxy;
+	}
+	
+	/**
+	 * Gets whether the current connection is a fallback connection
+	 */
+	public boolean isUsingFallback() {
+		if(dataProxy == null) return false;
+		return dataProxy.isUsingFallback();
 	}
 }

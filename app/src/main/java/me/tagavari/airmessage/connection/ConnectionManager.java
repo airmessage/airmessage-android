@@ -10,35 +10,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
-
 import androidx.annotation.Nullable;
 import androidx.arch.core.util.Function;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Completable;
-import io.reactivex.rxjava3.core.CompletableTransformer;
 import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.ObservableTransformer;
-import io.reactivex.rxjava3.core.Scheduler;
-import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.core.SingleTransformer;
+import io.reactivex.rxjava3.core.*;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.CompletableSubject;
@@ -48,7 +25,6 @@ import kotlin.Pair;
 import kotlin.Unit;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Messaging;
-import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.comm4.ClientComm4;
 import me.tagavari.airmessage.connection.comm5.ClientComm5;
@@ -61,35 +37,21 @@ import me.tagavari.airmessage.connection.task.MessageUpdateTask;
 import me.tagavari.airmessage.connection.task.ModifierUpdateTask;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
-import me.tagavari.airmessage.enums.ChatCreateErrorCode;
-import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.enums.ConnectionFeature;
-import me.tagavari.airmessage.enums.ConnectionMode;
-import me.tagavari.airmessage.enums.ConnectionState;
-import me.tagavari.airmessage.enums.ConversationState;
-import me.tagavari.airmessage.enums.MassRetrievalErrorCode;
-import me.tagavari.airmessage.enums.MessageSendErrorCode;
-import me.tagavari.airmessage.enums.ProxyType;
-import me.tagavari.airmessage.enums.TrackableRequestCategory;
+import me.tagavari.airmessage.enums.*;
 import me.tagavari.airmessage.helper.ConversationColorHelper;
-import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
-import me.tagavari.airmessage.redux.ReduxEventAttachmentDownload;
-import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
-import me.tagavari.airmessage.redux.ReduxEventConnection;
-import me.tagavari.airmessage.redux.ReduxEventMassRetrieval;
-import me.tagavari.airmessage.redux.ReduxEventMessaging;
-import me.tagavari.airmessage.util.ActivityStatusUpdate;
-import me.tagavari.airmessage.util.CompoundErrorDetails;
-import me.tagavari.airmessage.util.ConversationTarget;
-import me.tagavari.airmessage.util.ModifierMetadata;
-import me.tagavari.airmessage.util.RequestSubject;
-import me.tagavari.airmessage.util.TrackableRequest;
+import me.tagavari.airmessage.redux.*;
+import me.tagavari.airmessage.util.*;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class ConnectionManager {
 	private static final String TAG = ConnectionManager.class.getSimpleName();
@@ -995,6 +957,14 @@ public class ConnectionManager {
 	@ConnectionState
 	public int getState() {
 		return connState;
+	}
+	
+	/**
+	 * Gets whether the current connection is a fallback connection
+	 */
+	public boolean isUsingFallback() {
+		if(communicationsManager == null) return false;
+		return communicationsManager.getDataProxy().isUsingFallback();
 	}
 	
 	/**
