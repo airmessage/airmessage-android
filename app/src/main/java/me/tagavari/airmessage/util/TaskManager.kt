@@ -3,7 +3,6 @@ package me.tagavari.airmessage.util
 import android.util.SparseArray
 import androidx.core.util.Supplier
 import io.reactivex.rxjava3.annotations.CheckReturnValue
-import io.reactivex.rxjava3.annotations.Nullable
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.subjects.SingleSubject
 
@@ -39,7 +38,7 @@ class TaskManager<T> {
 	 * @return The request task, or NULL if unavailable
 	 */
 	@CheckReturnValue
-	operator fun get(id: Int): @Nullable SingleSubject<T>? {
+	operator fun get(id: Int): SingleSubject<T>? {
 		return requestMap[id]
 	}
 	

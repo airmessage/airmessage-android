@@ -4,7 +4,7 @@ import android.net.Uri
 import android.text.style.URLSpan
 import android.view.View
 import android.widget.TextView
-import me.tagavari.airmessage.helper.IntentHelper.launchCustomTabs
+import me.tagavari.airmessage.helper.IntentHelper
 
 class CustomTabsURLSpan(url: String?) : URLSpan(url) {
 	override fun onClick(widget: View) {
@@ -12,6 +12,6 @@ class CustomTabsURLSpan(url: String?) : URLSpan(url) {
 		if(!(widget as TextView).linksClickable) return
 		
 		//Launching the custom tab
-		launchCustomTabs(widget.getContext(), Uri.parse(url))
+		IntentHelper.launchCustomTabs(widget.getContext(), Uri.parse(url))
 	}
 }

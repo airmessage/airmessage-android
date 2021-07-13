@@ -3,7 +3,6 @@ package me.tagavari.airmessage.util
 import androidx.collection.LongSparseArray
 import androidx.core.util.Supplier
 import io.reactivex.rxjava3.annotations.CheckReturnValue
-import io.reactivex.rxjava3.annotations.Nullable
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 
@@ -39,7 +38,7 @@ class TaskManagerLongBehavior<T> {
 	 * @return The request task, or NULL if unavailable
 	 */
 	@CheckReturnValue
-	operator fun get(id: Long): @Nullable BehaviorSubject<T>? {
+	operator fun get(id: Long): BehaviorSubject<T>? {
 		return requestMap[id]
 	}
 	

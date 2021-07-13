@@ -23,26 +23,26 @@ class AudioPlaybackManager(context: Context) {
 	private var isAttached = false
 	private var requestObject: Any? = null
 	
-	private val exoPlayer = SimpleExoPlayer.Builder(context).build().apply {
-		addListener(object : Player.Listener {
+	private val exoPlayer = SimpleExoPlayer.Builder(context).build().also { exoPlayer ->
+		exoPlayer.addListener(object : Player.Listener {
 			override fun onIsPlayingChanged(isPlaying: Boolean) {
 				if(isPlaying) {
 					//Starting the timer
-					this@AudioPlaybackManager.startTimer()
+					startTimer()
 					
 					//Notifying the listener
-					this@AudioPlaybackManager.updateProgress(true)
+					updateProgress(true)
 				} else {
 					//Cancelling the timer
-					this@AudioPlaybackManager.stopTimer()
+					stopTimer()
 					
 					//Notifying the listener
-					if(playbackState == Player.STATE_ENDED) {
+					if(exoPlayer.playbackState == Player.STATE_ENDED) {
 						//Completing the session
-						this@AudioPlaybackManager.stop()
+						stop()
 					} else {
 						//Notifying the listener
-						this@AudioPlaybackManager.updateProgress(false)
+						updateProgress(false)
 					}
 				}
 			}
