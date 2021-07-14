@@ -2291,7 +2291,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Playing the message's effect if it hasn't been viewed yet
 				if(messageInfo.getSendStyle() != null && !messageInfo.isSendStyleViewed()) {
 					messageInfo.setSendStyleViewed(true);
-					playScreenEffect(messageInfo.getSendStyle(), holder.itemView);
+					View targetView = ((VHMessageStructure) holder).getContainerMessagePart();
+					targetView.post(() -> playScreenEffect(messageInfo.getSendStyle(), targetView));
 					Completable.fromAction(() -> DatabaseManager.getInstance().markSendStyleViewed(messageInfo.getLocalID()))
 							.subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).subscribe();
 				}
@@ -2509,7 +2510,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			} else {
 				//Showing and configuring the "replay" button
 				viewHolder.getButtonSendEffectReplay().setVisibility(View.VISIBLE);
-				viewHolder.getButtonSendEffectReplay().setOnClickListener(clickedView -> playScreenEffect(messageInfo.getSendStyle(), viewHolder.itemView));
+				viewHolder.getButtonSendEffectReplay().setOnClickListener(clickedView -> playScreenEffect(messageInfo.getSendStyle(), viewHolder.getContainerMessagePart()));
 			}
 			
 			//Setting the text switcher's animations
