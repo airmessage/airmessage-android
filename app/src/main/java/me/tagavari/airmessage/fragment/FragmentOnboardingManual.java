@@ -42,7 +42,7 @@ import me.tagavari.airmessage.helper.StringHelper;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventConnection;
 import me.tagavari.airmessage.service.ConnectionService;
-import me.tagavari.airmessage.util.DirectConnectionParams;
+import me.tagavari.airmessage.util.ConnectionParams;
 
 public class FragmentOnboardingManual extends FragmentCommunication<FragmentCommunicationNetworkConfig> {
 	//Creating the constants
@@ -209,7 +209,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		
 		//Filling in the input fields with previous information
 		try {
-			DirectConnectionParams details = SharedPreferencesManager.getDirectConnectionDetails(getContext());
+			ConnectionParams.Direct details = SharedPreferencesManager.getDirectConnectionDetails(getContext());
 			inputAddress.getEditText().setText(details.getAddress());
 			inputFallback.getEditText().setText(details.getFallbackAddress());
 			inputPassword.getEditText().setText(details.getPassword());
@@ -357,7 +357,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		} else {
 			buttonError.setVisibility(View.GONE);
 			buttonError.setText(errorDetails.getButton().getLabel());
-			buttonError.setOnClickListener(view -> errorDetails.getButton().getClickListener().accept(getActivity(), getCommunicationsCallback().getConnectionManager()));
+			buttonError.setOnClickListener(view -> errorDetails.getButton().getClickListener().invoke(getActivity(), getActivity().getSupportFragmentManager(), getCommunicationsCallback().getConnectionManager()));
 		}
 	}
 	
@@ -377,7 +377,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 	
 	private void startConnection() {
 		//Collecting the new server connection information
-		DirectConnectionParams params = new DirectConnectionParams(
+		ConnectionParams.Direct params = new ConnectionParams.Direct(
 				inputAddress.getEditText().getText().toString(),
 				StringHelper.nullifyEmptyString(inputFallback.getEditText().getText().toString()),
 				inputPassword.getEditText().getText().toString()
@@ -414,7 +414,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 	}
 	
 	public static class FragmentViewModel extends ViewModel {
-		DirectConnectionParams connectionParams;
+		ConnectionParams.Direct connectionParams;
 		
 		int currentState = stateIdle;
 		ErrorDetailsHelper.ErrorDetails errorDetails;

@@ -52,6 +52,13 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
+import me.tagavari.airmessage.redux.ReduxEventAttachmentDownload;
+import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.redux.ReduxEventConnection;
+import me.tagavari.airmessage.redux.ReduxEventMassRetrieval;
+import me.tagavari.airmessage.redux.ReduxEventMessaging;
+import me.tagavari.airmessage.util.*;
 
 public class ConnectionManager {
 	private static final String TAG = ConnectionManager.class.getSimpleName();
@@ -923,7 +930,7 @@ public class ConnectionManager {
 	private boolean connectFromList(Context context, int index) {
 		//Getting the parameters
 		int proxyType = connectionOverride == null ? SharedPreferencesManager.getProxyType(context) : connectionOverride.getProxyType();
-		Object overrideValue = connectionOverride == null ? null : connectionOverride.getValue();
+		ConnectionParams overrideValue = connectionOverride == null ? null : connectionOverride.getValue();
 		
 		//Creating and checking the communications manager
 		communicationsManager = communicationsPriorityList.get(index).create(communicationsManagerListener, proxyType);

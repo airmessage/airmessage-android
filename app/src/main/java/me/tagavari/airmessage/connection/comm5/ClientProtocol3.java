@@ -2,6 +2,7 @@ package me.tagavari.airmessage.connection.comm5;
 
 import android.os.Build;
 
+import android.text.TextUtils;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.io.BufferedInputStream;
@@ -464,6 +465,13 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 		
 		//Checking if the current protocol requires authentication
 		if(unpacker.unpackBoolean()) {
+			//Checking if we don't have a password to use
+			if(TextUtils.isEmpty(communicationsManager.getPassword())) {
+				//Failing the connection
+				communicationsManager.getHandler().post(() -> communicationsManager.disconnect(ConnectionErrorCode.unauthorized));
+				return true;
+			}
+			
 			//Reading the transmission check
 			byte[] transmissionCheck;
 			try {
@@ -716,7 +724,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 	private static int mapNRCAuthenticationCode(int code) {
 		switch(code) {
 			case 1:
-				return ConnectionErrorCode.directUnauthorized;
+				return ConnectionErrorCode.unauthorized;
 			case 2:
 				return ConnectionErrorCode.badRequest;
 			default:

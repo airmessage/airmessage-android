@@ -23,7 +23,6 @@ import java.security.spec.KeySpec;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -33,8 +32,6 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.subjects.PublishSubject;
-import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
@@ -167,7 +164,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 					int localResultCode;
 					switch(resultCode) {
 						case nstAuthenticationUnauthorized:
-							localResultCode = ConnectionErrorCode.directUnauthorized;
+							localResultCode = ConnectionErrorCode.unauthorized;
 							break;
 						case nstAuthenticationBadRequest:
 							localResultCode = ConnectionErrorCode.badRequest;

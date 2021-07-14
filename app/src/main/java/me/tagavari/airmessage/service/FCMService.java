@@ -8,7 +8,9 @@ import androidx.annotation.NonNull;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+import java.io.IOException;
 import java.nio.BufferUnderflowException;
+import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -21,9 +23,12 @@ import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.comm5.AirUnpacker;
 import me.tagavari.airmessage.connection.comm5.ClientProtocol3;
+import me.tagavari.airmessage.connection.encryption.EncryptionAES;
 import me.tagavari.airmessage.connection.task.MessageUpdateTask;
 import me.tagavari.airmessage.connection.task.ModifierUpdateTask;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper;
+import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
@@ -56,7 +61,7 @@ public class FCMService extends FirebaseMessagingService {
 			return;
 		}
 		
-		if(payloadVersion == 1) {
+		if(payloadVersion == 1 || payloadVersion == 2) {
 			//Reading the protocol version
 			String protocolVersionString = remoteMessageData.get("protocol_version");
 			if(protocolVersionString == null) {
@@ -81,6 +86,28 @@ public class FCMService extends FirebaseMessagingService {
 			
 			//Decoding the data
 			byte[] data = Base64.decode(payload, Base64.DEFAULT);
+			
+			//If the payload version is 2, the first byte represents whether the data is encrypted, and the data is included as a payload
+			if(payloadVersion == 2) {
+				AirUnpacker airUnpacker = new AirUnpacker(data);
+				boolean isEncrypted = airUnpacker.unpackBoolean();
+				
+				if(isEncrypted) {
+					try {
+						String password = SharedPreferencesManager.getDirectConnectionPassword(this);
+						EncryptionAES encryptionAES = new EncryptionAES(password);
+						data = encryptionAES.decrypt(airUnpacker.unpackPayload());
+					} catch(GeneralSecurityException | IOException exception) {
+						exception.printStackTrace();
+						
+						//Notify the user
+						NotificationHelper.sendDecryptErrorNotification(this);
+						return;
+					}
+				} else {
+					data = airUnpacker.unpackPayload();
+				}
+			}
 			
 			List<Blocks.ConversationItem> conversationItems = null;
 			List<Blocks.ModifierInfo> modifiers = null;

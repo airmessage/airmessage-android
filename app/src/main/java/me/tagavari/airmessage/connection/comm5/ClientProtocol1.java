@@ -716,7 +716,7 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 	private static int mapNRCAuthenticationCode(int code) {
 		switch(code) {
 			case 1:
-				return ConnectionErrorCode.directUnauthorized;
+				return ConnectionErrorCode.unauthorized;
 			case 2:
 				return ConnectionErrorCode.badRequest;
 			default:

@@ -827,7 +827,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		if(button == null) {
 			infoBarConnection.removeButton();
 		} else {
-			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().accept(this, pluginCS.getConnectionManager()));
+			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().invoke(this, getSupportFragmentManager(), pluginCS.getConnectionManager()));
 		}
 		
 		//Showing the info bar
