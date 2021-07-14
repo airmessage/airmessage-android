@@ -15,7 +15,6 @@ import com.klinker.android.send_message.Settings
 import com.klinker.android.send_message.Transaction
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.core.SingleEmitter
 import io.reactivex.rxjava3.schedulers.Schedulers
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Messaging
@@ -31,20 +30,18 @@ import me.tagavari.airmessage.helper.ConversationColorHelper.getDefaultConversat
 import me.tagavari.airmessage.helper.ConversationHelper.updateConversationValues
 import me.tagavari.airmessage.helper.DataStreamHelper.copyStream
 import me.tagavari.airmessage.helper.FileHelper.cleanFileName
-import me.tagavari.airmessage.messaging.*
+import me.tagavari.airmessage.messaging.AttachmentInfo
+import me.tagavari.airmessage.messaging.ConversationInfo
+import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.receiver.TextMMSSentReceiver
 import me.tagavari.airmessage.receiver.TextSMSDeliveredReceiver
 import me.tagavari.airmessage.receiver.TextSMSSentReceiver
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
 import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationUpdate
-import me.tagavari.airmessage.util.ConversationValueUpdateResult
 import me.tagavari.airmessage.util.ReplaceInsertResult
-import java.io.BufferedReader
 import java.io.FileOutputStream
 import java.io.IOException
-import java.io.InputStreamReader
-import java.util.*
 
 object MMSSMSHelper {
 	@JvmField
@@ -508,5 +505,13 @@ object MMSSMSHelper {
 		} else {
 			subject
 		}
+	}
+	
+	/**
+	 * Deletes the specified conversation in the messages database
+	 */
+	@JvmStatic
+	fun deleteConversation(context: Context, threadID: Long) {
+		context.contentResolver.delete(ContentUris.withAppendedId(Telephony.Threads.CONTENT_URI, threadID), null, null)
 	}
 }
