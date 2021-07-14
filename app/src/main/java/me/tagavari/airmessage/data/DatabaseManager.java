@@ -11,67 +11,28 @@ import android.provider.BaseColumns;
 import android.util.Base64;
 import android.util.LongSparseArray;
 import android.webkit.MimeTypeMap;
-
 import androidx.annotation.Nullable;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.mlkit.nl.smartreply.TextMessage;
-
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.zip.DataFormatException;
-import java.util.zip.Inflater;
-
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import kotlin.Pair;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.enums.ConversationItemType;
-import me.tagavari.airmessage.enums.ConversationState;
-import me.tagavari.airmessage.enums.MessagePreviewState;
-import me.tagavari.airmessage.enums.MessageSendErrorCode;
-import me.tagavari.airmessage.enums.MessageState;
-import me.tagavari.airmessage.enums.ServiceHandler;
-import me.tagavari.airmessage.enums.ServiceType;
-import me.tagavari.airmessage.helper.AttachmentStorageHelper;
-import me.tagavari.airmessage.helper.ConversationColorHelper;
-import me.tagavari.airmessage.helper.ConversationHelper;
-import me.tagavari.airmessage.helper.DataStreamHelper;
-import me.tagavari.airmessage.helper.MMSSMSHelper;
-import me.tagavari.airmessage.helper.SmartReplyHelper;
-import me.tagavari.airmessage.messaging.AttachmentInfo;
-import me.tagavari.airmessage.messaging.AttachmentPreview;
-import me.tagavari.airmessage.messaging.ChatCreateAction;
-import me.tagavari.airmessage.messaging.ChatMemberAction;
-import me.tagavari.airmessage.messaging.ChatRenameAction;
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.ConversationItem;
-import me.tagavari.airmessage.messaging.ConversationPreview;
-import me.tagavari.airmessage.messaging.FileDraft;
-import me.tagavari.airmessage.messaging.MemberInfo;
-import me.tagavari.airmessage.messaging.MessageComponentText;
-import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.messaging.MessagePreviewInfo;
-import me.tagavari.airmessage.messaging.StickerInfo;
-import me.tagavari.airmessage.messaging.TapbackInfo;
+import me.tagavari.airmessage.enums.*;
+import me.tagavari.airmessage.helper.*;
+import me.tagavari.airmessage.messaging.*;
 import me.tagavari.airmessage.util.ModifierMetadata;
 import me.tagavari.airmessage.util.ReplaceInsertResult;
+
+import java.io.*;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 public class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version

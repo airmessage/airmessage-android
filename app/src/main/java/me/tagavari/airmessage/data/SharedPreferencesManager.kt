@@ -1,17 +1,16 @@
 package me.tagavari.airmessage.data
 
-import android.content.SharedPreferences
-import me.tagavari.airmessage.data.SharedPreferencesManager
-import kotlin.Throws
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
 import me.tagavari.airmessage.enums.ProxyType
-import me.tagavari.airmessage.util.DirectConnectionParams
+import me.tagavari.airmessage.helper.StringHelper
+import me.tagavari.airmessage.util.ConnectionParams
+import me.tagavari.airmessage.util.DirectConnectionDetails
 import java.io.IOException
-import java.lang.RuntimeException
 import java.security.GeneralSecurityException
 import java.util.*
 
@@ -194,7 +193,7 @@ object SharedPreferencesManager {
 	}
 	
 	/**
-	 * Sets [ProxyType] to use
+	 * Sets the [ProxyType] to use
 	 */
 	@JvmStatic
 	fun setProxyType(context: Context, @ProxyType proxyType: Int) {
@@ -228,16 +227,25 @@ object SharedPreferencesManager {
 	}
 	
 	/**
+	 * Sets the password used for direct connections
+	 */
+	@JvmStatic
+	@Throws(GeneralSecurityException::class, IOException::class)
+	fun setDirectConnectionPassword(context: Context, password: String?) {
+		getSecureSharedPrefs(context).edit().putString(sharedPreferencesSecureKeyPassword, password).apply()
+	}
+	
+	/**
 	 * Fetches the address, fallback address, and password used for direct connections
 	 */
 	@JvmStatic
 	@Throws(GeneralSecurityException::class, IOException::class)
-	fun getDirectConnectionDetails(context: Context): DirectConnectionParams {
+	fun getDirectConnectionDetails(context: Context): DirectConnectionDetails {
 		val prefs = getSecureSharedPrefs(context)
-		return DirectConnectionParams(
-			prefs.getString(sharedPreferencesSecureKeyAddress, null),
-			prefs.getString(sharedPreferencesSecureKeyAddressFallback, null),
-			prefs.getString(sharedPreferencesSecureKeyPassword, null)
+		return DirectConnectionDetails(
+			StringHelper.nullifyEmptyString(prefs.getString(sharedPreferencesSecureKeyAddress, null)),
+			StringHelper.nullifyEmptyString(prefs.getString(sharedPreferencesSecureKeyAddressFallback, null)),
+			StringHelper.nullifyEmptyString(prefs.getString(sharedPreferencesSecureKeyPassword, null))
 		)
 	}
 	
@@ -246,7 +254,20 @@ object SharedPreferencesManager {
 	 */
 	@JvmStatic
 	@Throws(GeneralSecurityException::class, IOException::class)
-	fun setDirectConnectionDetails(context: Context, params: DirectConnectionParams) {
+	fun setDirectConnectionDetails(context: Context, params: DirectConnectionDetails) {
+		getSecureSharedPrefs(context).edit()
+			.putString(sharedPreferencesSecureKeyAddress, params.address)
+			.putString(sharedPreferencesSecureKeyAddressFallback, params.fallbackAddress)
+			.putString(sharedPreferencesSecureKeyPassword, params.password)
+			.apply()
+	}
+	
+	/**
+	 * Sets the address, fallback address, and password used for direct connections
+	 */
+	@JvmStatic
+	@Throws(GeneralSecurityException::class, IOException::class)
+	fun setDirectConnectionDetails(context: Context, params: ConnectionParams.Direct) {
 		getSecureSharedPrefs(context).edit()
 			.putString(sharedPreferencesSecureKeyAddress, params.address)
 			.putString(sharedPreferencesSecureKeyAddressFallback, params.fallbackAddress)

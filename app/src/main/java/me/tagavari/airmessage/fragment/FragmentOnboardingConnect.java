@@ -12,24 +12,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
-
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
-
-import java.io.IOException;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.security.GeneralSecurityException;
-import java.util.Locale;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import me.tagavari.airmessage.R;
@@ -48,6 +39,11 @@ import me.tagavari.airmessage.helper.StringHelper;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventConnection;
 import me.tagavari.airmessage.util.ConnectionParams;
+
+import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.security.GeneralSecurityException;
 
 public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCommunicationNetworkConfig> implements FragmentBackOverride {
 	//Creating the view values
@@ -231,10 +227,10 @@ public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCom
 		if(connectionManager == null) return;
 		
 		//Setting the override and connecting
-		String inputPassword = inputAuth.getEditText().getText().toString();
+		String inputPassword = inputAuth.getEditText().getText().toString().trim();
 		ConnectionParams params;
-		if(!TextUtils.isEmpty(inputPassword)) {
-			params = new ConnectionParams.Security(inputPassword.trim());
+		if(!inputPassword.isEmpty()) {
+			params = new ConnectionParams.Security(inputPassword);
 		} else {
 			params = null;
 		}

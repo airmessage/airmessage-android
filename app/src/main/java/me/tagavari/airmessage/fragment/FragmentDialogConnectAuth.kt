@@ -17,6 +17,7 @@ import me.tagavari.airmessage.R
 import me.tagavari.airmessage.connection.ConnectionOverride
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.enums.ConnectionErrorCode
+import me.tagavari.airmessage.enums.ConnectionState
 import me.tagavari.airmessage.enums.ProxyType
 import me.tagavari.airmessage.helper.StringHelper.nullifyEmptyString
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork.connectionStateSubject
@@ -29,7 +30,10 @@ import java.security.GeneralSecurityException
 class FragmentDialogConnectAuth : DialogFragment() {
 	private lateinit var connectionSubscription: Disposable
 	
-	private var dialogInitialized = false
+	private var appIsConnecting = false //Whether the app is connecting
+	private var dialogInitiatedConnection = false //Whether the user clicked the connect button from this dialog
+	
+	private var dialogInitialized = false //Whether the dialog and its views are loaded
 	private lateinit var inputField: TextInputLayout
 	private lateinit var primaryButton: Button
 	
@@ -58,8 +62,10 @@ class FragmentDialogConnectAuth : DialogFragment() {
 		primaryButton.setOnClickListener {
 			//Getting the connection manager
 			ConnectionService.getConnectionManager()?.let { connectionManager ->
+				dialogInitiatedConnection = true
+				
 				//Updating the password and reconnecting
-				val password: String = inputField.editText!!.text.toString()
+				val password: String = inputField.editText!!.text.toString().trim()
 				connectionManager.setConnectionOverride(ConnectionOverride(ProxyType.connect, ConnectionParams.Security(password)))
 				connectionManager.connect()
 			}
@@ -75,30 +81,35 @@ class FragmentDialogConnectAuth : DialogFragment() {
 	}
 	
 	private fun onConnectionUpdate(event: ReduxEventConnection) {
+		appIsConnecting = event.state == ConnectionState.connecting
+		
+		//Don't do anything to the dialog if it's not initialized yet
 		if(!dialogInitialized) return
 		
 		//Disabling the input field and primary button if the state is connecting
-		val isConnecting = event is ReduxEventConnection.Connecting
-		inputField.isEnabled = !isConnecting
-		primaryButton.isEnabled = !isConnecting
+		inputField.isEnabled = dialogInitiatedConnection && !appIsConnecting //Let the user continue to type if this is a background connection
+		primaryButton.isEnabled = !appIsConnecting
 		
-		if(event is ReduxEventConnection.Connected) {
-			//Connection is OK, close the dialog
-			dismiss()
-			
-			//Save the new password to disk
-			try {
-				SharedPreferencesManager.setDirectConnectionPassword(context, nullifyEmptyString(inputField.editText!!.text.toString().trim()))
-			} catch(exception: GeneralSecurityException) {
-				exception.printStackTrace()
-				FirebaseCrashlytics.getInstance().recordException(exception)
-			} catch(exception: IOException) {
-				exception.printStackTrace()
-				FirebaseCrashlytics.getInstance().recordException(exception)
+		if(event.state == ConnectionState.connected) {
+			//Only follow through if it was the user who initiated the connection
+			if(dialogInitiatedConnection) {
+				//Connection is OK, close the dialog
+				dismiss()
+				
+				//Save the new password to disk
+				try {
+					SharedPreferencesManager.setDirectConnectionPassword(requireContext(), nullifyEmptyString(inputField.editText!!.text.toString().trim()))
+				} catch(exception: GeneralSecurityException) {
+					exception.printStackTrace()
+					FirebaseCrashlytics.getInstance().recordException(exception)
+				} catch(exception: IOException) {
+					exception.printStackTrace()
+					FirebaseCrashlytics.getInstance().recordException(exception)
+				}
+				
+				//Show a confirmation toast
+				Toast.makeText(requireContext(), R.string.message_passwordupdated, Toast.LENGTH_SHORT).show()
 			}
-			
-			//Show a confirmation toast
-			Toast.makeText(context, R.string.message_passwordupdated, Toast.LENGTH_SHORT).show()
 		} else if(event is ReduxEventConnection.Disconnected) {
 			if(event.code == ConnectionErrorCode.unauthorized) {
 				//Show an error
@@ -108,6 +119,9 @@ class FragmentDialogConnectAuth : DialogFragment() {
 				//Dismiss the dialog and let the user see the connection error
 				dismiss()
 			}
+			
+			//Clear the dialog-initiated connection state
+			dialogInitiatedConnection = false
 		}
 	}
 	

@@ -466,7 +466,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 		//Checking if the current protocol requires authentication
 		if(unpacker.unpackBoolean()) {
 			//Checking if we don't have a password to use
-			if(TextUtils.isEmpty(communicationsManager.getPassword())) {
+			if(communicationsManager.getPassword() == null) {
 				//Failing the connection
 				communicationsManager.getHandler().post(() -> communicationsManager.disconnect(ConnectionErrorCode.unauthorized));
 				return true;

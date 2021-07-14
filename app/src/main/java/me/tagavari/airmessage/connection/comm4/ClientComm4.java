@@ -61,7 +61,11 @@ public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 				exception.printStackTrace();
 			}
 		} else {
-			password = ((ConnectionParams.Security) override).getPassword();
+			if(override instanceof ConnectionParams.Security) {
+				password = ((ConnectionParams.Security) override).getPassword();
+			} else {
+				password = null;
+			}
 		}
 		
 		super.connect(context, override);

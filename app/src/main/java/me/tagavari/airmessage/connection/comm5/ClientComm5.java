@@ -65,7 +65,11 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 				exception.printStackTrace();
 			}
 		} else {
-			password = ((ConnectionParams.Security) override).getPassword();
+			if(override instanceof ConnectionParams.Security) {
+				password = ((ConnectionParams.Security) override).getPassword();
+			} else {
+				password = null;
+			}
 		}
 		
 		super.connect(context, override);

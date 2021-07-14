@@ -68,7 +68,7 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 			return;
 		}
 		
-		@Nullable String password;
+		String password;
 		if(override == null) {
 			try {
 				password = SharedPreferencesManager.getDirectConnectionPassword(context);
@@ -78,7 +78,11 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 				return;
 			}
 		} else {
-			password = ((ConnectionParams.Security) override).getPassword();
+			if(override instanceof ConnectionParams.Security) {
+				password = ((ConnectionParams.Security) override).getPassword();
+			} else {
+				password = null;
+			}
 		}
 		
 		if(password != null) {

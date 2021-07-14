@@ -43,6 +43,7 @@ import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventConnection;
 import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.ConnectionParams;
+import me.tagavari.airmessage.util.DirectConnectionDetails;
 
 public class FragmentOnboardingManual extends FragmentCommunication<FragmentCommunicationNetworkConfig> {
 	//Creating the constants
@@ -209,7 +210,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		
 		//Filling in the input fields with previous information
 		try {
-			ConnectionParams.Direct details = SharedPreferencesManager.getDirectConnectionDetails(getContext());
+			DirectConnectionDetails details = SharedPreferencesManager.getDirectConnectionDetails(requireContext());
 			inputAddress.getEditText().setText(details.getAddress());
 			inputFallback.getEditText().setText(details.getFallbackAddress());
 			inputPassword.getEditText().setText(details.getPassword());

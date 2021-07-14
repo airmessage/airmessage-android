@@ -65,7 +65,12 @@ class ProxyDirectTCP extends DataProxy<HeaderPacket> {
 		
 		if(override == null) {
 			try {
-				connectionParams = SharedPreferencesManager.getDirectConnectionDetails(context);
+				connectionParams = SharedPreferencesManager.getDirectConnectionDetails(context).toConnectionParams();
+				
+				if(connectionParams == null) {
+					notifyClose(ConnectionErrorCode.internalError);
+					return;
+				}
 			} catch(IOException | GeneralSecurityException exception) {
 				exception.printStackTrace();
 				notifyClose(ConnectionErrorCode.internalError);
@@ -77,12 +82,6 @@ class ProxyDirectTCP extends DataProxy<HeaderPacket> {
 		
 		String hostname, hostnameFallback;
 		int port, portFallback;
-		
-		//Checking if the connection params are valid
-		if(connectionParams.getAddress() == null || connectionParams.getPassword() == null) {
-			notifyClose(ConnectionErrorCode.internalError);
-			return;
-		}
 		
 		//Parsing the address
 		if(RegexConstants.port.matcher(connectionParams.getAddress()).find()) {
