@@ -177,7 +177,6 @@
 	<string name="message_decrypterrornotify_desc">A message was received that could not be decrypted</string>
 
 	<string name="message_connectionerror">Couldn\'t connect to server</string>
-	<string name="message_serviceavailabilityerror">Connection service not available</string>
 
 	<string name="message_permissionrejected">Permission request rejected</string>
 	<string name="message_permissiondetails_contacts_listing">Allow access to contacts to show names and pictures</string>
