@@ -1,9 +1,7 @@
 package me.tagavari.airmessage.connection;
 
 import android.content.Context;
-
 import androidx.annotation.Nullable;
-
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.util.ConnectionParams;
 

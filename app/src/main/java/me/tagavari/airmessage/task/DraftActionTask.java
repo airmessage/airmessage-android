@@ -2,18 +2,7 @@ package me.tagavari.airmessage.task;
 
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -25,6 +14,8 @@ import me.tagavari.airmessage.helper.DataCompressionHelper;
 import me.tagavari.airmessage.helper.DataStreamHelper;
 import me.tagavari.airmessage.messaging.FileDraft;
 import me.tagavari.airmessage.messaging.FileLinked;
+
+import java.io.*;
 
 public class DraftActionTask {
 	/**

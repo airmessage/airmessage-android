@@ -2,9 +2,7 @@ package me.tagavari.airmessage.compositeplugin;
 
 import android.content.res.Configuration;
 import android.os.Bundle;
-
 import androidx.annotation.Nullable;
-
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
 

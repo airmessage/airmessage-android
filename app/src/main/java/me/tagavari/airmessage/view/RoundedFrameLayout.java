@@ -2,10 +2,11 @@ package me.tagavari.airmessage.view;
 
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.graphics.*;
+import android.graphics.Canvas;
+import android.graphics.Path;
+import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.widget.FrameLayout;
-
 import me.tagavari.airmessage.R;
 
 public class RoundedFrameLayout extends FrameLayout {

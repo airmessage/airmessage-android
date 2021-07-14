@@ -3,30 +3,21 @@ package me.tagavari.airmessage.view;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.PorterDuff;
-import android.graphics.RectF;
-import android.graphics.SurfaceTexture;
+import android.graphics.*;
 import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.view.TextureView;
 import android.view.View;
-
 import androidx.annotation.Nullable;
 import androidx.core.graphics.ColorUtils;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
+import me.tagavari.airmessage.R;
 
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import me.tagavari.airmessage.R;
 
 public class InvisibleInkView extends TextureView implements Runnable {
 	//Creating the reference variables

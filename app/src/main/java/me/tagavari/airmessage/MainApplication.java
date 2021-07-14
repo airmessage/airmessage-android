@@ -9,30 +9,26 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Process;
 import android.provider.ContactsContract;
-
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
+import me.tagavari.airmessage.activity.CrashReport;
+import me.tagavari.airmessage.activity.Preferences;
+import me.tagavari.airmessage.data.DatabaseManager;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.data.UserCacheHelper;
 import me.tagavari.airmessage.enums.ProxyType;
+import me.tagavari.airmessage.helper.NotificationHelper;
+import me.tagavari.airmessage.helper.ThemeHelper;
+import me.tagavari.airmessage.redux.ReduxReceiverNotification;
+import me.tagavari.airmessage.redux.ReduxReceiverShortcut;
+import me.tagavari.airmessage.service.SystemMessageImportService;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.WeakReference;
 import java.security.Security;
-
-import me.tagavari.airmessage.activity.CrashReport;
-import me.tagavari.airmessage.activity.Preferences;
-import me.tagavari.airmessage.data.DatabaseManager;
-import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.data.UserCacheHelper;
-import me.tagavari.airmessage.helper.NotificationHelper;
-import me.tagavari.airmessage.helper.ThemeHelper;
-import me.tagavari.airmessage.redux.ReduxReceiverNotification;
-import me.tagavari.airmessage.redux.ReduxReceiverShortcut;
-import me.tagavari.airmessage.service.SystemMessageImportService;
 
 public class MainApplication extends Application {
 	//Creating the reference values

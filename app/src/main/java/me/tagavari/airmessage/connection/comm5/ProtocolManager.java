@@ -1,15 +1,15 @@
 package me.tagavari.airmessage.connection.comm5;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.enums.ConnectionFeature;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
 import me.tagavari.airmessage.util.ConversationTarget;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
 
 abstract class ProtocolManager<Packet> {
 	protected final ClientComm5 communicationsManager;

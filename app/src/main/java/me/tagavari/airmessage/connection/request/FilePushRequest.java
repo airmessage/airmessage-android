@@ -3,21 +3,12 @@ package me.tagavari.airmessage.connection.request;
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
 import android.net.Uri;
-
 import androidx.annotation.NonNull;
-
-import com.bumptech.glide.Glide;
-
-import java.io.Closeable;
-import java.io.File;
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-
 import me.tagavari.airmessage.connection.exception.AMRequestException;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.util.ConversationTarget;
+
+import java.io.*;
 
 /**
  * Represents a request to upload and send a message attachment

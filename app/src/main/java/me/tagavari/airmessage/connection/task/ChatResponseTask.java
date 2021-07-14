@@ -1,14 +1,6 @@
 package me.tagavari.airmessage.connection.task;
 
 import android.content.Context;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
@@ -19,6 +11,9 @@ import me.tagavari.airmessage.messaging.ConversationItem;
 import me.tagavari.airmessage.messaging.MemberInfo;
 import me.tagavari.airmessage.util.ReplaceInsertResult;
 import me.tagavari.airmessage.util.TransferredConversation;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class ChatResponseTask {
 	/**

@@ -5,14 +5,12 @@ import android.content.Context
 import android.graphics.*
 import android.graphics.drawable.Icon
 import android.os.Build
-import android.text.TextUtils
 import android.view.View
 import androidx.annotation.RequiresApi
 import io.reactivex.rxjava3.annotations.CheckReturnValue
 import io.reactivex.rxjava3.core.Maybe
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.functions.Function
 import io.reactivex.rxjava3.schedulers.Schedulers
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
@@ -22,8 +20,6 @@ import me.tagavari.airmessage.helper.ContactHelper.getContactImageURI
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.MemberInfo
 import me.tagavari.airmessage.util.Union
-import java.util.*
-import java.util.stream.Collectors
 
 object ConversationBuildHelper {
 	/**

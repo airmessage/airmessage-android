@@ -2,14 +2,13 @@ package me.tagavari.airmessage.connection.listener;
 
 import androidx.annotation.Nullable;
 import androidx.arch.core.util.Function;
-
-import java.io.OutputStream;
-import java.util.Collection;
-
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.util.CompoundErrorDetails;
+
+import java.io.OutputStream;
+import java.util.Collection;
 
 /**
  * A listener for communicating from a communications manager to a connection manager

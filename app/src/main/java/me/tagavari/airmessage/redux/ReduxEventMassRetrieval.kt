@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.redux
 
-import me.tagavari.airmessage.redux.ReduxEventMassRetrieval
 import me.tagavari.airmessage.enums.MassRetrievalErrorCode
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationItem

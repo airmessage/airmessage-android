@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
-
 import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.data.SharedPreferencesManager;

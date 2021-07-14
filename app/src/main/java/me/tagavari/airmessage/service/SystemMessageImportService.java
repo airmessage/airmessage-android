@@ -11,17 +11,8 @@ import android.database.sqlite.SQLiteException;
 import android.net.Uri;
 import android.os.IBinder;
 import android.provider.Telephony;
-
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
-
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Scheduler;
@@ -36,14 +27,20 @@ import me.tagavari.airmessage.enums.ServiceHandler;
 import me.tagavari.airmessage.enums.ServiceType;
 import me.tagavari.airmessage.helper.ConversationColorHelper;
 import me.tagavari.airmessage.helper.MMSSMSHelper;
+import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationPreview;
 import me.tagavari.airmessage.messaging.MemberInfo;
 import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;
 import me.tagavari.airmessage.redux.ReduxEventTextImport;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class SystemMessageImportService extends Service {
 	public static final String selfIntentActionImport = "import";

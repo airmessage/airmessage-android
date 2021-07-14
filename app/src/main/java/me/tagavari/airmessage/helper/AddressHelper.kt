@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.helper
 
 import android.telephony.PhoneNumberUtils
-import io.reactivex.rxjava3.annotations.NonNull
 import me.tagavari.airmessage.constants.RegexConstants
 
 object AddressHelper {

@@ -2,7 +2,6 @@ package me.tagavari.airmessage.util
 
 import me.tagavari.airmessage.messaging.ConversationItem
 import me.tagavari.airmessage.messaging.MessageInfo
-import me.tagavari.airmessage.util.ReplaceInsertResult
 
 /**
  * Represents the result of a 'smart insert' where updated messages are merged into an existing conversation thread

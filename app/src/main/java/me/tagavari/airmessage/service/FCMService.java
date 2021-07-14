@@ -2,19 +2,9 @@ package me.tagavari.airmessage.service;
 
 import android.util.Base64;
 import android.util.Log;
-
 import androidx.annotation.NonNull;
-
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
-
-import java.io.IOException;
-import java.nio.BufferUnderflowException;
-import java.security.GeneralSecurityException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
 import kotlin.Pair;
@@ -35,6 +25,13 @@ import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;
 import me.tagavari.airmessage.util.ActivityStatusUpdate;
 import me.tagavari.airmessage.util.ModifierMetadata;
+
+import java.io.IOException;
+import java.nio.BufferUnderflowException;
+import java.security.GeneralSecurityException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 public class FCMService extends FirebaseMessagingService {
 	private static final String TAG = FCMService.class.getSimpleName();

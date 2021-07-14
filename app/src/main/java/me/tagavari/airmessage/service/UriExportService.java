@@ -5,18 +5,11 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Handler;
 import android.widget.Toast;
-
 import androidx.annotation.Nullable;
-
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.helper.DataStreamHelper;
+
+import java.io.*;
 
 /**
  * A service used to export and save attachments to disk

@@ -1,11 +1,10 @@
 package me.tagavari.airmessage.recyclerupdate;
 
 import androidx.annotation.Nullable;
-
-import java.util.List;
-
 import me.tagavari.airmessage.messaging.ConversationPreview;
 import me.tagavari.airmessage.messaging.MemberInfo;
+
+import java.util.List;
 
 //Represents an update to a conversation
 public abstract class PayloadConversationUpdate {

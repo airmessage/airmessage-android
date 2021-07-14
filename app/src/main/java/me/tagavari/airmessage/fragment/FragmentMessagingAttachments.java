@@ -24,14 +24,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.text.format.DateUtils;
-import android.view.LayoutInflater;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewAnimationUtils;
-import android.view.ViewGroup;
+import android.view.*;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -43,17 +38,9 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.ResolvableApiException;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationSettingsRequest;
-import com.google.android.gms.location.LocationSettingsResponse;
-import com.google.android.gms.location.LocationSettingsStatusCodes;
+import com.google.android.gms.location.*;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
@@ -62,18 +49,6 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.math.MathUtils;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
-import java.io.File;
-import java.io.IOException;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.OptionalInt;
-import java.util.stream.IntStream;
-
 import ezvcard.VCard;
 import ezvcard.VCardVersion;
 import ezvcard.io.text.VCardWriter;
@@ -93,12 +68,7 @@ import me.tagavari.airmessage.activity.LocationPicker;
 import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.constants.FileNameConstants;
 import me.tagavari.airmessage.constants.MIMEConstants;
-import me.tagavari.airmessage.helper.AttachmentStorageHelper;
-import me.tagavari.airmessage.helper.FileHelper;
-import me.tagavari.airmessage.helper.ResourceHelper;
-import me.tagavari.airmessage.helper.SoundHelper;
-import me.tagavari.airmessage.helper.ThemeHelper;
-import me.tagavari.airmessage.helper.ViewHelper;
+import me.tagavari.airmessage.helper.*;
 import me.tagavari.airmessage.messaging.FileDisplayMetadata;
 import me.tagavari.airmessage.messaging.FileLinked;
 import me.tagavari.airmessage.messaging.viewholder.VHAttachmentLinked;
@@ -108,6 +78,13 @@ import me.tagavari.airmessage.task.FileQueueTask;
 import me.tagavari.airmessage.util.DisposableViewHolder;
 import me.tagavari.airmessage.util.Union;
 import me.tagavari.airmessage.view.VisualizerView;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.util.*;
+import java.util.stream.IntStream;
 
 public class FragmentMessagingAttachments extends FragmentCommunication<FragmentMessagingAttachments.FragmentCommunicationQueue> {
 	//Constants

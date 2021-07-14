@@ -3,21 +3,18 @@ package me.tagavari.airmessage.connection.comm4;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-
 import androidx.annotation.Nullable;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.constants.NetworkConstants;
 import me.tagavari.airmessage.constants.RegexConstants;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.util.ConnectionParams;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 /**
  * Establishes a direct connection with the server

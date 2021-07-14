@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.annotation.StringRes
-import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentManager
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.ServerConfigStandalone
@@ -15,7 +14,6 @@ import me.tagavari.airmessage.enums.ConnectionErrorCode
 import me.tagavari.airmessage.enums.ProxyType
 import me.tagavari.airmessage.fragment.FragmentDialogConnectAuth
 import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper.launchAutomatic
-import java.util.function.BiConsumer
 
 typealias ButtonClickListener = (Activity, FragmentManager, ConnectionManager?) -> Unit
 

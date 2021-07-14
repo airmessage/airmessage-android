@@ -1,10 +1,10 @@
 package me.tagavari.airmessage.data
 
 import android.content.Context
-import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.schedulers.Schedulers
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationServiceHandlerDelete

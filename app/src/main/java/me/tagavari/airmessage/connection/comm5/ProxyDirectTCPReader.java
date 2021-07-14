@@ -1,6 +1,8 @@
 package me.tagavari.airmessage.connection.comm5;
 
 import android.util.Log;
+import me.tagavari.airmessage.connection.encryption.EncryptionManager;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -8,9 +10,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.security.GeneralSecurityException;
-
-import me.tagavari.airmessage.connection.encryption.EncryptionManager;
-import me.tagavari.airmessage.enums.ConnectionErrorCode;
 
 /**
  * A thread that handles connecting to and reading from the server

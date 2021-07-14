@@ -11,18 +11,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
-
 import com.google.android.material.textfield.TextInputLayout;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Preferences;
@@ -44,6 +38,9 @@ import me.tagavari.airmessage.redux.ReduxEventConnection;
 import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.util.ConnectionParams;
 import me.tagavari.airmessage.util.DirectConnectionDetails;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 public class FragmentOnboardingManual extends FragmentCommunication<FragmentCommunicationNetworkConfig> {
 	//Creating the constants

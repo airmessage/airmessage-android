@@ -6,7 +6,7 @@ import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.ConversationItemType
 import me.tagavari.airmessage.enums.GroupAction
 import me.tagavari.airmessage.helper.ContactHelper
-import java.util.Optional
+import java.util.*
 
 class ChatMemberAction(
 	localID: Long,

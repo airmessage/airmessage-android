@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.util
 
 import me.tagavari.airmessage.messaging.ConversationInfo
-import me.tagavari.airmessage.util.ReplaceInsertResult
 
 /**
  * Holds information for the transfer of a conversation, exclusively used by AM bridge to resolve client- and server-created conversations on the fly

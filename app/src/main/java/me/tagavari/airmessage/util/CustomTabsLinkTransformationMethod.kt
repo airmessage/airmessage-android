@@ -1,12 +1,12 @@
 package me.tagavari.airmessage.util
 
 import android.graphics.Rect
-import android.text.method.TransformationMethod
-import android.widget.TextView
 import android.text.Spannable
-import android.text.style.URLSpan
 import android.text.Spanned
+import android.text.method.TransformationMethod
+import android.text.style.URLSpan
 import android.view.View
+import android.widget.TextView
 
 class CustomTabsLinkTransformationMethod : TransformationMethod {
 	override fun getTransformation(source: CharSequence, view: View): CharSequence {

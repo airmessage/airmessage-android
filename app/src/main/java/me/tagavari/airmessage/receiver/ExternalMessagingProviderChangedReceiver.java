@@ -6,14 +6,10 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.Telephony;
+import me.tagavari.airmessage.helper.MMSSMSHelper;
+import me.tagavari.airmessage.messaging.MessageInfo;
 
 import java.util.Arrays;
-
-import me.tagavari.airmessage.helper.MMSSMSHelper;
-import me.tagavari.airmessage.helper.MessageSendHelper;
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.service.SystemMessageImportService;
 
 public class ExternalMessagingProviderChangedReceiver extends BroadcastReceiver {
 	private static final String typeMMS = "mms";

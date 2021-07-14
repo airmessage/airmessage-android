@@ -8,16 +8,9 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-
 import androidx.annotation.Nullable;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Timer;
-
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
-import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.subjects.CompletableSubject;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.exception.AMRequestException;
@@ -27,6 +20,9 @@ import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.util.ConversationTarget;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ConnectionService extends Service {
 	//Creating the constants

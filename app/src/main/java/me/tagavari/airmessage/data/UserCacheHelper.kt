@@ -1,24 +1,16 @@
 package me.tagavari.airmessage.data
 
-import me.tagavari.airmessage.helper.AddressHelper.normalizeAddress
-import me.tagavari.airmessage.MainApplication
-import me.tagavari.airmessage.helper.AddressHelper
-import io.reactivex.rxjava3.core.SingleOnSubscribe
-import io.reactivex.rxjava3.core.SingleEmitter
-import me.tagavari.airmessage.data.UserCacheHelper
-import com.google.firebase.crashlytics.FirebaseCrashlytics
-import io.reactivex.rxjava3.schedulers.Schedulers
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import android.provider.ContactsContract
-import android.content.ContentResolver
 import android.content.Context
-import android.database.Cursor
 import android.net.Uri
+import android.provider.ContactsContract
 import android.util.LruCache
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
-import java.lang.Exception
-import java.lang.IllegalStateException
-import java.lang.RuntimeException
+import io.reactivex.rxjava3.core.SingleEmitter
+import io.reactivex.rxjava3.schedulers.Schedulers
+import me.tagavari.airmessage.MainApplication
+import me.tagavari.airmessage.helper.AddressHelper.normalizeAddress
 import java.util.*
 
 class UserCacheHelper {

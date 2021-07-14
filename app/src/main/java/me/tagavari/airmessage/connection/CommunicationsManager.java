@@ -3,13 +3,8 @@ package me.tagavari.airmessage.connection;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-
 import androidx.annotation.Nullable;
 import androidx.core.util.Consumer;
-
-import java.io.File;
-import java.util.Collection;
-
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.connection.listener.CommunicationsManagerListener;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
@@ -18,6 +13,9 @@ import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
 import me.tagavari.airmessage.util.ConnectionParams;
 import me.tagavari.airmessage.util.ConversationTarget;
+
+import java.io.File;
+import java.util.Collection;
 
 public abstract class CommunicationsManager<Packet> {
 	//Creating the handler

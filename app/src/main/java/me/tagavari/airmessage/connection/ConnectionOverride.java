@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.connection;
 
 import androidx.annotation.Nullable;
-
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.util.ConnectionParams;
 

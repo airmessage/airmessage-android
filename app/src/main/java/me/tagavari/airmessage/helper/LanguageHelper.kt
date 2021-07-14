@@ -7,12 +7,10 @@ import android.text.format.DateFormat
 import androidx.annotation.StringRes
 import com.google.android.gms.maps.model.LatLng
 import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.functions.Function
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.constants.TimingConstants
-import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.enums.TapbackType
 import me.tagavari.airmessage.helper.CalendarHelper.compareCalendarDates
 import me.tagavari.airmessage.messaging.MessageComponentText

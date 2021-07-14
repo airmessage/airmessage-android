@@ -1,7 +1,7 @@
 package me.tagavari.airmessage.util
 
-import androidx.annotation.DrawableRes
 import androidx.annotation.ColorRes
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 
 /**

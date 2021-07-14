@@ -17,33 +17,13 @@ import android.text.TextWatcher;
 import android.transition.ChangeBounds;
 import android.transition.Fade;
 import android.transition.TransitionManager;
-import android.view.KeyEvent;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
+import android.view.*;
 import android.view.inputmethod.EditorInfo;
-import android.widget.EditText;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.PopupWindow;
-import android.widget.TextView;
-import android.widget.Toast;
-
-import androidx.annotation.ColorRes;
-import androidx.annotation.DrawableRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
+import android.widget.*;
+import androidx.annotation.*;
 import androidx.appcompat.app.AlertDialog;
-import androidx.lifecycle.AndroidViewModel;
-import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModel;
-import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.*;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.GlideException;
@@ -52,14 +32,6 @@ import com.bumptech.glide.request.target.Target;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
-
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.stream.IntStream;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
@@ -80,13 +52,7 @@ import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.enums.ConversationState;
 import me.tagavari.airmessage.enums.ServiceHandler;
 import me.tagavari.airmessage.enums.ServiceType;
-import me.tagavari.airmessage.helper.AddressHelper;
-import me.tagavari.airmessage.helper.ContactHelper;
-import me.tagavari.airmessage.helper.ConversationColorHelper;
-import me.tagavari.airmessage.helper.PlatformHelper;
-import me.tagavari.airmessage.helper.ResourceHelper;
-import me.tagavari.airmessage.helper.ThemeHelper;
-import me.tagavari.airmessage.helper.WindowHelper;
+import me.tagavari.airmessage.helper.*;
 import me.tagavari.airmessage.messaging.ChatCreateAction;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationPreview;
@@ -96,6 +62,13 @@ import me.tagavari.airmessage.redux.ReduxEventMessaging;
 import me.tagavari.airmessage.task.ContactsTask;
 import me.tagavari.airmessage.util.AddressInfo;
 import me.tagavari.airmessage.util.ContactInfo;
+
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.stream.IntStream;
 
 public class NewMessage extends AppCompatCompositeActivity {
 	//Creating the constants

@@ -14,7 +14,6 @@ import com.otaliastudios.transcoder.strategy.DefaultAudioStrategy
 import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy
 import com.otaliastudios.transcoder.strategy.TrackStrategy
 import java.io.*
-import java.util.*
 import java.util.concurrent.ExecutionException
 import kotlin.math.sqrt
 

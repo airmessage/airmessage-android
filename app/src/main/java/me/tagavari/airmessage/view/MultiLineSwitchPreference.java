@@ -2,11 +2,8 @@ package me.tagavari.airmessage.view;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.view.View;
 import android.widget.TextView;
-
 import androidx.preference.PreferenceViewHolder;
-import androidx.preference.SwitchPreference;
 import androidx.preference.SwitchPreferenceCompat;
 
 public class MultiLineSwitchPreference extends SwitchPreferenceCompat {

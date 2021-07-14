@@ -2,9 +2,7 @@ package me.tagavari.airmessage.messaging
 
 import android.os.Parcel
 import android.os.Parcelable
-import kotlinx.parcelize.Parcelize
 import me.tagavari.airmessage.enums.TapbackType
-import java.io.File
 
 data class TapbackInfo(
 	var localID: Long,

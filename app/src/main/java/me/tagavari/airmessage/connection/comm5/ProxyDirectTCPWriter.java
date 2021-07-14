@@ -1,15 +1,14 @@
 package me.tagavari.airmessage.connection.comm5;
 
 import androidx.core.util.Consumer;
+import me.tagavari.airmessage.connection.encryption.EncryptionManager;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-
-import me.tagavari.airmessage.connection.encryption.EncryptionManager;
-import me.tagavari.airmessage.enums.ConnectionErrorCode;
 
 class ProxyDirectTCPWriter extends Thread {
 	//Creating the queue

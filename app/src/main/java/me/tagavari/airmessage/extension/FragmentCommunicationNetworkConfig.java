@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.extension;
 
 import androidx.annotation.Nullable;
-
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.fragment.FragmentCommunication;
 

@@ -1,7 +1,11 @@
 package me.tagavari.airmessage.task;
 
 import android.webkit.URLUtil;
-
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.annotations.CheckReturnValue;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.core.SingleEmitter;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -10,12 +14,6 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.annotations.CheckReturnValue;
-import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.core.SingleEmitter;
-import io.reactivex.rxjava3.schedulers.Schedulers;
 
 //Based on https://github.com/PonnamKarthik/RichLinkPreview (no longer maintained)
 public class RichPreviewTask {

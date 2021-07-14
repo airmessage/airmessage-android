@@ -2,9 +2,9 @@ package me.tagavari.airmessage.util
 
 import android.os.Build
 import android.view.View
-import androidx.annotation.RequiresApi
-import android.view.WindowInsetsAnimation
 import android.view.WindowInsets
+import android.view.WindowInsetsAnimation
+import androidx.annotation.RequiresApi
 
 @RequiresApi(api = Build.VERSION_CODES.R)
 class AnimatingInsetsCallback(private val view: View) : WindowInsetsAnimation.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE), View.OnApplyWindowInsetsListener {

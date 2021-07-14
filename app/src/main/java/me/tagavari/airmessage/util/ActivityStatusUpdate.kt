@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.util
 
 import me.tagavari.airmessage.enums.MessageState
-import kotlin.jvm.JvmOverloads
 
 /**
  * A class for passing around data related to an activity status update

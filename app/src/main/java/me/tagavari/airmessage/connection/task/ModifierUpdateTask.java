@@ -1,13 +1,7 @@
 package me.tagavari.airmessage.connection.task;
 
 import android.content.Context;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.core.Single;
@@ -20,6 +14,10 @@ import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.util.ActivityStatusUpdate;
 import me.tagavari.airmessage.util.ModifierMetadata;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 public class ModifierUpdateTask {
 	/**

@@ -1,10 +1,12 @@
 package me.tagavari.airmessage.helper
 
 import me.tagavari.airmessage.helper.DataStreamHelper.copyStream
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.util.zip.*
+import java.util.zip.DeflaterOutputStream
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
+import java.util.zip.InflaterInputStream
 
 /**
  * A set of utilities for compressing and decompressing arbitrary data

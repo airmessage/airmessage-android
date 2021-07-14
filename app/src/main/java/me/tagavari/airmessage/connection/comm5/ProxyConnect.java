@@ -15,10 +15,6 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.messaging.FirebaseMessaging;
 import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.connection.DataProxy;
-import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.BuildConfig;
-import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.encryption.EncryptionAES;
 import me.tagavari.airmessage.connection.encryption.EncryptionManager;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
@@ -32,7 +28,6 @@ import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 
-import javax.net.ssl.*;
 import javax.net.ssl.*;
 import java.io.IOException;
 import java.net.Socket;

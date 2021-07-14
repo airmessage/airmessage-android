@@ -3,7 +3,10 @@ package me.tagavari.airmessage.messaging
 import android.os.Parcel
 import android.os.Parcelable
 import androidx.core.os.ParcelCompat
-import me.tagavari.airmessage.enums.*
+import me.tagavari.airmessage.enums.ConversationItemType
+import me.tagavari.airmessage.enums.MessageSendErrorCode
+import me.tagavari.airmessage.enums.MessageState
+import me.tagavari.airmessage.enums.MessageViewType
 
 class MessageInfo @JvmOverloads constructor(
 	localID: Long,

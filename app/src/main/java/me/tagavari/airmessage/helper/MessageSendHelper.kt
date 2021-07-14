@@ -20,7 +20,10 @@ import me.tagavari.airmessage.helper.AddressHelper.normalizeAddress
 import me.tagavari.airmessage.helper.AttachmentStorageHelper.deleteContentFile
 import me.tagavari.airmessage.helper.AttachmentStorageHelper.prepareContentFile
 import me.tagavari.airmessage.helper.DataStreamHelper.copyStream
-import me.tagavari.airmessage.messaging.*
+import me.tagavari.airmessage.messaging.AttachmentInfo
+import me.tagavari.airmessage.messaging.ConversationInfo
+import me.tagavari.airmessage.messaging.FileDraft
+import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload
 import me.tagavari.airmessage.task.MessageActionTask
 import java.io.BufferedInputStream

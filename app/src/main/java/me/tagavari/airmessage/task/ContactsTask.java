@@ -5,12 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
-
 import androidx.annotation.Nullable;
-
-import java.util.Collection;
-import java.util.function.Predicate;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.annotations.NonNull;
@@ -22,6 +17,9 @@ import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.helper.StringHelper;
 import me.tagavari.airmessage.util.AddressInfo;
 import me.tagavari.airmessage.util.ContactInfo;
+
+import java.util.Collection;
+import java.util.function.Predicate;
 
 public class ContactsTask {
 	private static final Predicate<AddressInfo> predicateAddressPhoneNumber = address -> AddressHelper.validatePhoneNumber(address.getNormalizedAddress());

@@ -1,12 +1,6 @@
 package me.tagavari.airmessage.task;
 
 import android.content.Context;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import android.provider.Telephony;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.annotations.Nullable;
@@ -14,12 +8,15 @@ import io.reactivex.rxjava3.core.Completable;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.enums.ServiceHandler;
-import me.tagavari.airmessage.helper.ConversationHelper;
 import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.MemberInfo;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ConversationActionTask {
 	/**

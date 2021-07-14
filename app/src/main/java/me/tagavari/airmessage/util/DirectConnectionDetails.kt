@@ -1,6 +1,6 @@
 package me.tagavari.airmessage.util
 
-import java.util.StringJoiner
+import java.util.*
 
 /**
  * Represents details for the user to configure for a direct connection.

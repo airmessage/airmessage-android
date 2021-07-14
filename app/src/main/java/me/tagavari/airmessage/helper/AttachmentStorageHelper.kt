@@ -3,7 +3,6 @@ package me.tagavari.airmessage.helper
 import android.content.Context
 import android.os.Build
 import java.io.File
-import java.util.*
 
 /**
  * Helper class for managing the organization of attachment files

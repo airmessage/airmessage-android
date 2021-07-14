@@ -1,13 +1,7 @@
 package me.tagavari.airmessage.task;
 
 import android.content.Context;
-
 import androidx.annotation.Nullable;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.core.Completable;
@@ -26,6 +20,10 @@ import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;
 import me.tagavari.airmessage.util.ReplaceInsertResult;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class MessageActionTask {
 	/**

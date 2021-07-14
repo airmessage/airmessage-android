@@ -1,13 +1,13 @@
 package me.tagavari.airmessage.connection.comm4;
 
-import java.io.File;
-import java.util.Collection;
-
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
 import me.tagavari.airmessage.util.ConversationTarget;
+
+import java.io.File;
+import java.util.Collection;
 
 abstract class ProtocolManager<Packet> {
 	protected final ClientComm4 communicationsManager;
