@@ -9,7 +9,6 @@ import android.view.textclassifier.TextClassificationManager
 import android.view.textclassifier.TextClassifier
 import androidx.annotation.RequiresApi
 import com.google.mlkit.nl.smartreply.SmartReply
-import com.google.mlkit.nl.smartreply.SmartReplySuggestion
 import com.google.mlkit.nl.smartreply.SmartReplySuggestionResult
 import com.google.mlkit.nl.smartreply.TextMessage
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
@@ -22,10 +21,6 @@ import me.tagavari.airmessage.messaging.MessageInfo
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.util.*
-import java.util.function.IntFunction
-import java.util.function.Predicate
-import java.util.stream.Collectors
 
 object SmartReplyHelper {
 	const val smartReplyHistoryLength = 10

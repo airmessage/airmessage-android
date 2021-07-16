@@ -7,19 +7,9 @@ import android.app.Activity;
 import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationManager;
-import android.content.BroadcastReceiver;
-import android.content.ClipData;
-import android.content.ClipDescription;
-import android.content.ClipboardManager;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
+import android.content.*;
 import android.content.res.ColorStateList;
-import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.graphics.Outline;
-import android.graphics.PointF;
-import android.graphics.Typeface;
+import android.graphics.*;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.media.SoundPool;
@@ -36,23 +26,8 @@ import android.text.format.DateFormat;
 import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
-import android.util.AttributeSet;
-import android.util.DisplayMetrics;
-import android.util.Log;
-import android.util.Patterns;
-import android.util.SparseArray;
-import android.util.TypedValue;
-import android.view.Gravity;
-import android.view.InputDevice;
-import android.view.KeyEvent;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewOutlineProvider;
-import android.view.ViewTreeObserver;
+import android.util.*;
+import android.view.*;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
@@ -62,15 +37,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.view.textclassifier.TextClassificationManager;
 import android.view.textclassifier.TextClassifier;
 import android.view.textclassifier.TextLinks;
-import android.widget.FrameLayout;
-import android.widget.HorizontalScrollView;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.PopupMenu;
-import android.widget.TextView;
-import android.widget.Toast;
-
+import android.widget.*;
 import androidx.annotation.IntDef;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
@@ -94,7 +61,6 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.load.DataSource;
@@ -114,38 +80,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.ref.WeakReference;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Completable;
-import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.core.SingleEmitter;
+import io.reactivex.rxjava3.core.*;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Consumer;
@@ -166,110 +103,37 @@ import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.constants.TimingConstants;
 import me.tagavari.airmessage.data.DatabaseManager;
-import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
-import me.tagavari.airmessage.enums.AttachmentType;
-import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.enums.ConnectionState;
-import me.tagavari.airmessage.enums.ConversationItemType;
-import me.tagavari.airmessage.enums.ConversationState;
-import me.tagavari.airmessage.enums.MessageComponentType;
-import me.tagavari.airmessage.enums.MessagePreviewState;
-import me.tagavari.airmessage.enums.MessagePreviewType;
-import me.tagavari.airmessage.enums.MessageSendErrorCode;
-import me.tagavari.airmessage.enums.MessageState;
-import me.tagavari.airmessage.enums.MessageViewType;
-import me.tagavari.airmessage.enums.ServiceHandler;
-import me.tagavari.airmessage.enums.ServiceType;
+import me.tagavari.airmessage.enums.*;
 import me.tagavari.airmessage.fragment.FragmentMessagingAttachments;
 import me.tagavari.airmessage.fragment.FragmentMessagingDetails;
-import me.tagavari.airmessage.helper.AddressHelper;
-import me.tagavari.airmessage.helper.AttachmentStorageHelper;
-import me.tagavari.airmessage.helper.CollectionHelper;
-import me.tagavari.airmessage.helper.ColorHelper;
-import me.tagavari.airmessage.helper.ColorMathHelper;
-import me.tagavari.airmessage.helper.ContactHelper;
-import me.tagavari.airmessage.helper.ConversationBuildHelper;
-import me.tagavari.airmessage.helper.ConversationColorHelper;
-import me.tagavari.airmessage.helper.ConversationHelper;
-import me.tagavari.airmessage.helper.DataCompressionHelper;
-import me.tagavari.airmessage.helper.DataStreamHelper;
-import me.tagavari.airmessage.helper.ErrorDetailsHelper;
-import me.tagavari.airmessage.helper.ErrorLanguageHelper;
-import me.tagavari.airmessage.helper.ExternalStorageHelper;
-import me.tagavari.airmessage.helper.FileHelper;
-import me.tagavari.airmessage.helper.IntentHelper;
-import me.tagavari.airmessage.helper.LanguageHelper;
-import me.tagavari.airmessage.helper.MMSSMSHelper;
-import me.tagavari.airmessage.helper.MessageSendHelper;
-import me.tagavari.airmessage.helper.NotificationHelper;
-import me.tagavari.airmessage.helper.PlatformHelper;
-import me.tagavari.airmessage.helper.ResourceHelper;
-import me.tagavari.airmessage.helper.SendStyleHelper;
-import me.tagavari.airmessage.helper.ShortcutHelper;
-import me.tagavari.airmessage.helper.SmartReplyHelper;
-import me.tagavari.airmessage.helper.SoundHelper;
-import me.tagavari.airmessage.helper.StringHelper;
-import me.tagavari.airmessage.helper.ThemeHelper;
-import me.tagavari.airmessage.helper.ViewHelper;
-import me.tagavari.airmessage.helper.WindowHelper;
-import me.tagavari.airmessage.messaging.AMConversationAction;
-import me.tagavari.airmessage.messaging.AttachmentInfo;
-import me.tagavari.airmessage.messaging.ConversationAction;
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.ConversationItem;
-import me.tagavari.airmessage.messaging.FileDisplayMetadata;
-import me.tagavari.airmessage.messaging.FileDraft;
-import me.tagavari.airmessage.messaging.FileLinked;
-import me.tagavari.airmessage.messaging.MemberInfo;
-import me.tagavari.airmessage.messaging.MessageComponent;
-import me.tagavari.airmessage.messaging.MessageComponentText;
-import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.messaging.MessagePreviewInfo;
-import me.tagavari.airmessage.messaging.StickerInfo;
-import me.tagavari.airmessage.messaging.TapbackInfo;
+import me.tagavari.airmessage.helper.*;
+import me.tagavari.airmessage.messaging.*;
 import me.tagavari.airmessage.messaging.viewbinder.VBMessageComponent;
-import me.tagavari.airmessage.messaging.viewholder.VHAttachmentQueued;
-import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContent;
-import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentAudio;
-import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentContact;
-import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentDocument;
-import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentLocation;
-import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentMedia;
-import me.tagavari.airmessage.messaging.viewholder.VHConversationActions;
-import me.tagavari.airmessage.messaging.viewholder.VHMessageAction;
-import me.tagavari.airmessage.messaging.viewholder.VHMessageComponent;
-import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentAttachment;
-import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentAudio;
-import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentContact;
-import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentDocument;
-import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentLocation;
-import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentText;
-import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentVisual;
-import me.tagavari.airmessage.messaging.viewholder.VHMessagePreviewLink;
-import me.tagavari.airmessage.messaging.viewholder.VHMessageStructure;
+import me.tagavari.airmessage.messaging.viewholder.*;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentDownload;
 import me.tagavari.airmessage.redux.ReduxEventConnection;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;
-import me.tagavari.airmessage.task.ConversationActionTask;
-import me.tagavari.airmessage.task.DraftActionTask;
-import me.tagavari.airmessage.task.FileQueueTask;
-import me.tagavari.airmessage.task.MessageActionTask;
-import me.tagavari.airmessage.task.RichPreviewTask;
-import me.tagavari.airmessage.util.AnimatingInsetsCallback;
-import me.tagavari.airmessage.util.AudioPlaybackManager;
-import me.tagavari.airmessage.util.CustomTabsLinkTransformationMethod;
-import me.tagavari.airmessage.util.DisposableViewHolder;
-import me.tagavari.airmessage.util.ReplaceInsertResult;
-import me.tagavari.airmessage.util.TapbackDisplayData;
-import me.tagavari.airmessage.util.TaskManager;
-import me.tagavari.airmessage.util.TaskManagerLong;
-import me.tagavari.airmessage.util.Union;
+import me.tagavari.airmessage.task.*;
+import me.tagavari.airmessage.util.*;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.InvisibleInkView;
 import nl.dionsegijn.konfetti.KonfettiView;
 import nl.dionsegijn.konfetti.models.Shape;
 import nl.dionsegijn.konfetti.models.Size;
+
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.ref.WeakReference;
+import java.net.URL;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class Messaging extends AppCompatCompositeActivity {
 	private static final String TAG = Messaging.class.getSimpleName();
@@ -1971,7 +1835,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(button == null) {
 			infoBarConnection.removeButton();
 		} else {
-			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().accept(this, pluginCS.getConnectionManager()));
+			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().invoke(this, getSupportFragmentManager(), pluginCS.getConnectionManager()));
 		}
 		
 		//Showing the info bar
@@ -2427,7 +2291,8 @@ public class Messaging extends AppCompatCompositeActivity {
 				//Playing the message's effect if it hasn't been viewed yet
 				if(messageInfo.getSendStyle() != null && !messageInfo.isSendStyleViewed()) {
 					messageInfo.setSendStyleViewed(true);
-					playScreenEffect(messageInfo.getSendStyle(), holder.itemView);
+					View targetView = ((VHMessageStructure) holder).getContainerMessagePart();
+					targetView.post(() -> playScreenEffect(messageInfo.getSendStyle(), targetView));
 					Completable.fromAction(() -> DatabaseManager.getInstance().markSendStyleViewed(messageInfo.getLocalID()))
 							.subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).subscribe();
 				}
@@ -2645,7 +2510,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			} else {
 				//Showing and configuring the "replay" button
 				viewHolder.getButtonSendEffectReplay().setVisibility(View.VISIBLE);
-				viewHolder.getButtonSendEffectReplay().setOnClickListener(clickedView -> playScreenEffect(messageInfo.getSendStyle(), viewHolder.itemView));
+				viewHolder.getButtonSendEffectReplay().setOnClickListener(clickedView -> playScreenEffect(messageInfo.getSendStyle(), viewHolder.getContainerMessagePart()));
 			}
 			
 			//Setting the text switcher's animations
@@ -3253,6 +3118,23 @@ public class Messaging extends AppCompatCompositeActivity {
 					
 					//Setting the download click listener
 					viewHolder.itemView.setOnClickListener(view -> downloadAttachmentContent(viewHolderStructure, viewHolder, messageInfo, component));
+					
+					//Checking if we should auto-download this content
+					if(component.getShouldAutoDownload() && Preferences.getPreferenceAutoDownloadAttachments(Messaging.this)) {
+						//Wait until we're connected, then start downloading
+						viewHolderStructure.getCompositeDisposable().add(
+							ReduxEmitterNetwork.getConnectionStateSubject()
+								.filter((event) -> event.getState() == ConnectionState.connected)
+								.firstOrError()
+								.ignoreElement()
+								.subscribe(() -> {
+									component.setShouldAutoDownload(false);
+									Completable.fromAction(() -> DatabaseManager.getInstance().markAttachmentAutoDownloaded(messageInfo.getLocalID()))
+										.subscribeOn(Schedulers.single()).subscribe();
+									downloadAttachmentContent(viewHolderStructure, viewHolder, messageInfo, component);
+								})
+						);
+					}
 				}
 			}
 		}
@@ -3422,7 +3304,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						//Checking if we are currently playing this message
 						if(playbackManager.compareRequest(component)) {
 							//Subscribing to playback updates
-							attachAudioPlayback(playbackManager.emitter(), viewHolderStructure, viewHolder, metadata.getMediaDuration());
+							attachAudioPlayback(playbackManager.getEmitter(), viewHolderStructure, viewHolder, metadata.getMediaDuration());
 						} else {
 							//Showing the idle state
 							viewHolder.setPlaybackIdle(metadata.getMediaDuration());

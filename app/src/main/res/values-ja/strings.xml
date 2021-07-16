@@ -219,6 +219,8 @@
 
 	<string name="notificationchannel_messageerror">送信の失敗</string>
 	<string name="notificationchannel_messageerror_desc">失敗したメッセージに関する通知</string>
+	<string name="notificationchannel_messageerrorreception">受信の不具合</string>
+	<string name="notificationchannel_messageerrorreception_desc">メッセージの受信に影響する問題に関する通知</string>
 
 	<string name="notificationchannel_status">一般的なステータス</string>
 	<string name="notificationchannel_status_desc">サーバー接続などのステータス通知</string>
@@ -499,4 +501,10 @@
 	<string name="message_securityupdate">セキュリティアップデートをチェックできません</string>
 	<string name="label_videoplayback">ビデオ再生</string>
 	<string name="action_resolve">解決</string>
+	<string name="message_passwordrequired">サーバーのパスワードを入力してください</string>
+	<string name="action_continue">続ける</string>
+	<string name="message_passwordupdated">サーバーのパスワードが更新されました</string>
+	<string name="action_updatepassword">サーバーのパスワードの更新</string>
+	<string name="message_decrypterrornotify">読めないメッセージを受信しました</string>
+	<string name="message_decrypterrornotify_desc">復号化できなかったメッセージを受信しました</string>
 </resources>

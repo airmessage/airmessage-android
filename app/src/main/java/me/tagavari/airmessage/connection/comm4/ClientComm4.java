@@ -1,19 +1,8 @@
 package me.tagavari.airmessage.connection.comm4;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
-
 import androidx.annotation.Nullable;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.security.GeneralSecurityException;
-import java.util.Collection;
-
 import io.reactivex.rxjava3.core.Observable;
-import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.connection.CommunicationsManager;
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
@@ -26,8 +15,14 @@ import me.tagavari.airmessage.enums.ConnectionFeature;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.util.ConnectionParams;
 import me.tagavari.airmessage.util.ConversationTarget;
-import me.tagavari.airmessage.util.DirectConnectionParams;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.security.GeneralSecurityException;
+import java.util.Collection;
 
 public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 	private static final int communicationsVersion = 4;
@@ -57,7 +52,7 @@ public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 	}
 	
 	@Override
-	public void connect(Context context, @Nullable Object override) {
+	public void connect(Context context, @Nullable ConnectionParams override) {
 		//Saving the password for protocol-level encryption
 		if(override == null) {
 			try {
@@ -66,7 +61,11 @@ public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 				exception.printStackTrace();
 			}
 		} else {
-			password = ((DirectConnectionParams) override).getPassword();
+			if(override instanceof ConnectionParams.Security) {
+				password = ((ConnectionParams.Security) override).getPassword();
+			} else {
+				password = null;
+			}
 		}
 		
 		super.connect(context, override);
@@ -170,12 +169,6 @@ public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 			case 6:
 				return new ClientProtocol6(this, getDataProxy());
 		}
-	}
-	
-	@Override
-	public boolean isConnectedFallback() {
-		if(getDataProxyType() == ProxyType.direct) return ((ProxyDirectTCP) getDataProxy()).isUsingFallback();
-		else return false;
 	}
 	
 	@Override

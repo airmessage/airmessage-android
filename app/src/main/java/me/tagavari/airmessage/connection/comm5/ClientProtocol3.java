@@ -1,14 +1,26 @@
 package me.tagavari.airmessage.connection.comm5;
 
 import android.os.Build;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
+import io.reactivex.rxjava3.core.Observable;
+import me.tagavari.airmessage.MainApplication;
+import me.tagavari.airmessage.common.Blocks;
+import me.tagavari.airmessage.connection.DataProxy;
+import me.tagavari.airmessage.connection.MassRetrievalParams;
+import me.tagavari.airmessage.connection.encryption.EncryptionAES;
+import me.tagavari.airmessage.connection.exception.AMRequestException;
+import me.tagavari.airmessage.connection.exception.LargeAllocationException;
+import me.tagavari.airmessage.constants.MIMEConstants;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.*;
+import me.tagavari.airmessage.helper.LookAheadStreamIterator;
+import me.tagavari.airmessage.helper.StandardCompressionHelper;
+import me.tagavari.airmessage.helper.StringHelper;
+import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.util.CompoundErrorDetails;
+import me.tagavari.airmessage.util.ConversationTarget;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.security.DigestInputStream;
@@ -20,31 +32,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.zip.DeflaterInputStream;
 import java.util.zip.InflaterOutputStream;
-
-import io.reactivex.rxjava3.core.Observable;
-import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.connection.DataProxy;
-import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.connection.encryption.EncryptionAES;
-import me.tagavari.airmessage.connection.exception.AMRequestException;
-import me.tagavari.airmessage.connection.exception.LargeAllocationException;
-import me.tagavari.airmessage.constants.MIMEConstants;
-import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
-import me.tagavari.airmessage.enums.ChatCreateErrorCode;
-import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.enums.ConnectionFeature;
-import me.tagavari.airmessage.enums.GroupAction;
-import me.tagavari.airmessage.enums.MessageSendErrorCode;
-import me.tagavari.airmessage.enums.MessageState;
-import me.tagavari.airmessage.enums.TapbackType;
-import me.tagavari.airmessage.helper.LookAheadStreamIterator;
-import me.tagavari.airmessage.helper.StandardCompressionHelper;
-import me.tagavari.airmessage.helper.StringHelper;
-import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
-import me.tagavari.airmessage.util.CompoundErrorDetails;
-import me.tagavari.airmessage.util.ConversationTarget;
 
 public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 	private static final String hashAlgorithm = "MD5";
@@ -464,6 +451,13 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 		
 		//Checking if the current protocol requires authentication
 		if(unpacker.unpackBoolean()) {
+			//Checking if we don't have a password to use
+			if(communicationsManager.getPassword() == null) {
+				//Failing the connection
+				communicationsManager.getHandler().post(() -> communicationsManager.disconnect(ConnectionErrorCode.unauthorized));
+				return true;
+			}
+			
 			//Reading the transmission check
 			byte[] transmissionCheck;
 			try {
@@ -716,7 +710,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 	private static int mapNRCAuthenticationCode(int code) {
 		switch(code) {
 			case 1:
-				return ConnectionErrorCode.directUnauthorized;
+				return ConnectionErrorCode.unauthorized;
 			case 2:
 				return ConnectionErrorCode.badRequest;
 			default:

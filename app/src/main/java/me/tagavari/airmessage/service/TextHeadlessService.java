@@ -6,15 +6,13 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
-
 import androidx.annotation.Nullable;
-
-import java.util.Arrays;
-import java.util.List;
-
 import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.helper.MessageSendHelper;
 import me.tagavari.airmessage.messaging.MessageInfo;
+
+import java.util.Arrays;
+import java.util.List;
 
 public class TextHeadlessService extends IntentService {
 	public TextHeadlessService() {

@@ -2,13 +2,10 @@ package me.tagavari.airmessage.activity;
 
 import android.os.Bundle;
 import android.view.MenuItem;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-
 import com.mikepenz.aboutlibraries.LibsBuilder;
-
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginQNavigation;

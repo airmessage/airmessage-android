@@ -9,12 +9,11 @@ import android.media.MediaRecorder;
 import android.os.Handler;
 import android.util.AttributeSet;
 import android.view.View;
+import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.helper.ResourceHelper;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.helper.ResourceHelper;
 
 public class VisualizerView extends View {
 	//Creating the reference values

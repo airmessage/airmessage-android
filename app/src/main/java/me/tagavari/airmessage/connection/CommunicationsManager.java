@@ -3,21 +3,19 @@ package me.tagavari.airmessage.connection;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-
 import androidx.annotation.Nullable;
 import androidx.core.util.Consumer;
-
-import java.io.File;
-import java.util.Collection;
-
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.connection.listener.CommunicationsManagerListener;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.enums.ConnectionFeature;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.util.ConnectionParams;
 import me.tagavari.airmessage.util.ConversationTarget;
-import me.tagavari.airmessage.util.DirectConnectionParams;
+
+import java.io.File;
+import java.util.Collection;
 
 public abstract class CommunicationsManager<Packet> {
 	//Creating the handler
@@ -70,7 +68,7 @@ public abstract class CommunicationsManager<Packet> {
 	/**
 	 * Connects to the server
 	 */
-	public void connect(Context context, @Nullable Object override) {
+	public void connect(Context context, @Nullable ConnectionParams override) {
 		//Connecting the proxy
 		dataProxy.start(context, override);
 	}
@@ -99,12 +97,6 @@ public abstract class CommunicationsManager<Packet> {
 		//Forwarding the event to the listener
 		if(listener != null) listener.onOpen(installationID, deviceName, systemVersion, softwareVersion);
 	}
-	
-	/**
-	 * Get whether the server is connected via a fallback method
-	 * @return Whether the server is connected via a fallback method
-	 */
-	public abstract boolean isConnectedFallback();
 	
 	/**
 	 * Sends a ping packet to the server
@@ -264,5 +256,13 @@ public abstract class CommunicationsManager<Packet> {
 	 */
 	protected DataProxy<Packet> getDataProxy() {
 		return dataProxy;
+	}
+	
+	/**
+	 * Gets whether the current connection is a fallback connection
+	 */
+	public boolean isUsingFallback() {
+		if(dataProxy == null) return false;
+		return dataProxy.isUsingFallback();
 	}
 }

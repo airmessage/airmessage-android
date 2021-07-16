@@ -168,6 +168,8 @@
 
 	<string name="notificationchannel_messageerror">Défauts de livraison</string>
 	<string name="notificationchannel_messageerror_desc">Notifications concernant les messages en échec</string>
+	<string name="notificationchannel_messageerrorreception">Défauts de réception</string>
+	<string name="notificationchannel_messageerrorreception_desc">Concerne les notifications de problèmes qui affectent la réception des messages</string>
 
 	<string name="message_connectionerror">N\'a pas pu se connecter au serveur</string>
 	<string name="message_permissiondetails_microphone_missing">L\'autorisation d\'enregistrer de l\'audio est manquante</string>
@@ -508,4 +510,10 @@
 	<string name="message_securityupdate">AirMessage ne peut pas vérifier les mises à jour de sécurité</string>
 	<string name="label_videoplayback">Lire la vidéo</string>
 	<string name="action_resolve">Résoudre</string>
+	<string name="message_passwordrequired">Mot de passe du serveur requis</string>
+	<string name="action_continue">Continuer</string>
+	<string name="message_passwordupdated">Le mot de passe du serveur a été mis à jour</string>
+	<string name="action_updatepassword">Mise à jour du mot de passe du serveur</string>
+	<string name="message_decrypterrornotify">Un message illisible a été reçu</string>
+	<string name="message_decrypterrornotify_desc">Un message a été reçu qui n\'a pas pu être décrypté</string>
 </resources>

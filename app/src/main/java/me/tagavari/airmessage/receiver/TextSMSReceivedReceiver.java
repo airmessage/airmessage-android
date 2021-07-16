@@ -7,20 +7,19 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.provider.Telephony;
 import android.telephony.SmsMessage;
-
-import java.util.ArrayList;
-import java.util.Collections;
-
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import kotlin.Triple;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.enums.MessageState;
 import me.tagavari.airmessage.helper.AddressHelper;
 import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.util.Triplet;
+
+import java.util.ArrayList;
+import java.util.Collections;
 
 public class TextSMSReceivedReceiver extends BroadcastReceiver {
 	@Override
@@ -50,7 +49,7 @@ public class TextSMSReceivedReceiver extends BroadcastReceiver {
 		String finalMessageSender = messageSender;
 		
 		//Running on a worker thread
-		Single.create((SingleEmitter<Triplet<Boolean, ConversationInfo, MessageInfo>> emitter) -> {
+		Single.create((SingleEmitter<Triple<Boolean, ConversationInfo, MessageInfo>> emitter) -> {
 			//Writing the message to Android's database
 			insertInternalSMS(context, finalMessageSender, messageBody.toString(), timestamp);
 		}).subscribeOn(Schedulers.single()).subscribe();

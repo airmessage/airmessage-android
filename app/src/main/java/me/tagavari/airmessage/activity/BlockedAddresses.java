@@ -10,17 +10,14 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import me.tagavari.airmessage.R;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
-
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-
-import me.tagavari.airmessage.R;
 
 public class BlockedAddresses extends AppCompatActivity {
 	//Creating the view values

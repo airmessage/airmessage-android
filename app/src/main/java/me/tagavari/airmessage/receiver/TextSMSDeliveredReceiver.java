@@ -3,9 +3,7 @@ package me.tagavari.airmessage.receiver;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-
 import com.klinker.android.send_message.DeliveredReceiver;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;

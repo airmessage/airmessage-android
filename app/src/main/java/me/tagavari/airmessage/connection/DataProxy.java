@@ -1,11 +1,9 @@
 package me.tagavari.airmessage.connection;
 
 import android.content.Context;
-
 import androidx.annotation.Nullable;
-
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.util.DirectConnectionParams;
+import me.tagavari.airmessage.util.ConnectionParams;
 
 /**
  * Represents a method of transmitting data over the internet
@@ -17,7 +15,7 @@ public abstract class DataProxy<Packet> {
 	/**
 	 * Start this proxy's connection to the server
 	 */
-	public abstract void start(Context context, @Nullable Object override);
+	public abstract void start(Context context, @Nullable ConnectionParams override);
 	
 	/**
 	 * Stop this proxy's connection to the server
@@ -31,6 +29,11 @@ public abstract class DataProxy<Packet> {
 	 * @return TRUE if the packet was successfully queued
 	 */
 	public abstract boolean send(Packet packet);
+	
+	/**
+	 * Gets whether this proxy is connected using a fallback method
+	 */
+	public abstract boolean isUsingFallback();
 	
 	private DataProxyListener<Packet> listener = null;
 	public void setListener(DataProxyListener<Packet> listener) {

@@ -8,12 +8,10 @@ import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,7 +21,6 @@ import androidx.core.util.Consumer;
 import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
-
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
@@ -32,7 +29,6 @@ import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
 import com.bumptech.glide.signature.ObjectKey;
 import com.github.chrisbanes.photoview.PhotoView;
-import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
@@ -42,12 +38,6 @@ import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.helper.AttachmentStorageHelper;
@@ -55,6 +45,10 @@ import me.tagavari.airmessage.helper.ExternalStorageHelper;
 import me.tagavari.airmessage.helper.FileHelper;
 import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.view.RoundedFrameLayout;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MediaViewer extends AppCompatActivity {
 	//Creating the constants

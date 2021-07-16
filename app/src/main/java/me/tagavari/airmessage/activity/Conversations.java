@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.service.notification.StatusBarNotification;
 import android.text.Editable;
 import android.text.Spannable;
@@ -18,18 +19,9 @@ import android.text.SpannableString;
 import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.TypefaceSpan;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
+import android.view.*;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageButton;
-import android.widget.TextView;
-import android.widget.Toast;
-
+import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.view.ActionMode;
@@ -40,7 +32,6 @@ import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.security.ProviderInstaller;
 import com.google.android.material.appbar.AppBarLayout;
@@ -48,21 +39,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
-
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Optional;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
@@ -75,11 +51,7 @@ import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
-import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
-import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
-import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
-import me.tagavari.airmessage.compositeplugin.PluginRXDisposable;
-import me.tagavari.airmessage.compositeplugin.PluginThemeUpdater;
+import me.tagavari.airmessage.compositeplugin.*;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.constants.ExternalLinkConstants;
@@ -91,33 +63,23 @@ import me.tagavari.airmessage.enums.ConnectionState;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.enums.ServiceHandler;
 import me.tagavari.airmessage.fragment.FragmentSync;
-import me.tagavari.airmessage.helper.AddressHelper;
-import me.tagavari.airmessage.helper.ConversationHelper;
-import me.tagavari.airmessage.helper.ConversationPreviewHelper;
-import me.tagavari.airmessage.helper.ErrorDetailsHelper;
-import me.tagavari.airmessage.helper.NotificationHelper;
-import me.tagavari.airmessage.helper.PlatformHelper;
-import me.tagavari.airmessage.helper.ShortcutHelper;
-import me.tagavari.airmessage.helper.StringHelper;
-import me.tagavari.airmessage.helper.ThemeHelper;
-import me.tagavari.airmessage.helper.WindowHelper;
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.ConversationItem;
-import me.tagavari.airmessage.messaging.ConversationPreview;
-import me.tagavari.airmessage.messaging.MemberInfo;
-import me.tagavari.airmessage.messaging.MessageInfo;
+import me.tagavari.airmessage.helper.*;
+import me.tagavari.airmessage.messaging.*;
 import me.tagavari.airmessage.messaging.viewbinder.VBConversation;
 import me.tagavari.airmessage.messaging.viewholder.VHConversationDetailed;
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
-import me.tagavari.airmessage.redux.ReduxEventConnection;
-import me.tagavari.airmessage.redux.ReduxEventMassRetrieval;
-import me.tagavari.airmessage.redux.ReduxEventMessaging;
-import me.tagavari.airmessage.redux.ReduxEventTextImport;
+import me.tagavari.airmessage.redux.*;
 import me.tagavari.airmessage.task.ConversationActionTask;
 import me.tagavari.airmessage.util.DisposableViewHolder;
-import me.tagavari.airmessage.util.ObjIntConsumer;
 import me.tagavari.airmessage.util.ReplaceInsertResult;
 import me.tagavari.airmessage.util.TransferredConversation;
+
+import java.lang.ref.WeakReference;
+import java.util.*;
+import java.util.function.ObjIntConsumer;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public class Conversations extends AppCompatCompositeActivity {
 	//Creating the constants
@@ -511,6 +473,8 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		
 		//Returning if there are no results
 		if(grantResults.length == 0) return;
 		
@@ -533,13 +497,13 @@ public class Conversations extends AppCompatCompositeActivity {
 			else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
 				//Showing a snackbar
 				Snackbar.make(findViewById(R.id.root), R.string.message_permissionrejected, Snackbar.LENGTH_LONG)
-						.setAction(R.string.screen_settings, view -> {
-							//Opening the application settings
-							Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-							intent.setData(Uri.parse("package:" + getPackageName()));
-							startActivity(intent);
-						})
-						.show();
+					.setAction(R.string.screen_settings, view -> {
+						//Opening the application settings
+						Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+						intent.setData(Uri.parse("package:" + getPackageName()));
+						startActivity(intent);
+					})
+					.show();
 			}
 		}
 	}
@@ -823,7 +787,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		if(button == null) {
 			infoBarConnection.removeButton();
 		} else {
-			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().accept(this, pluginCS.getConnectionManager()));
+			infoBarConnection.setButton(getResources().getString(button.getLabel()), view -> button.getClickListener().invoke(this, getSupportFragmentManager(), pluginCS.getConnectionManager()));
 		}
 		
 		//Showing the info bar

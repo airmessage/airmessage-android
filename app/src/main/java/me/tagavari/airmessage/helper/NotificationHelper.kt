@@ -1,10 +1,10 @@
 package me.tagavari.airmessage.helper
 
-import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.Typeface
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.net.Uri
@@ -24,7 +24,6 @@ import androidx.core.graphics.drawable.IconCompat
 import androidx.preference.PreferenceManager
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.functions.Consumer
 import io.reactivex.rxjava3.schedulers.Schedulers
 import me.tagavari.airmessage.BuildConfig
 import me.tagavari.airmessage.MainApplication
@@ -49,18 +48,22 @@ import me.tagavari.airmessage.receiver.MessageNotificationDeleteReceiver
 import me.tagavari.airmessage.service.ConnectionService
 import me.tagavari.airmessage.util.NotificationSummaryMessage
 import java.util.*
-import kotlin.collections.ArrayList
 
 object NotificationHelper {
 	private val TAG = NotificationHelper::class.simpleName!!
 	const val notificationChannelMessage = "message"
 	const val notificationChannelMessageError = "message_error"
+	const val notificationChannelMessageReceiveError = "message_receive_error"
 	const val notificationChannelStatus = "status"
 	const val notificationChannelStatusImportant = "status_important"
+	
 	const val notificationGroupMessage = "me.tagavari.airmessage.NOTIFICATION_GROUP_MESSAGE"
+	
 	const val notificationIDConnectionService = -1
 	const val notificationIDMessageImport = -2
 	const val notificationIDMessageSummary = -3
+	const val notificationIDWarningDecrypt = -4
+	
 	const val notificationTagMessage = "message"
 	const val notificationTagMessageError = "message_error"
 	
@@ -90,17 +93,26 @@ object NotificationHelper {
 									.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
 									.setLegacyStreamType(AudioManager.STREAM_NOTIFICATION)
 									.build())
-					//setGroup(notificationGroupMessage);
-				})
+				}
+		)
 		
 		notificationManager.createNotificationChannel(
-				NotificationChannel(notificationChannelMessageError, context.resources.getString(R.string.notificationchannel_messageerror), NotificationManager.IMPORTANCE_HIGH).apply {
-					description = context.getString(R.string.notificationchannel_messageerror_desc)
-					enableVibration(true)
-					setShowBadge(true)
-					enableLights(true)
-					//setGroup(notificationGroupMessage);
-				})
+			NotificationChannel(notificationChannelMessageError, context.resources.getString(R.string.notificationchannel_messageerror), NotificationManager.IMPORTANCE_HIGH).apply {
+				description = context.getString(R.string.notificationchannel_messageerror_desc)
+				enableVibration(true)
+				setShowBadge(true)
+				enableLights(true)
+			}
+		)
+		
+		notificationManager.createNotificationChannel(
+			NotificationChannel(notificationChannelMessageReceiveError, context.resources.getString(R.string.notificationchannel_messageerrorreception), NotificationManager.IMPORTANCE_HIGH).apply {
+				description = context.getString(R.string.notificationchannel_messageerrorreception_desc)
+				enableVibration(true)
+				setShowBadge(true)
+				enableLights(true)
+			}
+		)
 		
 		notificationManager.createNotificationChannel(
 				NotificationChannel(notificationChannelStatus, context.resources.getString(R.string.notificationchannel_status), NotificationManager.IMPORTANCE_MIN).apply {
@@ -117,7 +129,8 @@ object NotificationHelper {
 					enableVibration(true)
 					setShowBadge(false)
 					enableLights(false)
-				})
+				}
+		)
 	}
 	
 	/**
@@ -180,14 +193,14 @@ object NotificationHelper {
 		}
 		
 		//Generate the message sender info
-		val singleMemberInfo: Single<Optional<UserCacheHelper.UserInfo>> = if(conversationInfo.members.isEmpty() || conversationInfo.isGroupChat && sender == null) {
+		val singleMemberInfo: Single<Optional<UserCacheHelper.UserInfo>> = if(conversationInfo.members.isEmpty() || (conversationInfo.isGroupChat && sender == null)) {
 			Single.just(Optional.empty())
 		} else {
 			/*
 			 * If we're in a group chat, get the icon of the sender
 			 * Otherwise, get the icon of the other member in the one-on-one chat
 			 */
-			val memberAddress = if(conversationInfo.isGroupChat) sender else conversationInfo.members[0].address
+			val memberAddress: String = if(conversationInfo.isGroupChat) sender!! else conversationInfo.members[0].address
 			MainApplication.getInstance().userCacheHelper.getUserInfo(context, memberAddress)
 					.map { Optional.of(it) }.onErrorReturnItem(Optional.empty()).cache()
 		}
@@ -231,8 +244,8 @@ object NotificationHelper {
 											sender == null,
 											resultMemberIcon.orElse(null),
 											resultShortcutIcon.orElse(null),
-											resultMemberInfo.map(UserCacheHelper.UserInfo::getContactLookupUri).orElse(null),
-											if(resultSuggestions.size > 0) resultSuggestions else null
+											resultMemberInfo.map { it.contactLookupUri }.orElse(null),
+											resultSuggestions.ifEmpty { null }
 									),
 									conversationInfo,
 									resultTitle,
@@ -644,18 +657,48 @@ object NotificationHelper {
 			
 			//Creating the notification
 			val notification = NotificationCompat.Builder(context, notificationChannelMessageError)
-					.setSmallIcon(R.drawable.message_alert)
-					.setContentTitle(context.resources.getString(R.string.message_senderrornotify))
-					.setContentText(context.resources.getString(R.string.message_senderrornotify_desc, title))
-					.setContentIntent(clickPendingIntent)
-					.setColor(context.resources.getColor(R.color.colorError, null))
-					.setCategory(Notification.CATEGORY_ERROR)
-					.setDefaults(Notification.DEFAULT_ALL) //API 23-25
-					.setPriority(Notification.PRIORITY_HIGH).build() //API 23-25
+				.setSmallIcon(R.drawable.message_alert)
+				.setContentTitle(context.resources.getString(R.string.message_senderrornotify))
+				.setContentText(context.resources.getString(R.string.message_senderrornotify_desc, title))
+				.setContentIntent(clickPendingIntent)
+				.setColor(context.resources.getColor(R.color.colorError, null))
+				.setCategory(Notification.CATEGORY_ERROR)
+				.setDefaults(Notification.DEFAULT_ALL) //API 23-25
+				.setPriority(Notification.PRIORITY_HIGH).build() //API 23-25
 			
 			//Sending the notification
 			notificationManager.notify(notificationTagMessageError, conversationInfo.localID.toInt(), notification)
 		}
+	}
+	
+	/**
+	 * Sends a notification to alert the user that an incoming message could not be decrypted
+	 * @param context The context to use
+	 */
+	@JvmStatic
+	fun sendDecryptErrorNotification(context: Context) {
+		//Getting the notification manager
+		val notificationManager = NotificationManagerCompat.from(context)
+
+		//Getting the pending intent
+		val clickPendingIntent: PendingIntent = TaskStackBuilder.create(context).run {
+			addNextIntentWithParentStack(Intent(context, Conversations::class.java))
+			getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT)
+		}
+		
+		//Creating the notification
+		val notification = NotificationCompat.Builder(context, notificationChannelMessageReceiveError)
+			.setSmallIcon(R.drawable.message_alert)
+			.setContentTitle(context.resources.getString(R.string.message_decrypterrornotify))
+			.setContentText(context.resources.getString(R.string.message_decrypterrornotify_desc))
+			.setContentIntent(clickPendingIntent)
+			.setColor(context.resources.getColor(R.color.colorError, null))
+			.setCategory(Notification.CATEGORY_ERROR)
+			.setDefaults(Notification.DEFAULT_ALL) //API 23-25
+			.setPriority(Notification.PRIORITY_HIGH).build() //API 23-25
+		
+		//Sending the notification
+		notificationManager.notify(notificationTagMessageError, notificationIDWarningDecrypt, notification)
 	}
 	
 	/**
@@ -751,7 +794,14 @@ object NotificationHelper {
 		//Building the notification
 		return NotificationCompat.Builder(context, notificationChannelStatus).apply {
 			setSmallIcon(R.drawable.push)
-			setContentTitle(context.resources.getString(if(isConnected) if(isFallback) R.string.message_connection_connectedfallback else R.string.message_connection_connected else R.string.progress_connectingtoserver))
+			setContentTitle(context.resources.getString(
+				if(isConnected) {
+					if(isFallback) R.string.message_connection_connectedfallback
+					else R.string.message_connection_connected
+				} else {
+					R.string.progress_connectingtoserver
+				}
+			))
 			setContentText(context.resources.getString(R.string.imperative_tapopenapp))
 			
 			setShowWhen(false)

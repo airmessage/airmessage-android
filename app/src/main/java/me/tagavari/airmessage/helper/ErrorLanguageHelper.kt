@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.helper
 
 import android.content.Context
-import android.util.Pair
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.MessageSendErrorCode
 import me.tagavari.airmessage.messaging.ConversationInfo

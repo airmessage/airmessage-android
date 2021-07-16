@@ -7,18 +7,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
-
 import androidx.annotation.Nullable;
 import androidx.core.app.RemoteInput;
-
-import java.util.Collections;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
-import io.reactivex.rxjava3.functions.Consumer;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.exception.AMRequestException;
@@ -34,6 +29,8 @@ import me.tagavari.airmessage.service.ConnectionService;
 import me.tagavari.airmessage.task.ConversationActionTask;
 import me.tagavari.airmessage.task.MessageActionTask;
 import me.tagavari.airmessage.util.ConversationTarget;
+
+import java.util.Collections;
 
 //Broadcast receiver for handling actions on message notifications
 public class MessageNotificationActionReceiver extends BroadcastReceiver {

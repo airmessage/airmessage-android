@@ -1,17 +1,8 @@
 package me.tagavari.airmessage.connection.request;
 
 import android.content.Context;
-
 import androidx.annotation.Nullable;
 import androidx.arch.core.util.Function;
-
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.concurrent.Executors;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Scheduler;
@@ -19,6 +10,9 @@ import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.helper.AttachmentStorageHelper;
+
+import java.io.*;
+import java.util.concurrent.Executors;
 
 public class FileFetchRequest {
 	private final Scheduler requestScheduler = Schedulers.from(Executors.newSingleThreadExecutor(), true);

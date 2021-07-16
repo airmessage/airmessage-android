@@ -8,14 +8,12 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.view.ViewGroup;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
-
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.constants.ColorConstants;

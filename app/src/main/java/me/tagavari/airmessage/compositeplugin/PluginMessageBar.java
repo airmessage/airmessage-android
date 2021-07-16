@@ -5,12 +5,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
-
-import com.google.android.material.button.MaterialButton;
-
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
-
+import com.google.android.material.button.MaterialButton;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
 

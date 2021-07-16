@@ -2,31 +2,24 @@ package me.tagavari.airmessage.connection.request;
 
 import android.content.Context;
 import android.util.Log;
-
 import androidx.annotation.Nullable;
 import androidx.arch.core.util.Function;
-
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.Executors;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.helper.AttachmentStorageHelper;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationItem;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.Executors;
 
 public class MassRetrievalRequest {
 	private static final String TAG = MassRetrievalRequest.class.getName();
@@ -115,7 +108,7 @@ public class MassRetrievalRequest {
 				}
 				
 				//Writing the item
-				ConversationItem conversationItem = DatabaseManager.getInstance().addConversationStruct(context, parentConversation.getLocalID(), structItem);
+				ConversationItem conversationItem = DatabaseManager.getInstance().addConversationStruct(context, parentConversation.getLocalID(), structItem, true);
 				if(conversationItem == null) continue;
 				addedItemList.add(conversationItem);
 			}

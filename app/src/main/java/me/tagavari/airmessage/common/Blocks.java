@@ -2,12 +2,11 @@ package me.tagavari.airmessage.common;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
-import java.util.List;
-
 import me.tagavari.airmessage.enums.GroupAction;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.enums.MessageState;
+
+import java.util.List;
 
 /**
  * POJOs for messaging data received over the network

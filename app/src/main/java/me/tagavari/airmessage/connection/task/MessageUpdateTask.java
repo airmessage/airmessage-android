@@ -1,15 +1,7 @@
 package me.tagavari.airmessage.connection.task;
 
 import android.content.Context;
-
 import androidx.annotation.Nullable;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.core.Single;
@@ -22,16 +14,16 @@ import me.tagavari.airmessage.enums.ConversationState;
 import me.tagavari.airmessage.enums.GroupAction;
 import me.tagavari.airmessage.helper.ConversationColorHelper;
 import me.tagavari.airmessage.helper.ConversationHelper;
-import me.tagavari.airmessage.messaging.AttachmentInfo;
-import me.tagavari.airmessage.messaging.ChatMemberAction;
-import me.tagavari.airmessage.messaging.ChatRenameAction;
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.ConversationItem;
-import me.tagavari.airmessage.messaging.MemberInfo;
-import me.tagavari.airmessage.messaging.MessageInfo;
+import me.tagavari.airmessage.messaging.*;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;
 import me.tagavari.airmessage.util.ConversationValueUpdateResult;
 import me.tagavari.airmessage.util.ReplaceInsertResult;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class MessageUpdateTask {
 	/**
@@ -60,7 +52,7 @@ public class MessageUpdateTask {
 				List<ReplaceInsertResult> newItems = conversationInfo.getState() == ConversationState.ready ? new ArrayList<>(entry.getValue().size()) : null;
 				for(Blocks.ConversationItem conversationItem : entry.getValue()) {
 					//Adding the conversation item to the database
-					ReplaceInsertResult replaceInsertResult = DatabaseManager.getInstance().mergeOrWriteConversationItem(context, conversationInfo.getLocalID(), conversationItem);
+					ReplaceInsertResult replaceInsertResult = DatabaseManager.getInstance().mergeOrWriteConversationItem(context, conversationInfo.getLocalID(), conversationItem, false);
 					if(replaceInsertResult == null) continue;
 					
 					ConversationItem targetItem = replaceInsertResult.getTargetItem();

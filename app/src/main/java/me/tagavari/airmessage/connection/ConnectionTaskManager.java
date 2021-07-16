@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.connection;
 
 import androidx.annotation.Nullable;
-
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.subjects.BehaviorSubject;

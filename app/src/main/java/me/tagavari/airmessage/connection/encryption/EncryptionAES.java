@@ -1,17 +1,16 @@
 package me.tagavari.airmessage.connection.encryption;
 
-import java.nio.ByteBuffer;
-import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
-import java.security.spec.KeySpec;
-import java.util.Arrays;
-
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.ByteBuffer;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import java.security.spec.KeySpec;
+import java.util.Arrays;
 
 public class EncryptionAES implements EncryptionManager {
 	//Creating the constants

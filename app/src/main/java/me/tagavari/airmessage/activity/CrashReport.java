@@ -9,10 +9,8 @@ import android.text.method.ScrollingMovementMethod;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.helper.ExternalStorageHelper;
 

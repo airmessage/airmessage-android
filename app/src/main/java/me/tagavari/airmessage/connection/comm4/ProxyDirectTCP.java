@@ -3,21 +3,18 @@ package me.tagavari.airmessage.connection.comm4;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-
 import androidx.annotation.Nullable;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.constants.NetworkConstants;
 import me.tagavari.airmessage.constants.RegexConstants;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.util.DirectConnectionParams;
+import me.tagavari.airmessage.util.ConnectionParams;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 /**
  * Establishes a direct connection with the server
@@ -54,35 +51,34 @@ class ProxyDirectTCP extends DataProxy<HeaderPacket> {
 	};
 	
 	@Override
-	public void start(Context context, @Nullable Object override) {
+	public void start(Context context, @Nullable ConnectionParams override) {
 		//Returning if this proxy is already running
 		if(isRunning) {
 			FirebaseCrashlytics.getInstance().recordException(new IllegalStateException("Tried to start proxy, but it is already running!"));
 			return;
 		}
 		
-		DirectConnectionParams connectionParams;
+		ConnectionParams.Direct connectionParams;
 		
 		if(override == null) {
 			try {
-				connectionParams = SharedPreferencesManager.getDirectConnectionDetails(context);
+				connectionParams = SharedPreferencesManager.getDirectConnectionDetails(context).toConnectionParams();
+				
+				if(connectionParams == null) {
+					notifyClose(ConnectionErrorCode.internalError);
+					return;
+				}
 			} catch(IOException | GeneralSecurityException exception) {
 				exception.printStackTrace();
 				notifyClose(ConnectionErrorCode.internalError);
 				return;
 			}
 		} else {
-			connectionParams = (DirectConnectionParams) override;
+			connectionParams = (ConnectionParams.Direct) override;
 		}
 		
 		String hostname, hostnameFallback;
 		int port, portFallback;
-		
-		//Checking if the connection params are valid
-		if(connectionParams.getAddress() == null || connectionParams.getPassword() == null) {
-			notifyClose(ConnectionErrorCode.internalError);
-			return;
-		}
 		
 		//Parsing the address
 		if(RegexConstants.port.matcher(connectionParams.getAddress()).find()) {
@@ -145,7 +141,8 @@ class ProxyDirectTCP extends DataProxy<HeaderPacket> {
 		return true;
 	}
 	
-	boolean isUsingFallback() {
+	@Override
+	public boolean isUsingFallback() {
 		return readerThread != null && readerThread.isUsingFallback();
 	}
 }

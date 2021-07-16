@@ -4,7 +4,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
-
 import me.tagavari.airmessage.helper.FileHelper;
 import me.tagavari.airmessage.messaging.FileLinked;
 import me.tagavari.airmessage.util.Union;

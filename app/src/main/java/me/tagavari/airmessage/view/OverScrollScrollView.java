@@ -5,8 +5,6 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.widget.ScrollView;
 
-import androidx.core.view.MotionEventCompat;
-
 public class OverScrollScrollView extends ScrollView {
 	private OverScrollListener overScrollListener = null;
 	

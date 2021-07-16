@@ -1,9 +1,7 @@
 package me.tagavari.airmessage.activity;
 
 import android.os.Bundle;
-
 import androidx.appcompat.app.AppCompatActivity;
-
 import me.tagavari.airmessage.R;
 
 public class ImageDraw extends AppCompatActivity {

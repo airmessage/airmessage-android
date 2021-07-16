@@ -10,44 +10,21 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
-
 import androidx.annotation.Nullable;
 import androidx.arch.core.util.Function;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Completable;
-import io.reactivex.rxjava3.core.CompletableTransformer;
 import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.ObservableTransformer;
-import io.reactivex.rxjava3.core.Scheduler;
-import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.core.SingleTransformer;
+import io.reactivex.rxjava3.core.*;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.CompletableSubject;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.SingleSubject;
 import kotlin.Pair;
+import kotlin.Unit;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Messaging;
-import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.comm4.ClientComm4;
 import me.tagavari.airmessage.connection.comm5.ClientComm5;
@@ -60,35 +37,21 @@ import me.tagavari.airmessage.connection.task.MessageUpdateTask;
 import me.tagavari.airmessage.connection.task.ModifierUpdateTask;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
-import me.tagavari.airmessage.enums.ChatCreateErrorCode;
-import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.enums.ConnectionFeature;
-import me.tagavari.airmessage.enums.ConnectionMode;
-import me.tagavari.airmessage.enums.ConnectionState;
-import me.tagavari.airmessage.enums.ConversationState;
-import me.tagavari.airmessage.enums.MassRetrievalErrorCode;
-import me.tagavari.airmessage.enums.MessageSendErrorCode;
-import me.tagavari.airmessage.enums.ProxyType;
-import me.tagavari.airmessage.enums.TrackableRequestCategory;
+import me.tagavari.airmessage.enums.*;
 import me.tagavari.airmessage.helper.ConversationColorHelper;
-import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
-import me.tagavari.airmessage.redux.ReduxEventAttachmentDownload;
-import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
-import me.tagavari.airmessage.redux.ReduxEventConnection;
-import me.tagavari.airmessage.redux.ReduxEventMassRetrieval;
-import me.tagavari.airmessage.redux.ReduxEventMessaging;
-import me.tagavari.airmessage.util.ActivityStatusUpdate;
-import me.tagavari.airmessage.util.CompoundErrorDetails;
-import me.tagavari.airmessage.util.ConversationTarget;
-import me.tagavari.airmessage.util.ModifierMetadata;
-import me.tagavari.airmessage.util.RequestSubject;
-import me.tagavari.airmessage.util.TrackableRequest;
+import me.tagavari.airmessage.redux.*;
+import me.tagavari.airmessage.util.*;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class ConnectionManager {
 	private static final String TAG = ConnectionManager.class.getSimpleName();
@@ -168,7 +131,7 @@ public class ConnectionManager {
 	private final CompositeDisposable compositeDisposable = new CompositeDisposable();
 	
 	//Response values
-	private final Map<Short, RequestSubject<?>> idRequestSubjectMap = new HashMap<>(); //For ID-based requests
+	private final Map<Short, RequestSubject<?, ?>> idRequestSubjectMap = new HashMap<>(); //For ID-based requests
 	
 	//State values
 	private boolean disableReconnections = false;
@@ -309,7 +272,7 @@ public class ConnectionManager {
 			//Cleaning up after an established connection
 			if(connectionEstablished) {
 				//Failing all pending requests
-				for(RequestSubject<?> subject : new ArrayList<>(idRequestSubjectMap.values())) subject.onExpire();
+				for(RequestSubject<?, ?> subject : new ArrayList<>(idRequestSubjectMap.values())) subject.onExpire();
 				
 				//Clearing the pending sync state
 				isPendingSync = false;
@@ -384,7 +347,7 @@ public class ConnectionManager {
 			//Loading the foreground conversations (needs to be done on the main thread)
 			Single.fromCallable(Messaging::getForegroundConversations)
 					.subscribeOn(AndroidSchedulers.mainThread())
-					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, filteredData, Preferences.getPreferenceAutoDownloadAttachments(getContext())))
+					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, filteredData, false))
 					.observeOn(AndroidSchedulers.mainThread())
 					.doOnSuccess(response -> {
 						//Emitting any generated events
@@ -394,22 +357,13 @@ public class ConnectionManager {
 						
 						//Fetching pending conversations
 						addPendingConversations(response.getIncompleteServerConversations());
-						
-						//Downloading attachments
-						if(response.getCollectedAttachments() != null) {
-							for(Pair<MessageInfo, AttachmentInfo> attachmentData : response.getCollectedAttachments()) {
-								//Ignoring outgoing attachments
-								if(attachmentData.getFirst().isOutgoing()) continue;
-								ConnectionTaskManager.downloadAttachment(ConnectionManager.this, attachmentData.getFirst().getLocalID(), attachmentData.getSecond().getLocalID(), attachmentData.getSecond().getGUID(), attachmentData.getSecond().getFileName());
-							}
-						}
 					}).subscribe();
 		}
 		
 		@Override
 		public void onMassRetrievalStart(short requestID, Collection<Blocks.ConversationInfo> conversations, int messageCount) {
 			//Getting the request
-			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> subject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Initializing the request
@@ -418,7 +372,7 @@ public class ConnectionManager {
 					massRetrievalRequest.handleInitialInfo(conversations, messageCount)
 							.subscribe((addedConversations) -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Start(massRetrievalRequest.getRequestID(), addedConversations, messageCount);
@@ -426,7 +380,7 @@ public class ConnectionManager {
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								if(error instanceof IllegalArgumentException) {
@@ -442,7 +396,7 @@ public class ConnectionManager {
 		@Override
 		public void onMassRetrievalUpdate(short requestID, int responseIndex, Collection<Blocks.ConversationItem> data) {
 			//Getting the request
-			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> subject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Saving the data
@@ -451,7 +405,7 @@ public class ConnectionManager {
 					massRetrievalRequest.handleMessages(getContext(), responseIndex, data)
 							.subscribe((addedItems) -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Progress(massRetrievalRequest.getRequestID(), addedItems, massRetrievalRequest.getMessagesReceived(), massRetrievalRequest.getTotalMessageCount());
@@ -460,7 +414,7 @@ public class ConnectionManager {
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								if(error instanceof IllegalArgumentException) {
@@ -476,7 +430,7 @@ public class ConnectionManager {
 		@Override
 		public void onMassRetrievalComplete(short requestID) {
 			//Getting the request
-			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> subject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Completing the request
@@ -485,7 +439,7 @@ public class ConnectionManager {
 					massRetrievalRequest.complete()
 							.subscribe(() -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.Complete(massRetrievalRequest.getRequestID());
@@ -494,7 +448,7 @@ public class ConnectionManager {
 								localSubject.onComplete();
 							}, (error) -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								massRetrievalRequest.cancel();
@@ -507,7 +461,7 @@ public class ConnectionManager {
 		@Override
 		public void onMassRetrievalFail(short requestID) {
 			//Getting the request
-			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> subject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Cancelling the request
@@ -526,7 +480,7 @@ public class ConnectionManager {
 		@Override
 		public void onMassRetrievalFileStart(short requestID, String fileGUID, String fileName, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
 			//Getting the request
-			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> subject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Initializing the attachment request
@@ -535,7 +489,7 @@ public class ConnectionManager {
 					massRetrievalRequest.initializeAttachment(getContext(), fileGUID, fileName, streamWrapper)
 							.subscribe(() -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File(massRetrievalRequest.getRequestID());
@@ -543,7 +497,7 @@ public class ConnectionManager {
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								if(error instanceof IOException) {
@@ -561,7 +515,7 @@ public class ConnectionManager {
 		@Override
 		public void onMassRetrievalFileProgress(short requestID, int responseIndex, String fileGUID, byte[] fileData) {
 			//Getting the request
-			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> subject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Writing the data
@@ -570,7 +524,7 @@ public class ConnectionManager {
 					massRetrievalRequest.writeChunkAttachment(fileGUID, responseIndex, fileData)
 							.subscribe(() -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File(massRetrievalRequest.getRequestID());
@@ -578,7 +532,7 @@ public class ConnectionManager {
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								if(error instanceof IOException) {
@@ -596,7 +550,7 @@ public class ConnectionManager {
 		@Override
 		public void onMassRetrievalFileComplete(short requestID, String fileGUID) {
 			//Getting the request
-			RequestSubject.Publish<ReduxEventMassRetrieval> subject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> subject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Writing the data
@@ -605,7 +559,7 @@ public class ConnectionManager {
 					massRetrievalRequest.finishAttachment(getContext(), fileGUID)
 							.subscribe(() -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								ReduxEventMassRetrieval event = new ReduxEventMassRetrieval.File(massRetrievalRequest.getRequestID());
@@ -613,7 +567,7 @@ public class ConnectionManager {
 								ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(event);
 							}, (error) -> {
 								//Getting the request
-								RequestSubject.Publish<ReduxEventMassRetrieval> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval>) idRequestSubjectMap.get(requestID);
+								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 								if(localSubject == null) return;
 								
 								if(error instanceof IOException) {
@@ -691,7 +645,7 @@ public class ConnectionManager {
 		@Override
 		public void onFileRequestStart(short requestID, long length, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
 			//Getting the request
-			RequestSubject.Publish<ReduxEventAttachmentDownload> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Initializing the request
@@ -711,7 +665,7 @@ public class ConnectionManager {
 		@Override
 		public void onFileRequestData(short requestID, int responseIndex, byte[] data) {
 			//Getting the request
-			RequestSubject.Publish<ReduxEventAttachmentDownload> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Writing the data
@@ -719,13 +673,13 @@ public class ConnectionManager {
 			compositeDisposable.add(
 					fileFetchRequest.writeChunk(responseIndex, data).subscribe((writtenLength) -> {
 						//Getting the request
-						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest>) idRequestSubjectMap.get(requestID);
 						if(localSubject == null) return;
 						
 						localSubject.get().onNext(new ReduxEventAttachmentDownload.Progress(writtenLength, fileFetchRequest.getTotalLength()));
 					}, (error) -> {
 						//Getting the request
-						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest>) idRequestSubjectMap.get(requestID);
 						if(localSubject == null) return;
 						
 						if(error instanceof IOException) {
@@ -743,7 +697,7 @@ public class ConnectionManager {
 		@Override
 		public void onFileRequestComplete(short requestID) {
 			//Getting the request
-			RequestSubject.Publish<ReduxEventAttachmentDownload> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Completing the request
@@ -751,7 +705,7 @@ public class ConnectionManager {
 			compositeDisposable.add(
 					fileFetchRequest.complete(getContext()).subscribe((attachmentFile) -> {
 						//Getting the request
-						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest>) idRequestSubjectMap.get(requestID);
 						if(localSubject == null) return;
 						
 						localSubject.get().onNext(new ReduxEventAttachmentDownload.Complete(attachmentFile));
@@ -759,7 +713,7 @@ public class ConnectionManager {
 						ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.AttachmentFile(fileFetchRequest.getMessageID(), fileFetchRequest.getAttachmentID(), attachmentFile));
 					}, (error) -> {
 						//Getting the request
-						RequestSubject.Publish<ReduxEventAttachmentDownload> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+						RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest>) idRequestSubjectMap.get(requestID);
 						if(localSubject == null) return;
 						
 						localSubject.onError(new AMRequestException(AttachmentReqErrorCode.localIO));
@@ -771,7 +725,7 @@ public class ConnectionManager {
 		@Override
 		public void onFileRequestFail(short requestID, @AttachmentReqErrorCode int errorCode) {
 			//Getting the request
-			RequestSubject.Publish<ReduxEventAttachmentDownload> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			//Failing the request
@@ -787,7 +741,7 @@ public class ConnectionManager {
 		@Override
 		public void onSendMessageSuccess(short requestID) {
 			//Resolving the completable
-			RequestSubject.EmptyCompletable<?> subject = (RequestSubject.EmptyCompletable<?>) idRequestSubjectMap.get(requestID);
+			RequestSubject.EmptyCompletable<?, ?> subject = (RequestSubject.EmptyCompletable<?, ?>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			subject.onComplete();
@@ -798,7 +752,7 @@ public class ConnectionManager {
 		@Override
 		public void onSendMessageFail(short requestID, CompoundErrorDetails.MessageSend error) {
 			//Failing the completable
-			RequestSubject<?> subject = idRequestSubjectMap.get(requestID);
+			RequestSubject<?, ?> subject = idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			subject.onError(error.toException());
@@ -809,7 +763,7 @@ public class ConnectionManager {
 		@Override
 		public void onCreateChatSuccess(short requestID, String chatGUID) {
 			//Resolving the completable
-			RequestSubject.Single<String> subject = (RequestSubject.Single<String>) idRequestSubjectMap.get(requestID);
+			RequestSubject.Single<String, ?> subject = (RequestSubject.Single<String, ?>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			subject.get().onSuccess(chatGUID);
@@ -820,7 +774,7 @@ public class ConnectionManager {
 		@Override
 		public void onCreateChatError(short requestID, CompoundErrorDetails.ChatCreate error) {
 			//Failing the completable
-			RequestSubject<?> subject = idRequestSubjectMap.get(requestID);
+			RequestSubject<?, ?> subject = idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
 			
 			subject.onError(error.toException());
@@ -839,13 +793,13 @@ public class ConnectionManager {
 	 * @return A matching request subject of type R, or NULL if not found
 	 */
 	@Nullable
-	public <S, R extends RequestSubject<S>, K> R findRequest(@TrackableRequestCategory int category, K key) {
+	public <S, R extends RequestSubject<S, TrackableRequest<?>>, K> R findRequest(@TrackableRequestCategory int category, K key) {
 		return (R) idRequestSubjectMap.values().stream().filter(requestSubject -> {
 			//Ignoring if this subject isn't trackable
 			if(!(requestSubject.getRequestData() instanceof TrackableRequest)) return false;
 			
 			//Ignoring if this trackable request is for a different category
-			TrackableRequest<?> trackableRequest = requestSubject.getRequestData();
+			TrackableRequest<?> trackableRequest = (TrackableRequest<?>) requestSubject.getRequestData();
 			if(trackableRequest.getCategory() != category) return false;
 			
 			//Ignoring if the keys don't match
@@ -969,7 +923,7 @@ public class ConnectionManager {
 	private boolean connectFromList(Context context, int index) {
 		//Getting the parameters
 		int proxyType = connectionOverride == null ? SharedPreferencesManager.getProxyType(context) : connectionOverride.getProxyType();
-		Object overrideValue = connectionOverride == null ? null : connectionOverride.getValue();
+		ConnectionParams overrideValue = connectionOverride == null ? null : connectionOverride.getValue();
 		
 		//Creating and checking the communications manager
 		communicationsManager = communicationsPriorityList.get(index).create(communicationsManagerListener, proxyType);
@@ -1003,6 +957,14 @@ public class ConnectionManager {
 	@ConnectionState
 	public int getState() {
 		return connState;
+	}
+	
+	/**
+	 * Gets whether the current connection is a fallback connection
+	 */
+	public boolean isUsingFallback() {
+		if(communicationsManager == null) return false;
+		return communicationsManager.getDataProxy().isUsingFallback();
 	}
 	
 	/**
@@ -1105,7 +1067,7 @@ public class ConnectionManager {
 		PublishSubject<ReduxEventAttachmentUpload> subject = PublishSubject.create();
 		
 		//Adding the request to the list
-		idRequestSubjectMap.put(requestID, new RequestSubject.Publish<>(subject, error));
+		idRequestSubjectMap.put(requestID, new RequestSubject.Publish<>(subject, error, Unit.INSTANCE));
 		
 		//Sending the file (not passing completions to the subject, since we'll want to handle those when we receive a response instead)
 		Observable.concat(communicationsManager.sendFile(requestID, conversation, file), Observable.never())
@@ -1140,7 +1102,7 @@ public class ConnectionManager {
 		
 		//Adding the request
 		FileFetchRequest fileFetchRequest = new FileFetchRequest(messageLocalID, attachmentLocalID, attachmentName);
-		return this.<ReduxEventAttachmentDownload>queueObservableIDRequest(requestID, error, fileFetchRequest).doOnError((observableError) -> {
+		return this.<ReduxEventAttachmentDownload, FileFetchRequest>queueObservableIDRequest(requestID, error, fileFetchRequest).doOnError((observableError) -> {
 			//Cleaning up
 			fileFetchRequest.cancel();
 		});
@@ -1229,7 +1191,7 @@ public class ConnectionManager {
 		
 		//Adding the request
 		MassRetrievalRequest massRetrievalRequest = new MassRetrievalRequest(requestID);
-		return this.<ReduxEventMassRetrieval>queueObservableIDRequest(requestID, error, massRetrievalRequest).doOnError((observableError) -> {
+		return this.<ReduxEventMassRetrieval, MassRetrievalRequest>queueObservableIDRequest(requestID, error, massRetrievalRequest).doOnError((observableError) -> {
 			//Getting the error code
 			int errorCode;
 			if(observableError instanceof AMRequestException) {
@@ -1280,7 +1242,7 @@ public class ConnectionManager {
 		CompletableSubject subject = CompletableSubject.create();
 		
 		//Adding the request to the list
-		idRequestSubjectMap.put(requestID, new RequestSubject.Completable(subject, throwable));
+		idRequestSubjectMap.put(requestID, new RequestSubject.Completable(subject, throwable, Unit.INSTANCE));
 		
 		//Adding a timeout
 		return subject.compose(composeTimeoutIDCompletable(requestID, throwable));
@@ -1297,7 +1259,7 @@ public class ConnectionManager {
 		SingleSubject<T> subject = SingleSubject.create();
 		
 		//Adding the request to the list
-		idRequestSubjectMap.put(requestID, new RequestSubject.Single<>(subject, throwable));
+		idRequestSubjectMap.put(requestID, new RequestSubject.Single<>(subject, throwable, Unit.INSTANCE));
 		
 		//Adding a timeout
 		return subject.compose(composeTimeoutIDSingle(requestID, throwable));
@@ -1320,9 +1282,9 @@ public class ConnectionManager {
 	 * @param data Additional data to keep track of during the request
 	 * @return A completable representing the request
 	 */
-	private <T> Observable<T> queueObservableIDRequest(short requestID, Throwable throwable, Object data) {
+	private <S, T> Observable<S> queueObservableIDRequest(short requestID, Throwable throwable, T data) {
 		//Creating the subject
-		PublishSubject<T> subject = PublishSubject.create();
+		PublishSubject<S> subject = PublishSubject.create();
 		
 		//Adding the request to the list
 		idRequestSubjectMap.put(requestID, new RequestSubject.Publish<>(subject, throwable, data));

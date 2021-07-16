@@ -14,18 +14,12 @@ import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.core.SingleSource
-import io.reactivex.rxjava3.functions.Function
-import io.reactivex.rxjava3.functions.Function3
 import me.tagavari.airmessage.activity.Conversations
 import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.helper.ConversationBuildHelper.buildConversationTitle
 import me.tagavari.airmessage.helper.ConversationBuildHelper.generatePersonList
 import me.tagavari.airmessage.helper.ConversationBuildHelper.generateShortcutIcon
 import me.tagavari.airmessage.messaging.ConversationInfo
-import me.tagavari.airmessage.util.Triplet
-import java.util.*
-import java.util.stream.Collectors
-import java.util.stream.Stream
 
 @RequiresApi(api = Build.VERSION_CODES.N_MR1)
 object ShortcutHelper {

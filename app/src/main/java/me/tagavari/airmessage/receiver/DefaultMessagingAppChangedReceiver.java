@@ -5,11 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.provider.Telephony;
-
 import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
-
-import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.service.SystemMessageImportService;

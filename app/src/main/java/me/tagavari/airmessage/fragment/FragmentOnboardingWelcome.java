@@ -6,15 +6,9 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes;
+import com.google.android.gms.auth.api.signin.*;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.ApiException;
@@ -24,15 +18,14 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.GoogleAuthProvider;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.extension.FragmentCommunicationNetworkConfig;
-import me.tagavari.airmessage.util.DirectConnectionParams;
+import me.tagavari.airmessage.util.ConnectionParams;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCommunicationNetworkConfig> {
 	//Creating the constants
@@ -133,7 +126,7 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 				.setPositiveButton(R.string.action_skip, (dialog, which) -> {
 					//Saving blank connection values
 					try {
-						SharedPreferencesManager.setDirectConnectionDetails(getContext(), new DirectConnectionParams("127.0.0.1", null, "password"));
+						SharedPreferencesManager.setDirectConnectionDetails(getContext(), new ConnectionParams.Direct("127.0.0.1", null, "password"));
 					} catch(IOException | GeneralSecurityException exception) {
 						exception.printStackTrace();
 						return;

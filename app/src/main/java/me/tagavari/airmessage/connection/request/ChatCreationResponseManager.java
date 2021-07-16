@@ -2,11 +2,7 @@ package me.tagavari.airmessage.connection.request;
 
 import android.os.Handler;
 import android.os.Looper;
-
 import androidx.core.util.Consumer;
-
-import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.service.ConnectionService;
 
 public abstract class ChatCreationResponseManager {
 	private static final long timeoutDelay = 10 * 1000; //10-second delay

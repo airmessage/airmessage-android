@@ -11,7 +11,6 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.shape.MaterialShapeDrawable
-import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.subjects.SingleSubject
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.MessageComponentType

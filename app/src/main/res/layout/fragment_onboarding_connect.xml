@@ -109,5 +109,67 @@
 				android:layout_gravity="end"
 				android:text="@string/action_retry" />
 		</LinearLayout>
+
+		<!-- Authentication -->
+		<LinearLayout
+			android:id="@+id/layout_auth"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="vertical">
+			<!-- Icon -->
+			<ImageView
+				android:layout_width="48dp"
+				android:layout_height="48dp"
+				android:layout_gravity="center"
+				android:src="@drawable/lock_outlined"
+				android:tint="?android:textColorPrimary"
+				android:layout_marginTop="20dp" />
+
+			<!-- Title -->
+			<TextView
+				style="@style/TextAppearance.MaterialComponents.Body1"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="20dp"
+				android:layout_marginLeft="20dp"
+				android:layout_marginRight="20dp"
+				android:textAlignment="center"
+				android:layout_gravity="center"
+				android:text="@string/message_passwordrequired"
+				android:textStyle="bold"
+				android:textColor="?android:textColorPrimary" />
+
+			<!-- Password input -->
+			<com.google.android.material.textfield.TextInputLayout
+				android:id="@+id/input_auth"
+				style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginLeft="20dp"
+				android:layout_marginRight="20dp"
+				android:layout_marginTop="40dp"
+				android:hint="@string/message_setup_connect_password"
+				app:passwordToggleEnabled="true">
+				<com.google.android.material.textfield.TextInputEditText
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					android:imeOptions="actionGo|flagNoExtractUi"
+					android:inputType="textPassword"
+					android:maxLines="1" />
+			</com.google.android.material.textfield.TextInputLayout>
+
+			<!-- Connect button -->
+			<com.google.android.material.button.MaterialButton
+				android:id="@+id/button_auth"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginLeft="20dp"
+				android:layout_marginRight="20dp"
+				android:layout_marginTop="30dp"
+				android:layout_marginBottom="20dp"
+				android:layout_gravity="end"
+				android:text="@string/action_continue"
+				android:enabled="false" />
+		</LinearLayout>
 	</LinearLayout>
 </ScrollView>

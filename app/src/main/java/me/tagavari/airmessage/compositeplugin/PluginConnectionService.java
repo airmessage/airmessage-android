@@ -6,9 +6,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-
 import androidx.annotation.Nullable;
-
 import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.data.SharedPreferencesManager;

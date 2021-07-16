@@ -1,15 +1,13 @@
 package me.tagavari.airmessage.connection;
 
 import android.content.Context;
-
 import androidx.annotation.Nullable;
-
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.util.DirectConnectionParams;
+import me.tagavari.airmessage.util.ConnectionParams;
 
 public final class ProxyNoOp<Packet> extends DataProxy<Packet> {
 	@Override
-	public void start(Context context, @Nullable Object override) {
+	public void start(Context context, @Nullable ConnectionParams override) {
 		notifyClose(ConnectionErrorCode.badRequest);
 	}
 	
@@ -20,6 +18,11 @@ public final class ProxyNoOp<Packet> extends DataProxy<Packet> {
 	
 	@Override
 	public boolean send(Packet packet) {
+		return false;
+	}
+	
+	@Override
+	public boolean isUsingFallback() {
 		return false;
 	}
 }

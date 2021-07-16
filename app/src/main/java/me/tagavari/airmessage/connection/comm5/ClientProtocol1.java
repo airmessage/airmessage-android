@@ -1,24 +1,7 @@
 package me.tagavari.airmessage.connection.comm5;
 
 import android.os.Build;
-
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.BufferOverflowException;
-import java.nio.BufferUnderflowException;
-import java.security.DigestInputStream;
-import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.common.Blocks;
@@ -29,19 +12,23 @@ import me.tagavari.airmessage.connection.exception.AMRequestException;
 import me.tagavari.airmessage.connection.exception.LargeAllocationException;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
-import me.tagavari.airmessage.enums.ChatCreateErrorCode;
-import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.enums.ConnectionFeature;
-import me.tagavari.airmessage.enums.GroupAction;
-import me.tagavari.airmessage.enums.MessageSendErrorCode;
-import me.tagavari.airmessage.enums.MessageState;
-import me.tagavari.airmessage.enums.TapbackType;
+import me.tagavari.airmessage.enums.*;
 import me.tagavari.airmessage.helper.StandardCompressionHelper;
 import me.tagavari.airmessage.helper.StringHelper;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
 import me.tagavari.airmessage.util.CompoundErrorDetails;
 import me.tagavari.airmessage.util.ConversationTarget;
+
+import java.io.*;
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
+import java.security.DigestInputStream;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 //https://trello.com/c/lRZ6cikc
 class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
@@ -716,7 +703,7 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 	private static int mapNRCAuthenticationCode(int code) {
 		switch(code) {
 			case 1:
-				return ConnectionErrorCode.directUnauthorized;
+				return ConnectionErrorCode.unauthorized;
 			case 2:
 				return ConnectionErrorCode.badRequest;
 			default:

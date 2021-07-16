@@ -56,7 +56,7 @@ class VHAttachmentTileContentAudio(
 	 * @param referenceID A unique ID to represent this draft file
 	 */
 	fun onLoaded(
-		context: Context?,
+		context: Context,
 		compositeDisposable: CompositeDisposable,
 		playbackManager: AudioPlaybackManager,
 		source: Union<File, Uri>,
@@ -66,7 +66,7 @@ class VHAttachmentTileContentAudio(
 		//Checking if we are currently playing this message
 		if(playbackManager.compareRequest(referenceID)) {
 			//Subscribing to audio playback
-			attachAudioPlayback(compositeDisposable, playbackManager.emitter(), metadata.mediaDuration)
+			attachAudioPlayback(compositeDisposable, playbackManager.emitter!!, metadata.mediaDuration)
 		}
 		
 		//Setting the click listener

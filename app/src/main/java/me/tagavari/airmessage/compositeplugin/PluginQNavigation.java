@@ -4,12 +4,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
-
 import androidx.annotation.Nullable;
-import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-
 import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
 
 public class PluginQNavigation extends AppCompatActivityPlugin {

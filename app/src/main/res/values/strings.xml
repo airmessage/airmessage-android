@@ -9,6 +9,7 @@
 
 	<string name="action_send">Send</string>
 	<string name="action_next">Next</string>
+	<string name="action_continue">Continue</string>
 	<string name="action_done">Done</string>
 	<string name="action_back">Back</string>
 	<string name="action_skip">Skip</string>
@@ -71,6 +72,7 @@
 	<string name="action_connectiontroubleshootingguide">View help</string>
 	<string name="action_tapbackdetails">View tapback details</string>
 	<string name="action_renamegroup">Rename this group</string>
+	<string name="action_updatepassword">Update server password</string>
 	<string name="action_manualconfiguration">Use manual configuration</string>
 	<string name="action_signin_google">Sign in with Google</string>
 	<string name="action_signin_email">Sign in with email</string>
@@ -171,8 +173,10 @@
 	<string name="message_senderrornotify_desc">Your message to %s failed to send</string>
 	<string name="message_senderror">Not sent</string>
 
+	<string name="message_decrypterrornotify">Unreadable message received</string>
+	<string name="message_decrypterrornotify_desc">A message was received that could not be decrypted</string>
+
 	<string name="message_connectionerror">Couldn\'t connect to server</string>
-	<string name="message_serviceavailabilityerror">Connection service not available</string>
 
 	<string name="message_permissionrejected">Permission request rejected</string>
 	<string name="message_permissiondetails_contacts_listing">Allow access to contacts to show names and pictures</string>
@@ -385,6 +389,8 @@
 	<string name="message_notsupported">This feature is unavailable</string>
 
 	<string name="message_connecterror">Your server couldn\'t be reached</string>
+	<string name="message_passwordrequired">Server password required</string>
+	<string name="message_passwordupdated">Server password updated</string>
 
 	<string name="progress_loadingmessages">Loading messages&#8230;</string>
 	<string name="progress_loading">Loading&#8230;</string>
@@ -496,6 +502,8 @@
 	<string name="notificationchannel_message_desc">Concerns notifications about incoming messages</string>
 	<string name="notificationchannel_messageerror">Delivery failures</string>
 	<string name="notificationchannel_messageerror_desc">Concerns notifications about failed messages</string>
+	<string name="notificationchannel_messageerrorreception">Reception failures</string>
+	<string name="notificationchannel_messageerrorreception_desc">Concerns notifications about issues that affect message reception</string>
 	<string name="notificationchannel_status">Background status</string>
 	<string name="notificationchannel_status_desc">Concerns notifications about status messages, such as server connectivity</string>
 	<string name="notificationchannel_statusimportant">Important status alerts</string>

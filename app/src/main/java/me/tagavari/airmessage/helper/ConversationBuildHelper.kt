@@ -5,14 +5,12 @@ import android.content.Context
 import android.graphics.*
 import android.graphics.drawable.Icon
 import android.os.Build
-import android.text.TextUtils
 import android.view.View
 import androidx.annotation.RequiresApi
 import io.reactivex.rxjava3.annotations.CheckReturnValue
 import io.reactivex.rxjava3.core.Maybe
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.functions.Function
 import io.reactivex.rxjava3.schedulers.Schedulers
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
@@ -22,8 +20,6 @@ import me.tagavari.airmessage.helper.ContactHelper.getContactImageURI
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.MemberInfo
 import me.tagavari.airmessage.util.Union
-import java.util.*
-import java.util.stream.Collectors
 
 object ConversationBuildHelper {
 	/**
@@ -75,11 +71,11 @@ object ConversationBuildHelper {
 		return Single.concat(members.map { member: MemberInfo ->
 			//If the member's name is available, use it, otherwise use their address
 			MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address)
-					.map {userInfo -> userInfo.contactName}
+					.map {userInfo -> userInfo.contactName ?: member.address}
 					.onErrorReturnItem(member.address)
 		})
 				//Create a localized list of members
-				.toList().map { nameList: List<String> -> LanguageHelper.createLocalizedList(context.resources, nameList) }
+				.toList().map { nameList -> LanguageHelper.createLocalizedList(context.resources, nameList) }
 	}
 	
 	/**
