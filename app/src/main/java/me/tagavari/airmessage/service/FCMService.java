@@ -92,6 +92,8 @@ public class FCMService extends FirebaseMessagingService {
 				if(isEncrypted) {
 					try {
 						String password = SharedPreferencesManager.getDirectConnectionPassword(this);
+						if(password == null) throw new GeneralSecurityException("No password available");
+						
 						EncryptionAES encryptionAES = new EncryptionAES(password);
 						data = encryptionAES.decrypt(airUnpacker.unpackPayload());
 					} catch(GeneralSecurityException | IOException exception) {
