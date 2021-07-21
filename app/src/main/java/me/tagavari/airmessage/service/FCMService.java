@@ -14,6 +14,7 @@ import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.comm5.AirUnpacker;
 import me.tagavari.airmessage.connection.comm5.ClientProtocol3;
 import me.tagavari.airmessage.connection.encryption.EncryptionAES;
+import me.tagavari.airmessage.connection.exception.LargeAllocationException;
 import me.tagavari.airmessage.connection.task.MessageUpdateTask;
 import me.tagavari.airmessage.connection.task.ModifierUpdateTask;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
@@ -92,6 +93,8 @@ public class FCMService extends FirebaseMessagingService {
 				if(isEncrypted) {
 					try {
 						String password = SharedPreferencesManager.getDirectConnectionPassword(this);
+						if(password == null) throw new GeneralSecurityException("No password available");
+						
 						EncryptionAES encryptionAES = new EncryptionAES(password);
 						data = encryptionAES.decrypt(airUnpacker.unpackPayload());
 					} catch(GeneralSecurityException | IOException exception) {
@@ -119,7 +122,7 @@ public class FCMService extends FirebaseMessagingService {
 						conversationItems = ClientProtocol3.unpackConversationItems(airUnpacker);
 						modifiers = ClientProtocol3.unpackModifiers(airUnpacker);
 						dataLoaded = true;
-					} catch(BufferUnderflowException exception) {
+					} catch(BufferUnderflowException | LargeAllocationException | IllegalArgumentException exception) {
 						exception.printStackTrace();
 						return;
 					}

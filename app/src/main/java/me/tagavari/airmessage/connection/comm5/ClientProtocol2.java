@@ -126,7 +126,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 				//This data is always encrypted
 				processDataSecure(messageType, unpacker);
 			}
-		} catch(BufferUnderflowException | LargeAllocationException exception) {
+		} catch(BufferUnderflowException | LargeAllocationException | IllegalArgumentException exception) {
 			exception.printStackTrace();
 		}
 	}
