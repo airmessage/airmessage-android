@@ -24,7 +24,6 @@ if(keystorePropertiesFile.exists()) {
 	keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
-
 android {
 	signingConfigs {
 		if(keystoreProperties) {
@@ -41,8 +40,8 @@ android {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
 		targetSdkVersion 30
-		versionName "3.2"
-		versionCode 120
+		versionName "3.2.1"
+		versionCode 121
 
 		resConfigs "en", "fr", "ja"
 
