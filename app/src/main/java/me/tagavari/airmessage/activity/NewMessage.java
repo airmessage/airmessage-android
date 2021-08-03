@@ -10,6 +10,7 @@ import android.content.res.ColorStateList;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.text.Editable;
 import android.text.InputType;
@@ -297,7 +298,6 @@ public class NewMessage extends AppCompatCompositeActivity {
 				return (T) new ActivityViewModel(getApplication(), targetText, targetClipData);
 			}
 		}).get(ActivityViewModel.class);
-		viewModel.setActivityReference(this);
 		
 		//Registering the observers
 		viewModel.contactState.observe(this, contactStateObserver);
@@ -503,6 +503,8 @@ public class NewMessage extends AppCompatCompositeActivity {
 	
 	@Override
 	public void onRequestPermissionsResult(final int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		
 		//Returning if there were no grant results
 		if(grantResults.length == 0) return;
 		
@@ -520,13 +522,13 @@ public class NewMessage extends AppCompatCompositeActivity {
 			else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
 				//Showing a snackbar
 				Snackbar.make(findViewById(android.R.id.content), R.string.message_permissionrejected, Snackbar.LENGTH_LONG)
-						.setAction(R.string.screen_settings, view -> {
-							//Opening the application settings
-							Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-							intent.setData(Uri.parse("package:" + getPackageName()));
-							startActivity(intent);
-						})
-						.show();
+					.setAction(R.string.screen_settings, view -> {
+						//Opening the application settings
+						Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+						intent.setData(Uri.parse("package:" + getPackageName()));
+						startActivity(intent);
+					})
+					.show();
 			}
 		}
 	}
@@ -1200,8 +1202,6 @@ public class NewMessage extends AppCompatCompositeActivity {
 		MessageServiceDescription currentService = availableServiceArray[0];
 		final List<ContactInfo> contactList = new ArrayList<>();
 		
-		private WeakReference<NewMessage> activityReference = null;
-		
 		//Creating the task values
 		private final CompositeDisposable compositeDisposable = new CompositeDisposable();
 		
@@ -1219,10 +1219,6 @@ public class NewMessage extends AppCompatCompositeActivity {
 		@Override
 		protected void onCleared() {
 			compositeDisposable.clear();
-		}
-		
-		void setActivityReference(NewMessage activity) {
-			activityReference = new WeakReference<>(activity);
 		}
 		
 		@SuppressLint("StaticFieldLeak")

@@ -9,7 +9,7 @@ import android.view.View
 import android.widget.TextView
 
 class CustomTabsLinkTransformationMethod : TransformationMethod {
-	override fun getTransformation(source: CharSequence?, view: View): CharSequence? {
+	override fun getTransformation(source: CharSequence?, view: View?): CharSequence? {
 		if(view is TextView) {
 			if(view.text == null || view.text !is Spannable) {
 				return source

@@ -18,6 +18,7 @@ import me.tagavari.airmessage.helper.StringHelper;
 import me.tagavari.airmessage.util.AddressInfo;
 import me.tagavari.airmessage.util.ContactInfo;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.function.Predicate;
 
@@ -138,7 +139,7 @@ public class ContactsTask {
 					if(!enableFilter) return true;
 					
 					return (contact.getName() != null && contact.getName().toLowerCase().contains(nameFilter)) || //The contact's name matches the filter
-							contact.getAddresses().stream().anyMatch(address ->
+						    new ArrayList<>(contact.getAddresses()).stream().anyMatch(address ->
 									address.getNormalizedAddress().startsWith(addressFilter) || //The contact's email address matches the filter
 											(phoneFilter != null && AddressHelper.validatePhoneNumber(address.getNormalizedAddress()) && AddressHelper.stripPhoneNumber(address.getNormalizedAddress()).startsWith(phoneFilter)) //The contact's phone number matches the filter
 							);

@@ -1033,7 +1033,9 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Handling transferred conversations
 		for(TransferredConversation transferredConversation : event.getTransferredConversations()) {
 			//Finding the existing conversation
-			ConversationInfo conversationInfo = conversationList.stream().filter(conversation -> transferredConversation.getServerConversation().getGUID().equals(conversation.getGUID())).findAny().orElse(null);
+			ConversationInfo conversationInfo = conversationList.stream()
+					.filter((conversation) -> conversation.getLocalID() == transferredConversation.getClientConversation().getLocalID())
+					.findAny().orElse(null);
 			
 			//Converting the merge result to just the target items
 			List<ConversationItem> conversationItems = transferredConversation.getServerConversationItems().stream().map(ReplaceInsertResult::getTargetItem).collect(Collectors.toList());
