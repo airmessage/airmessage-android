@@ -945,6 +945,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 	public static List<Blocks.AttachmentInfo> unpackAttachments(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 128) throw new LargeAllocationException(count, 128);
 		
 		//Creating the list
 		List<Blocks.AttachmentInfo> list = new ArrayList<>(count);
