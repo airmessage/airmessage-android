@@ -29,5 +29,5 @@ class CustomTabsLinkTransformationMethod : TransformationMethod {
 		return source
 	}
 	
-	override fun onFocusChanged(view: View, sourceText: CharSequence, focused: Boolean, direction: Int, previouslyFocusedRect: Rect) = Unit
+	override fun onFocusChanged(view: View?, sourceText: CharSequence?, focused: Boolean, direction: Int, previouslyFocusedRect: Rect?) = Unit
 }
