@@ -857,6 +857,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 	public static List<Blocks.ConversationInfo> unpackConversations(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.ConversationInfo> list = new ArrayList<>(count);
@@ -868,7 +869,9 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 			if(available) {
 				String service = unpacker.unpackString();
 				String name = unpacker.unpackNullableString();
-				String[] members = new String[unpacker.unpackArrayHeader()];
+				int memberCount = unpacker.unpackArrayHeader();
+				String[] members = new String[memberCount];
+				if(memberCount > 8192) throw new LargeAllocationException(memberCount, 8192);
 				for(int m = 0; m < members.length; m++) members[m] = unpacker.unpackString();
 				list.add(new Blocks.ConversationInfo(guid, service, name, members));
 			} else {
@@ -886,6 +889,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 	public static List<Blocks.ConversationItem> unpackConversationItems(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.ConversationItem> list = new ArrayList<>(count);
@@ -945,6 +949,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 	public static List<Blocks.AttachmentInfo> unpackAttachments(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.AttachmentInfo> list = new ArrayList<>(count);
@@ -971,6 +976,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 	public static List<Blocks.ModifierInfo> unpackModifiers(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.ModifierInfo> list = new ArrayList<>(count);
