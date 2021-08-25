@@ -875,7 +875,10 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(attachmentIndex == -1) return;
 			
 			//Updating the attachment
-			messageInfo.getAttachments().get(attachmentIndex).setFile(attachmentEvent.getFile());
+			AttachmentInfo attachment = messageInfo.getAttachments().get(attachmentIndex);
+			attachment.setFile(attachmentEvent.getFile());
+			attachment.setDownloadFileName(attachmentEvent.getDownloadName());
+			attachment.setDownloadFileType(attachmentEvent.getDownloadType());
 			
 			//Updating the adapter
 			messageListAdapter.notifyItemChanged(messageListAdapter.mapRecyclerIndex(messageIndex), new MessageListPayload.Attachment(attachmentIndex));
@@ -3087,9 +3090,9 @@ public class Messaging extends AppCompatCompositeActivity {
 			if(component.getFile() != null) {
 				//Showing the open view
 				setAttachmentView(viewHolder, viewHolder.getGroupOpen());
-				viewHolder.getLabelOpen().setText(component.getFileName());
+				viewHolder.getLabelOpen().setText(component.getComputedFileName());
 				viewHolder.getLabelOpen().setMaxWidth(WindowHelper.getMaxMessageWidth(getResources()));
-				viewHolder.itemView.setOnClickListener(view -> IntentHelper.openAttachmentFile(Messaging.this, component.getFile(), component.getContentType()));
+				viewHolder.itemView.setOnClickListener(view -> IntentHelper.openAttachmentFile(Messaging.this, component.getFile(), component.getComputedContentType()));
 				
 				//Setting up the content view
 				bindMessageComponentContent(viewHolderStructure, viewHolder, messageInfo, component);
@@ -3364,7 +3367,11 @@ public class Messaging extends AppCompatCompositeActivity {
 						}
 						
 						//Setting the click listener
-						viewHolder.itemView.setOnClickListener(view -> IntentHelper.openAttachmentFile(Messaging.this, component.getFile(), component.getContentType()));
+						viewHolder.itemView.setOnClickListener(view -> IntentHelper.openAttachmentFile(
+							Messaging.this,
+							component.getFile(),
+							component.getComputedContentType()
+						));
 					})
 			);
 		}
@@ -3499,7 +3506,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					.flatMap(item -> ((MessageInfo) item).getAttachments().stream())
 					.filter(attachment ->
 							attachment.getFile() != null &&
-									(FileHelper.compareMimeTypes(attachment.getContentType(), MIMEConstants.mimeTypeImage) || FileHelper.compareMimeTypes(attachment.getContentType(), MIMEConstants.mimeTypeVideo))
+									(FileHelper.compareMimeTypes(attachmentInfo.getComputedContentType(), MIMEConstants.mimeTypeImage) || FileHelper.compareMimeTypes(attachmentInfo.getComputedContentType(), MIMEConstants.mimeTypeVideo))
 					).collect(Collectors.toCollection(ArrayList::new));
 			int itemIndex = attachments.indexOf(attachmentInfo);
 			
@@ -3617,7 +3624,7 @@ public class Messaging extends AppCompatCompositeActivity {
 						Intent intent = new Intent();
 						intent.setAction(Intent.ACTION_SEND);
 						intent.putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(Messaging.this, AttachmentStorageHelper.getFileAuthority(Messaging.this), attachmentInfo.getFile()));
-						intent.setType(attachmentInfo.getContentType());
+						intent.setType(attachmentInfo.getComputedContentType());
 						startActivity(Intent.createChooser(intent, getResources().getText(R.string.action_sharemessage)));
 					}
 					
@@ -3627,7 +3634,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					
 					//Opening the file picker to save the file
 					currentTargetSAFFile = attachmentInfo.getFile();
-					ExternalStorageHelper.createFileSAF(Messaging.this, intentSaveFileSAF, attachmentInfo.getContentType(), attachmentInfo.getFileName());
+					ExternalStorageHelper.createFileSAF(Messaging.this, intentSaveFileSAF, attachmentInfo.getComputedContentType(), attachmentInfo.getComputedFileName());
 					
 					return true;
 				} else if(itemId == R.id.action_deletedata) {

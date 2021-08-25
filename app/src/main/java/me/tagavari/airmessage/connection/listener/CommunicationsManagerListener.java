@@ -22,12 +22,12 @@ public interface CommunicationsManagerListener {
 	void onMassRetrievalUpdate(short requestID, int responseIndex, Collection<Blocks.ConversationItem> data);
 	void onMassRetrievalComplete(short requestID);
 	void onMassRetrievalFail(short requestID);
-	void onMassRetrievalFileStart(short requestID, String fileGUID, String fileName, @Nullable Function<OutputStream, OutputStream> streamWrapper);
+	void onMassRetrievalFileStart(short requestID, String fileGUID, String fileName, @Nullable String downloadFileName, @Nullable String downloadFileType, @Nullable Function<OutputStream, OutputStream> streamWrapper);
 	void onMassRetrievalFileProgress(short requestID, int responseIndex, String fileGUID, byte[] fileData);
 	void onMassRetrievalFileComplete(short requestID, String fileGUID);
 	void onConversationUpdate(Collection<Blocks.ConversationInfo> data);
 	void onModifierUpdate(Collection<Blocks.ModifierInfo> data);
-	void onFileRequestStart(short requestID, long length, @Nullable Function<OutputStream, OutputStream> streamWrapper);
+	void onFileRequestStart(short requestID, @Nullable String downloadFileName, @Nullable String downloadFileType, long fileLength, @Nullable Function<OutputStream, OutputStream> streamWrapper);
 	void onFileRequestData(short requestID, int responseIndex, byte[] data);
 	void onFileRequestComplete(short requestID);
 	void onFileRequestFail(short requestID, @AttachmentReqErrorCode int errorCode);

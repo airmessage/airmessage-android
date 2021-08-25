@@ -289,7 +289,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 		
 		//Processing the data
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, InflaterOutputStream::new);
+			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, null, null, InflaterOutputStream::new);
 			listener.onMassRetrievalFileProgress(requestID, requestIndex, fileGUID, fileData);
 			if(isLast) listener.onMassRetrievalFileComplete(requestID, fileGUID);
 		});
@@ -323,7 +323,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 		
 		//Forwarding the data to the listeners
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onFileRequestStart(requestID, fileLength, InflaterOutputStream::new);
+			if(requestIndex == 0) listener.onFileRequestStart(requestID, null, null, fileLength, InflaterOutputStream::new);
 			listener.onFileRequestData(requestID, requestIndex, fileData);
 			if(isLast) listener.onFileRequestComplete(requestID);
 		});

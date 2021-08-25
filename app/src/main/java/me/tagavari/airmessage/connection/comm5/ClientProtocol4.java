@@ -33,8 +33,7 @@ import java.util.List;
 import java.util.zip.DeflaterInputStream;
 import java.util.zip.InflaterOutputStream;
 
-//https://trello.com/c/lRZ6cikc
-class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
+public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 	private static final String hashAlgorithm = "MD5";
 	private static final String platformID = "android";
 	
@@ -93,7 +92,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	
 	private short lastMassRetrievalRequestID = -1;
 	
-	ClientProtocol2(ClientComm5 communicationsManager, DataProxy<EncryptedPacket> dataProxy) {
+	ClientProtocol4(ClientComm5 communicationsManager, DataProxy<EncryptedPacket> dataProxy) {
 		super(communicationsManager, dataProxy);
 	}
 	
@@ -282,7 +281,14 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		//Reading the data
 		short requestID = unpacker.unpackShort();
 		int requestIndex = unpacker.unpackInt();
-		String fileName = requestIndex == 0 ? unpacker.unpackString() : null;
+		String fileName, downloadFileName, downloadFileType;
+		if(requestIndex == 0) {
+			fileName = unpacker.unpackString();
+			downloadFileName = unpacker.unpackNullableString();
+			downloadFileType = unpacker.unpackNullableString();
+		} else {
+			fileName = downloadFileName = downloadFileType = null;
+		}
 		boolean isLast = unpacker.unpackBoolean();
 		
 		String fileGUID = unpacker.unpackString();
@@ -290,7 +296,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		
 		//Processing the data
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, null, null, InflaterOutputStream::new);
+			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, downloadFileName, downloadFileType, InflaterOutputStream::new);
 			listener.onMassRetrievalFileProgress(requestID, requestIndex, fileGUID, fileData);
 			if(isLast) listener.onMassRetrievalFileComplete(requestID, fileGUID);
 		});
@@ -316,15 +322,27 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		//Reading the data
 		short requestID = unpacker.unpackShort();
 		int requestIndex = unpacker.unpackInt();
-		long fileLength = requestIndex == 0 ? unpacker.unpackLong() : -1;
+		
+		final String downloadFileName;
+		final String downloadFileType;
+		final long fileLength;
+		if(requestIndex == 0) {
+			downloadFileName = unpacker.unpackNullableString();
+			downloadFileType = unpacker.unpackNullableString();
+			fileLength = unpacker.unpackLong();
+		} else {
+			downloadFileName = null;
+			downloadFileType = null;
+			fileLength = -1;
+		}
+		
 		boolean isLast = unpacker.unpackBoolean();
 		
-		String fileGUID = unpacker.unpackString();
 		byte[] fileData = unpacker.unpackPayload();
 		
 		//Forwarding the data to the listeners
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onFileRequestStart(requestID, null, null, fileLength, InflaterOutputStream::new);
+			if(requestIndex == 0) listener.onFileRequestStart(requestID, downloadFileName, downloadFileType, fileLength, InflaterOutputStream::new);
 			listener.onFileRequestData(requestID, requestIndex, fileData);
 			if(isLast) listener.onFileRequestComplete(requestID);
 		});
@@ -448,10 +466,17 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		//Assembling the device information
 		String installationID = SharedPreferencesManager.getInstallationID(MainApplication.getInstance());
 		String clientName = Build.MANUFACTURER + ' ' + Build.MODEL;
-		String platformID = ClientProtocol2.platformID;
+		String platformID = ClientProtocol4.platformID;
 		
 		//Checking if the current protocol requires authentication
 		if(unpacker.unpackBoolean()) {
+			//Checking if we don't have a password to use
+			if(communicationsManager.getPassword() == null) {
+				//Failing the connection
+				communicationsManager.getHandler().post(() -> communicationsManager.disconnect(ConnectionErrorCode.unauthorized));
+				return true;
+			}
+			
 			//Reading the transmission check
 			byte[] transmissionCheck;
 			try {
@@ -680,6 +705,8 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			packer.packInt(nhtIDRetrieval);
 			
 			packer.packLong(idSince);
+			packer.packLong(timeLower);
+			packer.packLong(timeUpper);
 			
 			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
 			return true;
@@ -692,7 +719,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	
 	@Override
 	boolean isFeatureSupported(@ConnectionFeature int featureID) {
-		return featureID == ConnectionFeature.idBasedRetrieval;
+		return featureID == ConnectionFeature.idBasedRetrieval || featureID == ConnectionFeature.payloadPushNotifications;
 	}
 	
 	/**
@@ -846,9 +873,10 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	/**
 	 * Unpacks a list of conversations
 	 */
-	private static List<Blocks.ConversationInfo> unpackConversations(AirUnpacker unpacker) {
+	public static List<Blocks.ConversationInfo> unpackConversations(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.ConversationInfo> list = new ArrayList<>(count);
@@ -860,7 +888,9 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			if(available) {
 				String service = unpacker.unpackString();
 				String name = unpacker.unpackNullableString();
-				String[] members = new String[unpacker.unpackArrayHeader()];
+				int memberCount = unpacker.unpackArrayHeader();
+				String[] members = new String[memberCount];
+				if(memberCount > 8192) throw new LargeAllocationException(memberCount, 8192);
 				for(int m = 0; m < members.length; m++) members[m] = unpacker.unpackString();
 				list.add(new Blocks.ConversationInfo(guid, service, name, members));
 			} else {
@@ -875,9 +905,10 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	/**
 	 * Unpacks a list of conversation items
 	 */
-	private static List<Blocks.ConversationItem> unpackConversationItems(AirUnpacker unpacker) {
+	public static List<Blocks.ConversationItem> unpackConversationItems(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.ConversationItem> list = new ArrayList<>(count);
@@ -934,9 +965,10 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	/**
 	 * Unpacks a list of attachments
 	 */
-	private static List<Blocks.AttachmentInfo> unpackAttachments(AirUnpacker unpacker) {
+	public static List<Blocks.AttachmentInfo> unpackAttachments(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.AttachmentInfo> list = new ArrayList<>(count);
@@ -960,9 +992,10 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	/**
 	 * Unpacks a list of modifiers
 	 */
-	private static List<Blocks.ModifierInfo> unpackModifiers(AirUnpacker unpacker) {
+	public static List<Blocks.ModifierInfo> unpackModifiers(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.ModifierInfo> list = new ArrayList<>(count);

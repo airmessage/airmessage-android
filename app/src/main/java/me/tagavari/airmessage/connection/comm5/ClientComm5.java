@@ -184,6 +184,8 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 				return new ClientProtocol2(this, getDataProxy());
 			case 3:
 				return new ClientProtocol3(this, getDataProxy());
+			case 4:
+				return new ClientProtocol4(this, getDataProxy());
 		}
 	}
 	

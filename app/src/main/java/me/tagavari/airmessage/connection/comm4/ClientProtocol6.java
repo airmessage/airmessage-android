@@ -252,7 +252,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 				
 				//Processing the data
 				communicationsManager.runListener(listener -> {
-					if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, null);
+					if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, null, null, null);
 					listener.onMassRetrievalFileProgress(requestID, requestIndex, fileGUID, fileData);
 					if(isLast) listener.onMassRetrievalFileComplete(requestID, fileGUID);
 				});
@@ -329,7 +329,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 				
 				//Forwarding the data to the listeners
 				communicationsManager.runListener(listener -> {
-					if(requestIndex == 0) listener.onFileRequestStart(requestID, fileSize, null);
+					if(requestIndex == 0) listener.onFileRequestStart(requestID, null, null, fileSize, null);
 					listener.onFileRequestData(requestID, requestIndex, decompressedBytes);
 					if(isLast) listener.onFileRequestComplete(requestID);
 				});

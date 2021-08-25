@@ -103,7 +103,7 @@ public class MessageActionTask {
 			DatabaseManager.getInstance().invalidateAttachment(attachmentInfo.getLocalID());
 		}).subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> {
 			//Notify the emitter
-			ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.AttachmentFile(messageID, attachmentInfo.getLocalID(), null));
+			ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.AttachmentFile(messageID, attachmentInfo.getLocalID(), null, null, null));
 		});
 	}
 }

@@ -478,7 +478,7 @@ public class ConnectionManager {
 		}
 		
 		@Override
-		public void onMassRetrievalFileStart(short requestID, String fileGUID, String fileName, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
+		public void onMassRetrievalFileStart(short requestID, String fileGUID, String fileName, @Nullable String downloadFileName, @Nullable String downloadFileType, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
 			//Getting the request
 			RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> subject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
@@ -486,7 +486,7 @@ public class ConnectionManager {
 			//Initializing the attachment request
 			MassRetrievalRequest massRetrievalRequest = subject.getRequestData();
 			compositeDisposable.add(
-					massRetrievalRequest.initializeAttachment(getContext(), fileGUID, fileName, streamWrapper)
+					massRetrievalRequest.initializeAttachment(getContext(), fileGUID, fileName, downloadFileName, downloadFileType, streamWrapper)
 							.subscribe(() -> {
 								//Getting the request
 								RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest> localSubject = (RequestSubject.Publish<ReduxEventMassRetrieval, MassRetrievalRequest>) idRequestSubjectMap.get(requestID);
@@ -643,7 +643,7 @@ public class ConnectionManager {
 		}
 		
 		@Override
-		public void onFileRequestStart(short requestID, long length, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
+		public void onFileRequestStart(short requestID, @Nullable String downloadFileName, @Nullable String downloadFileType, long fileLength, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
 			//Getting the request
 			RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest> subject = (RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest>) idRequestSubjectMap.get(requestID);
 			if(subject == null) return;
@@ -651,7 +651,7 @@ public class ConnectionManager {
 			//Initializing the request
 			FileFetchRequest fileFetchRequest = subject.getRequestData();
 			try {
-				fileFetchRequest.initialize(getContext(), length, streamWrapper);
+				fileFetchRequest.initialize(getContext(), downloadFileName, downloadFileType, fileLength, streamWrapper);
 			} catch(IOException exception) {
 				subject.onError(new AMRequestException(AttachmentReqErrorCode.localIO));
 				idRequestSubjectMap.remove(requestID);
@@ -659,7 +659,7 @@ public class ConnectionManager {
 			}
 			
 			//Sending an update
-			subject.get().onNext(new ReduxEventAttachmentDownload.Start(length));
+			subject.get().onNext(new ReduxEventAttachmentDownload.Start(fileLength));
 		}
 		
 		@Override
@@ -710,7 +710,7 @@ public class ConnectionManager {
 						
 						localSubject.get().onNext(new ReduxEventAttachmentDownload.Complete(attachmentFile));
 						localSubject.onComplete();
-						ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.AttachmentFile(fileFetchRequest.getMessageID(), fileFetchRequest.getAttachmentID(), attachmentFile));
+						ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.AttachmentFile(fileFetchRequest.getMessageID(), fileFetchRequest.getAttachmentID(), attachmentFile, fileFetchRequest.getDownloadFileName(), fileFetchRequest.getDownloadFileType()));
 					}, (error) -> {
 						//Getting the request
 						RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest> localSubject = (RequestSubject.Publish<ReduxEventAttachmentDownload, FileFetchRequest>) idRequestSubjectMap.get(requestID);
