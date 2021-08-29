@@ -98,6 +98,26 @@ class MessageInfo @JvmOverloads constructor(
 		}
 	}
 	
+	/**
+	 * Gets the index of a component,
+	 * or -1 if the component couldn't be found
+	 */
+	fun getComponentIndex(component: MessageComponent): Int {
+		return if(component == messageTextComponent) {
+			//Text is always the first component
+			0
+		} else {
+			//The item is an attachment, so search for its index there
+			val index = attachments.indexOf(component)
+			//Fail if the item isn't in the attachments list
+			if(index == -1) return -1
+			
+			//Offset the index
+			if(messageTextComponent == null) index
+			else index + 1
+		}
+	}
+	
 	@get:JvmName("hasError")
 	val hasError: Boolean
 		get() = errorCode != MessageSendErrorCode.none

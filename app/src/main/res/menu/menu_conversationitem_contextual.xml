@@ -1,14 +1,24 @@
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
 	<item android:id="@+id/action_tapbackdetails"
-		android:title="@string/action_tapbackdetails" />
-	<item android:id="@+id/action_details"
-		android:title="@string/action_details" />
+		  android:title="@string/action_tapbackdetails"
+		  android:visible="false" />
 	<item android:id="@+id/action_copytext"
-		android:title="@string/action_copytext" />
+		  android:title="@string/action_copytext"
+		  android:icon="@drawable/copy"
+		  app:showAsAction="ifRoom|collapseActionView" />
 	<item android:id="@+id/action_share"
-		android:title="@string/action_share" />
+		  android:title="@string/action_share"
+		  android:icon="@drawable/share_outlined"
+		  app:showAsAction="ifRoom|collapseActionView" />
 	<item android:id="@+id/action_save"
-		android:title="@string/action_save" />
+		  android:title="@string/action_save"
+		  android:icon="@drawable/save"
+		  app:showAsAction="ifRoom|collapseActionView" />
 	<item android:id="@+id/action_deletedata"
-		android:title="@string/action_deletedata" />
+		  android:title="@string/action_deletedata"
+		  app:showAsAction="never" />
+	<item android:id="@+id/action_details"
+		  android:title="@string/action_details"
+		  android:icon="@drawable/info_outlined"
+		  app:showAsAction="never" />
 </menu>

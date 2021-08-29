@@ -42,7 +42,9 @@ import androidx.annotation.IntDef;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.view.ActionMode;
 import androidx.appcompat.widget.AppCompatEditText;
+import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.FileProvider;
 import androidx.core.graphics.ColorUtils;
@@ -93,6 +95,7 @@ import jp.wasabeef.glide.transformations.BlurTransformation;
 import kotlin.Pair;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.activitypart.MessagingActionModeCallback;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
 import me.tagavari.airmessage.compositeplugin.PluginMessageBar;
@@ -179,6 +182,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	//Creating the view values
 	private View rootView;
 	private AppBarLayout appBar;
+	private Toolbar toolbar;
 	private View scrimStatusBar;
 	private TextView labelLoading;
 	private ViewGroup groupLoadFail;
@@ -199,6 +203,10 @@ public class Messaging extends AppCompatCompositeActivity {
 	private RecyclerView listAttachmentQueue;
 	
 	private MessageListRecyclerAdapter messageListAdapter;
+	
+	//Creating the action mode values
+	private ActionMode actionMode = null;
+	private final MessagingActionModeCallback actionModeCallback;
 	
 	//Creating the fragment values
 	private FragmentMessagingAttachments fragmentAttachments;
@@ -298,10 +306,119 @@ public class Messaging extends AppCompatCompositeActivity {
 	private File currentTargetSAFFile = null;
 	
 	public Messaging() {
-		//Setting the plugins;
+		//Setting the plugins
 		addPlugin(pluginMessageBar = new PluginMessageBar());
 		addPlugin(pluginCS = new PluginConnectionService());
 		addPlugin(pluginRXD = new PluginRXDisposable());
+		
+		//Setting the action mode callback
+		actionModeCallback = new MessagingActionModeCallback(
+			() -> { //Message details
+				MessageInfo messageInfo = viewModel.selectedMessageComponent.getFirst();
+				MessageComponent messageComponent = viewModel.selectedMessageComponent.getSecond();
+				
+				Date sentDate = new Date(messageInfo.getDate());
+				
+				//Building the message
+				StringBuilder stringBuilder = new StringBuilder();
+				stringBuilder.append(getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : getResources().getString(R.string.part_you))).append('\n'); //Sender
+				stringBuilder.append(getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getTimeFormat(Messaging.this).format(sentDate) + LanguageHelper.bulletSeparator + DateFormat.getLongDateFormat(Messaging.this).format(sentDate))).append('\n'); //Time sent
+				if(messageComponent instanceof AttachmentInfo) {
+					long fileSize = ((AttachmentInfo) messageComponent).getFileSize();
+					stringBuilder.append(getResources().getString(R.string.message_messagedetails_size, fileSize != -1 ? Formatter.formatFileSize(Messaging.this, fileSize) : getResources().getString(R.string.part_nodata))).append('\n'); //Attachment file size
+				}
+				stringBuilder.append(getResources().getString(R.string.message_messagedetails_sendeffect, messageInfo.getSendStyle() == null ? getResources().getString(R.string.part_none) :messageInfo.getSendStyle())); //Send effect
+				
+				//Showing a dialog
+				new MaterialAlertDialogBuilder(Messaging.this)
+					.setTitle(R.string.message_messagedetails_title)
+					.setMessage(stringBuilder.toString())
+					.create()
+					.show();
+			},
+			() -> { //Copy text
+				MessageComponent messageComponent = viewModel.selectedMessageComponent.getSecond();
+				
+				//Copying the message text to the clipboard
+				getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText(null, LanguageHelper.textComponentToString(getResources(), (MessageComponentText) messageComponent)));
+				
+				//Showing a confirmation toast
+				Toast.makeText(Messaging.this, R.string.message_textcopied, Toast.LENGTH_SHORT).show();
+			},
+			() -> { //Share
+				MessageInfo messageInfo = viewModel.selectedMessageComponent.getFirst();
+				MessageComponent messageComponent = viewModel.selectedMessageComponent.getSecond();
+				
+				//Checking if this is a text component
+				if(messageComponent instanceof MessageComponentText) {
+					String shareText = LanguageHelper.textComponentToString(getResources(), (MessageComponentText) messageComponent);
+					
+					//Starting the intent immediately if the user is "you"
+					if(messageInfo.getSender() == null) {
+						shareMessageText(null, shareText, messageInfo.getDate());
+					} else {
+						//Requesting the user info
+						pluginRXD.activity().add(
+							MainApplication.getInstance().getUserCacheHelper().getUserInfo(Messaging.this, messageInfo.getSender()).subscribe(userInfo -> {
+								shareMessageText(userInfo.getContactName(), shareText, messageInfo.getDate());
+							}, error -> {
+								//Defaulting to the user's address
+								shareMessageText(messageInfo.getSender(), shareText, messageInfo.getDate());
+							})
+						);
+					}
+				} else {
+					AttachmentInfo attachmentInfo = (AttachmentInfo) messageComponent;
+					
+					//Sharing the attachment file
+					Intent intent = new Intent();
+					intent.setAction(Intent.ACTION_SEND);
+					intent.putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(Messaging.this, AttachmentStorageHelper.getFileAuthority(Messaging.this), attachmentInfo.getFile()));
+					intent.setType(attachmentInfo.getComputedContentType());
+					startActivity(Intent.createChooser(intent, getResources().getText(R.string.action_sharemessage)));
+				}
+			},
+			() -> { //Save
+				AttachmentInfo attachmentInfo = (AttachmentInfo) viewModel.selectedMessageComponent.getSecond();
+				
+				//Opening the file picker to save the file
+				currentTargetSAFFile = attachmentInfo.getFile();
+				ExternalStorageHelper.createFileSAF(Messaging.this, intentSaveFileSAF, attachmentInfo.getComputedContentType(), attachmentInfo.getComputedFileName());
+			},
+			() -> { //Delete data
+				MessageInfo messageInfo = viewModel.selectedMessageComponent.getFirst();
+				AttachmentInfo attachmentInfo = (AttachmentInfo) viewModel.selectedMessageComponent.getSecond();
+				
+				//Deleting the attachment file
+				MessageActionTask.deleteAttachmentFile(messageInfo.getLocalID(), attachmentInfo).subscribe();
+				
+				//Removing the download from the cache
+				ConnectionTaskManager.removeDownload(attachmentInfo.getLocalID());
+			},
+			() -> { //Create action mode
+				//Hiding the toolbar
+				toolbar.animate().alpha(0).withEndAction(() -> toolbar.setVisibility(View.INVISIBLE));
+			},
+			() -> { //Destroy action mode
+				actionMode = null;
+				
+				//Deselecting the selected item
+				if(viewModel.selectedMessageComponent != null) {
+					Pair<MessageInfo, MessageComponent> message = viewModel.selectedMessageComponent;
+					
+					int previousItemIndex = viewModel.conversationItemList.indexOf(message.getFirst());
+					if(previousItemIndex != -1) {
+						int previousComponentIndex = message.getFirst().getComponentIndex(message.getSecond());
+						messageListAdapter.notifyItemChanged(previousItemIndex, new MessageListPayload.Selection(previousComponentIndex));
+					}
+					
+					viewModel.selectedMessageComponent = null;
+				}
+				
+				//Showing the toolbar
+				toolbar.animate().withStartAction(() -> toolbar.setVisibility(View.VISIBLE)).setStartDelay(50).alpha(1);
+			}
+		);
 	}
 	
 	@Override
@@ -318,6 +435,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Getting the views
 		rootView = findViewById(android.R.id.content);
 		appBar = findViewById(R.id.appbar);
+		toolbar = findViewById(R.id.toolbar);
 		
 		scrimStatusBar = findViewById(R.id.scrim_statusbar);
 		labelLoading = findViewById(R.id.loading_text);
@@ -1595,7 +1713,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Find the currently focused view, so we can grab the correct window token from it.
 		View view = getCurrentFocus();
 		//If no view currently has focus, create a new one, just so we can grab a window token from it
-		if (view == null) {
+		if(view == null) {
 			view = new View(this);
 		}
 		imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
@@ -1990,6 +2108,34 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Setting the last unread message count
 		viewModel.lastUnreadCount = viewModel.conversationInfo.getUnreadMessageCount();
+	}
+	
+	/**
+	 * Shares the contents of a text message
+	 * @param sender The name of the user who sent this message, or NULL if the local user sent the message
+	 * @param message The message body
+	 * @param date The date the message was sent
+	 */
+	private void shareMessageText(@Nullable String sender, @NonNull String message, long date) {
+		//Creating the intent
+		Intent intent = new Intent();
+		
+		//Setting the action
+		intent.setAction(Intent.ACTION_SEND);
+		
+		//Getting the text
+		String text = sender == null ?
+					  getResources().getString(R.string.message_shareable_text_you, DateFormat.getLongDateFormat(Messaging.this).format(date), DateFormat.getTimeFormat(Messaging.this).format(date), message) :
+					  getResources().getString(R.string.message_shareable_text, DateFormat.getLongDateFormat(Messaging.this).format(date), DateFormat.getTimeFormat(Messaging.this).format(date), sender, message);
+		
+		//Setting the text
+		intent.putExtra(Intent.EXTRA_TEXT, text);
+		
+		//Setting the intent type
+		intent.setType("text/plain");
+		
+		//Starting the intent
+		startActivity(Intent.createChooser(intent, getResources().getString(R.string.action_sharemessage)));
 	}
 	
 	/* public static ArrayList<Long> getActivityLoadedConversations() {
@@ -3525,171 +3671,30 @@ public class Messaging extends AppCompatCompositeActivity {
 		 * @param messageComponent The message component to display the popup menu for
 		 */
 		private void openPopupMenu(View targetView, MessageInfo messageInfo, MessageComponent messageComponent) {
-			//Creating a new popup menu
-			PopupMenu popupMenu = new PopupMenu(Messaging.this, targetView);
+			//Starting action mode
+			if(actionMode == null) {
+				actionMode = startSupportActionMode(actionModeCallback);
+			}
+			actionModeCallback.updateMenu(actionMode, viewModel.conversationInfo, messageComponent);
 			
-			//Inflating the menu
-			popupMenu.inflate(R.menu.menu_conversationitem_contextual);
+			//Updating the view model registration
+			Pair<MessageInfo, MessageComponent> previousSelectedComponent = viewModel.selectedMessageComponent;
+			viewModel.selectedMessageComponent = new Pair<>(messageInfo, messageComponent);
 			
-			//Getting the component type
-			int componentType = getMessageComponentType(messageComponent);
-			
-			Menu menu = popupMenu.getMenu();
-			if(componentType == MessageComponentType.text) {
-				//Removing attachment-specific options
-				menu.removeItem(R.id.action_save);
-				menu.removeItem(R.id.action_deletedata);
-			} else {
-				AttachmentInfo attachmentInfo = (AttachmentInfo) messageComponent;
-				
-				//Removing text-specific options
-				menu.removeItem(R.id.action_copytext);
-				
-				//Disabling the share, save, and delete option if there is no data
-				if(attachmentInfo.getFile() == null) {
-					menu.findItem(R.id.action_share).setEnabled(false);
-					menu.findItem(R.id.action_save).setEnabled(false);
-					menu.findItem(R.id.action_deletedata).setEnabled(false);
-				}
-				//Remove the delete option if the file was not sent over AirMessage Bridge
-				if(viewModel.conversationInfo.getServiceHandler() != ServiceHandler.appleBridge) {
-					menu.removeItem(R.id.action_deletedata);
+			//Updating the previously selected view
+			if(previousSelectedComponent != null) {
+				int previousItemIndex = viewModel.conversationItemList.indexOf(previousSelectedComponent.getFirst());
+				if(previousItemIndex != -1) {
+					int previousComponentIndex = previousSelectedComponent.getFirst().getComponentIndex(previousSelectedComponent.getSecond());
+					notifyItemChanged(previousItemIndex, new MessageListPayload.Selection(previousComponentIndex));
 				}
 			}
-			
-			//Removing the tapback info option if there are no tapbacks
-			if(messageComponent.getTapbacks().isEmpty()) menu.removeItem(R.id.action_tapbackdetails);
-			
-			//Setting the click listener
-			popupMenu.setOnMenuItemClickListener(menuItem -> {
-				int itemId = menuItem.getItemId();
-				if(itemId == R.id.action_tapbackdetails) {
-					//Displaying the tapback list
-					openTapbackDialog(viewModel.conversationInfo, messageComponent.getTapbacks());
-					
-					return true;
-				} else if(itemId == R.id.action_details) {
-					Date sentDate = new Date(messageInfo.getDate());
-					
-					//Building the message
-					StringBuilder stringBuilder = new StringBuilder();
-					stringBuilder.append(getResources().getString(R.string.message_messagedetails_sender, messageInfo.getSender() != null ? messageInfo.getSender() : getResources().getString(R.string.part_you))).append('\n'); //Sender
-					stringBuilder.append(getResources().getString(R.string.message_messagedetails_datesent, DateFormat.getTimeFormat(Messaging.this).format(sentDate) + LanguageHelper.bulletSeparator + DateFormat.getLongDateFormat(Messaging.this).format(sentDate))).append('\n'); //Time sent
-					if(messageComponent instanceof AttachmentInfo) {
-						long fileSize = ((AttachmentInfo) messageComponent).getFileSize();
-						stringBuilder.append(getResources().getString(R.string.message_messagedetails_size, fileSize != -1 ? Formatter.formatFileSize(Messaging.this, fileSize) : getResources().getString(R.string.part_nodata))).append('\n'); //Attachment file size
-					}
-					stringBuilder.append(getResources().getString(R.string.message_messagedetails_sendeffect, messageInfo.getSendStyle() == null ? getResources().getString(R.string.part_none) :messageInfo.getSendStyle())); //Send effect
-					
-					//Showing a dialog
-					new MaterialAlertDialogBuilder(Messaging.this)
-							.setTitle(R.string.message_messagedetails_title)
-							.setMessage(stringBuilder.toString())
-							.create()
-							.show();
-					
-					return true;
-				} else if(itemId == R.id.action_copytext) {
-					//Copying the message text to the clipboard
-					getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText(null, LanguageHelper.textComponentToString(getResources(), (MessageComponentText) messageComponent)));
-					
-					//Showing a confirmation toast
-					Toast.makeText(Messaging.this, R.string.message_textcopied, Toast.LENGTH_SHORT).show();
-					
-					//Returning true
-					return true;
-				} else if(itemId == R.id.action_share) {
-					//Checking if this is a text component
-					if(componentType == MessageComponentType.text) {
-						String shareText = LanguageHelper.textComponentToString(getResources(), (MessageComponentText) messageComponent);
-						
-						//Starting the intent immediately if the user is "you"
-						if(messageInfo.getSender() == null) {
-							shareMessageText(null, shareText, messageInfo.getDate());
-						} else {
-							//Requesting the user info
-							pluginRXD.activity().add(
-									MainApplication.getInstance().getUserCacheHelper().getUserInfo(Messaging.this, messageInfo.getSender()).subscribe(userInfo -> {
-										shareMessageText(userInfo.getContactName(), shareText, messageInfo.getDate());
-									}, error -> {
-										//Defaulting to the user's address
-										shareMessageText(messageInfo.getSender(), shareText, messageInfo.getDate());
-									})
-							);
-						}
-					} else {
-						AttachmentInfo attachmentInfo = (AttachmentInfo) messageComponent;
-						
-						//Sharing the attachment file
-						Intent intent = new Intent();
-						intent.setAction(Intent.ACTION_SEND);
-						intent.putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(Messaging.this, AttachmentStorageHelper.getFileAuthority(Messaging.this), attachmentInfo.getFile()));
-						intent.setType(attachmentInfo.getComputedContentType());
-						startActivity(Intent.createChooser(intent, getResources().getText(R.string.action_sharemessage)));
-					}
-					
-					return true;
-				} else if(itemId == R.id.action_save) {
-					AttachmentInfo attachmentInfo = (AttachmentInfo) messageComponent;
-					
-					//Opening the file picker to save the file
-					currentTargetSAFFile = attachmentInfo.getFile();
-					ExternalStorageHelper.createFileSAF(Messaging.this, intentSaveFileSAF, attachmentInfo.getComputedContentType(), attachmentInfo.getComputedFileName());
-					
-					return true;
-				} else if(itemId == R.id.action_deletedata) {
-					AttachmentInfo attachmentInfo = (AttachmentInfo) messageComponent;
-					
-					//Deleting the attachment file
-					MessageActionTask.deleteAttachmentFile(messageInfo.getLocalID(), attachmentInfo).subscribe();
-					
-					//Removing the download from the cache
-					ConnectionTaskManager.removeDownload(attachmentInfo.getLocalID());
-					
-					return true;
-				}
-				
-				//Returning false
-				return false;
-			});
-			
-			//Setting the context menu as closed when the menu closes
-			/* popupMenu.setOnDismissListener(closedMenu -> {
-				contextMenuOpen = false;
-				updateStickerVisibility();
-				composite
-			}); */
-			
-			//Showing the menu
-			popupMenu.show();
-		}
-		
-		/**
-		 * Shares the contents of a text message
-		 * @param sender The name of the user who sent this message, or NULL if the local user sent the message
-		 * @param message The message body
-		 * @param date The date the message was sent
-		 */
-		private void shareMessageText(@Nullable String sender, @NonNull String message, long date) {
-			//Creating the intent
-			Intent intent = new Intent();
-			
-			//Setting the action
-			intent.setAction(Intent.ACTION_SEND);
-			
-			//Getting the text
-			String text = sender == null ?
-					getResources().getString(R.string.message_shareable_text_you, DateFormat.getLongDateFormat(Messaging.this).format(date), DateFormat.getTimeFormat(Messaging.this).format(date), message) :
-					getResources().getString(R.string.message_shareable_text, DateFormat.getLongDateFormat(Messaging.this).format(date), DateFormat.getTimeFormat(Messaging.this).format(date), sender, message);
-			
-			//Setting the text
-			intent.putExtra(Intent.EXTRA_TEXT, text);
-			
-			//Setting the intent type
-			intent.setType("text/plain");
-			
-			//Starting the intent
-			startActivity(Intent.createChooser(intent, getResources().getString(R.string.action_sharemessage)));
+			//Updating the currently selected view
+			{
+				int currentItemIndex = viewModel.conversationItemList.indexOf(messageInfo);
+				int currentComponentIndex = messageInfo.getComponentIndex(messageComponent);
+				notifyItemChanged(currentItemIndex, new MessageListPayload.Selection(currentComponentIndex));
+			}
 		}
 		
 		/**
@@ -4098,7 +4103,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	}
 	
 	@Retention(RetentionPolicy.SOURCE)
-	@IntDef({MessageListPayloadType.state, MessageListPayloadType.status, MessageListPayloadType.attachment,MessageListPayloadType.attachmentRebuild, MessageListPayloadType.flow, MessageListPayloadType.color, MessageListPayloadType.tapback, MessageListPayloadType.sticker})
+	@IntDef({MessageListPayloadType.state, MessageListPayloadType.status, MessageListPayloadType.attachment,MessageListPayloadType.attachmentRebuild, MessageListPayloadType.flow, MessageListPayloadType.color, MessageListPayloadType.tapback, MessageListPayloadType.sticker, MessageListPayloadType.selection})
 	private @interface MessageListPayloadType {
 		int state = 0; //Change in a message's send or error state
 		int status = 1; //Change in a message's activity status
@@ -4108,6 +4113,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		int color = 5; //Change in color
 		int tapback = 6; //Update of a tapback
 		int sticker = 7; //Addition of a sticker
+		int selection = 8; //Change in a message's selection status
 	}
 	
 	private static abstract class MessageListPayload {
@@ -4188,6 +4194,23 @@ public class Messaging extends AppCompatCompositeActivity {
 			@Override
 			int getType() {
 				return MessageListPayloadType.sticker;
+			}
+		}
+		
+		private static class Selection extends MessageListPayload {
+			private final int componentIndex;
+			
+			public Selection(int componentIndex) {
+				this.componentIndex = componentIndex;
+			}
+			
+			@Override
+			int getType() {
+				return MessageListPayloadType.selection;
+			}
+			
+			public int getComponentIndex() {
+				return componentIndex;
 			}
 		}
 	}
@@ -4442,9 +4465,9 @@ public class Messaging extends AppCompatCompositeActivity {
 		List<ConversationItem> conversationItemList; //The conversation's messages
 		List<MessageInfo> conversationGhostList; //The conversation's ghost messages
 		DatabaseManager.ConversationLazyLoader conversationLazyLoader; //The lazy loader utility for conversation items
-		//The latest read message and latest delivered message
-		MessageInfo latestMessageRead, latestMessageDelivered;
+		MessageInfo latestMessageRead, latestMessageDelivered; //The latest read message and latest delivered message
 		private long lastConversationActionTarget = -1;
+		Pair<MessageInfo, MessageComponent> selectedMessageComponent;
 		
 		//Creating the filler values
 		boolean inputDataRestored = false;

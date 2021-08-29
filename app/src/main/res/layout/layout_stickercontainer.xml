@@ -11,4 +11,4 @@
 	app:layout_constraintRight_toRightOf="@+id/container"
 	app:layout_constraintTop_toTopOf="@+id/container"
 	app:layout_constraintBottom_toBottomOf="@+id/container"
-	android:clipChildren="false"/>
+	android:clipChildren="false" />
