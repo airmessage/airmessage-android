@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+			  android:layout_width="wrap_content"
+			  android:layout_height="wrap_content"
+			  android:orientation="horizontal"
+			  android:background="@drawable/background_tapbackselector"
+			  android:elevation="4dp"
+			  android:paddingHorizontal="16dp"
+			  android:paddingVertical="8dp">
+	<ImageButton
+		android:id="@+id/button_love"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:src="@drawable/tapback_love"
+		android:background="?android:attr/selectableItemBackgroundBorderless"
+		android:layout_marginRight="16dp" />
+	
+	<ImageButton
+		android:id="@+id/button_like"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:src="@drawable/tapback_like"
+		android:background="?android:attr/selectableItemBackgroundBorderless"
+		android:layout_marginRight="16dp" />
+	
+	<ImageButton
+		android:id="@+id/button_dislike"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:src="@drawable/tapback_dislike"
+		android:background="?android:attr/selectableItemBackgroundBorderless"
+		android:layout_marginRight="16dp" />
+	
+	<ImageButton
+		android:id="@+id/button_laugh"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:src="@drawable/tapback_laugh"
+		android:background="?android:attr/selectableItemBackgroundBorderless"
+		android:layout_marginRight="16dp" />
+	
+	<ImageButton
+		android:id="@+id/button_exclamation"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:src="@drawable/tapback_exclamation"
+		android:background="?android:attr/selectableItemBackgroundBorderless"
+		android:layout_marginRight="16dp" />
+	
+	<ImageButton
+		android:id="@+id/button_question"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:src="@drawable/tapback_question"
+		android:background="?android:attr/selectableItemBackgroundBorderless" />
+</LinearLayout>
