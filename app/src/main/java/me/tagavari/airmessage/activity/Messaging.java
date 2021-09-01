@@ -2525,7 +2525,8 @@ public class Messaging extends AppCompatCompositeActivity {
 							
 							break;
 						}
-						case MessageListPayloadType.color: {
+						case MessageListPayloadType.color:
+						case MessageListPayloadType.selection: {
 							//Updating the message color
 							updateMessageViewColoring(viewModel.conversationInfo, (VHMessageStructure) holder, (MessageInfo) conversationItem);
 							
@@ -2899,9 +2900,22 @@ public class Messaging extends AppCompatCompositeActivity {
 				viewHolder.profileDefault.setColorFilter(memberColor, android.graphics.PorterDuff.Mode.MULTIPLY);
 			}
 			
+			//Getting the state
+			boolean isMessageSelected =
+				viewModel.selectedMessageComponent != null &&
+				viewModel.selectedMessageComponent.getFirst().getLocalID() == messageInfo.getLocalID();
+			
 			//Updating the components
-			for(VHMessageComponent viewHolderComponent : viewHolder.messageComponents) {
-				viewHolderComponent.updateViewColoring(Messaging.this, textColor, textColorSecondary, backgroundColor);
+			for(ListIterator<VHMessageComponent> iterator = viewHolder.messageComponents.listIterator(); iterator.hasNext();) {
+				int i = iterator.nextIndex();
+				VHMessageComponent viewHolderComponent = iterator.next();
+				
+				//If this component is selected, darken the background color
+				int componentBackgroundColor = backgroundColor;
+				if(isMessageSelected && viewModel.selectedMessageComponent.getSecond().getLocalID() == messageInfo.getComponentAt(i).getLocalID()) {
+					componentBackgroundColor = ColorMathHelper.multiplyColorRaw(componentBackgroundColor, 0.7F);
+				}
+				viewHolderComponent.updateViewColoring(Messaging.this, textColor, textColorSecondary, componentBackgroundColor);
 			}
 		}
 		

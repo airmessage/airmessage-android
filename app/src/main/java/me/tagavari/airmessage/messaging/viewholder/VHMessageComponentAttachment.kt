@@ -69,11 +69,13 @@ abstract class VHMessageComponentAttachment(
 		
 		//Coloring the views
 		groupPrompt.backgroundTintList = cslBackground
+		groupPrompt.invalidate()
 		labelPromptSize.setTextColor(cslSecondary)
 		labelPromptType.setTextColor(cslPrimary)
 		iconPrompt.imageTintList = cslPrimary
 		
 		groupProgress.backgroundTintList = cslBackground
+		groupProgress.invalidate()
 		progressProgress.progressTintList = cslPrimary
 		val cslProgressBG = ColorStateList.valueOf(multiplyColorRaw(colorBackground, 0.9f))
 		progressProgress.indeterminateTintList = cslProgressBG
@@ -81,6 +83,7 @@ abstract class VHMessageComponentAttachment(
 		iconProgress.imageTintList = cslPrimary
 		
 		groupOpen.backgroundTintList = cslBackground
+		groupOpen.invalidate()
 		labelOpen.setTextColor(cslPrimary)
 		labelOpen.compoundDrawableTintList = cslPrimary
 		
