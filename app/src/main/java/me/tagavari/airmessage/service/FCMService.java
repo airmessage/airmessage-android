@@ -13,6 +13,7 @@ import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.comm5.AirUnpacker;
 import me.tagavari.airmessage.connection.comm5.ClientProtocol3;
+import me.tagavari.airmessage.connection.comm5.ClientProtocol4;
 import me.tagavari.airmessage.connection.encryption.EncryptionAES;
 import me.tagavari.airmessage.connection.exception.LargeAllocationException;
 import me.tagavari.airmessage.connection.task.MessageUpdateTask;
@@ -121,6 +122,18 @@ public class FCMService extends FirebaseMessagingService {
 					try {
 						conversationItems = ClientProtocol3.unpackConversationItems(airUnpacker);
 						modifiers = ClientProtocol3.unpackModifiers(airUnpacker);
+						dataLoaded = true;
+					} catch(BufferUnderflowException | LargeAllocationException | IllegalArgumentException exception) {
+						exception.printStackTrace();
+						return;
+					}
+				}
+				//Protocol 5.4
+				else if(protocolVersion[1] == 4) {
+					AirUnpacker airUnpacker = new AirUnpacker(data);
+					try {
+						conversationItems = ClientProtocol4.unpackConversationItems(airUnpacker);
+						modifiers = ClientProtocol4.unpackModifiers(airUnpacker);
 						dataLoaded = true;
 					} catch(BufferUnderflowException | LargeAllocationException | IllegalArgumentException exception) {
 						exception.printStackTrace();

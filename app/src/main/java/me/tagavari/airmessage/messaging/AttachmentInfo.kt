@@ -15,7 +15,14 @@ class AttachmentInfo : MessageComponent {
 	var sort: Long
 	var file: File?
 	var fileChecksum: ByteArray?
+	var downloadFileName: String?
+	var downloadFileType: String?
 	var shouldAutoDownload: Boolean
+	
+	val computedFileName
+		get() = downloadFileName ?: fileName
+	val computedContentType
+		get() = downloadFileType ?: contentType
 	
 	constructor(
 		localID: Long,
@@ -26,6 +33,8 @@ class AttachmentInfo : MessageComponent {
 		sort: Long = -1,
 		file: File? = null,
 		fileChecksum: ByteArray? = null,
+		downloadFileName: String? = null,
+		downloadFileType: String? = null,
 		shouldAutoDownload: Boolean
 	) : super(localID, guid) {
 		this.fileName = fileName
@@ -34,6 +43,8 @@ class AttachmentInfo : MessageComponent {
 		this.sort = sort
 		this.file = file
 		this.fileChecksum = fileChecksum
+		this.downloadFileName = downloadFileName
+		this.downloadFileType = downloadFileType
 		this.shouldAutoDownload = shouldAutoDownload
 	}
 	
@@ -48,7 +59,7 @@ class AttachmentInfo : MessageComponent {
 	}
 	
 	fun clone(): AttachmentInfo {
-		return AttachmentInfo(localID, guid, fileName, contentType, fileSize, sort, file, fileChecksum, shouldAutoDownload)
+		return AttachmentInfo(localID, guid, fileName, contentType, fileSize, sort, file, fileChecksum, downloadFileName, downloadFileType, shouldAutoDownload)
 	}
 	
 	override fun describeContents(): Int {
@@ -69,6 +80,8 @@ class AttachmentInfo : MessageComponent {
 		} else {
 			parcel.writeInt(0)
 		}
+		parcel.writeString(downloadFileName)
+		parcel.writeString(downloadFileType)
 		ParcelCompat.writeBoolean(parcel, shouldAutoDownload)
 	}
 	
@@ -86,6 +99,8 @@ class AttachmentInfo : MessageComponent {
 				null
 			}
 		}
+		downloadFileName = parcel.readString()
+		downloadFileType = parcel.readString()
 		shouldAutoDownload = ParcelCompat.readBoolean(parcel)
 	}
 	

@@ -24,6 +24,8 @@ public class FileFetchRequest {
 	private File targetFile;
 	private OutputStream outputStream;
 	private long totalLength;
+	private @Nullable String downloadFileName;
+	private @Nullable String downloadFileType;
 	private long bytesWritten = 0;
 	private int expectedResponseIndex = 0;
 	
@@ -44,10 +46,12 @@ public class FileFetchRequest {
 	/**
 	 * Initializes this request's streams
 	 */
-	public void initialize(Context context, long totalLength, @Nullable Function<OutputStream, OutputStream> streamWrapper) throws IOException {
-		targetFile = AttachmentStorageHelper.prepareContentFile(context, AttachmentStorageHelper.dirNameAttachment, fileName);
+	public void initialize(Context context, @Nullable String downloadFileName, @Nullable String downloadFileType, long totalLength, @Nullable Function<OutputStream, OutputStream> streamWrapper) throws IOException {
+		targetFile = AttachmentStorageHelper.prepareContentFile(context, AttachmentStorageHelper.dirNameAttachment, downloadFileName != null ? downloadFileName : fileName);
 		outputStream = new BufferedOutputStream(new FileOutputStream(targetFile));
 		if(streamWrapper != null) outputStream = streamWrapper.apply(outputStream);
+		this.downloadFileName = downloadFileName;
+		this.downloadFileType = downloadFileType;
 		this.totalLength = totalLength;
 	}
 	
@@ -78,7 +82,7 @@ public class FileFetchRequest {
 	public Single<File> complete(Context context) {
 		return Completable.fromAction(() -> {
 			close();
-			DatabaseManager.getInstance().updateAttachmentFile(attachmentID, context, targetFile);
+			DatabaseManager.getInstance().updateAttachmentFile(attachmentID, context, targetFile, downloadFileName, downloadFileType);
 		}).subscribeOn(requestScheduler).observeOn(AndroidSchedulers.mainThread()).andThen(Single.just(targetFile));
 	}
 	
@@ -96,6 +100,22 @@ public class FileFetchRequest {
 	public void cancel() throws IOException {
 		close();
 		if(targetFile != null) AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameAttachment, targetFile);
+	}
+	
+	/**
+	 * Gets the updated file name of this request, or NULL if the file name isn't being changed
+	 */
+	@Nullable
+	public String getDownloadFileName() {
+		return downloadFileName;
+	}
+	
+	/**
+	 * Gets the updated file type of this request, or NULL if the file type isn't being changed
+	 */
+	@Nullable
+	public String getDownloadFileType() {
+		return downloadFileType;
 	}
 	
 	/**

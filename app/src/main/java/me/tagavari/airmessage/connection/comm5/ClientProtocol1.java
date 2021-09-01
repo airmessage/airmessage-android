@@ -291,7 +291,7 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 		
 		//Processing the data
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, null);
+			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, null, null, null);
 			listener.onMassRetrievalFileProgress(requestID, requestIndex, fileGUID, fileData);
 			if(isLast) listener.onMassRetrievalFileComplete(requestID, fileGUID);
 		});
@@ -335,7 +335,7 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 		
 		//Forwarding the data to the listeners
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onFileRequestStart(requestID, fileLength, null);
+			if(requestIndex == 0) listener.onFileRequestStart(requestID, null, null, fileLength, null);
 			listener.onFileRequestData(requestID, requestIndex, fileData);
 			if(isLast) listener.onFileRequestComplete(requestID);
 		});

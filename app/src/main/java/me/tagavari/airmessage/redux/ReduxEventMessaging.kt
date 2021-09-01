@@ -45,7 +45,7 @@ abstract class ReduxEventMessaging {
 		ReduxMessageAction(conversationInfo, messageInfo)
 	
 	//When an attachment's file is updated
-	class AttachmentFile(val messageID: Long, val attachmentID: Long, val file: File?) : ReduxEventMessaging()
+	class AttachmentFile(val messageID: Long, val attachmentID: Long, val file: File?, val downloadName: String?, val downloadType: String?) : ReduxEventMessaging()
 	
 	/**
 	 * When a tapback is updated

@@ -37,7 +37,7 @@ import java.util.zip.Inflater;
 public class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
 	private static final String DATABASE_NAME = "messages.db";
-	private static final int DATABASE_VERSION = 13;
+	private static final int DATABASE_VERSION = 14;
 	
 	//Creating the fetch statements
 	/* private static final String SQL_FETCH_CONVERSATIONS = "SELECT * FROM (" +
@@ -147,6 +147,8 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			Contract.AttachmentEntry.COLUMN_NAME_FILETYPE + " TEXT NOT NULL," +
 			Contract.AttachmentEntry.COLUMN_NAME_FILEPATH + " TEXT," +
 			Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM + " TEXT," +
+			Contract.AttachmentEntry.COLUMN_NAME_DOWNLOADFILETYPE + " TEXT," +
+			Contract.AttachmentEntry.COLUMN_NAME_DOWNLOADFILENAME + " TEXT," +
 			Contract.AttachmentEntry.COLUMN_NAME_SORT + " INTEGER, " +
 			Contract.AttachmentEntry.COLUMN_NAME_SHOULDAUTODOWNLOAD + " INTEGER NOT NULL DEFAULT 0" +
 			");";
@@ -535,6 +537,10 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			case 12:
 				//Adding the "should_auto_download" column to attachments
 				database.execSQL("ALTER TABLE attachments ADD should_auto_download INTEGER DEFAULT 0");
+			case 13:
+				//Adding the "download_type" and "download_name" columns to attachments
+				database.execSQL("ALTER TABLE attachments ADD download_type TEXT");
+				database.execSQL("ALTER TABLE attachments ADD download_name TEXT");
 		}
 	}
 	
@@ -622,6 +628,8 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			static final String COLUMN_NAME_FILESIZE = "size";
 			static final String COLUMN_NAME_FILEPATH = "path";
 			static final String COLUMN_NAME_FILECHECKSUM = "checksum";
+			static final String COLUMN_NAME_DOWNLOADFILETYPE = "download_type"; //The MIME type of the downloaded file (NULL if the same as attachment file)
+			static final String COLUMN_NAME_DOWNLOADFILENAME = "download_name"; //The name type of the downloaded file (NULL if the same as attachment file)
 			static final String COLUMN_NAME_SORT = "sort";
 			static final String COLUMN_NAME_SHOULDAUTODOWNLOAD = "should_auto_download"; //Whether this file should be downloaded automatically when it is loaded
 		}
@@ -1055,9 +1063,9 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	}
 	
 	private static class AttachmentInfoIndices {
-		final int iLocalID, iGuid, iFileName, iFileType, iFileSize, iFilePath, iChecksum, iSort, iShouldAutoDownload;
+		final int iLocalID, iGuid, iFileName, iFileType, iFileSize, iFilePath, iChecksum, iSort, iDownloadFileName, iDownloadFileType, iShouldAutoDownload;
 		
-		public AttachmentInfoIndices(int iLocalID, int iGuid, int iFileName, int iFileType, int iFileSize, int iFilePath, int iChecksum, int iSort, int iShouldAutoDownload) {
+		public AttachmentInfoIndices(int iLocalID, int iGuid, int iFileName, int iFileType, int iFileSize, int iFilePath, int iChecksum, int iDownloadFileName, int iDownloadFileType, int iSort, int iShouldAutoDownload) {
 			this.iLocalID = iLocalID;
 			this.iGuid = iGuid;
 			this.iFileName = iFileName;
@@ -1065,6 +1073,8 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			this.iFileSize = iFileSize;
 			this.iFilePath = iFilePath;
 			this.iChecksum = iChecksum;
+			this.iDownloadFileName = iDownloadFileName;
+			this.iDownloadFileType = iDownloadFileType;
 			this.iSort = iSort;
 			this.iShouldAutoDownload = iShouldAutoDownload;
 		}
@@ -1077,10 +1087,12 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			int iFileSize = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILESIZE);
 			int iFilePath = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
 			int iChecksum = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_FILECHECKSUM);
+			int iDownloadFileName = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_DOWNLOADFILENAME);
+			int iDownloadFileType = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_DOWNLOADFILETYPE);
 			int iSort = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_SORT);
 			int iShouldAutoDownload = cursor.getColumnIndexOrThrow(Contract.AttachmentEntry.COLUMN_NAME_SHOULDAUTODOWNLOAD);
 			
-			return new AttachmentInfoIndices(iLocalID, iGuid, iFileName, iFileType, iFileSize, iFilePath, iChecksum, iSort, iShouldAutoDownload);
+			return new AttachmentInfoIndices(iLocalID, iGuid, iFileName, iFileType, iFileSize, iFilePath, iChecksum, iDownloadFileName, iDownloadFileType, iSort, iShouldAutoDownload);
 		}
 	}
 	
@@ -1178,6 +1190,8 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		long sort = cursor.isNull(indices.iSort) ? -1 : cursor.getLong(indices.iSort);
 		String stringChecksum = cursor.getString(indices.iChecksum);
 		byte[] fileChecksum = stringChecksum == null ? null : Base64.decode(stringChecksum, Base64.NO_WRAP);
+		String downloadedFileName = cursor.getString(indices.iDownloadFileName);
+		String downloadedFileType = cursor.getString(indices.iDownloadFileType);
 		boolean shouldAutoDownload = cursor.getInt(indices.iShouldAutoDownload) == 1;
 		
 		//Getting the identifiers
@@ -1187,10 +1201,10 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//Checking if the attachment has data
 		if(file != null && file.exists() && file.isFile()) {
 			//Adding the as a file
-			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, file, null, shouldAutoDownload);
+			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, file, null, downloadedFileName, downloadedFileType, shouldAutoDownload);
 		} else {
 			//Adding the with its checksum
-			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, null, fileChecksum, shouldAutoDownload);
+			return new AttachmentInfo(fileID, fileGuid, fileName, fileType, fileSize, sort, null, fileChecksum, downloadedFileName, downloadedFileType, shouldAutoDownload);
 		}
 	}
 	
@@ -1423,6 +1437,8 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//Creating the content values
 		ContentValues contentValues = new ContentValues();
 		contentValues.putNull(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH);
+		contentValues.putNull(Contract.AttachmentEntry.COLUMN_NAME_DOWNLOADFILENAME);
+		contentValues.putNull(Contract.AttachmentEntry.COLUMN_NAME_DOWNLOADFILETYPE);
 		
 		//Updating the database
 		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(localID)});
@@ -1462,32 +1478,26 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
-	public void updateAttachmentFile(long localID, Context context, File file) {
+	public void updateAttachmentFile(long localID, Context context, File file, @Nullable String downloadedFileName, @Nullable String downloadedFileType) {
 		//Creating the content values variable
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, AttachmentStorageHelper.getRelativePath(context, file));
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_DOWNLOADFILENAME, downloadedFileName);
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_DOWNLOADFILETYPE, downloadedFileType);
 		
 		//Updating the data
 		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(localID)});
 	}
 	
-	public void updateAttachmentFile(String guid, Context context, File file) {
+	public void updateAttachmentFile(String guid, Context context, File file, @Nullable String downloadedFileName, @Nullable String downloadedFileType) {
 		//Creating the content values variable
 		ContentValues contentValues = new ContentValues();
 		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, AttachmentStorageHelper.getRelativePath(context, file));
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_DOWNLOADFILENAME, downloadedFileName);
+		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_DOWNLOADFILETYPE, downloadedFileType);
 		
 		//Updating the data
 		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry.COLUMN_NAME_GUID + " = ?", new String[]{guid});
-	}
-	
-	public void updateAttachmentFile(long localID, Context context, File file, long fileSize) {
-		//Creating the content values variable
-		ContentValues contentValues = new ContentValues();
-		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILEPATH, AttachmentStorageHelper.getRelativePath(context, file));
-		contentValues.put(Contract.AttachmentEntry.COLUMN_NAME_FILESIZE, fileSize);
-		
-		//Updating the data
-		getWritableDatabase().update(Contract.AttachmentEntry.TABLE_NAME, contentValues, Contract.AttachmentEntry._ID + " = ?", new String[]{Long.toString(localID)});
 	}
 	
 	public void updateAttachmentChecksum(long localID, byte[] checksum) {
@@ -2928,7 +2938,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		//Creating and returning the attachment
-		return new AttachmentInfo(localID, attachmentStruct.guid, attachmentStruct.name, attachmentStruct.type, attachmentStruct.size, attachmentStruct.sort, null, attachmentStruct.checksum, shouldAutoDownload);
+		return new AttachmentInfo(localID, attachmentStruct.guid, attachmentStruct.name, attachmentStruct.type, attachmentStruct.size, attachmentStruct.sort, null, attachmentStruct.checksum, null, null, shouldAutoDownload);
 	}
 	
 	/**

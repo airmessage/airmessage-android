@@ -40,6 +40,8 @@ public class MassRetrievalRequest {
 	//Attachments state (only to be accessed on background thread)
 	private String attachmentGUID;
 	private File attachmentTargetFile;
+	private String attachmentDownloadName;
+	private String attachmentDownloadType;
 	private int attachmentExpectedRequestIndex = 0;
 	private OutputStream attachmentOutputStream;
 	
@@ -125,16 +127,20 @@ public class MassRetrievalRequest {
 	 * @param context The context to use
 	 * @param guid The GUID of the attachment
 	 * @param fileName The file name of the attachment
+	 * @param downloadFileName The downloaded file name of the attachment (or null if unchanged)
+	 * @param downloadFileType The downloaded file type of the attachment (or null if unchanged)
 	 * @return A completable to represent this task
 	 */
-	public Completable initializeAttachment(Context context, String guid, String fileName, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
+	public Completable initializeAttachment(Context context, String guid, String fileName, @Nullable String downloadFileName, @Nullable String downloadFileType, @Nullable Function<OutputStream, OutputStream> streamWrapper) {
 		return Completable.fromAction(() -> {
 			//Checking if there is another request in progress
 			if(attachmentGUID != null) throw new IllegalStateException("Trying to start attachment download for " + attachmentGUID + ", but " + guid + " is already in progress");
 			
 			//Creating the file and the stream
 			attachmentGUID = guid;
-			attachmentTargetFile = AttachmentStorageHelper.prepareContentFile(context, AttachmentStorageHelper.dirNameAttachment, fileName);
+			attachmentTargetFile = AttachmentStorageHelper.prepareContentFile(context, AttachmentStorageHelper.dirNameAttachment, downloadFileName != null ? downloadFileName : fileName);
+			attachmentDownloadName = downloadFileName;
+			attachmentDownloadType = downloadFileType;
 			attachmentOutputStream = new BufferedOutputStream(new FileOutputStream(attachmentTargetFile));
 			if(streamWrapper != null) attachmentOutputStream = streamWrapper.apply(attachmentOutputStream);
 		}).subscribeOn(requestScheduler).observeOn(AndroidSchedulers.mainThread());
@@ -180,12 +186,14 @@ public class MassRetrievalRequest {
 			}
 			
 			//Updating the attachment file location
-			DatabaseManager.getInstance().updateAttachmentFile(attachmentGUID, context, attachmentTargetFile);
+			DatabaseManager.getInstance().updateAttachmentFile(attachmentGUID, context, attachmentTargetFile, attachmentDownloadName, attachmentDownloadType);
 			
 			//Cleaning up
 			closeAttachment();
 			attachmentGUID = null;
 			attachmentTargetFile = null;
+			attachmentDownloadName = null;
+			attachmentDownloadType = null;
 			attachmentExpectedRequestIndex = 0;
 			attachmentOutputStream = null;
 			emitter.onComplete();
