@@ -67,8 +67,10 @@ object NotificationHelper {
 	const val notificationTagMessage = "message"
 	const val notificationTagMessageError = "message_error"
 	
-	//public static final String notificationTagStatus = "status";
-	private const val notificationMessageSummaryExtras = "messagesummary"
+	private const val notificationExtrasMessageSummaryCount = "message_summary_count"
+	private const val notificationExtrasMessageSummaryConversationID = "message_summary_conversation_id"
+	private const val notificationExtrasMessageSummaryTitle = "message_summary_title"
+	private const val notificationExtrasMessageSummaryDescription = "message_summary_description"
 	private const val pendingIntentOffsetOpenChat = 0
 	private const val pendingIntentOffsetBubble = 1000000
 	private const val pendingIntentOffsetMarkAsRead = 1000000
@@ -320,7 +322,14 @@ object NotificationHelper {
 			}.toMutableList()
 		} else {
 			//Reading in existing notification metadata
-			summaryMessages = notification.extras.getParcelableArrayList(notificationMessageSummaryExtras)!!
+			summaryMessages = notification.extras.run {
+				val size = getInt(notificationExtrasMessageSummaryCount)
+				
+				val arrIDs = getIntArray(notificationExtrasMessageSummaryConversationID)!!
+				val arrTitles = getStringArray(notificationExtrasMessageSummaryTitle)!!
+				val arrDescriptions = getStringArray(notificationExtrasMessageSummaryDescription)!!
+				(0 until size).map { i -> NotificationSummaryMessage(arrIDs[i], arrTitles[i], arrDescriptions[i]) }
+			}.toMutableList()
 		}
 		
 		//Adding the new message
@@ -346,8 +355,11 @@ object NotificationHelper {
 		})
 		
 		//Writing notification metadata
-		notificationBuilder.addExtras(Bundle().apply {
-			putParcelableArrayList(notificationMessageSummaryExtras, ArrayList(summaryMessages))
+		notificationBuilder.setExtras(Bundle().apply {
+			putInt(notificationExtrasMessageSummaryCount, summaryMessages.size)
+			putIntArray(notificationExtrasMessageSummaryConversationID, summaryMessages.map { it.conversationID }.toIntArray())
+			putStringArray(notificationExtrasMessageSummaryTitle, summaryMessages.map { it.title }.toTypedArray())
+			putStringArray(notificationExtrasMessageSummaryDescription, summaryMessages.map { it.description }.toTypedArray())
 		})
 		
 		//Returning the notification
