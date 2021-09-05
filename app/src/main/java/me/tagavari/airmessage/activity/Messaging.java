@@ -3506,7 +3506,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					.flatMap(item -> ((MessageInfo) item).getAttachments().stream())
 					.filter(attachment ->
 							attachment.getFile() != null &&
-									(FileHelper.compareMimeTypes(attachmentInfo.getComputedContentType(), MIMEConstants.mimeTypeImage) || FileHelper.compareMimeTypes(attachmentInfo.getComputedContentType(), MIMEConstants.mimeTypeVideo))
+									(FileHelper.compareMimeTypes(attachment.getComputedContentType(), MIMEConstants.mimeTypeImage) || FileHelper.compareMimeTypes(attachment.getComputedContentType(), MIMEConstants.mimeTypeVideo))
 					).collect(Collectors.toCollection(ArrayList::new));
 			int itemIndex = attachments.indexOf(attachmentInfo);
 			
