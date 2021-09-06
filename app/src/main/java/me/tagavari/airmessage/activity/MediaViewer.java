@@ -289,7 +289,7 @@ public class MediaViewer extends AppCompatActivity {
 		intent.putExtra(Intent.EXTRA_STREAM, content);
 		
 		//Setting the type
-		intent.setType(attachment.getContentType());
+		intent.setType(attachment.getComputedContentType());
 		
 		//Starting the activity
 		startActivity(Intent.createChooser(intent, getResources().getText(R.string.action_sharemessage)));
@@ -300,7 +300,7 @@ public class MediaViewer extends AppCompatActivity {
 	
 	private boolean saveItem(AttachmentInfo attachment) {
 		targetExportFile = attachment.getFile();
-		ExternalStorageHelper.createFileSAF(this, activityResultCreateFileSAF, attachment.getContentType(), attachment.getFile().getName());
+		ExternalStorageHelper.createFileSAF(this, activityResultCreateFileSAF, attachment.getComputedContentType(), attachment.getComputedFileName());
 		
 		//Returning true
 		return true;
@@ -352,9 +352,9 @@ public class MediaViewer extends AppCompatActivity {
 		@Override
 		public int getItemViewType(int position) {
 			AttachmentInfo item = itemList.get(position);
-			if(FileHelper.compareMimeTypes(item.getContentType(), MIMEConstants.mimeTypeImage)) return viewTypeImage;
-			else if(FileHelper.compareMimeTypes(item.getContentType(), MIMEConstants.mimeTypeVideo)) return viewTypeVideo;
-			else throw new IllegalArgumentException("Unsupported item type provided: " + item.getContentType());
+			if(FileHelper.compareMimeTypes(item.getComputedContentType(), MIMEConstants.mimeTypeImage)) return viewTypeImage;
+			else if(FileHelper.compareMimeTypes(item.getComputedContentType(), MIMEConstants.mimeTypeVideo)) return viewTypeVideo;
+			else throw new IllegalArgumentException("Unsupported item type provided: " + item.getComputedContentType());
 		}
 		
 		@NonNull
