@@ -40,8 +40,8 @@ android {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
 		targetSdkVersion 30
-		versionName "3.3.0"
-		versionCode 124
+		versionName "3.3.1"
+		versionCode 125
 
 		resConfigs "en", "fr", "ja"
 
