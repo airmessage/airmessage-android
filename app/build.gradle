@@ -16,6 +16,9 @@ secrets {
 	defaultPropertiesFileName = "secrets.default.properties"
 }
 
+//Load shared keystore
+def sharedKeystoreFile = rootProject.file("signingshared/shared.keystore")
+
 //Load keystore
 def keystorePropertiesFile = rootProject.file(".signing/keystore.properties")
 def keystoreProperties = null
@@ -26,8 +29,17 @@ if(keystorePropertiesFile.exists()) {
 
 android {
 	signingConfigs {
+		if(sharedKeystoreFile.exists()) {
+			shared {
+				storeFile sharedKeystoreFile
+				storePassword "android"
+				keyAlias "androiddebugkey"
+				keyPassword "android"
+			}
+		}
+
 		if(keystoreProperties) {
-			config {
+			release {
 				storeFile file(keystoreProperties["storeFile"])
 				storePassword keystoreProperties["storePassword"]
 				keyAlias keystoreProperties["keyAlias"]
@@ -56,6 +68,11 @@ android {
 
 			resValue "string", "applicationId", "me.tagavari.airmessage.debug"
 
+			//Use shared, or default to debug if unavailable
+			if(sharedKeystoreFile.exists()) {
+				signingConfig signingConfigs.shared
+			}
+
 			/* minifyEnabled true
 			shrinkResources true
 
@@ -72,7 +89,7 @@ android {
 			resValue "string", "applicationId", "me.tagavari.airmessage"
 
 			if(keystoreProperties) {
-				signingConfig signingConfigs.config
+				signingConfig signingConfigs.release
 			}
 		}
 	}
