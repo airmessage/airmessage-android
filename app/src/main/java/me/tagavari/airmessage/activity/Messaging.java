@@ -141,7 +141,8 @@ public class Messaging extends AppCompatCompositeActivity {
 	public static final String intentParamTargetID = "targetID";
 	public static final String intentParamDataText = "dataText";
 	public static final String intentParamDataFile = "dataFile";
-	
+	public static final String intentParamBubble = "bubble";
+
 	public static final int messageChunkSize = 20;
 	public static final int progressiveLoadThreshold = 10;
 	
@@ -1219,7 +1220,7 @@ public class Messaging extends AppCompatCompositeActivity {
 	 * Gets if this messaging activity is launched as a floating bubble
 	 */
 	private boolean isInBubble() {
-		return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isLaunchedFromBubble();
+		return getIntent().getBooleanExtra(intentParamBubble, false);
 	}
 	
 	/**

@@ -529,6 +529,7 @@ object NotificationHelper {
 					NotificationCompat.BubbleMetadata.Builder(
 						Intent(context, Messaging::class.java).apply {
 							putExtra(Messaging.intentParamTargetID, conversationInfo.localID)
+							putExtra(Messaging.intentParamBubble, true)
 						}.let { intent -> PendingIntent.getActivity(
 							context,
 							pendingIntentOffsetBubble + conversationInfo.localID.toInt(),
