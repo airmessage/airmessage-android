@@ -416,7 +416,7 @@ object NotificationHelper {
 		clickStackBuilder.addNextIntent(clickIntent)
 		
 		//Getting the pending intent
-		val clickPendingIntent = clickStackBuilder.getPendingIntent(pendingIntentOffsetOpenChat + conversationInfo.localID.toInt(), 0)
+		val clickPendingIntent = clickStackBuilder.getPendingIntent(pendingIntentOffsetOpenChat + conversationInfo.localID.toInt(), PendingIntent.FLAG_IMMUTABLE)
 		
 		//Creating the notification builder
 		val notificationBuilder = NotificationCompat.Builder(context, notificationChannelMessage)
@@ -675,7 +675,7 @@ object NotificationHelper {
 			}
 			
 			//Getting the pending intent
-			val clickPendingIntent = clickStackBuilder.getPendingIntent(pendingIntentOffsetOpenChat + conversationInfo.localID.toInt(), 0)
+			val clickPendingIntent = clickStackBuilder.getPendingIntent(pendingIntentOffsetOpenChat + conversationInfo.localID.toInt(), PendingIntent.FLAG_IMMUTABLE)
 			
 			//Creating the notification
 			val notification = NotificationCompat.Builder(context, notificationChannelMessageError)
@@ -705,7 +705,7 @@ object NotificationHelper {
 		//Getting the pending intent
 		val clickPendingIntent: PendingIntent = TaskStackBuilder.create(context).run {
 			addNextIntentWithParentStack(Intent(context, Conversations::class.java))
-			getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT)
+			getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 		}
 		
 		//Creating the notification
