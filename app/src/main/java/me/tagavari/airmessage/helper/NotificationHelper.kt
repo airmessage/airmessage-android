@@ -431,7 +431,7 @@ object NotificationHelper {
 			//Setting the delete listener
 			.setDeleteIntent(PendingIntent.getBroadcast(context, 0, Intent(context, MessageNotificationDeleteReceiver::class.java), PendingIntent.FLAG_IMMUTABLE))
 			//Setting the category
-			.setCategory(Notification.CATEGORY_MESSAGE)
+			.setCategory(NotificationCompat.CATEGORY_MESSAGE)
 			//Adding the person
 			.addPerson(memberInfo?.let { member -> Person.Builder().apply {
 				setName(member.contactName)
@@ -453,7 +453,7 @@ object NotificationHelper {
 			if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.resources.getString(R.string.preference_messagenotifications_vibrate_key), false)) notificationBuilder.setVibrate(longArrayOf(0, 250, 250, 250))
 			
 			//Setting the priority
-			notificationBuilder.priority = Notification.PRIORITY_HIGH
+			notificationBuilder.priority = NotificationCompat.PRIORITY_HIGH
 		}
 		
 		//Disabling alerts if a sound shouldn't be played
@@ -685,9 +685,9 @@ object NotificationHelper {
 				.setContentText(context.resources.getString(R.string.message_senderrornotify_desc, title))
 				.setContentIntent(clickPendingIntent)
 				.setColor(context.resources.getColor(R.color.colorError, null))
-				.setCategory(Notification.CATEGORY_ERROR)
-				.setDefaults(Notification.DEFAULT_ALL) //API 23-25
-				.setPriority(Notification.PRIORITY_HIGH).build() //API 23-25
+				.setCategory(NotificationCompat.CATEGORY_ERROR)
+				.setDefaults(NotificationCompat.DEFAULT_ALL) //API 23-25
+				.setPriority(NotificationCompat.PRIORITY_HIGH).build() //API 23-25
 			
 			//Sending the notification
 			notificationManager.notify(notificationTagMessageError, conversationInfo.localID.toInt(), notification)
@@ -716,9 +716,9 @@ object NotificationHelper {
 			.setContentText(context.resources.getString(R.string.message_decrypterrornotify_desc))
 			.setContentIntent(clickPendingIntent)
 			.setColor(context.resources.getColor(R.color.colorError, null))
-			.setCategory(Notification.CATEGORY_ERROR)
-			.setDefaults(Notification.DEFAULT_ALL) //API 23-25
-			.setPriority(Notification.PRIORITY_HIGH).build() //API 23-25
+			.setCategory(NotificationCompat.CATEGORY_ERROR)
+			.setDefaults(NotificationCompat.DEFAULT_ALL) //API 23-25
+			.setPriority(NotificationCompat.PRIORITY_HIGH).build() //API 23-25
 		
 		//Sending the notification
 		notificationManager.notify(notificationTagMessageError, notificationIDWarningDecrypt, notification)
@@ -795,7 +795,7 @@ object NotificationHelper {
 			setContentTitle(context.resources.getString(R.string.message_manualconfigurationstatus))
 			addAction(getConnectionQuitAction(context))
 			setShowWhen(false)
-			setPriority(Notification.PRIORITY_MIN)
+			setPriority(NotificationCompat.PRIORITY_MIN)
 			setOngoing(true)
 		}.build()
 	}
@@ -807,7 +807,7 @@ object NotificationHelper {
 			setContentTitle(context.resources.getString(R.string.message_temporarymodestatus))
 			addAction(getConnectionQuitAction(context))
 			setShowWhen(false)
-			setPriority(Notification.PRIORITY_MIN)
+			setPriority(NotificationCompat.PRIORITY_MIN)
 			setOngoing(true)
 		}.build()
 	}
