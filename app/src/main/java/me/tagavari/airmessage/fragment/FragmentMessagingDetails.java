@@ -11,6 +11,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
+import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -376,19 +377,16 @@ public class FragmentMessagingDetails extends BottomSheetDialogFragment {
 				})
 				.setNegativeButton(android.R.string.cancel, null)
 				.create();
-		
+
 		groupDialog.setOnShowListener(dialog -> {
 			//Focusing the text view
 			input.requestFocus();
-			getContext().getSystemService(InputMethodManager.class).toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
 		});
 		groupDialog.setOnDismissListener(dialog -> {
 			//Clearing background tasks
 			dialogDisposable.clear();
-			
-			//Hiding the keyboard
-			getContext().getSystemService(InputMethodManager.class).toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0);
 		});
+		groupDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
 		groupDialog.show();
 	}
 	

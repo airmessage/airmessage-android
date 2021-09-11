@@ -3,6 +3,7 @@ package me.tagavari.airmessage.fragment
 import android.app.Dialog
 import android.os.Bundle
 import android.view.View
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.Toast
@@ -138,14 +139,11 @@ class FragmentDialogConnectAuth : DialogFragment() {
 				setPositiveButton(R.string.action_continue, null)
 				setNegativeButton(android.R.string.cancel, null)
 			}.create().apply {
+				window!!.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+
 				setOnShowListener {
 					//Focusing the text view
 					inputField.requestFocus()
-					context.getSystemService(InputMethodManager::class.java).toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
-				}
-				setOnDismissListener {
-					//Hiding the keyboard
-					context.getSystemService(InputMethodManager::class.java).toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0)
 				}
 			}
 		} ?: throw IllegalStateException("Activity cannot be null")
