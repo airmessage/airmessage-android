@@ -197,7 +197,7 @@ public class LocationPicker extends AppCompatActivity {
 
 				//Setting the close button margins
 				{
-					int insetStart = ResourceHelper.isLTR(getResources()) ? insets.getSystemWindowInsetLeft() : insets.getSystemWindowInsetRight();
+					int insetStart = ResourceHelper.isLTR(getResources()) ? systemInsets.left : systemInsets.right;
 					
 					fabParams.setMarginStart(fabMarginStart + insetStart);
 					fabParams.topMargin = fabMarginTop + systemInsets.top;

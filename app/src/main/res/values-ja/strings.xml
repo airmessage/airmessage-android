@@ -249,7 +249,6 @@
 	<string name="preference_server_dropreconnect_title">接続を切断の時に再接続</string>
 	<string name="preferencegroup_appearance_title">外観</string>
 	<string name="preference_appearance_theme_title">テーマ</string>
-	<string name="preference_appearance_location_title">夜間検出の強化</string>
 	<string name="preference_appearance_advancedcolor_title">虹色のチャット</string>
 	<string name="preference_appearance_advancedcolor_description">ユーザーごとチャットごとに色付け</string>
 	<string name="preference_appearance_showreadreceipts_title">既読通知の表示</string>
@@ -277,7 +276,6 @@
 	<string name="notificationchannelimportance_2">重要度中</string>
 	<string name="notificationchannelimportance_3">最重要度</string>
 	<string name="notificationchannelimportance_4">緊急の重要度</string>
-	<string name="preference_appearance_location_description">現在地を使用して日の出と入りの時間を検出してもっと正確ナイトモードを提供</string>
 	<string name="servicedesc_connectionservice">AirMessage サーバーの接続を作成し維持してメッセージを送受信します</string>
 	<string name="message_messageeffect_invisibleink">見えないインクのメッセージ</string>
 	<string name="message_setup_sync_description">同じコンピューと Apple アカウントに接続の以外、スキップしないでください。\n\n古い会話を保持すると、新しい会話と結合したり機能が失われたりする可能性があります。</string>

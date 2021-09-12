@@ -415,7 +415,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 			
 			//Setting up the permission request button
 			viewGalleryPermission.setVisibility(View.VISIBLE);
-			requestStoragePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
+			viewGalleryPermission.setOnClickListener(view -> requestStoragePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE));
 		} else {
 			//Hiding the permission request button and the failed text
 			viewGalleryPermission.setVisibility(View.GONE);
@@ -485,7 +485,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 		if(needsPermission) {
 			//Setting up the permission request button
 			viewAudioPermission.setVisibility(View.VISIBLE);
-			requestAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
+			viewAudioPermission.setOnClickListener(view -> requestAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO));
 			
 			//Hiding the recording view
 			viewAudioContent.setVisibility(View.GONE);

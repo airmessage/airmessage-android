@@ -38,6 +38,9 @@ import android.view.textclassifier.TextClassificationManager;
 import android.view.textclassifier.TextClassifier;
 import android.view.textclassifier.TextLinks;
 import android.widget.*;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.IntDef;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
@@ -46,8 +49,10 @@ import androidx.appcompat.widget.AppCompatEditText;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.FileProvider;
 import androidx.core.graphics.ColorUtils;
+import androidx.core.graphics.Insets;
 import androidx.core.util.Pools;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.inputmethod.EditorInfoCompat;
 import androidx.core.view.inputmethod.InputConnectionCompat;
 import androidx.fragment.app.Fragment;
@@ -152,8 +157,6 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private static final long confettiDuration = 1000;
 	//private static final float disabledAlpha = 0.38F
-	
-	private static final int intentSaveFileSAF = 1;
 	
 	private static final int previewImageMaxSize = 128 * 1024; //128 kB
 	
@@ -297,6 +300,12 @@ public class Messaging extends AppCompatCompositeActivity {
 	
 	private File currentTargetSAFFile = null;
 	
+	//Creating the callbacks
+	private final ActivityResultLauncher<String> saveFileLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument(), uri -> {
+		if(uri == null) return;
+		ExternalStorageHelper.exportFile(this, currentTargetSAFFile, uri);
+	});
+	
 	public Messaging() {
 		//Setting the plugins;
 		addPlugin(pluginMessageBar = new PluginMessageBar());
@@ -351,32 +360,30 @@ public class Messaging extends AppCompatCompositeActivity {
 		getWindow().setStatusBarColor(Color.TRANSPARENT);
 		
 		//Listening for window inset changes
-		ViewCompat.setOnApplyWindowInsetsListener(rootView, (view, insets) -> {
-			appBar.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), appBar.getPaddingBottom());
+		ViewCompat.setOnApplyWindowInsetsListener(rootView, (view, windowInsets) -> {
+			Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+			
+			appBar.setPadding(insets.left, insets.top, insets.right, appBar.getPaddingBottom());
 			appBar.post(() -> {
-				messageList.setPadding(insets.getSystemWindowInsetLeft(), appBar.getHeight(), insets.getSystemWindowInsetRight(), messageList.getPaddingBottom());
+				messageList.setPadding(insets.left, appBar.getHeight(), insets.right, messageList.getPaddingBottom());
 			});
-			scrimStatusBar.getLayoutParams().height = insets.getSystemWindowInsetTop();
+			scrimStatusBar.getLayoutParams().height = insets.top;
 			
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 				//Adding padding to the details menu
 				View detailsMenu = findViewById(R.id.group_messaginginfo_content);
-				if(detailsMenu != null) detailsMenu.setPadding(insets.getSystemWindowInsetLeft(), detailsMenu.getPaddingTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+				if(detailsMenu != null) detailsMenu.setPadding(insets.left, detailsMenu.getPaddingTop(), insets.right, insets.bottom);
 				
 				//Adding side margins to the details panel
 				ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) bottomDetailsPanel.getLayoutParams();
-				layoutParams.leftMargin = insets.getSystemWindowInsetLeft();
-				layoutParams.rightMargin = insets.getSystemWindowInsetRight();
+				layoutParams.leftMargin = insets.left;
+				layoutParams.rightMargin = insets.right;
 			} else {
 				//Simply applying padding to the entire root view
-				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.getSystemWindowInsetBottom());
+				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.bottom);
 			}
 			
-			//currentInsetPaddingBottom = insets.getSystemWindowInsetBottom();
-			
-			//if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return WindowInsets.CONSUMED;
-			//else return windowInsets.consumeSystemWindowInsets();
-			return insets;
+			return windowInsets;
 		});
 		
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -1103,18 +1110,6 @@ public class Messaging extends AppCompatCompositeActivity {
 		
 		//Updating the reply suggestions
 		viewModel.updateConversationActions();
-	}
-	
-	@Override
-	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-		super.onActivityResult(requestCode, resultCode, intent);
-		
-		if(requestCode == intentSaveFileSAF) {
-			if(resultCode == RESULT_OK) {
-				//Saving the file
-				ExternalStorageHelper.exportFile(this, currentTargetSAFFile, intent.getData());
-			}
-		}
 	}
 	
 	@Override
@@ -3634,7 +3629,7 @@ public class Messaging extends AppCompatCompositeActivity {
 					
 					//Opening the file picker to save the file
 					currentTargetSAFFile = attachmentInfo.getFile();
-					ExternalStorageHelper.createFileSAF(Messaging.this, intentSaveFileSAF, attachmentInfo.getComputedContentType(), attachmentInfo.getComputedFileName());
+					saveFileLauncher.launch(attachmentInfo.getComputedFileName());
 					
 					return true;
 				} else if(itemId == R.id.action_deletedata) {

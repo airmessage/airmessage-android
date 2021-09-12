@@ -18,12 +18,6 @@
 			android:title="@string/preference_appearance_theme_title"
 			android:summary="%s"
 			app:iconSpaceReserved="false" />
-		<!-- <androidx.preference.SwitchPreference
-			android:key="@string/preference_appearance_location_key"
-			android:persistent="false"
-			android:title="@string/preference_appearance_location_title"
-			android:summary="@string/preference_appearance_location_description"
-			app:iconSpaceReserved="false" /> -->
 		<androidx.preference.SwitchPreference
 			android:key="@string/preference_appearance_amoled_key"
 			android:title="@string/preference_appearance_amoled_title"
