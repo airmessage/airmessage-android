@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.redux
 
 import me.tagavari.airmessage.enums.ConnectionErrorCode
+import me.tagavari.airmessage.enums.MessageSendErrorCode
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.messaging.*
 import me.tagavari.airmessage.util.ModifierMetadata
@@ -36,7 +37,7 @@ abstract class ReduxEventMessaging {
 	class MessageError(
 		conversationInfo: ConversationInfo,
 		messageInfo: MessageInfo,
-		@field:ConnectionErrorCode @get:ConnectionErrorCode val errorCode: Int,
+		@param:MessageSendErrorCode @get:MessageSendErrorCode val errorCode: Int,
 		val errorDetails: String?
 	) : ReduxMessageAction(conversationInfo, messageInfo)
 	
