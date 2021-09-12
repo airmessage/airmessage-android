@@ -6,8 +6,10 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.Application;
+import android.content.ActivityNotFoundException;
 import android.content.ContentResolver;
 import android.content.ContentUris;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -27,6 +29,11 @@ import android.text.format.DateUtils;
 import android.view.*;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.IntentSenderRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -84,19 +91,10 @@ import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 public class FragmentMessagingAttachments extends FragmentCommunication<FragmentMessagingAttachments.FragmentCommunicationQueue> {
-	//Constants
-	private static final int permissionRequestStorage = 1;
-	private static final int permissionRequestAudio = 2;
-	private static final int permissionRequestLocation = 3;
-	
-	private static final int intentPickFile = 1;
-	private static final int intentTakePicture = 2;
-	private static final int intentLocationResolution = 3;
-	private static final int intentPickLocation = 4;
-	
 	private static final int attachmentsTileCount = 24;
 	
 	//Gallery views
@@ -136,6 +134,97 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 	
 	//Composite disposable
 	private final CompositeDisposable compositeDisposable = new CompositeDisposable();
+
+	//Activity callbacks
+	private final ActivityResultLauncher<String> requestStoragePermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+		if(granted) {
+			//Load gallery images
+			viewModel.loadGallery();
+		}
+	});
+	private final ActivityResultLauncher<String> requestAudioPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+		if(granted) {
+			//Update the recording section
+			updateViewAudio(false);
+		}
+	});
+	private final ActivityResultLauncher<String[]> requestLocationPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), permissions -> {
+		//Check if all permissions are granted
+		if(permissions.values().stream().allMatch((granted) -> granted)) {
+			//Loading the location
+			viewModel.loadLocation();
+		}
+	});
+
+	private final ActivityResultCallback<Boolean> cameraResultCallback = captured -> {
+		if(!captured || viewModel.targetFileIntent == null) return;
+
+		//Queuing the file
+		getCommunicationsCallback().queueFile(new FileLinked(Union.ofA(viewModel.targetFileIntent), viewModel.targetFileIntent.getName(), viewModel.targetFileIntent.length(), FileHelper.getMimeType(viewModel.targetFileIntent)));
+	};
+	private final ActivityResultLauncher<Uri> cameraPictureLauncher = registerForActivityResult(new ActivityResultContracts.TakePicture(), cameraResultCallback);
+	private final ActivityResultLauncher<Uri> cameraVideoLauncher = registerForActivityResult(new ActivityResultContracts.CaptureVideo(), cameraResultCallback);
+	private final ActivityResultLauncher<Uri> cameraVideoLowResLauncher = registerForActivityResult(new ActivityResultContracts.CaptureVideo() {
+		@NonNull
+		@Override
+		public Intent createIntent(@NonNull Context context, @NonNull Uri input) {
+			return super.createIntent(context, input)
+					.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 0);
+		}
+	}, cameraResultCallback);
+	private final ActivityResultLauncher<Intent> mediaSelectorLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+		if(result.getResultCode() != Activity.RESULT_OK) return;
+
+		//Getting the content
+		Intent intent = result.getData();
+		if(intent.getData() != null) {
+			//Queuing the content
+			queueURIs(new Uri[]{intent.getData()});
+		} else if(intent.getClipData() != null) {
+			Uri[] list = new Uri[intent.getClipData().getItemCount()];
+			for(int i = 0; i < intent.getClipData().getItemCount(); i++)
+				list[i] = intent.getClipData().getItemAt(i).getUri();
+			queueURIs(list);
+		}
+	});
+	private final ActivityResultLauncher<Location> locationPickerLauncher = registerForActivityResult(new LocationPicker.ResultContract(), result -> {
+		if(result == null) return;
+
+		//Checking if this is an iMessage conversation
+		if(supportsAppleContent) {
+			//Writing the file and creating the attachment data
+			queueLocation(result.getLocation(), result.getAddress(), result.getName());
+		} else {
+			//Creating the query string
+			String query;
+			if(result.getAddress() != null) {
+				query = result.getAddress();
+			} else {
+				query = result.getLocation().latitude + "," + result.getLocation().longitude;
+			}
+
+			//Building the Google Maps URL
+			Uri mapsUri = new Uri.Builder()
+					.scheme("https")
+					.authority("www.google.com")
+					.appendPath("maps")
+					.appendPath("search")
+					.appendPath("")
+					.appendQueryParameter("api", "1")
+					.appendQueryParameter("query", query)
+					.build();
+
+			//Appending the generated URL to the text box
+			getCommunicationsCallback().queueText(mapsUri.toString());
+		}
+	});
+
+	private final ActivityResultLauncher<IntentSenderRequest> resolveLocationServicesLauncher = registerForActivityResult(new ActivityResultContracts.StartIntentSenderForResult(), result -> {
+		//Updating the attachment section
+		if(result.getResultCode() == Activity.RESULT_OK) {
+			viewModel.loadLocation();
+		}
+	});
 	
 	@Override
 	public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -211,105 +300,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 		
 		compositeDisposable.clear();
 	}
-	
-	@Override
-	public void onActivityResult(int requestCode, int resultCode, @Nullable Intent intent) {
-		switch(requestCode) {
-			case intentTakePicture: //Taking a picture
-				//Returning if the current input state is not the content bar
-				//if(viewModel.inputState != inputStateContent) return;
-				
-				//Queuing the file
-				if(resultCode == Activity.RESULT_OK && viewModel.targetFileIntent != null) getCommunicationsCallback().queueFile(new FileLinked(Union.ofA(viewModel.targetFileIntent), viewModel.targetFileIntent.getName(), viewModel.targetFileIntent.length(), FileHelper.getMimeType(viewModel.targetFileIntent)));
-				break;
-			case intentPickFile: //Media picker
-				//Checking if the result was a success
-				if(resultCode == Activity.RESULT_OK) {
-					//Getting the content
-					if(intent.getData() != null) {
-						//Queuing the content
-						queueURIs(new Uri[]{intent.getData()});
-					} else if(intent.getClipData() != null) {
-						Uri[] list = new Uri[intent.getClipData().getItemCount()];
-						for(int i = 0; i < intent.getClipData().getItemCount(); i++)
-							list[i] = intent.getClipData().getItemAt(i).getUri();
-						queueURIs(list);
-					}
-				}
-				break;
-			case intentLocationResolution:
-				//Updating the attachment section
-				if(resultCode == Activity.RESULT_OK) {
-					viewModel.loadLocation();
-				}
-				break;
-			case intentPickLocation: {
-				if(resultCode != Activity.RESULT_OK) break;
-				
-				//Getting the data
-				LatLng mapPosition = intent.getParcelableExtra(LocationPicker.intentParamLocation);
-				String mapPositionAddress = intent.getStringExtra(LocationPicker.intentParamAddress);
-				String mapPositionName = intent.getStringExtra(LocationPicker.intentParamName);
-				
-				//Checking if this is an iMessage conversation
-				if(supportsAppleContent) {
-					//Writing the file and creating the attachment data
-					queueLocation(mapPosition, mapPositionAddress, mapPositionName);
-				} else {
-					//Creating the query string
-					String query;
-					if(mapPositionAddress != null) {
-						query = mapPositionAddress;
-					} else {
-						query = mapPosition.latitude + "," + mapPosition.longitude;
-					}
-					
-					//Building the Google Maps URL
-					Uri mapsUri = new Uri.Builder()
-							.scheme("https")
-							.authority("www.google.com")
-							.appendPath("maps")
-							.appendPath("search")
-							.appendPath("")
-							.appendQueryParameter("api", "1")
-							.appendQueryParameter("query", query)
-							.build();
-					
-					//Appending the generated URL to the text box
-					getCommunicationsCallback().queueText(mapsUri.toString());
-				}
-				
-				break;
-			}
-		}
-	}
-	
-	@Override
-	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-		switch(requestCode) {
-			case permissionRequestStorage:
-				//Checking if the request was granted
-				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-					//Load gallery images
-					viewModel.loadGallery();
-				}
-				break;
-			case permissionRequestAudio:
-				//Checking if the request was granted
-				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-					//Update the recording section
-					updateViewAudio(false);
-				}
-				break;
-			case permissionRequestLocation:
-				//Checking if the request was granted
-				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-					//Loading the location
-					viewModel.loadLocation();
-				}
-		}
-	}
-	
+
 	/**
 	 * Sets whether to provide content that is only available in iMessage conversations
 	 */
@@ -424,7 +415,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 			
 			//Setting up the permission request button
 			viewGalleryPermission.setVisibility(View.VISIBLE);
-			viewGalleryPermission.setOnClickListener(view -> requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, permissionRequestStorage));
+			requestStoragePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
 		} else {
 			//Hiding the permission request button and the failed text
 			viewGalleryPermission.setVisibility(View.GONE);
@@ -494,7 +485,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 		if(needsPermission) {
 			//Setting up the permission request button
 			viewAudioPermission.setVisibility(View.VISIBLE);
-			viewAudioPermission.setOnClickListener(view -> requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, permissionRequestAudio));
+			requestAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
 			
 			//Hiding the recording view
 			viewAudioContent.setVisibility(View.GONE);
@@ -580,9 +571,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 				googleMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(requireContext(), ThemeHelper.isNightMode(getResources()) ? R.raw.map_plaindark : R.raw.map_plainlight));
 			});
 			
-			viewGroupLocationContent.findViewById(R.id.frame_attachment_location_click).setOnClickListener(view -> {
-				startActivityForResult(new Intent(requireContext(), LocationPicker.class).putExtra(LocationPicker.intentParamLocation, viewModel.attachmentsLocationResult), intentPickLocation);
-			});
+			viewGroupLocationContent.findViewById(R.id.frame_attachment_location_click).setOnClickListener(view -> locationPickerLauncher.launch(viewModel.attachmentsLocationResult));
 		} else {
 			//Showing the action view
 			viewGroupLocationAction.setVisibility(View.VISIBLE);
@@ -597,7 +586,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 					break;
 				case LocationState.permission:
 					buttonText = getResources().getString(R.string.imperative_permission_location);
-					buttonClickListener = view -> requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, permissionRequestLocation);
+					buttonClickListener = view -> requestLocationPermissionLauncher.launch(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION});
 					break;
 				case LocationState.failed:
 					buttonText = getResources().getString(R.string.message_loaderror_location);
@@ -610,11 +599,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 				case LocationState.resolvable:
 					buttonText = getResources().getString(R.string.imperative_enablelocationservices);
 					buttonClickListener = view -> {
-						try {
-							startIntentSenderForResult(viewModel.attachmentsLocationResolvable.getResolution().getIntentSender(), intentLocationResolution, null, 0, 0, 0, null);
-						} catch(IntentSender.SendIntentException exception) {
-							exception.printStackTrace();
-						}
+						resolveLocationServicesLauncher.launch(new IntentSenderRequest.Builder(viewModel.attachmentsLocationResolvable.getResolution().getIntentSender()).build());
 					};
 					break;
 				default:
@@ -703,32 +688,31 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 	 * @param video Whether to capture a video instead of a picture
 	 */
 	private void requestCamera(boolean video) {
-		//Creating the intent
-		Intent cameraCaptureIntent = new Intent(video ? MediaStore.ACTION_VIDEO_CAPTURE : MediaStore.ACTION_IMAGE_CAPTURE);
-		
-		//Asking for low-quality video if the user is using MMS
-		if(lowResContent) {
-			cameraCaptureIntent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 0);
-		}
-		
-		//Checking if there are no apps that can take the intent
-		if(cameraCaptureIntent.resolveActivity(requireContext().getPackageManager()) == null) {
+		//Finding a free file
+		File targetFile = AttachmentStorageHelper.prepareContentFile(requireContext(), AttachmentStorageHelper.dirNameDraftPrepare, video ? FileNameConstants.videoName : FileNameConstants.pictureName);
+		viewModel.targetFileIntent = targetFile;
+		Uri targetUri = FileProvider.getUriForFile(requireContext(), AttachmentStorageHelper.getFileAuthority(requireContext()), viewModel.targetFileIntent);
+
+		try {
+			if(video) {
+				//Asking for low-quality video if the user is using MMS
+				if(lowResContent) {
+					cameraVideoLowResLauncher.launch(targetUri);
+				} else {
+					cameraVideoLauncher.launch(targetUri);
+				}
+			} else {
+				cameraPictureLauncher.launch(targetUri);
+			}
+		} catch(ActivityNotFoundException exception) {
+			exception.printStackTrace();
+
 			//Telling the user via a toast
 			Toast.makeText(requireContext(), R.string.message_intenterror_camera, Toast.LENGTH_SHORT).show();
-			
-			//Returning
-			return;
+
+			//Cleaning up
+			AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraftPrepare, targetFile);
 		}
-		
-		//Finding a free file
-		viewModel.targetFileIntent = AttachmentStorageHelper.prepareContentFile(requireContext(), AttachmentStorageHelper.dirNameDraftPrepare, video ? FileNameConstants.videoName : FileNameConstants.pictureName);
-		
-		//Setting the output file target
-		Uri targetUri = FileProvider.getUriForFile(requireContext(), AttachmentStorageHelper.getFileAuthority(requireContext()), viewModel.targetFileIntent);
-		cameraCaptureIntent.putExtra(MediaStore.EXTRA_OUTPUT, targetUri);
-		
-		//Starting the activity
-		startActivityForResult(cameraCaptureIntent, intentTakePicture);
 	}
 	
 	/**
@@ -755,7 +739,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 		intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
 		intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		intent.setAction(Intent.ACTION_GET_CONTENT);
-		startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)), intentPickFile);
+		mediaSelectorLauncher.launch(Intent.createChooser(intent, getResources().getString(R.string.imperative_selectfile)));
 	}
 	
 	/**
