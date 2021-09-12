@@ -10,27 +10,6 @@ import java.io.File
 
 object ExternalStorageHelper {
 	/**
-	 * Prompts the user to select a location to save a file to disk
-	 * @param activity The activity to launch the intent from
-	 * @param requestCode The request code for the result
-	 * @param mimeType The MIME type of the file
-	 * @param fileName The name of the file
-	 */
-	@JvmStatic
-	fun createFileSAF(activity: Activity, requestCode: Int, mimeType: String?, fileName: String?) {
-		val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-			// Filter to only show results that can be "opened", such as
-			// a file (as opposed to a list of contacts or timezones).
-			addCategory(Intent.CATEGORY_OPENABLE)
-			
-			// Create a file with the requested MIME type.
-			type = mimeType
-			putExtra(Intent.EXTRA_TITLE, fileName)
-		}
-		activity.startActivityForResult(intent, requestCode)
-	}
-	
-	/**
 	 * Exports a file to the app's public directory in a user-friendly way
 	 */
 	fun exportFile(context: Context, file: File) {

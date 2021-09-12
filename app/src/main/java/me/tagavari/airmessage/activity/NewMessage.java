@@ -273,10 +273,6 @@ public class NewMessage extends AppCompatCompositeActivity {
 		
 		//Setting the list padding
 		PluginQNavigation.setViewForInsets(findViewById(android.R.id.content), contactListView);
-		/* ViewCompat.setOnApplyWindowInsetsListener(contactListView, (view, insets) -> {
-			view.setPadding(insets.getSystemWindowInsetLeft(), view.getPaddingTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
-			return insets.consumeSystemWindowInsets();
-		}); */
 		
 		//Configuring the AMOLED theme
 		if(ThemeHelper.shouldUseAMOLED(this)) setDarkAMOLED();

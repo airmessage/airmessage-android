@@ -4,11 +4,15 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import me.tagavari.airmessage.R;
@@ -18,11 +22,14 @@ public class CrashReport extends AppCompatActivity {
 	//Creating the constants
 	public static final String PARAM_STACKTRACE = "stacktrace";
 	
-	private static final int activityResultSaveFileSAF = 0;
-	
 	//Creating the values
 	private String stackTrace;
-	private boolean isInSAF = false;
+	
+	//Creating the callbacks
+	private final ActivityResultLauncher<String> createDocumentLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument(), uri -> {
+		if(uri == null) return;
+		ExternalStorageHelper.exportText(this, stackTrace, uri);
+	});
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -49,22 +56,6 @@ public class CrashReport extends AppCompatActivity {
 		findViewById(R.id.button_restart).setOnClickListener(this::buttonRestart);
 	}
 	
-	@Override
-	protected void onStop() {
-		super.onStop();
-		//if(!isInSAF) finish();
-	}
-	
-	@Override
-	protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-		super.onActivityResult(requestCode, resultCode, data);
-		
-		if(requestCode == activityResultSaveFileSAF) {
-			isInSAF = false;
-			if(resultCode == RESULT_OK) ExternalStorageHelper.exportText(this, stackTrace, data.getData());
-		}
-	}
-	
 	private void buttonCopy(View view) {
 		//Getting the clipboard manager
 		ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
@@ -77,8 +68,7 @@ public class CrashReport extends AppCompatActivity {
 	}
 	
 	private void buttonExport(View view) {
-		isInSAF = true;
-		ExternalStorageHelper.createFileSAF(this, activityResultSaveFileSAF, "text/plain", "stacktrace.txt");
+		createDocumentLauncher.launch("stacktrace.txt");
 	}
 	
 	private void buttonRestart(View view) {

@@ -12,6 +12,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -96,18 +100,10 @@ public class FragmentSync extends BottomSheetDialogFragment {
 		}
 		
 		//Adding bottom padding to compensate for system bars
-		view.setOnApplyWindowInsetsListener((applyView, windowInsets) -> {
-			int paddingBottom;
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-				paddingBottom = windowInsets.getInsets(WindowInsets.Type.systemBars()).bottom;
-			} else {
-				paddingBottom = windowInsets.getSystemWindowInsetBottom();
-			}
-			
-			applyView.setPadding(applyView.getPaddingLeft(), applyView.getPaddingTop(), applyView.getPaddingRight(), paddingBottom);
-			
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return WindowInsets.CONSUMED;
-			else return windowInsets.consumeSystemWindowInsets();
+		ViewCompat.setOnApplyWindowInsetsListener(view, (applyView, windowInsets) -> {
+			Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+			applyView.setPadding(applyView.getPaddingLeft(), applyView.getPaddingTop(), applyView.getPaddingRight(), insets.bottom);
+			return WindowInsetsCompat.CONSUMED;
 		});
 	}
 	

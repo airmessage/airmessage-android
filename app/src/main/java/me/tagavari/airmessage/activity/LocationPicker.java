@@ -3,6 +3,7 @@ package me.tagavari.airmessage.activity;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Rect;
 import android.location.Address;
@@ -19,10 +20,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AnimationUtils;
 import android.widget.TextSwitcher;
+
+import androidx.activity.result.contract.ActivityResultContract;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.graphics.Insets;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -145,7 +149,7 @@ public class LocationPicker extends AppCompatActivity {
 				public void onTransitionResume(Transition transition) {}
 			});
 			TransitionManager.go(new Scene(containerSelection), transition);
-			labelLocation.setText(name);
+			labelLocation.setText(name != null ? name : "");
 		});
 		
 		//Getting the views
@@ -167,7 +171,10 @@ public class LocationPicker extends AppCompatActivity {
 			labelLocation.setOutAnimation(AnimationUtils.loadAnimation(this,android.R.anim.slide_out_right));
 			labelCoordinates.setOutAnimation(AnimationUtils.loadAnimation(this,android.R.anim.slide_out_right));
 		}
-		labelLocation.setCurrentText(viewModel.getMapPositionAddress());
+		{
+			String address = viewModel.getMapPositionAddress();
+			labelLocation.setCurrentText(address != null ? address : "");
+		}
 		labelCoordinates.setCurrentText(LanguageHelper.coordinatesToString(viewModel.mapPosition));
 		
 		//Hiding the navigation bar protection on Android Q
@@ -186,35 +193,37 @@ public class LocationPicker extends AppCompatActivity {
 			
 			@Override
 			public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
+				Insets systemInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+
 				//Setting the close button margins
 				{
-					int insetStart = ResourceHelper.isLTR(getResources()) ? insets.getSystemWindowInsetLeft() : insets.getSystemWindowInsetRight();
+					int insetStart = ResourceHelper.isLTR(getResources()) ? systemInsets.left : systemInsets.right;
 					
 					fabParams.setMarginStart(fabMarginStart + insetStart);
-					fabParams.topMargin = fabMarginTop + insets.getSystemWindowInsetTop();
+					fabParams.topMargin = fabMarginTop + systemInsets.top;
 					fabClose.setLayoutParams(fabParams);
 				}
 				
 				//Setting the selection container margins
 				{
-					containerParams.leftMargin = containerMarginLeft + insets.getSystemWindowInsetLeft();
-					containerParams.bottomMargin = containerMarginBottom + insets.getSystemWindowInsetBottom();
-					containerParams.rightMargin = containerMarginRight + insets.getSystemWindowInsetRight();
+					containerParams.leftMargin = containerMarginLeft + systemInsets.left;
+					containerParams.bottomMargin = containerMarginBottom + systemInsets.bottom;
+					containerParams.rightMargin = containerMarginRight + systemInsets.right;
 					containerSelection.setLayoutParams(containerParams);
 				}
 				
 				//Updating the map
-				googleMapBasePadding.left = insets.getSystemWindowInsetLeft();
-				googleMapBasePadding.right = insets.getSystemWindowInsetLeft();
+				googleMapBasePadding.left = systemInsets.left;
+				googleMapBasePadding.right = systemInsets.right;
 				googleMapBasePadding.top = fabParams.topMargin + fabClose.getHeight() + fabParams.bottomMargin;
 				googleMapBasePadding.bottom = 0;
 				updateMapPadding();
 				
 				//Updating the system bar protections
-				systemProtectionTop.getLayoutParams().height = insets.getSystemWindowInsetTop();
-				systemProtectionBottom.getLayoutParams().height = insets.getSystemWindowInsetBottom();
+				systemProtectionTop.getLayoutParams().height = systemInsets.top;
+				systemProtectionBottom.getLayoutParams().height = systemInsets.bottom;
 				
-				return insets.consumeSystemWindowInsets();
+				return WindowInsetsCompat.CONSUMED;
 			}
 		});
 	}
@@ -286,7 +295,8 @@ public class LocationPicker extends AppCompatActivity {
 			if(!Geocoder.isPresent()) return;
 			
 			//Loading the map position
-			mapPositionAddress.setValue("");
+			mapPositionAddress.setValue(null);
+			mapPositionName = null;
 			
 			if(geocoderSubscription != null && !geocoderSubscription.isDisposed()) geocoderSubscription.dispose();
 			//Log and ignore
@@ -313,15 +323,63 @@ public class LocationPicker extends AppCompatActivity {
 						mapPositionName = address.second;
 					}, Throwable::printStackTrace);
 		}
-		
+
+		@Nullable
 		String getMapPositionAddress() {
-			String value = mapPositionAddress.getValue();
-			if(value == null) return "";
-			return value;
+			return mapPositionAddress.getValue();
 		}
-		
+
+		@Nullable
 		String getMapPositionName() {
 			return mapPositionName;
+		}
+	}
+
+	public static class Result {
+		private final LatLng location;
+		@Nullable private final String address;
+		@Nullable private final String name;
+
+		public Result(LatLng location, @Nullable String address, @Nullable String name) {
+			this.location = location;
+			this.address = address;
+			this.name = name;
+		}
+
+		public LatLng getLocation() {
+			return location;
+		}
+
+		@Nullable
+		public String getAddress() {
+			return address;
+		}
+
+		@Nullable
+		public String getName() {
+			return name;
+		}
+	}
+
+	public static class ResultContract extends ActivityResultContract<Location, Result> {
+		@NonNull
+		@Override
+		public Intent createIntent(@NonNull Context context, Location input) {
+			return new Intent(context, LocationPicker.class)
+					.putExtra(LocationPicker.intentParamLocation, input);
+		}
+
+		@Override
+		public Result parseResult(int resultCode, @Nullable Intent result) {
+			if(resultCode != Activity.RESULT_OK || result == null) {
+				return null;
+			}
+
+			return new Result(
+					result.getParcelableExtra(LocationPicker.intentParamLocation),
+					result.getStringExtra(LocationPicker.intentParamAddress),
+					result.getStringExtra(LocationPicker.intentParamName)
+			);
 		}
 	}
 }

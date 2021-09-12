@@ -5,7 +5,11 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+
 import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
 
 public class PluginQNavigation extends AppCompatActivityPlugin {
@@ -17,11 +21,7 @@ public class PluginQNavigation extends AppCompatActivityPlugin {
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
 		
 		//Configuring the window
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-			getActivity().getWindow().setDecorFitsSystemWindows(false);
-		} else {
-			getActivity().getWindow().getDecorView().setSystemUiVisibility(getActivity().getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-		}
+		WindowCompat.setDecorFitsSystemWindows(getActivity().getWindow(), false);
 	}
 	
 	public static void setViewForInsets(View rootView, View... listViews) {
@@ -29,12 +29,15 @@ public class PluginQNavigation extends AppCompatActivityPlugin {
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
 		
 		//Adding an inset listener
-		ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
+		ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, windowInsets) -> {
+			Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+			
 			for(View view : listViews) {
-				((ViewGroup.MarginLayoutParams) view.getLayoutParams()).bottomMargin = -insets.getSystemWindowInsetBottom();
-				view.setPadding(view.getPaddingLeft(), view.getPaddingTop(), view.getPaddingRight(), insets.getSystemWindowInsetBottom());
+				((ViewGroup.MarginLayoutParams) view.getLayoutParams()).bottomMargin = -insets.bottom;
+				view.setPadding(view.getPaddingLeft(), view.getPaddingTop(), view.getPaddingRight(), insets.bottom);
 			}
-			return insets;
+			
+			return windowInsets;
 		});
 	}
 }

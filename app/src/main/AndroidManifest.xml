@@ -57,7 +57,8 @@
 			android:label="@string/app_name"
 			android:name=".activity.Conversations"
 			android:theme="@style/DayNight.NoActionBar.Protected"
-			android:windowSoftInputMode="adjustResize">
+			android:windowSoftInputMode="adjustResize"
+			android:exported="true">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />
@@ -74,7 +75,8 @@
 			android:theme="@style/DayNight.NoActionBar"
 			android:windowSoftInputMode="adjustResize"
 			android:allowEmbedded="true"
-			android:resizeableActivity="true">
+			android:resizeableActivity="true"
+			android:exported="true">
 			<!-- Direct MMS / SMS message handling -->
 			<intent-filter>
 				<category android:name="android.intent.category.DEFAULT" />
@@ -159,12 +161,6 @@
 			android:windowSoftInputMode="adjustResize">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
-
-		<!-- Blocked addresses -->
-		<!--
-        <activity android:name=".BlockedAddresses">
-		</activity>
-        -->
 
 		<!-- Share Handler -->
 		<activity
@@ -281,7 +277,8 @@
 		<!-- Incoming SMS receiver -->
 		<receiver
 			android:name=".receiver.TextSMSReceivedReceiver"
-			android:permission="android.permission.BROADCAST_SMS">
+			android:permission="android.permission.BROADCAST_SMS"
+			android:exported="true">
 			<intent-filter>
 				<action android:name="android.provider.Telephony.SMS_DELIVER" />
 			</intent-filter>
@@ -290,7 +287,8 @@
 		<!-- Incoming MMS processor -->
 		<receiver
 			android:name="com.android.mms.transaction.PushReceiver"
-			android:permission="android.permission.BROADCAST_WAP_PUSH">
+			android:permission="android.permission.BROADCAST_WAP_PUSH"
+			android:exported="true">
 			<intent-filter>
 				<action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
 				<data android:mimeType="application/vnd.wap.mms-message" />
@@ -318,14 +316,18 @@
 		</service>
 
 		<!-- Messaging app change receiver (to reset messaging data when another app is selected -->
-		<receiver android:name=".receiver.DefaultMessagingAppChangedReceiver">
+		<receiver
+			android:name=".receiver.DefaultMessagingAppChangedReceiver"
+			android:exported="true">
 			<intent-filter>
 				<action android:name="android.provider.action.DEFAULT_SMS_PACKAGE_CHANGED" />
 			</intent-filter>
 		</receiver>
 
 		<!-- External messaging provider change receiver (when another app sends an SMS and MMS message, and this app must be updated) -->
-		<receiver android:name=".receiver.ExternalMessagingProviderChangedReceiver">
+		<receiver
+			android:name=".receiver.ExternalMessagingProviderChangedReceiver"
+			android:exported="true">
 			<intent-filter>
 				<action android:name="android.provider.action.EXTERNAL_PROVIDER_CHANGE" />
 			</intent-filter>

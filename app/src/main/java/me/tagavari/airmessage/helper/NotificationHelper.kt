@@ -144,7 +144,7 @@ object NotificationHelper {
 	@JvmStatic
 	fun sendNotification(context: Context, conversationInfo: ConversationInfo, messageInfo: MessageInfo) {
 		//Returning if notifications are disabled or the conversation is muted
-		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.resources.getString(R.string.preference_messagenotifications_getnotifications_key), false) || conversationInfo.isMuted) return
+		if((Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.resources.getString(R.string.preference_messagenotifications_getnotifications_key), true)) || conversationInfo.isMuted) return
 		
 		//Adding the message
 		addMessageToNotification(context, conversationInfo, messageToString(context.resources, messageInfo), messageInfo.sender, messageInfo.date, messageInfo.sendStyle)
@@ -246,7 +246,7 @@ object NotificationHelper {
 											sender == null,
 											resultMemberIcon.orElse(null),
 											resultShortcutIcon.orElse(null),
-											resultMemberInfo.map { it.contactLookupUri }.orElse(null),
+											resultMemberInfo.orElse(null),
 											resultSuggestions.ifEmpty { null }
 									),
 									conversationInfo,
@@ -278,7 +278,7 @@ object NotificationHelper {
 		val clickIntent = Intent(context, Conversations::class.java)
 		
 		//Getting the pending intent
-		val clickPendingIntent = PendingIntent.getActivity(context, 0, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+		val clickPendingIntent = PendingIntent.getActivity(context, 0, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 		
 		//Creating the notification builder
 		val notificationBuilder = NotificationCompat.Builder(context, notificationChannelMessage)
@@ -291,7 +291,7 @@ object NotificationHelper {
 				//Setting the sound
 				.setSound(Preferences.getNotificationSound(context))
 				//Setting the priority
-				.setPriority(Notification.PRIORITY_HIGH)
+				.setPriority(NotificationCompat.PRIORITY_HIGH)
 		
 		//Adding vibration if it is enabled in the preferences
 		if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.resources.getString(R.string.preference_messagenotifications_vibrate_key), false)) {
@@ -377,7 +377,7 @@ object NotificationHelper {
 			setColor(context.resources.getColor(R.color.colorPrimary, null))
 			setContentIntent(
 					Intent(context, Conversations::class.java)
-							.let { intent -> PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT) }
+							.let { intent -> PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE) }
 			)
 			
 			//Setting the group
@@ -396,11 +396,11 @@ object NotificationHelper {
 	 * @param isOutgoing True if this is a notification for an outgoing message
 	 * @param largeIcon The large icon to display on older versions of Android
 	 * @param shortcutIcon The adaptive icon to use for conversation shortcuts
-	 * @param memberURI The URI of the other user involved in this conversation (for one-on-one conversations on older versions of Android)
+	 * @param memberInfo The member info of the other user involved in this conversation (for one-on-one conversations on older versions of Android)
 	 * @param replySuggestions An array of generated quick reply suggestions
 	 * @return The base notification
 	 */
-	private fun buildBaseMessageNotification(context: Context, conversationInfo: ConversationInfo, isOutgoing: Boolean, largeIcon: Bitmap?, shortcutIcon: IconCompat?, memberURI: Uri?, replySuggestions: List<String>?): NotificationCompat.Builder {
+	private fun buildBaseMessageNotification(context: Context, conversationInfo: ConversationInfo, isOutgoing: Boolean, largeIcon: Bitmap?, shortcutIcon: IconCompat?, memberInfo: UserCacheHelper.UserInfo?, replySuggestions: List<String>?): NotificationCompat.Builder {
 		//Creating the click intent
 		val clickIntent = Intent(context, Messaging::class.java).apply {
 			putExtra(Messaging.intentParamTargetID, conversationInfo.localID)
@@ -416,23 +416,28 @@ object NotificationHelper {
 		clickStackBuilder.addNextIntent(clickIntent)
 		
 		//Getting the pending intent
-		val clickPendingIntent = clickStackBuilder.getPendingIntent(pendingIntentOffsetOpenChat + conversationInfo.localID.toInt(), 0)
+		val clickPendingIntent = clickStackBuilder.getPendingIntent(pendingIntentOffsetOpenChat + conversationInfo.localID.toInt(), PendingIntent.FLAG_IMMUTABLE)
 		
 		//Creating the notification builder
 		val notificationBuilder = NotificationCompat.Builder(context, notificationChannelMessage)
-				//Setting the icon
-				.setSmallIcon(R.drawable.message_push)
-				//Setting the intent
-				.setContentIntent(clickPendingIntent)
-				//Setting the color
-				.setColor(context.resources.getColor(R.color.colorPrimary, null))
-				//Setting the group
-				.setGroup(notificationGroupMessage)
-				//Setting the delete listener
-				.setDeleteIntent(PendingIntent.getBroadcast(context, 0, Intent(context, MessageNotificationDeleteReceiver::class.java), PendingIntent.FLAG_IMMUTABLE)) //Setting the category
-				.setCategory(Notification.CATEGORY_MESSAGE)
-				//Adding the person
-				.addPerson(memberURI?.toString())
+			//Setting the icon
+			.setSmallIcon(R.drawable.message_push)
+			//Setting the intent
+			.setContentIntent(clickPendingIntent)
+			//Setting the color
+			.setColor(context.resources.getColor(R.color.colorPrimary, null))
+			//Setting the group
+			.setGroup(notificationGroupMessage)
+			//Setting the delete listener
+			.setDeleteIntent(PendingIntent.getBroadcast(context, 0, Intent(context, MessageNotificationDeleteReceiver::class.java), PendingIntent.FLAG_IMMUTABLE))
+			//Setting the category
+			.setCategory(NotificationCompat.CATEGORY_MESSAGE)
+			//Adding the person
+			.addPerson(memberInfo?.let { member -> Person.Builder().apply {
+				setName(member.contactName)
+				setUri(member.contactLookupUri.toString())
+				setKey(member.lookupKey)
+			}.build()})
 		
 		//Adding the shortcut
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
@@ -448,7 +453,7 @@ object NotificationHelper {
 			if(PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.resources.getString(R.string.preference_messagenotifications_vibrate_key), false)) notificationBuilder.setVibrate(longArrayOf(0, 250, 250, 250))
 			
 			//Setting the priority
-			notificationBuilder.priority = Notification.PRIORITY_HIGH
+			notificationBuilder.priority = NotificationCompat.PRIORITY_HIGH
 		}
 		
 		//Disabling alerts if a sound shouldn't be played
@@ -464,7 +469,7 @@ object NotificationHelper {
 			val pendingIntent = Intent(context, MessageNotificationActionReceiver::class.java).apply {
 				action = MessageNotificationActionReceiver.intentActionMarkRead
 				putExtra(MessageNotificationActionReceiver.intentParamConversationID, conversationInfo.localID)
-			}.let { intent -> PendingIntent.getBroadcast(context.applicationContext, pendingIntentOffsetMarkAsRead + conversationInfo.localID.toInt(), intent, PendingIntent.FLAG_UPDATE_CURRENT) }
+			}.let { intent -> PendingIntent.getBroadcast(context.applicationContext, pendingIntentOffsetMarkAsRead + conversationInfo.localID.toInt(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE) }
 			
 			return@run NotificationCompat.Action.Builder(R.drawable.check_circle, context.resources.getString(R.string.action_markread), pendingIntent).apply {
 				setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
@@ -495,7 +500,12 @@ object NotificationHelper {
 			val pendingIntent = Intent(context, MessageNotificationActionReceiver::class.java).apply {
 				action = MessageNotificationActionReceiver.intentActionReply
 				putExtra(MessageNotificationActionReceiver.intentParamConversationID, conversationInfo.localID)
-			}.let { intent -> PendingIntent.getBroadcast(context.applicationContext, conversationInfo.localID.toInt(), intent, PendingIntent.FLAG_UPDATE_CURRENT) }
+			}.let { intent -> PendingIntent.getBroadcast(
+				context.applicationContext,
+				conversationInfo.localID.toInt(),
+				intent,
+				PendingIntent.FLAG_UPDATE_CURRENT or (if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0)
+			) }
 			
 			//Creating the "reply" notification action from the remote input
 			val action = NotificationCompat.Action.Builder(R.drawable.reply, context.resources.getString(R.string.action_reply), pendingIntent).apply {
@@ -514,21 +524,22 @@ object NotificationHelper {
 		
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
 			if(shortcutIcon != null) {
-				//Creating the click intent
-				val bubblePendingIntent = Intent(context, Messaging::class.java).apply {
-					putExtra(Messaging.intentParamTargetID, conversationInfo.localID)
-					putExtra(Messaging.intentParamBubble, true)
-				}.let { intent -> PendingIntent.getActivity(context, pendingIntentOffsetBubble + conversationInfo.localID.toInt(), intent, PendingIntent.FLAG_UPDATE_CURRENT) }
-				
 				//Adding the bubble metadata
-				notificationBuilder.bubbleMetadata = NotificationCompat.BubbleMetadata.Builder().apply {
-					setIntent(Intent(context, Messaging::class.java).apply {
-						putExtra(Messaging.intentParamTargetID, conversationInfo.localID)
-						putExtra(Messaging.intentParamBubble, true)
-					}.let { intent -> PendingIntent.getActivity(context, pendingIntentOffsetBubble + conversationInfo.localID.toInt(), intent, PendingIntent.FLAG_UPDATE_CURRENT) })
-					setIcon(shortcutIcon)
-					setDesiredHeight(600)
-				}.build()
+				notificationBuilder.bubbleMetadata =
+					NotificationCompat.BubbleMetadata.Builder(
+						Intent(context, Messaging::class.java).apply {
+							putExtra(Messaging.intentParamTargetID, conversationInfo.localID)
+							putExtra(Messaging.intentParamBubble, true)
+						}.let { intent -> PendingIntent.getActivity(
+							context,
+							pendingIntentOffsetBubble + conversationInfo.localID.toInt(),
+							intent,
+							PendingIntent.FLAG_UPDATE_CURRENT or (if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0)
+						) },
+						shortcutIcon
+					).apply {
+						setDesiredHeight(600)
+					}.build()
 			}
 		}
 		
@@ -665,7 +676,7 @@ object NotificationHelper {
 			}
 			
 			//Getting the pending intent
-			val clickPendingIntent = clickStackBuilder.getPendingIntent(pendingIntentOffsetOpenChat + conversationInfo.localID.toInt(), 0)
+			val clickPendingIntent = clickStackBuilder.getPendingIntent(pendingIntentOffsetOpenChat + conversationInfo.localID.toInt(), PendingIntent.FLAG_IMMUTABLE)
 			
 			//Creating the notification
 			val notification = NotificationCompat.Builder(context, notificationChannelMessageError)
@@ -674,9 +685,9 @@ object NotificationHelper {
 				.setContentText(context.resources.getString(R.string.message_senderrornotify_desc, title))
 				.setContentIntent(clickPendingIntent)
 				.setColor(context.resources.getColor(R.color.colorError, null))
-				.setCategory(Notification.CATEGORY_ERROR)
-				.setDefaults(Notification.DEFAULT_ALL) //API 23-25
-				.setPriority(Notification.PRIORITY_HIGH).build() //API 23-25
+				.setCategory(NotificationCompat.CATEGORY_ERROR)
+				.setDefaults(NotificationCompat.DEFAULT_ALL) //API 23-25
+				.setPriority(NotificationCompat.PRIORITY_HIGH).build() //API 23-25
 			
 			//Sending the notification
 			notificationManager.notify(notificationTagMessageError, conversationInfo.localID.toInt(), notification)
@@ -695,7 +706,7 @@ object NotificationHelper {
 		//Getting the pending intent
 		val clickPendingIntent: PendingIntent = TaskStackBuilder.create(context).run {
 			addNextIntentWithParentStack(Intent(context, Conversations::class.java))
-			getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT)
+			getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 		}
 		
 		//Creating the notification
@@ -705,9 +716,9 @@ object NotificationHelper {
 			.setContentText(context.resources.getString(R.string.message_decrypterrornotify_desc))
 			.setContentIntent(clickPendingIntent)
 			.setColor(context.resources.getColor(R.color.colorError, null))
-			.setCategory(Notification.CATEGORY_ERROR)
-			.setDefaults(Notification.DEFAULT_ALL) //API 23-25
-			.setPriority(Notification.PRIORITY_HIGH).build() //API 23-25
+			.setCategory(NotificationCompat.CATEGORY_ERROR)
+			.setDefaults(NotificationCompat.DEFAULT_ALL) //API 23-25
+			.setPriority(NotificationCompat.PRIORITY_HIGH).build() //API 23-25
 		
 		//Sending the notification
 		notificationManager.notify(notificationTagMessageError, notificationIDWarningDecrypt, notification)
@@ -772,7 +783,7 @@ object NotificationHelper {
 						context,
 						0,
 						Intent(context, ConnectionService::class.java).setAction(ConnectionService.selfIntentActionStop),
-						PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_CANCEL_CURRENT
+						PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
 				)
 		).build()
 	}
@@ -784,7 +795,7 @@ object NotificationHelper {
 			setContentTitle(context.resources.getString(R.string.message_manualconfigurationstatus))
 			addAction(getConnectionQuitAction(context))
 			setShowWhen(false)
-			setPriority(Notification.PRIORITY_MIN)
+			setPriority(NotificationCompat.PRIORITY_MIN)
 			setOngoing(true)
 		}.build()
 	}
@@ -796,7 +807,7 @@ object NotificationHelper {
 			setContentTitle(context.resources.getString(R.string.message_temporarymodestatus))
 			addAction(getConnectionQuitAction(context))
 			setShowWhen(false)
-			setPriority(Notification.PRIORITY_MIN)
+			setPriority(NotificationCompat.PRIORITY_MIN)
 			setOngoing(true)
 		}.build()
 	}
@@ -817,11 +828,11 @@ object NotificationHelper {
 			setContentText(context.resources.getString(R.string.imperative_tapopenapp))
 			
 			setShowWhen(false)
-			setPriority(Notification.PRIORITY_MIN)
+			setPriority(NotificationCompat.PRIORITY_MIN)
 			setOngoing(true)
 			setOnlyAlertOnce(true)
 			
-			setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, Conversations::class.java), PendingIntent.FLAG_UPDATE_CURRENT))
+			setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, Conversations::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
 			
 			//Disconnect (only available in debug)
 			if(BuildConfig.DEBUG) {
@@ -834,7 +845,7 @@ object NotificationHelper {
 								Intent(context, ConnectionService::class.java).apply {
 									action = ConnectionService.selfIntentActionDisconnect
 								},
-								PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_CANCEL_CURRENT
+								PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
 						)
 				)
 			}
@@ -850,7 +861,7 @@ object NotificationHelper {
 			setContentText(context.resources.getString(R.string.imperative_tapopenapp))
 			setColor(context.resources.getColor(R.color.colorServerDisconnected, null))
 			setContentText(context.resources.getString(R.string.imperative_tapopenapp))
-			setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, Conversations::class.java), PendingIntent.FLAG_UPDATE_CURRENT))
+			setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, Conversations::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
 			
 			setShowWhen(false)
 			setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -865,7 +876,7 @@ object NotificationHelper {
 							Intent(context, ConnectionService::class.java).apply {
 								action = ConnectionService.selfIntentActionConnect
 							},
-							PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_CANCEL_CURRENT
+							PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
 					)
 			)
 		}.build()

@@ -6,6 +6,9 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.google.android.gms.auth.api.signin.*;
@@ -30,14 +33,27 @@ import java.security.GeneralSecurityException;
 public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCommunicationNetworkConfig> {
 	//Creating the constants
 	private static final String TAG = FragmentOnboardingWelcome.class.getName();
-	
-	private static final int requestCodeSignInGoogle = 0;
-	private static final int requestCodeSignInEmail = 1;
-	private static final int requestCodeFixGoogleAPI = 10;
-	
+
 	//Creating the sign-in values
 	private FirebaseAuth mAuth;
 	private GoogleSignInClient googleSignInClient;
+
+	//Creating the activity callbacks
+	private final ActivityResultLauncher<Intent> googleSignInLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+		Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(result.getData());
+		try {
+			// Google Sign In was successful, authenticate with Firebase
+			GoogleSignInAccount account = task.getResult(ApiException.class);
+			firebaseAuthWithGoogle(account);
+		} catch(ApiException exception) {
+			exception.printStackTrace();
+
+			if(exception.getStatusCode() != GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
+				//Displaying an error snackbar
+				Snackbar.make(requireView(), R.string.message_signinerror, Snackbar.LENGTH_LONG).show();
+			}
+		}
+	});
 	
 	@Nullable
 	@Override
@@ -63,28 +79,6 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 					.requestEmail()
 					.build();
 			googleSignInClient = GoogleSignIn.getClient(requireContext(), gso);
-		}
-	}
-	
-	@Override
-	public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-		super.onActivityResult(requestCode, resultCode, data);
-		
-		// Result returned from launching the Intent from GoogleSignInApi.getSignInIntent(...);
-		if(requestCode == requestCodeSignInGoogle) {
-			Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-			try {
-				// Google Sign In was successful, authenticate with Firebase
-				GoogleSignInAccount account = task.getResult(ApiException.class);
-				firebaseAuthWithGoogle(account);
-			} catch(ApiException exception) {
-				exception.printStackTrace();
-				
-				if(exception.getStatusCode() != GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
-					//Displaying an error snackbar
-					Snackbar.make(requireView(), R.string.message_signinerror, Snackbar.LENGTH_LONG).show();
-				}
-			}
 		}
 	}
 	
@@ -145,11 +139,10 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 		int googleAPIAvailability = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(requireContext());
 		if(googleAPIAvailability == ConnectionResult.SUCCESS) {
 			//Starting Google sign-in
-			Intent signInIntent = googleSignInClient.getSignInIntent();
-			startActivityForResult(signInIntent, requestCodeSignInGoogle);
+			googleSignInLauncher.launch(googleSignInClient.getSignInIntent());
 		} else {
 			//Prompting the user
-			GoogleApiAvailability.getInstance().getErrorDialog(requireActivity(), googleAPIAvailability, requestCodeFixGoogleAPI).show();
+			GoogleApiAvailability.getInstance().getErrorDialog(requireActivity(), googleAPIAvailability, 0).show();
 		}
 	}
 	

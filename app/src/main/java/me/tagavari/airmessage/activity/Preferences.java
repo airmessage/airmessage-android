@@ -5,8 +5,11 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.NotificationManager;
-import android.app.role.RoleManager;
-import android.content.*;
+import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
@@ -14,7 +17,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.provider.Telephony;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -23,19 +25,42 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.TextView;
-import androidx.annotation.*;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.PluralsRes;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.util.Consumer;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
-import androidx.preference.*;
+import androidx.preference.EditTextPreference;
+import androidx.preference.ListPreference;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceGroup;
+import androidx.preference.PreferenceManager;
+import androidx.preference.PreferenceScreen;
+import androidx.preference.SwitchPreference;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -46,28 +71,23 @@ import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
 import me.tagavari.airmessage.connection.ConnectionTaskManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.constants.ColorConstants;
+import me.tagavari.airmessage.contract.ContractDefaultMessagingApp;
+import me.tagavari.airmessage.contract.ContractNotificationRingtoneSelector;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.MessagesDataHelper;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ProxyType;
-import me.tagavari.airmessage.helper.*;
+import me.tagavari.airmessage.helper.LanguageHelper;
+import me.tagavari.airmessage.helper.MMSSMSHelper;
+import me.tagavari.airmessage.helper.NotificationHelper;
+import me.tagavari.airmessage.helper.PlatformHelper;
+import me.tagavari.airmessage.helper.ThemeHelper;
+import me.tagavari.airmessage.helper.WindowHelper;
 import me.tagavari.airmessage.receiver.StartBootReceiver;
 import me.tagavari.airmessage.service.ConnectionService;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 public class Preferences extends AppCompatCompositeActivity implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
 	private static final String TAG = Preferences.class.getSimpleName();
-	
-	//Creating the reference values
-	private static final int permissionRequestLocation = 0;
-	private static final int permissionRequestSMS = 1;
-	private static final int activityRequestRingtone = 0;
-	private static final int activityRequestDefaultMessagingApp = 1;
 	
 	//Creating the plugin values
 	private PluginConnectionService pluginCS;
@@ -153,25 +173,63 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	public static class SettingsFragment extends PreferenceFragmentCompat {
 		static final String FRAGMENT_TAG = "preferencefragment";
 		
+		//Creating the callback values
+		private final ActivityResultLauncher<Uri> requestRingtoneLauncher = registerForActivityResult(new ContractNotificationRingtoneSelector(), result -> {
+			if(result.getCanceled()) return;
+			
+			//Getting the selected ringtone URI
+			Uri ringtoneURI = result.getSelectedURI();
+			
+			//Saving the ringtone URI
+			if(ringtoneURI == null) { //"silent" selected
+				PreferenceManager.getDefaultSharedPreferences(getContext()).edit()
+					.putString(getContext().getResources().getString(R.string.preference_messagenotifications_sound_key), "")
+					.apply();
+			} else {
+				PreferenceManager.getDefaultSharedPreferences(getContext()).edit()
+					.putString(getContext().getResources().getString(R.string.preference_messagenotifications_sound_key), ringtoneURI.toString())
+					.apply();
+			}
+			
+			//Updating the preference summary
+			Preference preference = findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key));
+			preference.setSummary(getRingtoneTitle(ringtoneURI));
+		});
+		private final ActivityResultLauncher<Void> requestDefaultMessagingAppLauncher = registerForActivityResult(new ContractDefaultMessagingApp(), granted -> {
+			if(!granted) return;
+			
+			//Enabling the toggle
+			SwitchPreference preference = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
+			preference.setChecked(true);
+			
+			//Showing a snackbar
+			Snackbar.make(getView(), R.string.message_textmessageimport, Snackbar.LENGTH_LONG).show();
+		});
+		private final ActivityResultLauncher<String[]> requestMessagingPermissionsLauncher = registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), permissions -> {
+			//Check if all permissions are granted
+			if(permissions.values().stream().allMatch((granted) -> granted)) {
+				//Enabling the toggle
+				SwitchPreference preference = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
+				preference.setChecked(true);
+				
+				//Starting the import service (started automatically by broadcast listener DefaultMessagingAppChangedReceiver)
+				//getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
+				
+				//Showing a snackbar
+				Snackbar.make(getView(), R.string.message_textmessageimport, Snackbar.LENGTH_LONG).show();
+			} else {
+				//Showing a snackbar
+				Snackbar.make(getView(), R.string.message_permissionrejected, Snackbar.LENGTH_LONG)
+					.setAction(R.string.screen_settings, view -> startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName()))))
+					.show();
+			}
+		});
+		
 		//Creating the subscription values
 		private Disposable syncSubscription;
 		
 		Preference.OnPreferenceClickListener notificationSoundClickListener = preference -> {
-			Intent intent = new Intent(RingtoneManager.ACTION_RINGTONE_PICKER);
-			intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION);
-			intent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true);
-			intent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true);
-			intent.putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI, Settings.System.DEFAULT_NOTIFICATION_URI);
-			
-			Uri existingValue = getNotificationSound(getContext());
-			if(existingValue == null) {
-				//Silent
-				intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, (Uri) null);
-			} else {
-				intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, existingValue);
-			}
-			
-			startActivityForResult(intent, activityRequestRingtone);
+			requestRingtoneLauncher.launch(getNotificationSound(getContext()));
 			
 			return true;
 		};
@@ -307,10 +365,10 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			} else {
 				if(MMSSMSHelper.isDefaultMessagingApp(getContext())) {
 					//Requesting permissions
-					requestPermissions(new String[]{Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.RECEIVE_MMS, Manifest.permission.READ_PHONE_STATE}, permissionRequestSMS);
+					requestMessagingPermissionsLauncher.launch(new String[]{Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.RECEIVE_MMS, Manifest.permission.READ_PHONE_STATE});
 				} else {
 					//Requesting to be the default messaging app
-					requestDefaultMessagingApp();
+					requestDefaultMessagingAppLauncher.launch(null);
 				}
 			}
 			
@@ -501,83 +559,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			list.setBackgroundResource(R.drawable.background_amoledsamsung);
 			list.setClipToOutline(true);
 			list.invalidate();
-		}
-		
-		@Override
-		public void onRequestPermissionsResult(final int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-			//Checking if the request code is contacts access
-			if(requestCode == permissionRequestLocation) {
-				//Checking if the result is a success
-				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-					//Enabling the toggle
-					((SwitchPreference) findPreference(getResources().getString(R.string.preference_appearance_location_key))).setChecked(true);
-					
-					//Recreating the activity
-					getActivity().recreate();
-				}
-				//Otherwise checking if the result is a denial
-				else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
-					//Showing a snackbar
-					Snackbar.make(getView(), R.string.message_permissionrejected, Snackbar.LENGTH_LONG)
-							.setAction(R.string.screen_settings, view -> startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName()))))
-							.show();
-				}
-			} else if(requestCode == permissionRequestSMS) {
-				//Checking if the result is a success
-				if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-					//Enabling the toggle
-					SwitchPreference preference = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
-					preference.setChecked(true);
-					
-					//Starting the import service (started automatically by broadcast listener DefaultMessagingAppChangedReceiver)
-					//getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
-					
-					//Showing a snackbar
-					Snackbar.make(getView(), R.string.message_textmessageimport, Snackbar.LENGTH_LONG).show();
-				}
-				//Otherwise checking if the result is a denial
-				else if(grantResults[0] == PackageManager.PERMISSION_DENIED) {
-					//Showing a snackbar
-					Snackbar.make(getView(), R.string.message_permissionrejected, Snackbar.LENGTH_LONG)
-							.setAction(R.string.screen_settings, view -> startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:" + getActivity().getPackageName()))))
-							.show();
-				}
-			}
-		}
-		
-		@Override
-		public void onActivityResult(int requestCode, int resultCode, Intent data) {
-			if(requestCode == activityRequestRingtone && resultCode == RESULT_OK) {
-				//Getting the selected ringtone URI
-				Uri ringtoneURI = data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI);
-				
-				//Saving the ringtone URI
-				if(ringtoneURI == null) { //"silent" selected
-					PreferenceManager.getDefaultSharedPreferences(getContext()).edit()
-							.putString(getContext().getResources().getString(R.string.preference_messagenotifications_sound_key), "")
-							.apply();
-				} else {
-					PreferenceManager.getDefaultSharedPreferences(getContext()).edit()
-							.putString(getContext().getResources().getString(R.string.preference_messagenotifications_sound_key), ringtoneURI.toString())
-							.apply();
-				}
-				
-				//Updating the preference summary
-				Preference preference = findPreference(getResources().getString(R.string.preference_messagenotifications_sound_key));
-				preference.setSummary(getRingtoneTitle(ringtoneURI));
-			} else if(requestCode == activityRequestDefaultMessagingApp && resultCode == RESULT_OK) {
-				//Enabling the toggle
-				SwitchPreference preference = findPreference(getResources().getString(R.string.preference_textmessage_enable_key));
-				preference.setChecked(true);
-				
-				//Starting the import service (started automatically by broadcast listener DefaultMessagingAppChangedReceiver)
-				//getActivity().startService(new Intent(getActivity(), SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionImport));
-				
-				//Showing a snackbar
-				Snackbar.make(getView(), R.string.message_textmessageimport, Snackbar.LENGTH_LONG).show();
-			} else {
-				super.onActivityResult(requestCode, resultCode, data);
-			}
 		}
 		
 		@RequiresApi(api = Build.VERSION_CODES.O)
@@ -1024,18 +1005,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			
 			//Returning the ringtone title
 			return title;
-		}
-		
-		private void requestDefaultMessagingApp() {
-			Intent intent;
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-				RoleManager roleManager = getActivity().getSystemService(RoleManager.class);
-				intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS);
-			} else {
-				intent = new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
-				intent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, getActivity().getPackageName());
-			}
-			startActivityForResult(intent, activityRequestDefaultMessagingApp);
 		}
 		
 		private void resetConfiguration() {

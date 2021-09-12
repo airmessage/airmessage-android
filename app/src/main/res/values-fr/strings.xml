@@ -332,8 +332,6 @@
 	<string name="preference_server_dropreconnect_title">Reconnexion de connexion perdue</string>
 	<string name="preferencegroup_appearance_title">Apparence</string>
 	<string name="preference_appearance_theme_title">Thème</string>
-	<string name="preference_appearance_location_title">Détection de nuit améliorée</string>
-	<string name="preference_appearance_location_description">Utiliser votre position actuelle pour détecter les heures de lever et de coucher du soleil pour un mode de nuit plus précis</string>
 	<string name="preference_appearance_advancedcolor_title">Chats arc-en-ciel</string>
 	<string name="preference_appearance_advancedcolor_description">Colorier les conversations et messages séparément</string>
 	<string name="preference_appearance_showreadreceipts_title">Afficher les accusés de lecture</string>

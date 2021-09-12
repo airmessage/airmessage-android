@@ -12,13 +12,19 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsetsController;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.FileProvider;
+import androidx.core.graphics.Insets;
 import androidx.core.util.Consumer;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 import com.bumptech.glide.Glide;
@@ -57,14 +63,14 @@ public class MediaViewer extends AppCompatActivity {
 	
 	private static final String INSTANCEPARAM_RESTORE = "restore";
 	
-	private static final int activityResultCreateFileSAF = 0;
-	
+	//Creating the view values
 	private ViewPager2 viewPager;
 	private RecyclerAdapter recyclerAdapter;
 	private Toolbar toolbar;
 	private View scrimTop;
 	private View scrimBottom;
 	
+	//Creating the state values
 	private boolean uiVisible = true;
 	
 	private AttachmentInfo selectedItem;
@@ -75,6 +81,12 @@ public class MediaViewer extends AppCompatActivity {
 	
 	private final Rect systemInsetsRect = new Rect();
 	private final List<Consumer<Rect>> systemInsetsRectUpdateListeners = new ArrayList<>();
+	
+	//Creating the callbacks
+	private final ActivityResultLauncher<String> saveFileLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument(), uri -> {
+		if(uri == null) return;
+		ExternalStorageHelper.exportFile(this, targetExportFile, uri);
+	});
 	
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -112,24 +124,26 @@ public class MediaViewer extends AppCompatActivity {
 		int selectionIndex = getIntent().getIntExtra(intentParamIndex, 0);
 		List<AttachmentInfo> itemList = getIntent().getParcelableArrayListExtra(intentParamDataList);
 		
-		ViewCompat.setOnApplyWindowInsetsListener(toolbar, (view, insets) -> {
+		ViewCompat.setOnApplyWindowInsetsListener(toolbar, (view, windowInsets) -> {
+			Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+			
 			//Updating the toolbar
-			toolbar.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), toolbar.getPaddingBottom());
+			toolbar.setPadding(insets.left, insets.top, insets.right, toolbar.getPaddingBottom());
 			
 			//Updating the scrims
 			toolbar.post(() -> {
-				scrimTop.getLayoutParams().height = insets.getSystemWindowInsetTop() + toolbar.getHeight();
+				scrimTop.getLayoutParams().height = insets.top + toolbar.getHeight();
 			});
-			scrimBottom.getLayoutParams().height = insets.getSystemWindowInsetBottom() * 2;
+			scrimBottom.getLayoutParams().height = insets.bottom * 2;
 			
 			//Updating the rectangle
-			systemInsetsRect.left = insets.getSystemWindowInsetLeft();
-			systemInsetsRect.top = insets.getSystemWindowInsetTop();
-			systemInsetsRect.right = insets.getSystemWindowInsetRight();
-			systemInsetsRect.bottom = insets.getSystemWindowInsetBottom();
+			systemInsetsRect.left = insets.left;
+			systemInsetsRect.top = insets.top;
+			systemInsetsRect.right = insets.right;
+			systemInsetsRect.bottom = insets.bottom;
 			for(Consumer<Rect> listener : systemInsetsRectUpdateListeners) listener.accept(systemInsetsRect);
 			
-			return insets.consumeSystemWindowInsets();
+			return WindowInsetsCompat.CONSUMED;
 		});
 		
 		//Initializing the view pager
@@ -194,15 +208,6 @@ public class MediaViewer extends AppCompatActivity {
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
-	}
-	
-	@Override
-	protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-		super.onActivityResult(requestCode, resultCode, data);
-		
-		if(requestCode == activityResultCreateFileSAF) {
-			if(resultCode == RESULT_OK) ExternalStorageHelper.exportFile(this, targetExportFile, data.getData());
-		}
 	}
 	
 	private void toggleUI() {
@@ -298,12 +303,9 @@ public class MediaViewer extends AppCompatActivity {
 		return true;
 	}
 	
-	private boolean saveItem(AttachmentInfo attachment) {
+	private void saveItem(AttachmentInfo attachment) {
 		targetExportFile = attachment.getFile();
-		ExternalStorageHelper.createFileSAF(this, activityResultCreateFileSAF, attachment.getComputedContentType(), attachment.getComputedFileName());
-		
-		//Returning true
-		return true;
+		saveFileLauncher.launch(attachment.getComputedFileName());
 	}
 	
 	private class RecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {

@@ -6,7 +6,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 @Retention(RetentionPolicy.SOURCE)
-@IntDef({MessageSendErrorCode.localUnknown, MessageSendErrorCode.localInvalidContent, MessageSendErrorCode.localFileTooLarge, MessageSendErrorCode.localIO, MessageSendErrorCode.localNetwork, MessageSendErrorCode.localExpired, MessageSendErrorCode.localReferences, MessageSendErrorCode.localInternal, MessageSendErrorCode.serverUnknown, MessageSendErrorCode.serverExternal, MessageSendErrorCode.serverBadRequest, MessageSendErrorCode.serverUnauthorized, MessageSendErrorCode.serverNoConversation, MessageSendErrorCode.serverRequestTimeout, MessageSendErrorCode.appleUnknown, MessageSendErrorCode.appleNetwork, MessageSendErrorCode.appleUnregistered})
+@IntDef({MessageSendErrorCode.none, MessageSendErrorCode.localUnknown, MessageSendErrorCode.localInvalidContent, MessageSendErrorCode.localFileTooLarge, MessageSendErrorCode.localIO, MessageSendErrorCode.localNetwork, MessageSendErrorCode.localExpired, MessageSendErrorCode.localReferences, MessageSendErrorCode.localInternal, MessageSendErrorCode.serverUnknown, MessageSendErrorCode.serverExternal, MessageSendErrorCode.serverBadRequest, MessageSendErrorCode.serverUnauthorized, MessageSendErrorCode.serverNoConversation, MessageSendErrorCode.serverRequestTimeout, MessageSendErrorCode.appleUnknown, MessageSendErrorCode.appleNetwork, MessageSendErrorCode.appleUnregistered})
 public @interface MessageSendErrorCode {
 	//No error
 	int none = 0;
