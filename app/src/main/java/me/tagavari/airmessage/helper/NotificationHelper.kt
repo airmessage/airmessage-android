@@ -144,7 +144,7 @@ object NotificationHelper {
 	@JvmStatic
 	fun sendNotification(context: Context, conversationInfo: ConversationInfo, messageInfo: MessageInfo) {
 		//Returning if notifications are disabled or the conversation is muted
-		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.resources.getString(R.string.preference_messagenotifications_getnotifications_key), false) || conversationInfo.isMuted) return
+		if((Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.resources.getString(R.string.preference_messagenotifications_getnotifications_key), true)) || conversationInfo.isMuted) return
 		
 		//Adding the message
 		addMessageToNotification(context, conversationInfo, messageToString(context.resources, messageInfo), messageInfo.sender, messageInfo.date, messageInfo.sendStyle)
