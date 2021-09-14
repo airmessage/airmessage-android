@@ -771,7 +771,7 @@ object NotificationHelper {
 	@JvmStatic
 	fun getNotification(notificationManager: NotificationManager, tag: String?, id: Int): Notification? {
 		return notificationManager.activeNotifications
-				.firstOrNull { notification: StatusBarNotification -> notification.tag == tag && notification.id == id }
+				?.firstOrNull { notification: StatusBarNotification -> notification.tag == tag && notification.id == id }
 				?.notification
 	}
 	

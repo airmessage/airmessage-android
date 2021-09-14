@@ -380,7 +380,7 @@ public class Messaging extends AppCompatCompositeActivity {
 				layoutParams.rightMargin = insets.right;
 			} else {
 				//Simply applying padding to the entire root view
-				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), insets.bottom);
+				rootView.setPadding(rootView.getPaddingLeft(), rootView.getPaddingTop(), rootView.getPaddingRight(), windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom);
 			}
 			
 			return windowInsets;
