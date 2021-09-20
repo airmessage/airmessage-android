@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.service;
 
+import android.os.Build;
 import android.util.Base64;
 import android.util.Log;
 import androidx.annotation.NonNull;
@@ -42,7 +43,9 @@ public class FCMService extends FirebaseMessagingService {
 	public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
 		Map<String, String> remoteMessageData = remoteMessage.getData();
 		if(remoteMessageData.isEmpty()) {
-			startConnectionService();
+			if(Build.VERSION.SDK_INT < Build.VERSION_CODES.S || remoteMessage.getPriority() == RemoteMessage.PRIORITY_HIGH) {
+				startConnectionService();
+			}
 			return;
 		}
 		
