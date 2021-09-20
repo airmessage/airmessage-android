@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.helper
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.text.TextUtils
 import android.util.Pair
@@ -159,6 +160,7 @@ object MessageSendHelper {
 	 * @param connectionManager The connection manager to use (or NULL if unavailable)
 	 * @return A completable to represent this request
 	 */
+	@SuppressLint("WrongConstant")
 	@JvmStatic
 	@CheckReturnValue
 	fun sendMessage(context: Context, conversationInfo: ConversationInfo, messageInfo: MessageInfo, connectionManager: ConnectionManager?): Completable {
