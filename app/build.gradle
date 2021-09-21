@@ -197,7 +197,7 @@ dependencies {
 
 	implementation "org.jsoup:jsoup:1.14.2"
 
-	implementation "com.klinkerapps:android-smsmms:5.2.6"
+	implementation project(":android-smsmms")
 
 	implementation "org.java-websocket:Java-WebSocket:1.5.2"
 	implementation "com.otaliastudios:transcoder:0.10.3"
