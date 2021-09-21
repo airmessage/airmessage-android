@@ -1,1 +1,4 @@
 include ':app'
+
+include ":android-smsmms"
+project(":android-smsmms").projectDir = file("lib/android-smsmms/library")
