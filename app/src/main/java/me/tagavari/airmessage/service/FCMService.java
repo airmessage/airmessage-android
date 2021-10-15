@@ -42,10 +42,10 @@ public class FCMService extends FirebaseMessagingService {
 	@Override
 	public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
 		Map<String, String> remoteMessageData = remoteMessage.getData();
+		
+		//If we have no data, connect to the server to retrieve it
 		if(remoteMessageData.isEmpty()) {
-			if(Build.VERSION.SDK_INT < Build.VERSION_CODES.S || remoteMessage.getPriority() == RemoteMessage.PRIORITY_HIGH) {
-				startConnectionService();
-			}
+			startConnectionService(remoteMessage);
 			return;
 		}
 		
@@ -164,7 +164,7 @@ public class FCMService extends FirebaseMessagingService {
 								if(connectionManager != null) {
 									connectionManager.addPendingConversations(response.getIncompleteServerConversations());
 								} else {
-									startConnectionService();
+									startConnectionService(remoteMessage);
 								}
 							}
 						}).subscribe();
@@ -181,7 +181,7 @@ public class FCMService extends FirebaseMessagingService {
 				}).subscribe();
 			} else {
 				//Fetch messages from the connection service
-				startConnectionService();
+				startConnectionService(remoteMessage);
 			}
 		}
 	}
@@ -200,9 +200,13 @@ public class FCMService extends FirebaseMessagingService {
 		connectionManager.sendPushToken(token);
 	}
 	
-	private void startConnectionService() {
-		//Only starting the service if it isn't already running (for example, if it's bound to an activity, we'll want to leave it that way)
-		if(ConnectionService.getInstance() == null) {
+	private void startConnectionService(RemoteMessage remoteMessage) {
+		/* Only starting the service if it isn't already running (for example, if it's bound to an activity, we'll want to leave it that way).
+		 *
+		 * Android 12 also introduced restrictions as to when a foreground service can be launched from the background,
+		 * so we should check if we are allowed to launch one before doing so.
+		 */
+		if(ConnectionService.getInstance() == null && Build.VERSION.SDK_INT < Build.VERSION_CODES.S || remoteMessage.getPriority() == RemoteMessage.PRIORITY_HIGH) {
 			ConnectionServiceLaunchHelper.launchTemporary(this);
 		}
 	}
