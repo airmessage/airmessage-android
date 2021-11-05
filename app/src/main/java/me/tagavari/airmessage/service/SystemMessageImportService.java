@@ -11,8 +11,14 @@ import android.database.sqlite.SQLiteException;
 import android.net.Uri;
 import android.os.IBinder;
 import android.provider.Telephony;
+
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Executors;
+
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Scheduler;
@@ -33,18 +39,10 @@ import me.tagavari.airmessage.messaging.ConversationPreview;
 import me.tagavari.airmessage.messaging.MemberInfo;
 import me.tagavari.airmessage.messaging.MessageInfo;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
-import me.tagavari.airmessage.redux.ReduxEventMessaging;
 import me.tagavari.airmessage.redux.ReduxEventTextImport;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 public class SystemMessageImportService extends Service {
 	public static final String selfIntentActionImport = "import";
-	public static final String selfIntentActionDelete = "delete";
 	
 	private static final long notificationProgressMinUpdateInterval = 1000;
 	
@@ -67,12 +65,6 @@ public class SystemMessageImportService extends Service {
 			
 			//Posting the progress notification
 			startForeground(notificationID, getImportNotification(this));
-		} else if(selfIntentActionDelete.equals(intentAction)) {
-			//Starting the delete process
-			currentTask = deleteMessages();
-			
-			//Posting the progress notification
-			startForeground(notificationID, getDeleteNotification(this));
 		} else {
 			//Stopping the service
 			stopSelf();
@@ -223,22 +215,6 @@ public class SystemMessageImportService extends Service {
 		});
 	}
 	
-	private Disposable deleteMessages() {
-		//Deleting the messages on disk
-		return Single.fromCallable(() -> DatabaseManager.getInstance().deleteConversationsByServiceHandler(this, ServiceHandler.systemMessaging))
-				.subscribeOn(requestScheduler)
-				.observeOn(AndroidSchedulers.mainThread()).subscribe(deletedIDs -> {
-					//Sending an update
-					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationServiceHandlerDelete(ServiceHandler.systemMessaging, Arrays.stream(deletedIDs).boxed().collect(Collectors.toList())));
-					
-					//Updating the shared preferences value
-					SharedPreferencesManager.setTextMessageConversationsInstalled(this, false);
-					
-					//Finishing the service
-					stopSelf();
-				});
-	}
-	
 	private static void postNotification(Context context, Notification notification) {
 		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 		notificationManager.notify(notificationID, notification);
@@ -273,25 +249,6 @@ public class SystemMessageImportService extends Service {
 				.setShowWhen(false)
 				.setLocalOnly(true)
 				.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-				.build();
-		
-		//Setting the notification as ongoing
-		notification.flags = Notification.FLAG_ONGOING_EVENT;
-		
-		//Returning the notification
-		return notification;
-	}
-	
-	private static Notification getDeleteNotification(Context context) {
-		//Building the notification
-		Notification notification = new NotificationCompat.Builder(context, NotificationHelper.notificationChannelStatus)
-				.setSmallIcon(R.drawable.message_download)
-				.setContentTitle(context.getResources().getString(R.string.progress_cleantextmessages))
-				.setProgress(0, 0, false)
-				.setPriority(Notification.PRIORITY_MIN)
-				.setShowWhen(false)
-				.setLocalOnly(true)
-				.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_DEFERRED)
 				.build();
 		
 		//Setting the notification as ongoing

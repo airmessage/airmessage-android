@@ -5,11 +5,17 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.provider.Telephony;
+
 import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
+import androidx.work.ExistingWorkPolicy;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
+
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.service.SystemMessageImportService;
+import me.tagavari.airmessage.worker.SystemMessageCleanupWorker;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
 public class DefaultMessagingAppChangedReceiver extends BroadcastReceiver {
@@ -38,9 +44,10 @@ public class DefaultMessagingAppChangedReceiver extends BroadcastReceiver {
 			if(conversationsInstalled) {
 				//Disabling text message integration
 				Preferences.setPreferenceTextMessageIntegration(context, false);
-				
+
 				//Clearing the database of text messages
-				ContextCompat.startForegroundService(context, new Intent(context, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete));
+				OneTimeWorkRequest workRequest = OneTimeWorkRequest.from(SystemMessageCleanupWorker.class);
+				WorkManager.getInstance(context).enqueueUniqueWork(SystemMessageCleanupWorker.workName, ExistingWorkPolicy.KEEP, workRequest);
 			}
 		}
 	}

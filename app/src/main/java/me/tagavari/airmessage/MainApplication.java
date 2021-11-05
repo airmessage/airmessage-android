@@ -1,22 +1,31 @@
 package me.tagavari.airmessage;
 
-import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Process;
 import android.provider.ContactsContract;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
+import androidx.work.ExistingWorkPolicy;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.OutOfQuotaPolicy;
+import androidx.work.WorkManager;
+
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.ref.WeakReference;
+import java.security.Security;
+
 import me.tagavari.airmessage.activity.CrashReport;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.data.DatabaseManager;
@@ -27,13 +36,7 @@ import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
 import me.tagavari.airmessage.redux.ReduxReceiverNotification;
 import me.tagavari.airmessage.redux.ReduxReceiverShortcut;
-import me.tagavari.airmessage.service.SystemMessageImportService;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.lang.ref.WeakReference;
-import java.security.Security;
+import me.tagavari.airmessage.worker.SystemMessageCleanupWorker;
 
 public class MainApplication extends Application {
 	//Creating the reference values
@@ -121,19 +124,27 @@ public class MainApplication extends Application {
 
 		//Checking if text message integration is not permitted
 		if(!Preferences.isTextMessageIntegrationActive(this)) {
+			boolean cleanUpMessages = false;
 			//Checking if the toggle is enabled (creating an invalid state)
 			if(Preferences.getPreferenceTextMessageIntegration(this)) {
 				//Disabling text message integration
 				Preferences.setPreferenceTextMessageIntegration(this, false);
 				
 				//Clearing the database of text messages
-				Intent serviceIntent = new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete);
-				startForegroundServiceCompat(serviceIntent);
+				cleanUpMessages = true;
 			}
 			//Clearing the database of text messages if there are still text messages in the database (in the case that the application is killed before it can clear all its messages)
 			else if(SharedPreferencesManager.getTextMessageConversationsInstalled(this)) {
-				Intent serviceIntent = new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete);
-				startForegroundServiceCompat(serviceIntent);
+				cleanUpMessages = true;
+			}
+
+			if(cleanUpMessages) {
+				OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(SystemMessageCleanupWorker.class)
+						.setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+						.build();
+
+				//If this work is already enqueued (likely from our broadcast listener), replace it with our expedited request
+				WorkManager.getInstance(this).enqueueUniqueWork(SystemMessageCleanupWorker.workName, ExistingWorkPolicy.REPLACE, workRequest);
 			}
 		}
 		
@@ -147,44 +158,6 @@ public class MainApplication extends Application {
 	
 	public static MainApplication getInstance() {
 		return instanceReference == null ? null : instanceReference.get();
-	}
-
-	/**
-	 * Starts a foreground service with the launch of the app,
-	 * taking into account Android 12 foreground service limitations
-	 * @param serviceIntent The intent to start the foreground service
-	 */
-	private void startForegroundServiceCompat(Intent serviceIntent) {
-		if(Build.VERSION.SDK_INT > Build.VERSION_CODES.S) {
-			//Wait for the first activity to start, then register callbacks
-			registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
-				@Override
-				public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
-					startForegroundService(serviceIntent);
-					unregisterActivityLifecycleCallbacks(this);
-				}
-
-				@Override
-				public void onActivityStarted(@NonNull Activity activity) {}
-
-				@Override
-				public void onActivityResumed(@NonNull Activity activity) {}
-
-				@Override
-				public void onActivityPaused(@NonNull Activity activity) {}
-
-				@Override
-				public void onActivityStopped(@NonNull Activity activity) {}
-
-				@Override
-				public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle outState) {}
-
-				@Override
-				public void onActivityDestroyed(@NonNull Activity activity) {}
-			});
-		}
-		else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
-		else startService(serviceIntent);
 	}
 	
 	private void configureCrashReporting() {
