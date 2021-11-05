@@ -1,14 +1,19 @@
 package me.tagavari.airmessage;
 
+import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Process;
 import android.provider.ContactsContract;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
@@ -113,7 +118,7 @@ public class MainApplication extends Application {
 			new ReduxReceiverShortcut(this).initialize();
 		}
 		new ReduxReceiverNotification(this).initialize();
-		
+
 		//Checking if text message integration is not permitted
 		if(!Preferences.isTextMessageIntegrationActive(this)) {
 			//Checking if the toggle is enabled (creating an invalid state)
@@ -123,14 +128,12 @@ public class MainApplication extends Application {
 				
 				//Clearing the database of text messages
 				Intent serviceIntent = new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete);
-				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
-				else startService(serviceIntent);
+				startForegroundServiceCompat(serviceIntent);
 			}
 			//Clearing the database of text messages if there are still text messages in the database (in the case that the application is killed before it can clear all its messages)
 			else if(SharedPreferencesManager.getTextMessageConversationsInstalled(this)) {
 				Intent serviceIntent = new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete);
-				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
-				else startService(serviceIntent);
+				startForegroundServiceCompat(serviceIntent);
 			}
 		}
 		
@@ -144,6 +147,44 @@ public class MainApplication extends Application {
 	
 	public static MainApplication getInstance() {
 		return instanceReference == null ? null : instanceReference.get();
+	}
+
+	/**
+	 * Starts a foreground service with the launch of the app,
+	 * taking into account Android 12 foreground service limitations
+	 * @param serviceIntent The intent to start the foreground service
+	 */
+	private void startForegroundServiceCompat(Intent serviceIntent) {
+		if(Build.VERSION.SDK_INT > Build.VERSION_CODES.S) {
+			//Wait for the first activity to start, then register callbacks
+			registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+				@Override
+				public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
+					startForegroundService(serviceIntent);
+					unregisterActivityLifecycleCallbacks(this);
+				}
+
+				@Override
+				public void onActivityStarted(@NonNull Activity activity) {}
+
+				@Override
+				public void onActivityResumed(@NonNull Activity activity) {}
+
+				@Override
+				public void onActivityPaused(@NonNull Activity activity) {}
+
+				@Override
+				public void onActivityStopped(@NonNull Activity activity) {}
+
+				@Override
+				public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle outState) {}
+
+				@Override
+				public void onActivityDestroyed(@NonNull Activity activity) {}
+			});
+		}
+		else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
+		else startService(serviceIntent);
 	}
 	
 	private void configureCrashReporting() {
