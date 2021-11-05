@@ -103,7 +103,7 @@
 			android:theme="@style/DayNight.NoActionBar.Protected"
 			android:windowSoftInputMode="adjustResize|stateVisible">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
-	</activity>
+		</activity>
 
 		<!-- Preferences -->
 		<activity
