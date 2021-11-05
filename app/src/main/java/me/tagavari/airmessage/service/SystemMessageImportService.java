@@ -250,11 +250,10 @@ public class SystemMessageImportService extends Service {
 				.setSmallIcon(R.drawable.message_download)
 				.setContentTitle(context.getResources().getString(R.string.progress_importtextmessages))
 				.setProgress(0, 0, true)
-				//.setColor(context.getColor(R.color.colorMessageTextMessage))
-				//.setColorized(false)
 				.setPriority(Notification.PRIORITY_MIN)
 				.setShowWhen(false)
 				.setLocalOnly(true)
+				.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
 				.build();
 		
 		//Setting the notification as ongoing
@@ -270,11 +269,10 @@ public class SystemMessageImportService extends Service {
 				.setSmallIcon(R.drawable.message_download)
 				.setContentTitle(context.getResources().getString(R.string.progress_importtextmessages))
 				.setProgress(max, progress, false)
-				//.setColor(context.getColor(R.color.colorMessageTextMessage))
-				//.setColorized(false)
 				.setPriority(Notification.PRIORITY_MIN)
 				.setShowWhen(false)
 				.setLocalOnly(true)
+				.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
 				.build();
 		
 		//Setting the notification as ongoing
@@ -290,11 +288,10 @@ public class SystemMessageImportService extends Service {
 				.setSmallIcon(R.drawable.message_download)
 				.setContentTitle(context.getResources().getString(R.string.progress_cleantextmessages))
 				.setProgress(0, 0, false)
-				//.setColor(context.getColor(R.color.colorMessageTextMessage))
-				//.setColorized(false)
 				.setPriority(Notification.PRIORITY_MIN)
 				.setShowWhen(false)
 				.setLocalOnly(true)
+				.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_DEFERRED)
 				.build();
 		
 		//Setting the notification as ongoing
