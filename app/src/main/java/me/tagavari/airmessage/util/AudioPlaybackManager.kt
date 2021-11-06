@@ -4,11 +4,12 @@ import android.content.Context
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.upstream.DataSource
+import com.google.android.exoplayer2.upstream.DefaultDataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import io.reactivex.rxjava3.core.Observable
@@ -23,7 +24,7 @@ class AudioPlaybackManager(context: Context) {
 	private var isAttached = false
 	private var requestObject: Any? = null
 	
-	private val exoPlayer = SimpleExoPlayer.Builder(context).build().also { exoPlayer ->
+	private val exoPlayer = ExoPlayer.Builder(context).build().also { exoPlayer ->
 		exoPlayer.addListener(object : Player.Listener {
 			override fun onIsPlayingChanged(isPlaying: Boolean) {
 				if(isPlaying) {
@@ -83,10 +84,9 @@ class AudioPlaybackManager(context: Context) {
 		//Stopping the current media session
 		stop()
 		
-		//Setting the media player source
-		val dataSourceFactory: DataSource.Factory = DefaultDataSourceFactory(context, Util.getUserAgent(context, context.resources.getString(R.string.app_name)))
-		val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(MediaItem.fromUri(uri))
-		exoPlayer.setMediaSource(mediaSource)
+		//Setting the media player item
+		val mediaItem = MediaItem.fromUri(uri)
+		exoPlayer.setMediaItem(mediaItem)
 		exoPlayer.prepare()
 		exoPlayer.playWhenReady = true
 		

@@ -9,9 +9,24 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Process;
 import android.provider.ContactsContract;
+
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
+import androidx.work.ExistingWorkPolicy;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.OutOfQuotaPolicy;
+import androidx.work.WorkManager;
+
+import com.google.android.gms.maps.MapsInitializer;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.ref.WeakReference;
+import java.security.Security;
+
 import me.tagavari.airmessage.activity.CrashReport;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.data.DatabaseManager;
@@ -22,13 +37,7 @@ import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
 import me.tagavari.airmessage.redux.ReduxReceiverNotification;
 import me.tagavari.airmessage.redux.ReduxReceiverShortcut;
-import me.tagavari.airmessage.service.SystemMessageImportService;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.lang.ref.WeakReference;
-import java.security.Security;
+import me.tagavari.airmessage.worker.SystemMessageCleanupWorker;
 
 public class MainApplication extends Application {
 	//Creating the reference values
@@ -113,24 +122,30 @@ public class MainApplication extends Application {
 			new ReduxReceiverShortcut(this).initialize();
 		}
 		new ReduxReceiverNotification(this).initialize();
-		
+
 		//Checking if text message integration is not permitted
 		if(!Preferences.isTextMessageIntegrationActive(this)) {
+			boolean cleanUpMessages = false;
 			//Checking if the toggle is enabled (creating an invalid state)
 			if(Preferences.getPreferenceTextMessageIntegration(this)) {
 				//Disabling text message integration
 				Preferences.setPreferenceTextMessageIntegration(this, false);
 				
 				//Clearing the database of text messages
-				Intent serviceIntent = new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete);
-				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
-				else startService(serviceIntent);
+				cleanUpMessages = true;
 			}
 			//Clearing the database of text messages if there are still text messages in the database (in the case that the application is killed before it can clear all its messages)
 			else if(SharedPreferencesManager.getTextMessageConversationsInstalled(this)) {
-				Intent serviceIntent = new Intent(this, SystemMessageImportService.class).setAction(SystemMessageImportService.selfIntentActionDelete);
-				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
-				else startService(serviceIntent);
+				cleanUpMessages = true;
+			}
+
+			if(cleanUpMessages) {
+				OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(SystemMessageCleanupWorker.class)
+						.setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+						.build();
+
+				//If this work is already enqueued (likely from our broadcast listener), replace it with our expedited request
+				WorkManager.getInstance(this).enqueueUniqueWork(SystemMessageCleanupWorker.workName, ExistingWorkPolicy.REPLACE, workRequest);
 			}
 		}
 		
@@ -140,6 +155,9 @@ public class MainApplication extends Application {
 			Security.removeProvider("BC");
 			int insertionIndex = Security.insertProviderAt(new BouncyCastleProvider(), 1);
 		}
+
+		//Initializing Google Maps
+		MapsInitializer.initialize(getApplicationContext(), MapsInitializer.Renderer.LATEST, null);
 	}
 	
 	public static MainApplication getInstance() {
