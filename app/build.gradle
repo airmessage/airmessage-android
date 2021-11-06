@@ -155,7 +155,7 @@ dependencies {
 
 	//ReactiveX
 	implementation "io.reactivex.rxjava3:rxandroid:3.0.0"
-	implementation "io.reactivex.rxjava3:rxjava:3.1.1"
+	implementation "io.reactivex.rxjava3:rxjava:3.1.2"
 	implementation "io.reactivex.rxjava3:rxkotlin:3.0.1"
 
 	//Layouts and views
@@ -170,7 +170,7 @@ dependencies {
 	implementation "com.google.mlkit:smart-reply:16.2.0"
 
 	//Firebase
-	implementation platform("com.google.firebase:firebase-bom:28.4.0")
+	implementation platform("com.google.firebase:firebase-bom:29.0.0")
 
 	implementation "com.google.firebase:firebase-core"
 	implementation "com.google.firebase:firebase-messaging-ktx"
@@ -179,7 +179,7 @@ dependencies {
 	implementation "com.google.firebase:firebase-crashlytics-ktx"
 
 	//GMS
-	implementation "com.google.android.gms:play-services-maps:17.0.1"
+	implementation "com.google.android.gms:play-services-maps:18.0.0"
 	implementation "com.google.android.gms:play-services-location:18.0.0"
 	implementation "com.google.android.gms:play-services-auth:19.2.0"
 
@@ -188,7 +188,7 @@ dependencies {
 	implementation "com.mikepenz:aboutlibraries:$aboutlibs_version"
 
 	//Tools
-	implementation "com.googlecode.ez-vcard:ez-vcard:0.11.2"
+	implementation "com.googlecode.ez-vcard:ez-vcard:0.11.3"
 
 	//Backend
 	implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
@@ -197,15 +197,15 @@ dependencies {
 	implementation "com.github.bumptech.glide:glide:4.12.0"
 	implementation "jp.wasabeef:glide-transformations:4.3.0"
 
-	implementation "com.google.android.exoplayer:exoplayer-core:2.15.0"
-	implementation "com.google.android.exoplayer:exoplayer-ui:2.15.0"
+	implementation "com.google.android.exoplayer:exoplayer-core:2.16.0"
+	implementation "com.google.android.exoplayer:exoplayer-ui:2.16.0"
 
-	implementation "org.jsoup:jsoup:1.14.2"
+	implementation "org.jsoup:jsoup:1.14.3"
 
 	implementation project(":android-smsmms")
 
 	implementation "org.java-websocket:Java-WebSocket:1.5.2"
-	implementation "com.otaliastudios:transcoder:0.10.3"
+	implementation "com.otaliastudios:transcoder:0.10.4"
 }
 
 repositories {

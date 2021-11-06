@@ -12,7 +12,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowInsetsController;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -27,6 +26,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
+
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
@@ -35,15 +35,15 @@ import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
 import com.bumptech.glide.signature.ObjectKey;
 import com.github.chrisbanes.photoview.PhotoView;
+import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.source.MediaSource;
-import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.ui.PlayerView;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
-import com.google.android.exoplayer2.util.Util;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.helper.AttachmentStorageHelper;
@@ -51,10 +51,6 @@ import me.tagavari.airmessage.helper.ExternalStorageHelper;
 import me.tagavari.airmessage.helper.FileHelper;
 import me.tagavari.airmessage.messaging.AttachmentInfo;
 import me.tagavari.airmessage.view.RoundedFrameLayout;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MediaViewer extends AppCompatActivity {
 	//Creating the constants
@@ -314,7 +310,7 @@ public class MediaViewer extends AppCompatActivity {
 		
 		private Player currentPlayer = null;
 		private final List<AttachmentInfo> itemList;
-		private final List<SimpleExoPlayer> playerList = new ArrayList<>();
+		private final List<ExoPlayer> playerList = new ArrayList<>();
 		private final List<PlayerView> playerViewList = new ArrayList<>();
 		
 		RecyclerAdapter(List<AttachmentInfo> itemList) {
@@ -328,7 +324,7 @@ public class MediaViewer extends AppCompatActivity {
 		}
 		
 		public void release() {
-			for(SimpleExoPlayer player : playerList) player.release();
+			for(ExoPlayer player : playerList) player.release();
 		}
 		
 		public void hideLocalUI() {
@@ -432,13 +428,13 @@ public class MediaViewer extends AppCompatActivity {
 		}
 		
 		class VideoViewHolder extends RecyclerView.ViewHolder {
-			final SimpleExoPlayer player;
+			final ExoPlayer player;
 			
 			VideoViewHolder(@NonNull View itemView) {
 				super(itemView);
 				
 				//Creating the player instance
-				player = new SimpleExoPlayer.Builder(MediaViewer.this).build();
+				player = new ExoPlayer.Builder(MediaViewer.this).build();
 				
 				//Adding the player to the list
 				playerList.add(player);
@@ -480,9 +476,7 @@ public class MediaViewer extends AppCompatActivity {
 			}
 			
 			void playVideo(File file, boolean autoPlay) {
-				DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(MediaViewer.this, Util.getUserAgent(MediaViewer.this, getResources().getString(R.string.app_name)));
-				MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(MediaItem.fromUri(Uri.fromFile(file)));
-				player.setMediaSource(videoSource);
+				player.setMediaItem(MediaItem.fromUri(Uri.fromFile(file)));
 				player.prepare();
 				player.setPlayWhenReady(autoPlay);
 			}

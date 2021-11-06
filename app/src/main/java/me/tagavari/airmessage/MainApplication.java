@@ -17,6 +17,7 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.OutOfQuotaPolicy;
 import androidx.work.WorkManager;
 
+import com.google.android.gms.maps.MapsInitializer;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -154,6 +155,9 @@ public class MainApplication extends Application {
 			Security.removeProvider("BC");
 			int insertionIndex = Security.insertProviderAt(new BouncyCastleProvider(), 1);
 		}
+
+		//Initializing Google Maps
+		MapsInitializer.initialize(getApplicationContext(), MapsInitializer.Renderer.LATEST, null);
 	}
 	
 	public static MainApplication getInstance() {
