@@ -136,7 +136,7 @@ dependencies {
 	implementation "androidx.security:security-crypto:1.0.0"
 
 	//Material components
-	implementation "com.google.android.material:material:1.4.0"
+	implementation "com.google.android.material:material:1.5.0-alpha05"
 
 	//Android architecture components
 	def lifecycle_version = "2.4.0"

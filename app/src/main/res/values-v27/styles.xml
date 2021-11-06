@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<style name="Pass.DayNight" parent="Base.DayNight">
-		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
-		<item name="android:navigationBarColor">@color/navbarBackground</item>
-		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
-	</style>
-	
 	<style name="Pass.DayNight.NoActionBar" parent="Base.DayNight.NoActionBar">
 		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
 		<item name="android:navigationBarColor">?android:attr/colorBackground</item>
