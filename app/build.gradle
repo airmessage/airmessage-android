@@ -8,7 +8,7 @@ plugins {
 
 	id "com.mikepenz.aboutlibraries.plugin"
 
-	id "com.google.secrets_gradle_plugin" version "0.5"
+	id "com.google.android.libraries.mapsplatform.secrets-gradle-plugin"
 }
 
 secrets {
