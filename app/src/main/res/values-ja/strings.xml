@@ -506,4 +506,22 @@
 	<string name="action_updatepassword">サーバーのパスワードの更新</string>
 	<string name="message_decrypterrornotify">読めないメッセージを受信しました</string>
 	<string name="message_decrypterrornotify_desc">復号化できなかったメッセージを受信しました</string>
+    <string name="action_installupdate">アップデートをインストール</string>
+	<string name="screen_serverupdate">サーバーアップデート</string>
+	<string name="message_serverupdate_version">AirMessage Server %s が入手できます（使用中のバージョンは %s です）</string>
+	<string name="message_serverupdate_manual">この更新プログラムは、%s に手動でインストールする必要があります。</string>
+	<string name="message_serverupdate_remotenotice">
+		AirMessage Server の最新バージョンは %s にインストールされます。
+		アップデートのインストール中は、メッセージング機能にアクセスできなくなります。
+		インストールが失敗した場合は、インストールする前にコンピューターにデスクトップアクセスできることを確認してください。
+	</string>
+	<string name="message_serverupdate_noconnection">サーバーから切断されています</string>
+	<string name="message_serverupdate_timedout">要求がタイムアウトしました</string>
+	<string name="message_serverupdate_remoteerror">アップデートのインストールに失敗しました</string>
+	<string name="message_serverupdate_errordetails_unknown">不明なエラーが発生しました</string>
+	<string name="message_serverupdate_errordetails_mismatch">このアップデートは適用できなくなりました</string>
+	<string name="message_serverupdate_errordetails_download">アップデートのダウンロード中にエラーが発生しました</string>
+	<string name="message_serverupdate_errordetails_badpackage">アップデートの処理中にエラーが発生しました</string>
+	<string name="message_serverupdate_errordetails_internal">内部エラーが発生しました</string>
+	<string name="progress_installingupdate">アップデートをインストール中&#8230;</string>
 </resources>

@@ -280,6 +280,9 @@ public class ConnectionManager {
 				
 				//Cancelling connection test timers
 				cancelConnectionTest(getContext());
+
+				//Removing any pending updates
+				ReduxEmitterNetwork.getRemoteUpdateSubject().onNext(Optional.empty());
 			}
 			
 			//Checking if the disconnection is recoverable
@@ -781,6 +784,30 @@ public class ConnectionManager {
 			subject.onError(error.toException());
 			
 			idRequestSubjectMap.remove(requestID);
+		}
+
+		@Override
+		public void onSoftwareUpdateListing(@Nullable ServerUpdateData updateData) {
+			ReduxEmitterNetwork.getRemoteUpdateSubject().onNext(Optional.ofNullable(updateData));
+		}
+
+		@Override
+		public void onSoftwareUpdateInstall(boolean installing) {
+			ReduxEventRemoteUpdate event;
+			if(installing) {
+				event = ReduxEventRemoteUpdate.Initiate.INSTANCE;
+			} else {
+				event = new ReduxEventRemoteUpdate.Error(
+						new AMRemoteUpdateException(AMRemoteUpdateException.errorCodeMismatch)
+				);
+			}
+
+			ReduxEmitterNetwork.getRemoteUpdateProgressSubject().onNext(event);
+		}
+
+		@Override
+		public void onSoftwareUpdateError(AMRemoteUpdateException exception) {
+			ReduxEmitterNetwork.getRemoteUpdateProgressSubject().onNext(new ReduxEventRemoteUpdate.Error(exception));
 		}
 	};
 	

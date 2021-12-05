@@ -30,6 +30,7 @@ import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.connection.encryption.EncryptionAES;
+import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException;
 import me.tagavari.airmessage.connection.exception.AMRequestException;
 import me.tagavari.airmessage.connection.exception.LargeAllocationException;
 import me.tagavari.airmessage.constants.MIMEConstants;
@@ -47,6 +48,7 @@ import me.tagavari.airmessage.helper.StandardCompressionHelper;
 import me.tagavari.airmessage.helper.StringHelper;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.redux.ReduxEventRemoteUpdate;
 import me.tagavari.airmessage.util.CompoundErrorDetails;
 import me.tagavari.airmessage.util.ConversationTarget;
 import me.tagavari.airmessage.util.ServerUpdateData;
@@ -111,6 +113,10 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 	private static final int nstModifierActivity = 0;
 	private static final int nstModifierSticker = 1;
 	private static final int nstModifierTapback = 2;
+
+	private static final int nstUpdateErrorDownload = 0;
+	private static final int nstUpdateErrorBadPackage = 1;
+	private static final int nstUpdateErrorInternal = 2;
 
 	private short lastMassRetrievalRequestID = -1;
 
@@ -449,17 +455,42 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			updateData = null;
 		}
 
-		//Emitting an update
-		Completable.fromAction(() -> ReduxEmitterNetwork.getRemoteUpdateSubject().onNext(Optional.ofNullable(updateData)))
-				.subscribeOn(AndroidSchedulers.mainThread()).subscribe();
+		communicationsManager.runListener(listener -> listener.onSoftwareUpdateListing(updateData));
 	}
 
 	private void handleMessageSoftwareUpdateInstall(AirUnpacker unpacker) {
-		//TODO emitting an update
+		//Reading the message
+		boolean updateInstalling = unpacker.unpackBoolean();
+
+		communicationsManager.runListener(listener -> listener.onSoftwareUpdateInstall(updateInstalling));
 	}
 
 	private void handleMessageSoftwareUpdateError(AirUnpacker unpacker) {
-		//TODO emitting an update
+		//Reading the message
+		int errorCode = unpacker.unpackInt();
+		String errorMessage = unpacker.unpackString();
+
+		//Mapping the error code to a local error code
+		final int localErrorCode;
+		switch(errorCode) {
+			case nstUpdateErrorDownload:
+				localErrorCode = AMRemoteUpdateException.errorCodeDownload;
+				break;
+			case nstUpdateErrorBadPackage:
+				localErrorCode = AMRemoteUpdateException.errorCodeBadPackage;
+				break;
+			case nstUpdateErrorInternal:
+				localErrorCode = AMRemoteUpdateException.errorCodeInternal;
+				break;
+			default:
+				localErrorCode = AMRemoteUpdateException.errorCodeUnknown;
+				break;
+		}
+
+		//Emitting an update
+		AMRemoteUpdateException exception = new AMRemoteUpdateException(localErrorCode, errorMessage);
+		communicationsManager.runListener(listener -> listener.onSoftwareUpdateError(exception));
+
 	}
 
 	@Override

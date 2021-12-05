@@ -395,13 +395,21 @@
 	<string name="message_passwordrequired">Server password required</string>
 	<string name="message_passwordupdated">Server password updated</string>
 
-	<string name="message_serverupdate_version">AirMessage Server %s is now available - you have %s.</string>
+	<string name="message_serverupdate_version">AirMessage Server %s is now available - you have %s</string>
 	<string name="message_serverupdate_remotenotice">
 		This will install the latest version of AirMessage Server on %s.
 		You will lose access to messaging functionality while the update installs.
 		In case the installation fails, please make sure you have desktop access to this computer before installing.
 	</string>
 	<string name="message_serverupdate_manual">This update must be installed manually on %s.</string>
+	<string name="message_serverupdate_noconnection">No connection to server</string>
+	<string name="message_serverupdate_timedout">Request timed out</string>
+	<string name="message_serverupdate_remoteerror">Failed to install update</string>
+	<string name="message_serverupdate_errordetails_unknown">An unknown error occurred</string>
+	<string name="message_serverupdate_errordetails_mismatch">This update is no longer applicable</string>
+	<string name="message_serverupdate_errordetails_download">An error occurred while downloading the update</string>
+	<string name="message_serverupdate_errordetails_badpackage">An error occurred while processing the update</string>
+	<string name="message_serverupdate_errordetails_internal">An internal error occurred</string>
 
 	<string name="progress_loadingmessages">Loading messages&#8230;</string>
 	<string name="progress_loading">Loading&#8230;</string>

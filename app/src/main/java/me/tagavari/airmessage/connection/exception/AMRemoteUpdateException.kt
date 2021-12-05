@@ -7,6 +7,10 @@ class AMRemoteUpdateException @JvmOverloads constructor(
     val errorDetails: String? = null
 ): Exception() {
     companion object {
-        const val errorCodeMismatch = 0
+        const val errorCodeUnknown = 0
+        const val errorCodeMismatch = 1
+        const val errorCodeDownload = 2
+        const val errorCodeBadPackage = 3
+        const val errorCodeInternal = 4
     }
 }

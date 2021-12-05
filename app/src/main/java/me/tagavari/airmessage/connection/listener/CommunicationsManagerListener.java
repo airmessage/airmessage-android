@@ -3,9 +3,11 @@ package me.tagavari.airmessage.connection.listener;
 import androidx.annotation.Nullable;
 import androidx.arch.core.util.Function;
 import me.tagavari.airmessage.common.Blocks;
+import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException;
 import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.util.CompoundErrorDetails;
+import me.tagavari.airmessage.util.ServerUpdateData;
 
 import java.io.OutputStream;
 import java.util.Collection;
@@ -36,4 +38,7 @@ public interface CommunicationsManagerListener {
 	void onSendMessageFail(short requestID, CompoundErrorDetails.MessageSend error);
 	void onCreateChatSuccess(short requestID, String chatGUID);
 	void onCreateChatError(short requestID, CompoundErrorDetails.ChatCreate error);
+	void onSoftwareUpdateListing(@Nullable ServerUpdateData updateData);
+	void onSoftwareUpdateInstall(boolean installing);
+	void onSoftwareUpdateError(AMRemoteUpdateException exception);
 }

@@ -23,4 +23,7 @@ object ReduxEmitterNetwork {
 
 	@JvmStatic
 	val remoteUpdateSubject: BehaviorSubject<Optional<ServerUpdateData>> = BehaviorSubject.create()
+
+	@JvmStatic
+	val remoteUpdateProgressSubject: PublishSubject<ReduxEventRemoteUpdate> = PublishSubject.create()
 }

@@ -515,4 +515,22 @@
 	<string name="action_updatepassword">Mise à jour du mot de passe du serveur</string>
 	<string name="message_decrypterrornotify">Un message illisible a été reçu</string>
 	<string name="message_decrypterrornotify_desc">Un message a été reçu qui n\'a pas pu être décrypté</string>
+	<string name="action_installupdate">Installer la mise à jour</string>
+	<string name="screen_serverupdate">Mise à jour du serveur</string>
+	<string name="message_serverupdate_version">AirMessage Server %s est disponible - vous avez %s</string>
+	<string name="message_serverupdate_manual">Cette mise à jour doit être installée manuellement sur %s.</string>
+	<string name="message_serverupdate_remotenotice">
+		La dernière version d\'AirMessage Server sera installée sur %s.
+		Vous perdrez l\'accès à la fonctionnalité de messagerie pendant l\'installation de la mise à jour.
+		En cas d\'échec de l\'installation, assurez-vous d\'avoir l\'accès par ordinateur avant de procéder à l\'installation.
+	</string>
+	<string name="message_serverupdate_noconnection">Aucune connexion au serveur</string>
+	<string name="message_serverupdate_timedout">Demande expirée</string>
+	<string name="message_serverupdate_remoteerror">Échec de l\'installation de la mise à jour</string>
+	<string name="message_serverupdate_errordetails_unknown">Une erreur inconnue s\'est produite</string>
+	<string name="message_serverupdate_errordetails_mismatch">Cette mise à jour n\'est plus applicable</string>
+	<string name="message_serverupdate_errordetails_download">Une erreur s\'est produite lors du téléchargement de la mise à jour</string>
+	<string name="message_serverupdate_errordetails_badpackage">Une erreur s\'est produite lors du traitement de la mise à jour</string>
+	<string name="message_serverupdate_errordetails_internal">Une erreur interne s\'est produite</string>
+	<string name="progress_installingupdate">Installation de la mise à jour&#8230;</string>
 </resources>
