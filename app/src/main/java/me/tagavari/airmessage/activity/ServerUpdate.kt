@@ -217,7 +217,7 @@ class ServerUpdate : AppCompatCompositeActivity() {
 
     private val handleUpdateRequestTimeout = Runnable {
         //Set the state to not loading
-        viewModel.isLoading.value = true
+        viewModel.isLoading.value = false
 
         //Notify the user with a snackbar
         Snackbar.make(findViewById(android.R.id.content), R.string.message_serverupdate_timedout, Snackbar.LENGTH_INDEFINITE).show()
