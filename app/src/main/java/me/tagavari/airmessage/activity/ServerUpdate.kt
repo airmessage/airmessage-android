@@ -131,7 +131,7 @@ class ServerUpdate : AppCompatCompositeActivity() {
             viewModel.isLoading.value = false
 
             //Notify the user with a snackbar
-            Snackbar.make(findViewById(android.R.id.content), R.string.message_serverupdate_remoteerror, Snackbar.LENGTH_INDEFINITE)
+            Snackbar.make(findViewById(R.id.root), R.string.message_serverupdate_remoteerror, Snackbar.LENGTH_INDEFINITE)
                 .apply {
                     setAction(R.string.action_details) {
                         //Show a basic error dialog
@@ -214,7 +214,7 @@ class ServerUpdate : AppCompatCompositeActivity() {
         //Install the update
         pluginCS.connectionManager?.installSoftwareUpdate(updateData.id) ?: run {
             //Notify the user with a snackbar
-            Snackbar.make(findViewById(android.R.id.content), R.string.message_serverupdate_noconnection, Snackbar.LENGTH_INDEFINITE).show()
+            Snackbar.make(findViewById(R.id.root), R.string.message_serverupdate_noconnection, Snackbar.LENGTH_INDEFINITE).show()
             return
         }
 
@@ -227,7 +227,7 @@ class ServerUpdate : AppCompatCompositeActivity() {
 
     private fun handleUpdateRequestTimeout() {
         //Notify the user with a snackbar
-        Snackbar.make(findViewById(android.R.id.content), R.string.message_serverupdate_timedout, Snackbar.LENGTH_INDEFINITE).show()
+        Snackbar.make(findViewById(R.id.root), R.string.message_serverupdate_timedout, Snackbar.LENGTH_INDEFINITE).show()
     }
 
     private fun updateUILoading(isLoading: Boolean) {
