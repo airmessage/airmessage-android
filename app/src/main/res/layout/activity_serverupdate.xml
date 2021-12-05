@@ -28,13 +28,20 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="16dp">
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_airmessage_update" />
+
             <TextView
                 android:id="@+id/label_version"
                 style="@style/TextAppearance.MaterialComponents.Subtitle1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/message_serverupdate_version"
-                android:textColor="?android:attr/textColorPrimary" />
+                android:textColor="?android:attr/textColorPrimary"
+                android:layout_marginTop="16dp" />
 
             <TextView
                 android:id="@+id/label_releasenotes"
