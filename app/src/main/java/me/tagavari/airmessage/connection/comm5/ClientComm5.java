@@ -186,6 +186,8 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 				return new ClientProtocol3(this, getDataProxy());
 			case 4:
 				return new ClientProtocol4(this, getDataProxy());
+			case 5:
+				return new ClientProtocol5(this, getDataProxy());
 		}
 	}
 	
@@ -256,7 +258,13 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 		
 		return false;
 	}
-	
+
+	@Override
+	public boolean installSoftwareUpdate(int updateID) {
+		if(protocolManager == null) return false;
+		return protocolManager.installSoftwareUpdate(updateID);
+	}
+
 	@Override
 	public int checkCommVerApplicability(int version) {
 		return Integer.compare(version, communicationsVersion);

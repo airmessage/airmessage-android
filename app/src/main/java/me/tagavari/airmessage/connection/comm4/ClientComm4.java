@@ -229,7 +229,12 @@ public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 		//No support
 		return false;
 	}
-	
+
+	@Override
+	public boolean installSoftwareUpdate(int updateID) {
+		return false;
+	}
+
 	@Override
 	public int checkCommVerApplicability(int version) {
 		return Integer.compare(version, 4);

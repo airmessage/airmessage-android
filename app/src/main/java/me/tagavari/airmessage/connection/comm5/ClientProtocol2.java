@@ -689,6 +689,11 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			return false;
 		}
 	}
+
+	@Override
+	boolean installSoftwareUpdate(int updateID) {
+		throw new UnsupportedOperationException("Not supported");
+	}
 	
 	@Override
 	boolean isFeatureSupported(@ConnectionFeature int featureID) {

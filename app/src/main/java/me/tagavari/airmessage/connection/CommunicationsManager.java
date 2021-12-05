@@ -184,6 +184,13 @@ public abstract class CommunicationsManager<Packet> {
 	 * @return Whether the request was successfully sent
 	 */
 	public abstract boolean sendPushToken(String token);
+
+	/**
+	 * Installs the server update with the specified ID
+	 * @param updateID The ID of the update to install
+	 * @return Whether the request was successfully sent
+	 */
+	public abstract boolean installSoftwareUpdate(int updateID);
 	
 	/**
 	 * Checks if the specified communications version is applicable

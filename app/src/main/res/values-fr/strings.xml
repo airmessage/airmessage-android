@@ -140,7 +140,8 @@
 	<string name="action_unarchive">Désarchiver</string>
 	<string name="action_mute">Désactiver les notifications</string>
 	<string name="action_unmute">Activer les notifications</string>
-	<string name="action_details">Afficher les détails</string>
+	<string name="action_details">Détails</string>
+	<string name="action_viewdetails">Afficher les détails</string>
 	<string name="action_disconnect">Déconnecter</string>
 	<string name="action_reconnect">Reconnecter</string>
 	<string name="action_quit">Quitter</string>

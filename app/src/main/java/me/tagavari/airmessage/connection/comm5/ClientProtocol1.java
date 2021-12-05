@@ -690,7 +690,12 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 	boolean requestRetrievalID(long idSince, long timeLower, long timeUpper) {
 		throw new UnsupportedOperationException("Not supported");
 	}
-	
+
+	@Override
+	boolean installSoftwareUpdate(int updateID) {
+		throw new UnsupportedOperationException("Not supported");
+	}
+
 	@Override
 	boolean isFeatureSupported(@ConnectionFeature int featureID) {
 		return false;

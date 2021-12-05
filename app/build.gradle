@@ -189,6 +189,7 @@ dependencies {
 
 	//Tools
 	implementation "com.googlecode.ez-vcard:ez-vcard:0.11.3"
+	implementation "org.commonmark:commonmark:0.18.0"
 
 	//Backend
 	implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"

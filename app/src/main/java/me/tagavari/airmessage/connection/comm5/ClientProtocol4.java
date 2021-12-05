@@ -716,7 +716,12 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 			return false;
 		}
 	}
-	
+
+	@Override
+	boolean installSoftwareUpdate(int updateID) {
+		throw new UnsupportedOperationException("Not supported");
+	}
+
 	@Override
 	boolean isFeatureSupported(@ConnectionFeature int featureID) {
 		return featureID == ConnectionFeature.idBasedRetrieval || featureID == ConnectionFeature.payloadPushNotifications;

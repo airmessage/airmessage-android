@@ -2,7 +2,7 @@
 	<item android:id="@+id/action_tapbackdetails"
 		android:title="@string/action_tapbackdetails" />
 	<item android:id="@+id/action_details"
-		android:title="@string/action_details" />
+		android:title="@string/action_viewdetails" />
 	<item android:id="@+id/action_copytext"
 		android:title="@string/action_copytext" />
 	<item android:id="@+id/action_share"

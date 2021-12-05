@@ -1,7 +1,29 @@
 package me.tagavari.airmessage.connection.comm5;
 
 import android.os.Build;
+
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
+
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
+import java.security.DigestInputStream;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.zip.DeflaterInputStream;
+import java.util.zip.InflaterOutputStream;
+
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.common.Blocks;
@@ -12,40 +34,36 @@ import me.tagavari.airmessage.connection.exception.AMRequestException;
 import me.tagavari.airmessage.connection.exception.LargeAllocationException;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.enums.*;
+import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
+import me.tagavari.airmessage.enums.ChatCreateErrorCode;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.ConnectionFeature;
+import me.tagavari.airmessage.enums.GroupAction;
+import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.MessageState;
+import me.tagavari.airmessage.enums.TapbackType;
 import me.tagavari.airmessage.helper.LookAheadStreamIterator;
 import me.tagavari.airmessage.helper.StandardCompressionHelper;
 import me.tagavari.airmessage.helper.StringHelper;
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
 import me.tagavari.airmessage.util.CompoundErrorDetails;
 import me.tagavari.airmessage.util.ConversationTarget;
+import me.tagavari.airmessage.util.ServerUpdateData;
 
-import java.io.*;
-import java.nio.BufferOverflowException;
-import java.nio.BufferUnderflowException;
-import java.security.DigestInputStream;
-import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.zip.DeflaterInputStream;
-import java.util.zip.InflaterOutputStream;
-
-public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
+public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 	private static final String hashAlgorithm = "MD5";
 	private static final String platformID = "android";
-	
+
 	private static final int attachmentChunkSize = 1024 * 1024; //1 MB
-	
+
 	//Top-level net header type values
 	private static final int nhtClose = 0;
 	private static final int nhtPing = 1;
 	private static final int nhtPong = 2;
-	
+
 	private static final int nhtAuthentication = 101;
-	
+
 	private static final int nhtMessageUpdate = 200;
 	private static final int nhtTimeRetrieval = 201;
 	private static final int nhtIDRetrieval = 202;
@@ -58,41 +76,45 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 	private static final int nhtAttachmentReqConfirm = 209;
 	private static final int nhtAttachmentReqFail = 210;
 	private static final int nhtIDUpdate = 211;
-	
+
 	private static final int nhtLiteConversationRetrieval = 300;
 	private static final int nhtLiteThreadRetrieval = 301;
-	
+
 	private static final int nhtSendResult = 400;
 	private static final int nhtSendTextExisting = 401;
 	private static final int nhtSendTextNew = 402;
 	private static final int nhtSendFileExisting = 403;
 	private static final int nhtSendFileNew = 404;
 	private static final int nhtCreateChat = 405;
-	
+
+	private static final int nhtSoftwareUpdateListing = 500;
+	private static final int nhtSoftwareUpdateInstall = 501;
+	private static final int nhtSoftwareUpdateError = 502;
+
 	//Net return codes
 	private static final int nrcSharedOK = 0;
-	
+
 	//Item sub-types
 	private static final int nstMessageStateIdle = 0;
 	private static final int nstMessageStateSent = 1;
 	private static final int nstMessageStateDelivered = 2;
 	private static final int nstMessageStateRead = 3;
-	
+
 	private static final int nstItemMessage = 0;
 	private static final int nstItemGroupAction = 1;
 	private static final int nstItemChatRename = 2;
-	
+
 	private static final int nstGroupActionUnknown = 0;
 	private static final int nstGroupActionJoin = 1;
 	private static final int nstGroupActionLeave = 2;
-	
+
 	private static final int nstModifierActivity = 0;
 	private static final int nstModifierSticker = 1;
 	private static final int nstModifierTapback = 2;
-	
+
 	private short lastMassRetrievalRequestID = -1;
-	
-	ClientProtocol3(ClientComm5 communicationsManager, DataProxy<EncryptedPacket> dataProxy) {
+
+	ClientProtocol5(ClientComm5 communicationsManager, DataProxy<EncryptedPacket> dataProxy) {
 		super(communicationsManager, dataProxy);
 	}
 	
@@ -211,6 +233,15 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 			case nhtCreateChat:
 				handleMessageCreateChat(unpacker);
 				break;
+			case nhtSoftwareUpdateListing:
+				handleMessageSoftwareUpdateListing(unpacker);
+				break;
+			case nhtSoftwareUpdateInstall:
+				handleMessageSoftwareUpdateInstall(unpacker);
+				break;
+			case nhtSoftwareUpdateError:
+				handleMessageSoftwareUpdateError(unpacker);
+				break;
 			default:
 				//Message not consumed
 				return false;
@@ -281,7 +312,14 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 		//Reading the data
 		short requestID = unpacker.unpackShort();
 		int requestIndex = unpacker.unpackInt();
-		String fileName = requestIndex == 0 ? unpacker.unpackString() : null;
+		String fileName, downloadFileName, downloadFileType;
+		if(requestIndex == 0) {
+			fileName = unpacker.unpackString();
+			downloadFileName = unpacker.unpackNullableString();
+			downloadFileType = unpacker.unpackNullableString();
+		} else {
+			fileName = downloadFileName = downloadFileType = null;
+		}
 		boolean isLast = unpacker.unpackBoolean();
 		
 		String fileGUID = unpacker.unpackString();
@@ -289,7 +327,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 		
 		//Processing the data
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, null, null, InflaterOutputStream::new);
+			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, downloadFileName, downloadFileType, InflaterOutputStream::new);
 			listener.onMassRetrievalFileProgress(requestID, requestIndex, fileGUID, fileData);
 			if(isLast) listener.onMassRetrievalFileComplete(requestID, fileGUID);
 		});
@@ -315,15 +353,27 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 		//Reading the data
 		short requestID = unpacker.unpackShort();
 		int requestIndex = unpacker.unpackInt();
-		long fileLength = requestIndex == 0 ? unpacker.unpackLong() : -1;
+		
+		final String downloadFileName;
+		final String downloadFileType;
+		final long fileLength;
+		if(requestIndex == 0) {
+			downloadFileName = unpacker.unpackNullableString();
+			downloadFileType = unpacker.unpackNullableString();
+			fileLength = unpacker.unpackLong();
+		} else {
+			downloadFileName = null;
+			downloadFileType = null;
+			fileLength = -1;
+		}
+		
 		boolean isLast = unpacker.unpackBoolean();
 		
-		String fileGUID = unpacker.unpackString();
 		byte[] fileData = unpacker.unpackPayload();
 		
 		//Forwarding the data to the listeners
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onFileRequestStart(requestID, null, null, fileLength, InflaterOutputStream::new);
+			if(requestIndex == 0) listener.onFileRequestStart(requestID, downloadFileName, downloadFileType, fileLength, InflaterOutputStream::new);
 			listener.onFileRequestData(requestID, requestIndex, fileData);
 			if(isLast) listener.onFileRequestComplete(requestID);
 		});
@@ -379,7 +429,39 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 			}
 		});
 	}
-	
+
+	private void handleMessageSoftwareUpdateListing(AirUnpacker unpacker) {
+		//Reading the data
+		ServerUpdateData updateData;
+		boolean updateExists = unpacker.unpackBoolean();
+		if(updateExists) {
+			int updateID = unpacker.unpackInt();
+			int protocolRequirementCount = unpacker.unpackArrayHeader();
+			List<Integer> protocolRequirement = new ArrayList<>(protocolRequirementCount);
+			for(int i = 0; i < protocolRequirementCount; i++) protocolRequirement.add(unpacker.unpackInt());
+
+			String versionName = unpacker.unpackString();
+			String versionNotes = unpacker.unpackString();
+			boolean remoteInstallable = unpacker.unpackBoolean();
+
+			updateData = new ServerUpdateData(updateID, protocolRequirement, versionName, versionNotes, remoteInstallable);
+		} else {
+			updateData = null;
+		}
+
+		//Emitting an update
+		Completable.fromAction(() -> ReduxEmitterNetwork.getRemoteUpdateSubject().onNext(Optional.ofNullable(updateData)))
+				.subscribeOn(AndroidSchedulers.mainThread()).subscribe();
+	}
+
+	private void handleMessageSoftwareUpdateInstall(AirUnpacker unpacker) {
+		//TODO emitting an update
+	}
+
+	private void handleMessageSoftwareUpdateError(AirUnpacker unpacker) {
+		//TODO emitting an update
+	}
+
 	@Override
 	boolean requestChatCreation(short requestID, String[] chatMembers, String service) {
 		//Returning false if there is no connection thread
@@ -447,7 +529,7 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 		//Assembling the device information
 		String installationID = SharedPreferencesManager.getInstallationID(MainApplication.getInstance());
 		String clientName = Build.MANUFACTURER + ' ' + Build.MODEL;
-		String platformID = ClientProtocol3.platformID;
+		String platformID = ClientProtocol5.platformID;
 		
 		//Checking if the current protocol requires authentication
 		if(unpacker.unpackBoolean()) {
@@ -700,12 +782,27 @@ public class ClientProtocol3 extends ProtocolManager<EncryptedPacket> {
 
 	@Override
 	boolean installSoftwareUpdate(int updateID) {
-		throw new UnsupportedOperationException("Not supported");
-	}
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
 
+		try(AirPacker packer = AirPacker.get()) {
+			packer.packInt(nhtSoftwareUpdateInstall);
+			packer.packInt(updateID);
+
+			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
+			return true;
+		} catch(BufferOverflowException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			return false;
+		}
+	}
+	
 	@Override
 	boolean isFeatureSupported(@ConnectionFeature int featureID) {
-		return featureID == ConnectionFeature.idBasedRetrieval || featureID == ConnectionFeature.payloadPushNotifications;
+		return featureID == ConnectionFeature.idBasedRetrieval ||
+				featureID == ConnectionFeature.payloadPushNotifications ||
+				featureID == ConnectionFeature.remoteUpdates;
 	}
 	
 	/**

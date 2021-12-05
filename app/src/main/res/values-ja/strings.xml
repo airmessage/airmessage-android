@@ -33,7 +33,8 @@
 	<string name="action_unarchive">アーカイブ解除</string>
 	<string name="action_mute">ミュート</string>
 	<string name="action_unmute">ミュート解除</string>
-	<string name="action_details">詳細を表示</string>
+	<string name="action_details">詳細</string>
+	<string name="action_viewdetails">詳細を表示</string>
 	<string name="screen_archived">アーカイブ済み</string>
 	<string name="action_disconnect">切断</string>
 	<string name="action_reconnect">再接続</string>

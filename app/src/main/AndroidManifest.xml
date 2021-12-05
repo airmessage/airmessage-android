@@ -120,6 +120,16 @@
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
+		<!-- Server update -->
+		<activity
+			android:exported="false"
+			android:name=".activity.ServerUpdate"
+			android:theme="@style/DayNight.NoActionBar.Protected"
+			android:parentActivityName=".activity.Conversations"
+			android:label="@string/screen_serverupdate">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
 		<!-- Image draw -->
 		<!-- <activity
 			android:exported="false"

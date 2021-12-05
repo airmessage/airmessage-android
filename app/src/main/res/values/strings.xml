@@ -43,7 +43,8 @@
 	<string name="action_unarchive">Unarchive</string>
 	<string name="action_mute">Mute</string>
 	<string name="action_unmute">Unmute</string>
-	<string name="action_details">View details</string>
+	<string name="action_details">Details</string>
+	<string name="action_viewdetails">View details</string>
 	<string name="action_disconnect">Disconnect</string>
 	<string name="action_reconnect">Reconnect</string>
 	<string name="action_quit">Quit</string>
@@ -79,7 +80,7 @@
 	<string name="action_signout">Sign out</string>
 	<string name="action_switchtoaccount">Switch to account</string>
 	<string name="action_checkconnection">Check connection</string>
-	<string name="action_downloadandinstall">Download and install</string>
+	<string name="action_installupdate">Install update</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -95,6 +96,7 @@
 	<string name="screen_newmessage">New message</string>
 	<string name="screen_manualconfiguration">Manual configuration</string>
 	<string name="screen_licenses">Open source licenses</string>
+	<string name="screen_serverupdate">Server update</string>
 
 	<string name="title_conversation_name">Group name</string>
 	<string name="title_conversation_members">People in this conversation</string>

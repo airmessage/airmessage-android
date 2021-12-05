@@ -28,6 +28,7 @@ import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.comm4.ClientComm4;
 import me.tagavari.airmessage.connection.comm5.ClientComm5;
+import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException;
 import me.tagavari.airmessage.connection.exception.AMRequestException;
 import me.tagavari.airmessage.connection.listener.CommunicationsManagerListener;
 import me.tagavari.airmessage.connection.request.FileFetchRequest;
@@ -1167,6 +1168,17 @@ public class ConnectionManager {
 		
 		//Sending the request
 		communicationsManager.requestRetrievalID(idLower, timeLower, timeUpper);
+	}
+
+	/**
+	 * Installs the server update with the specified ID
+	 * @param updateID The ID of the update to install
+	 */
+	public void installSoftwareUpdate(int updateID) {
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return;
+
+		communicationsManager.installSoftwareUpdate(updateID);
 	}
 	
 	/**

@@ -2,6 +2,8 @@ package me.tagavari.airmessage.redux
 
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
+import me.tagavari.airmessage.util.ServerUpdateData
+import java.util.*
 
 object ReduxEmitterNetwork {
 	@JvmStatic
@@ -18,5 +20,7 @@ object ReduxEmitterNetwork {
 	
 	@JvmStatic
 	val textImportUpdateSubject: BehaviorSubject<ReduxEventTextImport> = BehaviorSubject.create()
-	
+
+	@JvmStatic
+	val remoteUpdateSubject: BehaviorSubject<Optional<ServerUpdateData>> = BehaviorSubject.create()
 }

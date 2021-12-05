@@ -121,7 +121,14 @@ abstract class ProtocolManager<Packet> {
 	 * @return Whether the request was successfully sent
 	 */
 	abstract boolean requestChatCreation(short requestID, String[] members, String service);
-	
+
+	/**
+	 * Installs the server update with the specified ID
+	 * @param updateID The ID of the update to install
+	 * @return Whether the request was successfully sent
+	 */
+	abstract boolean installSoftwareUpdate(int updateID);
+
 	/**
 	 * Checks if the specified feature is supported by the current protocol
 	 * @param featureID The feature to check
