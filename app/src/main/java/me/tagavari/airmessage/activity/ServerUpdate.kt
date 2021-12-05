@@ -97,6 +97,16 @@ class ServerUpdate : AppCompatCompositeActivity() {
             ReduxEmitterNetwork.connectionStateSubject.subscribe(this::updateStateConnection),
             ReduxEmitterNetwork.remoteUpdateProgressSubject.subscribe(this::updateStateUpdateProgress)
         )
+
+        //Subscribe to timeout updates
+        viewModel.updateRequestTimeoutCallback = this::handleUpdateRequestTimeout
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        //Unsubscribe from timeout updates
+        viewModel.updateRequestTimeoutCallback = null
     }
 
     private fun updateStateConnection(event: ReduxEventConnection) {
@@ -112,10 +122,10 @@ class ServerUpdate : AppCompatCompositeActivity() {
 
         if(event is ReduxEventRemoteUpdate.Initiate) {
             //Cancel the timeout
-            viewModel.timeoutHandler.removeCallbacks(handleUpdateRequestTimeout)
+            viewModel.cancelTimeout()
         } else if(event is ReduxEventRemoteUpdate.Error) {
             //Cancel the timeout
-            viewModel.timeoutHandler.removeCallbacks(handleUpdateRequestTimeout)
+            viewModel.cancelTimeout()
 
             //Set the state to not loading
             viewModel.isLoading.value = false
@@ -209,16 +219,13 @@ class ServerUpdate : AppCompatCompositeActivity() {
         }
 
         //Schedule a timeout
-        viewModel.timeoutHandler.postDelayed(handleUpdateRequestTimeout, requestTimeout)
+        viewModel.startTimeout()
 
         //Set the state to loading
         viewModel.isLoading.value = true
     }
 
-    private val handleUpdateRequestTimeout = Runnable {
-        //Set the state to not loading
-        viewModel.isLoading.value = false
-
+    private fun handleUpdateRequestTimeout() {
         //Notify the user with a snackbar
         Snackbar.make(findViewById(android.R.id.content), R.string.message_serverupdate_timedout, Snackbar.LENGTH_INDEFINITE).show()
     }
@@ -240,8 +247,25 @@ class ServerUpdate : AppCompatCompositeActivity() {
     }
 
     class ActivityViewModel : ViewModel() {
-        val timeoutHandler = Handler(Looper.getMainLooper())
+        private val timeoutHandler = Handler(Looper.getMainLooper())
+        private val handleUpdateRequestTimeout = Runnable {
+            //Set the state to not loading
+            isLoading.value = false
+
+            //Notify the activity
+            updateRequestTimeoutCallback?.invoke()
+        }
+
         val isLoading = MutableLiveData(false)
+        var updateRequestTimeoutCallback: (() -> Unit)? = null
+
+        fun startTimeout() {
+            timeoutHandler.postDelayed(handleUpdateRequestTimeout, requestTimeout)
+        }
+
+        fun cancelTimeout() {
+            timeoutHandler.removeCallbacks(handleUpdateRequestTimeout)
+        }
     }
 
 
