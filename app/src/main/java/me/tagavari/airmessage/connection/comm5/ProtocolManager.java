@@ -130,6 +130,11 @@ abstract class ProtocolManager<Packet> {
 	abstract boolean installSoftwareUpdate(int updateID);
 
 	/**
+	 * Requests a new FaceTime link
+	 */
+	abstract boolean requestFaceTimeLink();
+
+	/**
 	 * Checks if the specified feature is supported by the current protocol
 	 * @param featureID The feature to check
 	 * @return Whether this protocol manager can handle the specified feature

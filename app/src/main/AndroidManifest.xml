@@ -10,6 +10,7 @@
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
 	<!-- Dangerous permissions -->
+	<uses-permission android:name="android.permission.CAMERA" />
 	<uses-permission android:name="android.permission.RECORD_AUDIO" />
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -197,6 +198,16 @@
 			android:name=".activity.Licenses"
 			android:label="@string/screen_licenses"
 			android:theme="@style/DayNight.NoActionBar">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
+		<!-- FaceTime -->
+		<activity
+			android:exported="false"
+			android:name=".activity.CallHistory"
+			android:parentActivityName=".activity.Conversations"
+			android:theme="@style/ThemeFaceTime"
+			android:configChanges="orientation|screenSize|layoutDirection">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 

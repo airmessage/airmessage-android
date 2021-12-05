@@ -2,6 +2,7 @@ package me.tagavari.airmessage.redux
 
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
+import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.util.ServerUpdateData
 import java.util.*
 
@@ -26,4 +27,7 @@ object ReduxEmitterNetwork {
 
 	@JvmStatic
 	val remoteUpdateProgressSubject: PublishSubject<ReduxEventRemoteUpdate> = PublishSubject.create()
+
+	@JvmStatic
+	val serverFaceTimeSupportSubject: BehaviorSubject<Boolean> = BehaviorSubject.create()
 }

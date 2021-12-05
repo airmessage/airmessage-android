@@ -35,6 +35,7 @@ import me.tagavari.airmessage.data.UserCacheHelper;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxReceiverNotification;
 import me.tagavari.airmessage.redux.ReduxReceiverShortcut;
 import me.tagavari.airmessage.worker.SystemMessageCleanupWorker;
@@ -116,6 +117,9 @@ public class MainApplication extends Application {
 		
 		//Registering the content observer
 		if(canUseContacts(this)) registerContactsListener();
+
+		//Load the initial FaceTime support state
+		ReduxEmitterNetwork.getServerFaceTimeSupportSubject().onNext(SharedPreferencesManager.getServerSupportsFaceTime(this));
 		
 		//Listening for content changes
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {

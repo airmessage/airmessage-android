@@ -131,20 +131,20 @@ class ServerUpdate : AppCompatCompositeActivity() {
             viewModel.isLoading.value = false
 
             //Notify the user with a snackbar
-            Snackbar.make(findViewById(R.id.root), R.string.message_serverupdate_remoteerror, Snackbar.LENGTH_INDEFINITE)
+            Snackbar.make(findViewById(R.id.root), R.string.message_serverupdate_failed, Snackbar.LENGTH_INDEFINITE)
                 .apply {
                     setAction(R.string.action_details) {
                         //Show a basic error dialog
                         MaterialAlertDialogBuilder(this@ServerUpdate).apply {
-                            setTitle(R.string.message_serverupdate_remoteerror)
+                            setTitle(R.string.message_serverupdate_failed)
                             setMessage(
                                 when(event.exception.errorCode) {
-                                    AMRemoteUpdateException.errorCodeMismatch -> R.string.message_serverupdate_errordetails_mismatch
-                                    AMRemoteUpdateException.errorCodeDownload -> R.string.message_serverupdate_errordetails_download
-                                    AMRemoteUpdateException.errorCodeBadPackage -> R.string.message_serverupdate_errordetails_badpackage
-                                    AMRemoteUpdateException.errorCodeInternal -> R.string.message_serverupdate_errordetails_internal
-                                    AMRemoteUpdateException.errorCodeUnknown -> R.string.message_serverupdate_errordetails_unknown
-                                    else -> R.string.message_serverupdate_errordetails_unknown
+                                    AMRemoteUpdateException.errorCodeMismatch -> R.string.error_updatemismatch
+                                    AMRemoteUpdateException.errorCodeDownload -> R.string.error_updatedownload
+                                    AMRemoteUpdateException.errorCodeBadPackage -> R.string.error_updatebadpackage
+                                    AMRemoteUpdateException.errorCodeInternal -> R.string.error_internal
+                                    AMRemoteUpdateException.errorCodeUnknown -> R.string.error_unknown
+                                    else -> R.string.error_unknown
                                 }
                             )
 
@@ -214,7 +214,7 @@ class ServerUpdate : AppCompatCompositeActivity() {
         //Install the update
         pluginCS.connectionManager?.installSoftwareUpdate(updateData.id) ?: run {
             //Notify the user with a snackbar
-            Snackbar.make(findViewById(R.id.root), R.string.message_serverupdate_noconnection, Snackbar.LENGTH_INDEFINITE).show()
+            Snackbar.make(findViewById(R.id.root), R.string.error_noconnection, Snackbar.LENGTH_INDEFINITE).show()
             return
         }
 
@@ -227,7 +227,7 @@ class ServerUpdate : AppCompatCompositeActivity() {
 
     private fun handleUpdateRequestTimeout() {
         //Notify the user with a snackbar
-        Snackbar.make(findViewById(R.id.root), R.string.message_serverupdate_timedout, Snackbar.LENGTH_INDEFINITE).show()
+        Snackbar.make(findViewById(R.id.root), R.string.error_timedout, Snackbar.LENGTH_INDEFINITE).show()
     }
 
     private fun updateUILoading(isLoading: Boolean) {

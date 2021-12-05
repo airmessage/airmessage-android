@@ -93,6 +93,13 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 	private static final int nhtSoftwareUpdateInstall = 501;
 	private static final int nhtSoftwareUpdateError = 502;
 
+	private static final int nhtFaceTimeCreateLink = 600; //Create a new FaceTime link
+	private static final int nhtFaceTimeOutgoingInitiate = 601; //Initiate a new FaceTime call
+	private static final int nhtFaceTimeOutgoingHandled = 602; //Notify a client that an outgoing call has been accepted or rejected
+	private static final int nhtFaceTimeIncomingCallerUpdate = 603; //Notify clients that there is a new incoming call
+	private static final int nhtFaceTimeIncomingHandle = 604; //Client -> Server: accept or reject the incoming call and return its link
+	private static final int nhtFaceTimeDisconnect = 605; //Client -> Server: Drop the current call
+
 	//Net return codes
 	private static final int nrcSharedOK = 0;
 
@@ -248,6 +255,9 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			case nhtSoftwareUpdateError:
 				handleMessageSoftwareUpdateError(unpacker);
 				break;
+			case nhtFaceTimeCreateLink:
+				handleMessageFaceTimeCreateLink(unpacker);
+				break;
 			default:
 				//Message not consumed
 				return false;
@@ -270,9 +280,10 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			String deviceName = unpacker.unpackString();
 			String systemVersion = unpacker.unpackString();
 			String softwareVersion = unpacker.unpackString();
+			boolean supportsFaceTime = unpacker.unpackBoolean();
 			
 			//Finishing the connection establishment
-			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion));
+			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion, supportsFaceTime));
 		} else {
 			//Otherwise terminating the connection
 			communicationsManager.getHandler().post(() -> communicationsManager.disconnect(mapNRCAuthenticationCode(resultCode)));
@@ -491,6 +502,16 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 		AMRemoteUpdateException exception = new AMRemoteUpdateException(localErrorCode, errorMessage);
 		communicationsManager.runListener(listener -> listener.onSoftwareUpdateError(exception));
 
+	}
+
+	private void handleMessageFaceTimeCreateLink(AirUnpacker unpacker) {
+		//Reading the message
+		boolean linkOK = unpacker.unpackBoolean();
+		String link;
+		if(linkOK) link = unpacker.unpackString();
+		else link = null;
+
+		communicationsManager.runListener(listener -> listener.onNewFaceTimeLink(link));
 	}
 
 	@Override
@@ -828,12 +849,30 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return false;
 		}
 	}
-	
+
+	@Override
+	boolean requestFaceTimeLink() {
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
+
+		try(AirPacker packer = AirPacker.get()) {
+			packer.packInt(nhtFaceTimeCreateLink);
+
+			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
+			return true;
+		} catch(BufferOverflowException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			return false;
+		}
+	}
+
 	@Override
 	boolean isFeatureSupported(@ConnectionFeature int featureID) {
 		return featureID == ConnectionFeature.idBasedRetrieval ||
 				featureID == ConnectionFeature.payloadPushNotifications ||
-				featureID == ConnectionFeature.remoteUpdates;
+				featureID == ConnectionFeature.remoteUpdates ||
+				featureID == ConnectionFeature.faceTime;
 	}
 	
 	/**

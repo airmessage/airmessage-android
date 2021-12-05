@@ -81,6 +81,8 @@
 	<string name="action_switchtoaccount">Switch to account</string>
 	<string name="action_checkconnection">Check connection</string>
 	<string name="action_installupdate">Install update</string>
+	<string name="action_createlink">Create link</string>
+	<string name="action_newfacetime">New FaceTime</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -402,14 +404,11 @@
 		In case the installation fails, please make sure you have desktop access to this computer before installing.
 	</string>
 	<string name="message_serverupdate_manual">This update must be installed manually on %s.</string>
-	<string name="message_serverupdate_noconnection">No connection to server</string>
-	<string name="message_serverupdate_timedout">Request timed out</string>
-	<string name="message_serverupdate_remoteerror">Failed to install update</string>
-	<string name="message_serverupdate_errordetails_unknown">An unknown error occurred</string>
-	<string name="message_serverupdate_errordetails_mismatch">This update is no longer applicable</string>
-	<string name="message_serverupdate_errordetails_download">An error occurred while downloading the update</string>
-	<string name="message_serverupdate_errordetails_badpackage">An error occurred while processing the update</string>
-	<string name="message_serverupdate_errordetails_internal">An internal error occurred</string>
+	<string name="message_serverupdate_failed">Failed to install update</string>
+
+	<string name="message_facetime_intro">Use AirMessage to make and receive FaceTime calls on this device</string>
+
+	<string name="message_facetimelink_error">Failed to get FaceTime link</string>
 
 	<string name="progress_loadingmessages">Loading messages&#8230;</string>
 	<string name="progress_loading">Loading&#8230;</string>
@@ -419,6 +418,15 @@
 	<string name="progress_cleantextmessages">Cleaning up local text messages&#8230;</string>
 	<string name="progress_connectionverification">Checking your connection&#8230;</string>
 	<string name="progress_installingupdate">Installing update&#8230;</string>
+
+	<string name="error_unknown">An unknown error occurred</string>
+	<string name="error_noconnection">No connection to server</string>
+	<string name="error_timedout">Request timed out</string>
+	<string name="error_internal">An internal error occurred</string>
+	<string name="error_external">An external error occurred</string>
+	<string name="error_updatemismatch">This update is no longer applicable</string>
+	<string name="error_updatedownload">An error occurred while downloading the update</string>
+	<string name="error_updatebadpackage">An error occurred while processing the update</string>
 
 	<string name="time_now">Just now</string>
 	<string name="time_minutes">%d min</string>
@@ -443,10 +451,11 @@
 
 	<string name="imperative_enablelocationservices">Tap to enable location services</string>
 
-	<string name="title_imessage">iMessage</string>
+	<string name="title_imessage" translatable="false">iMessage</string>
 	<string name="title_textmessageforwarding">Text message forwarding</string>
 	<string name="title_textmessage">Text message</string>
 	<string name="title_rcs">Chat message</string>
+	<string name="title_facetime" translatable="false">FaceTime</string>
 
 	<string name="part_you">You</string>
 	<string name="part_to">To</string>

@@ -20,6 +20,8 @@ object SharedPreferencesManager {
 	private const val sharedPreferencesInstallationFile = "installation"
 	private const val sharedPreferencesDefaultKeySchemaVersion = "schema_version"
 	private const val sharedPreferencesDefaultKeyInstallationID = "installation_id"
+
+	private const val sharedPreferencesDefaultServerSupportsFaceTime = "server_supports_facetime" //A cached value of whether the server supports FaceTime
 	
 	private const val sharedPreferencesConnectivityFile = "connectivity"
 	private const val sharedPreferencesConnectivityKeyProxyType = "account_type" //The proxy type to use (direct connection or AM Connect)
@@ -31,7 +33,7 @@ object SharedPreferencesManager {
 	private const val sharedPreferencesConnectivityKeyLastServerMessageID = "last_server_message_id" //The last message ID received from the server
 	private const val sharedPreferencesConnectivityKeyLastConnectionInstallationID = "last_connection_installation_id" //The installation ID of the server from the last conversation, used for tracking server changes immediately when connecting
 	private const val sharedPreferencesConnectivityKeyTextMessageConversationsInstalled = "text_message_conversations_installed" //Whether text message conversations are currently imported into the app's database
-	
+
 	private const val sharedPreferencesSecureFile = "secure"
 	private const val sharedPreferencesSecureKeyAddress = "hostname"
 	private const val sharedPreferencesSecureKeyAddressFallback = "hostname_fallback"
@@ -292,6 +294,16 @@ object SharedPreferencesManager {
 			.putString(sharedPreferencesDefaultKeyInstallationID, installationID)
 			.apply()
 		return installationID
+	}
+
+	@JvmStatic
+	fun getServerSupportsFaceTime(context: Context): Boolean {
+		return getInstallationSharedPrefs(context).getBoolean(sharedPreferencesDefaultServerSupportsFaceTime, false)
+	}
+
+	@JvmStatic
+	fun setServerSupportsFaceTime(context: Context, supportsFaceTime: Boolean) {
+		getInstallationSharedPrefs(context).edit().putBoolean(sharedPreferencesDefaultServerSupportsFaceTime, supportsFaceTime).apply()
 	}
 	
 	/**

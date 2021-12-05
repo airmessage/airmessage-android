@@ -75,6 +75,7 @@ public class PluginConnectionService extends AppCompatActivityPlugin {
 	/**
 	 * Gets the active connection manager, or NULL if we are not currently bound
 	 */
+	@Nullable
 	public ConnectionManager getConnectionManager() {
 		return connectionManager;
 	}

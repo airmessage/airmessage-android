@@ -18,6 +18,7 @@ import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.*;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import io.reactivex.rxjava3.subjects.AsyncSubject;
 import io.reactivex.rxjava3.subjects.CompletableSubject;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.SingleSubject;
@@ -127,13 +128,15 @@ public class ConnectionManager {
 	//Server information
 	@Nullable
 	private String serverInstallationID, serverDeviceName, serverSystemVersion, serverSoftwareVersion;
+	private boolean serverSupportsFaceTime;
 	
 	//Composite disposable
 	private final CompositeDisposable compositeDisposable = new CompositeDisposable();
 	
 	//Response values
 	private final Map<Short, RequestSubject<?, ?>> idRequestSubjectMap = new HashMap<>(); //For ID-based requests
-	
+	private SingleSubject<String> faceTimeLinkSubject = null;
+
 	//State values
 	private boolean disableReconnections = false;
 	@Nullable private ConnectionOverride<?> connectionOverride = null;
@@ -184,16 +187,18 @@ public class ConnectionManager {
 	//Listener values
 	private final CommunicationsManagerListener communicationsManagerListener = new CommunicationsManagerListener() {
 		@Override
-		public void onOpen(String installationID, String deviceName, String systemVersion, String softwareVersion) {
+		public void onOpen(String installationID, String deviceName, String systemVersion, String softwareVersion, boolean supportsFaceTime) {
 			//Recording the server information
 			serverInstallationID = installationID;
 			serverDeviceName = deviceName;
 			serverSystemVersion = systemVersion;
 			serverSoftwareVersion = softwareVersion;
+			serverSupportsFaceTime = supportsFaceTime;
 			
 			//Updating shared preferences
 			long lastConnectionTime = SharedPreferencesManager.getLastConnectionTime(getContext());
 			SharedPreferencesManager.setLastConnectionTime(getContext(), System.currentTimeMillis());
+			SharedPreferencesManager.setServerSupportsFaceTime(getContext(), serverSupportsFaceTime);
 			
 			//Updating the state
 			if(connMode != ConnectionMode.user) stopCurrentMode();
@@ -201,6 +206,9 @@ public class ConnectionManager {
 			
 			connState = ConnectionState.connected;
 			emitStateConnected();
+
+			//Updating the FaceTime state
+			ReduxEmitterNetwork.getServerFaceTimeSupportSubject().onNext(serverSupportsFaceTime);
 			
 			//Checking if an installation ID was provided
 			boolean isNewServer; //Is this server different from the one we connected to last time?
@@ -809,6 +817,18 @@ public class ConnectionManager {
 		public void onSoftwareUpdateError(AMRemoteUpdateException exception) {
 			ReduxEmitterNetwork.getRemoteUpdateProgressSubject().onNext(new ReduxEventRemoteUpdate.Error(exception));
 		}
+
+		@Override
+		public void onNewFaceTimeLink(@Nullable String faceTimeLink) {
+			//Resolving the completable
+			if(faceTimeLinkSubject == null) return;
+
+			if(faceTimeLink == null) {
+				faceTimeLinkSubject.onError(new AMRequestException(FaceTimeLinkErrorCode.external));
+			} else {
+				faceTimeLinkSubject.onSuccess(faceTimeLink);
+			}
+		}
 	};
 	
 	/**
@@ -1206,6 +1226,34 @@ public class ConnectionManager {
 		if(!isConnected()) return;
 
 		communicationsManager.installSoftwareUpdate(updateID);
+	}
+
+	/**
+	 * Requests a FaceTime link from the server
+	 * @return A single that resolves with the fetched FaceTime link
+	 */
+	public Single<String> requestFaceTimeLink() {
+		//If there is already an active request, return that
+		if(faceTimeLinkSubject != null) {
+			return faceTimeLinkSubject;
+		}
+
+		final Throwable error = new AMRequestException(FaceTimeLinkErrorCode.network);
+
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return Single.error(error);
+
+		//Sending the request
+		boolean result = communicationsManager.requestFaceTimeLink();
+		if(!result) return Single.error(error);
+
+		//Creating the subject
+		faceTimeLinkSubject = SingleSubject.create();
+
+		//Returning the subject with a timeout
+		return faceTimeLinkSubject.timeout(requestTimeoutSeconds, TimeUnit.SECONDS, Single.error(error))
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnTerminate(() -> faceTimeLinkSubject = null);
 	}
 	
 	/**

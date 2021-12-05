@@ -236,7 +236,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			String softwareVersion = unpacker.unpackString();
 			
 			//Finishing the connection establishment
-			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion));
+			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion, false));
 		} else {
 			//Otherwise terminating the connection
 			communicationsManager.getHandler().post(() -> communicationsManager.disconnect(mapNRCAuthenticationCode(resultCode)));
@@ -692,6 +692,11 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 
 	@Override
 	boolean installSoftwareUpdate(int updateID) {
+		throw new UnsupportedOperationException("Not supported");
+	}
+
+	@Override
+	boolean requestFaceTimeLink() {
 		throw new UnsupportedOperationException("Not supported");
 	}
 	

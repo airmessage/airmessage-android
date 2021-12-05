@@ -93,9 +93,9 @@ public abstract class CommunicationsManager<Packet> {
 	 * @param systemVersion The system version of the server
 	 * @param softwareVersion The AirMessage version of the server
 	 */
-	public void onHandshake(String installationID, String deviceName, String systemVersion, String softwareVersion) {
+	public void onHandshake(String installationID, String deviceName, String systemVersion, String softwareVersion, boolean supportsFaceTime) {
 		//Forwarding the event to the listener
-		if(listener != null) listener.onOpen(installationID, deviceName, systemVersion, softwareVersion);
+		if(listener != null) listener.onOpen(installationID, deviceName, systemVersion, softwareVersion, supportsFaceTime);
 	}
 	
 	/**
@@ -191,7 +191,12 @@ public abstract class CommunicationsManager<Packet> {
 	 * @return Whether the request was successfully sent
 	 */
 	public abstract boolean installSoftwareUpdate(int updateID);
-	
+
+	/**
+	 * Requests a new FaceTime link
+	 */
+	public abstract boolean requestFaceTimeLink();
+
 	/**
 	 * Checks if the specified communications version is applicable
 	 *

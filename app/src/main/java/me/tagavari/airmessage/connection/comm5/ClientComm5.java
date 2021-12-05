@@ -266,6 +266,12 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	}
 
 	@Override
+	public boolean requestFaceTimeLink() {
+		if(protocolManager == null) return false;
+		return protocolManager.requestFaceTimeLink();
+	}
+
+	@Override
 	public int checkCommVerApplicability(int version) {
 		return Integer.compare(version, communicationsVersion);
 	}

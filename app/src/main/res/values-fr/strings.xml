@@ -524,13 +524,18 @@
 		Vous perdrez l\'accès à la fonctionnalité de messagerie pendant l\'installation de la mise à jour.
 		En cas d\'échec de l\'installation, assurez-vous d\'avoir l\'accès par ordinateur avant de procéder à l\'installation.
 	</string>
-	<string name="message_serverupdate_noconnection">Aucune connexion au serveur</string>
-	<string name="message_serverupdate_timedout">Demande expirée</string>
-	<string name="message_serverupdate_remoteerror">Échec de l\'installation de la mise à jour</string>
-	<string name="message_serverupdate_errordetails_unknown">Une erreur inconnue s\'est produite</string>
-	<string name="message_serverupdate_errordetails_mismatch">Cette mise à jour n\'est plus applicable</string>
-	<string name="message_serverupdate_errordetails_download">Une erreur s\'est produite lors du téléchargement de la mise à jour</string>
-	<string name="message_serverupdate_errordetails_badpackage">Une erreur s\'est produite lors du traitement de la mise à jour</string>
-	<string name="message_serverupdate_errordetails_internal">Une erreur interne s\'est produite</string>
+	<string name="message_serverupdate_failed">Échec de l\'installation de la mise à jour</string>
+	<string name="error_noconnection">Aucune connexion au serveur</string>
+	<string name="error_timedout">Demande expirée</string>
+	<string name="error_unknown">Une erreur inconnue s\'est produite</string>
+	<string name="error_updatemismatch">Cette mise à jour n\'est plus applicable</string>
+	<string name="error_updatedownload">Une erreur s\'est produite lors du téléchargement de la mise à jour</string>
+	<string name="error_updatebadpackage">Une erreur s\'est produite lors du traitement de la mise à jour</string>
+	<string name="error_internal">Une erreur interne s\'est produite</string>
 	<string name="progress_installingupdate">Installation de la mise à jour&#8230;</string>
+	<string name="action_createlink">Créer un lien</string>
+	<string name="action_newfacetime">Nouveau FaceTime</string>
+	<string name="message_facetime_intro">Utilisez AirMessage pour passer et recevoir des appels FaceTime sur cet appareil</string>
+	<string name="message_facetimelink_error">Impossible d\'obtenir le lien FaceTime</string>
+	<string name="error_external">Une erreur externe s\'est produite</string>
 </resources>

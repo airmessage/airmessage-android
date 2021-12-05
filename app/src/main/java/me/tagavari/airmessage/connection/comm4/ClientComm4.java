@@ -236,6 +236,11 @@ public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 	}
 
 	@Override
+	public boolean requestFaceTimeLink() {
+		return false;
+	}
+
+	@Override
 	public int checkCommVerApplicability(int version) {
 		return Integer.compare(version, 4);
 	}

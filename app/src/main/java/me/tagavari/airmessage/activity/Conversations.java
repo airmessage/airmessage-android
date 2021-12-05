@@ -119,7 +119,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	//Creating the menu values
 	private MenuItem menuItemMarkAllRead = null;
-	
+
 	//Creating the view values
 	private AppBarLayout viewAppBar;
 	private Toolbar viewToolbar;
@@ -461,6 +461,13 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Updating the "mark all as read" option
 		menuItemMarkAllRead = menu.findItem(R.id.action_markallread);
 		updateMarkAllRead();
+
+		//Getting the FaceTime option and subscribing to updates
+		MenuItem menuItemFaceTime = menu.findItem(R.id.action_facetime);
+		pluginRXD.activity().add(
+				ReduxEmitterNetwork.getServerFaceTimeSupportSubject()
+						.subscribe(menuItemFaceTime::setVisible)
+		);
 		
 		return true;
 	}
@@ -519,12 +526,17 @@ public class Conversations extends AppCompatCompositeActivity {
 			finish();
 			
 			return true;
-		}if(itemID == R.id.action_search) { //Search
+		} else if(itemID == R.id.action_search) { //Search
 			if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return true;
-			
+
 			//Setting the state to search
 			setSearchState(true, true);
-			
+
+			return true;
+		} else if(itemID == R.id.action_facetime) { //FaceTime
+			//Starting the FaceTime call history activity
+			startActivity(new Intent(this, CallHistory.class));
+
 			return true;
 		} else if(itemID == R.id.action_archived) { //Archived conversations
 			//Starting the archived conversations activity
