@@ -200,7 +200,7 @@ class CallHistory : AppCompatCompositeActivity() {
     }
 
     private fun onClickNewFaceTime(view: View? = null) {
-
+        startActivity(Intent(this, NewFaceTime::class.java))
     }
 
     class ActivityViewModel(application: Application) : AndroidViewModel(application) {

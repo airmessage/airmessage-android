@@ -200,14 +200,24 @@
 			android:theme="@style/DayNight.NoActionBar">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
-
+		
 		<!-- FaceTime -->
 		<activity
 			android:exported="false"
 			android:name=".activity.CallHistory"
 			android:parentActivityName=".activity.Conversations"
-			android:theme="@style/ThemeFaceTime"
-			android:configChanges="orientation|screenSize|layoutDirection">
+			android:theme="@style/ThemeFaceTime">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+		
+		<!-- New FaceTime -->
+		<activity
+			android:exported="false"
+			android:name=".activity.NewFaceTime"
+			android:label="@string/screen_newfacetime"
+			android:parentActivityName=".activity.CallHistory"
+			android:theme="@style/DayNight.NoActionBar.Protected.FaceTime"
+			android:windowSoftInputMode="adjustResize|stateVisible">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 

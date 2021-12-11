@@ -268,7 +268,6 @@ class ServerUpdate : AppCompatCompositeActivity() {
         }
     }
 
-
     companion object {
         //Parameters
         const val PARAM_UPDATE = "update"

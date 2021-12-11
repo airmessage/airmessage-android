@@ -44,6 +44,7 @@ import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.component.ContactChip;
+import me.tagavari.airmessage.component.ContactListReactiveUpdate;
 import me.tagavari.airmessage.component.ContactsRecyclerAdapter;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
@@ -838,48 +839,6 @@ public class NewMessage extends AppCompatCompositeActivity {
 			
 			//Launching the activity
 			completionLaunchIntent.setValue(intent);
-		}
-	}
-	
-	/**
-	 * Represents an update payload for the contacts list
-	 */
-	private static abstract class ContactListReactiveUpdate {
-		/**
-		 * Updates the adapter with this reactive change
-		 */
-		abstract void updateAdapter(ContactsRecyclerAdapter adapter);
-		
-		/**
-		 * Represents the addition of a new item
-		 */
-		static class Addition extends ContactListReactiveUpdate {
-			private final int position;
-			
-			public Addition(int position) {
-				this.position = position;
-			}
-			
-			@Override
-			void updateAdapter(ContactsRecyclerAdapter adapter) {
-				adapter.onItemAdded(position);
-			}
-		}
-		
-		/**
-		 * Represents the update of an existing item
-		 */
-		static class Change extends ContactListReactiveUpdate {
-			private final int position;
-			
-			public Change(int position) {
-				this.position = position;
-			}
-			
-			@Override
-			void updateAdapter(ContactsRecyclerAdapter adapter) {
-				adapter.onItemUpdated(position);
-			}
 		}
 	}
 	

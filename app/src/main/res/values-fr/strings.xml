@@ -538,4 +538,5 @@
 	<string name="message_facetime_intro">Utilisez AirMessage pour passer et recevoir des appels FaceTime sur cet appareil</string>
 	<string name="message_facetimelink_error">Impossible d\'obtenir le lien FaceTime</string>
 	<string name="error_external">Une erreur externe s\'est produite</string>
+	<string name="screen_newfacetime">Nouveau FaceTime</string>
 </resources>

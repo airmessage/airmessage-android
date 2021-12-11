@@ -529,4 +529,5 @@
 	<string name="message_facetime_intro">AirMessageはこのデバイスでFaceTime通話を発信および受信できます</string>
 	<string name="message_facetimelink_error">FaceTimeリンクの取得に失敗しました</string>
 	<string name="error_external">外部エラーが発生しました</string>
+	<string name="screen_newfacetime">新しい FaceTime</string>
 </resources>

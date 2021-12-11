@@ -94,6 +94,7 @@
 	<string name="screen_archived">Archived</string>
 	<string name="screen_blockedcontacts">Blocked contacts</string>
 	<string name="screen_newconversation">New conversation</string>
+	<string name="screen_newfacetime">New FaceTime</string>
 	<string name="screen_conversationdetails">Conversation details</string>
 	<string name="screen_newmessage">New message</string>
 	<string name="screen_manualconfiguration">Manual configuration</string>
