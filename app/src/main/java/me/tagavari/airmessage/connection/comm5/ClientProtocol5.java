@@ -295,10 +295,11 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			String deviceName = unpacker.unpackString();
 			String systemVersion = unpacker.unpackString();
 			String softwareVersion = unpacker.unpackString();
+			String userName = unpacker.unpackString();
 			boolean supportsFaceTime = unpacker.unpackBoolean();
 			
 			//Finishing the connection establishment
-			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion, supportsFaceTime));
+			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion, userName, supportsFaceTime));
 		} else {
 			//Otherwise terminating the connection
 			communicationsManager.getHandler().post(() -> communicationsManager.disconnect(mapNRCAuthenticationCode(resultCode)));

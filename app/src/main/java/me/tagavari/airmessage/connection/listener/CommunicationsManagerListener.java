@@ -18,7 +18,7 @@ import java.util.Collection;
  * A listener for communicating from a communications manager to a connection manager
  */
 public interface CommunicationsManagerListener {
-	void onOpen(String installationID, String deviceName, String systemVersion, String softwareVersion, boolean supportsFaceTime);
+	void onOpen(String installationID, String deviceName, String systemVersion, String softwareVersion, String userName, boolean supportsFaceTime);
 	void onClose(@ConnectionErrorCode int errorCode);
 	void onPacket();
 

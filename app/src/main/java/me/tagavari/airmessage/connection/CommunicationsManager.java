@@ -96,9 +96,9 @@ public abstract class CommunicationsManager<Packet> {
 	 * @param systemVersion The system version of the server
 	 * @param softwareVersion The AirMessage version of the server
 	 */
-	public void onHandshake(String installationID, String deviceName, String systemVersion, String softwareVersion, boolean supportsFaceTime) {
+	public void onHandshake(String installationID, String deviceName, String systemVersion, String softwareVersion, String userName, boolean supportsFaceTime) {
 		//Forwarding the event to the listener
-		if(listener != null) listener.onOpen(installationID, deviceName, systemVersion, softwareVersion, supportsFaceTime);
+		if(listener != null) listener.onOpen(installationID, deviceName, systemVersion, softwareVersion, userName, supportsFaceTime);
 	}
 	
 	/**

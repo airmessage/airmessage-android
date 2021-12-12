@@ -239,7 +239,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			String softwareVersion = unpacker.unpackString();
 			
 			//Finishing the connection establishment
-			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion, false));
+			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion, null, false));
 		} else {
 			//Otherwise terminating the connection
 			communicationsManager.getHandler().post(() -> communicationsManager.disconnect(mapNRCAuthenticationCode(resultCode)));

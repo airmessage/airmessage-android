@@ -21,6 +21,7 @@ object SharedPreferencesManager {
 	private const val sharedPreferencesDefaultKeySchemaVersion = "schema_version"
 	private const val sharedPreferencesDefaultKeyInstallationID = "installation_id"
 
+	private const val sharedPreferencesDefaultUserName = "user_name" //A cached value of the server's user name
 	private const val sharedPreferencesDefaultServerSupportsFaceTime = "server_supports_facetime" //A cached value of whether the server supports FaceTime
 	
 	private const val sharedPreferencesConnectivityFile = "connectivity"
@@ -295,12 +296,22 @@ object SharedPreferencesManager {
 			.apply()
 		return installationID
 	}
-
+	
+	@JvmStatic
+	fun getServerUserName(context: Context): String {
+		return getInstallationSharedPrefs(context).getString(sharedPreferencesDefaultUserName, "User")!!
+	}
+	
+	@JvmStatic
+	fun setServerUserName(context: Context, userName: String) {
+		getInstallationSharedPrefs(context).edit().putString(sharedPreferencesDefaultUserName, userName).apply()
+	}
+	
 	@JvmStatic
 	fun getServerSupportsFaceTime(context: Context): Boolean {
 		return getInstallationSharedPrefs(context).getBoolean(sharedPreferencesDefaultServerSupportsFaceTime, false)
 	}
-
+	
 	@JvmStatic
 	fun setServerSupportsFaceTime(context: Context, supportsFaceTime: Boolean) {
 		getInstallationSharedPrefs(context).edit().putBoolean(sharedPreferencesDefaultServerSupportsFaceTime, supportsFaceTime).apply()

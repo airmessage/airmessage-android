@@ -189,7 +189,7 @@ public class ConnectionManager {
 	//Listener values
 	private final CommunicationsManagerListener communicationsManagerListener = new CommunicationsManagerListener() {
 		@Override
-		public void onOpen(String installationID, String deviceName, String systemVersion, String softwareVersion, boolean supportsFaceTime) {
+		public void onOpen(String installationID, String deviceName, String systemVersion, String softwareVersion, String userName, boolean supportsFaceTime) {
 			//Recording the server information
 			serverInstallationID = installationID;
 			serverDeviceName = deviceName;
@@ -200,6 +200,7 @@ public class ConnectionManager {
 			//Updating shared preferences
 			long lastConnectionTime = SharedPreferencesManager.getLastConnectionTime(getContext());
 			SharedPreferencesManager.setLastConnectionTime(getContext(), System.currentTimeMillis());
+			SharedPreferencesManager.setServerUserName(getContext(), userName);
 			SharedPreferencesManager.setServerSupportsFaceTime(getContext(), serverSupportsFaceTime);
 			
 			//Updating the state
