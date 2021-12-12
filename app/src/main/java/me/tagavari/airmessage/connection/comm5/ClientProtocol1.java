@@ -1,6 +1,9 @@
 package me.tagavari.airmessage.connection.comm5;
 
 import android.os.Build;
+
+import androidx.annotation.NonNull;
+
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.MainApplication;
@@ -700,7 +703,22 @@ class ClientProtocol1 extends ProtocolManager<EncryptedPacket> {
 	boolean requestFaceTimeLink() {
 		throw new UnsupportedOperationException("Not supported");
 	}
-
+	
+	@Override
+	boolean initiateFaceTimeCall(List<String> addresses) {
+		throw new UnsupportedOperationException("Not supported");
+	}
+	
+	@Override
+	boolean handleIncomingFaceTimeCall(@NonNull String caller, boolean accept) {
+		throw new UnsupportedOperationException("Not supported");
+	}
+	
+	@Override
+	boolean dropFaceTimeCallServer() {
+		throw new UnsupportedOperationException("Not supported");
+	}
+	
 	@Override
 	boolean isFeatureSupported(@ConnectionFeature int featureID) {
 		return false;

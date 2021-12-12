@@ -2,6 +2,8 @@ package me.tagavari.airmessage.connection.comm5;
 
 import android.os.Build;
 
+import androidx.annotation.NonNull;
+
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.io.BufferedInputStream;
@@ -18,12 +20,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.zip.DeflaterInputStream;
 import java.util.zip.InflaterOutputStream;
 
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.common.Blocks;
@@ -39,6 +38,7 @@ import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
 import me.tagavari.airmessage.enums.ChatCreateErrorCode;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.enums.ConnectionFeature;
+import me.tagavari.airmessage.enums.FaceTimeInitiateCode;
 import me.tagavari.airmessage.enums.GroupAction;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.enums.MessageState;
@@ -46,9 +46,7 @@ import me.tagavari.airmessage.enums.TapbackType;
 import me.tagavari.airmessage.helper.LookAheadStreamIterator;
 import me.tagavari.airmessage.helper.StandardCompressionHelper;
 import me.tagavari.airmessage.helper.StringHelper;
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
-import me.tagavari.airmessage.redux.ReduxEventRemoteUpdate;
 import me.tagavari.airmessage.util.CompoundErrorDetails;
 import me.tagavari.airmessage.util.ConversationTarget;
 import me.tagavari.airmessage.util.ServerUpdateData;
@@ -124,6 +122,14 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 	private static final int nstUpdateErrorDownload = 0;
 	private static final int nstUpdateErrorBadPackage = 1;
 	private static final int nstUpdateErrorInternal = 2;
+	
+	private static final int nstOutgoingFaceTimeCallInitiateOK = 0;
+	private static final int nstOutgoingFaceTimeCallInitiateBadMembers = 1;
+	private static final int nstOutgoingFaceTimeCallInitiateAppleScriptError = 2;
+	
+	private static final int nstOutgoingFaceTimeCallHandledAccepted = 0;
+	private static final int nstOutgoingFaceTimeCallHandledRejected = 1;
+	private static final int nstOutgoingFaceTimeCallHandledError = 2;
 
 	private short lastMassRetrievalRequestID = -1;
 
@@ -257,6 +263,15 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 				break;
 			case nhtFaceTimeCreateLink:
 				handleMessageFaceTimeCreateLink(unpacker);
+				break;
+			case nhtFaceTimeOutgoingInitiate:
+				handleMessageFaceTimeOutgoingInitiate(unpacker);
+				break;
+			case nhtFaceTimeOutgoingHandled:
+				handleMessageFaceTimeOutgoingHandled(unpacker);
+				break;
+			case nhtFaceTimeIncomingCallerUpdate:
+				handleMessageFaceTimeIncomingCallerUpdate(unpacker);
 				break;
 			default:
 				//Message not consumed
@@ -511,7 +526,53 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 		if(linkOK) link = unpacker.unpackString();
 		else link = null;
 
-		communicationsManager.runListener(listener -> listener.onNewFaceTimeLink(link));
+		communicationsManager.runListener(listener -> listener.onFaceTimeNewLink(link));
+	}
+	
+	private void handleMessageFaceTimeOutgoingInitiate(AirUnpacker unpacker) {
+		//Reading the message
+		int resultCode = unpacker.unpackInt();
+		String errorDetails = unpacker.unpackNullableString();
+		
+		//Mapping the error code to a local error code
+		@FaceTimeInitiateCode int localResultCode;
+		switch(resultCode) {
+			case nstOutgoingFaceTimeCallInitiateOK:
+				localResultCode = FaceTimeInitiateCode.ok;
+				break;
+			case nstOutgoingFaceTimeCallInitiateBadMembers:
+				localResultCode = FaceTimeInitiateCode.badMembers;
+				break;
+			case nstOutgoingFaceTimeCallInitiateAppleScriptError:
+			default:
+				localResultCode = FaceTimeInitiateCode.external;
+				break;
+		}
+		
+		communicationsManager.runListener(listener -> listener.onFaceTimeOutgoingCallInitiated(localResultCode, errorDetails));
+	}
+	
+	private void handleMessageFaceTimeOutgoingHandled(AirUnpacker unpacker) {
+		//Reading the message
+		int resultCode = unpacker.unpackInt();
+		
+		if(resultCode == nstOutgoingFaceTimeCallHandledAccepted) {
+			//Our call was accepted :)
+			String faceTimeLink = unpacker.unpackString();
+			communicationsManager.runListener(listener -> listener.onFaceTimeOutgoingCallAccepted(faceTimeLink));
+		} else if(resultCode == nstOutgoingFaceTimeCallHandledRejected) {
+			//Our call was rejected
+			communicationsManager.runListener(listener -> listener.onFaceTimeOutgoingCallRejected());
+		} else if(resultCode == nstOutgoingFaceTimeCallHandledError) {
+			//Something went wrong
+			String errorDetails = unpacker.unpackNullableString();
+			communicationsManager.runListener(listener -> listener.onFaceTimeOutgoingCallError(errorDetails));
+		}
+	}
+	
+	private void handleMessageFaceTimeIncomingCallerUpdate(AirUnpacker unpacker) {
+		String caller = unpacker.unpackNullableString();
+		communicationsManager.runListener(listener -> listener.onFaceTimeIncomingCall(caller));
 	}
 
 	@Override
@@ -866,7 +927,64 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return false;
 		}
 	}
-
+	
+	@Override
+	boolean initiateFaceTimeCall(List<String> addresses) {
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
+		
+		try(AirPacker packer = AirPacker.get()) {
+			packer.packInt(nhtFaceTimeOutgoingInitiate);
+			packer.packArrayHeader(addresses.size());
+			for(String address : addresses) {
+				packer.packString(address);
+			}
+			
+			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
+			return true;
+		} catch(BufferOverflowException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			return false;
+		}
+	}
+	
+	@Override
+	boolean handleIncomingFaceTimeCall(@NonNull String caller, boolean accept) {
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
+		
+		try(AirPacker packer = AirPacker.get()) {
+			packer.packInt(nhtFaceTimeIncomingHandle);
+			packer.packString(caller);
+			packer.packBoolean(accept);
+			
+			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
+			return true;
+		} catch(BufferOverflowException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			return false;
+		}
+	}
+	
+	@Override
+	boolean dropFaceTimeCallServer() {
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
+		
+		try(AirPacker packer = AirPacker.get()) {
+			packer.packInt(nhtFaceTimeDisconnect);
+			
+			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
+			return true;
+		} catch(BufferOverflowException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			return false;
+		}
+	}
+	
 	@Override
 	boolean isFeatureSupported(@ConnectionFeature int featureID) {
 		return featureID == ConnectionFeature.idBasedRetrieval ||

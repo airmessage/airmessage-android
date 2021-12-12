@@ -83,6 +83,7 @@
 	<string name="action_installupdate">Install update</string>
 	<string name="action_createlink">Create link</string>
 	<string name="action_newfacetime">New FaceTime</string>
+	<string name="action_endcall">End call</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -408,7 +409,12 @@
 	<string name="message_serverupdate_failed">Failed to install update</string>
 
 	<string name="message_facetime_intro">Use AirMessage to make and receive FaceTime calls on this device</string>
-
+	
+	<string name="message_facetime_calling">FaceTime&#8230;</string>
+	<string name="message_facetime_connecting">Connecting&#8230;</string>
+	<string name="message_facetime_unavailable">FaceTime unavailable</string>
+	<string name="message_facetime_errormessage">Your call couldn\'t be completed</string>
+	
 	<string name="message_facetimelink_error">Failed to get FaceTime link</string>
 
 	<string name="progress_loadingmessages">Loading messages&#8230;</string>

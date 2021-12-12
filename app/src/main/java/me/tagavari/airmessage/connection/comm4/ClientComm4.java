@@ -1,6 +1,8 @@
 package me.tagavari.airmessage.connection.comm4;
 
 import android.content.Context;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.connection.CommunicationsManager;
@@ -23,6 +25,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
+import java.util.List;
 
 public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 	private static final int communicationsVersion = 4;
@@ -239,7 +242,22 @@ public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 	public boolean requestFaceTimeLink() {
 		return false;
 	}
-
+	
+	@Override
+	public boolean initiateFaceTimeCall(List<String> addresses) {
+		return false;
+	}
+	
+	@Override
+	public boolean handleIncomingFaceTimeCall(@NonNull String caller, boolean accept) {
+		return false;
+	}
+	
+	@Override
+	public boolean dropFaceTimeCallServer() {
+		return false;
+	}
+	
 	@Override
 	public int checkCommVerApplicability(int version) {
 		return Integer.compare(version, 4);

@@ -1,11 +1,13 @@
 package me.tagavari.airmessage.connection.listener;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.arch.core.util.Function;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException;
 import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.FaceTimeInitiateCode;
 import me.tagavari.airmessage.util.CompoundErrorDetails;
 import me.tagavari.airmessage.util.ServerUpdateData;
 
@@ -49,5 +51,12 @@ public interface CommunicationsManagerListener {
 	void onSoftwareUpdateInstall(boolean installing);
 	void onSoftwareUpdateError(AMRemoteUpdateException exception);
 
-	void onNewFaceTimeLink(@Nullable String faceTimeLink);
+	void onFaceTimeNewLink(@Nullable String faceTimeLink);
+	void onFaceTimeOutgoingCallInitiated(@FaceTimeInitiateCode int resultCode, @Nullable String errorDetails);
+	void onFaceTimeOutgoingCallAccepted(@NonNull String faceTimeLink);
+	void onFaceTimeOutgoingCallRejected();
+	void onFaceTimeOutgoingCallError(@Nullable String errorDetails);
+	void onFaceTimeIncomingCall(@Nullable String caller);
+	void onFaceTimeIncomingCallHandled(@NonNull String faceTimeLink);
+	void onFaceTimeIncomingCallError(@Nullable String errorDetails);
 }

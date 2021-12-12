@@ -1,5 +1,7 @@
 package me.tagavari.airmessage.connection.comm5;
 
+import androidx.annotation.NonNull;
+
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
@@ -10,6 +12,7 @@ import me.tagavari.airmessage.util.ConversationTarget;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 
 abstract class ProtocolManager<Packet> {
 	protected final ClientComm5 communicationsManager;
@@ -128,11 +131,35 @@ abstract class ProtocolManager<Packet> {
 	 * @return Whether the request was successfully sent
 	 */
 	abstract boolean installSoftwareUpdate(int updateID);
-
+	
 	/**
 	 * Requests a new FaceTime link
+	 * @return Whether the request was successfully sent
 	 */
 	abstract boolean requestFaceTimeLink();
+	
+	/**
+	 * Initiates a new outgoing FaceTime call with the specified addresses
+	 * @param addresses The list of addresses to initiate the call with
+	 * @return Whether the request was successfully sent
+	 */
+	abstract boolean initiateFaceTimeCall(List<String> addresses);
+	
+	/**
+	 * Accepts or rejects a pending incoming FaceTime call
+	 * @param caller The name of the caller to accept the call of
+	 * @param accept True to accept the call, or false to reject
+	 * @return Whether the request was successfully sent
+	 */
+	abstract boolean handleIncomingFaceTimeCall(@NonNull String caller, boolean accept);
+	
+	/**
+	 * Tells the server to leave the FaceTime call.
+	 * This should be called after the client has connected to the call with the
+	 * FaceTime link to avoid two of the same user connected.
+	 * @return Whether the request was successfully sent
+	 */
+	abstract boolean dropFaceTimeCallServer();
 
 	/**
 	 * Checks if the specified feature is supported by the current protocol

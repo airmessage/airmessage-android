@@ -2,6 +2,8 @@ package me.tagavari.airmessage.connection.comm5;
 
 import android.content.Context;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.connection.CommunicationsManager;
@@ -23,6 +25,7 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
+import java.util.List;
 
 public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	private static final String TAG = ClientComm5.class.getSimpleName();
@@ -270,7 +273,25 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 		if(protocolManager == null) return false;
 		return protocolManager.requestFaceTimeLink();
 	}
-
+	
+	@Override
+	public boolean initiateFaceTimeCall(List<String> addresses) {
+		if(protocolManager == null) return false;
+		return protocolManager.initiateFaceTimeCall(addresses);
+	}
+	
+	@Override
+	public boolean handleIncomingFaceTimeCall(@NonNull String caller, boolean accept) {
+		if(protocolManager == null) return false;
+		return protocolManager.handleIncomingFaceTimeCall(caller, accept);
+	}
+	
+	@Override
+	public boolean dropFaceTimeCallServer() {
+		if(protocolManager == null) return false;
+		return protocolManager.dropFaceTimeCallServer();
+	}
+	
 	@Override
 	public int checkCommVerApplicability(int version) {
 		return Integer.compare(version, communicationsVersion);

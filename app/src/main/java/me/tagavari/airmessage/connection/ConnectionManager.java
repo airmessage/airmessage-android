@@ -10,6 +10,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.arch.core.util.Function;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
@@ -18,7 +20,6 @@ import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.*;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
-import io.reactivex.rxjava3.subjects.AsyncSubject;
 import io.reactivex.rxjava3.subjects.CompletableSubject;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.SingleSubject;
@@ -136,6 +137,7 @@ public class ConnectionManager {
 	//Response values
 	private final Map<Short, RequestSubject<?, ?>> idRequestSubjectMap = new HashMap<>(); //For ID-based requests
 	private SingleSubject<String> faceTimeLinkSubject = null;
+	private CompletableSubject faceTimeInitiateSubject = null;
 
 	//State values
 	private boolean disableReconnections = false;
@@ -819,15 +821,69 @@ public class ConnectionManager {
 		}
 
 		@Override
-		public void onNewFaceTimeLink(@Nullable String faceTimeLink) {
-			//Resolving the completable
+		public void onFaceTimeNewLink(@Nullable String faceTimeLink) {
+			//Ignoring if there is no pending request
 			if(faceTimeLinkSubject == null) return;
 
+			//Resolving the completable
 			if(faceTimeLink == null) {
 				faceTimeLinkSubject.onError(new AMRequestException(FaceTimeLinkErrorCode.external));
 			} else {
 				faceTimeLinkSubject.onSuccess(faceTimeLink);
 			}
+			
+			faceTimeLinkSubject = null;
+		}
+		
+		@Override
+		public void onFaceTimeOutgoingCallInitiated(@FaceTimeInitiateCode int resultCode, @Nullable String errorDetails) {
+			//Ignoring if there is no pending request
+			if(faceTimeInitiateSubject == null) return;
+			
+			//Resolving the completable
+			if(resultCode == FaceTimeInitiateCode.ok) {
+				faceTimeInitiateSubject.onComplete();
+			} else {
+				faceTimeInitiateSubject.onError(new AMRequestException(resultCode, errorDetails));
+			}
+			
+			faceTimeInitiateSubject = null;
+		}
+		
+		@Override
+		public void onFaceTimeOutgoingCallAccepted(@NonNull String faceTimeLink) {
+			ReduxEmitterNetwork.getFaceTimeUpdateSubject()
+					.onNext(new ReduxEventFaceTime.OutgoingAccepted(faceTimeLink));
+		}
+		
+		@Override
+		public void onFaceTimeOutgoingCallRejected() {
+			ReduxEmitterNetwork.getFaceTimeUpdateSubject()
+					.onNext(ReduxEventFaceTime.OutgoingRejected.INSTANCE);
+		}
+		
+		@Override
+		public void onFaceTimeOutgoingCallError(@Nullable String errorDetails) {
+			ReduxEmitterNetwork.getFaceTimeUpdateSubject()
+					.onNext(new ReduxEventFaceTime.OutgoingError(errorDetails));
+		}
+		
+		@Override
+		public void onFaceTimeIncomingCall(@Nullable String caller) {
+			ReduxEmitterNetwork.getFaceTimeIncomingCallerSubject()
+					.onNext(Optional.ofNullable(caller));
+		}
+		
+		@Override
+		public void onFaceTimeIncomingCallHandled(@NonNull String faceTimeLink) {
+			ReduxEmitterNetwork.getFaceTimeUpdateSubject()
+					.onNext(new ReduxEventFaceTime.IncomingHandled(faceTimeLink));
+		}
+		
+		@Override
+		public void onFaceTimeIncomingCallError(@Nullable String errorDetails) {
+			ReduxEmitterNetwork.getFaceTimeUpdateSubject()
+					.onNext(new ReduxEventFaceTime.IncomingHandleError(errorDetails));
 		}
 	};
 	
@@ -1254,6 +1310,63 @@ public class ConnectionManager {
 		return faceTimeLinkSubject.timeout(requestTimeoutSeconds, TimeUnit.SECONDS, Single.error(error))
 				.observeOn(AndroidSchedulers.mainThread())
 				.doOnTerminate(() -> faceTimeLinkSubject = null);
+	}
+	
+	/**
+	 * Initiates a new outgoing FaceTime call with the specified addresses
+	 * @param addresses The list of addresses to initiate the call with
+	 * @return A single that resolves with whether the call was successfully initiated
+	 */
+	public Completable initiateFaceTimeCall(List<String> addresses) {
+		//If there is already an active request, return that
+		if(faceTimeInitiateSubject != null) {
+			return faceTimeInitiateSubject;
+		}
+		
+		final Throwable error = new AMRequestException(FaceTimeInitiateCode.network);
+		
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return Completable.error(error);
+		
+		//Sending the request
+		boolean result = communicationsManager.initiateFaceTimeCall(addresses);
+		if(!result) return Completable.error(error);
+		
+		//Creating the subject
+		faceTimeInitiateSubject = CompletableSubject.create();
+		
+		//Returning the subject with a timeout
+		return faceTimeInitiateSubject.timeout(requestTimeoutSeconds, TimeUnit.SECONDS, Completable.error(error))
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnTerminate(() -> faceTimeInitiateSubject = null);
+	}
+	
+	/**
+	 * Accepts or rejects a pending incoming FaceTime call
+	 * @param caller The name of the caller to accept or reject the call of
+	 * @param accept True to accept the call, or false to reject
+	 * @return Whether the request was successfully sent
+	 */
+	public boolean rejectIncomingFaceTimeCall(@NonNull String caller, boolean accept) {
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return false;
+		
+		//Sending the request
+		return communicationsManager.handleIncomingFaceTimeCall(caller, accept);
+	}
+	
+	/**
+	 * Tells the server to leave the FaceTime call.
+	 * This should be called after the client has connected to the call with the
+	 * FaceTime link to avoid two of the same user connected.
+	 * @return Whether the request was successfully sent
+	 */
+	public boolean dropFaceTimeCallServer() {
+		//Failing immediately if there is no network connection
+		if(!isConnected()) return false;
+		
+		//Sending the request
+		return communicationsManager.dropFaceTimeCallServer();
 	}
 	
 	/**
