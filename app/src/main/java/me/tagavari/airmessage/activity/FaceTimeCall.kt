@@ -1,5 +1,7 @@
 package me.tagavari.airmessage.activity
 
+import android.app.assist.AssistContent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.annotation.IntDef
@@ -81,6 +83,11 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 		compositeDisposableCalls.dispose()
 	}
 	
+	override fun onProvideAssistContent(outContent: AssistContent) {
+		super.onProvideAssistContent(outContent)
+		outContent.webUri = viewModel.faceTimeLink?.let { Uri.parse(it) }
+	}
+	
 	private fun updateStateRejected() {
 		//Update the state to rejected
 		viewModel.state = State.rejected
@@ -105,6 +112,7 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 	private fun updateStateCalling(faceTimeLink: String) {
 		//Update the state to calling
 		viewModel.state = State.calling
+		viewModel.faceTimeLink = faceTimeLink
 		
 		//Switch to the calling fragment
 		supportFragmentManager.commit {
@@ -139,6 +147,7 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 	
 	class ActivityViewModel : ViewModel() {
 		@State var state: Int = State.outgoing
+		var faceTimeLink: String? = null
 	}
 	
 	@Retention(AnnotationRetention.SOURCE)
