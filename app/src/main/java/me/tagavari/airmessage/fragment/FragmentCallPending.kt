@@ -10,6 +10,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.IntDef
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import me.tagavari.airmessage.MainApplication
@@ -26,7 +27,8 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 	
 	//Parameters
 	@State private var state: Int = State.outgoing
-	private lateinit var callParticipants: List<String>
+	private var callParticipants: List<String>? = null
+	private var callParticipantsRaw: String? = null
 	
 	//Disposables
 	private val compositeDisposable = CompositeDisposable()
@@ -36,7 +38,8 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 		
 		//Get the parameters
 		state = requireArguments().getInt(PARAM_STATE)
-		callParticipants = requireArguments().getStringArrayList(PARAM_PARTICIPANTS)!!
+		callParticipants = requireArguments().getStringArrayList(PARAM_PARTICIPANTS)
+		callParticipantsRaw = requireArguments().getString(PARAM_PARTICIPANTS_RAW)
 	}
 	
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -49,22 +52,29 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 		//Update the initial state
 		updateState(state)
 		
-		//Load the participant names
-		labelParticipants.text = LanguageHelper.createLocalizedList(resources, callParticipants)
-		compositeDisposable.add(
-			Observable.fromIterable(callParticipants)
-				.flatMapSingle { address ->
-					ContactHelper.getUserDisplayName(MainApplication.getInstance(), address)
-						.defaultIfEmpty(address)
-				}
-				.toList()
-				.subscribe { participants ->
-					labelParticipants.text = LanguageHelper.createLocalizedList(resources, participants)
-				}
-		)
+		callParticipantsRaw?.also { participants ->
+			//Set the participant names directly
+			labelParticipants.text = participants
+		} ?: callParticipants?.also { participantsList ->
+			//Load the participant names from the user's contacts
+			labelParticipants.text = LanguageHelper.createLocalizedList(resources, participantsList)
+			compositeDisposable.add(
+				Observable.fromIterable(participantsList)
+					.flatMapSingle { address ->
+						ContactHelper.getUserDisplayName(MainApplication.getInstance(), address)
+							.defaultIfEmpty(address)
+					}
+					.toList()
+					.subscribe { participants ->
+						labelParticipants.text = LanguageHelper.createLocalizedList(resources, participants)
+					}
+			)
+		} ?: run {
+			labelParticipants.setText(R.string.part_unknown)
+		}
 		
 		//Set the callback listeners
-		view.findViewById<Button>(R.id.button_endcall).setOnClickListener {
+		view.findViewById<FloatingActionButton>(R.id.button_endcall).setOnClickListener {
 			communicationsCallback?.exitCall()
 		}
 	}
@@ -88,7 +98,7 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 	 */
 	fun showError(errorDetails: String?) {
 		MaterialAlertDialogBuilder(requireContext()).apply {
-			setTitle(R.string.message_facetime_errormessage)
+			setTitle(R.string.message_facetime_error_call)
 			//Use a custom view with monospace font
 			errorDetails?.let { errorDetails ->
 				setView(
@@ -130,5 +140,6 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 	companion object {
 		const val PARAM_STATE = "state"
 		const val PARAM_PARTICIPANTS = "participants"
+		const val PARAM_PARTICIPANTS_RAW = "participantsRaw"
 	}
 }

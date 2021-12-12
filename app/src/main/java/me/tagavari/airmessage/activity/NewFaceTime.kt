@@ -1,7 +1,10 @@
 package me.tagavari.airmessage.activity
 
 import android.app.Application
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -13,9 +16,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.inputmethod.EditorInfo
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageButton
+import android.widget.*
 import android.widget.TextView.OnEditorActionListener
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -24,6 +25,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import io.reactivex.rxjava3.disposables.CompositeDisposable
@@ -34,9 +36,14 @@ import me.tagavari.airmessage.component.ContactChip
 import me.tagavari.airmessage.component.ContactListReactiveUpdate
 import me.tagavari.airmessage.component.ContactsRecyclerAdapter
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity
+import me.tagavari.airmessage.connection.ConnectionManager
+import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException
+import me.tagavari.airmessage.connection.exception.AMRequestException
 import me.tagavari.airmessage.constants.ColorConstants
+import me.tagavari.airmessage.enums.FaceTimeInitiateCode
 import me.tagavari.airmessage.helper.AddressHelper.normalizeAddress
 import me.tagavari.airmessage.helper.AddressHelper.validateAddress
+import me.tagavari.airmessage.helper.ConnectionServiceLink
 import me.tagavari.airmessage.helper.PlatformHelper.updateChromeOSStatusBar
 import me.tagavari.airmessage.helper.ThemeHelper
 import me.tagavari.airmessage.helper.ThemeHelper.shouldUseAMOLED
@@ -49,6 +56,7 @@ import me.tagavari.airmessage.util.ContactInfo
 class NewFaceTime : AppCompatCompositeActivity() {
     //State
     private val viewModel: ActivityViewModel by viewModels()
+    private val csLink = ConnectionServiceLink(this)
     
     //Views
     private lateinit var recipientListGroup: ViewGroup
@@ -203,6 +211,11 @@ class NewFaceTime : AppCompatCompositeActivity() {
             startActivity(intent)
             finish()
         }
+        viewModel.errorDetails.observe(this) { error ->
+            error?.let { (message, details) ->
+                showErrorDialog(message, details)
+            }
+        }
         viewModel.contactListSubject.subscribe {
             it.updateAdapter(contactListAdapter)
         }.bindUntilDestroy(this)
@@ -220,6 +233,9 @@ class NewFaceTime : AppCompatCompositeActivity() {
         }
         contactListView.itemAnimator = null
         contactListView.adapter = contactListAdapter
+        
+        //Configure the confirm button
+        buttonConfirm.isEnabled = viewModel.userChips.isNotEmpty() && !(viewModel.loadingState.value ?: false)
         
         //Request edge-to-edge rendering
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -323,7 +339,7 @@ class NewFaceTime : AppCompatCompositeActivity() {
      */
     private fun setActivityStateLoading(loading: Boolean, animate: Boolean) {
         //Disable the confirm button
-        buttonConfirm.isEnabled = false
+        buttonConfirm.isEnabled = !loading && viewModel.userChips.isNotEmpty()
         
         //Disable the inputs
         recipientInput.isEnabled = !loading
@@ -380,6 +396,56 @@ class NewFaceTime : AppCompatCompositeActivity() {
         findViewById<View>(R.id.appbar).setBackgroundColor(ColorConstants.colorAMOLED)
     }
     
+    private fun showErrorDialog(message: String, details: String? = null) {
+        //Show a basic error dialog
+        MaterialAlertDialogBuilder(this).apply {
+            setTitle(R.string.message_facetime_error_create)
+            setMessage(message)
+        
+            setPositiveButton(R.string.action_dismiss) { dialog, _ ->
+                dialog.dismiss()
+            }
+        
+            //If we have error details, add a button to let the user view them
+            details?.let { errorDetails ->
+                setNeutralButton(R.string.action_details) { dialog, _ ->
+                    //Dismiss the dialog and show an error dialog
+                    dialog.dismiss()
+                
+                    MaterialAlertDialogBuilder(this@NewFaceTime).apply {
+                        setTitle(R.string.message_messageerror_details_title)
+                        //Use a custom view with monospace font
+                        setView(
+                            layoutInflater.inflate(R.layout.dialog_simplescroll, null).apply {
+                                findViewById<TextView>(R.id.text).apply {
+                                    typeface = Typeface.MONOSPACE
+                                    text = errorDetails
+                                }
+                            }
+                        )
+                    
+                        //Copy to clipboard
+                        setNeutralButton(R.string.action_copy) { dialog, _ ->
+                            val clipboard = MainApplication.getInstance().getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Error details", errorDetails))
+                        
+                            Toast.makeText(MainApplication.getInstance(), R.string.message_textcopied, Toast.LENGTH_SHORT).show()
+                            dialog.dismiss()
+                        }
+                        setPositiveButton(R.string.action_dismiss) { dialog, _ ->
+                            dialog.dismiss()
+                        }
+                    }.create().show()
+                }
+            }
+        
+            setOnDismissListener {
+                //Clear the error details when we dismiss the dialog
+                viewModel.errorDetails.value = null
+            }
+        }.create().show()
+    }
+    
     fun onClickRequestContacts(view: View? = null) {
         requestPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
     }
@@ -420,6 +486,16 @@ class NewFaceTime : AppCompatCompositeActivity() {
         recipientInput.setSelection(selectionStart, selectionEnd)
     }
     
+    fun onClickConfirm(view: View? = null) {
+        csLink.connectionManager?.also { connectionManager ->
+            //Create the call
+            viewModel.confirmParticipants(connectionManager)
+        } ?: run {
+            //Let the user know an error occurred
+            viewModel.errorDetails.value = Pair(resources.getString(R.string.error_noconnection), null)
+        }
+    }
+    
     class ActivityViewModel(application: Application) : AndroidViewModel(application) {
         val userChips = mutableListOf<ContactChip>()
         val contactList = mutableListOf<ContactInfo>()
@@ -427,6 +503,7 @@ class NewFaceTime : AppCompatCompositeActivity() {
         val contactState = MutableLiveData<Int>() //The current state of the activity
         val loadingState = MutableLiveData<Boolean>() //Whether the activity is loading due to a participant confirmation
         val completionLaunchIntent = MutableLiveData<Intent>() //An intent to launch to complete this activity
+        val errorDetails = MutableLiveData<Pair<String, String?>>() //An error message and error detail to show when a call couldn't be created
         val contactListSubject: PublishSubject<ContactListReactiveUpdate> = PublishSubject.create() //A subject to emit updates to the contacts list
         var recipientInputAlphabetical = true //Whether the recipient input field is in alphabetical or numeric mode
 
@@ -468,6 +545,43 @@ class NewFaceTime : AppCompatCompositeActivity() {
                         return@map ContactListReactiveUpdate.Change(matchingContactIndex)
                     }
                 }.subscribe(contactListSubject)
+        }
+        
+        fun confirmParticipants(connectionManager: ConnectionManager) {
+            //Disable the UI
+            loadingState.value = true
+            
+            val addresses = userChips.map { it.address }
+            compositeDisposable.add(
+                connectionManager.initiateFaceTimeCall(addresses)
+                    .subscribe(
+                        {
+                            //Start the call
+                            completionLaunchIntent.value = Intent(getApplication(), FaceTimeCall::class.java).apply {
+                                putExtra(FaceTimeCall.PARAM_TYPE, FaceTimeCall.Type.outgoing)
+                                putStringArrayListExtra(FaceTimeCall.PARAM_PARTICIPANTS, ArrayList(addresses))
+                            }
+                        },
+                        { error ->
+                            //Re-enable the UI
+                            loadingState.value = false
+                    
+                            //Set the error details
+                            errorDetails.value = if(error is AMRequestException) {
+                                val messageID = when(error.errorCode) {
+                                    FaceTimeInitiateCode.network -> R.string.error_noconnection
+                                    FaceTimeInitiateCode.badMembers -> R.string.error_badmembers
+                                    FaceTimeInitiateCode.external -> R.string.error_external
+                                    else -> R.string.error_external
+                                }
+                        
+                                Pair(getApplication<Application>().getString(messageID), error.errorDetails)
+                            } else {
+                                Pair(getApplication<Application>().getString(R.string.error_internal), null)
+                            }
+                        }
+                    )
+            )
         }
     }
 }

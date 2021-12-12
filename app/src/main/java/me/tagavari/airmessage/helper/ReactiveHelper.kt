@@ -1,9 +1,22 @@
 package me.tagavari.airmessage.helper
 
+import android.app.Activity
+import android.content.*
+import android.os.IBinder
+import androidx.activity.ComponentActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import io.reactivex.rxjava3.disposables.Disposable
+import me.tagavari.airmessage.MainApplication
+import me.tagavari.airmessage.connection.ConnectionManager
+import me.tagavari.airmessage.data.SharedPreferencesManager
+import me.tagavari.airmessage.data.SharedPreferencesManager.getProxyType
+import me.tagavari.airmessage.data.SharedPreferencesManager.isConnectionConfigured
+import me.tagavari.airmessage.enums.ProxyType
+import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper.launchPersistent
+import me.tagavari.airmessage.service.ConnectionService
+import me.tagavari.airmessage.service.ConnectionService.ConnectionBinder
 
 fun Disposable.bindUntilStop(lifecycleOwner: LifecycleOwner) {
 	if(lifecycleOwner.lifecycle.currentState == Lifecycle.State.DESTROYED) {
@@ -29,4 +42,58 @@ fun Disposable.bindUntilDestroy(lifecycleOwner: LifecycleOwner) {
 			dispose()
 		}
 	})
+}
+
+/**
+ * A class that manages the link between the connection manager and an activity
+ */
+class ConnectionServiceLink(activity: ComponentActivity) {
+	/**
+	 * The instance of the currently bound connection manager, or null if there is none
+	 */
+	var connectionManager: ConnectionManager? = null
+		private set
+	
+	private val serviceConnection: ServiceConnection = object : ServiceConnection {
+		override fun onServiceConnected(name: ComponentName, service: IBinder) {
+			val binder = service as ConnectionBinder
+			binder.connectionManager
+			connectionManager = binder.connectionManager
+			binder.connectionManager.connect()
+		}
+		
+		override fun onServiceDisconnected(name: ComponentName) {
+			connectionManager = null
+		}
+	}
+	
+	init {
+		if(activity.lifecycle.currentState != Lifecycle.State.DESTROYED) {
+			activity.lifecycle.addObserver(object : DefaultLifecycleObserver {
+				override fun onCreate(owner: LifecycleOwner) {
+					//Ignoring if the connection isn't configured
+					if(!isConnectionConfigured(activity)) return
+					
+					//Starting the persistent connection service if required
+					if(isConnectionConfigured(activity) && getProxyType(activity) == ProxyType.direct) {
+						launchPersistent(activity)
+					}
+					
+					//Binding to the connection service
+					activity.bindService(
+						Intent(activity, ConnectionService::class.java),
+						serviceConnection,
+						Context.BIND_AUTO_CREATE
+					)
+				}
+				
+				override fun onDestroy(owner: LifecycleOwner) {
+					//Unbinding from the connection service
+					if(connectionManager != null) {
+						activity.unbindService(serviceConnection)
+					}
+				}
+			})
+		}
+	}
 }

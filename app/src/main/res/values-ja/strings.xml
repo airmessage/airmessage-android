@@ -524,7 +524,7 @@
 	<string name="error_updatebadpackage">アップデートの処理中にエラーが発生しました</string>
 	<string name="error_internal">内部エラーが発生しました</string>
 	<string name="progress_installingupdate">アップデートをインストール中&#8230;</string>
-	<string name="action_createlink">リンクォ作成</string>
+	<string name="action_createlink">リンクを作成</string>
 	<string name="action_newfacetime">新しい FaceTime</string>
 	<string name="message_facetime_intro">AirMessageはこのデバイスでFaceTime通話を発信および受信できます</string>
 	<string name="message_facetimelink_error">FaceTimeリンクの取得に失敗しました</string>

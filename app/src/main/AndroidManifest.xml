@@ -220,6 +220,15 @@
 			android:windowSoftInputMode="adjustResize|stateVisible">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
+		
+		<!-- FaceTime call -->
+		<activity
+			android:exported="false"
+			android:name=".activity.FaceTimeCall"
+			android:parentActivityName=".activity.CallHistory"
+			android:theme="@style/ThemeFaceTime">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
 
 		<!-- Crash report -->
 		<activity

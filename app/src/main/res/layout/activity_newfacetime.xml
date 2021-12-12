@@ -8,7 +8,8 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:clipChildren="false"
-    android:clipToPadding="false">
+    android:clipToPadding="false"
+    android:fitsSystemWindows="true">
     <!-- App bar -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appbar"
@@ -128,6 +129,7 @@
             android:layout_marginBottom="16dp"
             android:enabled="false"
             android:text="@string/title_facetime"
+            android:onClick="onClickConfirm"
             app:backgroundTint="@color/colorFaceTime"
             app:icon="@drawable/facetime" />
 

@@ -5,29 +5,46 @@ import androidx.activity.viewModels
 import androidx.annotation.IntDef
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
+import androidx.fragment.app.FragmentOnAttachListener
 import androidx.fragment.app.add
 import androidx.fragment.app.commit
+import androidx.fragment.app.replace
 import androidx.lifecycle.ViewModel
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.extension.FragmentCommunicationFaceTime
+import me.tagavari.airmessage.fragment.FragmentCallActive
 import me.tagavari.airmessage.fragment.FragmentCallPending
+import me.tagavari.airmessage.fragment.FragmentCommunication
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventFaceTime
 
-class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall) {
+class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), FragmentCommunicationFaceTime {
 	//State
 	private val viewModel: ActivityViewModel by viewModels()
 	
 	//A composite disposable, valid for the lifecycle of this call
 	private val compositeDisposableCalls = CompositeDisposable()
 	
+	//Listeners
+	private val fragmentOnAttachListener = FragmentOnAttachListener { _, fragment ->
+		//Set the communications callback when new fragments are added
+		if(fragment is FragmentCommunication<*>) {
+			(fragment as FragmentCommunication<FragmentCommunicationFaceTime>).communicationsCallback = this
+		}
+	}
+	
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+		
+		//Add the fragment on attach listener
+		supportFragmentManager.addFragmentOnAttachListener(fragmentOnAttachListener)
 		
 		if(savedInstanceState == null) {
 			//Read the parameters
 			@Type val type = intent.extras!!.getInt(PARAM_TYPE)
 			val participants = intent.extras!!.getStringArrayList(PARAM_PARTICIPANTS)
+			val participantsRaw = intent.extras!!.getStringArrayList(PARAM_PARTICIPANTS_RAW)
 			
 			//Set the initial state
 			viewModel.state = if(type == Type.outgoing) State.outgoing else State.incoming
@@ -39,14 +56,14 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall) {
 					R.id.content,
 					args = bundleOf(
 						FragmentCallPending.PARAM_STATE to FragmentCallPending.State.outgoing,
-						FragmentCallPending.PARAM_PARTICIPANTS to participants
+						FragmentCallPending.PARAM_PARTICIPANTS to participants,
+						FragmentCallPending.PARAM_PARTICIPANTS_RAW to participantsRaw
 					)
 				)
 			}
 		}
 		
 		//Subscribe to updates
-		//viewModel.state.observe(this, this::applyState)
 		if(viewModel.state != State.rejected) {
 			compositeDisposableCalls.add(
 				ReduxEmitterNetwork.faceTimeUpdateSubject.subscribe(this::handleFaceTimeUpdate)
@@ -56,6 +73,9 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall) {
 	
 	override fun onDestroy() {
 		super.onDestroy()
+		
+		//Remove the fragment on attach listener
+		supportFragmentManager.removeFragmentOnAttachListener(fragmentOnAttachListener)
 		
 		//Make sure we clean up any listeners
 		compositeDisposableCalls.dispose()
@@ -86,7 +106,16 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall) {
 		//Update the state to calling
 		viewModel.state = State.calling
 		
-		//TODO swap to the calling fragment
+		//Switch to the calling fragment
+		supportFragmentManager.commit {
+			setReorderingAllowed(true)
+			replace<FragmentCallActive>(
+				R.id.content,
+				args = bundleOf(
+					FragmentCallActive.PARAM_LINK to faceTimeLink
+				)
+			)
+		}
 	}
 	
 	private fun handleFaceTimeUpdate(update: ReduxEventFaceTime) {
@@ -102,6 +131,10 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall) {
 				is ReduxEventFaceTime.IncomingHandleError -> updateStateError(update.errorDetails)
 			}
 		}
+	}
+	
+	override fun exitCall() {
+		finish()
 	}
 	
 	class ActivityViewModel : ViewModel() {
@@ -131,5 +164,6 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall) {
 	companion object {
 		const val PARAM_TYPE = "type"
 		const val PARAM_PARTICIPANTS = "participants"
+		const val PARAM_PARTICIPANTS_RAW = "participantsRaw"
 	}
 }
