@@ -1,12 +1,16 @@
 package me.tagavari.airmessage.fragment
 
 import android.os.Bundle
+import android.util.Base64
 import android.view.View
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.extension.FragmentCommunicationFaceTime
+import java.nio.charset.StandardCharsets
 
 class FragmentCallActive : FragmentCommunication<FragmentCommunicationFaceTime>(R.layout.fragment_callactive) {
 	//Parameters
@@ -27,8 +31,22 @@ class FragmentCallActive : FragmentCommunication<FragmentCommunicationFaceTime>(
 		//Get the views
 		webView = view.findViewById(R.id.webview)
 		webView.settings.javaScriptEnabled = true
+		webView.webViewClient = object : WebViewClient() {
+			override fun onPageFinished(view: WebView, url: String) {
+				print("On page finished")
+				
+				//Inject function JavaScript
+				val rawJS = resources.openRawResource(R.raw.facetime_inject_javascript).bufferedReader().use { it.readText() }
+				val rawCSS = resources.openRawResource(R.raw.facetime_inject_css).bufferedReader().use { it.readText() }
+				
+				val userName = escapeStringJS(SharedPreferencesManager.getServerUserName(requireContext()))
+				val cssBase64 = Base64.encodeToString(rawCSS.encodeToByteArray(), Base64.NO_WRAP)
+				webView.evaluateJavascript(String.format(rawJS, userName, cssBase64), null)
+			}
+		}
 		webView.webChromeClient = object : WebChromeClient() {
 			override fun onPermissionRequest(request: PermissionRequest) {
+				//Grant all permissions
 				request.grant(request.resources)
 			}
 		}
@@ -37,5 +55,15 @@ class FragmentCallActive : FragmentCommunication<FragmentCommunicationFaceTime>(
 	
 	companion object {
 		const val PARAM_LINK = "link"
+		
+		private fun escapeStringJS(string: String): String {
+			return string
+				.replace("\\", "\\\\")
+				.replace("\"", "\\\"")
+				.replace("\b", "\\b")
+				.replace("\n", "\\n")
+				.replace("\r", "\\r")
+				.replace("\t", "\\t")
+		}
 	}
 }

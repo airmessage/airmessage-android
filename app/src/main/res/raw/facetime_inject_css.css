@@ -1,0 +1,7 @@
+* {
+   -webkit-user-select: none;
+}
+
+.action-controls:first-child {
+    display: none;
+}

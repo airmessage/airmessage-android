@@ -3,12 +3,14 @@ package me.tagavari.airmessage;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Process;
 import android.provider.ContactsContract;
+import android.webkit.WebView;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
@@ -162,6 +164,11 @@ public class MainApplication extends Application {
 
 		//Initializing Google Maps
 		MapsInitializer.initialize(getApplicationContext(), MapsInitializer.Renderer.LATEST, null);
+		
+		//Enable WebView debugging
+		if(0 != (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE)) {
+			WebView.setWebContentsDebuggingEnabled(true);
+		}
 	}
 	
 	public static MainApplication getInstance() {
