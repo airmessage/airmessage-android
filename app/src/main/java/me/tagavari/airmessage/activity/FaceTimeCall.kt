@@ -18,12 +18,14 @@ import me.tagavari.airmessage.extension.FragmentCommunicationFaceTime
 import me.tagavari.airmessage.fragment.FragmentCallActive
 import me.tagavari.airmessage.fragment.FragmentCallPending
 import me.tagavari.airmessage.fragment.FragmentCommunication
+import me.tagavari.airmessage.helper.ConnectionServiceLink
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventFaceTime
 
 class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), FragmentCommunicationFaceTime {
 	//State
 	private val viewModel: ActivityViewModel by viewModels()
+	private val csLink = ConnectionServiceLink(this)
 	
 	//A composite disposable, valid for the lifecycle of this call
 	private val compositeDisposableCalls = CompositeDisposable()
@@ -46,10 +48,11 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 			//Read the parameters
 			@Type val type = intent.extras!!.getInt(PARAM_TYPE)
 			val participants = intent.extras!!.getStringArrayList(PARAM_PARTICIPANTS)
-			val participantsRaw = intent.extras!!.getStringArrayList(PARAM_PARTICIPANTS_RAW)
+			val participantsRaw = intent.extras!!.getString(PARAM_PARTICIPANTS_RAW)
 			
 			//Set the initial state
 			viewModel.state = if(type == Type.outgoing) State.outgoing else State.incoming
+			viewModel.participantsRaw = participantsRaw
 			
 			//Add the fragment
 			supportFragmentManager.commit {
@@ -57,7 +60,7 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 				add<FragmentCallPending>(
 					R.id.content,
 					args = bundleOf(
-						FragmentCallPending.PARAM_STATE to FragmentCallPending.State.outgoing,
+						FragmentCallPending.PARAM_STATE to if(viewModel.state == State.outgoing) FragmentCallPending.State.outgoing else FragmentCallPending.State.incoming,
 						FragmentCallPending.PARAM_PARTICIPANTS to participants,
 						FragmentCallPending.PARAM_PARTICIPANTS_RAW to participantsRaw
 					)
@@ -109,9 +112,18 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 		fragment.showError(errorDetails)
 	}
 	
+	private fun updateStateConnecting() {
+		//Update the state to connecting
+		viewModel.state = State.connecting
+		
+		//Update the fragment
+		val fragment = supportFragmentManager.findFragmentById(R.id.content) as FragmentCallPending
+		fragment.updateState(FragmentCallPending.State.connecting)
+	}
+	
 	private fun updateStateCalling(faceTimeLink: String) {
 		//Update the state to calling
-		viewModel.state = State.calling
+		viewModel.state = State.inCall
 		viewModel.faceTimeLink = faceTimeLink
 		
 		//Switch to the calling fragment
@@ -142,12 +154,34 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 	}
 	
 	override fun exitCall() {
-		finish()
+		if(viewModel.state != State.rejected) {
+			//Tell the server to drop the call
+			if(viewModel.state == State.incoming) {
+				csLink.connectionManager?.handleIncomingFaceTimeCall(viewModel.participantsRaw!!, false)
+			} else {
+				csLink.connectionManager?.dropFaceTimeCallServer()
+			}
+		}
+		
+		finishAndRemoveTask()
+	}
+	
+	override fun acceptCall() {
+		csLink.connectionManager?.also { connectionManager ->
+			//Accept the call
+			connectionManager.handleIncomingFaceTimeCall(viewModel.participantsRaw!!, true)
+			
+			//Update the state
+			updateStateConnecting()
+		} ?: run {
+			updateStateError(resources.getString(R.string.error_noconnection))
+		}
 	}
 	
 	class ActivityViewModel : ViewModel() {
 		@State var state: Int = State.outgoing
 		var faceTimeLink: String? = null
+		var participantsRaw: String? = null
 	}
 	
 	@Retention(AnnotationRetention.SOURCE)
@@ -160,13 +194,14 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 	}
 	
 	@Retention(AnnotationRetention.SOURCE)
-	@IntDef(State.outgoing, State.incoming, State.rejected, State.calling)
+	@IntDef(State.outgoing, State.incoming, State.connecting, State.rejected, State.inCall)
 	private annotation class State {
 		companion object {
-			const val outgoing = 0
-			const val incoming = 1
-			const val rejected = 3
-			const val calling = 4
+			const val outgoing = 0 //We're waiting for an outgoing call to go through
+			const val incoming = 1 //We're asking the user if they want to accept an incoming call
+			const val connecting = 2 //We're waiting for an incoming call to connect
+			const val rejected = 3 //A call failed to connect
+			const val inCall = 4 //We're currently in a call
 		}
 	}
 	

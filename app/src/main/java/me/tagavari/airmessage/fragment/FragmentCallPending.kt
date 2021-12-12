@@ -5,7 +5,6 @@ import android.content.ClipboardManager
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.View
-import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.IntDef
@@ -24,6 +23,8 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 	//Views
 	private lateinit var labelParticipants: TextView
 	private lateinit var labelStatus: TextView
+	private lateinit var buttonEndCall: FloatingActionButton
+	private lateinit var buttonAcceptCall: FloatingActionButton
 	
 	//Parameters
 	@State private var state: Int = State.outgoing
@@ -48,6 +49,8 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 		//Get the views
 		labelParticipants = view.findViewById(R.id.label_participants)
 		labelStatus = view.findViewById(R.id.label_status)
+		buttonEndCall = view.findViewById(R.id.button_endcall)
+		buttonAcceptCall = view.findViewById(R.id.button_acceptcall)
 		
 		//Update the initial state
 		updateState(state)
@@ -74,8 +77,11 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 		}
 		
 		//Set the callback listeners
-		view.findViewById<FloatingActionButton>(R.id.button_endcall).setOnClickListener {
+		buttonEndCall.setOnClickListener {
 			communicationsCallback?.exitCall()
+		}
+		buttonAcceptCall.setOnClickListener {
+			communicationsCallback?.acceptCall()
 		}
 	}
 	
@@ -87,10 +93,13 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 		
 		labelStatus.setText(when(state) {
 			State.outgoing -> R.string.message_facetime_calling
-			State.incoming -> R.string.message_facetime_connecting
+			State.incoming -> R.string.title_facetime
+			State.connecting -> R.string.message_facetime_connecting
 			State.disconnected -> R.string.message_facetime_unavailable
 			else -> R.string.message_facetime_unavailable
 		})
+		
+		buttonAcceptCall.visibility = if(state == State.incoming) View.VISIBLE else View.GONE
 	}
 	
 	/**
@@ -128,12 +137,13 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 	}
 	
 	@Retention(AnnotationRetention.SOURCE)
-	@IntDef(State.outgoing, State.incoming, State.disconnected)
+	@IntDef(State.outgoing, State.incoming, State.connecting, State.disconnected)
 	annotation class State {
 		companion object {
 			const val outgoing = 0
 			const val incoming = 1
-			const val disconnected = 2
+			const val connecting = 2
+			const val disconnected = 3
 		}
 	}
 	

@@ -1348,7 +1348,7 @@ public class ConnectionManager {
 	 * @param accept True to accept the call, or false to reject
 	 * @return Whether the request was successfully sent
 	 */
-	public boolean rejectIncomingFaceTimeCall(@NonNull String caller, boolean accept) {
+	public boolean handleIncomingFaceTimeCall(@NonNull String caller, boolean accept) {
 		//Failing immediately if there is no network connection
 		if(!isConnected()) return false;
 		

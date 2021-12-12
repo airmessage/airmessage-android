@@ -38,6 +38,7 @@ import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
+import me.tagavari.airmessage.redux.ReduxReceiverFaceTime;
 import me.tagavari.airmessage.redux.ReduxReceiverNotification;
 import me.tagavari.airmessage.redux.ReduxReceiverShortcut;
 import me.tagavari.airmessage.worker.SystemMessageCleanupWorker;
@@ -128,7 +129,8 @@ public class MainApplication extends Application {
 			new ReduxReceiverShortcut(this).initialize();
 		}
 		new ReduxReceiverNotification(this).initialize();
-
+		new ReduxReceiverFaceTime(this).initialize();
+		
 		//Checking if text message integration is not permitted
 		if(!Preferences.isTextMessageIntegrationActive(this)) {
 			boolean cleanUpMessages = false;

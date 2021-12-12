@@ -22,7 +22,7 @@ function waitForElement(document, selector) {
 	})
 }
 
-function waitForIFrame(element) {
+function waitForIframe(element) {
 	return new Promise((resolve) => {
 		element.addEventListener("load", resolve)
 	})
@@ -31,7 +31,7 @@ function waitForIFrame(element) {
 (async () => {
 	//Wait for the FaceTime iframe to load
 	const facetime = await waitForElement(document, "#facetime")
-	await waitForIFrame(facetime)
+	await waitForIframe(facetime)
 	const facetimeDocument = facetime.contentWindow.document
 	
 	{

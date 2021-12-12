@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.Typeface
 import android.media.AudioAttributes
 import android.media.AudioManager
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -29,6 +30,7 @@ import me.tagavari.airmessage.BuildConfig
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Conversations
+import me.tagavari.airmessage.activity.FaceTimeCall
 import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.data.DatabaseManager
@@ -56,6 +58,7 @@ object NotificationHelper {
 	const val notificationChannelMessageReceiveError = "message_receive_error"
 	const val notificationChannelStatus = "status"
 	const val notificationChannelStatusImportant = "status_important"
+	const val notificationChannelIncomingCall = "incoming_call"
 	
 	const val notificationGroupMessage = "me.tagavari.airmessage.NOTIFICATION_GROUP_MESSAGE"
 	
@@ -63,6 +66,7 @@ object NotificationHelper {
 	const val notificationIDMessageImport = -2
 	const val notificationIDMessageSummary = -3
 	const val notificationIDWarningDecrypt = -4
+	const val notificationIDIncomingCall = -5
 	
 	const val notificationTagMessage = "message"
 	const val notificationTagMessageError = "message_error"
@@ -84,18 +88,18 @@ object NotificationHelper {
 		val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 		
 		notificationManager.createNotificationChannel(
-				NotificationChannel(notificationChannelMessage, context.resources.getString(R.string.notificationchannel_message), NotificationManager.IMPORTANCE_HIGH).apply {
-					description = context.getString(R.string.notificationchannel_message_desc)
-					enableVibration(true)
-					setShowBadge(true)
-					enableLights(true)
-					setSound(Uri.parse("android.resource://" + context.packageName + "/" + R.raw.notification_ding),
-							AudioAttributes.Builder()
-									.setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
-									.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-									.setLegacyStreamType(AudioManager.STREAM_NOTIFICATION)
-									.build())
-				}
+			NotificationChannel(notificationChannelMessage, context.resources.getString(R.string.notificationchannel_message), NotificationManager.IMPORTANCE_HIGH).apply {
+				description = context.getString(R.string.notificationchannel_message_desc)
+				enableVibration(true)
+				setShowBadge(true)
+				enableLights(true)
+				setSound(Uri.parse("android.resource://" + context.packageName + "/" + R.raw.notification_ding),
+					AudioAttributes.Builder()
+						.setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
+						.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+						.setLegacyStreamType(AudioManager.STREAM_NOTIFICATION)
+						.build())
+			}
 		)
 		
 		notificationManager.createNotificationChannel(
@@ -117,21 +121,36 @@ object NotificationHelper {
 		)
 		
 		notificationManager.createNotificationChannel(
-				NotificationChannel(notificationChannelStatus, context.resources.getString(R.string.notificationchannel_status), NotificationManager.IMPORTANCE_MIN).apply {
-					description = context.getString(R.string.notificationchannel_status_desc)
-					enableVibration(false)
-					setShowBadge(false)
-					enableLights(false)
-				}
+			NotificationChannel(notificationChannelStatus, context.resources.getString(R.string.notificationchannel_status), NotificationManager.IMPORTANCE_MIN).apply {
+				description = context.getString(R.string.notificationchannel_status_desc)
+				enableVibration(false)
+				setShowBadge(false)
+				enableLights(false)
+			}
 		)
 		
 		notificationManager.createNotificationChannel(
-				NotificationChannel(notificationChannelStatusImportant, context.resources.getString(R.string.notificationchannel_statusimportant), NotificationManager.IMPORTANCE_DEFAULT).apply {
-					description = context.getString(R.string.notificationchannel_statusimportant_desc)
-					enableVibration(true)
-					setShowBadge(false)
-					enableLights(false)
-				}
+			NotificationChannel(notificationChannelStatusImportant, context.resources.getString(R.string.notificationchannel_statusimportant), NotificationManager.IMPORTANCE_DEFAULT).apply {
+				description = context.getString(R.string.notificationchannel_statusimportant_desc)
+				enableVibration(true)
+				setShowBadge(false)
+				enableLights(false)
+			}
+		)
+		
+		notificationManager.createNotificationChannel(
+			NotificationChannel(notificationChannelIncomingCall, context.resources.getString(R.string.notificationchannel_incomingcall), NotificationManager.IMPORTANCE_HIGH).apply {
+				description = context.getString(R.string.notificationchannel_incomingcall_desc)
+				enableVibration(true)
+				setShowBadge(false)
+				enableLights(false)
+				setSound(RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_RINGTONE),
+					AudioAttributes.Builder()
+					.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+					.setLegacyStreamType(AudioManager.STREAM_RING)
+					.setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+					.build())
+			}
 		)
 	}
 	
@@ -880,6 +899,36 @@ object NotificationHelper {
 					)
 			)
 		}.build()
+	}
+	
+	@JvmStatic
+	fun showFaceTimeCallNotification(context: Context, callerName: String) {
+		val fullScreenIntent = Intent(context, FaceTimeCall::class.java).apply {
+			putExtra(FaceTimeCall.PARAM_TYPE, FaceTimeCall.Type.incoming)
+			putExtra(FaceTimeCall.PARAM_PARTICIPANTS_RAW, callerName)
+		}
+		val fullScreenPendingIntent = PendingIntent.getActivity(context, 0, fullScreenIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+		
+		val notification = NotificationCompat.Builder(context, notificationChannelIncomingCall)
+			.setSmallIcon(R.drawable.facetime)
+			.setContentTitle(context.resources.getString(R.string.message_facetime_incoming))
+			.setContentText(callerName)
+			.setPriority(NotificationCompat.PRIORITY_HIGH)
+			.setCategory(NotificationCompat.CATEGORY_CALL)
+			.setFullScreenIntent(fullScreenPendingIntent, true)
+			.setVibrate(null)
+			.setOngoing(true)
+			.setColor(context.resources.getColor(R.color.colorFaceTime, null))
+			.build()
+		
+		NotificationManagerCompat.from(context)
+			.notify(notificationIDIncomingCall, notification)
+	}
+	
+	@JvmStatic
+	fun hideFaceTimeCallNotification(context: Context) {
+		NotificationManagerCompat.from(context)
+			.cancel(notificationIDIncomingCall)
 	}
 	
 	data class NotificationFutureData(val title: String, val shortcutIcon: Optional<IconCompat>, val memberInfo: Optional<UserCacheHelper.UserInfo>, val memberIcon: Optional<Bitmap>, val suggestions: List<String>)

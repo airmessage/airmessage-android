@@ -70,6 +70,7 @@
     <color name="colorNotification">#2196F3</color>
 	<color name="colorServerDisconnected">#F44336</color>
 	
+	<color name="colorAcceptCall">#69F0AE</color>
 	<color name="colorEndCall">#FF5252</color>
 	
 	<color name="colorRecording">#FF5252</color>

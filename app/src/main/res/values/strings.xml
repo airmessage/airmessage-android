@@ -83,6 +83,7 @@
 	<string name="action_installupdate">Install update</string>
 	<string name="action_createlink">Create link</string>
 	<string name="action_newfacetime">New FaceTime</string>
+	<string name="action_acceptcall">Accept call</string>
 	<string name="action_endcall">End call</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
@@ -415,6 +416,7 @@
 	<string name="message_facetime_unavailable">FaceTime unavailable</string>
 	<string name="message_facetime_error_create">Failed to create call</string>
 	<string name="message_facetime_error_call">Your call couldn\'t be completed</string>
+	<string name="message_facetime_incoming">Incoming FaceTime call</string>
 	
 	<string name="message_facetimelink_error">Failed to get FaceTime link</string>
 
@@ -546,6 +548,8 @@
 	<string name="notificationchannel_status_desc">Concerns notifications about status messages, such as server connectivity</string>
 	<string name="notificationchannel_statusimportant">Important status alerts</string>
 	<string name="notificationchannel_statusimportant_desc">Concerns notifications about important status updates, such as lost connections and downtime</string>
+	<string name="notificationchannel_incomingcall">Incoming calls</string>
+	<string name="notificationchannel_incomingcall_desc">Concerns notifications about incoming FaceTime calls</string>
 	<string name="notificationchannelimportance_0">Off</string>
 	<string name="notificationchannelimportance_1">Low importance</string>
 	<string name="notificationchannelimportance_2">Medium importance</string>
