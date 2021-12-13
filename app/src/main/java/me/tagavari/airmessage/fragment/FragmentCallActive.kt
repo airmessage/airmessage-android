@@ -33,8 +33,6 @@ class FragmentCallActive : FragmentCommunication<FragmentCommunicationFaceTime>(
 		webView.settings.javaScriptEnabled = true
 		webView.webViewClient = object : WebViewClient() {
 			override fun onPageFinished(view: WebView, url: String) {
-				print("On page finished")
-				
 				//Inject function JavaScript
 				val rawJS = resources.openRawResource(R.raw.facetime_inject_javascript).bufferedReader().use { it.readText() }
 				val rawCSS = resources.openRawResource(R.raw.facetime_inject_css).bufferedReader().use { it.readText() }

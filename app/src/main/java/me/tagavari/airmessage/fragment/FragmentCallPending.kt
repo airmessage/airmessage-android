@@ -8,6 +8,11 @@ import android.view.View
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.IntDef
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.core.content.ContextCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import io.reactivex.rxjava3.core.Observable
@@ -21,6 +26,7 @@ import me.tagavari.airmessage.helper.LanguageHelper
 
 class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>(R.layout.fragment_calloutgoing) {
 	//Views
+	private lateinit var viewCameraPreview: PreviewView
 	private lateinit var labelParticipants: TextView
 	private lateinit var labelStatus: TextView
 	private lateinit var buttonEndCall: FloatingActionButton
@@ -47,6 +53,7 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 		super.onViewCreated(view, savedInstanceState)
 		
 		//Get the views
+		viewCameraPreview = view.findViewById(R.id.camera_preview)
 		labelParticipants = view.findViewById(R.id.label_participants)
 		labelStatus = view.findViewById(R.id.label_status)
 		buttonEndCall = view.findViewById(R.id.button_endcall)
@@ -83,6 +90,31 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 		buttonAcceptCall.setOnClickListener {
 			communicationsCallback?.acceptCall()
 		}
+		
+		//Start the camera preview
+		val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+		cameraProviderFuture.addListener({
+			//Used to bind the lifecycle of cameras to the lifecycle owner
+			val cameraProvider = cameraProviderFuture.get()
+			
+			//Preview
+			val preview = Preview.Builder()
+				.build()
+				.also {
+					it.setSurfaceProvider(viewCameraPreview.surfaceProvider)
+				}
+			
+			try {
+				//Unbind use cases before rebinding
+				cameraProvider.unbindAll()
+				
+				//Bind use cases to camera
+				cameraProvider.bindToLifecycle(this, CameraSelector.DEFAULT_FRONT_CAMERA, preview)
+			} catch(exception: Exception) {
+				exception.printStackTrace()
+			}
+			
+		}, ContextCompat.getMainExecutor(requireContext()))
 	}
 	
 	/**

@@ -294,6 +294,9 @@ public class ConnectionManager {
 
 				//Removing any pending updates
 				ReduxEmitterNetwork.getRemoteUpdateSubject().onNext(Optional.empty());
+				
+				//Removing any pending calls
+				ReduxEmitterNetwork.getFaceTimeIncomingCallerSubject().onNext(Optional.empty());
 			}
 			
 			//Checking if the disconnection is recoverable

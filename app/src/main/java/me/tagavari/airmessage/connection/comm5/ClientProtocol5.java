@@ -273,6 +273,9 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			case nhtFaceTimeIncomingCallerUpdate:
 				handleMessageFaceTimeIncomingCallerUpdate(unpacker);
 				break;
+			case nhtFaceTimeIncomingHandle:
+				handleMessageFaceTimeIncomingHandle(unpacker);
+				break;
 			default:
 				//Message not consumed
 				return false;
@@ -574,6 +577,17 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 	private void handleMessageFaceTimeIncomingCallerUpdate(AirUnpacker unpacker) {
 		String caller = unpacker.unpackNullableString();
 		communicationsManager.runListener(listener -> listener.onFaceTimeIncomingCall(caller));
+	}
+	
+	private void handleMessageFaceTimeIncomingHandle(AirUnpacker unpacker) {
+		boolean ok = unpacker.unpackBoolean();
+		if(ok) {
+			String faceTimeLink = unpacker.unpackString();
+			communicationsManager.runListener(listener -> listener.onFaceTimeIncomingCallHandled(faceTimeLink));
+		} else {
+			String errorDetails = unpacker.unpackNullableString();
+			communicationsManager.runListener(listener -> listener.onFaceTimeIncomingCallError(errorDetails));
+		}
 	}
 
 	@Override

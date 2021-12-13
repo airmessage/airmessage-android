@@ -66,7 +66,7 @@ class CallHistory : AppCompatCompositeActivity() {
 
         //Set the content view
         setContentView(R.layout.activity_callhistory)
-
+        
         //Get the views
         viewGroupWelcome = findViewById(R.id.group_welcome)
         viewGroupMain = findViewById(R.id.group_main)
@@ -144,7 +144,6 @@ class CallHistory : AppCompatCompositeActivity() {
                 }
 
             }, ContextCompat.getMainExecutor(this))
-
         }
     }
 

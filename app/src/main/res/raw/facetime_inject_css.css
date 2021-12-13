@@ -2,6 +2,6 @@
    -webkit-user-select: none;
 }
 
-.action-controls:first-child {
-    display: none;
+.action-controls li:first-child {
+    display: none !important;
 }

@@ -2,6 +2,7 @@ package me.tagavari.airmessage.activity
 
 import android.app.assist.AssistContent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.annotation.IntDef
@@ -21,6 +22,8 @@ import me.tagavari.airmessage.fragment.FragmentCommunication
 import me.tagavari.airmessage.helper.ConnectionServiceLink
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventFaceTime
+import android.view.WindowManager
+import androidx.core.view.WindowCompat
 
 class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), FragmentCommunicationFaceTime {
 	//State
@@ -40,6 +43,18 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 	
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+		
+		//Render edge-to-edge
+		WindowCompat.setDecorFitsSystemWindows(window, false)
+		
+		//Show on lockscreen
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+			setShowWhenLocked(true)
+			setTurnScreenOn(true)
+		} else {
+			window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+		}
+		window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 		
 		//Add the fragment on attach listener
 		supportFragmentManager.addFragmentOnAttachListener(fragmentOnAttachListener)
@@ -70,8 +85,14 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 		
 		//Subscribe to updates
 		if(viewModel.state != State.rejected) {
-			compositeDisposableCalls.add(
-				ReduxEmitterNetwork.faceTimeUpdateSubject.subscribe(this::handleFaceTimeUpdate)
+			compositeDisposableCalls.addAll(
+				ReduxEmitterNetwork.faceTimeUpdateSubject.subscribe(this::handleFaceTimeUpdate),
+				ReduxEmitterNetwork.faceTimeIncomingCallerSubject.subscribe { caller ->
+					//If there's no more call and we're in an incoming state, end the task
+					if(!caller.isPresent && viewModel.state == State.incoming) {
+						finishAndRemoveTask()
+					}
+				}
 			)
 		}
 	}
@@ -139,13 +160,14 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 	}
 	
 	private fun handleFaceTimeUpdate(update: ReduxEventFaceTime) {
+		print("Received update $update under state ${viewModel.state}")
 		if(viewModel.state == State.outgoing) {
 			when(update) {
 				is ReduxEventFaceTime.OutgoingAccepted -> updateStateCalling(update.faceTimeLink)
 				is ReduxEventFaceTime.OutgoingRejected -> updateStateRejected()
 				is ReduxEventFaceTime.OutgoingError -> updateStateError(update.errorDetails)
 			}
-		} else if(viewModel.state == State.incoming) {
+		} else if(viewModel.state == State.connecting) {
 			when(update) {
 				is ReduxEventFaceTime.IncomingHandled -> updateStateCalling(update.faceTimeLink)
 				is ReduxEventFaceTime.IncomingHandleError -> updateStateError(update.errorDetails)
