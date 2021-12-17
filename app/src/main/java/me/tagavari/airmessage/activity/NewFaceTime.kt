@@ -11,10 +11,7 @@ import android.provider.Settings
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
-import android.view.KeyEvent
-import android.view.View
-import android.view.ViewGroup
-import android.view.ViewTreeObserver
+import android.view.*
 import android.view.inputmethod.EditorInfo
 import android.widget.*
 import android.widget.TextView.OnEditorActionListener
@@ -259,6 +256,15 @@ class NewFaceTime : AppCompatCompositeActivity() {
                 contactListView.updatePadding(bottom = paddingBottom)
             }
         })
+    }
+    
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if(item.itemId == android.R.id.home) {
+            finish()
+            return true
+        }
+        
+        return false
     }
     
     private fun restoreInputBar() {
