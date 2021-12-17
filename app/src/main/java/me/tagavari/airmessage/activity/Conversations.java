@@ -599,7 +599,7 @@ public class Conversations extends AppCompatCompositeActivity {
 								"Device model: " + Build.MODEL + "\r\n" +
 								"Android version: " + Build.VERSION.RELEASE + "\r\n" +
 								"Client version: " + BuildConfig.VERSION_NAME + "\r\n" +
-								"Communications version: " + currentCommunicationsVersion + " (target " + VersionConstants.targetCommVer + ")" + "\r\n" +
+								"Communications version: " + currentCommunicationsVersion + " (target " + VersionConstants.getLatestCommVerString() + ")" + "\r\n" +
 								"Proxy type: " + proxyType + "\r\n" +
 								"Server system version: " + serverSystemVersion + "\r\n" +
 								"Server software version: " + serverSoftwareVersion);

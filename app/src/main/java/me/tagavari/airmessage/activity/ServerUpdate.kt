@@ -2,7 +2,9 @@ package me.tagavari.airmessage.activity
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -27,6 +29,8 @@ import me.tagavari.airmessage.composite.AppCompatCompositeActivity
 import me.tagavari.airmessage.compositeplugin.PluginConnectionService
 import me.tagavari.airmessage.compositeplugin.PluginRXDisposable
 import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException
+import me.tagavari.airmessage.constants.VersionConstants
+import me.tagavari.airmessage.helper.VersionHelper
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventConnection
 import me.tagavari.airmessage.redux.ReduxEventRemoteUpdate
@@ -88,9 +92,6 @@ class ServerUpdate : AppCompatCompositeActivity() {
 
         //Sync the UI with loading updates
         viewModel.isLoading.observe(this, this::updateUILoading)
-
-        //Set the install button click listener
-        buttonInstall.setOnClickListener(this::installUpdate)
 
         //Subscribe to connection updates
         pluginRXCD.activity().addAll(
@@ -206,8 +207,18 @@ class ServerUpdate : AppCompatCompositeActivity() {
         }
         labelReleaseNotes.movementMethod = LinkMovementMethod.getInstance()
 
-        //Set the notice
-        labelNotice.text = resources.getString(R.string.message_serverupdate_remotenotice, serverName)
+        //Check if the server uses a newer protocol version than we support
+        if(VersionHelper.compareVersions(updateData.protocolRequirement, VersionConstants.latestCommVer) > 0) {
+            //Ask the user to update the app
+            labelNotice.text = resources.getString(R.string.message_serverupdate_incompatible)
+            buttonInstall.setText(R.string.action_updateapp)
+            buttonInstall.setOnClickListener(this::updateApp)
+        } else {
+            //Warn the user about remote updates
+            labelNotice.text = resources.getString(R.string.message_serverupdate_remotenotice, serverName)
+            buttonInstall.setText(R.string.action_installupdate)
+            buttonInstall.setOnClickListener(this::installUpdate)
+        }
     }
 
     private fun installUpdate(view: View? = null) {
@@ -223,6 +234,11 @@ class ServerUpdate : AppCompatCompositeActivity() {
 
         //Set the state to loading
         viewModel.isLoading.value = true
+    }
+    
+    private fun updateApp(view: View? = null) {
+        //Open the app's listing in the store
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")))
     }
 
     private fun handleUpdateRequestTimeout() {

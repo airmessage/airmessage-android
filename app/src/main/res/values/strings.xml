@@ -81,6 +81,7 @@
 	<string name="action_switchtoaccount">Switch to account</string>
 	<string name="action_checkconnection">Check connection</string>
 	<string name="action_installupdate">Install update</string>
+	<string name="action_updateapp">Update app</string>
 	<string name="action_createlink">Create link</string>
 	<string name="action_newfacetime">New FaceTime</string>
 	<string name="action_acceptcall">Accept call</string>
@@ -405,6 +406,10 @@
 		This will install the latest version of AirMessage Server on %s.
 		You will lose access to messaging functionality while the update installs.
 		In case the installation fails, please make sure you have desktop access to this computer before installing.
+	</string>
+	<string name="message_serverupdate_incompatible">
+		This server update requires a newer version of AirMessage for Android than is installed on this device.
+		Please update the app before installing this server update.
 	</string>
 	<string name="message_serverupdate_manual">This update must be installed manually on %s.</string>
 	<string name="message_serverupdate_failed">Failed to install update</string>
