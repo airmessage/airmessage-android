@@ -200,7 +200,7 @@ public class ConnectionManager {
 			//Updating shared preferences
 			long lastConnectionTime = SharedPreferencesManager.getLastConnectionTime(getContext());
 			SharedPreferencesManager.setLastConnectionTime(getContext(), System.currentTimeMillis());
-			SharedPreferencesManager.setServerUserName(getContext(), userName);
+			if(userName != null) SharedPreferencesManager.setServerUserName(getContext(), userName);
 			SharedPreferencesManager.setServerSupportsFaceTime(getContext(), serverSupportsFaceTime);
 			
 			//Updating the state
