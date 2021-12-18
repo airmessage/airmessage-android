@@ -515,6 +515,10 @@
 		アップデートのインストール中は、メッセージング機能にアクセスできなくなります。
 		インストールが失敗した場合は、インストールする前にコンピューターにデスクトップアクセスできることを確認してください。
 	</string>
+	<string name="message_serverupdate_incompatible">
+		このサーバーのアップデートには、このデバイスにインストールされているよりも新しいバージョンのアプリが必要です。
+		このサーバーアップデートをインストールする前に、アプリを更新してください。
+	</string>
 	<string name="message_serverupdate_failed">アップデートのインストールに失敗しました</string>
 	<string name="error_noconnection">サーバーから切断されています</string>
 	<string name="error_timedout">要求がタイムアウトしました</string>
@@ -530,4 +534,16 @@
 	<string name="message_facetimelink_error">FaceTimeリンクの取得に失敗しました</string>
 	<string name="error_external">外部エラーが発生しました</string>
 	<string name="screen_newfacetime">新しい FaceTime</string>
+	<string name="action_updateapp">アプリを更新</string>
+	<string name="action_answercall">応答</string>
+	<string name="action_declinecall">拒否</string>
+	<string name="action_endcall">通話終了</string>
+	<string name="message_facetime_connecting">接続中&#8230;</string>
+	<string name="message_facetime_unavailable">FaceTime できません</string>
+	<string name="message_facetime_error_create">通話の作成に失敗しました</string>
+	<string name="message_facetime_error_call">通話に失敗しました</string>
+	<string name="message_facetime_incoming">FaceTime 通話の着信</string>
+	<string name="error_badmembers">参加者は FaceTime では利用できません</string>
+	<string name="notificationchannel_incomingcall">着信</string>
+	<string name="notificationchannel_incomingcall_desc">FaceTime 通話の着信に関する通知</string>
 </resources>

@@ -524,6 +524,10 @@
 		Vous perdrez l\'accès à la fonctionnalité de messagerie pendant l\'installation de la mise à jour.
 		En cas d\'échec de l\'installation, assurez-vous d\'avoir l\'accès par ordinateur avant de procéder à l\'installation.
 	</string>
+	<string name="message_serverupdate_incompatible">
+		Cette mise à jour du serveur nécessite une version d\'AirMessage pour Android plus récente que celle installée sur cet appareil.
+		Veuillez mettre à jour l'application avant d'installer cette mise à jour du serveur.
+	</string>
 	<string name="message_serverupdate_failed">Échec de l\'installation de la mise à jour</string>
 	<string name="error_noconnection">Aucune connexion au serveur</string>
 	<string name="error_timedout">Demande expirée</string>
@@ -539,4 +543,16 @@
 	<string name="message_facetimelink_error">Impossible d\'obtenir le lien FaceTime</string>
 	<string name="error_external">Une erreur externe s\'est produite</string>
 	<string name="screen_newfacetime">Nouveau FaceTime</string>
+	<string name="action_updateapp">Mettre à jour l\'application</string>
+	<string name="message_facetime_connecting">Connexion&#8230;</string>
+	<string name="message_facetime_unavailable">Échec de FaceTime</string>
+	<string name="action_declinecall">Refuser</string>
+	<string name="action_answercall">Répondre</string>
+	<string name="action_endcall">Raccrocher</string>
+	<string name="message_facetime_error_create">Échec de la création de l\'appel</string>
+	<string name="message_facetime_error_call">Votre appel n\'a pas pu aboutir</string>
+	<string name="message_facetime_incoming">Appel entrant FaceTime</string>
+	<string name="error_badmembers">Les participants ne sont pas disponibles sur FaceTime</string>
+	<string name="notificationchannel_incomingcall">Appels entrants</string>
+	<string name="notificationchannel_incomingcall_desc">Notifications concernant les appels FaceTime entrants</string>
 </resources>

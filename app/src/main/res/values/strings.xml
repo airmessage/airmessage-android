@@ -84,7 +84,8 @@
 	<string name="action_updateapp">Update app</string>
 	<string name="action_createlink">Create link</string>
 	<string name="action_newfacetime">New FaceTime</string>
-	<string name="action_acceptcall">Accept call</string>
+	<string name="action_answercall">Answer</string>
+	<string name="action_declinecall">Decline</string>
 	<string name="action_endcall">End call</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
@@ -416,7 +417,7 @@
 
 	<string name="message_facetime_intro">Use AirMessage to make and receive FaceTime calls on this device</string>
 	
-	<string name="message_facetime_calling">FaceTime&#8230;</string>
+	<string name="message_facetime_calling" translatable="false">FaceTime&#8230;</string>
 	<string name="message_facetime_connecting">Connecting&#8230;</string>
 	<string name="message_facetime_unavailable">FaceTime unavailable</string>
 	<string name="message_facetime_error_create">Failed to create call</string>

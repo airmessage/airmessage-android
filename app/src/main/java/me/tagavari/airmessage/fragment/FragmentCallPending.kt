@@ -24,7 +24,7 @@ import me.tagavari.airmessage.extension.FragmentCommunicationFaceTime
 import me.tagavari.airmessage.helper.ContactHelper
 import me.tagavari.airmessage.helper.LanguageHelper
 
-class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>(R.layout.fragment_calloutgoing) {
+class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>(R.layout.fragment_callpending) {
 	//Views
 	private lateinit var viewCameraPreview: PreviewView
 	private lateinit var labelParticipants: TextView
@@ -131,6 +131,10 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 			else -> R.string.message_facetime_unavailable
 		})
 		
+		buttonEndCall.contentDescription = resources.getString(
+			if(state == State.incoming) R.string.action_declinecall
+			else R.string.action_endcall
+		)
 		buttonAcceptCall.visibility = if(state == State.incoming) View.VISIBLE else View.GONE
 	}
 	
