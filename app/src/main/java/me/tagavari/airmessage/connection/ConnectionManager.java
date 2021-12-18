@@ -874,6 +874,11 @@ public class ConnectionManager {
 		
 		@Override
 		public void onFaceTimeIncomingCall(@Nullable String caller) {
+			//If we're using Connect, ignore local messages and use FCM instead
+			if(communicationsManager.getDataProxyType() == ProxyType.connect &&
+					communicationsManager.isFeatureSupported(ConnectionFeature.payloadPushNotifications)) {
+				return;
+			}
 			ReduxEmitterNetwork.getFaceTimeIncomingCallerSubject()
 					.onNext(Optional.ofNullable(caller));
 		}
