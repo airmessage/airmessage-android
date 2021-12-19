@@ -526,7 +526,7 @@
 	</string>
 	<string name="message_serverupdate_incompatible">
 		Cette mise à jour du serveur nécessite une version d\'AirMessage pour Android plus récente que celle installée sur cet appareil.
-		Veuillez mettre à jour l'application avant d'installer cette mise à jour du serveur.
+		Veuillez mettre à jour l\'application avant d\'installer cette mise à jour du serveur.
 	</string>
 	<string name="message_serverupdate_failed">Échec de l\'installation de la mise à jour</string>
 	<string name="error_noconnection">Aucune connexion au serveur</string>
