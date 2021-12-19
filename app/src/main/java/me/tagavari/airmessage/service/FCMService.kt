@@ -238,19 +238,21 @@ class FCMService : FirebaseMessagingService() {
 	 */
 	private fun handleFaceTimePayload(remoteMessage: RemoteMessage, protocolVersion: List<Int>, airUnpacker: AirUnpacker) {
 		//Get the caller
-		val caller: String? = try {
-			//Protocol version 5
-			if(protocolVersion.size == 2 && protocolVersion[0] == 5) {
-				if(protocolVersion[1] == 5) { //Protocol 5.5
-					airUnpacker.unpackNullableString()
+		val caller: String? = run {
+			try {
+				//Protocol version 5
+				if(protocolVersion.size == 2 && protocolVersion[0] == 5) {
+					if(protocolVersion[1] == 5) { //Protocol 5.5
+						return@run airUnpacker.unpackNullableString()
+					}
 				}
+				
+				Log.w(TAG, "Unreadable FaceTime payload received for protocol version ${protocolVersion.joinToString(".")}")
+				return@run null
+			} catch(exception: Exception) {
+				exception.printStackTrace()
+				return
 			}
-			
-			Log.w(TAG, "Unreadable FaceTime payload received for protocol version ${protocolVersion.joinToString(".")}")
-			null
-		} catch(exception: Exception) {
-			exception.printStackTrace()
-			return
 		}
 		
 		//Emit an update
