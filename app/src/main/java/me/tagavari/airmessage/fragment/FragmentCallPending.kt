@@ -23,6 +23,8 @@ import me.tagavari.airmessage.composite.AppCompatCompositeActivity
 import me.tagavari.airmessage.extension.FragmentCommunicationFaceTime
 import me.tagavari.airmessage.helper.ContactHelper
 import me.tagavari.airmessage.helper.LanguageHelper
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork
+import me.tagavari.airmessage.redux.ReduxEventConnection
 
 class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>(R.layout.fragment_callpending) {
 	//Views
@@ -113,8 +115,14 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 			} catch(exception: Exception) {
 				exception.printStackTrace()
 			}
-			
 		}, ContextCompat.getMainExecutor(requireContext()))
+		
+		//Subscribe to connection updates
+		compositeDisposable.add(
+			ReduxEmitterNetwork.connectionStateSubject.subscribe { update ->
+				buttonAcceptCall.isEnabled = update is ReduxEventConnection.Connected
+			}
+		)
 	}
 	
 	/**
@@ -154,17 +162,17 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 						}
 					}
 				)
-			}
-			
-			//Copy to clipboard
-			setNeutralButton(R.string.action_copy) { dialog, _ ->
-				val clipboard = MainApplication.getInstance().getSystemService(
-					AppCompatCompositeActivity.CLIPBOARD_SERVICE
-				) as ClipboardManager
-				clipboard.setPrimaryClip(ClipData.newPlainText("Error details", errorDetails))
 				
-				Toast.makeText(MainApplication.getInstance(), R.string.message_textcopied, Toast.LENGTH_SHORT).show()
-				dialog.dismiss()
+				//Add copy to clipboard button
+				setNeutralButton(R.string.action_copy) { dialog, _ ->
+					val clipboard = MainApplication.getInstance().getSystemService(
+						AppCompatCompositeActivity.CLIPBOARD_SERVICE
+					) as ClipboardManager
+					clipboard.setPrimaryClip(ClipData.newPlainText("Error details", errorDetails))
+					
+					Toast.makeText(MainApplication.getInstance(), R.string.message_textcopied, Toast.LENGTH_SHORT).show()
+					dialog.dismiss()
+				}
 			}
 			setPositiveButton(R.string.action_dismiss) { dialog, _ ->
 				dialog.dismiss()

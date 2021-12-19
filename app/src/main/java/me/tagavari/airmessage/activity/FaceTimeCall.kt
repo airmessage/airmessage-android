@@ -4,10 +4,12 @@ import android.app.assist.AssistContent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.viewModels
 import androidx.annotation.IntDef
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentOnAttachListener
 import androidx.fragment.app.add
 import androidx.fragment.app.commit
@@ -15,6 +17,7 @@ import androidx.fragment.app.replace
 import androidx.lifecycle.ViewModel
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.connection.exception.AMRequestException
 import me.tagavari.airmessage.extension.FragmentCommunicationFaceTime
 import me.tagavari.airmessage.fragment.FragmentCallActive
 import me.tagavari.airmessage.fragment.FragmentCallPending
@@ -22,8 +25,6 @@ import me.tagavari.airmessage.fragment.FragmentCommunication
 import me.tagavari.airmessage.helper.ConnectionServiceLink
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventFaceTime
-import android.view.WindowManager
-import androidx.core.view.WindowCompat
 
 class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), FragmentCommunicationFaceTime {
 	//State
@@ -64,6 +65,7 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 			@Type val type = intent.extras!!.getInt(PARAM_TYPE)
 			val participants = intent.extras!!.getStringArrayList(PARAM_PARTICIPANTS)
 			val participantsRaw = intent.extras!!.getString(PARAM_PARTICIPANTS_RAW)
+			val initiateCallOutgoing = intent.extras!!.getBoolean(PARAM_INITIATE_OUTGOING)
 			
 			//Set the initial state
 			viewModel.state = if(type == Type.outgoing) State.outgoing else State.incoming
@@ -80,6 +82,18 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 						FragmentCallPending.PARAM_PARTICIPANTS_RAW to participantsRaw
 					)
 				)
+			}
+			
+			//Initiate the outgoing call if asked
+			if(type == Type.outgoing && initiateCallOutgoing) {
+				csLink.onServiceConnection { connectionManager ->
+					compositeDisposableCalls.add(
+						connectionManager.initiateFaceTimeCall(participants!!)
+							.subscribe({}, { error ->
+								updateStateError((error as AMRequestException).errorDetails)
+							})
+					)
+				}
 			}
 		}
 		
@@ -160,7 +174,6 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 	}
 	
 	private fun handleFaceTimeUpdate(update: ReduxEventFaceTime) {
-		print("Received update $update under state ${viewModel.state}")
 		if(viewModel.state == State.outgoing) {
 			when(update) {
 				is ReduxEventFaceTime.OutgoingAccepted -> updateStateCalling(update.faceTimeLink)
@@ -228,8 +241,9 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 	}
 	
 	companion object {
-		const val PARAM_TYPE = "type"
-		const val PARAM_PARTICIPANTS = "participants"
-		const val PARAM_PARTICIPANTS_RAW = "participantsRaw"
+		const val PARAM_TYPE = "type" //The activity call type, either incoming or outgoing
+		const val PARAM_PARTICIPANTS = "participants" //An array of participant addresses
+		const val PARAM_PARTICIPANTS_RAW = "participantsRaw" //A raw string of participants, if their addresses aren't available
+		const val PARAM_INITIATE_OUTGOING = "initiateOutgoing" //If the type is set to outgoing, initiate that call with the server
 	}
 }

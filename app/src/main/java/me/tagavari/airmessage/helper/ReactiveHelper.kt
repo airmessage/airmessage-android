@@ -44,6 +44,8 @@ fun Disposable.bindUntilDestroy(lifecycleOwner: LifecycleOwner) {
 	})
 }
 
+typealias ConnectionManagerReceiver = (ConnectionManager) -> Unit
+
 /**
  * A class that manages the link between the connection manager and an activity
  */
@@ -53,18 +55,35 @@ class ConnectionServiceLink(activity: ComponentActivity) {
 	 */
 	var connectionManager: ConnectionManager? = null
 		private set
+	private val connectionManagerReceiverList = mutableListOf<ConnectionManagerReceiver>()
 	
 	private val serviceConnection: ServiceConnection = object : ServiceConnection {
 		override fun onServiceConnected(name: ComponentName, service: IBinder) {
+			//Set the service
 			val binder = service as ConnectionBinder
 			binder.connectionManager
 			connectionManager = binder.connectionManager
 			binder.connectionManager.connect()
+			
+			//Notify pending receivers
+			for(receiver in connectionManagerReceiverList) {
+				receiver(binder.connectionManager)
+			}
+			connectionManagerReceiverList.clear()
 		}
 		
 		override fun onServiceDisconnected(name: ComponentName) {
 			connectionManager = null
 		}
+	}
+	
+	/**
+	 * Schedules a receiver to be run when the service connection is made,
+	 * or runs it immediately if the service is already connected
+	 */
+	fun onServiceConnection(receiver: ConnectionManagerReceiver) {
+		connectionManager?.also { receiver(it) }
+			?: connectionManagerReceiverList.add(receiver)
 	}
 	
 	init {
