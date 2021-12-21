@@ -509,15 +509,18 @@
     <string name="action_installupdate">アップデートをインストール</string>
 	<string name="screen_serverupdate">サーバーアップデート</string>
 	<string name="message_serverupdate_version">AirMessage Server %s が入手できます（使用中のバージョンは %s です）</string>
-	<string name="message_serverupdate_manual">この更新プログラムは、%s に手動でインストールする必要があります。</string>
 	<string name="message_serverupdate_remotenotice">
 		AirMessage Server の最新バージョンは %s にインストールされます。
 		アップデートのインストール中は、メッセージング機能にアクセスできなくなります。
 		インストールが失敗した場合は、インストールする前にコンピューターにデスクトップアクセスできることを確認してください。
 	</string>
 	<string name="message_serverupdate_incompatible">
-		このサーバーのアップデートには、このデバイスにインストールされているよりも新しいバージョンのアプリが必要です。
+		このサーバーアップデートには、このデバイスにインストールされているよりも新しいバージョンのアプリが必要です。
 		このサーバーアップデートをインストールする前に、アプリを更新してください。
+	</string>
+	<string name="message_serverupdate_manual">
+		このサーバーアップデートはリモートでインストールできません。
+		詳しくは %s の AirMessage Server をご確認ください。
 	</string>
 	<string name="message_serverupdate_failed">アップデートのインストールに失敗しました</string>
 	<string name="error_noconnection">サーバーから切断されています</string>

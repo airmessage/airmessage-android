@@ -412,7 +412,10 @@
 		This server update requires a newer version of AirMessage for Android than is installed on this device.
 		Please update the app before installing this server update.
 	</string>
-	<string name="message_serverupdate_manual">This update must be installed manually on %s.</string>
+	<string name="message_serverupdate_manual">
+		This server update cannot be installed remotely.
+		Please check AirMessage Server on %s for details.
+	</string>
 	<string name="message_serverupdate_failed">Failed to install update</string>
 
 	<string name="message_facetime_intro">Use AirMessage to make and receive FaceTime calls on this device</string>

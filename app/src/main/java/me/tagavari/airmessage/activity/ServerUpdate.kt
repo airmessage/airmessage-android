@@ -206,16 +206,24 @@ class ServerUpdate : AppCompatCompositeActivity() {
             Html.fromHtml(updateNotesHTML)
         }
         labelReleaseNotes.movementMethod = LinkMovementMethod.getInstance()
-
+        
+        //Check if this update is not remotely installable
+        if(!updateData.remoteInstallable) {
+            //Tell the user to check their server
+            labelNotice.text = resources.getString(R.string.message_serverupdate_manual)
+            buttonInstall.visibility = View.GONE
+        }
         //Check if the server uses a newer protocol version than we support
-        if(VersionHelper.compareVersions(updateData.protocolRequirement, VersionConstants.latestCommVer) > 0) {
+        else if(VersionHelper.compareVersions(updateData.protocolRequirement, VersionConstants.latestCommVer) > 0) {
             //Ask the user to update the app
             labelNotice.text = resources.getString(R.string.message_serverupdate_incompatible)
+            buttonInstall.visibility = View.VISIBLE
             buttonInstall.setText(R.string.action_updateapp)
             buttonInstall.setOnClickListener(this::updateApp)
         } else {
             //Warn the user about remote updates
             labelNotice.text = resources.getString(R.string.message_serverupdate_remotenotice, serverName)
+            buttonInstall.visibility = View.VISIBLE
             buttonInstall.setText(R.string.action_installupdate)
             buttonInstall.setOnClickListener(this::installUpdate)
         }

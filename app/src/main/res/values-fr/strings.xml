@@ -518,7 +518,6 @@
 	<string name="action_installupdate">Installer la mise à jour</string>
 	<string name="screen_serverupdate">Mise à jour du serveur</string>
 	<string name="message_serverupdate_version">AirMessage Server %s est disponible - vous avez %s</string>
-	<string name="message_serverupdate_manual">Cette mise à jour doit être installée manuellement sur %s.</string>
 	<string name="message_serverupdate_remotenotice">
 		La dernière version d\'AirMessage Server sera installée sur %s.
 		Vous perdrez l\'accès à la fonctionnalité de messagerie pendant l\'installation de la mise à jour.
@@ -527,6 +526,10 @@
 	<string name="message_serverupdate_incompatible">
 		Cette mise à jour du serveur nécessite une version d\'AirMessage pour Android plus récente que celle installée sur cet appareil.
 		Veuillez mettre à jour l\'application avant d\'installer cette mise à jour du serveur.
+	</string>
+	<string name="message_serverupdate_manual">
+		Cette mise à jour du serveur ne peut pas être installée à distance.
+		Veuillez vérifier AirMessage Server sur %s pour plus de détails.
 	</string>
 	<string name="message_serverupdate_failed">Échec de l\'installation de la mise à jour</string>
 	<string name="error_noconnection">Aucune connexion au serveur</string>
