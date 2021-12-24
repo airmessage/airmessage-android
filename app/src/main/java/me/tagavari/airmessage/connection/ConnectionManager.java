@@ -879,6 +879,7 @@ public class ConnectionManager {
 					communicationsManager.isFeatureSupported(ConnectionFeature.payloadPushNotifications)) {
 				return;
 			}
+			
 			ReduxEmitterNetwork.getFaceTimeIncomingCallerSubject()
 					.onNext(Optional.ofNullable(caller));
 		}
@@ -1324,7 +1325,7 @@ public class ConnectionManager {
 	/**
 	 * Initiates a new outgoing FaceTime call with the specified addresses
 	 * @param addresses The list of addresses to initiate the call with
-	 * @return A single that resolves with whether the call was successfully initiated
+	 * @return A completable that resolves when the call is initiated
 	 */
 	public Completable initiateFaceTimeCall(List<String> addresses) {
 		//If there is already an active request, return that
@@ -1365,10 +1366,7 @@ public class ConnectionManager {
 	}
 	
 	/**
-	 * Tells the server to leave the FaceTime call.
-	 * This should be called after the client has connected to the call with the
-	 * FaceTime link to avoid two of the same user connected.
-	 * @return Whether the request was successfully sent
+	 * Tells the server to leave the current FaceTime call
 	 */
 	public boolean dropFaceTimeCallServer() {
 		//Failing immediately if there is no network connection
