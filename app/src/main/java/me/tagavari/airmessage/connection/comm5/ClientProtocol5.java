@@ -784,19 +784,17 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 							packer.packInt(requestIndex); //Request index
 							packer.packBoolean(data.isLast()); //Is last message
 							
-							if(conversation instanceof ConversationTarget.AppleLinked) {
-								packer.packString(((ConversationTarget.AppleLinked) conversation).getGuid()); //Chat GUID
-							} else if(conversation instanceof ConversationTarget.AppleUnlinked) {
-								ConversationTarget.AppleUnlinked unlinked = ((ConversationTarget.AppleUnlinked) conversation);
-								packer.packArrayHeader(unlinked.getMembers().size()); //Members
-								for(String item : unlinked.getMembers()) packer.packString(item);
-							}
-							
 							packer.packPayload(data.getData(), data.getLength()); //File bytes
 							if(requestIndex == 0) {
 								packer.packString(file.getName()); //File name
-								if(conversation instanceof ConversationTarget.AppleUnlinked) {
-									packer.packString(((ConversationTarget.AppleUnlinked) conversation).getService()); //Service
+								
+								if(conversation instanceof ConversationTarget.AppleLinked) {
+									packer.packString(((ConversationTarget.AppleLinked) conversation).getGuid()); //Chat GUID
+								} else if(conversation instanceof ConversationTarget.AppleUnlinked) {
+									ConversationTarget.AppleUnlinked unlinked = ((ConversationTarget.AppleUnlinked) conversation);
+									packer.packArrayHeader(unlinked.getMembers().size()); //Members
+									for(String item : unlinked.getMembers()) packer.packString(item);
+									packer.packString(unlinked.getService()); //Service
 								}
 							}
 							
