@@ -1030,6 +1030,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 	private static int mapNRCSendCode(int code) {
 		switch(code) {
 			case 1: //Some unknown AppleScript error
+			case 6: //Internal server error
 				return MessageSendErrorCode.serverExternal;
 			case 2: //Invalid data received
 				return MessageSendErrorCode.serverBadRequest;
