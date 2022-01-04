@@ -1076,6 +1076,8 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 				return ChatCreateErrorCode.badRequest;
 			case 3: //System rejected request
 				return ChatCreateErrorCode.unauthorized;
+			case 4: //Operation not supported by server
+				return ChatCreateErrorCode.notSupported;
 			default:
 				return ChatCreateErrorCode.unknown;
 		}
