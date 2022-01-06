@@ -514,4 +514,6 @@
 	<string name="action_updatepassword">Mise à jour du mot de passe du serveur</string>
 	<string name="message_decrypterrornotify">Un message illisible a été reçu</string>
 	<string name="message_decrypterrornotify_desc">Un message a été reçu qui n\'a pas pu être décrypté</string>
+	<string name="message_serverupdaterequired">Votre serveur doit être mis à jour</string>
+	<string name="message_serverupdaterequired_desc">Vous exécutez une version non prise en charge d\'AirMessage Server.\n\nLes versions non prises en charge d\'AirMessage Server peuvent présenter des problèmes de sécurité ou de stabilité et commenceront à refuser les connexions à partir de la fin janvier.\n\nVeuillez installer la dernière version d\'AirMessage Server depuis airmessage.org sur votre Mac.</string>
 </resources>

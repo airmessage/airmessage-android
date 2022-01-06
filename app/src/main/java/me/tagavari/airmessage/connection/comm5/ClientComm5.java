@@ -22,7 +22,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.security.GeneralSecurityException;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	private static final String TAG = ClientComm5.class.getSimpleName();
@@ -284,8 +287,12 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	}
 	
 	@Override
-	public String getCommunicationsVersion() {
-		return communicationsVersion + "." + (protocolManagerVer != -1 ? protocolManagerVer : "X");
+	public List<Integer> getCommunicationsVersion() {
+		if(protocolManagerVer == -1) {
+			return Collections.singletonList(communicationsVersion);
+		} else {
+			return Arrays.asList(communicationsVersion, protocolManagerVer);
+		}
 	}
 	
 	String getPassword() {

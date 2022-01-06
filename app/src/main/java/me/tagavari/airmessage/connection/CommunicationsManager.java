@@ -16,6 +16,7 @@ import me.tagavari.airmessage.util.ConversationTarget;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.List;
 
 public abstract class CommunicationsManager<Packet> {
 	//Creating the handler
@@ -221,7 +222,7 @@ public abstract class CommunicationsManager<Packet> {
 	/**
 	 * Gets the active communications version
 	 */
-	public abstract String getCommunicationsVersion();
+	public abstract List<Integer> getCommunicationsVersion();
 	
 	/**
 	 * Gets the handler for this communications manager

@@ -22,7 +22,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 	private static final int communicationsVersion = 4;
@@ -255,8 +258,12 @@ public class ClientComm4 extends CommunicationsManager<HeaderPacket> {
 	}
 	
 	@Override
-	public String getCommunicationsVersion() {
-		return communicationsVersion + "." + (protocolManagerVer != -1 ? protocolManagerVer : "X");
+	public List<Integer> getCommunicationsVersion() {
+		if(protocolManagerVer == -1) {
+			return Collections.singletonList(communicationsVersion);
+		} else {
+			return Arrays.asList(communicationsVersion, protocolManagerVer);
+		}
 	}
 	
 	String getPassword() {
