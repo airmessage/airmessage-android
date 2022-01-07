@@ -505,4 +505,6 @@
 	<string name="action_updatepassword">サーバーのパスワードの更新</string>
 	<string name="message_decrypterrornotify">読めないメッセージを受信しました</string>
 	<string name="message_decrypterrornotify_desc">復号化できなかったメッセージを受信しました</string>
+	<string name="message_serverupdaterequired">サーバーを更新する必要があります</string>
+	<string name="message_serverupdaterequired_desc">サポートされていないバージョンの AirMessage Server が動作しています。\n\nAirMessage Server の未サポートバージョンは、セキュリティや安定性に問題がある可能性があり、1月下旬に接続拒否を開始する予定です。\n\nお使いの Mac に airmessage.org から最新版の AirMessage Server をインストールしてください。</string>
 </resources>

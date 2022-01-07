@@ -1297,7 +1297,7 @@ public class ConnectionManager {
 	 * Gets the human-readable version of the active communications protocol, or NULL if no protocol is active
 	 */
 	@Nullable
-	public String getCommunicationsVersion() {
+	public List<Integer> getCommunicationsVersion() {
 		if(communicationsManager != null) return communicationsManager.getCommunicationsVersion();
 		else return null;
 	}

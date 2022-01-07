@@ -114,7 +114,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	//Creating the view model and info bar values
 	private ActivityViewModel viewModel;
-	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarServerUpdate, infoBarSecurityUpdate;
+	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarServerUpdate, infoBarServerUpdateRequired, infoBarSecurityUpdate;
 	
 	//Creating the menu values
 	private MenuItem menuItemMarkAllRead = null;
@@ -306,6 +306,8 @@ public class Conversations extends AppCompatCompositeActivity {
 		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
 		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, permissionRequestContacts));
 		infoBarServerUpdate = pluginMessageBar.create(R.drawable.update, getResources().getString(R.string.message_serverupdate));
+		infoBarServerUpdateRequired = pluginMessageBar.create(R.drawable.sync_problem, getResources().getString(R.string.message_serverupdaterequired));
+		infoBarServerUpdateRequired.setButton(R.string.action_details, view -> showServerUpdateRequiredDialog());
 		infoBarSecurityUpdate = pluginMessageBar.create(R.drawable.lock_alert, getResources().getString(R.string.message_securityupdate));
 		infoBarSecurityUpdate.setButton(R.string.action_resolve, view -> GoogleApiAvailability.getInstance().showErrorDialogFragment(this, viewModel.playServicesErrorCode.getValue(), activityResultPlayServices));
 		
@@ -548,7 +550,8 @@ public class Conversations extends AppCompatCompositeActivity {
 			String proxyType;
 			
 			if(pluginCS.isServiceBound()) {
-				currentCommunicationsVersion = pluginCS.getConnectionManager().getCommunicationsVersion();
+				List<Integer> communicationsVersion = pluginCS.getConnectionManager().getCommunicationsVersion();
+				currentCommunicationsVersion = communicationsVersion != null ? communicationsVersion.stream().map(String::valueOf).collect(Collectors.joining(".")) : "(none)";
 				serverSystemVersion = StringHelper.defaultEmptyString(pluginCS.getConnectionManager().getServerSystemVersion(), "(none)");
 				serverSoftwareVersion = StringHelper.defaultEmptyString(pluginCS.getConnectionManager().getServerSoftwareVersion(), "(none)");
 			} else {
@@ -710,9 +713,20 @@ public class Conversations extends AppCompatCompositeActivity {
 	 * Updates the activity based on a new connection event
 	 */
 	private void updateStateConnection(ReduxEventConnection event) {
-		//Prompting the user to sync their messages
 		if(event.getState() == ConnectionState.connected) {
+			//Prompting the user to sync their messages
 			promptSync();
+			
+			//Showing the server update required bar if the user's server is too old
+			if(pluginCS.isServiceBound()) {
+				List<Integer> version = pluginCS.getConnectionManager().getCommunicationsVersion();
+				if(version != null && VersionHelper.INSTANCE.compareVersions(version, Arrays.asList(5, 4)) < 0) {
+					infoBarServerUpdateRequired.show();
+				}
+			}
+		} else {
+			//Dismissing the server update required bar
+			infoBarServerUpdateRequired.hide();
 		}
 		
 		//Updating the connection warning banner
@@ -799,6 +813,18 @@ public class Conversations extends AppCompatCompositeActivity {
 	 */
 	private void hideServerWarning() {
 		infoBarConnection.hide();
+	}
+	
+	/**
+	 * Shows a dialog that warns the user to update their server
+	 */
+	private void showServerUpdateRequiredDialog() {
+		new MaterialAlertDialogBuilder(this)
+				.setTitle(R.string.message_serverupdaterequired)
+				.setMessage(R.string.message_serverupdaterequired_desc)
+				.setPositiveButton(android.R.string.ok, (dialog, which) -> dialog.dismiss())
+				.create()
+				.show();
 	}
 	
 	/**

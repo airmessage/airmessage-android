@@ -205,7 +205,10 @@
 	<string name="message_serverupdate">A server update is available</string>
 	<string name="message_securityupdate">AirMessage can\'t check for security updates</string>
 	<string name="message_searchnoresults">No results</string>
-
+	
+	<string name="message_serverupdaterequired">Your server needs to be updated</string>
+	<string name="message_serverupdaterequired_desc">You\'re running an unsupported version of AirMessage Server.\n\nUnsupported versions of AirMessage Server may contain security or stability issues, and will start refusing connections late January.\n\nPlease install the latest version of AirMessage Server from airmessage.org on your Mac.</string>
+	
 	<string name="message_eventtype_chatrename_change">%1$s named the conversation \"%2$s\"</string>
 	<string name="message_eventtype_chatrename_change_you">You named the conversation \"%s\"</string>
 	<string name="message_eventtype_chatrename_remove">%s removed the conversation name</string>
