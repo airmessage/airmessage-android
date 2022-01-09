@@ -13,7 +13,8 @@
 		android:id="@+id/appbar"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:background="@color/colorToolbar">
+		android:fitsSystemWindows="true"
+		app:liftOnScroll="true">
 		<!-- Toolbar -->
 		<FrameLayout
 			android:layout_width="match_parent"
@@ -21,9 +22,7 @@
 			<com.google.android.material.appbar.MaterialToolbar
 				android:id="@+id/toolbar"
 				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				app:titleTextAppearance="@style/LightToolbarText"
-				android:theme="@style/SolidActionBarClear" />
+				android:layout_height="match_parent" />
 			<LinearLayout
 				android:id="@+id/layout_search"
 				android:layout_width="match_parent"
@@ -35,11 +34,11 @@
 					android:layout_width="24dp"
 					android:layout_height="24dp"
 					android:src="@drawable/arrow_back"
-					android:tint="?android:attr/colorControlNormal"
 					android:layout_marginStart="16dp"
 					android:layout_marginEnd="32dp"
 					android:background="?android:attr/selectableItemBackgroundBorderless"
-					android:onClick="onCloseSearchClicked" />
+					android:onClick="onCloseSearchClicked"
+					app:tint="?android:attr/colorControlNormal" />
 				
 				<EditText
 					android:id="@+id/search_edittext"
@@ -60,11 +59,11 @@
 					android:layout_width="24dp"
 					android:layout_height="24dp"
 					android:src="@drawable/close_control"
-					android:tint="?android:attr/colorControlNormal"
 					android:layout_marginStart="12dp"
 					android:layout_marginEnd="12dp"
 					android:background="?android:attr/selectableItemBackgroundBorderless"
-					android:visibility="gone" />
+					android:visibility="gone"
+					app:tint="?android:attr/colorControlNormal" />
 			</LinearLayout>
 		</FrameLayout>
 		
@@ -218,7 +217,8 @@
 			android:clipChildren="false"
 			android:clipToPadding="false"
 			android:visibility="gone"
-			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+			app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 		<!-- Search view -->
 		<RelativeLayout
 			android:id="@+id/viewgroup_search"
