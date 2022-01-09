@@ -1,6 +1,9 @@
 package me.tagavari.airmessage.connection.comm5;
 
 import android.os.Build;
+
+import androidx.annotation.NonNull;
+
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.MainApplication;
@@ -236,7 +239,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			String softwareVersion = unpacker.unpackString();
 			
 			//Finishing the connection establishment
-			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion));
+			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion, null, false));
 		} else {
 			//Otherwise terminating the connection
 			communicationsManager.getHandler().post(() -> communicationsManager.disconnect(mapNRCAuthenticationCode(resultCode)));
@@ -688,6 +691,31 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
+	}
+
+	@Override
+	boolean installSoftwareUpdate(int updateID) {
+		throw new UnsupportedOperationException("Not supported");
+	}
+
+	@Override
+	boolean requestFaceTimeLink() {
+		throw new UnsupportedOperationException("Not supported");
+	}
+	
+	@Override
+	boolean initiateFaceTimeCall(List<String> addresses) {
+		throw new UnsupportedOperationException("Not supported");
+	}
+	
+	@Override
+	boolean handleIncomingFaceTimeCall(@NonNull String caller, boolean accept) {
+		throw new UnsupportedOperationException("Not supported");
+	}
+	
+	@Override
+	boolean dropFaceTimeCallServer() {
+		throw new UnsupportedOperationException("Not supported");
 	}
 	
 	@Override

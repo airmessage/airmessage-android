@@ -9,7 +9,7 @@ import me.tagavari.airmessage.enums.MessageSendErrorCode
  * @param error The error code
  * @param detail The error detail string, if available
  */
-abstract class CompoundErrorDetails(val error: Int, val detail: String?) {
+sealed class CompoundErrorDetails(val error: Int, val detail: String?) {
 	fun toException(): AMRequestException {
 		return AMRequestException(error, detail)
 	}

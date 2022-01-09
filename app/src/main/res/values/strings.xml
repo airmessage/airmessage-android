@@ -43,7 +43,8 @@
 	<string name="action_unarchive">Unarchive</string>
 	<string name="action_mute">Mute</string>
 	<string name="action_unmute">Unmute</string>
-	<string name="action_details">View details</string>
+	<string name="action_details">Details</string>
+	<string name="action_viewdetails">View details</string>
 	<string name="action_disconnect">Disconnect</string>
 	<string name="action_reconnect">Reconnect</string>
 	<string name="action_quit">Quit</string>
@@ -79,6 +80,13 @@
 	<string name="action_signout">Sign out</string>
 	<string name="action_switchtoaccount">Switch to account</string>
 	<string name="action_checkconnection">Check connection</string>
+	<string name="action_installupdate">Install update</string>
+	<string name="action_updateapp">Update app</string>
+	<string name="action_createlink">Create link</string>
+	<string name="action_newfacetime">New FaceTime</string>
+	<string name="action_answercall">Answer</string>
+	<string name="action_declinecall">Decline</string>
+	<string name="action_endcall">End call</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -90,10 +98,12 @@
 	<string name="screen_archived">Archived</string>
 	<string name="screen_blockedcontacts">Blocked contacts</string>
 	<string name="screen_newconversation">New conversation</string>
+	<string name="screen_newfacetime">New FaceTime</string>
 	<string name="screen_conversationdetails">Conversation details</string>
 	<string name="screen_newmessage">New message</string>
 	<string name="screen_manualconfiguration">Manual configuration</string>
 	<string name="screen_licenses">Open source licenses</string>
+	<string name="screen_serverupdate">Server update</string>
 
 	<string name="title_conversation_name">Group name</string>
 	<string name="title_conversation_members">People in this conversation</string>
@@ -392,6 +402,33 @@
 	<string name="message_passwordrequired">Server password required</string>
 	<string name="message_passwordupdated">Server password updated</string>
 
+	<string name="message_serverupdate_version">AirMessage Server %s is now available - you have %s</string>
+	<string name="message_serverupdate_remotenotice">
+		This will install the latest version of AirMessage Server on %s.
+		You will lose access to messaging functionality while the update installs.
+		In case the installation fails, please make sure you have desktop access to this computer before installing.
+	</string>
+	<string name="message_serverupdate_incompatible">
+		This server update requires a newer version of AirMessage for Android than is installed on this device.
+		Please update the app before installing this server update.
+	</string>
+	<string name="message_serverupdate_manual">
+		This server update cannot be installed remotely.
+		Please check AirMessage Server on %s for details.
+	</string>
+	<string name="message_serverupdate_failed">Failed to install update</string>
+
+	<string name="message_facetime_intro">Use AirMessage to make and receive FaceTime calls on this device</string>
+	
+	<string name="message_facetime_calling" translatable="false">FaceTime&#8230;</string>
+	<string name="message_facetime_connecting">Connecting&#8230;</string>
+	<string name="message_facetime_unavailable">FaceTime unavailable</string>
+	<string name="message_facetime_error_create">Failed to create call</string>
+	<string name="message_facetime_error_call">Your call couldn\'t be completed</string>
+	<string name="message_facetime_incoming">Incoming FaceTime call</string>
+	
+	<string name="message_facetimelink_error">Failed to get FaceTime link</string>
+
 	<string name="progress_loadingmessages">Loading messages&#8230;</string>
 	<string name="progress_loading">Loading&#8230;</string>
 	<string name="progress_sync">Getting your messages&#8230;</string>
@@ -399,6 +436,17 @@
 	<string name="progress_importtextmessages">Importing text messages&#8230;</string>
 	<string name="progress_cleantextmessages">Cleaning up local text messages&#8230;</string>
 	<string name="progress_connectionverification">Checking your connection&#8230;</string>
+	<string name="progress_installingupdate">Installing update&#8230;</string>
+
+	<string name="error_unknown">An unknown error occurred</string>
+	<string name="error_noconnection">No connection to server</string>
+	<string name="error_timedout">Request timed out</string>
+	<string name="error_internal">An internal error occurred</string>
+	<string name="error_external">An external error occurred</string>
+	<string name="error_badmembers">Participants unavailable on FaceTime</string>
+	<string name="error_updatemismatch">This update is no longer applicable</string>
+	<string name="error_updatedownload">An error occurred while downloading the update</string>
+	<string name="error_updatebadpackage">An error occurred while processing the update</string>
 
 	<string name="time_now">Just now</string>
 	<string name="time_minutes">%d min</string>
@@ -423,10 +471,11 @@
 
 	<string name="imperative_enablelocationservices">Tap to enable location services</string>
 
-	<string name="title_imessage">iMessage</string>
+	<string name="title_imessage" translatable="false">iMessage</string>
 	<string name="title_textmessageforwarding">Text message forwarding</string>
 	<string name="title_textmessage">Text message</string>
 	<string name="title_rcs">Chat message</string>
+	<string name="title_facetime" translatable="false">FaceTime</string>
 
 	<string name="part_you">You</string>
 	<string name="part_to">To</string>
@@ -508,6 +557,8 @@
 	<string name="notificationchannel_status_desc">Concerns notifications about status messages, such as server connectivity</string>
 	<string name="notificationchannel_statusimportant">Important status alerts</string>
 	<string name="notificationchannel_statusimportant_desc">Concerns notifications about important status updates, such as lost connections and downtime</string>
+	<string name="notificationchannel_incomingcall">Incoming calls</string>
+	<string name="notificationchannel_incomingcall_desc">Concerns notifications about incoming FaceTime calls</string>
 	<string name="notificationchannelimportance_0">Off</string>
 	<string name="notificationchannelimportance_1">Low importance</string>
 	<string name="notificationchannelimportance_2">Medium importance</string>

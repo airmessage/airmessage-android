@@ -3,6 +3,8 @@ package me.tagavari.airmessage.connection;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.util.Consumer;
 import io.reactivex.rxjava3.core.Observable;
@@ -16,6 +18,7 @@ import me.tagavari.airmessage.util.ConversationTarget;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.List;
 
 public abstract class CommunicationsManager<Packet> {
 	//Creating the handler
@@ -93,9 +96,9 @@ public abstract class CommunicationsManager<Packet> {
 	 * @param systemVersion The system version of the server
 	 * @param softwareVersion The AirMessage version of the server
 	 */
-	public void onHandshake(String installationID, String deviceName, String systemVersion, String softwareVersion) {
+	public void onHandshake(String installationID, String deviceName, String systemVersion, String softwareVersion, String userName, boolean supportsFaceTime) {
 		//Forwarding the event to the listener
-		if(listener != null) listener.onOpen(installationID, deviceName, systemVersion, softwareVersion);
+		if(listener != null) listener.onOpen(installationID, deviceName, systemVersion, softwareVersion, userName, supportsFaceTime);
 	}
 	
 	/**
@@ -184,6 +187,42 @@ public abstract class CommunicationsManager<Packet> {
 	 * @return Whether the request was successfully sent
 	 */
 	public abstract boolean sendPushToken(String token);
+
+	/**
+	 * Installs the server update with the specified ID
+	 * @param updateID The ID of the update to install
+	 * @return Whether the request was successfully sent
+	 */
+	public abstract boolean installSoftwareUpdate(int updateID);
+
+	/**
+	 * Requests a new FaceTime link
+	 * @return Whether the request was successfully sent
+	 */
+	public abstract boolean requestFaceTimeLink();
+	
+	/**
+	 * Initiates a new outgoing FaceTime call with the specified addresses
+	 * @param addresses The list of addresses to initiate the call with
+	 * @return Whether the request was successfully sent
+	 */
+	public abstract boolean initiateFaceTimeCall(List<String> addresses);
+	
+	/**
+	 * Accepts or rejects a pending incoming FaceTime call
+	 * @param caller The name of the caller to accept or reject the call of
+	 * @param accept True to accept the call, or false to reject
+	 * @return Whether the request was successfully sent
+	 */
+	public abstract boolean handleIncomingFaceTimeCall(@NonNull String caller, boolean accept);
+	
+	/**
+	 * Tells the server to leave the FaceTime call.
+	 * This should be called after the client has connected to the call with the
+	 * FaceTime link to avoid two of the same user connected.
+	 * @return Whether the request was successfully sent
+	 */
+	public abstract boolean dropFaceTimeCallServer();
 	
 	/**
 	 * Checks if the specified communications version is applicable

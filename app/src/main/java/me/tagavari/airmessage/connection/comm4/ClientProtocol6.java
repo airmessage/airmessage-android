@@ -138,7 +138,7 @@ class ClientProtocol6 extends ProtocolManager<HeaderPacket> {
 				//Checking if the result as successful
 				if(resultCode == nstAuthenticationOK) {
 					//Finishing the connection establishment
-					communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(null, null, null, null));
+					communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(null, null, null, null, null, false));
 				} else {
 					//Translating the result code to a local value
 					int localResultCode;

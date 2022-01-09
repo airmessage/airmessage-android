@@ -3,12 +3,14 @@ package me.tagavari.airmessage;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Process;
 import android.provider.ContactsContract;
+import android.webkit.WebView;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
@@ -35,6 +37,8 @@ import me.tagavari.airmessage.data.UserCacheHelper;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
+import me.tagavari.airmessage.redux.ReduxReceiverFaceTime;
 import me.tagavari.airmessage.redux.ReduxReceiverNotification;
 import me.tagavari.airmessage.redux.ReduxReceiverShortcut;
 import me.tagavari.airmessage.worker.SystemMessageCleanupWorker;
@@ -116,13 +120,17 @@ public class MainApplication extends Application {
 		
 		//Registering the content observer
 		if(canUseContacts(this)) registerContactsListener();
+
+		//Load the initial FaceTime support state
+		ReduxEmitterNetwork.getServerFaceTimeSupportSubject().onNext(SharedPreferencesManager.getServerSupportsFaceTime(this));
 		
 		//Listening for content changes
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
 			new ReduxReceiverShortcut(this).initialize();
 		}
 		new ReduxReceiverNotification(this).initialize();
-
+		new ReduxReceiverFaceTime(this).initialize();
+		
 		//Checking if text message integration is not permitted
 		if(!Preferences.isTextMessageIntegrationActive(this)) {
 			boolean cleanUpMessages = false;
@@ -158,6 +166,11 @@ public class MainApplication extends Application {
 
 		//Initializing Google Maps
 		MapsInitializer.initialize(getApplicationContext(), MapsInitializer.Renderer.LATEST, null);
+		
+		//Enable WebView debugging
+		if(0 != (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE)) {
+			WebView.setWebContentsDebuggingEnabled(true);
+		}
 	}
 	
 	public static MainApplication getInstance() {
