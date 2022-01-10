@@ -294,15 +294,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		viewSearchClear.setOnClickListener(view -> viewSearchField.setText(""));
 		buttonError.setOnClickListener(view -> viewModel.loadConversations());
 		
-		//Configuring the app bar
-		viewAppBar.setLiftable(false);
-		viewMainList.addOnScrollListener(new RecyclerView.OnScrollListener() {
-			@Override
-			public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-				viewAppBar.setLifted(((LinearLayoutManager) viewMainList.getLayoutManager()).findFirstCompletelyVisibleItemPosition() > 0);
-			}
-		});
-		
 		//Creating the banners
 		infoBarConnection = pluginMessageBar.create(R.drawable.disconnection, null);
 		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
@@ -1137,7 +1128,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		long duration = getResources().getInteger(android.R.integer.config_shortAnimTime);
 		if(enabled) {
 			//Hiding the toolbar
-			if(updateContext) viewToolbar.animate().alpha(0).setDuration(duration).withEndAction(() -> viewToolbar.setVisibility(View.GONE));
+			if(updateContext) viewToolbar.animate().alpha(0).setDuration(duration).withEndAction(() -> viewToolbar.setVisibility(View.INVISIBLE));
 			
 			//Showing the search group
 			viewGroupToolbarSearch.animate().alpha(1).setDuration(duration).withStartAction(() -> {

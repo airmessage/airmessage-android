@@ -18,11 +18,12 @@
 		<!-- Toolbar -->
 		<FrameLayout
 			android:layout_width="match_parent"
-			android:layout_height="?android:attr/actionBarSize">
+			android:layout_height="wrap_content">
 			<com.google.android.material.appbar.MaterialToolbar
 				android:id="@+id/toolbar"
 				android:layout_width="match_parent"
-				android:layout_height="match_parent" />
+				android:layout_height="wrap_content" />
+			
 			<LinearLayout
 				android:id="@+id/layout_search"
 				android:layout_width="match_parent"
@@ -97,7 +98,6 @@
 	<RelativeLayout
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		app:layout_behavior="@string/appbar_scrolling_view_behavior"
 		android:clipChildren="false">
 		<!-- Loading Text -->
 		<TextView
@@ -197,28 +197,6 @@
 				android:textColor="?android:attr/textColorSecondary" />
 		</LinearLayout>
 		
-		<!-- Conversation list -->
-		<!-- <ListView
-			android:id="@+id/list"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:layout_alignParentStart="true"
-			android:layout_alignParentTop="true"
-			android:divider="@null"
-			android:dividerHeight="0dp"
-			android:theme="@style/OverscrollNeutralizer" /> -->
-		<androidx.recyclerview.widget.RecyclerView
-			android:id="@+id/list"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:divider="@null"
-			android:dividerHeight="0dp"
-			android:theme="@style/OverscrollNeutralizer"
-			android:clipChildren="false"
-			android:clipToPadding="false"
-			android:visibility="gone"
-			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-			app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 		<!-- Search view -->
 		<RelativeLayout
 			android:id="@+id/viewgroup_search"
@@ -246,6 +224,19 @@
 				app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 		</RelativeLayout>
 	</RelativeLayout>
+	
+	<androidx.recyclerview.widget.RecyclerView
+		android:id="@+id/list"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:divider="@null"
+		android:dividerHeight="0dp"
+		android:theme="@style/OverscrollNeutralizer"
+		android:clipChildren="false"
+		android:clipToPadding="false"
+		android:visibility="visible"
+		app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+		app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
 	<!-- Bottom divider -->
 	<View
