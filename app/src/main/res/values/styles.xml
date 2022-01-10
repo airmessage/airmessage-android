@@ -1,5 +1,5 @@
 <resources>
-	<style name="Base.DayNight.NoActionBar" parent="Theme.Material3.Light.NoActionBar">
+	<style name="AppTheme" parent="Theme.Material3.Light.NoActionBar">
 		<item name="colorPrimary">@color/md_theme_light_primary</item>
 		<item name="colorOnPrimary">@color/md_theme_light_onPrimary</item>
 		<item name="colorPrimaryContainer">@color/md_theme_light_primaryContainer</item>
@@ -26,65 +26,45 @@
 		<item name="colorOnSurfaceInverse">@color/md_theme_light_inverseOnSurface</item>
 		<item name="colorSurfaceInverse">@color/md_theme_light_inverseSurface</item>
 		<item name="colorPrimaryInverse">@color/md_theme_light_primaryInverse</item>
+		
+		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
+		
+		<item name="windowActionModeOverlay">true</item>
+		<item name="actionModeCloseDrawable">@drawable/close_control</item>
+		
+		<!-- <item name="bottomSheetDialogTheme">@style/BottomSheetDialogTheme</item> -->
 	</style>
 
-	<style name="Base.DayNight" parent="Theme.Material3.DayNight">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-		<item name="android:colorBackground">@color/colorBackground</item>
-		<item name="bottomSheetDialogTheme">@style/BottomSheetDialogTheme</item>
-	</style>
+	<style name="AppTheme.Modern" parent="@style/AppTheme" />
 
-	<style name="Pass.DayNight.NoActionBar" parent="@style/Base.DayNight.NoActionBar" />
-	
-	<style name="DayNight.Translucent" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="android:windowTranslucentStatus">true</item>
-		<item name="android:windowTranslucentNavigation">true</item>
-	</style>
-
-	<style name="DayNight.Transparent" parent="@style/Pass.DayNight.NoActionBar">
+	<!-- Edge-to-edge rendering on all API levels -->
+	<style name="AppTheme.Edge" parent="@style/AppTheme">
 		<item name="android:statusBarColor">@android:color/transparent</item>
-		<!-- <item name="android:navigationBarColor">@android:color/transparent</item> -->
 		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
 	</style>
-
-	<style name="ThemeBlack" parent="@style/Theme.MaterialComponents.NoActionBar">
+	
+	<!-- Theme with a black background -->
+	<style name="BlackTheme" parent="@style/Theme.MaterialComponents.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="android:statusBarColor">@android:color/transparent</item>
 		<item name="android:navigationBarColor">@android:color/transparent</item>
 	</style>
-
-	<style name="ThemeFaceTime" parent="ThemeBlack">
+	
+	<!-- App theme with FaceTime accent colors -->
+	<style name="AppTheme.FaceTime" parent="@style/AppTheme.Modern">
+		<item name="colorPrimary">@color/colorFaceTime</item>
+	</style>
+	
+	<!-- Black theme with FaceTime accent colors -->
+	<style name="BlackTheme.FaceTime" parent="BlackTheme">
 		<item name="colorPrimary">@color/colorFaceTime</item>
 		<item name="android:colorBackground">@android:color/black</item>
 	</style>
 	
-	<style name="DayNight.NoActionBar.Protected.FaceTime" parent="@style/DayNight.NoActionBar">
-		<item name="colorPrimary">@color/colorFaceTime</item>
-	</style>
-	
-	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">
-<!--		<item name="windowActionModeOverlay">true</item>-->
-<!--		<item name="android:actionModeBackground">@android:color/transparent</item>-->
-<!--		<item name="android:actionModeCloseDrawable">@drawable/close_control</item>-->
-<!--		<item name="actionBarPopupTheme">@style/ActionModeOverflowMenu</item>-->
-<!--		&lt;!&ndash;<item name="android:statusBarColor">@color/colorBackgroundSurface</item>&ndash;&gt;-->
-<!--		<item name="android:statusBarColor">@color/colorToolbar</item>-->
-<!--		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>-->
-		
-		<item name="windowActionModeOverlay">true</item>
-		<item name="actionModeCloseDrawable">@drawable/close_control</item>
-		<item name="actionBarTheme">@style/ThemeOverlay.Material3.Dark.ActionBar</item>
-	</style>
-
-	<style name="DayNight.NoActionBar.Protected" parent="@style/DayNight.NoActionBar">
-		<!--<item name="android:windowBackground">@color/colorBackgroundClean</item>-->
-		<!--<item name="android:navigationBarColor">@color/colorBackgroundClean</item>-->
-		
-		<item name="windowActionModeOverlay">true</item>
-		<item name="actionModeCloseDrawable">@drawable/close_control</item>
-		<item name="actionBarTheme">@style/ThemeOverlay.Material3.Dark.ActionBar</item>
+	<!-- Theme used for onboarding -->
+	<style name="AppTheme.Onboarding" parent="@style/AppTheme.Modern">
+		<item name="android:statusBarColor">?android:attr/colorBackground</item>
+		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
 	</style>
 
 	<style name="SolidActionBar" parent="@style/ThemeOverlay.AppCompat.ActionBar">
@@ -115,11 +95,6 @@
 	<style name="LightToolbarText" parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Title">
 		<item name="android:fontFamily">sans-serif</item>
 	</style>
-
-	<style name="AppTheme.Onboarding" parent="@style/DayNight.NoActionBar">
-		<item name="android:statusBarColor">?android:attr/colorBackground</item>
-		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
-	</style>
 	
 	<style name="ActionModeOverflowMenu" parent="Widget.AppCompat.ListPopupWindow">
 		<item name="android:textColor">@android:color/primary_text_light</item>
@@ -144,7 +119,7 @@
 		<item name="android:navigationBarColor">@color/colorError</item>
 	</style>
 	
-	<style name="OverscrollNeutralizer" parent="@style/Base.DayNight">
+	<style name="OverscrollNeutralizer" parent="@style/AppTheme.Modern">
 		<item name="android:colorPrimary">@android:color/darker_gray</item>
 	</style>
 	

@@ -58,7 +58,7 @@
 		<activity
 			android:label="@string/app_name"
 			android:name=".activity.Conversations"
-			android:theme="@style/DayNight.NoActionBar.Protected"
+			android:theme="@style/AppTheme.Modern"
 			android:windowSoftInputMode="adjustResize"
 			android:exported="true">
 			<intent-filter>
@@ -74,7 +74,7 @@
 		<activity
 			android:name=".activity.Messaging"
 			android:parentActivityName=".activity.Conversations"
-			android:theme="@style/DayNight.NoActionBar"
+			android:theme="@style/AppTheme.Modern"
 			android:windowSoftInputMode="adjustResize"
 			android:allowEmbedded="true"
 			android:resizeableActivity="true"
@@ -102,17 +102,17 @@
 			android:label="@string/screen_newconversation"
 			android:name=".activity.NewMessage"
 			android:parentActivityName=".activity.Conversations"
-			android:theme="@style/DayNight.NoActionBar.Protected"
+			android:theme="@style/AppTheme.Modern"
 			android:windowSoftInputMode="adjustResize|stateVisible">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
 		<!-- Preferences -->
 		<activity
-			android:exported="false"
+			android:exported="true"
 			android:label="@string/screen_settings"
 			android:name=".activity.Preferences"
-			android:theme="@style/DayNight.NoActionBar.Protected"
+			android:theme="@style/AppTheme.Modern"
 			android:parentActivityName=".activity.Conversations">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
@@ -126,7 +126,7 @@
 		<activity
 			android:exported="false"
 			android:name=".activity.ServerUpdate"
-			android:theme="@style/DayNight.NoActionBar.Protected"
+			android:theme="@style/AppTheme.Modern"
 			android:parentActivityName=".activity.Conversations"
 			android:label="@string/screen_serverupdate">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
@@ -159,7 +159,7 @@
 			android:exported="false"
 			android:name=".activity.MediaViewer"
 			android:parentActivityName=".activity.Messaging"
-			android:theme="@style/ThemeBlack"
+			android:theme="@style/BlackTheme"
 			android:configChanges="orientation|screenSize|layoutDirection">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
@@ -169,7 +169,7 @@
 			android:exported="false"
 			android:name=".activity.LocationPicker"
 			android:parentActivityName=".activity.Messaging"
-			android:theme="@style/DayNight.Transparent"
+			android:theme="@style/AppTheme.Edge"
 			android:windowSoftInputMode="adjustResize">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
@@ -198,7 +198,7 @@
 			android:exported="false"
 			android:name=".activity.Licenses"
 			android:label="@string/screen_licenses"
-			android:theme="@style/DayNight.NoActionBar">
+			android:theme="@style/AppTheme.Modern">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 		
@@ -207,7 +207,7 @@
 			android:exported="false"
 			android:name=".activity.CallHistory"
 			android:parentActivityName=".activity.Conversations"
-			android:theme="@style/ThemeFaceTime">
+			android:theme="@style/BlackTheme.FaceTime">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 		
@@ -217,7 +217,7 @@
 			android:name=".activity.NewFaceTime"
 			android:label="@string/screen_newfacetime"
 			android:parentActivityName=".activity.CallHistory"
-			android:theme="@style/DayNight.NoActionBar.Protected.FaceTime"
+			android:theme="@style/AppTheme.FaceTime"
 			android:windowSoftInputMode="adjustResize|stateVisible">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
@@ -227,7 +227,7 @@
 			android:exported="false"
 			android:name=".activity.FaceTimeCall"
 			android:parentActivityName=".activity.CallHistory"
-			android:theme="@style/ThemeFaceTime"
+			android:theme="@style/BlackTheme.FaceTime"
 			android:documentLaunchMode="intoExisting">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>

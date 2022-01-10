@@ -1,23 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="windowActionModeOverlay">true</item>
-		<item name="actionModeCloseDrawable">@drawable/close_control</item>
-		<item name="actionBarTheme">@style/ThemeOverlay.Material3.ActionBar</item>
-		
-		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
+	<style name="AppTheme.Modern" parent="@style/AppTheme">
 		<item name="android:statusBarColor">@android:color/transparent</item>
 		<item name="android:navigationBarColor">@android:color/transparent</item>
 	</style>
-
-	<style name="DayNight.NoActionBar.Protected" parent="@style/DayNight.NoActionBar">
-		<!--<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>-->
-		<!--<item name="android:navigationBarDividerColor">@color/navbarDivider</item>-->
-		<!--<item name="android:navigationBarColor">@color/navbarBackground</item>-->
-	</style>
 	
-	<style name="DayNight.Translucent" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="android:windowTranslucentStatus">true</item>
+	<!-- Edge-to-edge rendering on all API levels -->
+	<style name="AppTheme.Edge" parent="@style/AppTheme">
+		<item name="android:statusBarColor">@android:color/transparent</item>
 		<item name="android:navigationBarColor">@android:color/transparent</item>
 	</style>
 </resources>
