@@ -50,6 +50,8 @@ import java.util.concurrent.Executors;
  */
 class ProxyConnect extends DataProxy<EncryptedPacket> {
 	//Creating the constants
+	private static final String TAG = ProxyConnect.class.getSimpleName();
+	
 	private static final URI connectHostname = URI.create(BuildConfig.CONNECT_ENDPOINT);
 	private static final long handshakeTimeout = 8 * 1000;
 	
@@ -313,11 +315,8 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 						if(encryptionValue == -100) isSecure = isEncrypted = true;
 						else if(encryptionValue == -101) isSecure = isEncrypted = false;
 						else {
-							isSecure = true;
-							isEncrypted = false;
-							if(encryptionValue != -102) {
-								bytes.position(bytes.position() - 1);
-							}
+							Log.i(TAG, "Received unknown encryption value:" + encryptionValue);
+							return;
 						}
 						byte[] data = new byte[bytes.remaining()];
 						bytes.get(data);
