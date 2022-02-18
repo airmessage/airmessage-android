@@ -11,7 +11,6 @@ import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.common.Blocks
 import me.tagavari.airmessage.common.Blocks.ModifierInfo
 import me.tagavari.airmessage.connection.comm5.AirUnpacker
-import me.tagavari.airmessage.connection.comm5.ClientProtocol3
 import me.tagavari.airmessage.connection.comm5.ClientProtocol4
 import me.tagavari.airmessage.connection.comm5.ClientProtocol5
 import me.tagavari.airmessage.connection.encryption.EncryptionAES
@@ -160,11 +159,6 @@ class FCMService : FirebaseMessagingService() {
 		try {
 			if(protocolVersion.size == 2 && protocolVersion[0] == 5) {
 				when(protocolVersion[1]) {
-					3 -> { //Protocol 5.3
-						conversationItems = ClientProtocol3.unpackConversationItems(airUnpacker)
-						modifiers = ClientProtocol3.unpackModifiers(airUnpacker)
-						dataLoaded = true
-					}
 					4 -> { //Protocol 5.4
 						conversationItems = ClientProtocol4.unpackConversationItems(airUnpacker)
 						modifiers = ClientProtocol4.unpackModifiers(airUnpacker)
