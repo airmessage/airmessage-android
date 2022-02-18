@@ -191,11 +191,18 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 	public boolean send(EncryptedPacket packet) {
 		if(!client.isOpen()) return false;
 		
+		//Check for encryption support
+		boolean serverSupportsEncryption = isServerRequestsEncryption();
+		boolean clientSupportsEncryption = encryptionManager != null;
+		if(serverSupportsEncryption && !clientSupportsEncryption) {
+			Log.e(TAG, "The server requests encryption, but no password is set");
+			return false;
+		}
+		
 		//Encrypting the content if requested and a password is set
 		byte[] packetData = packet.getData();
-		boolean supportsEncryption = encryptionManager != null;
-		boolean encrypt = packet.getEncrypt();
-		boolean isEncrypted = encrypt && supportsEncryption;
+		boolean packetWantsEncryption = packet.getEncrypt();
+		boolean isEncrypted = packetWantsEncryption && serverSupportsEncryption;
 		
 		Single.fromCallable(() -> {
 			if(isEncrypted) {
@@ -211,7 +218,7 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 				byteBuffer.putInt(NHT.nhtClientProxy);
 				
 				if(isEncrypted) byteBuffer.put((byte) -100); //The content is encrypted
-				else if(supportsEncryption) byteBuffer.put((byte) -101); //We support encryption, but this packet should not be encrypted
+				else if(serverSupportsEncryption) byteBuffer.put((byte) -101); //We support encryption, but this packet should not be encrypted
 				else byteBuffer.put((byte) -102); //We don't support encryption
 				
 				byteBuffer.put(content);
@@ -314,8 +321,11 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 						byte encryptionValue = bytes.get();
 						if(encryptionValue == -100) isSecure = isEncrypted = true;
 						else if(encryptionValue == -101) isSecure = isEncrypted = false;
-						else {
-							Log.i(TAG, "Received unknown encryption value:" + encryptionValue);
+						else if(encryptionValue == -102) {
+							isSecure = true;
+							isEncrypted = false;
+						} else {
+							Log.w(TAG, "Received unknown encryption value:" + encryptionValue);
 							return;
 						}
 						byte[] data = new byte[bytes.remaining()];

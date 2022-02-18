@@ -677,6 +677,9 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 				return false;
 			}
 			
+			//Telling the data proxy that encrypted messages should be used
+			dataProxy.setServerRequestsEncryption(true);
+			
 			//Writing back the transmission check and information about this device
 			try(AirPacker packer = AirPacker.get()) {
 				packer.packInt(nhtAuthentication);
@@ -703,6 +706,9 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 				return false;
 			}
 		} else {
+			//Telling the data proxy that encrypted messages should not be used
+			dataProxy.setServerRequestsEncryption(false);
+			
 			//Writing back the device information
 			try(AirPacker packer = AirPacker.get()) {
 				packer.packInt(nhtAuthentication);

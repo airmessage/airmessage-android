@@ -480,6 +480,9 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 				return true;
 			}
 			
+			//Telling the data proxy that encrypted messages should be used
+			dataProxy.setServerRequestsEncryption(true);
+			
 			//Reading the transmission check
 			byte[] transmissionCheck;
 			try {
@@ -515,6 +518,9 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 				return false;
 			}
 		} else {
+			//Telling the data proxy that encrypted messages should not be used
+			dataProxy.setServerRequestsEncryption(false);
+			
 			//Writing back the device information
 			try(AirPacker packer = AirPacker.get()) {
 				packer.packInt(nhtAuthentication);
