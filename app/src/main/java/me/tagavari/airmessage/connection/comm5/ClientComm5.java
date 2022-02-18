@@ -156,19 +156,24 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 		int communicationsSubVersion = unpacker.unpackInt();
 		
 		//Checking if the client can't handle this communications version
-		int verApplicability = checkCommVerApplicability(communicationsVersion);
-		if(verApplicability != 0) {
+		int majVerApplicability = checkCommVerApplicability(communicationsVersion);
+		if(majVerApplicability != 0) {
 			//Terminating the connection
-			getHandler().post(() -> disconnect(verApplicability < 0 ? ConnectionErrorCode.serverOutdated : ConnectionErrorCode.clientOutdated));
+			getHandler().post(() -> disconnect(majVerApplicability < 0 ? ConnectionErrorCode.serverOutdated : ConnectionErrorCode.clientOutdated));
 			return;
 		}
 		
-		//Finding a matching protocol manager
-		protocolManager = findProtocolManager(communicationsSubVersion);
-		if(protocolManager == null) {
+		int minVerApplicability = checkProtocolManagerApplicability(communicationsSubVersion);
+		if(minVerApplicability < 0) {
+			getHandler().post(() -> disconnect(ConnectionErrorCode.serverOutdated));
+			return;
+		} else if(minVerApplicability > 0) {
 			getHandler().post(() -> disconnect(ConnectionErrorCode.clientOutdated));
 			return;
 		}
+		
+		//Finding the matching protocol manager
+		protocolManager = findProtocolManager(communicationsSubVersion);
 		
 		//Updating the protocol version
 		protocolManagerVer = communicationsSubVersion;
@@ -177,16 +182,17 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 		protocolManager.sendAuthenticationRequest(unpacker);
 	}
 	
+	private int checkProtocolManagerApplicability(int subVersion) {
+		if(subVersion < 4) return -1;
+		else if(subVersion > 5) return 1;
+		else return 0;
+	}
+	
+	@NonNull
 	private ProtocolManager<EncryptedPacket> findProtocolManager(int subVersion) {
 		switch(subVersion) {
 			default:
-				return null;
-			case 1:
-				return new ClientProtocol1(this, getDataProxy());
-			case 2:
-				return new ClientProtocol2(this, getDataProxy());
-			case 3:
-				return new ClientProtocol3(this, getDataProxy());
+				throw new IllegalArgumentException("Invalid communications sub version " + subVersion);
 			case 4:
 				return new ClientProtocol4(this, getDataProxy());
 			case 5:
