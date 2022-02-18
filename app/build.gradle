@@ -54,9 +54,9 @@ android {
 		targetSdkVersion 31
 		versionName "3.3.6"
 		versionCode 130
-
+		
 		resConfigs "en", "fr", "ja"
-
+		
 		testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 	}
 	buildTypes {
@@ -86,14 +86,12 @@ android {
 			}
 		}
 	}
-	lintOptions {
-		abortOnError false
-	}
 	productFlavors {
 	}
 	packagingOptions {
-		exclude "META-INF/DEPENDENCIES"
-		exclude "META-INF/LICENSE"
+		resources {
+			excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE']
+		}
 	}
 	testOptions {
 		unitTests.includeAndroidResources = true
@@ -109,6 +107,9 @@ android {
 	}
 	androidResources {
 		noCompress 'tflite'
+	}
+	lint {
+		abortOnError false
 	}
 }
 
