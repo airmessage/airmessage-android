@@ -13,6 +13,9 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GetTokenResult;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.messaging.FirebaseMessaging;
+import io.reactivex.rxjava3.core.Scheduler;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.BuildConfig;
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.encryption.EncryptionAES;
@@ -40,6 +43,7 @@ import java.security.GeneralSecurityException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
 /**
  * Handles connecting via WebSocket to AirMessage's Connect servers
@@ -54,6 +58,7 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 	private final Handler handler = new Handler(Looper.getMainLooper());
 	private final Runnable handshakeExpiryRunnable = () -> stop(ConnectionErrorCode.internet);
 	private WSClient client;
+	private Scheduler encryptionScheduler;
 	@Nullable private EncryptionManager encryptionManager;
 	
 	@Override
@@ -147,6 +152,9 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 			}
 		});
 		
+		//Initializing the scheduler
+		encryptionScheduler = Schedulers.from(Executors.newSingleThreadExecutor(), true);
+		
 		//Updating the running state
 		isRunning = true;
 	}
@@ -169,6 +177,10 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 		//Calling the listener
 		notifyClose(code);
 		
+		//Cleaning up the scheduler
+		encryptionScheduler.shutdown();
+		encryptionScheduler = null;
+		
 		//Updating the running state
 		isRunning = false;
 	}
@@ -177,18 +189,37 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 	public boolean send(EncryptedPacket packet) {
 		if(!client.isOpen()) return false;
 		
-		//Constructing and sending the message
-		ByteBuffer byteBuffer = ByteBuffer.allocate((Integer.SIZE / Byte.SIZE) + packet.getData().length);
-		byteBuffer.putInt(NHT.nhtClientProxy);
-		byteBuffer.put(packet.getData());
+		//Encrypting the content if requested and a password is set
+		byte[] packetData = packet.getData();
+		boolean supportsEncryption = encryptionManager != null;
+		boolean encrypt = packet.getEncrypt();
+		boolean isEncrypted = encrypt && supportsEncryption;
 		
-		try {
-			//Sending the data
-			client.send(byteBuffer.array());
-		} catch(WebsocketNotConnectedException exception) {
-			exception.printStackTrace();
-			return false;
-		}
+		Single.fromCallable(() -> {
+			if(isEncrypted) {
+				return encryptionManager.encrypt(packetData);
+			} else {
+				return packetData;
+			}
+		})
+			.subscribeOn(encryptionScheduler)
+			.doOnSuccess((content) -> {
+				//Constructing and sending the message
+				ByteBuffer byteBuffer = ByteBuffer.allocate(1 + (Integer.SIZE / Byte.SIZE) + content.length);
+				byteBuffer.putInt(NHT.nhtClientProxy);
+				
+				if(isEncrypted) byteBuffer.put((byte) -100); //The content is encrypted
+				else if(supportsEncryption) byteBuffer.put((byte) -101); //We support encryption, but this packet should not be encrypted
+				else byteBuffer.put((byte) -102); //We don't support encryption
+				
+				byteBuffer.put(content);
+				
+				//Sending the data
+				client.send(byteBuffer.array());
+			})
+			.doOnError(Throwable::printStackTrace)
+			.onErrorComplete()
+			.subscribe();
 		
 		return true;
 	}
