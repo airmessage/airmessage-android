@@ -28,7 +28,6 @@ import kotlin.Unit;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.connection.comm4.ClientComm4;
 import me.tagavari.airmessage.connection.comm5.ClientComm5;
 import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException;
 import me.tagavari.airmessage.connection.exception.AMRequestException;
@@ -60,7 +59,7 @@ public class ConnectionManager {
 	private static final String TAG = ConnectionManager.class.getSimpleName();
 	
 	//Constants
-	private static final List<CommunicationsManagerFactory> communicationsPriorityList = Arrays.asList(ClientComm5::new, ClientComm4::new);
+	private static final List<CommunicationsManagerFactory> communicationsPriorityList = Collections.singletonList(ClientComm5::new);
 	
 	private static final long pingExpiryTime = 40 * 1000; //40 seconds
 	private static final long keepAliveMillis = 20 * 60 * 1000; //30 * 60 * 1000; //20 minutes
