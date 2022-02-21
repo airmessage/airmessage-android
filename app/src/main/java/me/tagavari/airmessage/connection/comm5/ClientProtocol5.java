@@ -1,26 +1,16 @@
 package me.tagavari.airmessage.connection.comm5;
 
 import android.os.Build;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
-import io.reactivex.rxjava3.core.Observable;
-import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.common.Blocks;
-import me.tagavari.airmessage.connection.DataProxy;
-import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.connection.encryption.EncryptionAES;
-import me.tagavari.airmessage.connection.exception.AMRequestException;
-import me.tagavari.airmessage.connection.exception.LargeAllocationException;
-import me.tagavari.airmessage.constants.MIMEConstants;
-import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.enums.*;
-import me.tagavari.airmessage.helper.LookAheadStreamIterator;
-import me.tagavari.airmessage.helper.StandardCompressionHelper;
-import me.tagavari.airmessage.helper.StringHelper;
-import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
-import me.tagavari.airmessage.util.CompoundErrorDetails;
-import me.tagavari.airmessage.util.ConversationTarget;
 
-import java.io.*;
+import androidx.annotation.NonNull;
+
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
+
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.security.DigestInputStream;
@@ -33,20 +23,47 @@ import java.util.List;
 import java.util.zip.DeflaterInputStream;
 import java.util.zip.InflaterOutputStream;
 
-//https://trello.com/c/lRZ6cikc
-class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
+import io.reactivex.rxjava3.core.Observable;
+import me.tagavari.airmessage.MainApplication;
+import me.tagavari.airmessage.common.Blocks;
+import me.tagavari.airmessage.connection.DataProxy;
+import me.tagavari.airmessage.connection.MassRetrievalParams;
+import me.tagavari.airmessage.connection.encryption.EncryptionAES;
+import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException;
+import me.tagavari.airmessage.connection.exception.AMRequestException;
+import me.tagavari.airmessage.connection.exception.LargeAllocationException;
+import me.tagavari.airmessage.constants.MIMEConstants;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
+import me.tagavari.airmessage.enums.ChatCreateErrorCode;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.ConnectionFeature;
+import me.tagavari.airmessage.enums.FaceTimeInitiateCode;
+import me.tagavari.airmessage.enums.GroupAction;
+import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.MessageState;
+import me.tagavari.airmessage.enums.TapbackType;
+import me.tagavari.airmessage.helper.LookAheadStreamIterator;
+import me.tagavari.airmessage.helper.StandardCompressionHelper;
+import me.tagavari.airmessage.helper.StringHelper;
+import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload;
+import me.tagavari.airmessage.util.CompoundErrorDetails;
+import me.tagavari.airmessage.util.ConversationTarget;
+import me.tagavari.airmessage.util.ServerUpdateData;
+
+public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 	private static final String hashAlgorithm = "MD5";
 	private static final String platformID = "android";
-	
+
 	private static final int attachmentChunkSize = 1024 * 1024; //1 MB
-	
+
 	//Top-level net header type values
 	private static final int nhtClose = 0;
 	private static final int nhtPing = 1;
 	private static final int nhtPong = 2;
-	
+
 	private static final int nhtAuthentication = 101;
-	
+
 	private static final int nhtMessageUpdate = 200;
 	private static final int nhtTimeRetrieval = 201;
 	private static final int nhtIDRetrieval = 202;
@@ -59,41 +76,64 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	private static final int nhtAttachmentReqConfirm = 209;
 	private static final int nhtAttachmentReqFail = 210;
 	private static final int nhtIDUpdate = 211;
-	
+
 	private static final int nhtLiteConversationRetrieval = 300;
 	private static final int nhtLiteThreadRetrieval = 301;
-	
+
 	private static final int nhtSendResult = 400;
 	private static final int nhtSendTextExisting = 401;
 	private static final int nhtSendTextNew = 402;
 	private static final int nhtSendFileExisting = 403;
 	private static final int nhtSendFileNew = 404;
 	private static final int nhtCreateChat = 405;
-	
+
+	private static final int nhtSoftwareUpdateListing = 500;
+	private static final int nhtSoftwareUpdateInstall = 501;
+	private static final int nhtSoftwareUpdateError = 502;
+
+	private static final int nhtFaceTimeCreateLink = 600; //Create a new FaceTime link
+	private static final int nhtFaceTimeOutgoingInitiate = 601; //Initiate a new FaceTime call
+	private static final int nhtFaceTimeOutgoingHandled = 602; //Notify a client that an outgoing call has been accepted or rejected
+	private static final int nhtFaceTimeIncomingCallerUpdate = 603; //Notify clients that there is a new incoming call
+	private static final int nhtFaceTimeIncomingHandle = 604; //Client -> Server: accept or reject the incoming call and return its link
+	private static final int nhtFaceTimeDisconnect = 605; //Client -> Server: Drop the current call
+
 	//Net return codes
 	private static final int nrcSharedOK = 0;
-	
+
 	//Item sub-types
 	private static final int nstMessageStateIdle = 0;
 	private static final int nstMessageStateSent = 1;
 	private static final int nstMessageStateDelivered = 2;
 	private static final int nstMessageStateRead = 3;
-	
+
 	private static final int nstItemMessage = 0;
 	private static final int nstItemGroupAction = 1;
 	private static final int nstItemChatRename = 2;
-	
+
 	private static final int nstGroupActionUnknown = 0;
 	private static final int nstGroupActionJoin = 1;
 	private static final int nstGroupActionLeave = 2;
-	
+
 	private static final int nstModifierActivity = 0;
 	private static final int nstModifierSticker = 1;
 	private static final int nstModifierTapback = 2;
+
+	private static final int nstUpdateErrorDownload = 0;
+	private static final int nstUpdateErrorBadPackage = 1;
+	private static final int nstUpdateErrorInternal = 2;
 	
+	private static final int nstOutgoingFaceTimeCallInitiateOK = 0;
+	private static final int nstOutgoingFaceTimeCallInitiateBadMembers = 1;
+	private static final int nstOutgoingFaceTimeCallInitiateAppleScriptError = 2;
+	
+	private static final int nstOutgoingFaceTimeCallHandledAccepted = 0;
+	private static final int nstOutgoingFaceTimeCallHandledRejected = 1;
+	private static final int nstOutgoingFaceTimeCallHandledError = 2;
+
 	private short lastMassRetrievalRequestID = -1;
-	
-	ClientProtocol2(ClientComm5 communicationsManager, DataProxy<EncryptedPacket> dataProxy) {
+
+	ClientProtocol5(ClientComm5 communicationsManager, DataProxy<EncryptedPacket> dataProxy) {
 		super(communicationsManager, dataProxy);
 	}
 	
@@ -212,6 +252,30 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			case nhtCreateChat:
 				handleMessageCreateChat(unpacker);
 				break;
+			case nhtSoftwareUpdateListing:
+				handleMessageSoftwareUpdateListing(unpacker);
+				break;
+			case nhtSoftwareUpdateInstall:
+				handleMessageSoftwareUpdateInstall(unpacker);
+				break;
+			case nhtSoftwareUpdateError:
+				handleMessageSoftwareUpdateError(unpacker);
+				break;
+			case nhtFaceTimeCreateLink:
+				handleMessageFaceTimeCreateLink(unpacker);
+				break;
+			case nhtFaceTimeOutgoingInitiate:
+				handleMessageFaceTimeOutgoingInitiate(unpacker);
+				break;
+			case nhtFaceTimeOutgoingHandled:
+				handleMessageFaceTimeOutgoingHandled(unpacker);
+				break;
+			case nhtFaceTimeIncomingCallerUpdate:
+				handleMessageFaceTimeIncomingCallerUpdate(unpacker);
+				break;
+			case nhtFaceTimeIncomingHandle:
+				handleMessageFaceTimeIncomingHandle(unpacker);
+				break;
 			default:
 				//Message not consumed
 				return false;
@@ -234,9 +298,11 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			String deviceName = unpacker.unpackString();
 			String systemVersion = unpacker.unpackString();
 			String softwareVersion = unpacker.unpackString();
+			String userName = unpacker.unpackString();
+			boolean supportsFaceTime = unpacker.unpackBoolean();
 			
 			//Finishing the connection establishment
-			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion));
+			communicationsManager.getHandler().post(() -> communicationsManager.onHandshake(installationID, deviceName, systemVersion, softwareVersion, userName, supportsFaceTime));
 		} else {
 			//Otherwise terminating the connection
 			communicationsManager.getHandler().post(() -> communicationsManager.disconnect(mapNRCAuthenticationCode(resultCode)));
@@ -282,7 +348,14 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		//Reading the data
 		short requestID = unpacker.unpackShort();
 		int requestIndex = unpacker.unpackInt();
-		String fileName = requestIndex == 0 ? unpacker.unpackString() : null;
+		String fileName, downloadFileName, downloadFileType;
+		if(requestIndex == 0) {
+			fileName = unpacker.unpackString();
+			downloadFileName = unpacker.unpackNullableString();
+			downloadFileType = unpacker.unpackNullableString();
+		} else {
+			fileName = downloadFileName = downloadFileType = null;
+		}
 		boolean isLast = unpacker.unpackBoolean();
 		
 		String fileGUID = unpacker.unpackString();
@@ -290,7 +363,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		
 		//Processing the data
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, null, null, InflaterOutputStream::new);
+			if(requestIndex == 0) listener.onMassRetrievalFileStart(requestID, fileGUID, fileName, downloadFileName, downloadFileType, InflaterOutputStream::new);
 			listener.onMassRetrievalFileProgress(requestID, requestIndex, fileGUID, fileData);
 			if(isLast) listener.onMassRetrievalFileComplete(requestID, fileGUID);
 		});
@@ -316,15 +389,27 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		//Reading the data
 		short requestID = unpacker.unpackShort();
 		int requestIndex = unpacker.unpackInt();
-		long fileLength = requestIndex == 0 ? unpacker.unpackLong() : -1;
+		
+		final String downloadFileName;
+		final String downloadFileType;
+		final long fileLength;
+		if(requestIndex == 0) {
+			downloadFileName = unpacker.unpackNullableString();
+			downloadFileType = unpacker.unpackNullableString();
+			fileLength = unpacker.unpackLong();
+		} else {
+			downloadFileName = null;
+			downloadFileType = null;
+			fileLength = -1;
+		}
+		
 		boolean isLast = unpacker.unpackBoolean();
 		
-		String fileGUID = unpacker.unpackString();
 		byte[] fileData = unpacker.unpackPayload();
 		
 		//Forwarding the data to the listeners
 		communicationsManager.runListener(listener -> {
-			if(requestIndex == 0) listener.onFileRequestStart(requestID, null, null, fileLength, InflaterOutputStream::new);
+			if(requestIndex == 0) listener.onFileRequestStart(requestID, downloadFileName, downloadFileType, fileLength, InflaterOutputStream::new);
 			listener.onFileRequestData(requestID, requestIndex, fileData);
 			if(isLast) listener.onFileRequestComplete(requestID);
 		});
@@ -380,7 +465,131 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			}
 		});
 	}
+
+	private void handleMessageSoftwareUpdateListing(AirUnpacker unpacker) {
+		//Reading the data
+		ServerUpdateData updateData;
+		boolean updateExists = unpacker.unpackBoolean();
+		if(updateExists) {
+			int updateID = unpacker.unpackInt();
+			int protocolRequirementCount = unpacker.unpackArrayHeader();
+			List<Integer> protocolRequirement = new ArrayList<>(protocolRequirementCount);
+			for(int i = 0; i < protocolRequirementCount; i++) protocolRequirement.add(unpacker.unpackInt());
+
+			String versionName = unpacker.unpackString();
+			String versionNotes = unpacker.unpackString();
+			boolean remoteInstallable = unpacker.unpackBoolean();
+
+			updateData = new ServerUpdateData(updateID, protocolRequirement, versionName, versionNotes, remoteInstallable);
+		} else {
+			updateData = null;
+		}
+
+		communicationsManager.runListener(listener -> listener.onSoftwareUpdateListing(updateData));
+	}
+
+	private void handleMessageSoftwareUpdateInstall(AirUnpacker unpacker) {
+		//Reading the message
+		boolean updateInstalling = unpacker.unpackBoolean();
+
+		communicationsManager.runListener(listener -> listener.onSoftwareUpdateInstall(updateInstalling));
+	}
+
+	private void handleMessageSoftwareUpdateError(AirUnpacker unpacker) {
+		//Reading the message
+		int errorCode = unpacker.unpackInt();
+		String errorMessage = unpacker.unpackString();
+
+		//Mapping the error code to a local error code
+		final int localErrorCode;
+		switch(errorCode) {
+			case nstUpdateErrorDownload:
+				localErrorCode = AMRemoteUpdateException.errorCodeDownload;
+				break;
+			case nstUpdateErrorBadPackage:
+				localErrorCode = AMRemoteUpdateException.errorCodeBadPackage;
+				break;
+			case nstUpdateErrorInternal:
+				localErrorCode = AMRemoteUpdateException.errorCodeInternal;
+				break;
+			default:
+				localErrorCode = AMRemoteUpdateException.errorCodeUnknown;
+				break;
+		}
+
+		//Emitting an update
+		AMRemoteUpdateException exception = new AMRemoteUpdateException(localErrorCode, errorMessage);
+		communicationsManager.runListener(listener -> listener.onSoftwareUpdateError(exception));
+
+	}
+
+	private void handleMessageFaceTimeCreateLink(AirUnpacker unpacker) {
+		//Reading the message
+		boolean linkOK = unpacker.unpackBoolean();
+		String link;
+		if(linkOK) link = unpacker.unpackString();
+		else link = null;
+
+		communicationsManager.runListener(listener -> listener.onFaceTimeNewLink(link));
+	}
 	
+	private void handleMessageFaceTimeOutgoingInitiate(AirUnpacker unpacker) {
+		//Reading the message
+		int resultCode = unpacker.unpackInt();
+		String errorDetails = unpacker.unpackNullableString();
+		
+		//Mapping the error code to a local error code
+		@FaceTimeInitiateCode int localResultCode;
+		switch(resultCode) {
+			case nstOutgoingFaceTimeCallInitiateOK:
+				localResultCode = FaceTimeInitiateCode.ok;
+				break;
+			case nstOutgoingFaceTimeCallInitiateBadMembers:
+				localResultCode = FaceTimeInitiateCode.badMembers;
+				break;
+			case nstOutgoingFaceTimeCallInitiateAppleScriptError:
+			default:
+				localResultCode = FaceTimeInitiateCode.external;
+				break;
+		}
+		
+		communicationsManager.runListener(listener -> listener.onFaceTimeOutgoingCallInitiated(localResultCode, errorDetails));
+	}
+	
+	private void handleMessageFaceTimeOutgoingHandled(AirUnpacker unpacker) {
+		//Reading the message
+		int resultCode = unpacker.unpackInt();
+		
+		if(resultCode == nstOutgoingFaceTimeCallHandledAccepted) {
+			//Our call was accepted :)
+			String faceTimeLink = unpacker.unpackString();
+			communicationsManager.runListener(listener -> listener.onFaceTimeOutgoingCallAccepted(faceTimeLink));
+		} else if(resultCode == nstOutgoingFaceTimeCallHandledRejected) {
+			//Our call was rejected
+			communicationsManager.runListener(listener -> listener.onFaceTimeOutgoingCallRejected());
+		} else if(resultCode == nstOutgoingFaceTimeCallHandledError) {
+			//Something went wrong
+			String errorDetails = unpacker.unpackNullableString();
+			communicationsManager.runListener(listener -> listener.onFaceTimeOutgoingCallError(errorDetails));
+		}
+	}
+	
+	private void handleMessageFaceTimeIncomingCallerUpdate(AirUnpacker unpacker) {
+		String caller = unpacker.unpackNullableString();
+		communicationsManager.runListener(listener -> listener.onFaceTimeIncomingCall(caller));
+	}
+	
+	private void handleMessageFaceTimeIncomingHandle(AirUnpacker unpacker) {
+		boolean ok = unpacker.unpackBoolean();
+		if(ok) {
+			String faceTimeLink = unpacker.unpackString();
+			communicationsManager.runListener(listener -> listener.onFaceTimeIncomingCallHandled(faceTimeLink));
+		} else {
+			String errorDetails = unpacker.unpackNullableString();
+			communicationsManager.runListener(listener -> listener.onFaceTimeIncomingCallError(errorDetails));
+		}
+	}
+
 	@Override
 	boolean requestChatCreation(short requestID, String[] chatMembers, String service) {
 		//Returning false if there is no connection thread
@@ -448,10 +657,17 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 		//Assembling the device information
 		String installationID = SharedPreferencesManager.getInstallationID(MainApplication.getInstance());
 		String clientName = Build.MANUFACTURER + ' ' + Build.MODEL;
-		String platformID = ClientProtocol2.platformID;
+		String platformID = ClientProtocol5.platformID;
 		
 		//Checking if the current protocol requires authentication
 		if(unpacker.unpackBoolean()) {
+			//Checking if we don't have a password to use
+			if(communicationsManager.getPassword() == null) {
+				//Failing the connection
+				communicationsManager.getHandler().post(() -> communicationsManager.disconnect(ConnectionErrorCode.unauthorized));
+				return true;
+			}
+			
 			//Reading the transmission check
 			byte[] transmissionCheck;
 			try {
@@ -460,6 +676,9 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 				exception.printStackTrace();
 				return false;
 			}
+			
+			//Telling the data proxy that encrypted messages should be used
+			dataProxy.setServerRequestsEncryption(true);
 			
 			//Writing back the transmission check and information about this device
 			try(AirPacker packer = AirPacker.get()) {
@@ -487,6 +706,9 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 				return false;
 			}
 		} else {
+			//Telling the data proxy that encrypted messages should not be used
+			dataProxy.setServerRequestsEncryption(false);
+			
 			//Writing back the device information
 			try(AirPacker packer = AirPacker.get()) {
 				packer.packInt(nhtAuthentication);
@@ -568,19 +790,17 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 							packer.packInt(requestIndex); //Request index
 							packer.packBoolean(data.isLast()); //Is last message
 							
-							if(conversation instanceof ConversationTarget.AppleLinked) {
-								packer.packString(((ConversationTarget.AppleLinked) conversation).getGuid()); //Chat GUID
-							} else if(conversation instanceof ConversationTarget.AppleUnlinked) {
-								ConversationTarget.AppleUnlinked unlinked = ((ConversationTarget.AppleUnlinked) conversation);
-								packer.packArrayHeader(unlinked.getMembers().size()); //Members
-								for(String item : unlinked.getMembers()) packer.packString(item);
-							}
-							
 							packer.packPayload(data.getData(), data.getLength()); //File bytes
 							if(requestIndex == 0) {
 								packer.packString(file.getName()); //File name
-								if(conversation instanceof ConversationTarget.AppleUnlinked) {
-									packer.packString(((ConversationTarget.AppleUnlinked) conversation).getService()); //Service
+								
+								if(conversation instanceof ConversationTarget.AppleLinked) {
+									packer.packString(((ConversationTarget.AppleLinked) conversation).getGuid()); //Chat GUID
+								} else if(conversation instanceof ConversationTarget.AppleUnlinked) {
+									ConversationTarget.AppleUnlinked unlinked = ((ConversationTarget.AppleUnlinked) conversation);
+									packer.packArrayHeader(unlinked.getMembers().size()); //Members
+									for(String item : unlinked.getMembers()) packer.packString(item);
+									packer.packString(unlinked.getService()); //Service
 								}
 							}
 							
@@ -680,6 +900,100 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			packer.packInt(nhtIDRetrieval);
 			
 			packer.packLong(idSince);
+			packer.packLong(timeLower);
+			packer.packLong(timeUpper);
+			
+			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
+			return true;
+		} catch(BufferOverflowException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			return false;
+		}
+	}
+
+	@Override
+	boolean installSoftwareUpdate(int updateID) {
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
+
+		try(AirPacker packer = AirPacker.get()) {
+			packer.packInt(nhtSoftwareUpdateInstall);
+			packer.packInt(updateID);
+
+			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
+			return true;
+		} catch(BufferOverflowException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			return false;
+		}
+	}
+
+	@Override
+	boolean requestFaceTimeLink() {
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
+
+		try(AirPacker packer = AirPacker.get()) {
+			packer.packInt(nhtFaceTimeCreateLink);
+
+			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
+			return true;
+		} catch(BufferOverflowException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			return false;
+		}
+	}
+	
+	@Override
+	boolean initiateFaceTimeCall(List<String> addresses) {
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
+		
+		try(AirPacker packer = AirPacker.get()) {
+			packer.packInt(nhtFaceTimeOutgoingInitiate);
+			packer.packArrayHeader(addresses.size());
+			for(String address : addresses) {
+				packer.packString(address);
+			}
+			
+			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
+			return true;
+		} catch(BufferOverflowException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			return false;
+		}
+	}
+	
+	@Override
+	boolean handleIncomingFaceTimeCall(@NonNull String caller, boolean accept) {
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
+		
+		try(AirPacker packer = AirPacker.get()) {
+			packer.packInt(nhtFaceTimeIncomingHandle);
+			packer.packString(caller);
+			packer.packBoolean(accept);
+			
+			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
+			return true;
+		} catch(BufferOverflowException exception) {
+			exception.printStackTrace();
+			FirebaseCrashlytics.getInstance().recordException(exception);
+			return false;
+		}
+	}
+	
+	@Override
+	boolean dropFaceTimeCallServer() {
+		//Returning false if there is no connection thread
+		if(!communicationsManager.isConnectionOpened()) return false;
+		
+		try(AirPacker packer = AirPacker.get()) {
+			packer.packInt(nhtFaceTimeDisconnect);
 			
 			dataProxy.send(new EncryptedPacket(packer.toByteArray(), true));
 			return true;
@@ -692,7 +1006,10 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	
 	@Override
 	boolean isFeatureSupported(@ConnectionFeature int featureID) {
-		return featureID == ConnectionFeature.idBasedRetrieval;
+		return featureID == ConnectionFeature.idBasedRetrieval ||
+				featureID == ConnectionFeature.payloadPushNotifications ||
+				featureID == ConnectionFeature.remoteUpdates ||
+				featureID == ConnectionFeature.faceTime;
 	}
 	
 	/**
@@ -717,6 +1034,7 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	private static int mapNRCSendCode(int code) {
 		switch(code) {
 			case 1: //Some unknown AppleScript error
+			case 6: //Internal server error
 				return MessageSendErrorCode.serverExternal;
 			case 2: //Invalid data received
 				return MessageSendErrorCode.serverBadRequest;
@@ -762,6 +1080,8 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 				return ChatCreateErrorCode.badRequest;
 			case 3: //System rejected request
 				return ChatCreateErrorCode.unauthorized;
+			case 4: //Operation not supported by server
+				return ChatCreateErrorCode.notSupported;
 			default:
 				return ChatCreateErrorCode.unknown;
 		}
@@ -846,9 +1166,10 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	/**
 	 * Unpacks a list of conversations
 	 */
-	private static List<Blocks.ConversationInfo> unpackConversations(AirUnpacker unpacker) {
+	public static List<Blocks.ConversationInfo> unpackConversations(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.ConversationInfo> list = new ArrayList<>(count);
@@ -860,7 +1181,9 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 			if(available) {
 				String service = unpacker.unpackString();
 				String name = unpacker.unpackNullableString();
-				String[] members = new String[unpacker.unpackArrayHeader()];
+				int memberCount = unpacker.unpackArrayHeader();
+				String[] members = new String[memberCount];
+				if(memberCount > 8192) throw new LargeAllocationException(memberCount, 8192);
 				for(int m = 0; m < members.length; m++) members[m] = unpacker.unpackString();
 				list.add(new Blocks.ConversationInfo(guid, service, name, members));
 			} else {
@@ -875,9 +1198,10 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	/**
 	 * Unpacks a list of conversation items
 	 */
-	private static List<Blocks.ConversationItem> unpackConversationItems(AirUnpacker unpacker) {
+	public static List<Blocks.ConversationItem> unpackConversationItems(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.ConversationItem> list = new ArrayList<>(count);
@@ -934,9 +1258,10 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	/**
 	 * Unpacks a list of attachments
 	 */
-	private static List<Blocks.AttachmentInfo> unpackAttachments(AirUnpacker unpacker) {
+	public static List<Blocks.AttachmentInfo> unpackAttachments(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.AttachmentInfo> list = new ArrayList<>(count);
@@ -960,9 +1285,10 @@ class ClientProtocol2 extends ProtocolManager<EncryptedPacket> {
 	/**
 	 * Unpacks a list of modifiers
 	 */
-	private static List<Blocks.ModifierInfo> unpackModifiers(AirUnpacker unpacker) {
+	public static List<Blocks.ModifierInfo> unpackModifiers(AirUnpacker unpacker) {
 		//Reading the count
 		int count = unpacker.unpackArrayHeader();
+		if(count > 8192) throw new LargeAllocationException(count, 8192);
 		
 		//Creating the list
 		List<Blocks.ModifierInfo> list = new ArrayList<>(count);

@@ -8,8 +8,10 @@
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+	<uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
 	<!-- Dangerous permissions -->
+	<uses-permission android:name="android.permission.CAMERA" />
 	<uses-permission android:name="android.permission.RECORD_AUDIO" />
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -120,6 +122,16 @@
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
+		<!-- Server update -->
+		<activity
+			android:exported="false"
+			android:name=".activity.ServerUpdate"
+			android:theme="@style/DayNight.NoActionBar.Protected"
+			android:parentActivityName=".activity.Conversations"
+			android:label="@string/screen_serverupdate">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
 		<!-- Image draw -->
 		<!-- <activity
 			android:exported="false"
@@ -187,6 +199,36 @@
 			android:name=".activity.Licenses"
 			android:label="@string/screen_licenses"
 			android:theme="@style/DayNight.NoActionBar">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+		
+		<!-- FaceTime -->
+		<activity
+			android:exported="false"
+			android:name=".activity.CallHistory"
+			android:parentActivityName=".activity.Conversations"
+			android:theme="@style/ThemeFaceTime">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+		
+		<!-- New FaceTime -->
+		<activity
+			android:exported="false"
+			android:name=".activity.NewFaceTime"
+			android:label="@string/screen_newfacetime"
+			android:parentActivityName=".activity.CallHistory"
+			android:theme="@style/DayNight.NoActionBar.Protected.FaceTime"
+			android:windowSoftInputMode="adjustResize|stateVisible">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+		
+		<!-- FaceTime call -->
+		<activity
+			android:exported="false"
+			android:name=".activity.FaceTimeCall"
+			android:parentActivityName=".activity.CallHistory"
+			android:theme="@style/ThemeFaceTime"
+			android:documentLaunchMode="intoExisting">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 

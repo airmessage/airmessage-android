@@ -71,6 +71,7 @@ import me.tagavari.airmessage.redux.*;
 import me.tagavari.airmessage.task.ConversationActionTask;
 import me.tagavari.airmessage.util.DisposableViewHolder;
 import me.tagavari.airmessage.util.ReplaceInsertResult;
+import me.tagavari.airmessage.util.ServerUpdateData;
 import me.tagavari.airmessage.util.TransferredConversation;
 
 import java.lang.ref.WeakReference;
@@ -118,7 +119,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	//Creating the menu values
 	private MenuItem menuItemMarkAllRead = null;
-	
+
 	//Creating the view values
 	private AppBarLayout viewAppBar;
 	private Toolbar viewToolbar;
@@ -181,6 +182,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	//Creating the state values
 	private int currentState = -1;
+	private ServerUpdateData currentServerUpdateData = null;
 	
 	public Conversations() {
 		//Setting the plugins
@@ -306,6 +308,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		infoBarContacts = pluginMessageBar.create(R.drawable.contacts, getResources().getString(R.string.message_permissiondetails_contacts_listing));
 		infoBarContacts.setButton(R.string.action_enable, view -> requestPermissions(new String[]{android.Manifest.permission.READ_CONTACTS}, permissionRequestContacts));
 		infoBarServerUpdate = pluginMessageBar.create(R.drawable.update, getResources().getString(R.string.message_serverupdate));
+		infoBarServerUpdate.setButton(R.string.action_details, view -> startUpdateActivity());
 		infoBarServerUpdateRequired = pluginMessageBar.create(R.drawable.sync_problem, getResources().getString(R.string.message_serverupdaterequired));
 		infoBarServerUpdateRequired.setButton(R.string.action_details, view -> showServerUpdateRequiredDialog());
 		infoBarSecurityUpdate = pluginMessageBar.create(R.drawable.lock_alert, getResources().getString(R.string.message_securityupdate));
@@ -356,7 +359,8 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		pluginRXD.ui().addAll(
 				ReduxEmitterNetwork.getConnectionStateSubject().subscribe(this::updateStateConnection), //Subscribing to connection state updates
-				ReduxEmitterNetwork.getMassRetrievalUpdateSubject().subscribe(this::updateStateMassRetrieval) //Subscribing to mass retrieval updates
+				ReduxEmitterNetwork.getMassRetrievalUpdateSubject().subscribe(this::updateStateMassRetrieval), //Subscribing to mass retrieval updates
+				ReduxEmitterNetwork.getRemoteUpdateSubject().subscribe(this::updateStateRemoteUpdate) //Subscribing to remote update updates
 		);
 	}
 	
@@ -459,6 +463,13 @@ public class Conversations extends AppCompatCompositeActivity {
 		//Updating the "mark all as read" option
 		menuItemMarkAllRead = menu.findItem(R.id.action_markallread);
 		updateMarkAllRead();
+
+		//Getting the FaceTime option and subscribing to updates
+		MenuItem menuItemFaceTime = menu.findItem(R.id.action_facetime);
+		pluginRXD.activity().add(
+				ReduxEmitterNetwork.getServerFaceTimeSupportSubject()
+						.subscribe(menuItemFaceTime::setVisible)
+		);
 		
 		return true;
 	}
@@ -517,12 +528,17 @@ public class Conversations extends AppCompatCompositeActivity {
 			finish();
 			
 			return true;
-		}if(itemID == R.id.action_search) { //Search
+		} else if(itemID == R.id.action_search) { //Search
 			if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return true;
 			
 			//Setting the state to search
 			setSearchState(true, true);
-			
+
+			return true;
+		} else if(itemID == R.id.action_facetime) { //FaceTime
+			//Starting the FaceTime call history activity
+			startActivity(new Intent(this, CallHistory.class));
+
 			return true;
 		} else if(itemID == R.id.action_archived) { //Archived conversations
 			//Starting the archived conversations activity
@@ -586,7 +602,7 @@ public class Conversations extends AppCompatCompositeActivity {
 								"Device model: " + Build.MODEL + "\r\n" +
 								"Android version: " + Build.VERSION.RELEASE + "\r\n" +
 								"Client version: " + BuildConfig.VERSION_NAME + "\r\n" +
-								"Communications version: " + currentCommunicationsVersion + " (target " + VersionConstants.targetCommVer + ")" + "\r\n" +
+								"Communications version: " + currentCommunicationsVersion + " (target " + VersionConstants.getLatestCommVerString() + ")" + "\r\n" +
 								"Proxy type: " + proxyType + "\r\n" +
 								"Server system version: " + serverSystemVersion + "\r\n" +
 								"Server software version: " + serverSoftwareVersion);
@@ -718,12 +734,12 @@ public class Conversations extends AppCompatCompositeActivity {
 			promptSync();
 			
 			//Showing the server update required bar if the user's server is too old
-			if(pluginCS.isServiceBound()) {
+			/* if(pluginCS.isServiceBound()) {
 				List<Integer> version = pluginCS.getConnectionManager().getCommunicationsVersion();
 				if(version != null && version.size() == 2 && VersionHelper.INSTANCE.compareVersions(version, Arrays.asList(5, 4)) < 0) {
 					infoBarServerUpdateRequired.show();
 				}
-			}
+			} */
 		} else {
 			//Dismissing the server update required bar
 			infoBarServerUpdateRequired.hide();
@@ -762,6 +778,16 @@ public class Conversations extends AppCompatCompositeActivity {
 				viewModel.massRetrievalTotalLD.setValue(progressEvent.getTotalItems());
 				viewModel.massRetrievalProgressLD.setValue(progressEvent.getReceivedItems());
 			}
+		}
+	}
+
+	private void updateStateRemoteUpdate(Optional<ServerUpdateData> updateData) {
+		if(updateData.isPresent()) {
+			currentServerUpdateData = updateData.get();
+			infoBarServerUpdate.show();
+		} else {
+			infoBarServerUpdate.hide();
+			currentServerUpdateData = null;
 		}
 	}
 	
@@ -1173,29 +1199,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		}
 	}
 	
-	@Deprecated
-	void restoreSearchState() {
-		//Ignoring if searching is not active
-		if(!viewModel.isSearching) return;
-		
-		//Hiding the toolbar
-		viewToolbar.setVisibility(View.GONE);
-		viewToolbar.setAlpha(0);
-		
-		//Showing the views
-		viewGroupToolbarSearch.setVisibility(View.VISIBLE);
-		viewGroupToolbarSearch.setAlpha(1);
-		viewSearchField.requestFocus();
-		viewGroupSearch.setVisibility(View.VISIBLE);
-		viewMainList.setVisibility(View.INVISIBLE);
-		
-		//Updating the close button
-		viewSearchClear.setVisibility(viewSearchField.getText().length() > 0 ? View.VISIBLE : View.GONE);
-		
-		//Hiding the FAB
-		updateFAB();
-	}
-	
 	/**
 	 * Updates the "mark all as read" menu option item, showing or hiding it based on if there are any conversations with unread messages
 	 */
@@ -1227,6 +1230,16 @@ public class Conversations extends AppCompatCompositeActivity {
 		FragmentSync fragmentSync = new FragmentSync(pluginCS.getConnectionManager().getServerDeviceName(), pluginCS.getConnectionManager().getServerInstallationID(), viewModel.conversationList.stream().anyMatch(chat -> chat.getServiceHandler() == ServiceHandler.appleBridge));
 		fragmentSync.setCancelable(false);
 		fragmentSync.show(getSupportFragmentManager(), keyFragmentSync);
+	}
+
+	private void startUpdateActivity() {
+		Intent intent = new Intent(this, ServerUpdate.class);
+		intent.putExtra(ServerUpdate.PARAM_UPDATE, currentServerUpdateData);
+		if(pluginCS.isServiceBound()) {
+			intent.putExtra(ServerUpdate.PARAM_SERVERVERSION, pluginCS.getConnectionManager().getServerSoftwareVersion());
+			intent.putExtra(ServerUpdate.PARAM_SERVERNAME, pluginCS.getConnectionManager().getServerDeviceName());
+		}
+		startActivity(intent);
 	}
 	
 	public void onCloseSearchClicked(View view) {
@@ -1271,21 +1284,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		ThemeHelper.setActivityAMOLEDBase(this);
 		findViewById(R.id.appbar).setBackgroundColor(ColorConstants.colorAMOLED);
 		findViewById(R.id.viewgroup_search).setBackgroundColor(ColorConstants.colorAMOLED);
-	}
-	
-	void setDarkAMOLEDSamsung() {
-		ThemeHelper.setActivityAMOLEDBase(this);
-		findViewById(R.id.appbar).setBackgroundColor(ColorConstants.colorAMOLED);
-		
-		RecyclerView listMessages = findViewById(R.id.list);
-		RecyclerView listSearch = findViewById(R.id.list_search);
-		listMessages.setBackgroundResource(R.drawable.background_amoledsamsung);
-		listMessages.setClipToOutline(true);
-		listMessages.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
-		findViewById(R.id.viewgroup_search).setBackgroundColor(ColorConstants.colorAMOLED);
-		listSearch.setBackgroundResource(R.drawable.background_amoledsamsung);
-		listSearch.setClipToOutline(true);
-		listSearch.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
 	}
 	
 	/**

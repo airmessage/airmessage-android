@@ -140,7 +140,8 @@
 	<string name="action_unarchive">Désarchiver</string>
 	<string name="action_mute">Désactiver les notifications</string>
 	<string name="action_unmute">Activer les notifications</string>
-	<string name="action_details">Afficher les détails</string>
+	<string name="action_details">Détails</string>
+	<string name="action_viewdetails">Afficher les détails</string>
 	<string name="action_disconnect">Déconnecter</string>
 	<string name="action_reconnect">Reconnecter</string>
 	<string name="action_quit">Quitter</string>
@@ -516,4 +517,47 @@
 	<string name="message_decrypterrornotify_desc">Un message a été reçu qui n\'a pas pu être décrypté</string>
 	<string name="message_serverupdaterequired">Votre serveur doit être mis à jour</string>
 	<string name="message_serverupdaterequired_desc">Vous exécutez une version non prise en charge d\'AirMessage Server.\n\nLes versions non prises en charge d\'AirMessage Server peuvent présenter des problèmes de sécurité ou de stabilité et commenceront à refuser les connexions à partir de la fin janvier.\n\nVeuillez installer la dernière version d\'AirMessage Server depuis airmessage.org sur votre Mac.</string>
+	<string name="action_installupdate">Installer la mise à jour</string>
+	<string name="screen_serverupdate">Mise à jour du serveur</string>
+	<string name="message_serverupdate_version">AirMessage Server %s est disponible - vous avez %s</string>
+	<string name="message_serverupdate_remotenotice">
+		La dernière version d\'AirMessage Server sera installée sur %s.
+		Vous perdrez l\'accès à la fonctionnalité de messagerie pendant l\'installation de la mise à jour.
+		En cas d\'échec de l\'installation, assurez-vous d\'avoir l\'accès par ordinateur avant de procéder à l\'installation.
+	</string>
+	<string name="message_serverupdate_incompatible">
+		Cette mise à jour du serveur nécessite une version d\'AirMessage pour Android plus récente que celle installée sur cet appareil.
+		Veuillez mettre à jour l\'application avant d\'installer cette mise à jour du serveur.
+	</string>
+	<string name="message_serverupdate_manual">
+		Cette mise à jour du serveur ne peut pas être installée à distance.
+		Veuillez vérifier AirMessage Server sur %s pour plus de détails.
+	</string>
+	<string name="message_serverupdate_failed">Échec de l\'installation de la mise à jour</string>
+	<string name="error_noconnection">Aucune connexion au serveur</string>
+	<string name="error_timedout">Demande expirée</string>
+	<string name="error_unknown">Une erreur inconnue s\'est produite</string>
+	<string name="error_updatemismatch">Cette mise à jour n\'est plus applicable</string>
+	<string name="error_updatedownload">Une erreur s\'est produite lors du téléchargement de la mise à jour</string>
+	<string name="error_updatebadpackage">Une erreur s\'est produite lors du traitement de la mise à jour</string>
+	<string name="error_internal">Une erreur interne s\'est produite</string>
+	<string name="progress_installingupdate">Installation de la mise à jour&#8230;</string>
+	<string name="action_createlink">Créer un lien</string>
+	<string name="action_newfacetime">Nouveau FaceTime</string>
+	<string name="message_facetime_intro">Utilisez AirMessage pour passer et recevoir des appels FaceTime sur cet appareil</string>
+	<string name="message_facetimelink_error">Impossible d\'obtenir le lien FaceTime</string>
+	<string name="error_external">Une erreur externe s\'est produite</string>
+	<string name="screen_newfacetime">Nouveau FaceTime</string>
+	<string name="action_updateapp">Mettre à jour l\'application</string>
+	<string name="message_facetime_connecting">Connexion&#8230;</string>
+	<string name="message_facetime_unavailable">Échec de FaceTime</string>
+	<string name="action_declinecall">Refuser</string>
+	<string name="action_answercall">Répondre</string>
+	<string name="action_endcall">Raccrocher</string>
+	<string name="message_facetime_error_create">Échec de la création de l\'appel</string>
+	<string name="message_facetime_error_call">Votre appel n\'a pas pu aboutir</string>
+	<string name="message_facetime_incoming">Appel entrant FaceTime</string>
+	<string name="error_badmembers">Les participants ne sont pas disponibles sur FaceTime</string>
+	<string name="notificationchannel_incomingcall">Appels entrants</string>
+	<string name="notificationchannel_incomingcall_desc">Notifications concernant les appels FaceTime entrants</string>
 </resources>

@@ -151,13 +151,6 @@
 		android:clipChildren="false"
 		android:clipToPadding="false">
 		<!-- Contacts list -->
-		<!-- <ListView
-			android:id="@+id/list_contacts"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:divider="@null"
-			android:dividerHeight="0dp"
-			android:visibility="gone" /> -->
 		<androidx.recyclerview.widget.RecyclerView
 			android:id="@+id/list_contacts"
 			android:layout_width="match_parent"
@@ -167,16 +160,8 @@
 			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
 			android:clipChildren="false"
 			android:clipToPadding="false" />
-		<!-- Loading text -->
-		<!-- <TextView
-			android:id="@+id/message_loading"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_centerInParent="true"
-			android:text="@string/loading"
-			android:textColor="?android:attr/textColorSecondary"
-			android:visibility="gone" /> -->
-		<!-- Permission missing warning -->
+
+		<!-- Permissions group -->
 		<LinearLayout
 			android:id="@+id/group_permission"
 			android:layout_width="wrap_content"
@@ -233,14 +218,6 @@
 				android:tag="@string/tag_primarytint"
 				android:text="@string/action_retry" />
 		</LinearLayout>
-
-		<!-- Bottom shadow -->
-		<!-- <View
-			android:id="@+id/bottomshadow"
-			android:layout_width="match_parent"
-			android:layout_height="3dp"
-			android:background="@drawable/appear_bottomshadow"
-			android:layout_alignParentBottom="true" /> -->
 
 		<!-- Bottom divider -->
 		<View
