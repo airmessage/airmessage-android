@@ -734,12 +734,12 @@ public class Conversations extends AppCompatCompositeActivity {
 			promptSync();
 			
 			//Showing the server update required bar if the user's server is too old
-			if(pluginCS.isServiceBound()) {
+			/* if(pluginCS.isServiceBound()) {
 				List<Integer> version = pluginCS.getConnectionManager().getCommunicationsVersion();
 				if(version != null && version.size() == 2 && VersionHelper.INSTANCE.compareVersions(version, Arrays.asList(5, 4)) < 0) {
 					infoBarServerUpdateRequired.show();
 				}
-			}
+			} */
 		} else {
 			//Dismissing the server update required bar
 			infoBarServerUpdateRequired.hide();
