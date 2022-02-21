@@ -1500,7 +1500,7 @@ public class ConnectionManager {
 	}
 	
 	/**
-	 * Gets the human-readable version of the active communications protocol, or NULL if no protocol is active
+	 * Gets the version of the active communications protocol, or NULL if no protocol is active
 	 */
 	@Nullable
 	public List<Integer> getCommunicationsVersion() {
