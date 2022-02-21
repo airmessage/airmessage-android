@@ -52,11 +52,11 @@ android {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
 		targetSdkVersion 31
-		versionName "3.3.8"
-		versionCode 132
-
+		versionName "3.4.0"
+		versionCode 133
+		
 		resConfigs "en", "fr", "ja"
-
+		
 		testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 	}
 	buildTypes {
@@ -86,14 +86,12 @@ android {
 			}
 		}
 	}
-	lintOptions {
-		abortOnError false
-	}
 	productFlavors {
 	}
 	packagingOptions {
-		exclude "META-INF/DEPENDENCIES"
-		exclude "META-INF/LICENSE"
+		resources {
+			excludes += ["META-INF/DEPENDENCIES", "META-INF/LICENSE"]
+		}
 	}
 	testOptions {
 		unitTests.includeAndroidResources = true
@@ -109,6 +107,9 @@ android {
 	}
 	androidResources {
 		noCompress 'tflite'
+	}
+	lint {
+		abortOnError false
 	}
 }
 
@@ -183,12 +184,20 @@ dependencies {
 	implementation "com.google.android.gms:play-services-location:19.0.1"
 	implementation "com.google.android.gms:play-services-auth:20.0.1"
 
+	//CameraX
+	def camerax_version = "1.0.1"
+	implementation "androidx.camera:camera-camera2:$camerax_version"
+	implementation "androidx.camera:camera-lifecycle:$camerax_version"
+	implementation "androidx.camera:camera-view:1.0.0-alpha31"
+
+
 	//About libraries
 	implementation "com.mikepenz:aboutlibraries-core:$aboutlibs_version"
 	implementation "com.mikepenz:aboutlibraries:$aboutlibs_version"
 
 	//Tools
 	implementation "com.googlecode.ez-vcard:ez-vcard:0.11.3"
+	implementation "org.commonmark:commonmark:0.18.0"
 
 	//Backend
 	implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"

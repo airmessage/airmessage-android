@@ -51,6 +51,15 @@
 		<item name="android:statusBarColor">@android:color/transparent</item>
 		<item name="android:navigationBarColor">@android:color/transparent</item>
 	</style>
+
+	<style name="ThemeFaceTime" parent="ThemeBlack">
+		<item name="colorPrimary">@color/colorFaceTime</item>
+		<item name="android:colorBackground">@android:color/black</item>
+	</style>
+	
+	<style name="DayNight.NoActionBar.Protected.FaceTime" parent="@style/DayNight.NoActionBar">
+		<item name="colorPrimary">@color/colorFaceTime</item>
+	</style>
 	
 	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">
 		<item name="windowActionModeOverlay">true</item>

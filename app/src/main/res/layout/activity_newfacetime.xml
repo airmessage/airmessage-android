@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".activity.NewFaceTime"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:fitsSystemWindows="true">
+    <!-- App bar -->
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorToolbar">
+        <!-- Toolbar -->
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?android:attr/actionBarSize"
+            android:theme="@style/SolidActionBarClear"
+            app:titleTextAppearance="@style/LightToolbarText">
+        </com.google.android.material.appbar.MaterialToolbar>
+
+        <!-- Custom views -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <!-- Recipient input -->
+            <LinearLayout
+                android:id="@+id/group_recipients"
+                android:layout_width="0px"
+                android:layout_height="wrap_content"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                android:orientation="horizontal">
+                <com.google.android.flexbox.FlexboxLayout
+                    android:id="@+id/group_recipientlist"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:paddingTop="6.5dp"
+                    android:paddingBottom="6.5dp"
+                    android:paddingStart="24dp"
+                    android:minHeight="45dp"
+                    app:alignContent="flex_start"
+                    app:alignItems="flex_start"
+                    app:dividerDrawable="@drawable/user_divider"
+                    app:showDivider="middle"
+                    app:flexWrap="wrap" >
+                    <EditText
+                        android:id="@+id/input_recipients"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@null"
+                        android:hint="@string/imperative_userinput"
+                        android:imeOptions="actionDone|flagNoExtractUi"
+                        android:inputType="textEmailAddress"
+                        android:maxLines="1"
+                        android:minHeight="32dp"
+                        android:minWidth="50dp"
+                        app:layout_flexGrow="1"
+                        android:textSize="14sp" />
+                </com.google.android.flexbox.FlexboxLayout>
+
+                <ImageButton
+                    android:id="@+id/button_recipients"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:padding="10dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:onClick="onToggleInputType"
+                    android:src="@drawable/dialpad"
+                    android:tintMode="src_in"
+                    app:tint="?android:attr/colorControlNormal" />
+            </LinearLayout>
+
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/progressbar_content"
+                android:layout_width="0px"
+                android:layout_height="wrap_content"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                android:layout_alignParentBottom="true"
+                android:indeterminate="true"
+                android:alpha="0"
+                android:visibility="gone" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- AMOLED divider -->
+        <View
+            android:tag="@string/tag_amoleddivider"
+            style="@style/Divider"
+            android:visibility="gone" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- Contact list -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+        <!-- Contacts list -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/list_contacts"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:scrollbars="vertical"
+            android:theme="@style/OverscrollNeutralizer"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+        
+        <!-- Floating button -->
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/fab_confirm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:enabled="false"
+            android:text="@string/title_facetime"
+            android:onClick="onClickConfirm"
+            app:backgroundTint="@color/colorFaceTime"
+            app:icon="@drawable/facetime" />
+
+        <!-- Permissions group -->
+        <LinearLayout
+            android:id="@+id/group_permission"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
+                android:text="@string/message_permissiondetails_contacts_suggestions"
+                android:textAlignment="center"
+                android:textColor="?android:attr/textColorSecondary" />
+
+            <com.google.android.material.button.MaterialButton
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:onClick="onClickRequestContacts"
+                android:text="@string/action_enable"
+                android:textColor="@color/colorPrimary" />
+        </LinearLayout>
+
+        <!-- Error view -->
+        <LinearLayout
+            android:id="@+id/group_error"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+            <TextView
+                android:id="@+id/group_error_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/message_loaderror_contacts"
+                android:textAlignment="center"
+                android:textColor="?android:textColorSecondary" />
+
+            <com.google.android.material.button.MaterialButton
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:onClick="onClickRetryLoad"
+                android:tag="@string/tag_primarytint"
+                android:text="@string/action_retry" />
+        </LinearLayout>
+
+        <!-- Bottom divider -->
+        <View
+            android:tag="@string/tag_amoleddivider_bottom"
+            style="@style/Divider"
+            android:visibility="gone"
+            android:layout_alignParentBottom="true" />
+
+        <!-- Content scrim -->
+        <View
+            android:id="@+id/scrim_content"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorCleanScrim"
+            android:clickable="true"
+            android:soundEffectsEnabled="false"
+            android:alpha="0"
+            android:visibility="gone" />
+    </RelativeLayout>
+</LinearLayout>

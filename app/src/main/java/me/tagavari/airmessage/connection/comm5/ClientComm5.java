@@ -2,6 +2,8 @@ package me.tagavari.airmessage.connection.comm5;
 
 import android.content.Context;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.connection.CommunicationsManager;
@@ -24,8 +26,8 @@ import java.nio.BufferUnderflowException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
+import java.util.Collections;
 
 public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	private static final String TAG = ClientComm5.class.getSimpleName();
@@ -156,19 +158,24 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 		int communicationsSubVersion = unpacker.unpackInt();
 		
 		//Checking if the client can't handle this communications version
-		int verApplicability = checkCommVerApplicability(communicationsVersion);
-		if(verApplicability != 0) {
+		int majVerApplicability = checkCommVerApplicability(communicationsVersion);
+		if(majVerApplicability != 0) {
 			//Terminating the connection
-			getHandler().post(() -> disconnect(verApplicability < 0 ? ConnectionErrorCode.serverOutdated : ConnectionErrorCode.clientOutdated));
+			getHandler().post(() -> disconnect(majVerApplicability < 0 ? ConnectionErrorCode.serverOutdated : ConnectionErrorCode.clientOutdated));
 			return;
 		}
 		
-		//Finding a matching protocol manager
-		protocolManager = findProtocolManager(communicationsSubVersion);
-		if(protocolManager == null) {
+		int minVerApplicability = checkProtocolManagerApplicability(communicationsSubVersion);
+		if(minVerApplicability < 0) {
+			getHandler().post(() -> disconnect(ConnectionErrorCode.serverOutdated));
+			return;
+		} else if(minVerApplicability > 0) {
 			getHandler().post(() -> disconnect(ConnectionErrorCode.clientOutdated));
 			return;
 		}
+		
+		//Finding the matching protocol manager
+		protocolManager = findProtocolManager(communicationsSubVersion);
 		
 		//Updating the protocol version
 		protocolManagerVer = communicationsSubVersion;
@@ -177,18 +184,21 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 		protocolManager.sendAuthenticationRequest(unpacker);
 	}
 	
+	private int checkProtocolManagerApplicability(int subVersion) {
+		if(subVersion < 4) return -1;
+		else if(subVersion > 5) return 1;
+		else return 0;
+	}
+	
+	@NonNull
 	private ProtocolManager<EncryptedPacket> findProtocolManager(int subVersion) {
 		switch(subVersion) {
 			default:
-				return null;
-			case 1:
-				return new ClientProtocol1(this, getDataProxy());
-			case 2:
-				return new ClientProtocol2(this, getDataProxy());
-			case 3:
-				return new ClientProtocol3(this, getDataProxy());
+				throw new IllegalArgumentException("Invalid communications sub version " + subVersion);
 			case 4:
 				return new ClientProtocol4(this, getDataProxy());
+			case 5:
+				return new ClientProtocol5(this, getDataProxy());
 		}
 	}
 	
@@ -258,6 +268,36 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 		}
 		
 		return false;
+	}
+
+	@Override
+	public boolean installSoftwareUpdate(int updateID) {
+		if(protocolManager == null) return false;
+		return protocolManager.installSoftwareUpdate(updateID);
+	}
+
+	@Override
+	public boolean requestFaceTimeLink() {
+		if(protocolManager == null) return false;
+		return protocolManager.requestFaceTimeLink();
+	}
+	
+	@Override
+	public boolean initiateFaceTimeCall(List<String> addresses) {
+		if(protocolManager == null) return false;
+		return protocolManager.initiateFaceTimeCall(addresses);
+	}
+	
+	@Override
+	public boolean handleIncomingFaceTimeCall(@NonNull String caller, boolean accept) {
+		if(protocolManager == null) return false;
+		return protocolManager.handleIncomingFaceTimeCall(caller, accept);
+	}
+	
+	@Override
+	public boolean dropFaceTimeCallServer() {
+		if(protocolManager == null) return false;
+		return protocolManager.dropFaceTimeCallServer();
 	}
 	
 	@Override

@@ -37,7 +37,7 @@ import java.util.zip.Inflater;
 public class DatabaseManager extends SQLiteOpenHelper {
 	//If you change the database schema, you must increment the database version
 	private static final String DATABASE_NAME = "messages.db";
-	private static final int DATABASE_VERSION = 14;
+	private static final int DATABASE_VERSION = 15;
 	
 	//Creating the fetch statements
 	/* private static final String SQL_FETCH_CONVERSATIONS = "SELECT * FROM (" +
@@ -140,7 +140,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			");";
 	private static final String SQL_CREATE_TABLE_ATTACHMENTS = "CREATE TABLE " + Contract.AttachmentEntry.TABLE_NAME + " (" +
 			Contract.AttachmentEntry._ID + " INTEGER PRIMARY KEY UNIQUE, " +
-			Contract.AttachmentEntry.COLUMN_NAME_GUID + " TEXT UNIQUE," +
+			Contract.AttachmentEntry.COLUMN_NAME_GUID + " TEXT," +
 			Contract.AttachmentEntry.COLUMN_NAME_MESSAGE + " INTEGER NOT NULL," +
 			Contract.AttachmentEntry.COLUMN_NAME_FILENAME + " TEXT," +
 			Contract.AttachmentEntry.COLUMN_NAME_FILESIZE + " INTEGER," +
@@ -264,7 +264,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 							inflater.setInput(data);
 							ByteArrayOutputStream outputStream = new ByteArrayOutputStream(data.length);
 							byte[] buffer = new byte[DataStreamHelper.standardBuffer];
-							while (!inflater.finished()) {
+							while(!inflater.finished()) {
 								int count = inflater.inflate(buffer);
 								outputStream.write(buffer, 0, count);
 							}
@@ -444,40 +444,40 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			case 9:
 				//Rebuilding the messages table (to remove the "unique" modifier from the GUID column, and the "not null" modifier from the linked sort ID columns)
 				rebuildTable(database, "messages", "CREATE TABLE messages (" +
-												   BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
-												   "server_id INTEGER, " +
-												   "guid TEXT, " + //No more "unique"
-												   "sender TEXT, " +
-												   "other TEXT, " +
-												   "date INTEGER NOT NULL, " +
-												   "item_type INTEGER NOT NULL, " +
-												   "item_subtype INTEGER, " +
-												   "state INTEGER, " +
-												   "error INTEGER, " +
-												   "error_details TEXT, " +
-												   "date_read INTEGER, " +
-												   "message_text TEXT, " +
-												   "send_style TEXT, " +
-												   "send_style_viewed INTEGER NOT NULL DEFAULT 0, " +
-												   "chat INTEGER NOT NULL, " +
-												   "sort_id_linked INTEGER, " +
-												   "sort_id_linked_offset INTEGER" +
-												   ");", false);
+						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+						"server_id INTEGER, " +
+						"guid TEXT, " + //No more "unique"
+						"sender TEXT, " +
+						"other TEXT, " +
+						"date INTEGER NOT NULL, " +
+						"item_type INTEGER NOT NULL, " +
+						"item_subtype INTEGER, " +
+						"state INTEGER, " +
+						"error INTEGER, " +
+						"error_details TEXT, " +
+						"date_read INTEGER, " +
+						"message_text TEXT, " +
+						"send_style TEXT, " +
+						"send_style_viewed INTEGER NOT NULL DEFAULT 0, " +
+						"chat INTEGER NOT NULL, " +
+						"sort_id_linked INTEGER, " +
+						"sort_id_linked_offset INTEGER" +
+						");", false);
 				
 				//Rebuilding the conversations table (to remove the "unique" modifier from the GUID column)
 				rebuildTable(database, "conversations", "CREATE TABLE conversations (" +
-														BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
-														"guid TEXT, " + //No more "unique"
-														"state INTEGER NOT NULL, " +
-														"service TEXT, " +
-														"name TEXT, " +
-														"unread_message_count INTEGER NOT NULL DEFAULT 0," +
-														"archived INTEGER DEFAULT 0, " +
-														"muted INTEGER DEFAULT 0, " +
-														"color INTEGER DEFAULT " + 0xFF000000 + ", " +
-														"draft_message TEXT, " +
-														"draft_update_time INTEGER NOT NULL DEFAULT 0" +
-														");", false);
+						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+						"guid TEXT, " + //No more "unique"
+						"state INTEGER NOT NULL, " +
+						"service TEXT, " +
+						"name TEXT, " +
+						"unread_message_count INTEGER NOT NULL DEFAULT 0," +
+						"archived INTEGER DEFAULT 0, " +
+						"muted INTEGER DEFAULT 0, " +
+						"color INTEGER DEFAULT " + 0xFF000000 + ", " +
+						"draft_message TEXT, " +
+						"draft_update_time INTEGER NOT NULL DEFAULT 0" +
+						");", false);
 				
 				//Adding the service handler and external ID columns
 				database.execSQL("ALTER TABLE conversations ADD service_handler INTEGER NOT NULL DEFAULT 0;"); //All messages at this point have been over AM bridge
@@ -507,14 +507,14 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				//Clearing and rebuilding the stickers table
 				database.execSQL("DROP TABLE sticker");
 				database.execSQL("CREATE TABLE sticker (" +
-								 BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
-								 "guid TEXT UNIQUE," +
-								 "message INTEGER NOT NULL," +
-								 "message_index INTEGER NOT NULL," +
-								 "sender TEXT," +
-								 "date INTEGER NOT NULL," +
-								 "path TEXT NOT NULL" +
-								 ");");
+						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+						"guid TEXT UNIQUE," +
+						"message INTEGER NOT NULL," +
+						"message_index INTEGER NOT NULL," +
+						"sender TEXT," +
+						"date INTEGER NOT NULL," +
+						"path TEXT NOT NULL" +
+						");");
 			case 11:
 				//Rebuilding the drafts table (to remove "original_path" and "original_uri", and add "mediastore_id"
 				rebuildTable(database, "draft_files", "CREATE TABLE draft_files (" +
@@ -541,6 +541,22 @@ public class DatabaseManager extends SQLiteOpenHelper {
 				//Adding the "download_type" and "download_name" columns to attachments
 				database.execSQL("ALTER TABLE attachments ADD download_type TEXT");
 				database.execSQL("ALTER TABLE attachments ADD download_name TEXT");
+			case 14:
+				//Rebuilding the drafts table (to remove the UNIQUE property from "guid"
+				rebuildTable(database, "attachments", "CREATE TABLE attachments (" +
+						BaseColumns._ID + " INTEGER PRIMARY KEY UNIQUE, " +
+						"guid TEXT," +
+						"message INTEGER NOT NULL," +
+						"name TEXT," +
+						"size INTEGER," +
+						"type TEXT NOT NULL," +
+						"path TEXT," +
+						"checksum TEXT," +
+						"download_type TEXT," +
+						"download_name TEXT," +
+						"sort INTEGER, " +
+						"should_auto_download INTEGER NOT NULL DEFAULT 0" +
+						");", false);
 		}
 	}
 	

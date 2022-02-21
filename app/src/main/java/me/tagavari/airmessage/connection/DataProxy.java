@@ -12,6 +12,8 @@ import me.tagavari.airmessage.util.ConnectionParams;
  *
  */
 public abstract class DataProxy<Packet> {
+	private boolean serverRequestsEncryption;
+	
 	/**
 	 * Start this proxy's connection to the server
 	 */
@@ -50,5 +52,13 @@ public abstract class DataProxy<Packet> {
 	
 	protected void notifyMessage(Packet packet) {
 		if(listener != null) listener.handleMessage(packet);
+	}
+	
+	public boolean isServerRequestsEncryption() {
+		return serverRequestsEncryption;
+	}
+	
+	public void setServerRequestsEncryption(boolean serverRequestsEncryption) {
+		this.serverRequestsEncryption = serverRequestsEncryption;
 	}
 }

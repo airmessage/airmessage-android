@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.redux
 
-import me.tagavari.airmessage.enums.ConnectionErrorCode
 import me.tagavari.airmessage.enums.MessageSendErrorCode
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.messaging.*
@@ -12,7 +11,7 @@ import java.io.File
 typealias MessageStateEnum = me.tagavari.airmessage.enums.MessageState
 
 //An event to represent updates to messages and conversations
-abstract class ReduxEventMessaging {
+sealed class ReduxEventMessaging {
 	//An abstract class for an action performed on a conversation
 	abstract class ReduxConversationAction(val conversationInfo: ConversationInfo) : ReduxEventMessaging()
 	

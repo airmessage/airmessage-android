@@ -1117,6 +1117,13 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Inflating the menu resource
 		getMenuInflater().inflate(R.menu.menu_messaging, menu);
 		
+		//Getting the FaceTime option and subscribing to updates
+		MenuItem menuItemFaceTime = menu.findItem(R.id.action_facetime);
+		pluginRXD.activity().add(
+				ReduxEmitterNetwork.getServerFaceTimeSupportSubject()
+						.subscribe(menuItemFaceTime::setVisible)
+		);
+		
 		//Returning true
 		return true;
 	}
@@ -1126,6 +1133,17 @@ public class Messaging extends AppCompatCompositeActivity {
 		if(item.getItemId() == android.R.id.home) {
 			//Going back
 			finish();
+			return true;
+		} else if(item.getItemId() == R.id.action_facetime) {
+			if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return true;
+			
+			//Starting the FaceTime call
+			Intent intent = new Intent(this, FaceTimeCall.class);
+			intent.putExtra(FaceTimeCall.PARAM_TYPE, FaceTimeCall.Type.outgoing);
+			intent.putExtra(FaceTimeCall.PARAM_PARTICIPANTS, new ArrayList<>(viewModel.conversationInfo.getMembers().stream().map(MemberInfo::getAddress).collect(Collectors.toList())));
+			intent.putExtra(FaceTimeCall.PARAM_INITIATE_OUTGOING, true);
+			startActivity(intent);
+			
 			return true;
 		} else if(item.getItemId() == R.id.action_details) {
 			if(viewModel.stateLD.getValue() != ActivityViewModel.stateReady) return true;
