@@ -11,7 +11,6 @@ import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
@@ -38,6 +37,7 @@ import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.MutableLiveData;
@@ -172,6 +172,14 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 					.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 0);
 		}
 	}, cameraResultCallback);
+	
+	private Runnable cameraPermissionsCallback = null;
+	private final ActivityResultLauncher<String> requestCameraPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+		if(granted && cameraPermissionsCallback != null) {
+			cameraPermissionsCallback.run();
+		}
+	});
+	
 	private final ActivityResultLauncher<Intent> mediaSelectorLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
 		if(result.getResultCode() != Activity.RESULT_OK) return;
 
@@ -688,6 +696,13 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 	 * @param video Whether to capture a video instead of a picture
 	 */
 	private void requestCamera(boolean video) {
+		//Check if we need permission
+		if(ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+			cameraPermissionsCallback = () -> requestCamera(video);
+			requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA);
+			return;
+		}
+		
 		//Finding a free file
 		File targetFile = AttachmentStorageHelper.prepareContentFile(requireContext(), AttachmentStorageHelper.dirNameDraftPrepare, video ? FileNameConstants.videoName : FileNameConstants.pictureName);
 		viewModel.targetFileIntent = targetFile;

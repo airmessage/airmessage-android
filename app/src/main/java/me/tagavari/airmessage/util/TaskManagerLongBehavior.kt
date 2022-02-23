@@ -10,7 +10,7 @@ import io.reactivex.rxjava3.subjects.BehaviorSubject
  * A helper class that manages [Observable] running tasks and caching their results in the form of a [BehaviorSubject<T>]
  * @param <T> The result type of this manager's tasks
  */
-class TaskManagerLongBehavior<T> {
+class TaskManagerLongBehavior<T : Any> {
 	private val requestMap = LongSparseArray<BehaviorSubject<T>>()
 	
 	/**
@@ -22,11 +22,14 @@ class TaskManagerLongBehavior<T> {
 	@CheckReturnValue
 	fun run(id: Long, taskSupplier: Supplier<Observable<T>>): BehaviorSubject<T> {
 		//If we already have a request with a matching key, return that
-		var subject = requestMap[id]
-		if(subject != null && subject.throwable == null) return subject
+		requestMap[id]?.let { subject ->
+			if(subject.throwable != null) {
+				return subject
+			}
+		}
 		
 		//Otherwise, create a new request
-		subject = BehaviorSubject.create()
+		val subject = BehaviorSubject.create<T>()
 		requestMap.put(id, subject)
 		taskSupplier.get().subscribe(subject)
 		return subject
