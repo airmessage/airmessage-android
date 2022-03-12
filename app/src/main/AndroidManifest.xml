@@ -228,7 +228,8 @@
 			android:name=".activity.FaceTimeCall"
 			android:parentActivityName=".activity.CallHistory"
 			android:theme="@style/ThemeFaceTime"
-			android:documentLaunchMode="intoExisting">
+			android:documentLaunchMode="intoExisting"
+			android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 

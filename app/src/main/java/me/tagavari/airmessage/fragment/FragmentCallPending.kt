@@ -2,6 +2,7 @@ package me.tagavari.airmessage.fragment
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.res.Configuration
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.View
@@ -93,6 +94,25 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 			communicationsCallback?.acceptCall()
 		}
 		
+		//Initialize the camera
+		initializeCamera()
+		
+		//Subscribe to connection updates
+		compositeDisposable.add(
+			ReduxEmitterNetwork.connectionStateSubject.subscribe { update ->
+				buttonAcceptCall.isEnabled = update is ReduxEventConnection.Connected
+			}
+		)
+	}
+	
+	override fun onConfigurationChanged(newConfig: Configuration) {
+		super.onConfigurationChanged(newConfig)
+		
+		//Reinitialize the camera
+		initializeCamera()
+	}
+	
+	private fun initializeCamera() {
 		//Start the camera preview
 		val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
 		cameraProviderFuture.addListener({
@@ -116,13 +136,6 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 				exception.printStackTrace()
 			}
 		}, ContextCompat.getMainExecutor(requireContext()))
-		
-		//Subscribe to connection updates
-		compositeDisposable.add(
-			ReduxEmitterNetwork.connectionStateSubject.subscribe { update ->
-				buttonAcceptCall.isEnabled = update is ReduxEventConnection.Connected
-			}
-		)
 	}
 	
 	/**
