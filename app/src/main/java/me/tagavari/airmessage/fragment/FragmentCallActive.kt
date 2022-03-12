@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.fragment
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Base64
 import android.view.View
@@ -25,6 +26,7 @@ class FragmentCallActive : FragmentCommunication<FragmentCommunicationFaceTime>(
 		faceTimeLink = requireArguments().getString(PARAM_LINK)!!
 	}
 	
+	@SuppressLint("SetJavaScriptEnabled")
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		super.onViewCreated(view, savedInstanceState)
 		
