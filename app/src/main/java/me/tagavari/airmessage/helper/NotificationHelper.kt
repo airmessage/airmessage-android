@@ -146,10 +146,10 @@ object NotificationHelper {
 				enableLights(false)
 				setSound(RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_RINGTONE),
 					AudioAttributes.Builder()
-					.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-					.setLegacyStreamType(AudioManager.STREAM_RING)
-					.setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
-					.build())
+						.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+						.setLegacyStreamType(AudioManager.STREAM_RING)
+						.setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+						.build())
 			}
 		)
 	}
