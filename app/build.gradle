@@ -52,8 +52,8 @@ android {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
 		targetSdkVersion 31
-		versionName "3.4.1"
-		versionCode 134
+		versionName "3.4.2"
+		versionCode 135
 		
 		resConfigs "en", "fr", "ja"
 		
@@ -185,10 +185,10 @@ dependencies {
 	implementation "com.google.android.gms:play-services-auth:20.0.1"
 
 	//CameraX
-	def camerax_version = "1.0.1"
+	def camerax_version = "1.1.0-beta02"
 	implementation "androidx.camera:camera-camera2:$camerax_version"
 	implementation "androidx.camera:camera-lifecycle:$camerax_version"
-	implementation "androidx.camera:camera-view:1.0.0-alpha31"
+	implementation "androidx.camera:camera-view:$camerax_version"
 
 
 	//About libraries
