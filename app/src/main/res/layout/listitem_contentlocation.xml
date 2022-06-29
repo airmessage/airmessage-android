@@ -19,14 +19,7 @@
 			android:layout_height="128dp"
 			app:cardElevation="0dp"
 			app:cardUseCompatPadding="false">
-			<com.google.android.gms.maps.MapView
-				android:id="@+id/map_header"
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				app:mapType="normal"
-				app:liteMode="true"
-				app:uiCompass="false"
-				android:clickable="false" />
+			<include layout="@layout/listitem_contentlocation_map" />
 		</me.tagavari.airmessage.view.RoundedFrameLayout>
 
 		<!-- Link title -->
@@ -51,7 +44,7 @@
 			android:layout_marginTop="4dp"
 			android:layout_marginBottom="12dp"
 			android:orientation="horizontal"
-			android:gravity="center_vertical" >
+			android:gravity="center_vertical">
 			<ImageView
 				android:layout_width="18dp"
 				android:layout_height="18dp"

@@ -7,9 +7,19 @@ import android.app.Activity;
 import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationManager;
-import android.content.*;
+import android.content.BroadcastReceiver;
+import android.content.ClipData;
+import android.content.ClipDescription;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.ColorStateList;
-import android.graphics.*;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.Outline;
+import android.graphics.PointF;
+import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.media.SoundPool;
@@ -26,8 +36,23 @@ import android.text.format.DateFormat;
 import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
-import android.util.*;
-import android.view.*;
+import android.util.AttributeSet;
+import android.util.DisplayMetrics;
+import android.util.Log;
+import android.util.Patterns;
+import android.util.SparseArray;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.InputDevice;
+import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
+import android.view.ViewTreeObserver;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
@@ -37,7 +62,14 @@ import android.view.inputmethod.InputMethodManager;
 import android.view.textclassifier.TextClassificationManager;
 import android.view.textclassifier.TextClassifier;
 import android.view.textclassifier.TextLinks;
-import android.widget.*;
+import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.PopupMenu;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -66,6 +98,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.load.DataSource;
@@ -75,19 +108,42 @@ import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.Target;
 import com.bumptech.glide.signature.ObjectKey;
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MapStyleOptions;
-import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
+
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.ref.WeakReference;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.*;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Consumer;
@@ -108,37 +164,114 @@ import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.constants.TimingConstants;
 import me.tagavari.airmessage.data.DatabaseManager;
-import me.tagavari.airmessage.enums.*;
+import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
+import me.tagavari.airmessage.enums.AttachmentType;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.enums.ConnectionState;
+import me.tagavari.airmessage.enums.ConversationItemType;
+import me.tagavari.airmessage.enums.ConversationState;
+import me.tagavari.airmessage.enums.MessageComponentType;
+import me.tagavari.airmessage.enums.MessagePreviewState;
+import me.tagavari.airmessage.enums.MessagePreviewType;
+import me.tagavari.airmessage.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.enums.MessageState;
+import me.tagavari.airmessage.enums.MessageViewType;
+import me.tagavari.airmessage.enums.ServiceHandler;
+import me.tagavari.airmessage.enums.ServiceType;
+import me.tagavari.airmessage.flavor.CrashlyticsBridge;
 import me.tagavari.airmessage.fragment.FragmentMessagingAttachments;
 import me.tagavari.airmessage.fragment.FragmentMessagingDetails;
-import me.tagavari.airmessage.helper.*;
-import me.tagavari.airmessage.messaging.*;
+import me.tagavari.airmessage.helper.AddressHelper;
+import me.tagavari.airmessage.helper.AttachmentStorageHelper;
+import me.tagavari.airmessage.helper.CollectionHelper;
+import me.tagavari.airmessage.helper.ColorHelper;
+import me.tagavari.airmessage.helper.ColorMathHelper;
+import me.tagavari.airmessage.helper.ContactHelper;
+import me.tagavari.airmessage.helper.ConversationBuildHelper;
+import me.tagavari.airmessage.helper.ConversationColorHelper;
+import me.tagavari.airmessage.helper.ConversationHelper;
+import me.tagavari.airmessage.helper.DataCompressionHelper;
+import me.tagavari.airmessage.helper.DataStreamHelper;
+import me.tagavari.airmessage.helper.ErrorDetailsHelper;
+import me.tagavari.airmessage.helper.ErrorLanguageHelper;
+import me.tagavari.airmessage.helper.ExternalStorageHelper;
+import me.tagavari.airmessage.helper.FileHelper;
+import me.tagavari.airmessage.helper.IntentHelper;
+import me.tagavari.airmessage.helper.LanguageHelper;
+import me.tagavari.airmessage.helper.MMSSMSHelper;
+import me.tagavari.airmessage.helper.MessageSendHelper;
+import me.tagavari.airmessage.helper.NotificationHelper;
+import me.tagavari.airmessage.helper.PlatformHelper;
+import me.tagavari.airmessage.helper.ResourceHelper;
+import me.tagavari.airmessage.helper.SendStyleHelper;
+import me.tagavari.airmessage.helper.ShortcutHelper;
+import me.tagavari.airmessage.helper.SmartReplyHelper;
+import me.tagavari.airmessage.helper.SoundHelper;
+import me.tagavari.airmessage.helper.StringHelper;
+import me.tagavari.airmessage.helper.ThemeHelper;
+import me.tagavari.airmessage.helper.ViewHelper;
+import me.tagavari.airmessage.helper.WindowHelper;
+import me.tagavari.airmessage.messaging.AMConversationAction;
+import me.tagavari.airmessage.messaging.AttachmentInfo;
+import me.tagavari.airmessage.messaging.ConversationAction;
+import me.tagavari.airmessage.messaging.ConversationInfo;
+import me.tagavari.airmessage.messaging.ConversationItem;
+import me.tagavari.airmessage.messaging.FileDisplayMetadata;
+import me.tagavari.airmessage.messaging.FileDraft;
+import me.tagavari.airmessage.messaging.FileLinked;
+import me.tagavari.airmessage.messaging.MemberInfo;
+import me.tagavari.airmessage.messaging.MessageComponent;
+import me.tagavari.airmessage.messaging.MessageComponentText;
+import me.tagavari.airmessage.messaging.MessageInfo;
+import me.tagavari.airmessage.messaging.MessagePreviewInfo;
+import me.tagavari.airmessage.messaging.StickerInfo;
+import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.messaging.viewbinder.VBMessageComponent;
-import me.tagavari.airmessage.messaging.viewholder.*;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentQueued;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContent;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentAudio;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentContact;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentDocument;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentLocation;
+import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentMedia;
+import me.tagavari.airmessage.messaging.viewholder.VHConversationActions;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageAction;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponent;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentAttachment;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentAudio;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentContact;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentDocument;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentLocation;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentText;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageComponentVisual;
+import me.tagavari.airmessage.messaging.viewholder.VHMessagePreviewLink;
+import me.tagavari.airmessage.messaging.viewholder.VHMessageStructure;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventAttachmentDownload;
 import me.tagavari.airmessage.redux.ReduxEventConnection;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;
-import me.tagavari.airmessage.task.*;
-import me.tagavari.airmessage.util.*;
+import me.tagavari.airmessage.task.ConversationActionTask;
+import me.tagavari.airmessage.task.DraftActionTask;
+import me.tagavari.airmessage.task.FileQueueTask;
+import me.tagavari.airmessage.task.MessageActionTask;
+import me.tagavari.airmessage.task.RichPreviewTask;
+import me.tagavari.airmessage.util.AnimatingInsetsCallback;
+import me.tagavari.airmessage.util.AudioPlaybackManager;
+import me.tagavari.airmessage.util.CustomTabsLinkTransformationMethod;
+import me.tagavari.airmessage.util.DisposableViewHolder;
+import me.tagavari.airmessage.util.ReplaceInsertResult;
+import me.tagavari.airmessage.util.TapbackDisplayData;
+import me.tagavari.airmessage.util.TaskManager;
+import me.tagavari.airmessage.util.TaskManagerLong;
+import me.tagavari.airmessage.util.Union;
 import me.tagavari.airmessage.view.AppleEffectView;
 import me.tagavari.airmessage.view.InvisibleInkView;
-import nl.dionsegijn.konfetti.KonfettiView;
-import nl.dionsegijn.konfetti.models.Shape;
-import nl.dionsegijn.konfetti.models.Size;
-
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.ref.WeakReference;
-import java.net.URL;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import nl.dionsegijn.konfetti.core.Party;
+import nl.dionsegijn.konfetti.core.PartyFactory;
+import nl.dionsegijn.konfetti.core.emitter.Emitter;
+import nl.dionsegijn.konfetti.core.models.Shape;
+import nl.dionsegijn.konfetti.core.models.Size;
+import nl.dionsegijn.konfetti.xml.KonfettiView;
 
 public class Messaging extends AppCompatCompositeActivity {
 	private static final String TAG = Messaging.class.getSimpleName();
@@ -2048,16 +2181,18 @@ public class Messaging extends AppCompatCompositeActivity {
 			case SendStyleHelper.appleSendStyleScrnConfetti: {
 				//Activating the Konfetti view
 				KonfettiView konfettiView = findViewById(R.id.konfetti);
-				konfettiView.build()
-						.addColors(ColorConstants.effectColors)
-						.setDirection(0D, 359D)
-						.setSpeed(4F, 8F)
-						.setFadeOutEnabled(true)
-						.setTimeToLive(5000L)
-						.addShapes(Shape.Square.INSTANCE, Shape.Circle.INSTANCE)
-						.addSizes(new Size(12, 5), new Size(16, 6))
-						.setPosition(-50F, konfettiView.getWidth() + 50F, -50F, -50F)
-						.streamFor(300, confettiDuration);
+				Party party = new PartyFactory(new Emitter(confettiDuration, TimeUnit.MILLISECONDS).perSecond(300))
+						.colors(ColorConstants.effectColors)
+						.angle(0)
+						.spread(360)
+						.setSpeedBetween(4F, 8F)
+						.fadeOutEnabled(true)
+						.timeToLive(5000L)
+						.shapes(Shape.Square.INSTANCE, Shape.Circle.INSTANCE)
+						.sizes(new Size(12, 5, 0.2F), new Size(16, 6, 0.2F))
+						.position(-50F, konfettiView.getWidth() + 50F, -50F, -50F)
+						.build();
+				konfettiView.start(party);
 				
 				//Setting the timer to mark the effect as finished
 				new Handler().postDelayed(() -> currentScreenEffectPlaying = false, confettiDuration * 5);
@@ -3396,13 +3531,12 @@ public class Messaging extends AppCompatCompositeActivity {
 			//Loading the metadata and waiting for the map view to be initialized
 			viewHolderStructure.getCompositeDisposable().add(
 					Single.zip(
-							component.<FileDisplayMetadata.LocationDetailed>getDisplayMetadata(() -> Single.fromCallable(() -> new FileDisplayMetadata.LocationDetailed(Messaging.this, Union.ofA(component.getFile())))),
-							viewHolder.getGoogleMap(),
+							component.getDisplayMetadata(() -> Single.fromCallable(() -> new FileDisplayMetadata.LocationDetailed(Messaging.this, Union.ofA(component.getFile())))),
+							viewHolder.getMapLoadCompletable().toSingleDefault(new Object()),
 							Pair::new
 					).subscribe(results -> {
 						//Getting the results
 						FileDisplayMetadata.LocationDetailed metadata = results.getFirst();
-						GoogleMap googleMap = results.getSecond();
 						
 						//Switching to the content view
 						setAttachmentView(viewHolder, viewHolder.getGroupContentFrame());
@@ -3420,22 +3554,9 @@ public class Messaging extends AppCompatCompositeActivity {
 						
 						//Setting the map preview
 						if(metadata.getLocationCoords() == null || !Preferences.getPreferenceMessagePreviews(viewHolder.itemView.getContext())) {
-							viewHolder.getMapContainer().setVisibility(View.GONE);
+							viewHolder.setMapLocation(null);
 						} else {
-							//Showing the map view and setting it as non-clickable (so that the card view parent will handle clicks instead)
-							viewHolder.getMapContainer().setVisibility(View.VISIBLE);
-							viewHolder.getMapView().setClickable(false);
-							
-							//Setting the map location
-							LatLng targetLocation = metadata.getLocationCoords();
-							googleMap.clear();
-							googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(targetLocation, 15));
-							MarkerOptions markerOptions = new MarkerOptions().position(targetLocation);
-							googleMap.addMarker(markerOptions);
-							
-							//Setting the map theme
-							googleMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(Messaging.this, ThemeHelper.isNightMode(getResources()) ? R.raw.map_dark : R.raw.map_light));
-							googleMap.getUiSettings().setMapToolbarEnabled(false);
+							viewHolder.setMapLocation(metadata.getLocationCoords());
 						}
 						
 						//Setting the click listener
@@ -4627,7 +4748,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		 */
 		private void applyConversation(ConversationInfo conversationInfo, DatabaseManager.ConversationLazyLoader conversationLazyLoader) {
 			//Logging the event
-			FirebaseCrashlytics.getInstance().log("Loaded conversation ID " + conversationInfo.getLocalID() + " over service " + (conversationInfo.getServiceHandler() == ServiceHandler.appleBridge ? "appleBridge" : "systemMessaging") + "-" + conversationInfo.getServiceType());
+			CrashlyticsBridge.log("Loaded conversation ID " + conversationInfo.getLocalID() + " over service " + (conversationInfo.getServiceHandler() == ServiceHandler.appleBridge ? "appleBridge" : "systemMessaging") + "-" + conversationInfo.getServiceType());
 			
 			//Setting the values
 			this.conversationInfo = conversationInfo;
@@ -4970,7 +5091,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							}, error -> {
 								//Logging the error
 								Log.w(TAG, "Failed to queue draft", error);
-								FirebaseCrashlytics.getInstance().recordException(error);
+								CrashlyticsBridge.recordException(error);
 								
 								//Dequeuing the file
 								int currentIndex = queueList.indexOf(fileQueued);

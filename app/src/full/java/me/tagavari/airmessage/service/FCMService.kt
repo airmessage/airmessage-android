@@ -9,21 +9,17 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.common.Blocks
-import me.tagavari.airmessage.common.Blocks.ModifierInfo
 import me.tagavari.airmessage.connection.comm5.AirUnpacker
 import me.tagavari.airmessage.connection.comm5.ClientProtocol4
 import me.tagavari.airmessage.connection.comm5.ClientProtocol5
 import me.tagavari.airmessage.connection.encryption.EncryptionAES
 import me.tagavari.airmessage.connection.task.MessageUpdateTask
 import me.tagavari.airmessage.connection.task.ModifierUpdateTask
-import me.tagavari.airmessage.data.SharedPreferencesManager.getDirectConnectionPassword
-import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper.launchTemporary
-import me.tagavari.airmessage.helper.NotificationHelper.sendDecryptErrorNotification
+import me.tagavari.airmessage.data.SharedPreferencesManager
+import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper
+import me.tagavari.airmessage.helper.NotificationHelper
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork.messageUpdateSubject
 import me.tagavari.airmessage.redux.ReduxEventMessaging
-import me.tagavari.airmessage.redux.ReduxEventMessaging.StickerAdd
-import me.tagavari.airmessage.redux.ReduxEventMessaging.TapbackUpdate
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.util.*
@@ -83,7 +79,7 @@ class FCMService : FirebaseMessagingService() {
 				val isEncrypted = airUnpacker.unpackBoolean()
 				if(isEncrypted) {
 					try {
-						val password = getDirectConnectionPassword(this)
+						val password = SharedPreferencesManager.getDirectConnectionPassword(this)
 							?: throw GeneralSecurityException("No password available")
 						
 						val encryptionAES = EncryptionAES(password)
@@ -92,11 +88,11 @@ class FCMService : FirebaseMessagingService() {
 						exception.printStackTrace()
 						
 						//Notify the user
-						sendDecryptErrorNotification(this)
+						NotificationHelper.sendDecryptErrorNotification(this)
 						return
 					} catch(exception: IOException) {
 						exception.printStackTrace()
-						sendDecryptErrorNotification(this)
+						NotificationHelper.sendDecryptErrorNotification(this)
 						return
 					}
 				} else {
@@ -119,7 +115,7 @@ class FCMService : FirebaseMessagingService() {
 				val isEncrypted = airUnpacker.unpackBoolean()
 				if(isEncrypted) {
 					try {
-						val password = getDirectConnectionPassword(this)
+						val password = SharedPreferencesManager.getDirectConnectionPassword(this)
 							?: throw GeneralSecurityException("No password available")
 						
 						val encryptionAES = EncryptionAES(password)
@@ -128,11 +124,11 @@ class FCMService : FirebaseMessagingService() {
 						exception.printStackTrace()
 						
 						//Notify the user
-						sendDecryptErrorNotification(this)
+						NotificationHelper.sendDecryptErrorNotification(this)
 						return
 					} catch(exception: IOException) {
 						exception.printStackTrace()
-						sendDecryptErrorNotification(this)
+						NotificationHelper.sendDecryptErrorNotification(this)
 						return
 					}
 				} else {
@@ -152,7 +148,7 @@ class FCMService : FirebaseMessagingService() {
 	 */
 	private fun handleStandardMessagePayload(remoteMessage: RemoteMessage, protocolVersion: List<Int>, airUnpacker: AirUnpacker) {
 		var conversationItems: List<Blocks.ConversationItem>? = null
-		var modifiers: List<ModifierInfo?>? = null
+		var modifiers: List<Blocks.ModifierInfo?>? = null
 		var dataLoaded = false
 		
 		//Protocol version 5
@@ -192,7 +188,7 @@ class FCMService : FirebaseMessagingService() {
 			.doOnSuccess { response: MessageUpdateTask.Response ->
 				//Emit any generated events
 				for(event in response.events) {
-					messageUpdateSubject.onNext(event)
+					ReduxEmitterNetwork.messageUpdateSubject.onNext(event)
 				}
 				
 				//If we have incomplete conversations, query the server to complete them
@@ -211,18 +207,18 @@ class FCMService : FirebaseMessagingService() {
 			.doOnSuccess { result: ModifierUpdateTask.Response ->
 				//Push emitter updates
 				for((messageID, messageState, dateRead) in result.activityStatusUpdates) {
-					messageUpdateSubject.onNext(
+					ReduxEmitterNetwork.messageUpdateSubject.onNext(
 						ReduxEventMessaging.MessageState(messageID, messageState, dateRead)
 					)
 				}
-				for((first, second) in result.stickerModifiers) messageUpdateSubject.onNext(
-					StickerAdd(first, second)
+				for((first, second) in result.stickerModifiers) ReduxEmitterNetwork.messageUpdateSubject.onNext(
+					ReduxEventMessaging.StickerAdd(first, second)
 				)
-				for((first, second) in result.tapbackModifiers) messageUpdateSubject.onNext(
-					TapbackUpdate(first, second, true)
+				for((first, second) in result.tapbackModifiers) ReduxEmitterNetwork.messageUpdateSubject.onNext(
+					ReduxEventMessaging.TapbackUpdate(first, second, true)
 				)
-				for((first, second) in result.tapbackRemovals) messageUpdateSubject.onNext(
-					TapbackUpdate(first, second, false)
+				for((first, second) in result.tapbackRemovals) ReduxEmitterNetwork.messageUpdateSubject.onNext(
+					ReduxEventMessaging.TapbackUpdate(first, second, false)
 				)
 			}.subscribe()
 	}
@@ -241,7 +237,12 @@ class FCMService : FirebaseMessagingService() {
 					}
 				}
 				
-				Log.w(TAG, "Unreadable FaceTime payload received for protocol version ${protocolVersion.joinToString(".")}")
+				Log.w(
+					TAG,
+					"Unreadable FaceTime payload received for protocol version ${
+						protocolVersion.joinToString(".")
+					}"
+				)
 				return@run null
 			} catch(exception: Exception) {
 				exception.printStackTrace()
@@ -266,7 +267,7 @@ class FCMService : FirebaseMessagingService() {
 		 * so we should check if we are allowed to launch one before doing so.
 		 */
 		if(ConnectionService.getInstance() == null && (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || remoteMessage.priority == RemoteMessage.PRIORITY_HIGH)) {
-			launchTemporary(this)
+			ConnectionServiceLaunchHelper.launchTemporary(this)
 		}
 	}
 	

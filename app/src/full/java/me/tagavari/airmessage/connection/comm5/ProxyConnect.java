@@ -5,13 +5,14 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+
 import androidx.annotation.Nullable;
+
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GetTokenResult;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.messaging.FirebaseMessaging;
 import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.core.Single;
@@ -23,6 +24,7 @@ import me.tagavari.airmessage.connection.encryption.EncryptionManager;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.util.ConnectionParams;
+
 import org.java_websocket.WebSocket;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.exceptions.InvalidDataException;
@@ -31,7 +33,6 @@ import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 
-import javax.net.ssl.*;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.URI;
@@ -44,6 +45,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocket;
+
+import me.tagavari.airmessage.BuildConfig;
+import me.tagavari.airmessage.connection.DataProxy;
+import me.tagavari.airmessage.connection.encryption.EncryptionAES;
+import me.tagavari.airmessage.connection.encryption.EncryptionManager;
+import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.flavor.CrashlyticsBridge;
+import me.tagavari.airmessage.util.ConnectionParams;
 
 /**
  * Handles connecting via WebSocket to AirMessage's Connect servers
@@ -66,7 +83,7 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 	@Override
 	public void start(Context context, @Nullable ConnectionParams override) {
 		if(isRunning) {
-			FirebaseCrashlytics.getInstance().recordException(new IllegalStateException("Tried to start proxy, but it is already running!"));
+			CrashlyticsBridge.recordException(new IllegalStateException("Tried to start proxy, but it is already running!"));
 			return;
 		}
 		
@@ -113,7 +130,7 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 			} else {
 				//Error
 				accountIDTask.getException().printStackTrace();
-				FirebaseCrashlytics.getInstance().recordException(accountIDTask.getException());
+				CrashlyticsBridge.recordException(accountIDTask.getException());
 				notifyClose(ConnectionErrorCode.internalError);
 				return;
 			}
@@ -122,7 +139,7 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 			} else {
 				//Error
 				fcmTokenTask.getException().printStackTrace();
-				FirebaseCrashlytics.getInstance().recordException(fcmTokenTask.getException());
+				CrashlyticsBridge.recordException(fcmTokenTask.getException());
 				notifyClose(ConnectionErrorCode.internalError);
 				return;
 			}
@@ -133,15 +150,15 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 			
 			//Building the URL
 			Uri uri = new Uri.Builder()
-					.scheme(connectHostname.getScheme())
-					.encodedAuthority(connectHostname.getAuthority())
-					.path(connectHostname.getPath())
-					.appendQueryParameter("communications", Integer.toString(NHT.commVer))
-					.appendQueryParameter("is_server", Boolean.toString(false))
-					.appendQueryParameter("installation_id", SharedPreferencesManager.getInstallationID(context))
-					.appendQueryParameter("id_token", idToken)
-					.appendQueryParameter("fcm_token", fcmToken)
-					.build();
+				.scheme(connectHostname.getScheme())
+				.encodedAuthority(connectHostname.getAuthority())
+				.path(connectHostname.getPath())
+				.appendQueryParameter("communications", Integer.toString(NHT.commVer))
+				.appendQueryParameter("is_server", Boolean.toString(false))
+				.appendQueryParameter("installation_id", SharedPreferencesManager.getInstallationID(context))
+				.appendQueryParameter("id_token", idToken)
+				.appendQueryParameter("fcm_token", fcmToken)
+				.build();
 			
 			//Starting the connection
 			try {
@@ -149,7 +166,7 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 				client.connect();
 			} catch(URISyntaxException exception) {
 				exception.printStackTrace();
-				FirebaseCrashlytics.getInstance().recordException(exception);
+				CrashlyticsBridge.recordException(exception);
 				stop(ConnectionErrorCode.internalError);
 			}
 		});
@@ -344,7 +361,7 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 				}
 			} catch(BufferUnderflowException | GeneralSecurityException exception) {
 				exception.printStackTrace();
-				FirebaseCrashlytics.getInstance().recordException(exception);
+				CrashlyticsBridge.recordException(exception);
 			}
 		}
 		

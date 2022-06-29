@@ -35,6 +35,7 @@ import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.data.UserCacheHelper
+import me.tagavari.airmessage.flavor.MLKitBridge
 import me.tagavari.airmessage.helper.AddressHelper.formatAddress
 import me.tagavari.airmessage.helper.AddressHelper.normalizeAddress
 import me.tagavari.airmessage.helper.BitmapHelper.loadBitmapCircular
@@ -247,10 +248,7 @@ object NotificationHelper {
 		val singleSuggestions: Single<List<String>> = if(sender == null || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q || !Preferences.getPreferenceReplySuggestions(context)) {
 			Single.just(emptyList())
 		} else {
-			Single.fromCallable {
-				DatabaseManager.getInstance().loadConversationForMLKit(conversationInfo.localID)
-			}.subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread())
-					.flatMap { messages -> SmartReplyHelper.generateResponsesMLKit(messages) }
+			MLKitBridge.generateFromDatabase(conversationInfo.localID)
 		}
 		
 		Single.zip(singleTitle, singleShortcutIcon, singleMemberInfo, singleMemberIcon, singleSuggestions, ::NotificationFutureData)

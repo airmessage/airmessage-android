@@ -10,8 +10,8 @@ import android.view.TextureView;
 import android.view.View;
 import androidx.annotation.Nullable;
 import androidx.core.graphics.ColorUtils;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.flavor.CrashlyticsBridge;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -220,7 +220,7 @@ public class InvisibleInkView extends TextureView implements Runnable {
 			}
 		} catch(Exception exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 		} finally {
 			stop();
 		}

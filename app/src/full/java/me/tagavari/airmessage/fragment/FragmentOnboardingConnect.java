@@ -20,7 +20,6 @@ import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.activity.Preferences;
@@ -32,6 +31,7 @@ import me.tagavari.airmessage.enums.ConnectionState;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.extension.FragmentBackOverride;
 import me.tagavari.airmessage.extension.FragmentCommunicationNetworkConfig;
+import me.tagavari.airmessage.flavor.CrashlyticsBridge;
 import me.tagavari.airmessage.helper.ErrorDetailsHelper;
 import me.tagavari.airmessage.helper.ResourceHelper;
 import me.tagavari.airmessage.helper.StringHelper;
@@ -276,7 +276,7 @@ public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCom
 			SharedPreferencesManager.setDirectConnectionPassword(getContext(), StringHelper.nullifyEmptyString(inputAuth.getEditText().getText().toString().trim()));
 		} catch(GeneralSecurityException | IOException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 		}
 		
 		//Disabling the connection on boot
@@ -297,7 +297,7 @@ public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCom
 	}
 	
 	@Retention(RetentionPolicy.SOURCE)
-	@IntDef({State.waiting, State.connecting, State.error})
+	@IntDef({State.waiting, State.connecting, State.error, State.auth})
 	private @interface State {
 		int waiting = 0;
 		int connecting = 1;
