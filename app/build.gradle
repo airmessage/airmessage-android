@@ -52,17 +52,19 @@ android {
 			}
 		}
 	}
-	compileSdkVersion 31
+	compileSdkVersion 32
 	defaultConfig {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
-		targetSdkVersion 31
+		targetSdkVersion 32
 		versionName "3.5.0"
 		versionCode 137
-		
 		resConfigs "en", "fr", "ja"
 		
 		testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+	}
+	buildFeatures {
+		compose true
 	}
 	buildTypes {
 		debug {
@@ -91,10 +93,7 @@ android {
 			}
 		}
 	}
-	lintOptions {
-		abortOnError false
-	}
-
+	
 	flavorDimensions "distribution"
 	productFlavors {
 		full {
@@ -126,6 +125,12 @@ android {
 	androidResources {
 		noCompress 'tflite'
 	}
+	composeOptions {
+		kotlinCompilerExtensionVersion = "1.2.0-alpha08"
+	}
+	lint {
+		abortOnError false
+	}
 }
 
 dependencies {
@@ -153,7 +158,17 @@ dependencies {
 
 	//Material components
 	implementation "com.google.android.material:material:1.6.1"
-
+	
+	//Jetpack Compose
+	implementation "androidx.activity:activity-compose:1.4.0"
+	//implementation "androidx.compose.material:material:1.1.1"
+	implementation "androidx.compose.material3:material3:1.0.0-alpha13"
+	implementation "androidx.compose.material3:material3-window-size-class:1.0.0-alpha13"
+	implementation "androidx.compose.animation:animation:1.1.1"
+	implementation "androidx.compose.ui:ui-tooling:1.1.1"
+	implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.4.1"
+	androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.1.1"
+	
 	//Android architecture components
 	def lifecycle_version = "2.4.1"
 
