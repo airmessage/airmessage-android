@@ -165,9 +165,17 @@ dependencies {
 	implementation "androidx.compose.material3:material3:1.0.0-alpha13"
 	implementation "androidx.compose.material3:material3-window-size-class:1.0.0-alpha13"
 	implementation "androidx.compose.animation:animation:1.1.1"
-	implementation "androidx.compose.ui:ui-tooling:1.1.1"
+	debugImplementation "androidx.compose.ui:ui-tooling:1.1.1"
+	implementation "androidx.compose.ui:ui-tooling-preview:1.1.1"
 	implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.4.1"
 	androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.1.1"
+	
+	//Coil
+	implementation("io.coil-kt:coil-compose:2.1.0")
+	
+	//Coroutines
+	implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.3"
+	implementation "org.jetbrains.kotlinx:kotlinx-coroutines-rx3:1.6.3"
 	
 	//Android architecture components
 	def lifecycle_version = "2.4.1"

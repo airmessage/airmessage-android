@@ -28,9 +28,9 @@ object ConversationBuildHelper {
 	 * See [.buildConversationTitle] to build a conversation title with names
 	 */
 	@JvmStatic
-	fun buildConversationTitleDirect(context: Context, conversationInfo: ConversationInfo): String? {
+	fun buildConversationTitleDirect(context: Context, conversationInfo: ConversationInfo): String {
 		//Returning the conversation title if it is valid
-		if(!conversationInfo.title.isNullOrEmpty()) return conversationInfo.title
+		conversationInfo.title?.let { return it }
 		
 		//Returning "unknown" if the conversation has no members
 		if(conversationInfo.members.isEmpty()) context.resources.getString(R.string.part_unknown)
