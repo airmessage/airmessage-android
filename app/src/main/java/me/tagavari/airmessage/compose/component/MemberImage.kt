@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -7,10 +8,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.vectorResource
 import coil.compose.AsyncImage
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
@@ -36,15 +35,26 @@ fun MemberImage(
 		}
 	}
 	
-	var isImageLoaded by remember { mutableStateOf(false) }
+	val contactImageURI = userInfo?.contactID?.let { ContactHelper.getContactImageURI(it) }
 	
-	AsyncImage(
-		model = userInfo?.contactID?.let { ContactHelper.getContactImageURI(it) },
-		placeholder = painterResource(id = R.drawable.user),
-		contentDescription = null,
-		modifier = modifier.clip(CircleShape),
-		colorFilter = if(!isImageLoaded) ColorFilter.tint(Color(member.color), BlendMode.Multiply) else null,
-		onLoading = { isImageLoaded = false },
-		onSuccess = { isImageLoaded = true }
-	)
+	if(contactImageURI != null) {
+		var isImageLoaded by remember { mutableStateOf(false) }
+		
+		AsyncImage(
+			model = contactImageURI,
+			placeholder = painterResource(id = R.drawable.user),
+			contentDescription = null,
+			modifier = modifier.clip(CircleShape),
+			colorFilter = if(!isImageLoaded) ColorFilter.tint(Color(member.color), BlendMode.Multiply) else null,
+			onLoading = { isImageLoaded = false },
+			onSuccess = { isImageLoaded = true }
+		)
+	} else {
+		Image(
+			painter = painterResource(id = R.drawable.user),
+			contentDescription = null,
+			modifier = modifier.clip(CircleShape),
+			colorFilter = ColorFilter.tint(Color(member.color), BlendMode.Multiply),
+		)
+	}
 }
