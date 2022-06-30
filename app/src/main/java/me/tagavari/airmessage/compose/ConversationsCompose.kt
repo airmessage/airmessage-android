@@ -41,9 +41,10 @@ class ConversationsCompose : ComponentActivity() {
 			}
 			
 			AirMessageAndroidTheme {
-				ConversationList(conversations = conversations) {
-				
-				}
+				ConversationList(
+					conversations = conversations,
+					onReloadConversations = {}
+				)
 			}
 		}
 	}

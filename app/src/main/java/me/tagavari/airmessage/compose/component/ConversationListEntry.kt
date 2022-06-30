@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -34,7 +35,8 @@ import me.tagavari.airmessage.messaging.MemberInfo
 
 @Composable
 fun ConversationListEntry(
-	conversation: ConversationInfo
+	conversation: ConversationInfo,
+	onClick: () -> Unit
 ) {
 	val context = LocalContext.current
 	val title by produceState(
@@ -48,7 +50,7 @@ fun ConversationListEntry(
 	val isPreviewError = preview is ConversationPreview.Message && preview.isError
 	
 	Row(
-		modifier = Modifier.height(72.dp),
+		modifier = Modifier.height(72.dp).clickable(onClick = onClick),
 		verticalAlignment = Alignment.CenterVertically
 	) {
 		Spacer(modifier = Modifier.width(4.dp))
@@ -74,6 +76,7 @@ fun ConversationListEntry(
 			Text(
 				text = title,
 				overflow = TextOverflow.Ellipsis,
+				maxLines = 1,
 				style = MaterialTheme.typography.bodyLarge
 			)
 			
@@ -85,6 +88,8 @@ fun ConversationListEntry(
 				color = MaterialTheme.colorScheme.onSurfaceVariant
 			)
 		}
+		
+		Spacer(modifier = Modifier.width(16.dp))
 		
 		Column(
 			horizontalAlignment = Alignment.End
@@ -145,7 +150,8 @@ private fun PreviewConversationListEntry() {
 						sendStyle = null,
 						isError = false
 					)
-				)
+				),
+				onClick = {}
 			)
 		}
 	}
@@ -184,7 +190,8 @@ private fun PreviewConversationListErrorEntry() {
 						sendStyle = null,
 						isError = true
 					)
-				)
+				),
+				onClick = {}
 			)
 		}
 	}

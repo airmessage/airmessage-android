@@ -96,7 +96,10 @@ fun ConversationList(
 						contentPadding = contentPadding
 					) {
 						items(conversations) { conversationInfo ->
-							ConversationListEntry(conversation = conversationInfo)
+							ConversationListEntry(
+								conversation = conversationInfo,
+								onClick = {}
+							)
 						}
 					}
 				}
