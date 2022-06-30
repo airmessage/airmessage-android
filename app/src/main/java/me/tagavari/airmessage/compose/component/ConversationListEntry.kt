@@ -53,7 +53,7 @@ fun ConversationListEntry(
 		modifier = Modifier.height(72.dp).clickable(onClick = onClick),
 		verticalAlignment = Alignment.CenterVertically
 	) {
-		Spacer(modifier = Modifier.width(4.dp))
+		Spacer(modifier = Modifier.width(6.dp))
 		
 		//New message indicator
 		Box(
@@ -64,7 +64,7 @@ fun ConversationListEntry(
 				.alpha(if(conversation.unreadMessageCount > 0) 1F else 0F)
 		)
 		
-		Spacer(modifier = Modifier.width(4.dp))
+		Spacer(modifier = Modifier.width(6.dp))
 		
 		//Group icon
 		UserIconGroup(members = conversation.members)
