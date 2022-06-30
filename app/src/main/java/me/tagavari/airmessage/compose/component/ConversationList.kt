@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -53,11 +54,21 @@ fun ConversationList(
 			}
 		},
 		content = { innerPadding ->
+			//Combine inner and system insets padding
+			val layoutDirection = LocalLayoutDirection.current
+			val systemInsets = WindowInsets.navigationBars.asPaddingValues()
+			val contentPadding = PaddingValues(
+				start = innerPadding.calculateStartPadding(layoutDirection) + systemInsets.calculateStartPadding(layoutDirection),
+				top = innerPadding.calculateTopPadding() + systemInsets.calculateTopPadding(),
+				end = innerPadding.calculateEndPadding(layoutDirection) + systemInsets.calculateEndPadding(layoutDirection),
+				bottom = innerPadding.calculateBottomPadding() + systemInsets.calculateBottomPadding()
+			)
+			
 			if(conversations == null) {
 				Box(
 					modifier = modifier
 						.fillMaxSize()
-						.padding(innerPadding)
+						.padding(contentPadding)
 				) {
 					CircularProgressIndicator(
 						modifier = Modifier.align(Alignment.Center)
@@ -68,7 +79,7 @@ fun ConversationList(
 					Column(
 						modifier = modifier
 							.fillMaxSize()
-							.padding(innerPadding),
+							.padding(contentPadding),
 						verticalArrangement = Arrangement.Center,
 						horizontalAlignment = Alignment.CenterHorizontally
 					) {
@@ -82,7 +93,7 @@ fun ConversationList(
 				
 				conversations.onSuccess { conversations ->
 					LazyColumn(
-						contentPadding = innerPadding
+						contentPadding = contentPadding
 					) {
 						items(conversations) { conversationInfo ->
 							ConversationListEntry(conversation = conversationInfo)
