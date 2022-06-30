@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
 import androidx.compose.animation.rememberSplineBasedDecay
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -37,11 +39,18 @@ fun ConversationList(
 	Scaffold(
 		modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
 		topBar = {
-			LargeTopAppBar(
-				modifier = Modifier.padding(top = 24.dp),
-				title = { Text(stringResource(id = R.string.app_name)) },
-				scrollBehavior = scrollBehavior
-			)
+			val backgroundColors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+			val backgroundColor = backgroundColors.containerColor(
+				scrollFraction = scrollBehavior.scrollFraction
+			).value
+			
+			Box(modifier = Modifier.background(backgroundColor)) {
+				LargeTopAppBar(
+					modifier = Modifier.statusBarsPadding(),
+					title = { Text(stringResource(id = R.string.app_name)) },
+					scrollBehavior = scrollBehavior
+				)
+			}
 		},
 		content = { innerPadding ->
 			if(conversations == null) {
