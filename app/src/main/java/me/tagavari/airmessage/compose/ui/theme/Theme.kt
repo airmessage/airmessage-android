@@ -48,8 +48,7 @@ fun AirMessageAndroidTheme(
 	if(!view.isInEditMode) {
 		SideEffect {
 			val activity = view.context as Activity
-			activity.window.statusBarColor = colorScheme.primary.toArgb()
-			WindowCompat.getInsetsController(activity.window, view).isAppearanceLightStatusBars = darkTheme
+			WindowCompat.getInsetsController(activity.window, view).isAppearanceLightStatusBars = !darkTheme
 		}
 	}
 	

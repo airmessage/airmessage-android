@@ -13,6 +13,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.view.WindowCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.compose.component.ConversationList
@@ -23,6 +24,9 @@ import me.tagavari.airmessage.messaging.ConversationInfo
 class ConversationsCompose : ComponentActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+		
+		WindowCompat.setDecorFitsSystemWindows(window, false)
+		
 		setContent {
 			val context = LocalContext.current
 			

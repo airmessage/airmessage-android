@@ -1,14 +1,18 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
@@ -24,10 +28,19 @@ fun ConversationList(
 	conversations: Result<List<ConversationInfo>>?,
 	onReloadConversations: () -> Unit
 ) {
+	val decayAnimationSpec = rememberSplineBasedDecay<Float>()
+	val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+		decayAnimationSpec,
+		rememberTopAppBarScrollState()
+	)
+	
 	Scaffold(
+		modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
 		topBar = {
 			LargeTopAppBar(
+				modifier = Modifier.padding(top = 24.dp),
 				title = { Text(stringResource(id = R.string.app_name)) },
+				scrollBehavior = scrollBehavior
 			)
 		},
 		content = { innerPadding ->

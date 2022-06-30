@@ -74,7 +74,7 @@
 			android:name=".compose.ConversationsCompose"
 			android:exported="true"
 			android:label="@string/title_activity_conversations_compose"
-			android:theme="@style/Theme.Airmessageandroid">
+			android:theme="@style/Theme.AirMessage.Compose">
 			
 		</activity>
 
