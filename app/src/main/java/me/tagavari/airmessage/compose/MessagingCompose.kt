@@ -10,6 +10,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.stringResource
 import androidx.core.view.WindowCompat
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.compose.component.MessagingScreen
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 
@@ -18,6 +19,9 @@ class MessagingCompose : ComponentActivity() {
 		super.onCreate(savedInstanceState)
 		
 		WindowCompat.setDecorFitsSystemWindows(window, false)
+		
+		//Get the conversation ID
+		val conversationID = intent.getLongExtra(Messaging.intentParamTargetID, -1)
 		
 		setContent {
 			AirMessageAndroidTheme {
@@ -29,7 +33,8 @@ class MessagingCompose : ComponentActivity() {
 								contentDescription = stringResource(id = R.string.action_back)
 							)
 						}
-					}
+					},
+					conversationID = conversationID
 				)
 			}
 		}
