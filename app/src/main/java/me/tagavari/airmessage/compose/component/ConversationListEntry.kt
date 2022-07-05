@@ -58,10 +58,10 @@ fun ConversationListEntry(
 		//New message indicator
 		Box(
 			modifier = Modifier
+				.alpha(if(conversation.unreadMessageCount > 0) 1F else 0F)
 				.size(8.dp)
 				.clip(CircleShape)
 				.background(MaterialTheme.colorScheme.primary)
-				.alpha(if(conversation.unreadMessageCount > 0) 1F else 0F)
 		)
 		
 		Spacer(modifier = Modifier.width(6.dp))
