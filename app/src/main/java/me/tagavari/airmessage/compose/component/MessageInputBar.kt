@@ -1,5 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
@@ -15,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -79,10 +82,15 @@ fun MessageInputBar(
 				}
 			}
 			
+			var inputFieldFocus by remember { mutableStateOf(false) }
+			
 			//Input field
 			Surface(
-				modifier = Modifier.clip(RoundedCornerShape(20.dp)),
-				tonalElevation = 2.dp
+				modifier = Modifier.border(
+					if(inputFieldFocus) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+					else BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+					RoundedCornerShape(20.dp)
+				),
 			) {
 				Row {
 					BasicTextField(
@@ -92,7 +100,10 @@ fun MessageInputBar(
 							.weight(1F)
 							.heightIn(min = 40.dp, max = 100.dp)
 							.padding(horizontal = 12.dp, vertical = 8.dp)
-							.align(Alignment.CenterVertically),
+							.align(Alignment.CenterVertically)
+							.onFocusChanged { focusState ->
+								inputFieldFocus = focusState.isFocused || focusState.hasFocus
+							},
 						textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
 						decorationBox = { innerTextField ->
 							//Display the current service as a placeholder
