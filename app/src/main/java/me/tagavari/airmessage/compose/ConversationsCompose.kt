@@ -1,21 +1,16 @@
 package me.tagavari.airmessage.compose
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.view.WindowCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.compose.component.ConversationList
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.data.DatabaseManager
@@ -43,7 +38,12 @@ class ConversationsCompose : ComponentActivity() {
 			AirMessageAndroidTheme {
 				ConversationList(
 					conversations = conversations,
-					onReloadConversations = {}
+					onSelectConversation = { conversation ->
+						//Launch the conversation activity
+						Intent(context, MessagingCompose::class.java).apply {
+							putExtra(Messaging.intentParamTargetID, conversation.localID)
+						}.let { context.startActivity(it) }
+					},
 				)
 			}
 		}

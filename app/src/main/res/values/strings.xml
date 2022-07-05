@@ -581,5 +581,4 @@
 	<string name="dateformat_outsideyear_simple">MMM yyyy</string>
 	<string name="dateformat_outsideyear">MMM d, yyyy</string>
 	<string name="message_setup_connectionhelp">Having trouble connecting?</string>
-	<string name="title_activity_conversations_compose">ConversationsCompose</string>
 </resources>
