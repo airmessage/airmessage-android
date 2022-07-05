@@ -23,6 +23,7 @@ import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.helper.ContactHelper
 import me.tagavari.airmessage.messaging.MemberInfo
 
@@ -34,15 +35,36 @@ fun MemberImage(
 	member: MemberInfo,
 	modifier: Modifier = Modifier
 ) {
+	//Get the user
 	val context = LocalContext.current
-	val contactBitmapPainter by produceState<Painter?>(null, member) {
-		//Get the user
-		val userInfo = try {
+	val userInfo by produceState<UserCacheHelper.UserInfo?>(null, member) {
+		value = try {
 			MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address).await()
 		} catch(exception: Throwable) {
 			exception.printStackTrace()
 			return@produceState
 		}
+	}
+	
+	MemberImage(
+		color = Color(member.color),
+		userInfo = userInfo,
+		modifier = modifier
+	)
+}
+
+/**
+ * Displays a circular image for a member
+ */
+@Composable
+fun MemberImage(
+	color: Color,
+	userInfo: UserCacheHelper.UserInfo?,
+	modifier: Modifier = Modifier
+) {
+	val context = LocalContext.current
+	val contactBitmapPainter by produceState<Painter?>(null, userInfo) {
+		if(userInfo == null) return@produceState
 		
 		//Get the contact's image
 		val contactImageURI = ContactHelper.getContactImageURI(userInfo.contactID)
@@ -70,6 +92,6 @@ fun MemberImage(
 		painter = contactBitmapPainter ?: painterResource(id = R.drawable.user),
 		contentDescription = null,
 		modifier = modifier.clip(CircleShape),
-		colorFilter = if(contactBitmapPainter != null) null else ColorFilter.tint(Color(member.color), BlendMode.Multiply),
+		colorFilter = if(contactBitmapPainter != null) null else ColorFilter.tint(color, BlendMode.Multiply),
 	)
 }

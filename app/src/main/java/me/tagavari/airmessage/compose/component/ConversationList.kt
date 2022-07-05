@@ -93,7 +93,10 @@ fun ConversationList(
 					LazyColumn(
 						contentPadding = contentPadding
 					) {
-						items(conversations) { conversationInfo ->
+						items(
+							items = conversations,
+							key = { it.localID }
+						) { conversationInfo ->
 							ConversationListEntry(
 								conversation = conversationInfo,
 								onClick = { onSelectConversation(conversationInfo) }

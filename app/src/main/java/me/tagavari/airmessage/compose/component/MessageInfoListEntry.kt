@@ -1,0 +1,80 @@
+package me.tagavari.airmessage.compose.component
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.rx3.await
+import me.tagavari.airmessage.MainApplication
+import me.tagavari.airmessage.data.UserCacheHelper
+import me.tagavari.airmessage.enums.MessageState
+import me.tagavari.airmessage.helper.ConversationColorHelper
+import me.tagavari.airmessage.messaging.ConversationInfo
+import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.util.MessageFlow
+
+/**
+ * A message list entry that displays a [MessageInfo]
+ * @param conversationInfo The conversation of the message
+ * @param messageInfo The message info to display
+ */
+@Composable
+fun MessageInfoListEntry(
+	conversationInfo: ConversationInfo,
+	messageInfo: MessageInfo,
+	flow: MessageFlow
+) {
+	val context = LocalContext.current
+	
+	//Compute the message information
+	val senderMember = messageInfo.sender?.let { sender -> conversationInfo.members.find { it.address == sender } }
+	val isOutgoing = messageInfo.isOutgoing
+	val displayAvatar = !isOutgoing && !flow.anchorTop
+	val displaySender = conversationInfo.isGroupChat && displayAvatar
+	val isUnconfirmed = messageInfo.messageState == MessageState.ghost
+	
+	//Load the message contact
+	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, messageInfo) {
+		messageInfo.sender?.let { sender ->
+			//Get the user
+			try {
+				value = MainApplication.getInstance().userCacheHelper.getUserInfo(context, sender).await()
+			} catch(exception: Throwable) {
+				exception.printStackTrace()
+			}
+		}
+	}
+	
+	Column {
+		//Sender name
+		if(displaySender) {
+			(userInfo?.contactName ?: messageInfo.sender)?.let { sender ->
+				Text(
+					text = sender,
+					modifier = Modifier.padding(start = 60.dp, bottom = 2.5.dp),
+					style = MaterialTheme.typography.bodyMedium,
+					color = MaterialTheme.colorScheme.onSurfaceVariant
+				)
+			}
+		}
+		
+		//Horizontal message split
+		Row {
+			//User indicator
+			if(isOutgoing) {
+				MemberImage(
+					color = Color(senderMember?.color ?: ConversationColorHelper.backupUserColor),
+					userInfo = userInfo
+				)
+			}
+		}
+	}
+}

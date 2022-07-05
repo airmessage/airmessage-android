@@ -3,7 +3,7 @@ package me.tagavari.airmessage.messaging
 import me.tagavari.airmessage.enums.ConversationItemType
 import me.tagavari.airmessage.enums.MessageViewType
 
-abstract class ConversationItem(open var localID: Long, var serverID: Long, var guid: String?, var date: Long) {
+sealed class ConversationItem(open var localID: Long, var serverID: Long, var guid: String?, var date: Long) {
 	@get:ConversationItemType
 	abstract val itemType: Int
 	
