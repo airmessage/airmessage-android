@@ -48,7 +48,7 @@ fun MemberImage(
 		val contactImageURI = ContactHelper.getContactImageURI(userInfo.contactID)
 		
 		//Decode the contact's image
-		@Suppress("BlockingMethodInNonBlockingContext")
+		@Suppress("BlockingMethodInNonBlockingContext", "DEPRECATION")
 		val bitmap = withContext(Dispatchers.IO) {
 			try {
 				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
