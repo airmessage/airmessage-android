@@ -1,6 +1,9 @@
 package me.tagavari.airmessage.compose.component
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -16,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.tagavari.airmessage.R
@@ -49,10 +53,11 @@ fun MessageInputBar(
 	
 	Box(modifier = modifier.padding(8.dp)) {
 		Row(
-			verticalAlignment = Alignment.CenterVertically
+			verticalAlignment = Alignment.Bottom
 		) {
 			CompositionLocalProvider(
 				LocalMinimumTouchTargetEnforcement provides false,
+				LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant,
 			) {
 				IconButton(
 					modifier = Modifier.padding(end = 4.dp),
@@ -123,5 +128,19 @@ fun MessageInputBar(
 				}
 			}
 		}
+	}
+}
+
+@Preview
+@Composable
+private fun PreviewMessageInputBar() {
+	Surface {
+		MessageInputBar(
+			onMessageSent = {},
+			showContentPicker = false,
+			onChangeShowContentPicker = {},
+			serviceHandler = ServiceHandler.appleBridge,
+			serviceType = ServiceType.appleMessage
+		)
 	}
 }
