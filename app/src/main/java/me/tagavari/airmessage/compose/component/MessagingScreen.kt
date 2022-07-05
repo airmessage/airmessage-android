@@ -63,7 +63,9 @@ fun MessagingScreen(
 						.imePadding(),
 					onMessageSent = {},
 					showContentPicker = showContentPicker,
-					onChangeShowContentPicker = { showContentPicker = it }
+					onChangeShowContentPicker = { showContentPicker = it },
+					serviceHandler = conversation?.serviceHandler,
+					serviceType = conversation?.serviceType
 				)
 			}
 		}

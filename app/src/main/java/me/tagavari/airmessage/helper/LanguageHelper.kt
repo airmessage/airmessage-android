@@ -10,6 +10,8 @@ import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.constants.TimingConstants
+import me.tagavari.airmessage.enums.ServiceHandler
+import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.enums.TapbackType
 import me.tagavari.airmessage.helper.CalendarHelper.compareCalendarDates
 import me.tagavari.airmessage.messaging.MessageComponentText
@@ -415,6 +417,39 @@ object LanguageHelper {
 		} catch(exception: URISyntaxException) {
 			exception.printStackTrace();
 			return null;
+		}
+	}
+	
+	/**
+	 * Gets the placeholder message to display in the input field
+	 */
+	fun getMessageFieldPlaceholder(
+		resources: Resources,
+		@ServiceHandler serviceHandler: Int?,
+		@ServiceType serviceType: String?
+	): String {
+		//Return a generic message if the service is invalid
+		if(serviceType == null) {
+			return resources.getString(R.string.imperative_messageinput)
+		}
+		
+		//AirMessage bridge
+		return if(serviceHandler == ServiceHandler.appleBridge) {
+			when(serviceType) {
+				//iMessage
+				ServiceType.appleMessage -> resources.getString(R.string.title_imessage)
+				ServiceType.appleSMS -> resources.getString(R.string.title_textmessageforwarding)
+				else -> serviceType
+			}
+		} else if(serviceHandler == ServiceHandler.systemMessaging) {
+			when(serviceType) {
+				ServiceType.systemSMS -> resources.getString(R.string.title_textmessage)
+				ServiceType.systemRCS -> resources.getString(R.string.title_rcs)
+				else -> serviceType
+			}
+		} else {
+			//Returning a generic message
+			resources.getString(R.string.imperative_messageinput)
 		}
 	}
 }

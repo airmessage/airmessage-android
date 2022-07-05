@@ -12,12 +12,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.enums.ServiceHandler
+import me.tagavari.airmessage.enums.ServiceType
+import me.tagavari.airmessage.helper.LanguageHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,7 +29,9 @@ fun MessageInputBar(
 	modifier: Modifier = Modifier,
 	onMessageSent: (String) -> Unit,
 	showContentPicker: Boolean,
-	onChangeShowContentPicker: (Boolean) -> Unit
+	onChangeShowContentPicker: (Boolean) -> Unit,
+	@ServiceHandler serviceHandler: Int?,
+	@ServiceType serviceType: String?
 ) {
 	var textFieldValue by remember { mutableStateOf(TextFieldValue()) }
 	
@@ -83,6 +89,19 @@ fun MessageInputBar(
 							.padding(horizontal = 12.dp, vertical = 8.dp)
 							.align(Alignment.CenterVertically),
 						textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
+						decorationBox = { innerTextField ->
+							//Display the current service as a placeholder
+							if(textFieldValue.text.isEmpty()) {
+								val placeholder = LanguageHelper.getMessageFieldPlaceholder(
+									LocalContext.current.resources,
+									serviceHandler,
+									serviceType
+								)
+								Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant)
+							}
+							
+							innerTextField()
+						}
 					)
 					
 					//Send button
