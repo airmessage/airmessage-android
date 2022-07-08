@@ -209,7 +209,7 @@ object NotificationHelper {
 		
 		//Used for conversation shortcuts, only available on Android 11
 		val singleShortcutIcon: Single<Optional<IconCompat>> = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-			generateShortcutIcon(context, conversationInfo).map { bitmap: Bitmap? -> Optional.of(IconCompat.createWithAdaptiveBitmap(bitmap)) }.onErrorReturnItem(Optional.empty())
+			generateShortcutIcon(context, conversationInfo).map { bitmap: Bitmap -> Optional.of(IconCompat.createWithAdaptiveBitmap(bitmap)) }.onErrorReturnItem(Optional.empty())
 		} else {
 			Single.just(Optional.empty())
 		}
