@@ -29,6 +29,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -102,6 +103,9 @@ import me.tagavari.airmessage.view.VisualizerView;
 
 public class FragmentMessagingAttachments extends FragmentCommunication<FragmentMessagingAttachments.FragmentCommunicationQueue> {
 	private static final int attachmentsTileCount = 24;
+	
+	//Root view
+	private ViewGroup viewRootScroll;
 	
 	//Gallery views
 	private ViewGroup viewGroupGallery;
@@ -209,6 +213,8 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 	@Override
 	public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
 		//Getting the views
+		viewRootScroll = (ViewGroup) view;
+		
 		viewGroupGallery = view.findViewById(R.id.viewgroup_attachment_gallery);
 		viewGalleryPermission = viewGroupGallery.findViewById(R.id.button_attachment_gallery_permission);
 		viewGalleryError = viewGroupGallery.findViewById(R.id.label_attachment_gallery_failed);
@@ -419,6 +425,9 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 				
 				//Revealing the recording view
 				revealRecordingView(event.getX(), event.getY());
+				
+				//Preventing the parent from capturing motion events
+				viewRootScroll.requestDisallowInterceptTouchEvent(true);
 				
 				return true;
 			} else if(event.getAction() == MotionEvent.ACTION_UP) {
