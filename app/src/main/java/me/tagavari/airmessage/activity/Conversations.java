@@ -589,7 +589,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			new MaterialAlertDialogBuilder(this)
 					.setTitle(R.string.action_sendfeedback)
 					.setMessage(R.string.dialog_feedback_message)
-					.setNeutralButton(R.string.dialog_feedback_email, (dialog, which) -> {
+					.setPositiveButton(R.string.dialog_feedback_email, (dialog, which) -> {
 						//Creating the intent
 						Intent intent = new Intent(Intent.ACTION_SENDTO);
 						intent.setData(Uri.parse("mailto:"));
@@ -614,9 +614,21 @@ public class Conversations extends AppCompatCompositeActivity {
 							Toast.makeText(this, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
 						}
 					})
-					.setPositiveButton(R.string.dialog_feedback_community, (dialog, which) -> {
+					.setNegativeButton(R.string.dialog_feedback_discord, (dialog, which) -> {
 						//Creating the intent
-						Intent intent = new Intent(Intent.ACTION_VIEW, ExternalLinkConstants.communityAddress);
+						Intent intent = new Intent(Intent.ACTION_VIEW, ExternalLinkConstants.discordAddress);
+						intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+						
+						//Launching the intent
+						try {
+							startActivity(intent);
+						} catch(ActivityNotFoundException exception) {
+							Toast.makeText(this, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
+						}
+					})
+					.setNeutralButton(R.string.dialog_feedback_reddit, (dialog, which) -> {
+						//Creating the intent
+						Intent intent = new Intent(Intent.ACTION_VIEW, ExternalLinkConstants.redditAddress);
 						intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 						
 						//Launching the intent
