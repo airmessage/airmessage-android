@@ -11,6 +11,8 @@ import android.provider.BaseColumns;
 import android.util.Base64;
 import android.util.LongSparseArray;
 import android.webkit.MimeTypeMap;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import kotlin.Pair;
 import me.tagavari.airmessage.MainApplication;
@@ -3648,14 +3650,14 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			cursor.moveToPosition(cursorPosition);
 		}
 		
-		public abstract List<T> loadNextChunk(Context context);
+		public abstract List<T> loadNextChunk(@NonNull Context context);
 	}
 	
 	public static class ConversationLazyLoader extends LazyLoader<ConversationItem> {
 		private final DatabaseManager databaseManager;
 		private final ConversationItemIndices conversationItemIndices;
 		
-		public ConversationLazyLoader(DatabaseManager databaseManager, ConversationInfo conversationInfo) {
+		public ConversationLazyLoader(@NonNull DatabaseManager databaseManager, @NonNull ConversationInfo conversationInfo) {
 			this.databaseManager = databaseManager;
 			
 			//Building the query
@@ -3672,7 +3674,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		@Override
-		public List<ConversationItem> loadNextChunk(Context context) {
+		public List<ConversationItem> loadNextChunk(@NonNull Context context) {
 			//Creating the message list
 			List<ConversationItem> conversationItems = new ArrayList<>();
 			

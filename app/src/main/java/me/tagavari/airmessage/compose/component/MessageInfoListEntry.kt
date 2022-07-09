@@ -18,8 +18,10 @@ import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.enums.MessageState
 import me.tagavari.airmessage.helper.ConversationColorHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
+import me.tagavari.airmessage.messaging.MessageComponentText
 import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.util.MessageFlow
+import me.tagavari.airmessage.util.MessagePartFlow
 
 /**
  * A message list entry that displays a [MessageInfo]
@@ -74,6 +76,30 @@ fun MessageInfoListEntry(
 					color = Color(senderMember?.color ?: ConversationColorHelper.backupUserColor),
 					userInfo = userInfo
 				)
+			}
+			
+			//Message contents
+			Column {
+				messageInfo.messageTextComponent?.let { textComponent ->
+					MessageBubbleWrapper(
+						stickers = textComponent.stickers,
+						tapbacks = textComponent.tapbacks
+					) {
+						MessageBubbleText(
+							flow = MessagePartFlow(
+								isOutgoing = isOutgoing,
+								anchorTop = flow.anchorTop,
+								anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty()
+							),
+							subject = textComponent.subject,
+							text = textComponent.text
+						)
+					}
+				}
+			}
+			
+			if(messageInfo.hasError) {
+			
 			}
 		}
 	}

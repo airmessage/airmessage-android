@@ -10,8 +10,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.data.DatabaseManager
+import me.tagavari.airmessage.data.DatabaseManager.ConversationLazyLoader
 import me.tagavari.airmessage.helper.ConversationBuildHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
+import me.tagavari.airmessage.messaging.ConversationItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,18 +25,42 @@ fun MessagingScreen(
 	
 	val context = LocalContext.current
 	
+	//Load the conversation from its ID
 	val conversation by produceState<ConversationInfo?>(initialValue = null, conversationID) {
 		value = withContext(Dispatchers.IO) {
 			DatabaseManager.getInstance().fetchConversationInfo(context, conversationID)
 		}
 	}
 	
+	//Load the conversation title
 	val conversationTitle by produceState(
 		initialValue = conversation?.let { ConversationBuildHelper.buildConversationTitleDirect(context, it) },
 		conversation
 	) {
 		conversation?.let { conversation ->
 			value = ConversationBuildHelper.buildMemberTitle(context, conversation.members).await()
+		}
+	}
+	
+	//Create the lazy loader
+	val lazyLoader by remember {
+		derivedStateOf {
+			conversation?.let { conversation ->
+				ConversationLazyLoader(DatabaseManager.getInstance(), conversation)
+			}
+		}
+	}
+	
+	var messages by remember {
+		mutableStateOf(mutableListOf<ConversationItem>())
+	}
+	
+	LaunchedEffect(lazyLoader) {
+		val lazyLoader = lazyLoader ?: return@LaunchedEffect
+		
+		//Load the initial messages
+		messages = withContext(Dispatchers.IO) {
+			lazyLoader.loadNextChunk(context)
 		}
 	}
 	
@@ -54,9 +80,16 @@ fun MessagingScreen(
 		},
 		content = { paddingValues ->
 			Column {
-				MessageList(modifier = Modifier
-					.weight(1F)
-					.padding(paddingValues))
+				conversation?.let { conversation ->
+					MessageList(
+						modifier = Modifier
+							.weight(1F)
+							.padding(paddingValues),
+						conversation = conversation,
+						messages = messages
+					)
+				} ?: Box(modifier = Modifier.weight(1F))
+				
 				MessageInputBar(
 					modifier = Modifier
 						.navigationBarsPadding()
