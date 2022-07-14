@@ -59,17 +59,23 @@ fun MessageBubbleText(
 				}
 				
 				//Use Android text view for Spannable support
+				val textFont = MaterialTheme.typography.bodyLarge.fontSize
+				assert(textFont.isSp) { "Text font is not in SP units!" }
 				AndroidView(
 					factory = { ctx ->
 						MaterialTextView(ctx).apply {
 							transformationMethod = CustomTabsLinkTransformationMethod()
 							movementMethod = LinkMovementMethod.getInstance()
+							textSize = textFont.value
 						}
 					},
 					update = { view ->
-						view.setTextColor(
-							bubbleOnBackgroundColor.let { android.graphics.Color.rgb(it.red, it.green, it.blue) }
-						)
+						//Set view color
+						val color = bubbleOnBackgroundColor.let { android.graphics.Color.rgb(it.red, it.green, it.blue) }
+						view.setTextColor(color)
+						view.setLinkTextColor(color)
+						
+						//Set linkified text
 						view.text = linkifiedText
 					}
 				)
