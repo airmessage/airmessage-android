@@ -3,9 +3,11 @@ package me.tagavari.airmessage.compose.component
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
@@ -55,7 +57,9 @@ fun MessageInfoListEntry(
 		}
 	}
 	
-	Column {
+	Column(
+		modifier = Modifier.padding(horizontal = 8.dp)
+	) {
 		//Sender name
 		if(displaySender) {
 			(userInfo?.contactName ?: messageInfo.sender)?.let { sender ->
@@ -71,8 +75,9 @@ fun MessageInfoListEntry(
 		//Horizontal message split
 		Row {
 			//User indicator
-			if(isOutgoing) {
+			if(!isOutgoing) {
 				MemberImage(
+					modifier = Modifier.size(40.dp, 40.dp),
 					color = Color(senderMember?.color ?: ConversationColorHelper.backupUserColor),
 					userInfo = userInfo
 				)
