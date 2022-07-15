@@ -53,9 +53,11 @@ fun MessageBubbleText(
 			
 			//Body text
 			if(text != null) {
+				val trimmedText = text.trim()
+				
 				val context = LocalContext.current
-				val linkifiedText by produceState(initialValue = SpannableString(text), text) {
-					value = LinkifyHelper.linkifyText(context, text)
+				val linkifiedText by produceState(initialValue = SpannableString(trimmedText), trimmedText) {
+					value = LinkifyHelper.linkifyText(context, trimmedText)
 				}
 				
 				//Use Android text view for Spannable support
