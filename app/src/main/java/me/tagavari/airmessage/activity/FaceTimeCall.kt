@@ -179,11 +179,13 @@ class FaceTimeCall : AppCompatActivity(R.layout.activity_facetimecall), Fragment
 				is ReduxEventFaceTime.OutgoingAccepted -> updateStateCalling(update.faceTimeLink)
 				is ReduxEventFaceTime.OutgoingRejected -> updateStateRejected()
 				is ReduxEventFaceTime.OutgoingError -> updateStateError(update.errorDetails)
+				else -> {}
 			}
 		} else if(viewModel.state == State.connecting) {
 			when(update) {
 				is ReduxEventFaceTime.IncomingHandled -> updateStateCalling(update.faceTimeLink)
 				is ReduxEventFaceTime.IncomingHandleError -> updateStateError(update.errorDetails)
+				else -> {}
 			}
 		}
 	}
