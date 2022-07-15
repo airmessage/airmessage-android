@@ -15,9 +15,11 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.material.textview.MaterialTextView
+import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.helper.LinkifyHelper
 import me.tagavari.airmessage.util.CustomTabsLinkTransformationMethod
 import me.tagavari.airmessage.util.MessagePartFlow
@@ -41,11 +43,13 @@ fun MessageBubbleText(
 		Column(
 			modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
 		) {
+			val typography = MaterialTheme.typography.bodyLarge
+			
 			//Subject text
 			if(subject != null) {
 				Text(
 					text = subject,
-					fontWeight = FontWeight.Bold
+					style = typography.copy(fontWeight = FontWeight.Bold)
 				)
 				
 				Spacer(modifier = Modifier.height(8.dp))
@@ -83,5 +87,36 @@ fun MessageBubbleText(
 				)
 			}
 		}
+	}
+}
+
+@Preview
+@Composable
+private fun PreviewMessageBubbleText() {
+	AirMessageAndroidTheme {
+		MessageBubbleText(
+			flow = MessagePartFlow(
+				isOutgoing = false,
+				anchorBottom = false,
+				anchorTop = false
+			),
+			text = "Cats are cool"
+		)
+	}
+}
+
+@Preview
+@Composable
+private fun PreviewMessageBubbleSubject() {
+	AirMessageAndroidTheme {
+		MessageBubbleText(
+			flow = MessagePartFlow(
+				isOutgoing = false,
+				anchorBottom = false,
+				anchorTop = false
+			),
+			subject = "An important message",
+			text = "Hello there friend!"
+		)
 	}
 }
