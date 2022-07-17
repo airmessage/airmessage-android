@@ -14,9 +14,12 @@ fun MessageList(
 	conversation: ConversationInfo,
 	messages: List<ConversationItem>
 ) {
-	LazyColumn(modifier = modifier) {
+	LazyColumn(
+		modifier = modifier,
+		reverseLayout = true
+	) {
 		items(
-			items = messages,
+			items = messages.asReversed(),
 			key = { it.localID }
 		) { conversationItem ->
 			ConversationItemListEntry(
