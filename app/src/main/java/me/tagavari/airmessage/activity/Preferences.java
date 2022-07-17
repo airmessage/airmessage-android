@@ -259,7 +259,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Creating a dialog
 			AlertDialog dialog = new MaterialAlertDialogBuilder(getActivity())
 					//Setting the name
-					.setMessage(R.string.message_confirm_deleteattachments)
+					.setTitle(R.string.message_confirm_deleteattachments)
 					//Setting the negative button
 					.setNegativeButton(android.R.string.cancel, (DialogInterface dialogInterface, int which) -> {
 						//Dismissing the dialog
@@ -376,7 +376,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Creating a dialog
 			AlertDialog dialog = new MaterialAlertDialogBuilder(getActivity())
 					//Setting the name
-					.setMessage(R.string.message_reset_direct)
+					.setTitle(R.string.message_reset_direct)
 					//Setting the negative button
 					.setNegativeButton(android.R.string.cancel, null)
 					//Setting the positive button
@@ -396,7 +396,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			//Creating a dialog
 			AlertDialog dialog = new MaterialAlertDialogBuilder(getActivity())
 					//Setting the name
-					.setMessage(R.string.message_reset_connect)
+					.setTitle(R.string.message_reset_connect)
 					//Setting the negative button
 					.setNegativeButton(android.R.string.cancel, null)
 					//Setting the positive button
