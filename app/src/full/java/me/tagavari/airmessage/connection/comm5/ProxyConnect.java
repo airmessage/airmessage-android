@@ -10,6 +10,7 @@ import androidx.annotation.Nullable;
 
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GetTokenResult;
@@ -129,18 +130,35 @@ class ProxyConnect extends DataProxy<EncryptedPacket> {
 				idToken = accountIDTask.getResult().getToken();
 			} else {
 				//Error
-				accountIDTask.getException().printStackTrace();
-				CrashlyticsBridge.recordException(accountIDTask.getException());
-				notifyClose(ConnectionErrorCode.internalError);
+				Exception exception = accountIDTask.getException();
+				exception.printStackTrace();
+				
+				if(exception instanceof FirebaseNetworkException) {
+					//Surface as network exception
+					notifyClose(ConnectionErrorCode.internet);
+				} else {
+					//Some other error
+					CrashlyticsBridge.recordException(exception);
+					notifyClose(ConnectionErrorCode.internalError);
+				}
+				
 				return;
 			}
 			if(fcmTokenTask.isSuccessful()) {
 				fcmToken = fcmTokenTask.getResult();
 			} else {
 				//Error
-				fcmTokenTask.getException().printStackTrace();
-				CrashlyticsBridge.recordException(fcmTokenTask.getException());
-				notifyClose(ConnectionErrorCode.internalError);
+				Exception exception = fcmTokenTask.getException();
+				exception.printStackTrace();
+				
+				if(exception instanceof FirebaseNetworkException) {
+					//Surface as network exception
+					notifyClose(ConnectionErrorCode.internet);
+				} else {
+					//Some other error
+					CrashlyticsBridge.recordException(exception);
+					notifyClose(ConnectionErrorCode.internalError);
+				}
 				return;
 			}
 			
