@@ -79,7 +79,7 @@ fun MessageInfoListEntry(
 		//Horizontal message split
 		Row(modifier = Modifier.fillMaxWidth()) {
 			//User indicator
-			if(!isOutgoing) {
+			if(!isOutgoing && conversationInfo.isGroupChat) {
 				Box(modifier = Modifier.size(40.dp, 40.dp)) {
 					if(!flow.anchorTop) {
 						MemberImage(
