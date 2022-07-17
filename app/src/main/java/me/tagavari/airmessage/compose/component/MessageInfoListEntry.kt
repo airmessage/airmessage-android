@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -58,7 +59,9 @@ fun MessageInfoListEntry(
 	}
 	
 	Column(
-		modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = spacing.padding)
+		modifier = Modifier
+			.fillMaxWidth()
+			.padding(start = 8.dp, end = 8.dp, top = spacing.padding)
 	) {
 		//Sender name
 		if(displaySender) {
@@ -73,7 +76,7 @@ fun MessageInfoListEntry(
 		}
 		
 		//Horizontal message split
-		Row {
+		Row(modifier = Modifier.fillMaxWidth()) {
 			//User indicator
 			if(!isOutgoing) {
 				Box(modifier = Modifier.size(40.dp, 40.dp)) {
@@ -90,21 +93,30 @@ fun MessageInfoListEntry(
 			}
 			
 			//Message contents
-			Column {
+			Column(
+				modifier = Modifier.weight(1F),
+				horizontalAlignment = if(isOutgoing) Alignment.End else Alignment.Start
+			) {
 				messageInfo.messageTextComponent?.let { textComponent ->
-					MessageBubbleWrapper(
-						stickers = textComponent.stickers,
-						tapbacks = textComponent.tapbacks
+					//Maximum 70% width
+					Box(
+						modifier = Modifier.fillMaxWidth(0.7F),
+						contentAlignment = if(isOutgoing) Alignment.TopEnd else Alignment.TopStart
 					) {
-						MessageBubbleText(
-							flow = MessagePartFlow(
-								isOutgoing = isOutgoing,
-								anchorTop = flow.anchorTop,
-								anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty()
-							),
-							subject = textComponent.subject,
-							text = textComponent.text
-						)
+						MessageBubbleWrapper(
+							stickers = textComponent.stickers,
+							tapbacks = textComponent.tapbacks
+						) {
+							MessageBubbleText(
+								flow = MessagePartFlow(
+									isOutgoing = isOutgoing,
+									anchorTop = flow.anchorTop,
+									anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty()
+								),
+								subject = textComponent.subject,
+								text = textComponent.text
+							)
+						}
 					}
 				}
 			}
