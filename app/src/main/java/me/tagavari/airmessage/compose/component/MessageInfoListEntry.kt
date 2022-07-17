@@ -82,6 +82,8 @@ fun MessageInfoListEntry(
 						)
 					}
 				}
+				
+				Spacer(modifier = Modifier.width(8.dp))
 			}
 			
 			//Message contents
