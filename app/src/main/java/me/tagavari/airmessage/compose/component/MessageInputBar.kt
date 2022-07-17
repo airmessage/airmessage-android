@@ -16,8 +16,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -104,7 +104,11 @@ fun MessageInputBar(
 							.onFocusChanged { focusState ->
 								inputFieldFocus = focusState.isFocused || focusState.hasFocus
 							},
-						textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
+						textStyle = MaterialTheme.typography.bodyLarge.copy(
+							fontSize = 16.sp,
+							color = LocalContentColor.current
+						),
+						cursorBrush = SolidColor(LocalContentColor.current),
 						decorationBox = { innerTextField ->
 							//Display the current service as a placeholder
 							if(textFieldValue.text.isEmpty()) {
