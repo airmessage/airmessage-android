@@ -112,7 +112,7 @@
 			android:exported="true"
 			android:label="@string/screen_settings"
 			android:name=".activity.Preferences"
-			android:theme="@style/DayNight.NoActionBar.Protected"
+			android:theme="@style/Theme.AirMessage.M3.EdgeToEdge"
 			android:parentActivityName=".activity.Conversations">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />

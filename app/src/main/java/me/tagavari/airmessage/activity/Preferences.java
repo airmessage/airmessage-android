@@ -37,6 +37,7 @@ import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.util.Consumer;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.EditTextPreference;
@@ -65,7 +66,6 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
-import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
 import me.tagavari.airmessage.connection.ConnectionTaskManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.constants.ColorConstants;
@@ -79,7 +79,6 @@ import me.tagavari.airmessage.flavor.FirebaseAuthBridge;
 import me.tagavari.airmessage.helper.LanguageHelper;
 import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.helper.NotificationHelper;
-import me.tagavari.airmessage.helper.PlatformHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
 import me.tagavari.airmessage.helper.WindowHelper;
 import me.tagavari.airmessage.receiver.StartBootReceiver;
@@ -93,7 +92,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	
 	public Preferences() {
 		addPlugin(pluginCS = new PluginConnectionService());
-		addPlugin(new PluginQNavigation());
 	}
 	
 	PluginConnectionService getPluginCS() {
@@ -119,15 +117,15 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			fragmentTransaction.commit();
 		}
 		
+		//Rendering edge-to-edge
+		WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+		
 		//Enabling the toolbar and up navigation
 		setSupportActionBar(findViewById(R.id.toolbar));
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 		
 		//Configuring the AMOLED theme
 		if(ThemeHelper.shouldUseAMOLED(this)) setDarkAMOLED();
-		
-		//Setting the status bar color
-		PlatformHelper.updateChromeOSStatusBar(this);
 	}
 	
 	@Override
