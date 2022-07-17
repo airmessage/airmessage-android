@@ -10,11 +10,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.ColorUtils
 import com.google.android.material.textview.MaterialTextView
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.helper.LinkifyHelper
@@ -25,12 +29,26 @@ import me.tagavari.airmessage.util.MessagePartFlow
 fun MessageBubbleText(
 	flow: MessagePartFlow,
 	subject: String? = null,
-	text: String? = null
+	text: String? = null,
+	tintRatio: Float = 0F
 ) {
+	val colorScheme = MaterialTheme.colorScheme
 	val (backgroundBubbleColor, bubbleOnBackgroundColor) = if(flow.isOutgoing) {
-		Pair(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary)
+		val background = ColorUtils.blendARGB(
+			colorScheme.secondary.toArgb(),
+			colorScheme.primary.toArgb(),
+			tintRatio
+		).let { Color(it) }
+		
+		val foreground = ColorUtils.blendARGB(
+			colorScheme.onSecondary.toArgb(),
+			colorScheme.onPrimary.toArgb(),
+			tintRatio
+		).let { Color(it) }
+		
+		Pair(background, foreground)
 	} else {
-		Pair(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+		Pair(colorScheme.surfaceVariant, colorScheme.onSurfaceVariant)
 	}
 	
 	Surface(

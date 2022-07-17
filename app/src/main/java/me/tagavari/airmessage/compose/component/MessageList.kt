@@ -1,7 +1,8 @@
 package me.tagavari.airmessage.compose.component
 
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import me.tagavari.airmessage.constants.TimingConstants
 import me.tagavari.airmessage.messaging.ConversationInfo
@@ -16,12 +17,15 @@ fun MessageList(
 	conversation: ConversationInfo,
 	messages: List<ConversationItem>
 ) {
+	val reversedMessages = messages.asReversed()
+	
+	val scrollState = rememberLazyListState()
+	
 	LazyColumn(
 		modifier = modifier,
-		reverseLayout = true
+		reverseLayout = true,
+		state = scrollState
 	) {
-		val reversedMessages = messages.asReversed()
-		
 		items(
 			key = { reversedMessages[it].localID },
 			count = reversedMessages.size
@@ -46,11 +50,22 @@ fun MessageList(
 					else -> MessageFlowSpacing.GAP
 				}
 				
+				val scrollProgress by remember {
+					derivedStateOf {
+						val visibleItemInfo = scrollState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == conversationItem.localID }
+							?: return@derivedStateOf 0F
+						
+						(visibleItemInfo.offset.toFloat() / scrollState.layoutInfo.viewportEndOffset.toFloat())
+							.coerceIn(0F, 1F)
+					}
+				}
+				
 				MessageInfoListEntry(
 					conversationInfo = conversation,
 					messageInfo = conversationItem,
 					flow = flow,
-					spacing = spacing
+					spacing = spacing,
+					scrollProgress = scrollProgress
 				)
 			}
 		}

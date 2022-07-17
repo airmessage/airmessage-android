@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.ColorUtils
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.data.UserCacheHelper
@@ -35,7 +36,8 @@ fun MessageInfoListEntry(
 		anchorTop = false,
 		anchorBottom = false
 	),
-	spacing: MessageFlowSpacing = MessageFlowSpacing.NONE
+	spacing: MessageFlowSpacing = MessageFlowSpacing.NONE,
+	scrollProgress: Float = 0F
 ) {
 	val context = LocalContext.current
 	
@@ -114,7 +116,8 @@ fun MessageInfoListEntry(
 									anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty()
 								),
 								subject = textComponent.subject,
-								text = textComponent.text
+								text = textComponent.text,
+								tintRatio = scrollProgress
 							)
 						}
 					}

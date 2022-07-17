@@ -72,7 +72,6 @@ fun MemberImage(
 		//Decode the contact's image
 		@Suppress("BlockingMethodInNonBlockingContext", "DEPRECATION")
 		val bitmap = withContext(Dispatchers.IO) {
-			println("Loading contact image for user $userInfo")
 			try {
 				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
 					ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, contactImageURI))
@@ -87,7 +86,6 @@ fun MemberImage(
 		
 		//Convert the bitmap to a painter
 		value = BitmapPainter(bitmap.asImageBitmap())
-		println("Loaded bitmap for user $userInfo")
 	}
 	
 	Image(
