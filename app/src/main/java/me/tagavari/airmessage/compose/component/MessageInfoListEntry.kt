@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.ColorUtils
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.data.UserCacheHelper
@@ -63,7 +62,7 @@ fun MessageInfoListEntry(
 	Column(
 		modifier = Modifier
 			.fillMaxWidth()
-			.padding(start = 8.dp, end = 8.dp, top = spacing.padding)
+			.padding(top = spacing.padding)
 	) {
 		//Sender name
 		if(displaySender) {

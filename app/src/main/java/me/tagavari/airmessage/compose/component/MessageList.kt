@@ -1,9 +1,14 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.constants.TimingConstants
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationItem
@@ -24,7 +29,8 @@ fun MessageList(
 	LazyColumn(
 		modifier = modifier,
 		reverseLayout = true,
-		state = scrollState
+		state = scrollState,
+		contentPadding = PaddingValues(8.dp)
 	) {
 		items(
 			key = { reversedMessages[it].localID },
