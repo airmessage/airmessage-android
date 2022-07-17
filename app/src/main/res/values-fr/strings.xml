@@ -332,10 +332,7 @@
 	<string name="action_short_video">Vidéo</string>
 	<string name="preference_server_dropreconnect_description">Essayer de vous reconnecter immédiatement après la perte de la connexion</string>
 	<string name="preference_server_dropreconnect_title">Reconnexion de connexion perdue</string>
-	<string name="preferencegroup_appearance_title">Apparence</string>
 	<string name="preference_appearance_theme_title">Thème</string>
-	<string name="preference_appearance_advancedcolor_title">Chats arc-en-ciel</string>
-	<string name="preference_appearance_advancedcolor_description">Colorier les conversations et messages séparément</string>
 	<string name="preference_appearance_showreadreceipts_title">Afficher les accusés de lecture</string>
 	<string name="preference_appearance_showreadreceipts_description">Afficher un indicateur lorsque vos messages ont été lus. S\'applique à toutes les conversations.</string>
 	<string name="preference_server_foregroundservice_title">Exécuter le service au premier plan</string>
@@ -384,8 +381,6 @@
 	<string name="message_attachmentreqerror_server_notsaved">Pièce jointe non trouvée</string>
 	<string name="message_attachmentreqerror_server_unreadable">Pièce jointe illisible</string>
 	<string name="message_attachmentreqerror_server_io">Erreur externe (I/O)</string>
-	<string name="preference_appearance_amoled_title">Thème noir</string>
-	<string name="preference_appearance_amoled_description">Activer un thème noir compatible avec AMOLED</string>
 	<string name="action_markallread">Tout marquer comme lu</string>
 	<string name="message_fileexport_fail">Échec d\'enregistrement du fichier</string>
 	<string name="message_fileexport_success">Fichier enregistré sur l\'appareil</string>

@@ -448,16 +448,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) themePreference.setEntries(R.array.preference_appearance_theme_entries_androidQ);
 				else themePreference.setEntries(R.array.preference_appearance_theme_entries_old);
 				
-				//Updating the AMOLED switch option
-				SwitchPreference amoledSwitch = findPreference(getResources().getString(R.string.preference_appearance_amoled_key));
-				amoledSwitch.setOnPreferenceChangeListener((preference, newValue) -> {
-					//Recreating the activity
-					getActivity().recreate();
-					
-					return true;
-				});
-				amoledSwitch.setEnabled(!themePreference.getValue().equals(ThemeHelper.darkModeLight));
-				
 				//Checking if the device is running below Android 7.0 (API 24), or doesn't support telephony
 				if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N || !getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEPHONY)) {
 					//Removing the text message preference group
@@ -1075,16 +1065,18 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		else return Uri.parse(selectedSound);
 	}
 	
+	@Deprecated
 	public static boolean getPreferenceAMOLED(Context context) {
-		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_amoled_key), false);
+		return false;
 	}
 	
 	public static boolean getPreferenceReplySuggestions(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_features_replysuggestions_key), true);
 	}
 	
+	@Deprecated
 	public static boolean getPreferenceAdvancedColor(Context context) {
-		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_advancedcolor_key), false);
+		return false;
 	}
 	
 	public static boolean getPreferenceMessagePreviews(Context context) {

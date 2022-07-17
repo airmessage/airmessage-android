@@ -249,10 +249,7 @@
 	<string name="message_messageerror_desc_apple_unregistered_generic">受信者が iMessage に登録されていません</string>
 	<string name="preference_server_dropreconnect_description">接続を切断された直後に再接続を試みます</string>
 	<string name="preference_server_dropreconnect_title">接続を切断の時に再接続</string>
-	<string name="preferencegroup_appearance_title">外観</string>
 	<string name="preference_appearance_theme_title">テーマ</string>
-	<string name="preference_appearance_advancedcolor_title">虹色のチャット</string>
-	<string name="preference_appearance_advancedcolor_description">ユーザーごとチャットごとに色付け</string>
 	<string name="preference_appearance_showreadreceipts_title">既読通知の表示</string>
 	<string name="preference_appearance_showreadreceipts_description">相手はメッセージを読んだ時、インジケータを表示。すべての会話に適用。</string>
 	<string name="preference_server_foregroundservice_title">フォアグラウンドでサービスを実行</string>
@@ -371,8 +368,6 @@
 	<string name="message_attachmentreqerror_server_notsaved">添付ファイルが見つかりません</string>
 	<string name="message_attachmentreqerror_server_unreadable">添付ファイルが読められませんでした</string>
 	<string name="message_attachmentreqerror_server_io">外部エラー（I/O）</string>
-	<string name="preference_appearance_amoled_title">真っ黒のテーマ</string>
-	<string name="preference_appearance_amoled_description">AMOLED互換の黒テーマの利用</string>
 	<string name="action_markallread">すべて既読にする</string>
 	<string name="message_fileexport_fail">ファイルを保存できませんでした</string>
 	<string name="message_fileexport_success">ファイルをストレージに保存しました</string>

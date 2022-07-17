@@ -3,8 +3,6 @@
     <string name="preference_messagenotifications_key" translatable="false">pref_messagenotifications</string>
     <string name="preference_messagenotifications_title">Message notifications</string>
 
-	<string name="preferencegroup_appearance_key" translatable="false">pref_group_appearance</string>
-	<string name="preferencegroup_appearance_title">Appearance</string>
 	<string name="preference_appearance_theme_key" translatable="false">pref_key_appearance_theme</string>
 	<string name="preference_appearance_theme_title">Theme</string>
 	<string-array name="preference_appearance_theme_entries_old">
@@ -22,12 +20,6 @@
 		<item>on</item>
 		<item>follow_system</item>
 	</string-array>
-	<string name="preference_appearance_amoled_key" translatable="false">pref_key_appearance_amoled</string>
-	<string name="preference_appearance_amoled_title">Black theme</string>
-	<string name="preference_appearance_amoled_description">Enable an AMOLED-friendly black theme</string>
-	<string name="preference_appearance_advancedcolor_key" translatable="false">pref_key_appearance_advancedcolor</string>
-	<string name="preference_appearance_advancedcolor_title">Rainbow chats</string>
-	<string name="preference_appearance_advancedcolor_description">Enable color theming on a per-contact per-chat basis</string>
 
 	<string name="preferencegroup_features_key" translatable="false">pref_group_features</string>
 	<string name="preferencegroup_features_title">Messaging</string>
