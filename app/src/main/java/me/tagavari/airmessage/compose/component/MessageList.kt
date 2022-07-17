@@ -8,6 +8,7 @@ import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationItem
 import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.util.MessageFlow
+import me.tagavari.airmessage.util.MessageFlowSpacing
 
 @Composable
 fun MessageList(
@@ -31,17 +32,25 @@ fun MessageList(
 				val messageAbove = reversedMessages.getOrNull(index + 1)
 				val messageBelow = reversedMessages.getOrNull(index - 1)
 				
+				val flow = MessageFlow(
+					anchorTop = messageAbove is MessageInfo
+							&& conversationItem.sender == messageAbove.sender
+							&& (conversationItem.date - messageAbove.date) < TimingConstants.conversationBurstTimeMillis,
+					anchorBottom = messageBelow is MessageInfo
+							&& conversationItem.sender == messageBelow.sender
+							&& (messageBelow.date - conversationItem.date) < TimingConstants.conversationBurstTimeMillis
+				)
+				val spacing = when {
+					messageAbove == null -> MessageFlowSpacing.NONE
+					flow.anchorTop -> MessageFlowSpacing.RELATED
+					else -> MessageFlowSpacing.GAP
+				}
+				
 				MessageInfoListEntry(
 					conversationInfo = conversation,
 					messageInfo = conversationItem,
-					flow = MessageFlow(
-						anchorTop = messageAbove is MessageInfo
-								&& conversationItem.sender == messageAbove.sender
-								&& (conversationItem.date - messageAbove.date) < TimingConstants.conversationBurstTimeMillis,
-						anchorBottom = messageBelow is MessageInfo
-								&& conversationItem.sender == messageBelow.sender
-								&& (messageBelow.date - conversationItem.date) < TimingConstants.conversationBurstTimeMillis
-					)
+					flow = flow,
+					spacing = spacing
 				)
 			}
 		}

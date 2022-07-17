@@ -2,6 +2,7 @@ package me.tagavari.airmessage.util
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 private val radiusUnanchored = 20.dp
@@ -47,4 +48,10 @@ data class MessagePartFlow(
 				if(anchorBottom) radiusAnchored else radiusUnanchored
 			)
 		}
+}
+
+enum class MessageFlowSpacing(val padding: Dp) {
+	NONE(0.dp),
+	RELATED(2.dp),
+	GAP(10.dp)
 }

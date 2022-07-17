@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
@@ -17,9 +16,9 @@ import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.enums.MessageState
 import me.tagavari.airmessage.helper.ConversationColorHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
-import me.tagavari.airmessage.messaging.MessageComponentText
 import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.util.MessageFlow
+import me.tagavari.airmessage.util.MessageFlowSpacing
 import me.tagavari.airmessage.util.MessagePartFlow
 
 /**
@@ -31,7 +30,11 @@ import me.tagavari.airmessage.util.MessagePartFlow
 fun MessageInfoListEntry(
 	conversationInfo: ConversationInfo,
 	messageInfo: MessageInfo,
-	flow: MessageFlow
+	flow: MessageFlow = MessageFlow(
+		anchorTop = false,
+		anchorBottom = false
+	),
+	spacing: MessageFlowSpacing = MessageFlowSpacing.NONE
 ) {
 	val context = LocalContext.current
 	
@@ -55,7 +58,7 @@ fun MessageInfoListEntry(
 	}
 	
 	Column(
-		modifier = Modifier.padding(horizontal = 8.dp)
+		modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = spacing.padding)
 	) {
 		//Sender name
 		if(displaySender) {
