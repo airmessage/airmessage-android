@@ -1,11 +1,12 @@
 package me.tagavari.airmessage.compose.component
 
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import me.tagavari.airmessage.constants.TimingConstants
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationItem
+import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.util.MessageFlow
 
 @Composable
@@ -18,18 +19,31 @@ fun MessageList(
 		modifier = modifier,
 		reverseLayout = true
 	) {
+		val reversedMessages = messages.asReversed()
+		
 		items(
-			items = messages.asReversed(),
-			key = { it.localID }
-		) { conversationItem ->
-			ConversationItemListEntry(
-				conversationInfo = conversation,
-				conversationItem = conversationItem,
-				flow = MessageFlow(
-					anchorTop = false,
-					anchorBottom = false
+			key = { reversedMessages[it].localID },
+			count = reversedMessages.size
+		) { index ->
+			val conversationItem = reversedMessages[index]
+			
+			if(conversationItem is MessageInfo) {
+				val messageAbove = reversedMessages.getOrNull(index + 1)
+				val messageBelow = reversedMessages.getOrNull(index - 1)
+				
+				MessageInfoListEntry(
+					conversationInfo = conversation,
+					messageInfo = conversationItem,
+					flow = MessageFlow(
+						anchorTop = messageAbove is MessageInfo
+								&& conversationItem.sender == messageAbove.sender
+								&& (conversationItem.date - messageAbove.date) < TimingConstants.conversationBurstTimeMillis,
+						anchorBottom = messageBelow is MessageInfo
+								&& conversationItem.sender == messageBelow.sender
+								&& (messageBelow.date - conversationItem.date) < TimingConstants.conversationBurstTimeMillis
+					)
 				)
-			)
+			}
 		}
 	}
 }

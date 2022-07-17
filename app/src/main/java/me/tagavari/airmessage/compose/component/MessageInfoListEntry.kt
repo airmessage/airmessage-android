@@ -1,9 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -76,11 +73,15 @@ fun MessageInfoListEntry(
 		Row {
 			//User indicator
 			if(!isOutgoing) {
-				MemberImage(
-					modifier = Modifier.size(40.dp, 40.dp),
-					color = Color(senderMember?.color ?: ConversationColorHelper.backupUserColor),
-					userInfo = userInfo
-				)
+				Box(modifier = Modifier.size(40.dp, 40.dp)) {
+					if(!flow.anchorTop) {
+						MemberImage(
+							modifier = Modifier.fillMaxSize(),
+							color = Color(senderMember?.color ?: ConversationColorHelper.backupUserColor),
+							userInfo = userInfo
+						)
+					}
+				}
 			}
 			
 			//Message contents

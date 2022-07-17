@@ -2,10 +2,7 @@ package me.tagavari.airmessage.compose.component
 
 import android.text.SpannableString
 import android.text.method.LinkMovementMethod
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,7 +38,10 @@ fun MessageBubbleText(
 		shape = flow.bubbleShape
 	) {
 		Column(
-			modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+			modifier = Modifier
+				.heightIn(min = 40.dp)
+				.padding(horizontal = 12.dp, vertical = 8.dp),
+			verticalArrangement = Arrangement.Center
 		) {
 			val typography = MaterialTheme.typography.bodyLarge
 			
