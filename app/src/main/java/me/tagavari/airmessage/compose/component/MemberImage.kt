@@ -1,8 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
-import android.graphics.ImageDecoder
-import android.os.Build
-import android.provider.MediaStore
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -66,22 +64,10 @@ fun MemberImage(
 	val contactBitmapPainter by produceState<Painter?>(null, userInfo) {
 		if(userInfo == null) return@produceState
 		
-		//Get the contact's image
-		val contactImageURI = ContactHelper.getContactImageURI(userInfo.contactID)
-		
 		//Decode the contact's image
-		@Suppress("BlockingMethodInNonBlockingContext", "DEPRECATION")
 		val bitmap = withContext(Dispatchers.IO) {
-			try {
-				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-					ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, contactImageURI))
-				} else {
-					MediaStore.Images.Media.getBitmap(context.contentResolver, contactImageURI)
-				}
-			} catch(exception: Throwable) {
-				exception.printStackTrace()
-				return@withContext null
-			}
+			ContactHelper.getContactImageThumbnailStream(context, userInfo.contactID)
+				?.let { BitmapFactory.decodeStream(it) }
 		} ?: return@produceState
 		
 		//Convert the bitmap to a painter
