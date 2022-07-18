@@ -11,6 +11,7 @@ import androidx.core.view.WindowCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.activity.Messaging
+import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.component.ConversationList
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.data.DatabaseManager
@@ -44,6 +45,9 @@ class ConversationsCompose : ComponentActivity() {
 							putExtra(Messaging.intentParamTargetID, conversation.localID)
 						}.let { context.startActivity(it) }
 					},
+					onNavigateSettings = {
+						context.startActivity(Intent(context, Preferences::class.java))
+					}
 				)
 			}
 		}

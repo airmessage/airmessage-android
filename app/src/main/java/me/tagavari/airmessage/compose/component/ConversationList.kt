@@ -5,14 +5,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.window.PopupProperties
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
@@ -27,13 +30,16 @@ fun ConversationList(
 	modifier: Modifier = Modifier,
 	conversations: Result<List<ConversationInfo>>? = null,
 	onSelectConversation: (ConversationInfo) -> Unit = {},
-	onReloadConversations: () -> Unit = {}
+	onReloadConversations: () -> Unit = {},
+	onNavigateSettings: () -> Unit = {}
 ) {
 	val decayAnimationSpec = rememberSplineBasedDecay<Float>()
 	val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
 		decayAnimationSpec,
 		rememberTopAppBarScrollState()
 	)
+	
+	var menuOpen by remember { mutableStateOf(false) }
 	
 	Scaffold(
 		modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -47,7 +53,25 @@ fun ConversationList(
 				LargeTopAppBar(
 					modifier = Modifier.statusBarsPadding(),
 					title = { Text(stringResource(id = R.string.app_name)) },
-					scrollBehavior = scrollBehavior
+					scrollBehavior = scrollBehavior,
+					actions = {
+						IconButton(onClick = { menuOpen = !menuOpen }) {
+							Icon(Icons.Default.MoreVert, contentDescription = "")
+						}
+						
+						DropdownMenu(
+							expanded = menuOpen,
+							onDismissRequest = { menuOpen = false }
+						) {
+							DropdownMenuItem(
+								text = { Text(stringResource(id = R.string.screen_settings)) },
+								onClick = {
+									menuOpen = false
+									onNavigateSettings()
+								}
+							)
+						}
+					}
 				)
 			}
 		},
