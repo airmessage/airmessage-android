@@ -45,7 +45,7 @@ android {
 
 		if(keystoreProperties) {
 			release {
-				storeFile file(keystoreProperties["storeFile"])
+				storeFile new File(keystorePropertiesFile.parentFile, keystoreProperties["storeFile"])
 				storePassword keystoreProperties["storePassword"]
 				keyAlias keystoreProperties["keyAlias"]
 				keyPassword keystoreProperties["keyPassword"]
