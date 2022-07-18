@@ -19,6 +19,8 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.OutOfQuotaPolicy;
 import androidx.work.WorkManager;
 
+import com.google.android.material.color.DynamicColors;
+
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.PrintWriter;
@@ -115,6 +117,9 @@ public class MainApplication extends Application {
 		
 		//Applying the dark mode
 		ThemeHelper.applyDarkMode(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.preference_appearance_theme_key), ""));
+		
+		//Applying dynamic color
+		DynamicColors.applyToActivitiesIfAvailable(this);
 		
 		//Registering the content observer
 		if(canUseContacts(this)) registerContactsListener();

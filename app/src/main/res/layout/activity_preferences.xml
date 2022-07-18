@@ -15,10 +15,7 @@
 		<com.google.android.material.appbar.MaterialToolbar
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
-			android:layout_height="?android:attr/actionBarSize"
-			android:theme="@style/SolidActionBarClear"
-			app:titleTextAppearance="@style/LightToolbarText">
-		</com.google.android.material.appbar.MaterialToolbar>
+			android:layout_height="?android:attr/actionBarSize" />
 	</com.google.android.material.appbar.AppBarLayout>
 	
 	<FrameLayout
