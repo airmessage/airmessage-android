@@ -7,10 +7,10 @@ import android.graphics.Bitmap
 import android.graphics.Typeface
 import android.media.AudioAttributes
 import android.media.AudioManager
-import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.service.notification.StatusBarNotification
 import android.text.SpannableString
 import android.text.SpannableStringBuilder
@@ -145,12 +145,12 @@ object NotificationHelper {
 				enableVibration(true)
 				setShowBadge(false)
 				enableLights(false)
-				setSound(RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_RINGTONE),
-					AudioAttributes.Builder()
-						.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-						.setLegacyStreamType(AudioManager.STREAM_RING)
-						.setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-						.build())
+				
+				setSound(Settings.System.DEFAULT_RINGTONE_URI, AudioAttributes.Builder()
+					.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+					.setLegacyStreamType(AudioManager.STREAM_RING)
+					.setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+					.build())
 			}
 		)
 	}
