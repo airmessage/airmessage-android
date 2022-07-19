@@ -162,7 +162,7 @@
 		app:layout_constraintRight_toRightOf="parent" />
 
 	<!-- Konfetti view -->
-	<nl.dionsegijn.konfetti.KonfettiView
+	<nl.dionsegijn.konfetti.xml.KonfettiView
 		android:id="@+id/konfetti"
 		android:layout_width="0px"
 		android:layout_height="0px"

@@ -52,8 +52,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.snackbar.Snackbar;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -77,6 +75,7 @@ import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.MessagesDataHelper;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ProxyType;
+import me.tagavari.airmessage.flavor.FirebaseAuthBridge;
 import me.tagavari.airmessage.helper.LanguageHelper;
 import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.helper.NotificationHelper;
@@ -494,15 +493,19 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			{
 				Preference preference = findPreference(getResources().getString(R.string.preference_account_accountdetails_key));
 				if(preference != null) {
-					FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-					if(user != null) {
-						preference.setSummary(user.getDisplayName() + " (" + user.getEmail() + ")");
-					}
+					String summary = FirebaseAuthBridge.getUserSummary();
+					preference.setSummary(summary);
 				}
 			}
 			{
 				Preference preference = findPreference(getResources().getString(R.string.preference_server_reset_key));
-				if(preference != null) preference.setOnPreferenceClickListener(directResetClickListener);
+				if(preference != null) {
+					if(FirebaseAuthBridge.isSupported()) {
+						preference.setOnPreferenceClickListener(directResetClickListener);
+					} else {
+						getPreferenceScreen().removePreferenceRecursively(preference.getKey());
+					}
+				}
 			}
 			{
 				Preference preference = findPreference(getResources().getString(R.string.preference_account_reset_key));

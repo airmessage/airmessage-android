@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.connection.task;
 
 import android.content.Context;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.core.Single;
@@ -10,6 +9,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 import kotlin.Pair;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.data.DatabaseManager;
+import me.tagavari.airmessage.flavor.CrashlyticsBridge;
 import me.tagavari.airmessage.messaging.StickerInfo;
 import me.tagavari.airmessage.messaging.TapbackInfo;
 import me.tagavari.airmessage.util.ActivityStatusUpdate;
@@ -61,7 +61,7 @@ public class ModifierUpdateTask {
 						if(pair != null) stickerModifiers.add(pair);
 					} catch(OutOfMemoryError exception) {
 						exception.printStackTrace();
-						FirebaseCrashlytics.getInstance().recordException(exception);
+						CrashlyticsBridge.recordException(exception);
 					}
 				}
 				//Otherwise checking if the modifier is a tapback update

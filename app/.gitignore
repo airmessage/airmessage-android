@@ -1,3 +1,5 @@
 # Built application files
 /build
 /release
+/foss/release
+/full/release

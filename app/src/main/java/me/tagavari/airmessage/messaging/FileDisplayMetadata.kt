@@ -5,9 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.location.Geocoder
 import android.net.Uri
-import com.google.android.gms.maps.model.LatLng
 import ezvcard.Ezvcard
 import me.tagavari.airmessage.helper.MediaFileHelper
+import me.tagavari.airmessage.util.LatLngInfo
 import me.tagavari.airmessage.util.Union
 import java.io.File
 import java.io.FileInputStream
@@ -56,7 +56,7 @@ abstract class FileDisplayMetadata(context: Context, file: Union<File, Uri>) {
 			private set
 		var mapLink: Uri? = null
 			private set
-		var locationCoords: LatLng? = null
+		var locationCoords: LatLngInfo? = null
 			private set
 		var locationAddress: String? = null
 			private set
@@ -127,7 +127,7 @@ abstract class FileDisplayMetadata(context: Context, file: Union<File, Uri>) {
 								//See the following link for more details (Apple Map Links documentation)
 								//https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/MapLinks/MapLinks.html
 								val stringMapCoords = mapLink!!.getQueryParameter("ll")!!.split(",").toTypedArray()
-								locationCoords = LatLng(stringMapCoords[0].toDouble(), stringMapCoords[1].toDouble())
+								locationCoords = LatLngInfo(stringMapCoords[0].toDouble(), stringMapCoords[1].toDouble())
 								
 								//Reverse-Geocoding the coordinates for a user-friendly location string
 								if(Geocoder.isPresent()) {

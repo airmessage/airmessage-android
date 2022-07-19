@@ -1,0 +1,34 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+	package="me.tagavari.airmessage">
+	
+	<application>
+		<!-- Location picker -->
+		<activity
+			android:exported="false"
+			android:name=".activity.LocationPicker"
+			android:parentActivityName=".activity.Messaging"
+			android:theme="@style/DayNight.Transparent"
+			android:windowSoftInputMode="adjustResize">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+		
+		<!-- FCM listener service -->
+		<service
+			android:name=".service.FCMService"
+			android:exported="false">
+			<intent-filter>
+				<action android:name="com.google.firebase.MESSAGING_EVENT" />
+			</intent-filter>
+		</service>
+		
+		<!-- Disables automatic Crashlytics initialization -->
+		<meta-data
+			android:name="firebase_crashlytics_collection_enabled"
+			android:value="false" />
+		
+		<!-- Google Maps API -->
+		<meta-data
+			android:name="com.google.android.geo.API_KEY"
+			android:value="${MAPS_API_KEY}" />
+	</application>
+</manifest>

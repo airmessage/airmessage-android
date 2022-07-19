@@ -19,7 +19,7 @@ If you're not familiar with RxJava, the repository's README file is a great plac
 [https://github.com/ReactiveX/RxJava](https://github.com/ReactiveX/RxJava#readme)
 
 AirMessage for Android hooks in to Google Cloud and Firebase to utilize services like FCM, Google Maps, and Crashlytics.
-The app will not build without a valid configuration, so to get started quickly, you can copy the `app/google-services.default.json` file to `app/google-services.json` to use a pre-configured Firebase project, or you may provide your own Firebase configuration file.
+The app will not build without a valid configuration, so to get started quickly, you can copy the `app/fullRelease/google-services.default.json` file to `app/fullRelease/google-services.json` to use a pre-configured Firebase project, or you may provide your own Firebase configuration file.
 Similarly, the app will use the API key found in `secrets.default.properties` for Google Maps by default, and you can supply your own in `secrets.properties`.
 
 ## Building and running for AirMessage Connect

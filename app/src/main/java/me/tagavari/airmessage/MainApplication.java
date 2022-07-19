@@ -19,9 +19,6 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.OutOfQuotaPolicy;
 import androidx.work.WorkManager;
 
-import com.google.android.gms.maps.MapsInitializer;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.PrintWriter;
@@ -34,7 +31,8 @@ import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
-import me.tagavari.airmessage.enums.ProxyType;
+import me.tagavari.airmessage.flavor.CrashlyticsBridge;
+import me.tagavari.airmessage.flavor.MapsBridge;
 import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
@@ -95,7 +93,7 @@ public class MainApplication extends Application {
 		super.onCreate();
 		
 		//Configuring crash reporting
-		configureCrashReporting();
+		CrashlyticsBridge.configure(this);
 		
 		//Setting the instance
 		instanceReference = new WeakReference<>(this);
@@ -165,7 +163,7 @@ public class MainApplication extends Application {
 		}
 
 		//Initializing Google Maps
-		MapsInitializer.initialize(getApplicationContext(), MapsInitializer.Renderer.LATEST, null);
+		MapsBridge.initialize(getApplicationContext());
 		
 		//Enable WebView debugging
 		if(0 != (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE)) {
@@ -175,18 +173,6 @@ public class MainApplication extends Application {
 	
 	public static MainApplication getInstance() {
 		return instanceReference == null ? null : instanceReference.get();
-	}
-	
-	private void configureCrashReporting() {
-		//Setting the user identifier
-		FirebaseCrashlytics.getInstance().setUserId(SharedPreferencesManager.getInstallationID(this));
-		
-		//Disable Crashlytics in debug mode
-		FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG);
-		
-		if(SharedPreferencesManager.isConnectionConfigured(this)) {
-			FirebaseCrashlytics.getInstance().setCustomKey("proxy_type", SharedPreferencesManager.getProxyType(this) == ProxyType.direct ? "direct" : "connect");
-		}
 	}
 	
 	public UserCacheHelper getUserCacheHelper() {

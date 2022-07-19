@@ -4,8 +4,6 @@ import android.os.Build;
 
 import androidx.annotation.NonNull;
 
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -43,6 +41,7 @@ import me.tagavari.airmessage.enums.GroupAction;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.enums.MessageState;
 import me.tagavari.airmessage.enums.TapbackType;
+import me.tagavari.airmessage.flavor.CrashlyticsBridge;
 import me.tagavari.airmessage.helper.LookAheadStreamIterator;
 import me.tagavari.airmessage.helper.StandardCompressionHelper;
 import me.tagavari.airmessage.helper.StringHelper;
@@ -608,7 +607,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
@@ -644,7 +643,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
@@ -702,7 +701,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 				return true;
 			} catch(BufferOverflowException | GeneralSecurityException exception) {
 				exception.printStackTrace();
-				FirebaseCrashlytics.getInstance().recordException(exception);
+				CrashlyticsBridge.recordException(exception);
 				return false;
 			}
 		} else {
@@ -720,7 +719,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 				return true;
 			} catch(BufferOverflowException exception) {
 				exception.printStackTrace();
-				FirebaseCrashlytics.getInstance().recordException(exception);
+				CrashlyticsBridge.recordException(exception);
 				return false;
 			}
 		}
@@ -756,7 +755,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
@@ -824,7 +823,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 				throw new AMRequestException(MessageSendErrorCode.localIO, exception);
 			} catch(NoSuchAlgorithmException | BufferOverflowException exception) {
 				exception.printStackTrace();
-				FirebaseCrashlytics.getInstance().recordException(exception);
+				CrashlyticsBridge.recordException(exception);
 				throw new AMRequestException(MessageSendErrorCode.localInternal, exception);
 			}
 		});
@@ -846,7 +845,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
@@ -866,7 +865,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
@@ -886,7 +885,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
@@ -907,7 +906,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
@@ -925,7 +924,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
@@ -942,7 +941,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
@@ -963,7 +962,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
@@ -982,7 +981,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
@@ -999,7 +998,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			FirebaseCrashlytics.getInstance().recordException(exception);
+			CrashlyticsBridge.recordException(exception);
 			return false;
 		}
 	}
