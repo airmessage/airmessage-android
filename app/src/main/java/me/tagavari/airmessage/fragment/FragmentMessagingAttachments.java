@@ -15,6 +15,7 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 import android.graphics.Rect;
+import android.location.Location;
 import android.media.MediaRecorder;
 import android.media.SoundPool;
 import android.net.Uri;
@@ -24,17 +25,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.text.format.DateUtils;
-import android.view.LayoutInflater;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewAnimationUtils;
-import android.view.ViewGroup;
-import android.widget.ScrollView;
+import android.view.*;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.IntentSenderRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
@@ -48,21 +45,17 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.ResolvableApiException;
+import com.google.android.gms.location.*;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MapStyleOptions;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.math.MathUtils;
-
-import java.io.File;
-import java.io.IOException;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.OptionalInt;
-import java.util.stream.IntStream;
-
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import ezvcard.VCard;
 import ezvcard.VCardVersion;
 import ezvcard.io.text.VCardWriter;
@@ -78,18 +71,11 @@ import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.activity.LocationPicker;
 import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.constants.FileNameConstants;
 import me.tagavari.airmessage.constants.MIMEConstants;
-import me.tagavari.airmessage.flavor.CrashlyticsBridge;
-import me.tagavari.airmessage.flavor.FragmentMessagingAttachmentsMaps;
-import me.tagavari.airmessage.flavor.FragmentMessagingAttachmentsViewModelMaps;
-import me.tagavari.airmessage.helper.AttachmentStorageHelper;
-import me.tagavari.airmessage.helper.FileHelper;
-import me.tagavari.airmessage.helper.ResourceHelper;
-import me.tagavari.airmessage.helper.SoundHelper;
-import me.tagavari.airmessage.helper.ThemeHelper;
-import me.tagavari.airmessage.helper.ViewHelper;
+import me.tagavari.airmessage.helper.*;
 import me.tagavari.airmessage.messaging.FileDisplayMetadata;
 import me.tagavari.airmessage.messaging.FileLinked;
 import me.tagavari.airmessage.messaging.viewholder.VHAttachmentLinked;
@@ -97,15 +83,19 @@ import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContent;
 import me.tagavari.airmessage.messaging.viewholder.VHAttachmentTileContentMedia;
 import me.tagavari.airmessage.task.FileQueueTask;
 import me.tagavari.airmessage.util.DisposableViewHolder;
-import me.tagavari.airmessage.util.LatLngInfo;
 import me.tagavari.airmessage.util.Union;
 import me.tagavari.airmessage.view.VisualizerView;
 
+import java.io.File;
+import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.stream.IntStream;
+
 public class FragmentMessagingAttachments extends FragmentCommunication<FragmentMessagingAttachments.FragmentCommunicationQueue> {
 	private static final int attachmentsTileCount = 24;
-	
-	//Root view
-	private ViewGroup viewRootScroll;
 	
 	//Gallery views
 	private ViewGroup viewGroupGallery;
@@ -113,6 +103,12 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 	private View viewGalleryError;
 	private RecyclerView recyclerViewGallery;
 	private MaterialCardView cardViewGalleryPicker;
+	
+	//Location views
+	private ViewGroup viewGroupLocation;
+	private ViewGroup viewGroupLocationAction;
+	private TextView labelLocationAction;
+	private ViewGroup viewGroupLocationContent;
 	
 	//Audio views
 	private ViewGroup viewGroupAudio;
@@ -129,15 +125,12 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 	private AttachmentsGalleryRecyclerAdapter galleryAdapter;
 	
 	//Fragment values
-	public FragmentViewModel viewModel;
+	private FragmentViewModel viewModel;
 	
 	//Parameter values
-	public boolean supportsAppleContent = false;
+	private boolean supportsAppleContent = false;
 	private boolean lowResContent = false;
 	private int primaryColor = 0;
-	
-	//Flavor values
-	private final FragmentMessagingAttachmentsMaps flavorMaps = new FragmentMessagingAttachmentsMaps(this);
 	
 	//Composite disposable
 	private final CompositeDisposable compositeDisposable = new CompositeDisposable();
@@ -153,6 +146,13 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 		if(granted) {
 			//Update the recording section
 			updateViewAudio(false);
+		}
+	});
+	private final ActivityResultLauncher<String[]> requestLocationPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), permissions -> {
+		//Check if all permissions are granted
+		if(permissions.values().stream().allMatch((granted) -> granted)) {
+			//Loading the location
+			viewModel.loadLocation();
 		}
 	});
 
@@ -195,6 +195,44 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 			queueURIs(list);
 		}
 	});
+	private final ActivityResultLauncher<Location> locationPickerLauncher = registerForActivityResult(new LocationPicker.ResultContract(), result -> {
+		if(result == null) return;
+
+		//Checking if this is an iMessage conversation
+		if(supportsAppleContent) {
+			//Writing the file and creating the attachment data
+			queueLocation(result.getLocation(), result.getAddress(), result.getName());
+		} else {
+			//Creating the query string
+			String query;
+			if(result.getAddress() != null) {
+				query = result.getAddress();
+			} else {
+				query = result.getLocation().latitude + "," + result.getLocation().longitude;
+			}
+
+			//Building the Google Maps URL
+			Uri mapsUri = new Uri.Builder()
+					.scheme("https")
+					.authority("www.google.com")
+					.appendPath("maps")
+					.appendPath("search")
+					.appendPath("")
+					.appendQueryParameter("api", "1")
+					.appendQueryParameter("query", query)
+					.build();
+
+			//Appending the generated URL to the text box
+			getCommunicationsCallback().queueText(mapsUri.toString());
+		}
+	});
+
+	private final ActivityResultLauncher<IntentSenderRequest> resolveLocationServicesLauncher = registerForActivityResult(new ActivityResultContracts.StartIntentSenderForResult(), result -> {
+		//Updating the attachment section
+		if(result.getResultCode() == Activity.RESULT_OK) {
+			viewModel.loadLocation();
+		}
+	});
 	
 	@Override
 	public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -213,13 +251,16 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 	@Override
 	public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
 		//Getting the views
-		viewRootScroll = (ViewGroup) view;
-		
 		viewGroupGallery = view.findViewById(R.id.viewgroup_attachment_gallery);
 		viewGalleryPermission = viewGroupGallery.findViewById(R.id.button_attachment_gallery_permission);
 		viewGalleryError = viewGroupGallery.findViewById(R.id.label_attachment_gallery_failed);
 		recyclerViewGallery = viewGroupGallery.findViewById(R.id.list_attachment_gallery);
 		cardViewGalleryPicker = viewGroupGallery.findViewById(R.id.button_attachment_gallery_systempicker);
+		
+		viewGroupLocation = view.findViewById(R.id.viewgroup_attachment_location);
+		viewGroupLocationAction = viewGroupLocation.findViewById(R.id.button_attachment_location_action);
+		labelLocationAction = viewGroupLocationAction.findViewById(R.id.button_attachment_location_action_label);
+		viewGroupLocationContent = viewGroupLocation.findViewById(R.id.frame_attachment_location_content);
 		
 		viewGroupAudio = view.findViewById(R.id.viewgroup_attachment_audio);
 		viewAudioPermission = viewGroupAudio.findViewById(R.id.button_attachment_audio_permission);
@@ -257,8 +298,8 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 		});
 		viewModel.recordingDuration.observe(getViewLifecycleOwner(), value -> labelRecordingTime.setText(DateUtils.formatElapsedTime(value)));
 		
-		//Initializing flavor data
-		flavorMaps.initViews(view);
+		//Setting up the location section
+		viewModel.locationStateLD.observe(getViewLifecycleOwner(), this::updateViewLocation);
 	}
 	
 	@Override
@@ -426,9 +467,6 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 				//Revealing the recording view
 				revealRecordingView(event.getX(), event.getY());
 				
-				//Preventing the parent from capturing motion events
-				viewRootScroll.requestDisallowInterceptTouchEvent(true);
-				
 				return true;
 			} else if(event.getAction() == MotionEvent.ACTION_UP) {
 				//Telling the view model to stop recording
@@ -519,6 +557,72 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 			viewGroupRecordingActive.setVisibility(View.GONE);
 			visualizerRecording.detachMediaRecorder();
 		});
+	}
+	
+	/**
+	 * Updates the location view in response to a change in state
+	 */
+	private void updateViewLocation(@LocationState int state) {
+		//Checking if the state is OK
+		if(state == LocationState.ready) {
+			//Swapping to the content view
+			viewGroupLocationAction.setVisibility(View.GONE);
+			viewGroupLocationContent.setVisibility(View.VISIBLE);
+			
+			//Configuring the map
+			SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.fragment_attachment_location_map);
+			mapFragment.getMapAsync(googleMap -> {
+				googleMap.setBuildingsEnabled(true);
+				googleMap.getUiSettings().setMapToolbarEnabled(false);
+				googleMap.getUiSettings().setAllGesturesEnabled(false);
+				googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(viewModel.attachmentsLocationResult.getLatitude(), viewModel.attachmentsLocationResult.getLongitude()), 15));
+				googleMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(requireContext(), ThemeHelper.isNightMode(getResources()) ? R.raw.map_plaindark : R.raw.map_plainlight));
+			});
+			
+			viewGroupLocationContent.findViewById(R.id.frame_attachment_location_click).setOnClickListener(view -> locationPickerLauncher.launch(viewModel.attachmentsLocationResult));
+		} else {
+			//Showing the action view
+			viewGroupLocationAction.setVisibility(View.VISIBLE);
+			viewGroupLocationContent.setVisibility(View.GONE);
+			
+			String buttonText;
+			View.OnClickListener buttonClickListener;
+			switch(state) {
+				case LocationState.loading:
+					buttonText = getResources().getString(R.string.message_generalloading);
+					buttonClickListener = null;
+					break;
+				case LocationState.permission:
+					buttonText = getResources().getString(R.string.imperative_permission_location);
+					buttonClickListener = view -> requestLocationPermissionLauncher.launch(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION});
+					break;
+				case LocationState.failed:
+					buttonText = getResources().getString(R.string.message_loaderror_location);
+					buttonClickListener = null;
+					break;
+				case LocationState.unavailable:
+					buttonText = getResources().getString(R.string.message_notsupported);
+					buttonClickListener = null;
+					break;
+				case LocationState.resolvable:
+					buttonText = getResources().getString(R.string.imperative_enablelocationservices);
+					buttonClickListener = view -> {
+						resolveLocationServicesLauncher.launch(new IntentSenderRequest.Builder(viewModel.attachmentsLocationResolvable.getResolution().getIntentSender()).build());
+					};
+					break;
+				default:
+					throw new IllegalArgumentException("Invalid attachment location state " + state + " provided");
+			}
+			
+			//Setting the details
+			labelLocationAction.setText(buttonText);
+			if(buttonClickListener != null) {
+				viewGroupLocationAction.setOnClickListener(buttonClickListener);
+				viewGroupLocationAction.setClickable(true);
+			} else {
+				viewGroupLocationAction.setClickable(false);
+			}
+		}
 	}
 	
 	/**
@@ -668,7 +772,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 	 * @param locationAddress The address of the selected location
 	 * @param locationName The name of the selected location
 	 */
-	public void queueLocation(@NonNull LatLngInfo targetLocation, @Nullable String locationAddress, @Nullable String locationName) {
+	private void queueLocation(@NonNull LatLng targetLocation, @Nullable String locationAddress, @Nullable String locationName) {
 		//Selecting a file to write to
 		File file = AttachmentStorageHelper.prepareContentFile(requireContext(), AttachmentStorageHelper.dirNameDraftPrepare, locationName != null ? FileHelper.cleanFileName(locationName) + ".loc.vcf" : FileNameConstants.locationName);
 		
@@ -679,7 +783,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 			vcard.setFormattedName(locationName);
 			
 			//Constructing the URL
-			String stringLoc = targetLocation.getLatitude() + "," + targetLocation.getLongitude();
+			String stringLoc = targetLocation.latitude + "," + targetLocation.longitude;
 			Uri.Builder uriBuilder = new Uri.Builder()
 					.scheme("https")
 					.authority("maps.apple.com")
@@ -1004,15 +1108,16 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 		final int soundIDRecordingStart = soundPool.load(getApplication(), R.raw.recording_start, 1);
 		final int soundIDRecordingEnd = soundPool.load(getApplication(), R.raw.recording_end, 1);
 		
+		final MutableLiveData<Integer> locationStateLD = new MutableLiveData<>();
+		private Location attachmentsLocationResult = null;
+		private ResolvableApiException attachmentsLocationResolvable = null;
+		
 		//Creating the attachment values
 		File targetFileIntent = null;
 		File targetFileRecording = null;
 		
 		//Creating the task values
 		private final CompositeDisposable compositeDisposable = new CompositeDisposable();
-		
-		//Creating the flavor values
-		public final FragmentMessagingAttachmentsViewModelMaps flavorExtensionMaps = new FragmentMessagingAttachmentsViewModelMaps(this);
 		
 		public FragmentViewModel(@NonNull Application application) {
 			super(application);
@@ -1138,7 +1243,7 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 				} catch(SQLiteException exception) {
 					//Logging the exception
 					exception.printStackTrace();
-					CrashlyticsBridge.recordException(exception);
+					FirebaseCrashlytics.getInstance().recordException(exception);
 					
 					//Failing
 					emitter.onError(exception);
@@ -1299,7 +1404,68 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 		 * Updates the location state and attempts to initialize location services
 		 */
 		void loadLocation() {
-			flavorExtensionMaps.loadLocation();
+			//Checking if we don't have permission
+			if(getApplication().checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+				//Setting the state to permission requested
+				locationStateLD.setValue(LocationState.permission);
+				
+				return;
+			}
+			
+			//Setting the state to loading
+			locationStateLD.setValue(LocationState.loading);
+			
+			FusedLocationProviderClient locationProvider = LocationServices.getFusedLocationProviderClient(getApplication());
+			LocationRequest locationRequest = LocationRequest.create();
+			//Requesting location services status
+			LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(locationRequest);
+			Task<LocationSettingsResponse> task = LocationServices.getSettingsClient(getApplication()).checkLocationSettings(builder.build());
+			task.addOnCompleteListener(taskResult -> {
+				//Restoring the loading state
+				try {
+					//Getting the result
+					taskResult.getResult(ApiException.class); //Forces exception to be thrown if needed
+					
+					//Getting user's location
+					locationProvider.getLastLocation().addOnSuccessListener(location -> {
+						if(location == null) {
+							//Pulling an update from location services
+							locationProvider.requestLocationUpdates(locationRequest, new LocationCallback() {
+								@Override
+								public void onLocationResult(LocationResult locationResult) {
+									//Ignoring if there is no result (and waiting for another update)
+									if(locationResult == null) return;
+									
+									//Removing the updater
+									locationProvider.removeLocationUpdates(this);
+									
+									//Setting the location
+									attachmentsLocationResult = locationResult.getLastLocation();
+									locationStateLD.setValue(LocationState.ready);
+								}
+							}, null);
+						} else {
+							//Setting the location
+							attachmentsLocationResult = location;
+							locationStateLD.setValue(LocationState.ready);
+						}
+					});
+				} catch(ApiException exception) {
+					switch(exception.getStatusCode()) {
+						case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+							//Setting the resolvable
+							attachmentsLocationResolvable = (ResolvableApiException) exception;
+							locationStateLD.setValue(LocationState.resolvable);
+							break;
+						case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+							locationStateLD.setValue(LocationState.unavailable);
+							break;
+						default:
+							locationStateLD.setValue(LocationState.failed);
+							break;
+					}
+				}
+			});
 		}
 	}
 	
@@ -1337,5 +1503,16 @@ public class FragmentMessagingAttachments extends FragmentCommunication<Fragment
 		int permission = 1; //Permission required
 		int failed = 2; //Load error
 		int ready = 3; //OK
+	}
+	
+	@Retention(RetentionPolicy.SOURCE)
+	@IntDef({LocationState.loading, LocationState.permission, LocationState.failed, LocationState.unavailable, LocationState.resolvable, LocationState.ready})
+	private @interface LocationState {
+		int loading = 0; //Loading in progress
+		int permission = 1; //Permission required
+		int failed = 2; //Load error
+		int unavailable = 3; //Service unavailable
+		int resolvable = 4; //User action required
+		int ready = 5; //OK
 	}
 }

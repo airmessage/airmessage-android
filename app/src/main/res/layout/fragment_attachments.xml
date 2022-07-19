@@ -104,9 +104,90 @@
 					app:tint="?attr/colorOnPrimary" />
 			</com.google.android.material.card.MaterialCardView>
 		</androidx.constraintlayout.widget.ConstraintLayout>
-		
+
 		<!-- Location -->
-		<include layout="@layout/fragment_attachments_location" />
+		<LinearLayout
+			android:id="@+id/viewgroup_attachment_location"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/contenttile_size"
+			android:layout_marginStart="@dimen/contenttile_margin"
+			android:layout_marginBottom="@dimen/contenttile_margin"
+			android:orientation="horizontal"
+			android:baselineAligned="false">
+			<com.google.android.material.card.MaterialCardView
+				android:id="@+id/button_attachment_location_systempicker"
+				android:layout_width="40dp"
+				android:layout_height="match_parent"
+				android:foreground="?android:attr/selectableItemBackground"
+				android:backgroundTint="@color/colorPrimary"
+				android:focusable="true"
+				android:clickable="true"
+				android:layout_gravity="center"
+				app:cardElevation="0dp"
+				app:cardCornerRadius="4dp"
+				android:tag="@string/tag_primarytint">
+				<ImageView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_gravity="center"
+					android:src="@drawable/location"
+					app:tint="?attr/colorOnPrimary" />
+			</com.google.android.material.card.MaterialCardView>
+
+			<FrameLayout
+				android:id="@+id/button_attachment_location_action"
+				android:layout_width="0px"
+				android:layout_height="match_parent"
+				android:layout_marginLeft="@dimen/contenttile_margin"
+				android:layout_marginRight="@dimen/contenttile_margin"
+				android:layout_weight="1"
+				android:background="@drawable/rounded_selectable_contenttile"
+				android:backgroundTint="@color/colorToolbar"
+				android:padding="10dp"
+				android:textColor="?android:attr/textColorSecondary">
+				<TextView
+					android:id="@+id/button_attachment_location_action_label"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_gravity="center"
+					android:gravity="center"
+					android:text="@string/imperative_permission_location"
+					android:textColor="?android:attr/textColorSecondary" />
+			</FrameLayout>
+
+			<com.google.android.material.card.MaterialCardView
+				android:id="@+id/frame_attachment_location_content"
+				android:layout_width="0px"
+				android:layout_height="match_parent"
+				android:layout_marginLeft="@dimen/contenttile_margin"
+				android:layout_marginRight="@dimen/contenttile_margin"
+				android:layout_weight="1"
+				app:cardCornerRadius="4dp"
+				app:cardElevation="0dp"
+				app:cardUseCompatPadding="false">
+				<androidx.fragment.app.FragmentContainerView
+					android:id="@+id/fragment_attachment_location_map"
+					android:name="com.google.android.gms.maps.SupportMapFragment"
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					app:mapType="normal"
+					app:liteMode="true" />
+
+				<ImageView
+					android:layout_width="64dp"
+					android:layout_height="64dp"
+					android:src="@drawable/mapindicator"
+					android:layout_gravity="center" />
+
+				<View
+					android:id="@+id/frame_attachment_location_click"
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:foreground="?android:attr/selectableItemBackground"
+					android:focusable="true"
+					android:clickable="true" />
+			</com.google.android.material.card.MaterialCardView>
+		</LinearLayout>
 
 		<!-- Audio files -->
 		<LinearLayout

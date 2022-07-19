@@ -61,8 +61,7 @@
 	<string name="title_conversation_members">会話のユーザー</string>
 	<string name="title_conversation_files">会話のファイル</string>
 	<string name="dialog_feedback_email">メールを送る</string>
-	<string name="dialog_feedback_discord">Discord サーバーに参加する</string>
-	<string name="dialog_feedback_reddit">コミュ二ティページを開く</string>
+	<string name="dialog_feedback_community">コミュ二ティページを開く</string>
 	<string name="message_blankstate_conversations">会話なし</string>
 	<string name="message_blankstate_conversations_description">新しい会話を開始すると、ここに表示されます</string>
 	<string name="message_blankstate_conversations_archived">アーカイブされた会話なし</string>

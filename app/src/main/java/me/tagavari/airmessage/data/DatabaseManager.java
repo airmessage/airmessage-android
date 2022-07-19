@@ -12,13 +12,15 @@ import android.util.Base64;
 import android.util.LongSparseArray;
 import android.webkit.MimeTypeMap;
 import androidx.annotation.Nullable;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
+import com.google.mlkit.nl.smartreply.TextMessage;
+import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import kotlin.Pair;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.enums.*;
-import me.tagavari.airmessage.flavor.CrashlyticsBridge;
 import me.tagavari.airmessage.helper.*;
 import me.tagavari.airmessage.messaging.*;
 import me.tagavari.airmessage.util.ModifierMetadata;
@@ -575,28 +577,28 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		//Private constructor to avoid instantiation
 		private Contract() {}
 		
-		public static class MessageEntry implements BaseColumns {
-			public static final String TABLE_NAME = "messages";
-			public static final String COLUMN_NAME_SERVERID = "server_id";
-			public static final String COLUMN_NAME_GUID = "guid";
-			public static final String COLUMN_NAME_SENDER = "sender";
-			public static final String COLUMN_NAME_OTHER = "other";
-			public static final String COLUMN_NAME_DATE = "date";
-			public static final String COLUMN_NAME_ITEMTYPE = "item_type";
-			public static final String COLUMN_NAME_ITEMSUBTYPE = "item_subtype";
-			public static final String COLUMN_NAME_STATE = "state";
-			public static final String COLUMN_NAME_ERROR = "error";
-			public static final String COLUMN_NAME_ERRORDETAILS = "error_details";
-			public static final String COLUMN_NAME_DATEREAD = "date_read";
-			public static final String COLUMN_NAME_MESSAGETEXT = "message_text";
-			public static final String COLUMN_NAME_MESSAGESUBJECT = "message_subject";
-			public static final String COLUMN_NAME_SENDSTYLE = "send_style";
-			public static final String COLUMN_NAME_SENDSTYLEVIEWED = "send_style_viewed";
-			public static final String COLUMN_NAME_CHAT = "chat";
-			public static final String COLUMN_NAME_PREVIEW_STATE = "preview_state";
-			public static final String COLUMN_NAME_PREVIEW_ID = "preview_id";
-			public static final String COLUMN_NAME_SORTID_LINKED = "sort_id_linked"; //The last serverlinked (server_id is not null) item above this item
-			public static final String COLUMN_NAME_SORTID_LINKEDOFFSET = "sort_id_linked_offset"; //How many items away this item is from the last serverlinked item
+		static class MessageEntry implements BaseColumns {
+			static final String TABLE_NAME = "messages";
+			static final String COLUMN_NAME_SERVERID = "server_id";
+			static final String COLUMN_NAME_GUID = "guid";
+			static final String COLUMN_NAME_SENDER = "sender";
+			static final String COLUMN_NAME_OTHER = "other";
+			static final String COLUMN_NAME_DATE = "date";
+			static final String COLUMN_NAME_ITEMTYPE = "item_type";
+			static final String COLUMN_NAME_ITEMSUBTYPE = "item_subtype";
+			static final String COLUMN_NAME_STATE = "state";
+			static final String COLUMN_NAME_ERROR = "error";
+			static final String COLUMN_NAME_ERRORDETAILS = "error_details";
+			static final String COLUMN_NAME_DATEREAD = "date_read";
+			static final String COLUMN_NAME_MESSAGETEXT = "message_text";
+			static final String COLUMN_NAME_MESSAGESUBJECT = "message_subject";
+			static final String COLUMN_NAME_SENDSTYLE = "send_style";
+			static final String COLUMN_NAME_SENDSTYLEVIEWED = "send_style_viewed";
+			static final String COLUMN_NAME_CHAT = "chat";
+			static final String COLUMN_NAME_PREVIEW_STATE = "preview_state";
+			static final String COLUMN_NAME_PREVIEW_ID = "preview_id";
+			static final String COLUMN_NAME_SORTID_LINKED = "sort_id_linked"; //The last serverlinked (server_id is not null) item above this item
+			static final String COLUMN_NAME_SORTID_LINKEDOFFSET = "sort_id_linked_offset"; //How many items away this item is from the last serverlinked item
 		}
 		
 		static class ConversationEntry implements BaseColumns {
@@ -818,9 +820,9 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		//Logging the operation
-		CrashlyticsBridge.log("Table rebuild requested.\n" +
-							  "Column target: " + columnSelection + '\n' +
-							  "Creation command: " + creationCommand);
+		FirebaseCrashlytics.getInstance().log("Table rebuild requested.\n" +
+											  "Column target: " + columnSelection + '\n' +
+											  "Creation command: " + creationCommand);
 		
 		//Starting the operation
 		if(useTransaction) writableDatabase.beginTransaction();
@@ -1395,6 +1397,49 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			//Filtering out non-message items
 			if(cursor.getInt(indices.iItemType) != ConversationItemType.message) continue;
 			messageList.add((MessageInfo) loadConversationItem(context, indices, cursor, database));
+		}
+		
+		//Closing the cursor
+		cursor.close();
+		
+		//Returning the conversation items
+		return messageList;
+	}
+	
+	/**
+	 * Returns the last 10 text-based messages of a conversation for quick reply
+	 * @param conversationID the ID of the conversation to load form
+	 * @return the last 10 text-based message items of the conversation
+	 */
+	@CheckReturnValue
+	public List<TextMessage> loadConversationForMLKit(long conversationID) {
+		//Getting the database
+		SQLiteDatabase database = getReadableDatabase();
+		
+		//Creating the message list
+		List<TextMessage> messageList = new ArrayList<>();
+		
+		//Querying the database
+		Cursor cursor = database.query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_SENDER, Contract.MessageEntry.COLUMN_NAME_DATE, Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT},
+				Contract.MessageEntry.COLUMN_NAME_ITEMTYPE + " = " + ConversationItemType.message + " AND " + Contract.MessageEntry.COLUMN_NAME_CHAT + " = ? AND " + Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT + " IS NOT NULL", new String[]{Long.toString(conversationID)},
+				null, null, Contract.MessageEntry.COLUMN_NAME_DATE + " DESC", Integer.toString(SmartReplyHelper.smartReplyHistoryLength));
+		//Cursor cursor = database.rawQuery(SQL_FETCH_CONVERSATION_MESSAGES, new String[]{Long.toString(conversationInfo.getLocalID())});
+		
+		//Getting the indexes
+		int iSender = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_SENDER);
+		int iDate = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_DATE);
+		int iMessageText = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_MESSAGETEXT);
+		//int iOther = cursor.getColumnIndexOrThrow(Contract.MessageEntry.COLUMN_NAME_OTHER);
+		
+		//Looping while there are items (in reverse order, because Firebase wants newer messages at the start of the list)
+		for(cursor.moveToLast(); !cursor.isBeforeFirst(); cursor.moveToPrevious()) {
+			//Getting the message info
+			String sender = cursor.isNull(iSender) ? null : cursor.getString(iSender);
+			long date = cursor.getLong(iDate);
+			String message = cursor.getString(iMessageText);
+			
+			//Adding the message to the list
+			messageList.add(sender == null ? TextMessage.createForLocalUser(message, date) : TextMessage.createForRemoteUser(message, date, sender));
 		}
 		
 		//Closing the cursor

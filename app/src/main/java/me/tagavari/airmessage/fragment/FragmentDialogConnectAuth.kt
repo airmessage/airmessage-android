@@ -12,6 +12,7 @@ import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.DialogFragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputLayout
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import io.reactivex.rxjava3.disposables.Disposable
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.connection.ConnectionOverride
@@ -19,7 +20,6 @@ import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.enums.ConnectionErrorCode
 import me.tagavari.airmessage.enums.ConnectionState
 import me.tagavari.airmessage.enums.ProxyType
-import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.helper.StringHelper.nullifyEmptyString
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork.connectionStateSubject
 import me.tagavari.airmessage.redux.ReduxEventConnection
@@ -102,10 +102,10 @@ class FragmentDialogConnectAuth : DialogFragment() {
 					SharedPreferencesManager.setDirectConnectionPassword(requireContext(), nullifyEmptyString(inputField.editText!!.text.toString().trim()))
 				} catch(exception: GeneralSecurityException) {
 					exception.printStackTrace()
-					CrashlyticsBridge.recordException(exception)
+					FirebaseCrashlytics.getInstance().recordException(exception)
 				} catch(exception: IOException) {
 					exception.printStackTrace()
-					CrashlyticsBridge.recordException(exception)
+					FirebaseCrashlytics.getInstance().recordException(exception)
 				}
 				
 				//Show a confirmation toast

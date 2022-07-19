@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import androidx.annotation.Nullable;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import me.tagavari.airmessage.connection.DataProxy;
 import me.tagavari.airmessage.connection.encryption.EncryptionAES;
 import me.tagavari.airmessage.connection.encryption.EncryptionManager;
@@ -11,7 +12,6 @@ import me.tagavari.airmessage.constants.NetworkConstants;
 import me.tagavari.airmessage.constants.RegexConstants;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.flavor.CrashlyticsBridge;
 import me.tagavari.airmessage.util.ConnectionParams;
 
 import java.io.DataOutputStream;
@@ -56,7 +56,7 @@ class ProxyDirectTCP extends DataProxy<EncryptedPacket> {
 	public void start(Context context, @Nullable ConnectionParams override) {
 		//Returning if this proxy is already running
 		if(isRunning) {
-			CrashlyticsBridge.recordException(new IllegalStateException("Tried to start proxy, but it is already running!"));
+			FirebaseCrashlytics.getInstance().recordException(new IllegalStateException("Tried to start proxy, but it is already running!"));
 			return;
 		}
 		

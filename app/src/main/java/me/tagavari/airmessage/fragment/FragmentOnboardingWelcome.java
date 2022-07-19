@@ -1,31 +1,59 @@
 package me.tagavari.airmessage.fragment;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
+import com.google.android.gms.auth.api.signin.*;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-
+import com.google.android.material.snackbar.Snackbar;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.GoogleAuthProvider;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.extension.FragmentCommunicationNetworkConfig;
-import me.tagavari.airmessage.flavor.WelcomeGoogleSignIn;
 import me.tagavari.airmessage.util.ConnectionParams;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCommunicationNetworkConfig> {
 	//Creating the constants
-	public static final String TAG = FragmentOnboardingWelcome.class.getName();
+	private static final String TAG = FragmentOnboardingWelcome.class.getName();
 
 	//Creating the sign-in values
-	private WelcomeGoogleSignIn welcomeGoogleSignIn;
+	private FirebaseAuth mAuth;
+	private GoogleSignInClient googleSignInClient;
+
+	//Creating the activity callbacks
+	private final ActivityResultLauncher<Intent> googleSignInLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+		Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(result.getData());
+		try {
+			// Google Sign In was successful, authenticate with Firebase
+			GoogleSignInAccount account = task.getResult(ApiException.class);
+			firebaseAuthWithGoogle(account);
+		} catch(ApiException exception) {
+			exception.printStackTrace();
+
+			if(exception.getStatusCode() != GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
+				//Displaying an error snackbar
+				Snackbar.make(requireView(), R.string.message_signinerror, Snackbar.LENGTH_LONG).show();
+			}
+		}
+	});
 	
 	@Nullable
 	@Override
@@ -42,10 +70,42 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 		view.findViewById(R.id.button_manual).setOnLongClickListener(this::launchSkipConfig);
 		
 		//Setting up Firebase sign-in
-		welcomeGoogleSignIn = new WelcomeGoogleSignIn(this);
-		if(!welcomeGoogleSignIn.isSupported()) {
-			view.findViewById(R.id.button_connect_google).setVisibility(View.GONE);
+		mAuth = FirebaseAuth.getInstance();
+		
+		//Setting up Google sign-in
+		{
+			GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+					.requestIdToken(getString(R.string.default_web_client_id))
+					.requestEmail()
+					.build();
+			googleSignInClient = GoogleSignIn.getClient(requireContext(), gso);
 		}
+	}
+	
+	private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
+		Log.d(TAG, "firebaseAuthWithGoogle:" + acct.getId());
+		
+		AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
+		mAuth.signInWithCredential(credential).addOnCompleteListener(requireActivity(), task -> {
+			if(task.isSuccessful()) {
+				// Sign in success, update UI with the signed-in user's information
+				Log.d(TAG, "signInWithCredential:success");
+				
+				//Completing authentication
+				completeAuth();
+			} else {
+				// If sign in fails, display a message to the user.
+				Log.w(TAG, "signInWithCredential:failure", task.getException());
+				
+				//Displaying an error snackbar
+				Snackbar.make(requireView(), R.string.message_signinerror, Snackbar.LENGTH_LONG).show();
+			}
+		});
+	}
+	
+	private void completeAuth() {
+		//Advancing to the connection fragment
+		getCommunicationsCallback().swapFragment(new FragmentOnboardingConnect());
 	}
 	
 	private void launchManualConnect(View view) {
@@ -75,7 +135,15 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 	}
 	
 	private void launchAuthGoogle(View view) {
-		welcomeGoogleSignIn.launch();
+		//Checking if Google Play Services are available
+		int googleAPIAvailability = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(requireContext());
+		if(googleAPIAvailability == ConnectionResult.SUCCESS) {
+			//Starting Google sign-in
+			googleSignInLauncher.launch(googleSignInClient.getSignInIntent());
+		} else {
+			//Prompting the user
+			GoogleApiAvailability.getInstance().getErrorDialog(requireActivity(), googleAPIAvailability, 0).show();
+		}
 	}
 	
 	private void launchAuthEmail(View view) {

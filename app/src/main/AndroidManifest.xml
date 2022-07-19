@@ -110,7 +110,7 @@
 
 		<!-- Preferences -->
 		<activity
-			android:exported="true"
+			android:exported="false"
 			android:label="@string/screen_settings"
 			android:name=".activity.Preferences"
 			android:theme="@style/DayNight.NoActionBar.Protected"
@@ -162,6 +162,16 @@
 			android:parentActivityName=".activity.Messaging"
 			android:theme="@style/ThemeBlack"
 			android:configChanges="orientation|screenSize|layoutDirection">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
+
+		<!-- Location picker -->
+		<activity
+			android:exported="false"
+			android:name=".activity.LocationPicker"
+			android:parentActivityName=".activity.Messaging"
+			android:theme="@style/DayNight.Transparent"
+			android:windowSoftInputMode="adjustResize">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
@@ -366,6 +376,25 @@
 				<action android:name="android.provider.action.EXTERNAL_PROVIDER_CHANGE" />
 			</intent-filter>
 		</receiver>
+
+		<!-- FCM listener service -->
+		<service
+			android:name=".service.FCMService"
+			android:exported="false">
+			<intent-filter>
+				<action android:name="com.google.firebase.MESSAGING_EVENT" />
+			</intent-filter>
+		</service>
+
+		<!-- Disables automatic Crashlytics initialization -->
+		<meta-data
+			android:name="firebase_crashlytics_collection_enabled"
+			android:value="false" />
+
+		<!-- Google Maps API -->
+		<meta-data
+			android:name="com.google.android.geo.API_KEY"
+			android:value="${MAPS_API_KEY}" />
 
 		<!-- Android Auto integration -->
 		<meta-data

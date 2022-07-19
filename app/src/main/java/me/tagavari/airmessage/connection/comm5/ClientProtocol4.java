@@ -4,6 +4,7 @@ import android.os.Build;
 
 import androidx.annotation.NonNull;
 
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import io.reactivex.rxjava3.core.Observable;
 import me.tagavari.airmessage.MainApplication;
 import me.tagavari.airmessage.common.Blocks;
@@ -15,7 +16,6 @@ import me.tagavari.airmessage.connection.exception.LargeAllocationException;
 import me.tagavari.airmessage.constants.MIMEConstants;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.*;
-import me.tagavari.airmessage.flavor.CrashlyticsBridge;
 import me.tagavari.airmessage.helper.LookAheadStreamIterator;
 import me.tagavari.airmessage.helper.StandardCompressionHelper;
 import me.tagavari.airmessage.helper.StringHelper;
@@ -420,7 +420,7 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			CrashlyticsBridge.recordException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -456,7 +456,7 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			CrashlyticsBridge.recordException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -514,7 +514,7 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 				return true;
 			} catch(BufferOverflowException | GeneralSecurityException exception) {
 				exception.printStackTrace();
-				CrashlyticsBridge.recordException(exception);
+				FirebaseCrashlytics.getInstance().recordException(exception);
 				return false;
 			}
 		} else {
@@ -532,7 +532,7 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 				return true;
 			} catch(BufferOverflowException exception) {
 				exception.printStackTrace();
-				CrashlyticsBridge.recordException(exception);
+				FirebaseCrashlytics.getInstance().recordException(exception);
 				return false;
 			}
 		}
@@ -568,7 +568,7 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			CrashlyticsBridge.recordException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -638,7 +638,7 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 				throw new AMRequestException(MessageSendErrorCode.localIO, exception);
 			} catch(NoSuchAlgorithmException | BufferOverflowException exception) {
 				exception.printStackTrace();
-				CrashlyticsBridge.recordException(exception);
+				FirebaseCrashlytics.getInstance().recordException(exception);
 				throw new AMRequestException(MessageSendErrorCode.localInternal, exception);
 			}
 		});
@@ -660,7 +660,7 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			CrashlyticsBridge.recordException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -680,7 +680,7 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			CrashlyticsBridge.recordException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -700,7 +700,7 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			CrashlyticsBridge.recordException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}
@@ -721,7 +721,7 @@ public class ClientProtocol4 extends ProtocolManager<EncryptedPacket> {
 			return true;
 		} catch(BufferOverflowException exception) {
 			exception.printStackTrace();
-			CrashlyticsBridge.recordException(exception);
+			FirebaseCrashlytics.getInstance().recordException(exception);
 			return false;
 		}
 	}

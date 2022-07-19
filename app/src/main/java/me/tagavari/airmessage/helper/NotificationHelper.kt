@@ -35,7 +35,6 @@ import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.data.UserCacheHelper
-import me.tagavari.airmessage.flavor.MLKitBridge
 import me.tagavari.airmessage.helper.AddressHelper.formatAddress
 import me.tagavari.airmessage.helper.AddressHelper.normalizeAddress
 import me.tagavari.airmessage.helper.BitmapHelper.loadBitmapCircular
@@ -209,7 +208,7 @@ object NotificationHelper {
 		
 		//Used for conversation shortcuts, only available on Android 11
 		val singleShortcutIcon: Single<Optional<IconCompat>> = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-			generateShortcutIcon(context, conversationInfo).map { bitmap: Bitmap -> Optional.of(IconCompat.createWithAdaptiveBitmap(bitmap)) }.onErrorReturnItem(Optional.empty())
+			generateShortcutIcon(context, conversationInfo).map { bitmap: Bitmap? -> Optional.of(IconCompat.createWithAdaptiveBitmap(bitmap)) }.onErrorReturnItem(Optional.empty())
 		} else {
 			Single.just(Optional.empty())
 		}
@@ -248,7 +247,10 @@ object NotificationHelper {
 		val singleSuggestions: Single<List<String>> = if(sender == null || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q || !Preferences.getPreferenceReplySuggestions(context)) {
 			Single.just(emptyList())
 		} else {
-			MLKitBridge.generateFromDatabase(conversationInfo.localID)
+			Single.fromCallable {
+				DatabaseManager.getInstance().loadConversationForMLKit(conversationInfo.localID)
+			}.subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread())
+					.flatMap { messages -> SmartReplyHelper.generateResponsesMLKit(messages) }
 		}
 		
 		Single.zip(singleTitle, singleShortcutIcon, singleMemberInfo, singleMemberIcon, singleSuggestions, ::NotificationFutureData)

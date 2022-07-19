@@ -3,9 +3,9 @@ package me.tagavari.airmessage.helper
 import android.content.Context
 import android.net.Uri
 import android.webkit.MimeTypeMap
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.enums.AttachmentType
-import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import java.io.File
 
 object FileHelper {
@@ -101,7 +101,7 @@ object FileHelper {
 	fun compareMimeTypes(one: String, two: String): Boolean {
 		if(one == "*/*" || two == "*/*") return true
 		if(!one.contains("/") || !two.contains("/")) {
-			CrashlyticsBridge.recordException(IllegalArgumentException("Couldn't compare MIME types. Attempting to compare $one and $two"))
+			FirebaseCrashlytics.getInstance().recordException(IllegalArgumentException("Couldn't compare MIME types. Attempting to compare $one and $two"))
 			return false
 		}
 		val oneComponents = one.split("/".toRegex()).toTypedArray()

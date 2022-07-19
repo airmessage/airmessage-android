@@ -4,12 +4,12 @@ import android.content.Context
 import android.net.Uri
 import android.provider.ContactsContract
 import android.util.LruCache
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.core.SingleEmitter
 import io.reactivex.rxjava3.schedulers.Schedulers
 import me.tagavari.airmessage.MainApplication
-import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.helper.AddressHelper.normalizeAddress
 import java.util.*
 
@@ -57,7 +57,7 @@ class UserCacheHelper {
 						emitter.tryOnError(RuntimeException("User $address not found"))
 					}
 				} catch(exception: Exception) {
-					CrashlyticsBridge.recordException(exception)
+					FirebaseCrashlytics.getInstance().recordException(exception)
 					emitter.tryOnError(exception)
 				}
 			}

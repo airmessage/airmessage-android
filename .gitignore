@@ -43,6 +43,7 @@ ehthumbs.db
 # Other stuff
 projectFilesBackup/
 captures/
-google-services.json
+app/google-services\.json
+app/src/debug/google-services.json
 signingshared/shared.keystore
 secrets.properties

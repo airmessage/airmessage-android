@@ -5,6 +5,7 @@ import android.content.res.Resources
 import android.os.Build
 import android.text.format.DateFormat
 import androidx.annotation.StringRes
+import com.google.android.gms.maps.model.LatLng
 import io.reactivex.rxjava3.core.Single
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
@@ -14,7 +15,6 @@ import me.tagavari.airmessage.enums.TapbackType
 import me.tagavari.airmessage.helper.CalendarHelper.compareCalendarDates
 import me.tagavari.airmessage.messaging.MessageComponentText
 import me.tagavari.airmessage.messaging.MessageInfo
-import me.tagavari.airmessage.util.LatLngInfo
 import me.tagavari.airmessage.util.TapbackDisplayData
 import java.net.URI
 import java.net.URISyntaxException
@@ -216,7 +216,7 @@ object LanguageHelper {
 	 * Converts latitude and longitude coordinates to a human-readable string
 	 */
 	@JvmStatic
-	fun coordinatesToString(position: LatLngInfo): String {
+	fun coordinatesToString(position: LatLng): String {
 		return "(" + String.format(Locale.getDefault(), "%.5f", position.latitude) + ", " + String.format(Locale.getDefault(), "%.5f", position.longitude) + ")"
 	}
 	

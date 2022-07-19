@@ -32,6 +32,8 @@ import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.security.ProviderInstaller;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -60,7 +62,6 @@ import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.enums.ConnectionState;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.enums.ServiceHandler;
-import me.tagavari.airmessage.flavor.PlaySecurityBridge;
 import me.tagavari.airmessage.fragment.FragmentSync;
 import me.tagavari.airmessage.helper.*;
 import me.tagavari.airmessage.messaging.*;
@@ -311,7 +312,7 @@ public class Conversations extends AppCompatCompositeActivity {
 		infoBarServerUpdateRequired = pluginMessageBar.create(R.drawable.sync_problem, getResources().getString(R.string.message_serverupdaterequired));
 		infoBarServerUpdateRequired.setButton(R.string.action_details, view -> showServerUpdateRequiredDialog());
 		infoBarSecurityUpdate = pluginMessageBar.create(R.drawable.lock_alert, getResources().getString(R.string.message_securityupdate));
-		infoBarSecurityUpdate.setButton(R.string.action_resolve, view -> PlaySecurityBridge.showDialog(this, viewModel.playServicesErrorCode.getValue(), activityResultPlayServices));
+		infoBarSecurityUpdate.setButton(R.string.action_resolve, view -> GoogleApiAvailability.getInstance().showErrorDialogFragment(this, viewModel.playServicesErrorCode.getValue(), activityResultPlayServices));
 		
 		//Configuring the normal / archived view
 		if(isViewArchived) {
@@ -589,7 +590,7 @@ public class Conversations extends AppCompatCompositeActivity {
 			new MaterialAlertDialogBuilder(this)
 					.setTitle(R.string.action_sendfeedback)
 					.setMessage(R.string.dialog_feedback_message)
-					.setPositiveButton(R.string.dialog_feedback_email, (dialog, which) -> {
+					.setNeutralButton(R.string.dialog_feedback_email, (dialog, which) -> {
 						//Creating the intent
 						Intent intent = new Intent(Intent.ACTION_SENDTO);
 						intent.setData(Uri.parse("mailto:"));
@@ -601,7 +602,6 @@ public class Conversations extends AppCompatCompositeActivity {
 								"Device model: " + Build.MODEL + "\r\n" +
 								"Android version: " + Build.VERSION.RELEASE + "\r\n" +
 								"Client version: " + BuildConfig.VERSION_NAME + "\r\n" +
-								"Build flavor: " + BuildConfig.FLAVOR + "\r\n" +
 								"Communications version: " + currentCommunicationsVersion + " (target " + VersionConstants.getLatestCommVerString() + ")" + "\r\n" +
 								"Proxy type: " + proxyType + "\r\n" +
 								"Server system version: " + serverSystemVersion + "\r\n" +
@@ -614,21 +614,9 @@ public class Conversations extends AppCompatCompositeActivity {
 							Toast.makeText(this, R.string.message_intenterror_email, Toast.LENGTH_SHORT).show();
 						}
 					})
-					.setNegativeButton(R.string.dialog_feedback_discord, (dialog, which) -> {
+					.setPositiveButton(R.string.dialog_feedback_community, (dialog, which) -> {
 						//Creating the intent
-						Intent intent = new Intent(Intent.ACTION_VIEW, ExternalLinkConstants.discordAddress);
-						intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-						
-						//Launching the intent
-						try {
-							startActivity(intent);
-						} catch(ActivityNotFoundException exception) {
-							Toast.makeText(this, R.string.message_intenterror_browser, Toast.LENGTH_SHORT).show();
-						}
-					})
-					.setNeutralButton(R.string.dialog_feedback_reddit, (dialog, which) -> {
-						//Creating the intent
-						Intent intent = new Intent(Intent.ACTION_VIEW, ExternalLinkConstants.redditAddress);
+						Intent intent = new Intent(Intent.ACTION_VIEW, ExternalLinkConstants.communityAddress);
 						intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 						
 						//Launching the intent
@@ -1425,7 +1413,20 @@ public class Conversations extends AppCompatCompositeActivity {
 		
 		public void updateSecurityProvider() {
 			playServicesErrorCode.setValue(null);
-			PlaySecurityBridge.update(getApplication(), playServicesErrorCode::setValue);
+			
+			ProviderInstaller.installIfNeededAsync(getApplication(), new ProviderInstaller.ProviderInstallListener() {
+				@Override
+				public void onProviderInstalled() {
+				}
+				
+				@Override
+				public void onProviderInstallFailed(int errorCode, Intent recoveryIntent) {
+					GoogleApiAvailability availability = GoogleApiAvailability.getInstance();
+					if(availability.isUserResolvableError(errorCode)) {
+						playServicesErrorCode.setValue(errorCode);
+					}
+				}
+			});
 		}
 	}
 	

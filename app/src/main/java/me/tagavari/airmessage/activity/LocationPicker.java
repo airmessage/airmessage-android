@@ -52,7 +52,6 @@ import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.helper.LanguageHelper;
 import me.tagavari.airmessage.helper.ResourceHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
-import me.tagavari.airmessage.util.LatLngInfo;
 
 import java.util.List;
 
@@ -82,7 +81,7 @@ public class LocationPicker extends AppCompatActivity {
 		
 		//Updating the labels
 		viewModel.loadMapAddress();
-		labelCoordinates.setText(LanguageHelper.coordinatesToString(new LatLngInfo(viewModel.mapPosition.latitude, viewModel.mapPosition.longitude)));
+		labelCoordinates.setText(LanguageHelper.coordinatesToString(viewModel.mapPosition));
 	};
 	private OnMapReadyCallback mapCallback = googleMap -> {
 		//Setting the map
@@ -176,7 +175,7 @@ public class LocationPicker extends AppCompatActivity {
 			String address = viewModel.getMapPositionAddress();
 			labelLocation.setCurrentText(address != null ? address : "");
 		}
-		labelCoordinates.setCurrentText(LanguageHelper.coordinatesToString(new LatLngInfo(viewModel.mapPosition.latitude, viewModel.mapPosition.longitude)));
+		labelCoordinates.setCurrentText(LanguageHelper.coordinatesToString(viewModel.mapPosition));
 		
 		//Hiding the navigation bar protection on Android Q
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) systemProtectionBottom.setVisibility(View.GONE);
@@ -195,7 +194,7 @@ public class LocationPicker extends AppCompatActivity {
 			@Override
 			public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
 				Insets systemInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-				
+
 				//Setting the close button margins
 				{
 					int insetStart = ResourceHelper.isLTR(getResources()) ? systemInsets.left : systemInsets.right;
@@ -317,69 +316,69 @@ public class LocationPicker extends AppCompatActivity {
 				else locationName = address.getFeatureName();
 				emitter.onSuccess(new Pair<>(locationAddress, locationName));
 			}).subscribeOn(Schedulers.io())
-				.observeOn(AndroidSchedulers.mainThread())
-				.subscribe((address) -> {
-					//Setting the values
-					mapPositionAddress.setValue(address.first);
-					mapPositionName = address.second;
-				}, Throwable::printStackTrace);
+					.observeOn(AndroidSchedulers.mainThread())
+					.subscribe((address) -> {
+						//Setting the values
+						mapPositionAddress.setValue(address.first);
+						mapPositionName = address.second;
+					}, Throwable::printStackTrace);
 		}
-		
+
 		@Nullable
 		String getMapPositionAddress() {
 			return mapPositionAddress.getValue();
 		}
-		
+
 		@Nullable
 		String getMapPositionName() {
 			return mapPositionName;
 		}
 	}
-	
+
 	public static class Result {
 		private final LatLng location;
 		@Nullable private final String address;
 		@Nullable private final String name;
-		
+
 		public Result(LatLng location, @Nullable String address, @Nullable String name) {
 			this.location = location;
 			this.address = address;
 			this.name = name;
 		}
-		
+
 		public LatLng getLocation() {
 			return location;
 		}
-		
+
 		@Nullable
 		public String getAddress() {
 			return address;
 		}
-		
+
 		@Nullable
 		public String getName() {
 			return name;
 		}
 	}
-	
+
 	public static class ResultContract extends ActivityResultContract<Location, Result> {
 		@NonNull
 		@Override
 		public Intent createIntent(@NonNull Context context, Location input) {
 			return new Intent(context, LocationPicker.class)
-				.putExtra(LocationPicker.intentParamLocation, input);
+					.putExtra(LocationPicker.intentParamLocation, input);
 		}
-		
+
 		@Override
 		public Result parseResult(int resultCode, @Nullable Intent result) {
 			if(resultCode != Activity.RESULT_OK || result == null) {
 				return null;
 			}
-			
+
 			return new Result(
-				result.getParcelableExtra(LocationPicker.intentParamLocation),
-				result.getStringExtra(LocationPicker.intentParamAddress),
-				result.getStringExtra(LocationPicker.intentParamName)
+					result.getParcelableExtra(LocationPicker.intentParamLocation),
+					result.getStringExtra(LocationPicker.intentParamAddress),
+					result.getStringExtra(LocationPicker.intentParamName)
 			);
 		}
 	}

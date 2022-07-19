@@ -8,11 +8,14 @@ import android.view.textclassifier.ConversationActions
 import android.view.textclassifier.TextClassificationManager
 import android.view.textclassifier.TextClassifier
 import androidx.annotation.RequiresApi
+import com.google.mlkit.nl.smartreply.SmartReply
+import com.google.mlkit.nl.smartreply.SmartReplySuggestionResult
+import com.google.mlkit.nl.smartreply.TextMessage
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.annotations.CheckReturnValue
 import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.core.SingleEmitter
 import io.reactivex.rxjava3.schedulers.Schedulers
-import me.tagavari.airmessage.flavor.MLKitBridge
 import me.tagavari.airmessage.messaging.AMConversationAction
 import me.tagavari.airmessage.messaging.MessageInfo
 import java.time.Instant
@@ -36,6 +39,22 @@ object SmartReplyHelper {
 							.setReferenceTime(ZonedDateTime.ofInstant(Instant.ofEpochMilli(message.date), ZoneId.systemDefault()))
 							.setText(message.messageText)
 							.build()
+				}
+	}
+	
+	/**
+	 * Maps a list of [MessageInfo] to [ConversationActions.Message]
+	 */
+	@JvmStatic
+	fun messagesToMLKitMessageList(messageList: List<MessageInfo>): List<TextMessage> {
+		return messageList
+				.filter { message -> message.messageText != null } //Filter out empty messages
+				.map { message ->
+					if(message.sender == null) {
+						return@map TextMessage.createForLocalUser(message.messageText!!, message.date)
+					} else {
+						return@map TextMessage.createForRemoteUser(message.messageText!!, message.date, message.sender!!)
+					}
 				}
 	}
 	
@@ -65,12 +84,10 @@ object SmartReplyHelper {
 							}
 						}
 					}
-		} else if(MLKitBridge.isSupported) {
-			//Use MLKit
-			MLKitBridge.generate(sortedMessages)
-					.map { it.map { message -> AMConversationAction.createReplyAction(message) } }
 		} else {
-			Single.just(listOf())
+			//Use MLKit
+			generateResponsesMLKit(messagesToMLKitMessageList(sortedMessages))
+					.map { it.map { message -> AMConversationAction.createReplyAction(message) } }
 		}
 	}
 	
@@ -92,5 +109,28 @@ object SmartReplyHelper {
 							.build()
 			)
 		}.subscribeOn(Schedulers.computation()).observeOn(AndroidSchedulers.mainThread())
+	}
+	
+	/**
+	 * Generate a list of suggested replies using ML Kit
+	 * @param messages The ML Kit messages to base the replies off of
+	 * @return A single for an array of strings representing the suggested responses
+	 */
+	@CheckReturnValue
+	fun generateResponsesMLKit(messages: List<TextMessage>): Single<List<String>> {
+		return if(messages.isEmpty()) {
+			Single.just(emptyList())
+		} else {
+			Single.create { emitter: SingleEmitter<List<String>> ->
+				SmartReply.getClient().suggestReplies(messages)
+						.addOnSuccessListener { result: SmartReplySuggestionResult ->
+							if(result.status == SmartReplySuggestionResult.STATUS_SUCCESS) {
+								emitter.onSuccess(result.suggestions.map { it.text })
+							} else {
+								emitter.onSuccess(emptyList())
+							}
+						}.addOnFailureListener { emitter.onError(it) }
+			}
+		}
 	}
 }

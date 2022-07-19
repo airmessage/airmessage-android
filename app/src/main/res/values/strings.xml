@@ -111,8 +111,7 @@
 
 	<string name="dialog_feedback_message">Have a bug to report, a feature to suggest, or anything else to say? Contact us or discuss with others using the links below.</string>
 	<string name="dialog_feedback_email">Send E-Mail</string>
-	<string name="dialog_feedback_discord">Join Discord server</string>
-	<string name="dialog_feedback_reddit">Open community subreddit</string>
+	<string name="dialog_feedback_community">Open community subreddit</string>
 
 	<string name="dialog_signout_message">Are you sure you want to sign out?</string>
 
