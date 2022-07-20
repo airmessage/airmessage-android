@@ -3397,6 +3397,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			
 			while(cursor.moveToNext()) {
 				String path = cursor.getString(iPath);
+				if(path == null) continue;
 				AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameSticker, AttachmentStorageHelper.getAbsolutePath(context, path));
 			}
 		}
