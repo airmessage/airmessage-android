@@ -121,6 +121,19 @@ fun MessageInfoListEntry(
 						}
 					}
 				}
+				
+				val attachmentsCount = messageInfo.attachments.size
+				messageInfo.attachments.forEachIndexed { index, attachment ->
+					MessageBubbleDownload(
+						flow = MessagePartFlow(
+							isOutgoing = isOutgoing,
+							anchorTop = flow.anchorTop || messageInfo.messageTextComponent != null,
+							anchorBottom = flow.anchorBottom || (index + 1) < attachmentsCount,
+							tintRatio = scrollProgress
+						),
+						name = attachment.fileName
+					)
+				}
 			}
 			
 			if(messageInfo.hasError) {

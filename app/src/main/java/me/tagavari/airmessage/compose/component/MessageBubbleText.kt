@@ -34,7 +34,8 @@ fun MessageBubbleText(
 	
 	Surface(
 		color = colors.background,
-		shape = flow.bubbleShape
+		shape = flow.bubbleShape,
+		contentColor = colors.foreground
 	) {
 		Column(
 			modifier = Modifier
