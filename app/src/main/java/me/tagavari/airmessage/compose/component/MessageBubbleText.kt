@@ -10,49 +10,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.graphics.ColorUtils
 import com.google.android.material.textview.MaterialTextView
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.helper.LinkifyHelper
 import me.tagavari.airmessage.util.CustomTabsLinkTransformationMethod
 import me.tagavari.airmessage.util.MessagePartFlow
 
+/**
+ * A message bubble that displays a text message
+ */
 @Composable
 fun MessageBubbleText(
 	flow: MessagePartFlow,
 	subject: String? = null,
-	text: String? = null,
-	tintRatio: Float = 0F
+	text: String? = null
 ) {
-	val colorScheme = MaterialTheme.colorScheme
-	val (backgroundBubbleColor, bubbleOnBackgroundColor) = if(flow.isOutgoing) {
-		val background = ColorUtils.blendARGB(
-			colorScheme.secondary.toArgb(),
-			colorScheme.primary.toArgb(),
-			tintRatio
-		).let { Color(it) }
-		
-		val foreground = ColorUtils.blendARGB(
-			colorScheme.onSecondary.toArgb(),
-			colorScheme.onPrimary.toArgb(),
-			tintRatio
-		).let { Color(it) }
-		
-		Pair(background, foreground)
-	} else {
-		Pair(colorScheme.surfaceVariant, colorScheme.onSurfaceVariant)
-	}
+	val colors = flow.colors
 	
 	Surface(
-		color = backgroundBubbleColor,
+		color = colors.background,
 		shape = flow.bubbleShape
 	) {
 		Column(
@@ -95,7 +76,7 @@ fun MessageBubbleText(
 					},
 					update = { view ->
 						//Set view color
-						val color = bubbleOnBackgroundColor.let { android.graphics.Color.rgb(it.red, it.green, it.blue) }
+						val color = colors.foreground.let { android.graphics.Color.rgb(it.red, it.green, it.blue) }
 						view.setTextColor(color)
 						view.setLinkTextColor(color)
 						
@@ -116,7 +97,8 @@ private fun PreviewMessageBubbleText() {
 			flow = MessagePartFlow(
 				isOutgoing = false,
 				anchorBottom = false,
-				anchorTop = false
+				anchorTop = false,
+				tintRatio = 0F
 			),
 			text = "Cats are cool"
 		)
@@ -131,7 +113,8 @@ private fun PreviewMessageBubbleSubject() {
 			flow = MessagePartFlow(
 				isOutgoing = false,
 				anchorBottom = false,
-				anchorTop = false
+				anchorTop = false,
+				tintRatio = 0F
 			),
 			subject = "An important message",
 			text = "Hello there friend!"

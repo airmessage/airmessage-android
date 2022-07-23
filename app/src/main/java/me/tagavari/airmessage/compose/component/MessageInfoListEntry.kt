@@ -112,11 +112,11 @@ fun MessageInfoListEntry(
 								flow = MessagePartFlow(
 									isOutgoing = isOutgoing,
 									anchorTop = flow.anchorTop,
-									anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty()
+									anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty(),
+									tintRatio = scrollProgress
 								),
 								subject = textComponent.subject,
 								text = textComponent.text,
-								tintRatio = scrollProgress
 							)
 						}
 					}
