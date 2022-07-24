@@ -43,7 +43,7 @@ fun ConversationListEntry(
 		initialValue = ConversationBuildHelper.buildConversationTitleDirect(context, conversation),
 		conversation
 	) {
-		value = ConversationBuildHelper.buildMemberTitle(context, conversation.members).await()
+		value = ConversationBuildHelper.buildConversationTitle(context, conversation).await()
 	}
 	
 	val preview = conversation.dynamicPreview
