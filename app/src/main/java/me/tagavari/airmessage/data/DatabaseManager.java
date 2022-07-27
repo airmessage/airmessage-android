@@ -2054,6 +2054,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
+	@Nullable
 	public ConversationInfo fetchConversationInfo(Context context, long localID) {
 		//Getting the database
 		SQLiteDatabase database = getReadableDatabase();

@@ -1,14 +1,20 @@
 package me.tagavari.airmessage.compose.component
 
+import android.app.Application
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.withContext
+import me.tagavari.airmessage.compose.state.MessagingViewModel
+import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.data.DatabaseManager.ConversationLazyLoader
 import me.tagavari.airmessage.helper.ConversationBuildHelper
@@ -32,44 +38,15 @@ fun MessagingScreen(
 		}
 	}
 	
-	//Load the conversation title
-	val conversationTitle by produceState(
-		initialValue = conversation?.let { ConversationBuildHelper.buildConversationTitleDirect(context, it) },
-		conversation
-	) {
-		conversation?.let { conversation ->
-			value = ConversationBuildHelper.buildMemberTitle(context, conversation.members).await()
-		}
-	}
-	
-	//Create the lazy loader
-	val lazyLoader by remember {
-		derivedStateOf {
-			conversation?.let { conversation ->
-				ConversationLazyLoader(DatabaseManager.getInstance(), conversation)
-			}
-		}
-	}
-	
-	var messages by remember {
-		mutableStateOf(mutableListOf<ConversationItem>())
-	}
-	
-	LaunchedEffect(lazyLoader) {
-		val lazyLoader = lazyLoader ?: return@LaunchedEffect
-		
-		//Load the initial messages
-		messages = withContext(Dispatchers.IO) {
-			lazyLoader.loadNextChunk(context)
-		}
-	}
+	val application = LocalContext.current.applicationContext as Application
+	val viewModel = viewModel<MessagingViewModel>(factory = MessagingViewModelFactory(application, conversationID))
 	
 	Scaffold(
 		topBar = {
 			Surface(tonalElevation = 2.dp) {
 				SmallTopAppBar(
 					title = {
-						conversationTitle?.let {
+						viewModel.conversationTitle?.let {
 							Text(it)
 						}
 					},
@@ -86,7 +63,7 @@ fun MessagingScreen(
 							.weight(1F)
 							.padding(paddingValues),
 						conversation = conversation,
-						messages = messages
+						messages = viewModel.messages
 					)
 				} ?: Box(modifier = Modifier.weight(1F))
 				
