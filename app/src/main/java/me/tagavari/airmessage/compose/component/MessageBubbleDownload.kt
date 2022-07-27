@@ -1,22 +1,17 @@
 package me.tagavari.airmessage.compose.component
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.helper.LanguageHelper
 import me.tagavari.airmessage.util.MessagePartFlow
 
 /**
@@ -25,7 +20,10 @@ import me.tagavari.airmessage.util.MessagePartFlow
 @Composable
 fun MessageBubbleDownload(
 	flow: MessagePartFlow,
-	name: String? = null
+	name: String? = null,
+	bytesTotal: Long = 0,
+	bytesDownloaded: Long? = null,
+	isDownloading: Boolean = false
 ) {
 	val colors = flow.colors
 	
@@ -38,14 +36,29 @@ fun MessageBubbleDownload(
 			modifier = Modifier.padding(all = 12.dp),
 			horizontalAlignment = Alignment.CenterHorizontally
 		) {
-			Icon(Icons.Default.Download, contentDescription = "")
+			Box(
+				modifier = Modifier.size(48.dp),
+				contentAlignment = Alignment.Center
+			) {
+				if(isDownloading) {
+					if(bytesDownloaded == null) {
+						CircularProgressIndicator()
+					} else {
+						CircularProgressIndicator(
+							progress = bytesDownloaded.toFloat() / bytesTotal.toFloat()
+						)
+					}
+				} else {
+					Icon(Icons.Default.Download, contentDescription = "")
+				}
+			}
 			
 			Spacer(modifier = Modifier.height(8.dp))
 			
 			val typography = MaterialTheme.typography.bodyLarge
 			
 			Text(
-				text = "Tap to download",
+				text = if(isDownloading) "Downloading..." else "Tap to download",
 				style = typography.copy(fontWeight = FontWeight.Bold)
 			)
 			
@@ -54,6 +67,30 @@ fun MessageBubbleDownload(
 			if(name != null) {
 				Text(
 					text = name,
+					style = typography
+				)
+			}
+			
+			val bytesTotalStr by remember {
+				derivedStateOf {
+					LanguageHelper.getHumanReadableByteCountInt(bytesTotal, false)
+				}
+			}
+			
+			if(isDownloading) {
+				val bytesDownloadedStr by remember {
+					derivedStateOf {
+						LanguageHelper.getHumanReadableByteCountInt(bytesDownloaded ?: 0, false)
+					}
+				}
+				
+				Text(
+					text = "$bytesDownloadedStr / $bytesTotalStr",
+					style = typography
+				)
+			} else {
+				Text(
+					text = bytesTotalStr,
 					style = typography
 				)
 			}
@@ -72,7 +109,27 @@ private fun PreviewMessageBubbleDownload() {
 				anchorTop = false,
 				tintRatio = 0F
 			),
-			name = "image.png"
+			name = "image.png",
+			bytesTotal = 16 * 1024
+		)
+	}
+}
+
+@Preview
+@Composable
+private fun PreviewMessageBubbleDownloadProgress() {
+	AirMessageAndroidTheme {
+		MessageBubbleDownload(
+			flow = MessagePartFlow(
+				isOutgoing = false,
+				anchorBottom = false,
+				anchorTop = false,
+				tintRatio = 0F
+			),
+			name = "image.png",
+			bytesTotal = 16 * 1024,
+			bytesDownloaded = 12 * 1024,
+			isDownloading = true
 		)
 	}
 }
