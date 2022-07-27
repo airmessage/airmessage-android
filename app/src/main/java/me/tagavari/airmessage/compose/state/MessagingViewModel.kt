@@ -1,25 +1,27 @@
 package me.tagavari.airmessage.compose.state
 
 import android.app.Application
-import android.content.Context
-import android.view.View
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.CreationExtras
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.withContext
+import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.helper.ConversationBuildHelper
+import me.tagavari.airmessage.messaging.AttachmentInfo
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationItem
+import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.redux.ReduxEventAttachmentDownload
 
 class MessagingViewModel(
 	application: Application,
@@ -30,7 +32,8 @@ class MessagingViewModel(
 	var conversationTitle by mutableStateOf<String?>(null)
 		private set
 	private var lazyLoader: DatabaseManager.ConversationLazyLoader? = null
-	var messages by mutableStateOf(mutableListOf<ConversationItem>())
+	var messages = mutableStateListOf<ConversationItem>()
+	var attachmentRequests = mutableStateMapOf<String, Flow<ReduxEventAttachmentDownload?>>()
 	
 	init {
 		loadConversation()
@@ -58,10 +61,35 @@ class MessagingViewModel(
 			this@MessagingViewModel.lazyLoader = lazyLoader
 			
 			//Load the initial messages
-			messages = withContext(Dispatchers.IO) {
+			withContext(Dispatchers.IO) {
 				lazyLoader.loadNextChunk(getApplication())
-			}
+			}.let { messages.addAll(it) }
 		}
+	}
+	
+	/**
+	 * Downloads an attachment, and adds it to the request map
+	 */
+	fun downloadAttachment(connectionManager: ConnectionManager, message: MessageInfo, attachment: AttachmentInfo): Boolean {
+		val attachmentGUID = attachment.guid ?: return false
+		val attachmentName = attachment.fileName ?: return false
+		
+		//Make the request
+		val responseFlow = connectionManager.fetchAttachment(
+			message.localID,
+			attachment.localID,
+			attachmentGUID,
+			attachmentName
+		).asFlow().stateIn(
+			scope = viewModelScope,
+			started = SharingStarted.Eagerly,
+			initialValue = null
+		)
+		
+		//Record the request
+		attachmentRequests[attachmentGUID] = responseFlow
+		
+		return true
 	}
 }
 

@@ -8,6 +8,8 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
@@ -302,10 +304,12 @@ public class ConnectionService extends Service {
 	}
 	
 	public class ConnectionBinder extends Binder {
+		@NonNull
 		public ConnectionService getConnectionService() {
 			return ConnectionService.this;
 		}
 		
+		@NonNull
 		public ConnectionManager getConnectionManager() {
 			return connectionManager;
 		}

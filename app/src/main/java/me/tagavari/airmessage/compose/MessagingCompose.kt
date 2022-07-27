@@ -12,6 +12,7 @@ import androidx.core.view.WindowCompat
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.compose.component.MessagingScreen
+import me.tagavari.airmessage.compose.state.ConnectionServiceComposition
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 
 class MessagingCompose : ComponentActivity() {
@@ -24,18 +25,20 @@ class MessagingCompose : ComponentActivity() {
 		val conversationID = intent.getLongExtra(Messaging.intentParamTargetID, -1)
 		
 		setContent {
-			AirMessageAndroidTheme {
-				MessagingScreen(
-					navigationIcon = {
-						IconButton(onClick = { finish() }) {
-							Icon(
-								imageVector = Icons.Filled.ArrowBack,
-								contentDescription = stringResource(id = R.string.action_back)
-							)
-						}
-					},
-					conversationID = conversationID
-				)
+			ConnectionServiceComposition(activity = this) {
+				AirMessageAndroidTheme {
+					MessagingScreen(
+						navigationIcon = {
+							IconButton(onClick = { finish() }) {
+								Icon(
+									imageVector = Icons.Filled.ArrowBack,
+									contentDescription = stringResource(id = R.string.action_back)
+								)
+							}
+						},
+						conversationID = conversationID
+					)
+				}
 			}
 		}
 	}

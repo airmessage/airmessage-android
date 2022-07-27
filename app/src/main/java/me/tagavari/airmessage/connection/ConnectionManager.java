@@ -1241,7 +1241,7 @@ public class ConnectionManager {
 	 * @param attachmentName The name of the attachment file
 	 * @return An observable to track the progress of the download, or an {@link AMRequestException} with an {@link AttachmentReqErrorCode}
 	 */
-	public Observable<ReduxEventAttachmentDownload> fetchAttachment(long messageLocalID, long attachmentLocalID, String attachmentGUID, String attachmentName) {
+	public Observable<ReduxEventAttachmentDownload> fetchAttachment(long messageLocalID, long attachmentLocalID, @NonNull String attachmentGUID, @NonNull String attachmentName) {
 		final Throwable error = new AMRequestException(AttachmentReqErrorCode.localTimeout);
 		
 		//Failing immediately if there is no network connection
