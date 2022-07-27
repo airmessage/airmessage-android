@@ -15,7 +15,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.window.PopupProperties
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
@@ -36,7 +35,7 @@ fun ConversationList(
 	val decayAnimationSpec = rememberSplineBasedDecay<Float>()
 	val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
 		decayAnimationSpec,
-		rememberTopAppBarScrollState()
+		rememberTopAppBarState()
 	)
 	
 	var menuOpen by remember { mutableStateOf(false) }
@@ -46,7 +45,7 @@ fun ConversationList(
 		topBar = {
 			val backgroundColors = TopAppBarDefaults.centerAlignedTopAppBarColors()
 			val backgroundColor = backgroundColors.containerColor(
-				scrollFraction = scrollBehavior.scrollFraction
+				colorTransitionFraction = scrollBehavior.state.collapsedFraction
 			).value
 			
 			Box(modifier = Modifier.background(backgroundColor)) {
