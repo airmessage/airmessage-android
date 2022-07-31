@@ -2,3 +2,5 @@ Le réseau de messagerie d’Apple iMessage a acquis une grande popularité ces 
 Mais maintenant, AirMessage facilite l’envoi et la réception des messages à vos amis et votre famille grâce à des discussions de groupe, des images, des vidéos et des messages audio!
 
 S’il vous plaît notez qu’un ordinateur Mac est nécessaire pour utiliser cette appli.
+
+La version F-Droid d'AirMessage pour Android exclut certaines fonctionnalités présentes dans la version principale, telles que la connexion avec Google et les pièces jointes de localisation.

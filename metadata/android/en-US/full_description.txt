@@ -6,4 +6,6 @@ But now, AirMessage makes it easy to send and receive messages to your friends a
 - Share images, videos, documents and more
 - Enjoy a clean, beautiful messaging experience
 
+The F-Droid release of AirMessage for Android excludes certain features found in the main release, such as Sign In with Google and location attachments.
+
 Please note that a Mac computer is required to use this app.
