@@ -1,11 +1,10 @@
 package me.tagavari.airmessage.compose.component
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -13,11 +12,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
+import me.tagavari.airmessage.R
+import me.tagavari.airmessage.compose.state.LocalConnectionManager
+import me.tagavari.airmessage.compose.state.NetworkState
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.enums.MessageState
 import me.tagavari.airmessage.helper.ConversationColorHelper
+import me.tagavari.airmessage.helper.IntentHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.redux.ReduxEventAttachmentDownload
 import me.tagavari.airmessage.util.MessageFlow
 import me.tagavari.airmessage.util.MessageFlowSpacing
 import me.tagavari.airmessage.util.MessagePartFlow
@@ -124,15 +128,53 @@ fun MessageInfoListEntry(
 				
 				val attachmentsCount = messageInfo.attachments.size
 				messageInfo.attachments.forEachIndexed { index, attachment ->
-					MessageBubbleDownload(
-						flow = MessagePartFlow(
-							isOutgoing = isOutgoing,
-							anchorTop = flow.anchorTop || messageInfo.messageTextComponent != null,
-							anchorBottom = flow.anchorBottom || (index + 1) < attachmentsCount,
-							tintRatio = scrollProgress
-						),
-						name = attachment.fileName
+					val attachmentFlow = MessagePartFlow(
+						isOutgoing = isOutgoing,
+						anchorTop = flow.anchorTop || messageInfo.messageTextComponent != null,
+						anchorBottom = flow.anchorBottom || (index + 1) < attachmentsCount,
+						tintRatio = scrollProgress
 					)
+					
+					attachment.file?.also { attachmentFile ->
+						MessageBubbleFile(
+							flow = attachmentFlow,
+							name = attachment.computedFileName ?: "",
+							onClick = {
+								IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
+							}
+						)
+					} ?: run {
+						//Get the current download state
+						val downloadState = NetworkState.attachmentRequests[attachment.localID]?.collectAsState()
+						
+						val (bytesTotal, bytesDownloaded) = downloadState?.value?.getOrNull().let { event ->
+							when(event) {
+								null -> Pair(attachment.fileSize, null)
+								is ReduxEventAttachmentDownload.Start -> Pair<Long, Long?>(event.fileLength, 0)
+								is ReduxEventAttachmentDownload.Progress -> Pair(event.bytesTotal, event.bytesProgress)
+								is ReduxEventAttachmentDownload.Complete -> Pair(attachment.fileSize, attachment.fileSize)
+							}
+						}
+						
+						val connectionManager = LocalConnectionManager.current
+						MessageBubbleDownload(
+							flow = attachmentFlow,
+							name = attachment.fileName,
+							bytesTotal = bytesTotal,
+							bytesDownloaded = bytesDownloaded,
+							isDownloading = downloadState != null,
+							onClick = {
+								//Make sure we have a connection manager
+								if(connectionManager == null) {
+									Toast.makeText(context, R.string.message_connectionerror, Toast.LENGTH_SHORT).show()
+									return@MessageBubbleDownload
+								}
+								
+								//Download the attachment
+								NetworkState.downloadAttachment(connectionManager, messageInfo, attachment)
+							}
+						)
+					}
 				}
 			}
 			

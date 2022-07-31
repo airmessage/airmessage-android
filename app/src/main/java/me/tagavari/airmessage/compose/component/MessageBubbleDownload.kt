@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
@@ -23,11 +24,13 @@ fun MessageBubbleDownload(
 	name: String? = null,
 	bytesTotal: Long = 0,
 	bytesDownloaded: Long? = null,
-	isDownloading: Boolean = false
+	isDownloading: Boolean = false,
+	onClick: () -> Unit
 ) {
 	val colors = flow.colors
 	
 	Surface(
+		modifier = Modifier.clickable(onClick = onClick),
 		color = colors.background,
 		shape = flow.bubbleShape,
 		contentColor = colors.foreground
@@ -110,7 +113,8 @@ private fun PreviewMessageBubbleDownload() {
 				tintRatio = 0F
 			),
 			name = "image.png",
-			bytesTotal = 16 * 1024
+			bytesTotal = 16 * 1024,
+			onClick = {}
 		)
 	}
 }
@@ -129,7 +133,8 @@ private fun PreviewMessageBubbleDownloadProgress() {
 			name = "image.png",
 			bytesTotal = 16 * 1024,
 			bytesDownloaded = 12 * 1024,
-			isDownloading = true
+			isDownloading = true,
+			onClick = {}
 		)
 	}
 }
