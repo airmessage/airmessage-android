@@ -3,17 +3,22 @@ plugins {
 	id "kotlin-android"
 	id "kotlin-parcelize"
 
-	id "com.google.gms.google-services"
-	id "com.google.firebase.crashlytics"
-
 	id "com.mikepenz.aboutlibraries.plugin"
-
-	id "com.google.android.libraries.mapsplatform.secrets-gradle-plugin"
 }
 
-secrets {
-	propertiesFileName "secrets.properties"
-	defaultPropertiesFileName = "secrets.default.properties"
+def isFullVariant = getGradle().getStartParameter().getTaskRequests().any { request ->
+	request.args.any { it.contains("Full") }
+}
+if(isFullVariant) {
+	apply plugin: "com.google.gms.google-services"
+	apply plugin: "com.google.firebase.crashlytics"
+	
+	apply plugin: "com.google.android.libraries.mapsplatform.secrets-gradle-plugin"
+	
+	secrets {
+		propertiesFileName "secrets.properties"
+		defaultPropertiesFileName = "secrets.default.properties"
+	}
 }
 
 //Load shared keystore
