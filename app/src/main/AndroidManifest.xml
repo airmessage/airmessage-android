@@ -257,12 +257,6 @@
 			android:exported="false"
 			android:description="@string/servicedesc_systemmessageimport" />
 
-		<!-- File export service -->
-		<service
-			android:name=".service.FileExportService"
-			android:exported="false"
-			android:description="@string/servicedesc_fileexportservice" />
-
 		<!-- File-URI export service -->
 		<service
 			android:name=".service.UriExportService"
