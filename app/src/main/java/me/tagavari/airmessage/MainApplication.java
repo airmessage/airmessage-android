@@ -166,7 +166,7 @@ public class MainApplication extends Application {
 		MapsBridge.initialize(getApplicationContext());
 		
 		//Enable WebView debugging
-		if(0 != (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE)) {
+		if(BuildConfig.DEBUG) {
 			WebView.setWebContentsDebuggingEnabled(true);
 		}
 	}
