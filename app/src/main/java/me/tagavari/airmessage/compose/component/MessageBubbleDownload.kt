@@ -45,10 +45,13 @@ fun MessageBubbleDownload(
 			) {
 				if(isDownloading) {
 					if(bytesDownloaded == null) {
-						CircularProgressIndicator()
+						CircularProgressIndicator(
+							color = colors.foreground
+						)
 					} else {
 						CircularProgressIndicator(
-							progress = bytesDownloaded.toFloat() / bytesTotal.toFloat()
+							progress = bytesDownloaded.toFloat() / bytesTotal.toFloat(),
+							color = colors.foreground
 						)
 					}
 				} else {
