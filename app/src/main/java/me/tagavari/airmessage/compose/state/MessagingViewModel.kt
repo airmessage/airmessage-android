@@ -11,12 +11,16 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.helper.ConversationBuildHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationItem
+import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork
+import me.tagavari.airmessage.redux.ReduxEventMessaging
 
 class MessagingViewModel(
 	application: Application,
@@ -30,7 +34,40 @@ class MessagingViewModel(
 	var messages = mutableStateListOf<ConversationItem>()
 	
 	init {
+		//Load conversations
 		loadConversation()
+		
+		//Listen to message updates
+		viewModelScope.launch {
+			ReduxEmitterNetwork.messageUpdateSubject.asFlow().collect { event ->
+				when(event) {
+					is ReduxEventMessaging.AttachmentFile -> {
+						//Find the message
+						val messageIndex = messages.indexOfFirst { it.localID == event.messageID }
+						if(messageIndex == -1) return@collect
+						val messageInfo = messages[messageIndex] as? MessageInfo ?: return@collect
+						
+						//Find the attachment
+						val attachmentList = messageInfo.attachments.toMutableList()
+						val attachmentIndex = attachmentList.indexOfFirst { it.localID == event.attachmentID }
+						if(attachmentIndex == -1) return@collect
+						
+						//Update the attachment
+						attachmentList[attachmentIndex] = attachmentList[attachmentIndex].clone().apply {
+							file = event.file
+							downloadFileName = event.downloadName
+							downloadFileType = event.downloadType
+						}
+						
+						//Update the message
+						messages[messageIndex] = messageInfo.clone().apply {
+							attachments = attachmentList
+						}
+					}
+					else -> {}
+				}
+			}
+		}
 	}
 	
 	/**
