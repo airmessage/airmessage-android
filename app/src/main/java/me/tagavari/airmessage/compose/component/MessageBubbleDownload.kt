@@ -74,17 +74,13 @@ fun MessageBubbleDownload(
 				)
 			}
 			
-			val bytesTotalStr by remember {
-				derivedStateOf {
-					LanguageHelper.getHumanReadableByteCountInt(bytesTotal, false)
-				}
+			val bytesTotalStr = remember(bytesTotal) {
+				LanguageHelper.getHumanReadableByteCountInt(bytesTotal, false)
 			}
 			
 			if(isDownloading) {
-				val bytesDownloadedStr by remember {
-					derivedStateOf {
-						LanguageHelper.getHumanReadableByteCountInt(bytesDownloaded ?: 0, false)
-					}
+				val bytesDownloadedStr = remember(bytesDownloaded) {
+					LanguageHelper.getHumanReadableByteCountInt(bytesDownloaded ?: 0, false)
 				}
 				
 				Text(
