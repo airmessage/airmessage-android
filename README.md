@@ -4,7 +4,7 @@
 
 AirMessage lets people use iMessage on the devices they like.
 **AirMessage for Android** is the project's client for Android devices, with an emphasis on feeling like a part of the Android ecosystem.
-AirMessage for Android can be downloaded from the [Google Play Store](https://play.google.com/store/apps/details?id=me.tagavari.airmessage).
+AirMessage for Android can be downloaded from the [Google Play Store](https://play.google.com/store/apps/details?id=me.tagavari.airmessage) or from [F-Droid](https://f-droid.org/packages/me.tagavari.airmessage/).
 
 Other AirMessage repositories:
 [Server](https://github.com/airmessage/airmessage-server) |
