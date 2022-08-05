@@ -1,7 +1,7 @@
-<FrameLayout
-	xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="@dimen/contenttile_size"
 	android:layout_height="@dimen/contenttile_size"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:layout_marginEnd="@dimen/contenttile_margin"
 	android:background="@drawable/rounded_selectable_contenttile"
 	android:backgroundTint="@color/colorToolbar"
@@ -12,7 +12,7 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_gravity="center"
-		android:drawableTint="?android:attr/textColorSecondary"
+		app:drawableTint="?android:attr/textColorSecondary"
 		android:drawableTop="@drawable/add"
 		android:gravity="center"
 		android:text="@string/part_unknown"

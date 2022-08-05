@@ -123,7 +123,7 @@
 					android:gravity="center_vertical"
 					android:text="@string/message_setup_connect_connectionerror"
 					android:drawableStart="@drawable/disconnection"
-					android:drawableTint="?android:attr/textColorPrimary"
+					app:drawableTint="?android:attr/textColorPrimary"
 					android:drawablePadding="8dp" />
 				<TextView
 					android:id="@+id/label_error"
@@ -162,7 +162,7 @@
 				android:text="@string/message_connection_connected"
 				android:drawableStart="@drawable/check_circle_outline"
 				android:textColor="@color/colorSuccess"
-				android:drawableTint="@color/colorSuccess"
+				app:drawableTint="@color/colorSuccess"
 				android:drawablePadding="8dp" />
 		</com.google.android.material.card.MaterialCardView>
 
