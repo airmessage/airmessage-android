@@ -179,7 +179,7 @@
 						android:layout_gravity="center"
 						android:drawablePadding="4dp"
 						android:drawableStart="@drawable/microphone_outlined"
-						android:drawableTint="?android:attr/textColorSecondary"
+						app:drawableTint="?android:attr/textColorSecondary"
 						android:gravity="center"
 						android:text="@string/imperative_drawerrecordinginstructions"
 						android:textColor="?android:attr/textColorSecondary" />
