@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -47,7 +48,6 @@ fun ConversationListEntry(
 	}
 	
 	val preview = conversation.dynamicPreview
-	val isPreviewError = preview is ConversationPreview.Message && preview.isError
 	
 	Row(
 		modifier = Modifier.height(72.dp).clickable(onClick = onClick),
@@ -94,10 +94,19 @@ fun ConversationListEntry(
 		Column(
 			horizontalAlignment = Alignment.End
 		) {
-			Text(
-				text = if(isPreviewError) stringResource(id = R.string.message_senderror)
+			val stringNotSent = stringResource(id = R.string.message_senderror)
+			
+			val isPreviewError = remember(preview) {
+				preview is ConversationPreview.Message && preview.isError
+			}
+			val previewText = remember(preview, isPreviewError) {
+				if(isPreviewError) stringNotSent
 				else preview?.let { LanguageHelper.getLastUpdateStatusTime(context, it.date) }
-					?: "",
+					?: ""
+			}
+			
+			Text(
+				text = previewText,
 				style = MaterialTheme.typography.bodyMedium,
 				color = if(isPreviewError) MaterialTheme.colorScheme.error
 				else MaterialTheme.colorScheme.onSurfaceVariant

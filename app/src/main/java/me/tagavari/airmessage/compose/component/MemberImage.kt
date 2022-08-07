@@ -35,7 +35,7 @@ fun MemberImage(
 ) {
 	//Get the user
 	val context = LocalContext.current
-	val userInfo by produceState<UserCacheHelper.UserInfo?>(null, member) {
+	val userInfo by produceState<UserCacheHelper.UserInfo?>(null, member.address) {
 		value = try {
 			MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address).await()
 		} catch(exception: Throwable) {

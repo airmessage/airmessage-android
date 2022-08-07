@@ -76,14 +76,17 @@ fun ConversationList(
 		},
 		content = { innerPadding ->
 			//Combine inner and system insets padding
-			val layoutDirection = LocalLayoutDirection.current
 			val systemInsets = WindowInsets.navigationBars.asPaddingValues()
-			val contentPadding = PaddingValues(
-				start = innerPadding.calculateStartPadding(layoutDirection) + systemInsets.calculateStartPadding(layoutDirection),
-				top = innerPadding.calculateTopPadding() + systemInsets.calculateTopPadding(),
-				end = innerPadding.calculateEndPadding(layoutDirection) + systemInsets.calculateEndPadding(layoutDirection),
-				bottom = innerPadding.calculateBottomPadding() + systemInsets.calculateBottomPadding()
-			)
+			val layoutDirection = LocalLayoutDirection.current
+			
+			val contentPadding = remember(innerPadding, systemInsets, layoutDirection) {
+				PaddingValues(
+					start = innerPadding.calculateStartPadding(layoutDirection) + systemInsets.calculateStartPadding(layoutDirection),
+					top = innerPadding.calculateTopPadding() + systemInsets.calculateTopPadding(),
+					end = innerPadding.calculateEndPadding(layoutDirection) + systemInsets.calculateEndPadding(layoutDirection),
+					bottom = innerPadding.calculateBottomPadding() + systemInsets.calculateBottomPadding()
+				)
+			}
 			
 			if(conversations == null) {
 				Box(
