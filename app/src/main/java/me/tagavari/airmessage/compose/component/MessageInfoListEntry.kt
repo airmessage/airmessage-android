@@ -174,7 +174,8 @@ fun MessageInfoListEntry(
 								
 								//Download the attachment
 								NetworkState.downloadAttachment(connectionManager, messageInfo, attachment)
-							}
+							},
+							enabled = downloadState == null
 						)
 					}
 				}

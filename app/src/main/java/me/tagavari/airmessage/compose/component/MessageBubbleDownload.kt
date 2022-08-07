@@ -27,7 +27,8 @@ fun MessageBubbleDownload(
 	bytesTotal: Long = 0,
 	bytesDownloaded: Long? = null,
 	isDownloading: Boolean = false,
-	onClick: () -> Unit
+	onClick: () -> Unit,
+	enabled: Boolean = true
 ) {
 	val colors = flow.colors
 	
@@ -36,7 +37,8 @@ fun MessageBubbleDownload(
 		color = colors.background,
 		shape = flow.bubbleShape,
 		contentColor = colors.foreground,
-		onClick = onClick
+		onClick = onClick,
+		enabled = enabled
 	) {
 		Column(
 			modifier = Modifier.padding(all = 12.dp),

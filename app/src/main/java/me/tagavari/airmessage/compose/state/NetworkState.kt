@@ -21,6 +21,11 @@ object NetworkState {
 		val attachmentGUID = attachment.guid ?: return false
 		val attachmentName = attachment.fileName ?: return false
 		
+		//Ignore if there's already a matching request
+		if(attachmentRequests.containsKey(attachment.localID)) {
+			return true
+		}
+		
 		//Make the request
 		val responseFlow = connectionManager.fetchAttachment(
 			message.localID,
