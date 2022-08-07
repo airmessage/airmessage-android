@@ -42,21 +42,23 @@ fun MessageList(
 				val messageAbove = reversedMessages.getOrNull(index + 1)
 				val messageBelow = reversedMessages.getOrNull(index - 1)
 				
-				val flow = MessageFlow(
-					anchorTop = messageAbove is MessageInfo
-							&& conversationItem.sender == messageAbove.sender
-							&& (conversationItem.date - messageAbove.date) < TimingConstants.conversationBurstTimeMillis,
-					anchorBottom = messageBelow is MessageInfo
-							&& conversationItem.sender == messageBelow.sender
-							&& (messageBelow.date - conversationItem.date) < TimingConstants.conversationBurstTimeMillis
-				)
+				val flow = remember(conversationItem, messageAbove, messageBelow) {
+					MessageFlow(
+						anchorTop = messageAbove is MessageInfo
+								&& conversationItem.sender == messageAbove.sender
+								&& (conversationItem.date - messageAbove.date) < TimingConstants.conversationBurstTimeMillis,
+						anchorBottom = messageBelow is MessageInfo
+								&& conversationItem.sender == messageBelow.sender
+								&& (messageBelow.date - conversationItem.date) < TimingConstants.conversationBurstTimeMillis
+					)
+				}
 				val spacing = when {
 					messageAbove == null -> MessageFlowSpacing.NONE
 					flow.anchorTop -> MessageFlowSpacing.RELATED
 					else -> MessageFlowSpacing.GAP
 				}
 				
-				val scrollProgress by remember {
+				val scrollProgress by remember(conversationItem.localID) {
 					derivedStateOf {
 						val visibleItemInfo = scrollState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == conversationItem.localID }
 							?: return@derivedStateOf 0F

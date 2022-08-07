@@ -45,7 +45,9 @@ fun MessageInfoListEntry(
 	val context = LocalContext.current
 	
 	//Compute the message information
-	val senderMember = messageInfo.sender?.let { sender -> conversationInfo.members.find { it.address == sender } }
+	val senderMember = remember(messageInfo.sender, conversationInfo.members) {
+		messageInfo.sender?.let { sender -> conversationInfo.members.find { it.address == sender } }
+	}
 	val isOutgoing = messageInfo.isOutgoing
 	val displayAvatar = !isOutgoing && !flow.anchorTop
 	val displaySender = conversationInfo.isGroupChat && displayAvatar
