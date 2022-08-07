@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -38,7 +39,8 @@ fun MessageInputBar(
 	showContentPicker: Boolean,
 	onChangeShowContentPicker: (Boolean) -> Unit,
 	@ServiceHandler serviceHandler: Int?,
-	@ServiceType serviceType: String?
+	@ServiceType serviceType: String?,
+	floating: Boolean = false
 ) {
 	var textFieldValue by remember { mutableStateOf(TextFieldValue()) }
 	
@@ -54,90 +56,98 @@ fun MessageInputBar(
 		}
 	}
 	
-	Box(modifier = modifier.padding(8.dp)) {
-		Row(
-			verticalAlignment = Alignment.Bottom
-		) {
-			CompositionLocalProvider(
-				LocalMinimumTouchTargetEnforcement provides false,
-				LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant,
+	val surfaceElevation by animateDpAsState(
+		if(floating) 2.dp else 0.dp
+	)
+	
+	Surface(
+		tonalElevation = surfaceElevation
+	) {
+		Box(modifier = modifier.padding(8.dp)) {
+			Row(
+				verticalAlignment = Alignment.Bottom
 			) {
-				IconButton(
-					modifier = Modifier.padding(end = 4.dp),
-					onClick = {}
+				CompositionLocalProvider(
+					LocalMinimumTouchTargetEnforcement provides false,
+					LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant,
 				) {
-					Icon(Icons.Outlined.PhotoCamera, contentDescription = "")
-				}
-				
-				IconToggleButton(
-					modifier = Modifier.padding(end = 4.dp),
-					checked = showContentPicker,
-					onCheckedChange = onChangeShowContentPicker
-				) {
-					if(showContentPicker) {
-						Icon(Icons.Outlined.AddCircle, contentDescription = "")
-					} else {
-						Icon(Icons.Outlined.AddCircleOutline, contentDescription = "")
+					IconButton(
+						modifier = Modifier.padding(end = 4.dp),
+						onClick = {}
+					) {
+						Icon(Icons.Outlined.PhotoCamera, contentDescription = "")
+					}
+					
+					IconToggleButton(
+						modifier = Modifier.padding(end = 4.dp),
+						checked = showContentPicker,
+						onCheckedChange = onChangeShowContentPicker
+					) {
+						if(showContentPicker) {
+							Icon(Icons.Outlined.AddCircle, contentDescription = "")
+						} else {
+							Icon(Icons.Outlined.AddCircleOutline, contentDescription = "")
+						}
 					}
 				}
-			}
-			
-			var inputFieldFocus by remember { mutableStateOf(false) }
-			
-			//Input field
-			Surface(
-				modifier = Modifier.border(
-					if(inputFieldFocus) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-					else BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-					RoundedCornerShape(20.dp)
-				),
-			) {
-				Row {
-					BasicTextField(
-						value = textFieldValue,
-						onValueChange = { textFieldValue = it },
-						modifier = Modifier
-							.weight(1F)
-							.heightIn(min = 40.dp, max = 100.dp)
-							.padding(horizontal = 12.dp, vertical = 8.dp)
-							.align(Alignment.CenterVertically)
-							.onFocusChanged { focusState ->
-								inputFieldFocus = focusState.isFocused || focusState.hasFocus
-							},
-						textStyle = MaterialTheme.typography.bodyLarge.copy(
-							fontSize = 16.sp,
-							color = LocalContentColor.current
-						),
-						cursorBrush = SolidColor(LocalContentColor.current),
-						decorationBox = { innerTextField ->
-							//Display the current service as a placeholder
-							if(textFieldValue.text.isEmpty()) {
-								val placeholder = LanguageHelper.getMessageFieldPlaceholder(
-									LocalContext.current.resources,
-									serviceHandler,
-									serviceType
-								)
-								Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant)
+				
+				var inputFieldFocus by remember { mutableStateOf(false) }
+				
+				//Input field
+				Surface(
+					modifier = Modifier.border(
+						if(inputFieldFocus) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+						else BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+						RoundedCornerShape(20.dp)
+					),
+				) {
+					Row {
+						BasicTextField(
+							value = textFieldValue,
+							onValueChange = { textFieldValue = it },
+							modifier = Modifier
+								.weight(1F)
+								.heightIn(min = 40.dp, max = 100.dp)
+								.padding(horizontal = 12.dp, vertical = 8.dp)
+								.align(Alignment.CenterVertically)
+								.onFocusChanged { focusState ->
+									inputFieldFocus = focusState.isFocused || focusState.hasFocus
+								},
+							textStyle = MaterialTheme.typography.bodyLarge.copy(
+								fontSize = 16.sp,
+								color = LocalContentColor.current
+							),
+							cursorBrush = SolidColor(LocalContentColor.current),
+							decorationBox = { innerTextField ->
+								//Display the current service as a placeholder
+								if(textFieldValue.text.isEmpty()) {
+									val placeholder = LanguageHelper.getMessageFieldPlaceholder(
+										LocalContext.current.resources,
+										serviceHandler,
+										serviceType
+									)
+									Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant)
+								}
+								
+								innerTextField()
 							}
-							
-							innerTextField()
-						}
-					)
-					
-					//Send button
-					CompositionLocalProvider(
-						LocalMinimumTouchTargetEnforcement provides false,
-					) {
-						IconButton(
-							onClick = { onMessageSent(textFieldValue.text) },
-							modifier = Modifier.align(Alignment.Bottom),
-							colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-							enabled = validTextFieldValue
+						)
+						
+						//Send button
+						CompositionLocalProvider(
+							LocalMinimumTouchTargetEnforcement provides false,
 						) {
-							Icon(
-								painter = painterResource(id = R.drawable.push_rounded),
-								contentDescription = stringResource(id = R.string.action_send)
-							)
+							IconButton(
+								onClick = { onMessageSent(textFieldValue.text) },
+								modifier = Modifier.align(Alignment.Bottom),
+								colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+								enabled = validTextFieldValue
+							) {
+								Icon(
+									painter = painterResource(id = R.drawable.push_rounded),
+									contentDescription = stringResource(id = R.string.action_send)
+								)
+							}
 						}
 					}
 				}

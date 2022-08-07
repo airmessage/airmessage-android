@@ -2,6 +2,7 @@ package me.tagavari.airmessage.compose.component
 
 import android.app.Application
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -41,6 +42,13 @@ fun MessagingScreen(
 	val application = LocalContext.current.applicationContext as Application
 	val viewModel = viewModel<MessagingViewModel>(factory = MessagingViewModelFactory(application, conversationID))
 	
+	val scrollState = rememberLazyListState()
+	val isScrolledToBottom by remember {
+		derivedStateOf {
+			scrollState.firstVisibleItemIndex == 0 && scrollState.firstVisibleItemScrollOffset == 0
+		}
+	}
+	
 	Scaffold(
 		topBar = {
 			Surface(tonalElevation = 2.dp) {
@@ -63,7 +71,8 @@ fun MessagingScreen(
 							.weight(1F)
 							.padding(paddingValues),
 						conversation = conversation,
-						messages = viewModel.messages
+						messages = viewModel.messages,
+						scrollState = scrollState
 					)
 				} ?: Box(modifier = Modifier.weight(1F))
 				
@@ -75,7 +84,8 @@ fun MessagingScreen(
 					showContentPicker = showContentPicker,
 					onChangeShowContentPicker = { showContentPicker = it },
 					serviceHandler = conversation?.serviceHandler,
-					serviceType = conversation?.serviceType
+					serviceType = conversation?.serviceType,
+					floating = !isScrolledToBottom
 				)
 			}
 		}
