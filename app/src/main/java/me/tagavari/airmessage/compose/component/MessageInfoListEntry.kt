@@ -149,10 +149,10 @@ fun MessageInfoListEntry(
 						//Get the current download state
 						val downloadState = NetworkState.attachmentRequests[attachment.localID]?.collectAsState()
 						
-						val (bytesTotal, bytesDownloaded) = downloadState?.value?.getOrNull().let { event ->
+						val (bytesTotal, bytesDownloaded) = downloadState?.value?.getOrNull().let<ReduxEventAttachmentDownload?, Pair<Long, Long?>> { event ->
 							when(event) {
 								null -> Pair(attachment.fileSize, null)
-								is ReduxEventAttachmentDownload.Start -> Pair<Long, Long?>(event.fileLength, 0)
+								is ReduxEventAttachmentDownload.Start -> Pair(event.fileLength, 0)
 								is ReduxEventAttachmentDownload.Progress -> Pair(event.bytesTotal, event.bytesProgress)
 								is ReduxEventAttachmentDownload.Complete -> Pair(attachment.fileSize, attachment.fileSize)
 							}
