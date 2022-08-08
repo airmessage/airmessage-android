@@ -29,6 +29,7 @@ fun MessagingScreen(
 	conversationID: Long
 ) {
 	var showContentPicker by remember { mutableStateOf(false) }
+	var collapseInputButtons by remember { mutableStateOf(false) }
 	
 	val context = LocalContext.current
 	
@@ -83,6 +84,8 @@ fun MessagingScreen(
 					onMessageSent = {},
 					showContentPicker = showContentPicker,
 					onChangeShowContentPicker = { showContentPicker = it },
+					collapseButtons = collapseInputButtons,
+					onChangeCollapseButtons = { collapseInputButtons = it },
 					serviceHandler = conversation?.serviceHandler,
 					serviceType = conversation?.serviceType,
 					floating = !isScrolledToBottom
