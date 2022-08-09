@@ -1,6 +1,8 @@
 package me.tagavari.airmessage.compose.component
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -18,12 +20,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.rx3.await
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.helper.ContactHelper
 import me.tagavari.airmessage.messaging.MemberInfo
+
+private val bitmapCacheMutex = Mutex()
+private val bitmapCache = object : LruCache<Long, Bitmap>(1024 * 1024) {
+	override fun sizeOf(key: Long, value: Bitmap): Int {
+		return value.byteCount
+	}
+}
 
 /**
  * Displays a circular image for a member
@@ -64,14 +75,30 @@ fun MemberImage(
 	val contactBitmapPainter by produceState<Painter?>(null, userInfo) {
 		if(userInfo == null) return@produceState
 		
-		//Decode the contact's image
-		val bitmap = withContext(Dispatchers.IO) {
-			ContactHelper.getContactImageThumbnailStream(context, userInfo.contactID)
-				?.let { BitmapFactory.decodeStream(it) }
-		} ?: return@produceState
+		val bitmap = bitmapCacheMutex.withLock {
+			//Look up a bitmap from the cache
+			bitmapCache[userInfo.contactID]?.let {
+				return@withLock it
+			}
+			
+			//Decode the contact's image
+			val bitmap = withContext(Dispatchers.IO) {
+				ContactHelper.getContactImageThumbnailStream(context, userInfo.contactID)
+					?.let { BitmapFactory.decodeStream(it) }
+			}
+			
+			//Save the bitmap in the cache
+			bitmap?.let {
+				bitmapCache.put(userInfo.contactID, it)
+			}
+			
+			return@withLock bitmap
+		}
 		
 		//Convert the bitmap to a painter
-		value = BitmapPainter(bitmap.asImageBitmap())
+		bitmap?.let {
+			value = BitmapPainter(it.asImageBitmap())
+		}
 	}
 	
 	Image(
