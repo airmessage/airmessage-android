@@ -43,7 +43,7 @@ fun ConversationList(
 	Scaffold(
 		modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
 		topBar = {
-			val backgroundColors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+			val backgroundColors = TopAppBarDefaults.largeTopAppBarColors()
 			val backgroundColor = backgroundColors.containerColor(
 				colorTransitionFraction = scrollBehavior.state.collapsedFraction
 			).value
