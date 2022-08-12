@@ -1,7 +1,10 @@
 package me.tagavari.airmessage.compose.component
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -19,7 +22,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -43,6 +45,8 @@ private const val messageLengthButtonsExpand = 12
 fun MessageInputBar(
 	modifier: Modifier = Modifier,
 	onMessageSent: (String) -> Unit,
+	onTakePhoto: () -> Unit,
+	onTakeVideo: () -> Unit,
 	showContentPicker: Boolean,
 	onChangeShowContentPicker: (Boolean) -> Unit,
 	collapseButtons: Boolean = false,
@@ -149,7 +153,7 @@ fun MessageInputBar(
 							Row {
 								IconButton(
 									modifier = Modifier.padding(end = 4.dp),
-									onClick = {}
+									onClick = onTakePhoto,
 								) {
 									Icon(Icons.Outlined.PhotoCamera, contentDescription = "")
 								}
@@ -241,6 +245,8 @@ private fun PreviewMessageInputBar() {
 	Surface {
 		MessageInputBar(
 			onMessageSent = {},
+			onTakePhoto = {},
+			onTakeVideo = {},
 			showContentPicker = false,
 			onChangeShowContentPicker = {},
 			collapseButtons = false,

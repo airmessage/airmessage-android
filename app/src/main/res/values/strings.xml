@@ -52,6 +52,7 @@
 	<string name="action_sharemessage">Share message</string>
 	<string name="action_addcontent">Add content</string>
 	<string name="action_takephoto">Take photo</string>
+	<string name="action_recordvideo">Record video</string>
 	<string name="action_choosephoto">Choose photo</string>
 	<string name="action_choosefile">Choose file</string>
 	<string name="action_recordaudio">Record audio</string>

@@ -1,29 +1,22 @@
 package me.tagavari.airmessage.compose.component
 
 import android.app.Application
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewmodel.viewModelFactory
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.rx3.await
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import me.tagavari.airmessage.compose.remember.MessagingMediaCaptureType
+import me.tagavari.airmessage.compose.remember.rememberMediaCapture
 import me.tagavari.airmessage.compose.state.MessagingViewModel
 import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
-import me.tagavari.airmessage.data.DatabaseManager
-import me.tagavari.airmessage.data.DatabaseManager.ConversationLazyLoader
-import me.tagavari.airmessage.helper.ConversationBuildHelper
-import me.tagavari.airmessage.messaging.ConversationInfo
-import me.tagavari.airmessage.messaging.ConversationItem
+import me.tagavari.airmessage.enums.ServiceHandler
+import me.tagavari.airmessage.enums.ServiceType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,11 +37,15 @@ fun MessagingScreen(
 		}
 	}
 	
+	val context = LocalContext.current
+	
 	Scaffold(
 		topBar = {
 			Surface(tonalElevation = 2.dp) {
 				CenterAlignedTopAppBar(
-					modifier = Modifier.height(120.dp).statusBarsPadding(),
+					modifier = Modifier
+						.height(120.dp)
+						.statusBarsPadding(),
 					title = {
 						Column(
 							horizontalAlignment = Alignment.CenterHorizontally,
@@ -85,11 +82,29 @@ fun MessagingScreen(
 					)
 				} ?: Box(modifier = Modifier.weight(1F))
 				
+				val scope = rememberCoroutineScope()
+				val captureMedia = rememberMediaCapture()
+				
 				MessageInputBar(
 					modifier = Modifier
 						.navigationBarsPadding()
 						.imePadding(),
 					onMessageSent = {},
+					onTakePhoto = {
+						scope.launch {
+							captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
+						}
+					},
+					onTakeVideo = {
+						//Use low-res video recordings if we're sending over SMS / MMS
+						val conversation = viewModel.conversation ?: return@MessageInputBar
+						val useLowResMedia = (conversation.serviceHandler == ServiceHandler.appleBridge && conversation.serviceType == ServiceType.appleSMS)
+								|| (conversation.serviceHandler == ServiceHandler.systemMessaging && conversation.serviceType == ServiceType.systemSMS)
+						
+						scope.launch {
+							captureMedia.requestCamera(if(useLowResMedia) MessagingMediaCaptureType.LOW_RES_VIDEO else MessagingMediaCaptureType.VIDEO)
+						}
+					},
 					showContentPicker = showContentPicker,
 					onChangeShowContentPicker = { showContentPicker = it },
 					collapseButtons = collapseInputButtons,

@@ -31,6 +31,7 @@
 	<!-- <uses-permission android:name="android.permission.WRITE_SETTINGS" /> -->
 
 	<!-- Features -->
+	<uses-feature android:name="android.hardware.camera" android:required="false" />
 	<uses-feature android:name="android.hardware.telephony" android:required="false" />
 
 	<!-- Activity queries -->
