@@ -73,12 +73,11 @@ class VHConversationActions(
 				val remoteAction = conversationAction.remoteAction!!
 				
 				//Configuring the remote action
-				if(remoteAction.icon != null) {
-					val icon = remoteAction.icon.loadDrawable(context)
+				remoteAction.icon?.loadDrawable(context)?.also { icon ->
 					val iconSize = dpToPx(24f)
 					icon.setBounds(0, 0, iconSize, iconSize)
 					childView.setCompoundDrawablesRelative(icon, null, null, null)
-				} else {
+				} ?: run {
 					childView.setCompoundDrawables(null, null, null, null)
 				}
 				childView.text = remoteAction.title
