@@ -37,8 +37,6 @@ fun MessagingScreen(
 		}
 	}
 	
-	val context = LocalContext.current
-	
 	Scaffold(
 		topBar = {
 			Surface(tonalElevation = 2.dp) {
@@ -91,6 +89,8 @@ fun MessagingScreen(
 						.imePadding(),
 					onMessageSent = {},
 					onTakePhoto = {
+						if(viewModel.conversation == null) return@MessageInputBar
+						
 						scope.launch {
 							captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
 						}
