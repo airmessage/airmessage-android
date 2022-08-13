@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.messaging
 
+import android.content.Context
 import android.net.Uri
 import me.tagavari.airmessage.util.Union
 import java.io.File
@@ -7,6 +8,7 @@ import java.io.File
 /**
  * Represents a reference to a file that can be loaded as a draft
  */
+@Deprecated("Use QueuedFile instead")
 class FileLinked @JvmOverloads constructor(
 	val file: Union<File, Uri>,
 	val fileName: String,

@@ -1,10 +1,14 @@
 package me.tagavari.airmessage.messaging
 
+import android.app.Application
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import me.tagavari.airmessage.BuildConfig
+import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
+import me.tagavari.airmessage.enums.ServiceType
+import me.tagavari.airmessage.helper.MMSSMSHelper.getMaxMessageSize
 import me.tagavari.airmessage.util.ConversationTarget
 import me.tagavari.airmessage.util.ConversationTarget.*
 
@@ -97,6 +101,27 @@ data class ConversationInfo @JvmOverloads constructor(
 		} else {
 			if(BuildConfig.DEBUG && externalID == -1L) error("External ID is null")
 			SystemSMS(externalID)
+		}
+	
+	/**
+	 * Gets the maximum file size for attachments for the current messaging service
+	 */
+	val fileCompressionTarget: Int?
+		get() {
+			//Apple continuity MMS messaging
+			if(serviceHandler == ServiceHandler.appleBridge && serviceType == ServiceType.appleSMS) {
+				//Default to 300 KB
+				return 300 * 1024
+			}
+			
+			//Android system MMS messaging
+			if(serviceHandler == ServiceHandler.systemMessaging && serviceType == ServiceType.systemSMS) {
+				//Return the carrier-specific information
+				return getMaxMessageSize(MainApplication.getInstance())
+			}
+			
+			//No compression required
+			return null
 		}
 	
 	fun clone(): ConversationInfo {

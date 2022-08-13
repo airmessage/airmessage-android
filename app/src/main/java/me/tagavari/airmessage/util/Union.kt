@@ -20,6 +20,11 @@ class Union<A, B> private constructor(private val itemA: A?, private val itemB: 
 	val b: B
 		get() = itemB!!
 	
+	/**
+	 * Gets the item that this union holds
+	 */
+	val either: Any
+		get() = itemA ?: itemB!!
 	
 	/**
 	 * Gets if this union is of type A
@@ -69,6 +74,21 @@ class Union<A, B> private constructor(private val itemA: A?, private val itemB: 
 	</R> */
 	fun <R> map(mapA: Function<A, R>, mapB: Function<B, R>): R {
 		return if(isA) mapA.apply(a) else mapB.apply(b)
+	}
+	
+	override fun equals(other: Any?): Boolean {
+		if(this === other) return true
+		if(other == null) return false
+		if(other !is Union<*, *>) return false
+		return either == other.either
+	}
+	
+	override fun hashCode(): Int {
+		return either.hashCode()
+	}
+	
+	override fun toString(): String {
+		return either.toString()
 	}
 	
 	companion object {

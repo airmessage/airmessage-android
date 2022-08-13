@@ -93,6 +93,7 @@ fun MessagingScreen(
 						
 						scope.launch {
 							captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
+								?.let { viewModel.addQueuedFile(it) }
 						}
 					},
 					onTakeVideo = {
@@ -103,6 +104,7 @@ fun MessagingScreen(
 						
 						scope.launch {
 							captureMedia.requestCamera(if(useLowResMedia) MessagingMediaCaptureType.LOW_RES_VIDEO else MessagingMediaCaptureType.VIDEO)
+								?.let { viewModel.addQueuedFile(it) }
 						}
 					},
 					showContentPicker = showContentPicker,

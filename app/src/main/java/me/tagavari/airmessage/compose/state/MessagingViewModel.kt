@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.compose.state
 
 import android.app.Application
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
@@ -12,14 +13,15 @@ import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.data.DatabaseManager
+import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.helper.ConversationBuildHelper
 import me.tagavari.airmessage.helper.ConversationHelper
-import me.tagavari.airmessage.messaging.ConversationInfo
-import me.tagavari.airmessage.messaging.ConversationItem
-import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.messaging.*
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
+import me.tagavari.airmessage.task.DraftActionTask
 import me.tagavari.airmessage.util.ReplaceInsertResult
+import java.io.File
 
 class MessagingViewModel(
 	application: Application,
@@ -31,6 +33,7 @@ class MessagingViewModel(
 		private set
 	private var lazyLoader: DatabaseManager.ConversationLazyLoader? = null
 	var messages = mutableStateListOf<ConversationItem>()
+	var queuedFiles = mutableStateListOf<QueuedFile>()
 	
 	init {
 		//Load conversations
@@ -180,6 +183,53 @@ class MessagingViewModel(
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Adds a local draft file as a queued file
+	 */
+	fun addQueuedFile(file: File) {
+		val conversation = conversation ?: return
+		
+		//Create the queued file
+		val queuedFile = QueuedFile(file)
+		
+		//Add the queued file to the list
+		queuedFiles.add(queuedFile)
+		
+		val updateTime = System.currentTimeMillis()
+		
+		viewModelScope.launch {
+			//Prepare the queued file
+			val fileDraft: FileDraft = try {
+				DraftActionTask.prepareLinkedToDraft(
+					getApplication(),
+					queuedFile.toFileLinked(),
+					conversation.localID,
+					conversation.fileCompressionTarget ?: -1,
+					true,
+					updateTime
+				).await()
+			} catch(exception: Throwable) {
+				//Log the error
+				Log.w(TAG, "Failed to queue draft", exception)
+				CrashlyticsBridge.recordException(exception)
+				
+				//Dequeue the file
+				queuedFiles.remove(queuedFile)
+				
+				return@launch
+			}
+			
+			//Update the queue
+			val index = queuedFiles.indexOf(queuedFile)
+			if(index == -1) return@launch
+			queuedFiles[index] = QueuedFile(fileDraft)
+		}
+	}
+	
+	private companion object {
+		val TAG = MessagingViewModel::class.simpleName
 	}
 }
 

@@ -8,12 +8,13 @@ import java.io.Serializable
 /**
  * Represents a file queued to be sent
  */
+@Deprecated("Use QueuedFile instead")
 data class FileDraft constructor(
 	val localID: Long,
 	val file: File,
 	val fileName: String,
 	val fileSize: Long,
-	val fileType: String?,
+	val fileType: String,
 	val mediaStoreID: Long? = null,
 	val modificationDate: Long? = null
 ) : Serializable, Parcelable {
@@ -44,7 +45,7 @@ data class FileDraft constructor(
 		file = File(parcel.readString()!!),
 		fileName = parcel.readString()!!,
 		fileSize = parcel.readLong(),
-		fileType = parcel.readString(),
+		fileType = parcel.readString()!!,
 		mediaStoreID = parcel.readLong().let { if(it == -1L) null else it },
 		modificationDate = parcel.readLong().let { if(it == -1L) null else it }
 	)
