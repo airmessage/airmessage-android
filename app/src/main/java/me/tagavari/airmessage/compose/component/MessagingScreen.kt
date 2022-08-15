@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.compose.remember.MessagingMediaCaptureType
 import me.tagavari.airmessage.compose.remember.rememberMediaCapture
+import me.tagavari.airmessage.compose.remember.rememberMediaRequest
 import me.tagavari.airmessage.compose.state.MessagingViewModel
 import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
 import me.tagavari.airmessage.enums.ServiceHandler
@@ -82,6 +83,7 @@ fun MessagingScreen(
 				
 				val scope = rememberCoroutineScope()
 				val captureMedia = rememberMediaCapture()
+				val requestMedia = rememberMediaRequest()
 				
 				MessageInputBar(
 					modifier = Modifier
@@ -108,7 +110,14 @@ fun MessagingScreen(
 						}
 					},
 					showContentPicker = showContentPicker,
-					onChangeShowContentPicker = { showContentPicker = it },
+					onChangeShowContentPicker = {
+						showContentPicker = it
+						if(showContentPicker) {
+							scope.launch {
+								requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
+							}
+						}
+					},
 					collapseButtons = collapseInputButtons,
 					onChangeCollapseButtons = { collapseInputButtons = it },
 					serviceHandler = viewModel.conversation?.serviceHandler,
