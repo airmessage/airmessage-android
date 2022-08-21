@@ -47,8 +47,7 @@ fun MessageInputBar(
 	onMessageSent: (String) -> Unit,
 	onTakePhoto: () -> Unit,
 	onTakeVideo: () -> Unit,
-	showContentPicker: Boolean,
-	onChangeShowContentPicker: (Boolean) -> Unit,
+	onOpenContentPicker: () -> Unit,
 	collapseButtons: Boolean = false,
 	onChangeCollapseButtons: (Boolean) -> Unit,
 	@ServiceHandler serviceHandler: Int?,
@@ -158,16 +157,11 @@ fun MessageInputBar(
 									Icon(Icons.Outlined.PhotoCamera, contentDescription = "")
 								}
 								
-								IconToggleButton(
+								IconButton(
 									modifier = Modifier.padding(end = 4.dp),
-									checked = showContentPicker,
-									onCheckedChange = onChangeShowContentPicker
+									onClick = onOpenContentPicker
 								) {
-									if(showContentPicker) {
-										Icon(Icons.Outlined.AddCircle, contentDescription = "")
-									} else {
-										Icon(Icons.Outlined.AddCircleOutline, contentDescription = "")
-									}
+									Icon(Icons.Outlined.AddCircleOutline, contentDescription = "")
 								}
 							}
 						}
@@ -247,8 +241,7 @@ private fun PreviewMessageInputBar() {
 			onMessageSent = {},
 			onTakePhoto = {},
 			onTakeVideo = {},
-			showContentPicker = false,
-			onChangeShowContentPicker = {},
+			onOpenContentPicker = {},
 			collapseButtons = false,
 			onChangeCollapseButtons = {},
 			serviceHandler = ServiceHandler.appleBridge,

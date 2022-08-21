@@ -25,7 +25,6 @@ fun MessagingScreen(
 	navigationIcon: @Composable () -> Unit = {},
 	conversationID: Long
 ) {
-	var showContentPicker by remember { mutableStateOf(false) }
 	var collapseInputButtons by remember { mutableStateOf(false) }
 	
 	val application = LocalContext.current.applicationContext as Application
@@ -109,13 +108,9 @@ fun MessagingScreen(
 								?.let { viewModel.addQueuedFile(it) }
 						}
 					},
-					showContentPicker = showContentPicker,
-					onChangeShowContentPicker = {
-						showContentPicker = it
-						if(showContentPicker) {
-							scope.launch {
-								requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
-							}
+					onOpenContentPicker = {
+						scope.launch {
+							requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
 						}
 					},
 					collapseButtons = collapseInputButtons,
