@@ -7,10 +7,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -36,6 +33,7 @@ import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.helper.LanguageHelper
+import me.tagavari.airmessage.messaging.QueuedFile
 
 private const val messageLengthButtonsCollapse = 16
 private const val messageLengthButtonsExpand = 12
@@ -44,7 +42,10 @@ private const val messageLengthButtonsExpand = 12
 @Composable
 fun MessageInputBar(
 	modifier: Modifier = Modifier,
-	onMessageSent: (String) -> Unit,
+	messageText: String,
+	onMessageTextChange: (String) -> Unit,
+	attachments: List<QueuedFile>,
+	onMessageSent: () -> Unit,
 	onTakePhoto: () -> Unit,
 	onTakeVideo: () -> Unit,
 	onOpenContentPicker: () -> Unit,
@@ -54,27 +55,21 @@ fun MessageInputBar(
 	@ServiceType serviceType: String?,
 	floating: Boolean = false,
 ) {
-	var textFieldValue by remember { mutableStateOf(TextFieldValue()) }
-	
-	val cleanTextFieldValue by remember {
-		derivedStateOf {
-			textFieldValue.text.trim()
-		}
+	val cleanTextFieldValue = remember(messageText) {
+		messageText.trim()
 	}
 	
-	val validTextFieldValue by remember {
-		derivedStateOf {
-			cleanTextFieldValue.isNotEmpty()
-		}
+	val validTextFieldValue = remember(cleanTextFieldValue) {
+		cleanTextFieldValue.isNotEmpty()
 	}
 	
 	//Automatically expand or collapse the buttons
 	//depending on how long a message the user has entered
 	val currentOnChangeCollapseButtons by rememberUpdatedState(onChangeCollapseButtons)
-	LaunchedEffect(textFieldValue.text) {
-		if(textFieldValue.text.length < messageLengthButtonsExpand) {
+	LaunchedEffect(messageText) {
+		if(messageText.length < messageLengthButtonsExpand) {
 			currentOnChangeCollapseButtons(false)
-		} else if(textFieldValue.text.length > messageLengthButtonsCollapse) {
+		} else if(messageText.length > messageLengthButtonsCollapse) {
 			currentOnChangeCollapseButtons(true)
 		}
 	}
@@ -178,52 +173,58 @@ fun MessageInputBar(
 						RoundedCornerShape(20.dp)
 					),
 				) {
-					Row {
-						BasicTextField(
-							value = textFieldValue,
-							onValueChange = { textFieldValue = it },
-							modifier = Modifier
-								.weight(1F)
-								.heightIn(min = 40.dp, max = 100.dp)
-								.padding(horizontal = 12.dp, vertical = 8.dp)
-								.align(Alignment.CenterVertically)
-								.onFocusChanged { focusState ->
-									inputFieldFocus = focusState.isFocused || focusState.hasFocus
-								},
-							textStyle = MaterialTheme.typography.bodyLarge.copy(
-								fontSize = 16.sp,
-								color = LocalContentColor.current
-							),
-							cursorBrush = SolidColor(LocalContentColor.current),
-							decorationBox = { innerTextField ->
-								//Display the current service as a placeholder
-								if(textFieldValue.text.isEmpty()) {
-									val placeholder = LanguageHelper.getMessageFieldPlaceholder(
-										LocalContext.current.resources,
-										serviceHandler,
-										serviceType
-									)
-									Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant)
-								}
-								
-								innerTextField()
-							}
+					Column {
+						AttachmentQueueRow(
+							attachments = attachments
 						)
 						
-						//Send button
-						CompositionLocalProvider(
-							LocalMinimumTouchTargetEnforcement provides false,
-						) {
-							IconButton(
-								onClick = { onMessageSent(textFieldValue.text) },
-								modifier = Modifier.align(Alignment.Bottom),
-								colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-								enabled = validTextFieldValue
+						Row {
+							BasicTextField(
+								value = messageText,
+								onValueChange = onMessageTextChange,
+								modifier = Modifier
+									.weight(1F)
+									.heightIn(min = 40.dp, max = 100.dp)
+									.padding(horizontal = 12.dp, vertical = 8.dp)
+									.align(Alignment.CenterVertically)
+									.onFocusChanged { focusState ->
+										inputFieldFocus = focusState.isFocused || focusState.hasFocus
+									},
+								textStyle = MaterialTheme.typography.bodyLarge.copy(
+									fontSize = 16.sp,
+									color = LocalContentColor.current
+								),
+								cursorBrush = SolidColor(LocalContentColor.current),
+								decorationBox = { innerTextField ->
+									//Display the current service as a placeholder
+									if(messageText.isEmpty()) {
+										val placeholder = LanguageHelper.getMessageFieldPlaceholder(
+											LocalContext.current.resources,
+											serviceHandler,
+											serviceType
+										)
+										Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant)
+									}
+									
+									innerTextField()
+								}
+							)
+							
+							//Send button
+							CompositionLocalProvider(
+								LocalMinimumTouchTargetEnforcement provides false,
 							) {
-								Icon(
-									painter = painterResource(id = R.drawable.push_rounded),
-									contentDescription = stringResource(id = R.string.action_send)
-								)
+								IconButton(
+									onClick = onMessageSent,
+									modifier = Modifier.align(Alignment.Bottom),
+									colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+									enabled = validTextFieldValue
+								) {
+									Icon(
+										painter = painterResource(id = R.drawable.push_rounded),
+										contentDescription = stringResource(id = R.string.action_send)
+									)
+								}
 							}
 						}
 					}
@@ -238,6 +239,9 @@ fun MessageInputBar(
 private fun PreviewMessageInputBar() {
 	Surface {
 		MessageInputBar(
+			messageText = "",
+			onMessageTextChange = {},
+			attachments = listOf(),
 			onMessageSent = {},
 			onTakePhoto = {},
 			onTakeVideo = {},

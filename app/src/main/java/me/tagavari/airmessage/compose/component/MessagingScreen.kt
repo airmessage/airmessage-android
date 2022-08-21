@@ -25,6 +25,7 @@ fun MessagingScreen(
 	navigationIcon: @Composable () -> Unit = {},
 	conversationID: Long
 ) {
+	var inputText by remember { mutableStateOf("") }
 	var collapseInputButtons by remember { mutableStateOf(false) }
 	
 	val application = LocalContext.current.applicationContext as Application
@@ -88,6 +89,9 @@ fun MessagingScreen(
 					modifier = Modifier
 						.navigationBarsPadding()
 						.imePadding(),
+					messageText = inputText,
+					onMessageTextChange = { inputText = it },
+					attachments = viewModel.queuedFiles,
 					onMessageSent = {},
 					onTakePhoto = {
 						if(viewModel.conversation == null) return@MessageInputBar

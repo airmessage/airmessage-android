@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.messaging
 
-import android.content.Context
 import android.net.Uri
 import me.tagavari.airmessage.helper.FileHelper
 import me.tagavari.airmessage.util.Union
