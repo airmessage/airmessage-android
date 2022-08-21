@@ -126,7 +126,7 @@ android {
 		noCompress 'tflite'
 	}
 	composeOptions {
-		kotlinCompilerExtensionVersion = "1.2.0"
+		kotlinCompilerExtensionVersion = "1.3.0"
 	}
 	lint {
 		abortOnError false
@@ -150,7 +150,7 @@ dependencies {
 	//Android extensions
 	implementation "androidx.core:core-ktx:1.8.0"
 	implementation "androidx.activity:activity-ktx:1.5.1"
-	implementation "androidx.fragment:fragment-ktx:1.5.1"
+	implementation "androidx.fragment:fragment-ktx:1.5.2"
 	implementation "androidx.preference:preference-ktx:1.2.0"
 	implementation "androidx.browser:browser:1.4.0"
 	implementation "androidx.exifinterface:exifinterface:1.3.3"
@@ -164,21 +164,25 @@ dependencies {
 	//implementation "androidx.compose.material:material:1.1.1"
 	implementation "androidx.compose.material3:material3:1.0.0-alpha16"
 	implementation "androidx.compose.material3:material3-window-size-class:1.0.0-alpha16"
-	implementation "androidx.compose.material:material-icons-core:1.2.0"
-	implementation "androidx.compose.material:material-icons-extended:1.2.0"
-	implementation "androidx.compose.animation:animation:1.2.0"
-	debugImplementation "androidx.compose.ui:ui-tooling:1.2.0"
-	implementation "androidx.compose.ui:ui-tooling-preview:1.2.0"
+	implementation "androidx.compose.material:material-icons-core:1.2.1"
+	implementation "androidx.compose.material:material-icons-extended:1.2.1"
+	implementation "androidx.compose.animation:animation:1.2.1"
+	debugImplementation "androidx.compose.ui:ui-tooling:1.2.1"
+	implementation "androidx.compose.ui:ui-tooling-preview:1.2.1"
 	implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.5.1"
-	implementation "androidx.compose.runtime:runtime-rxjava3:1.2.0"
-	androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.2.0"
+	implementation "androidx.compose.runtime:runtime-rxjava3:1.2.1"
+	androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.2.1"
 	
 	//Coil
-	implementation("io.coil-kt:coil-compose:2.1.0")
+	implementation "io.coil-kt:coil-bom:2.2.0"
+	implementation "io.coil-kt:coil"
+	implementation "io.coil-kt:coil-compose"
+	implementation "io.coil-kt:coil-gif"
+	implementation "io.coil-kt:coil-video"
 	
 	//Coroutines
-	implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.3"
-	implementation "org.jetbrains.kotlinx:kotlinx-coroutines-rx3:1.6.3"
+	implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4"
+	implementation "org.jetbrains.kotlinx:kotlinx-coroutines-rx3:1.6.4"
 	
 	//Android architecture components
 	def lifecycle_version = "2.5.1"
