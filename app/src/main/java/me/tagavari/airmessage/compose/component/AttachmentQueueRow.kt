@@ -13,7 +13,9 @@ import me.tagavari.airmessage.messaging.QueuedFile
 
 @Composable
 fun AttachmentQueueRow(
-	attachments: List<QueuedFile>
+	attachments: List<QueuedFile>,
+	onClick: (QueuedFile) -> Unit,
+	onRemove: (QueuedFile) -> Unit
 ) {
 	Row(
 		modifier = Modifier
@@ -23,7 +25,11 @@ fun AttachmentQueueRow(
 		horizontalArrangement = Arrangement.spacedBy(8.dp)
 	) {
 		for(attachment in attachments) {
-			AttachmentQueueEntry(queuedFile = attachment)
+			AttachmentQueueEntry(
+				queuedFile = attachment,
+				onClick = { onClick(attachment) },
+				onRemove = { onRemove(attachment) }
+			)
 		}
 	}
 }

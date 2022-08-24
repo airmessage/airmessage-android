@@ -177,9 +177,13 @@ fun MessageInputBar(
 						.clip(RoundedCornerShape(20.dp))
 				) {
 					Column {
-						AttachmentQueueRow(
-							attachments = attachments
-						)
+						if(attachments.isNotEmpty()) {
+							AttachmentQueueRow(
+								attachments = attachments,
+								onClick = {},
+								onRemove = {}
+							)
+						}
 						
 						Row {
 							BasicTextField(

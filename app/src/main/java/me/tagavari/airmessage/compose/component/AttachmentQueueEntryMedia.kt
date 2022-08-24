@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -15,7 +16,8 @@ import me.tagavari.airmessage.messaging.QueuedFile
 
 @Composable
 fun AttachmentQueueEntryMedia(
-	queuedFile: QueuedFile
+	queuedFile: QueuedFile,
+	onClick: () -> Unit
 ) {
 	AsyncImage(
 		model = ImageRequest.Builder(LocalContext.current)
@@ -25,7 +27,8 @@ fun AttachmentQueueEntryMedia(
 			.build(),
 		modifier = Modifier
 			.fillMaxHeight()
-			.clip(RoundedCornerShape(12.dp)),
+			.clip(RoundedCornerShape(12.dp))
+			.clickable(onClick = onClick),
 		contentDescription = null
 	)
 }
