@@ -1,9 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -26,10 +23,9 @@ fun AttachmentQueueEntryMedia(
 			.crossfade(true)
 			.memoryCacheKey(MemoryCache.Key("mediaQueue", mapOf("id" to (queuedFile.localID?.toString() ?: ""))))
 			.build(),
-		contentScale = ContentScale.Crop,
 		modifier = Modifier
-			.fillMaxSize()
-			.clip(RoundedCornerShape(4.dp)),
+			.fillMaxHeight()
+			.clip(RoundedCornerShape(12.dp)),
 		contentDescription = null
 	)
 }
