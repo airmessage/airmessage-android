@@ -115,6 +115,7 @@ fun MessagingScreen(
 					onOpenContentPicker = {
 						scope.launch {
 							requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
+								.forEach { viewModel.addQueuedFile(it) }
 						}
 					},
 					collapseButtons = collapseInputButtons,

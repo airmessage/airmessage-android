@@ -1,11 +1,21 @@
 package me.tagavari.airmessage.messaging
 
+import android.content.ContentResolver
+import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
+import android.webkit.MimeTypeMap
+import androidx.core.database.getStringOrNull
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.helper.FileHelper
 import me.tagavari.airmessage.util.Union
 import java.io.File
+import java.util.*
 
-data class QueuedFile(
+
+data class QueuedFile constructor(
 	val localID: Long? = null,
 	val file: Union<Uri, File>,
 	val fileName: String,
@@ -54,5 +64,50 @@ data class QueuedFile(
 			mediaStoreID,
 			modificationDate
 		)
+	}
+	
+	companion object {
+		/**
+		 * Creates a [QueuedFile] asynchronously from a [Uri]
+		 */
+		suspend fun fromURI(uri: Uri, context: Context): QueuedFile {
+			var fileName = ""
+			var fileSize = -1L
+			var fileType = MIMEConstants.defaultMIMEType
+			
+			withContext(Dispatchers.IO) {
+				//Query the URI for file size and file name
+				context.contentResolver.query(uri, null, null, null, null, null).use { cursor ->
+					if(cursor == null || !cursor.moveToFirst()) return@use
+					
+					cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME).let { columnName ->
+						if(!cursor.isNull(columnName)) {
+							fileName = cursor.getStringOrNull(columnName) ?: ""
+						}
+					}
+					
+					cursor.getColumnIndex(OpenableColumns.SIZE).let { columnName ->
+						if(!cursor.isNull(columnName)) {
+							fileSize = cursor.getLong(columnName)
+						}
+					}
+				}
+				
+				//Resolve the mime type
+				if(uri.scheme == ContentResolver.SCHEME_CONTENT) {
+					context.contentResolver.getType(uri)
+				} else {
+					val fileExtension: String = MimeTypeMap.getFileExtensionFromUrl(uri.toString())
+					MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtension.lowercase(Locale.getDefault()))
+				}?.let { fileType = it }
+			}
+			
+			return QueuedFile(
+				file = Union.ofA(uri),
+				fileName = fileName,
+				fileSize = fileSize,
+				fileType = fileType
+			)
+		}
 	}
 }

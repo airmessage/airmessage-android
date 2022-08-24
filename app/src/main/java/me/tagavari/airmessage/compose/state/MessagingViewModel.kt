@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.compose.state
 
 import android.app.Application
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
@@ -55,6 +56,8 @@ class MessagingViewModel(
 				DatabaseManager.getInstance().fetchConversationInfo(getApplication(), conversationID)
 			}
 			conversation = loadedConversation ?: return@launch
+			queuedFiles.addAll(loadedConversation.draftFiles.map { QueuedFile(it) })
+			println("Loaded ${queuedFiles.size} files")
 			
 			//Load the conversation title
 			launch {
@@ -185,14 +188,8 @@ class MessagingViewModel(
 		}
 	}
 	
-	/**
-	 * Adds a local draft file as a queued file
-	 */
-	fun addQueuedFile(file: File) {
+	private fun addQueuedFile(queuedFile: QueuedFile) {
 		val conversation = conversation ?: return
-		
-		//Create the queued file
-		val queuedFile = QueuedFile(file)
 		
 		//Add the queued file to the list
 		queuedFiles.add(queuedFile)
@@ -225,6 +222,21 @@ class MessagingViewModel(
 			val index = queuedFiles.indexOf(queuedFile)
 			if(index == -1) return@launch
 			queuedFiles[index] = QueuedFile(fileDraft)
+		}
+	}
+	
+	/**
+	 * Adds a local draft file as a queued file
+	 */
+	fun addQueuedFile(file: File) = addQueuedFile(QueuedFile(file))
+	
+	/**
+	 * Adds a URI as a queued file
+	 */
+	fun addQueuedFile(uri: Uri) {
+		viewModelScope.launch {
+			val queuedFile = QueuedFile.fromURI(uri, getApplication())
+			addQueuedFile(queuedFile)
 		}
 	}
 	
