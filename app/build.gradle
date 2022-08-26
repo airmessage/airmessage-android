@@ -162,8 +162,8 @@ dependencies {
 	//Jetpack Compose
 	implementation "androidx.activity:activity-compose:1.5.1"
 	//implementation "androidx.compose.material:material:1.1.1"
-	implementation "androidx.compose.material3:material3:1.0.0-alpha16"
-	implementation "androidx.compose.material3:material3-window-size-class:1.0.0-alpha16"
+	implementation "androidx.compose.material3:material3:1.0.0-beta01"
+	implementation "androidx.compose.material3:material3-window-size-class:1.0.0-beta01"
 	implementation "androidx.compose.material:material-icons-core:1.2.1"
 	implementation "androidx.compose.material:material-icons-extended:1.2.1"
 	implementation "androidx.compose.animation:animation:1.2.1"
