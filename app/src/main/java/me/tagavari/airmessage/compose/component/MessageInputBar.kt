@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
+import me.tagavari.airmessage.helper.IntentHelper
 import me.tagavari.airmessage.helper.LanguageHelper
 import me.tagavari.airmessage.messaging.QueuedFile
 
@@ -178,10 +179,20 @@ fun MessageInputBar(
 				) {
 					Column {
 						if(attachments.isNotEmpty()) {
+							val context = LocalContext.current
+							
 							AttachmentQueueRow(
 								attachments = attachments,
-								onClick = {},
-								onRemove = {}
+								onClick = { attachment ->
+									//Open the file
+									attachment.file.accept(
+										consumerA = { uri -> IntentHelper.launchUri(context, uri)},
+										consumerB = { file -> IntentHelper.openAttachmentFile(context, file, attachment.fileType) },
+									)
+								},
+								onRemove = {
+								
+								}
 							)
 						}
 						
