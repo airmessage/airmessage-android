@@ -179,7 +179,11 @@ fun MessageInputBar(
 						.clip(RoundedCornerShape(20.dp))
 				) {
 					Column {
-						if(attachments.isNotEmpty()) {
+						AnimatedVisibility(
+							visible = attachments.isNotEmpty(),
+							enter = expandVertically() + fadeIn(),
+							exit = shrinkVertically() + fadeOut()
+						) {
 							val context = LocalContext.current
 							
 							AttachmentQueueRow(
