@@ -67,11 +67,11 @@ fun MessageInputBar(
 	//Automatically expand or collapse the buttons
 	//depending on how long a message the user has entered
 	val currentOnChangeCollapseButtons by rememberUpdatedState(onChangeCollapseButtons)
-	LaunchedEffect(messageText) {
-		if(messageText.length < messageLengthButtonsExpand) {
-			currentOnChangeCollapseButtons(false)
-		} else if(messageText.length > messageLengthButtonsCollapse) {
+	LaunchedEffect(messageText, attachments.isNotEmpty()) {
+		if(messageText.length > messageLengthButtonsCollapse || attachments.isNotEmpty()) {
 			currentOnChangeCollapseButtons(true)
+		} else if(messageText.length < messageLengthButtonsExpand) {
+			currentOnChangeCollapseButtons(false)
 		}
 	}
 	
