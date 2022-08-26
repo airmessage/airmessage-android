@@ -15,11 +15,14 @@ import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
+import me.tagavari.airmessage.helper.AttachmentStorageHelper
+import me.tagavari.airmessage.helper.AttachmentStorageHelper.deleteContentFile
 import me.tagavari.airmessage.helper.ConversationBuildHelper
 import me.tagavari.airmessage.helper.ConversationHelper
 import me.tagavari.airmessage.messaging.*
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
+import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationDraftFileUpdate
 import me.tagavari.airmessage.task.DraftActionTask
 import me.tagavari.airmessage.util.ReplaceInsertResult
 import java.io.File
@@ -237,6 +240,36 @@ class MessagingViewModel(
 		viewModelScope.launch {
 			val queuedFile = QueuedFile.fromURI(uri, getApplication())
 			addQueuedFile(queuedFile)
+		}
+	}
+	
+	fun removeQueuedFile(queuedFile: QueuedFile) {
+		//Get the conversation
+		val conversation = conversation ?: return
+		
+		//Get the file
+		val file = queuedFile.file.nullableB
+			?: throw IllegalArgumentException("Tried to remove queued file with no file!")
+		
+		//Get the ID
+		val localID = queuedFile.localID
+			?: throw IllegalArgumentException("Tried to remove queued file with no ID!")
+		
+		val updateTime = System.currentTimeMillis()
+		
+		//Remove the file from memory
+		queuedFiles.remove(queuedFile)
+		ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationDraftFileUpdate(conversation, queuedFile.toFileDraft(), false, updateTime))
+		
+		//Remove the file from disk
+		viewModelScope.launch {
+			withContext(Dispatchers.IO) {
+				//Delete the file
+				deleteContentFile(AttachmentStorageHelper.dirNameDraft, file)
+				
+				//Remove the item from the database
+				DatabaseManager.getInstance().removeDraftReference(localID, updateTime)
+			}
 		}
 	}
 	

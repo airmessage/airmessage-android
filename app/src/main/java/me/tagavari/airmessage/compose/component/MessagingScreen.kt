@@ -92,6 +92,9 @@ fun MessagingScreen(
 					messageText = inputText,
 					onMessageTextChange = { inputText = it },
 					attachments = viewModel.queuedFiles,
+					onRemoveAttachment = { attachment ->
+						viewModel.removeQueuedFile(attachment)
+					},
 					onMessageSent = {},
 					onTakePhoto = {
 						if(viewModel.conversation == null) return@MessageInputBar

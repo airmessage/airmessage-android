@@ -45,6 +45,7 @@ fun MessageInputBar(
 	messageText: String,
 	onMessageTextChange: (String) -> Unit,
 	attachments: List<QueuedFile>,
+	onRemoveAttachment: (QueuedFile) -> Unit,
 	onMessageSent: () -> Unit,
 	onTakePhoto: () -> Unit,
 	onTakeVideo: () -> Unit,
@@ -190,9 +191,7 @@ fun MessageInputBar(
 										consumerB = { file -> IntentHelper.openAttachmentFile(context, file, attachment.fileType) },
 									)
 								},
-								onRemove = {
-								
-								}
+								onRemove = onRemoveAttachment
 							)
 						}
 						
@@ -272,6 +271,7 @@ private fun PreviewMessageInputBar() {
 			messageText = "",
 			onMessageTextChange = {},
 			attachments = listOf(),
+			onRemoveAttachment = {},
 			onMessageSent = {},
 			onTakePhoto = {},
 			onTakeVideo = {},

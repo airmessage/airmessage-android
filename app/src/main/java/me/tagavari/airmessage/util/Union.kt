@@ -21,6 +21,20 @@ class Union<A, B> private constructor(private val itemA: A?, private val itemB: 
 		get() = itemB!!
 	
 	/**
+	 * Gets item A from this union, or
+	 * null if the item is B
+	 */
+	val nullableA: A?
+		get() = itemA
+	
+	/**
+	 * Gets item B from this union, or
+	 * null if the item is A
+	 */
+	val nullableB: B?
+		get() = itemB
+	
+	/**
 	 * Gets the item that this union holds
 	 */
 	val either: Any
