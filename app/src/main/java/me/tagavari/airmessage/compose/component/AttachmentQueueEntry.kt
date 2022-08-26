@@ -33,20 +33,22 @@ fun AttachmentQueueEntry(
 		) {
 			AttachmentQueueEntryMedia(queuedFile = queuedFile, onClick = onClick)
 			
-			IconButton(
-				modifier = Modifier
-					.align(Alignment.TopEnd)
-					.offset(
-						x = (8 * if(LocalLayoutDirection.current === LayoutDirection.Ltr) 1 else -1).dp,
-						y = (-8).dp
-					),
-				onClick = onRemove
-			) {
-				Icon(
-					painter = painterResource(id = R.drawable.draft_close_circle_border),
-					contentDescription = stringResource(id = R.string.action_back),
-					tint = Color.Unspecified
-				)
+			if(queuedFile.localID != null) {
+				IconButton(
+					modifier = Modifier
+						.align(Alignment.TopEnd)
+						.offset(
+							x = (8 * if(LocalLayoutDirection.current === LayoutDirection.Ltr) 1 else -1).dp,
+							y = (-8).dp
+						),
+					onClick = onRemove
+				) {
+					Icon(
+						painter = painterResource(id = R.drawable.draft_close_circle_border),
+						contentDescription = stringResource(id = R.string.action_back),
+						tint = Color.Unspecified
+					)
+				}
 			}
 		}
 	}
