@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
 import android.app.Application
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
@@ -38,7 +39,11 @@ fun MessagingScreen(
 	}
 	val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 	
-	Column(modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)) {
+	Column(
+		modifier = Modifier
+			.background(MaterialTheme.colorScheme.background)
+			.nestedScroll(scrollBehavior.nestedScrollConnection)
+	) {
 		Surface(tonalElevation = 2.dp) {
 			CenterAlignedTopAppBar(
 				modifier = Modifier.height(120.dp),
