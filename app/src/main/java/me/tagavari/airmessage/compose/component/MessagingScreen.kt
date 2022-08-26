@@ -48,7 +48,7 @@ fun MessagingScreen(
 					title = {
 						Column(
 							horizontalAlignment = Alignment.CenterHorizontally,
-							verticalArrangement = Arrangement.Center,
+							verticalArrangement = Arrangement.Center
 						) {
 							viewModel.conversation?.let { conversation ->
 								UserIconGroup(members = conversation.members)
@@ -68,13 +68,12 @@ fun MessagingScreen(
 				)
 			}
 		},
-		content = { paddingValues ->
-			Column {
+		content = { innerPadding ->
+			Column(modifier = Modifier.padding(top = innerPadding.calculateTopPadding())) {
 				viewModel.conversation?.let { conversation ->
 					MessageList(
 						modifier = Modifier
-							.weight(1F)
-							.padding(paddingValues),
+							.weight(1F),
 						conversation = conversation,
 						messages = viewModel.messages,
 						scrollState = scrollState
