@@ -1,13 +1,11 @@
 package me.tagavari.airmessage.compose.component
 
+import android.os.SystemClock
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.constants.TimingConstants
@@ -17,14 +15,37 @@ import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.util.MessageFlow
 import me.tagavari.airmessage.util.MessageFlowSpacing
 
+private const val scrollProgressRateLimit = 100
+
 @Composable
 fun MessageList(
 	modifier: Modifier = Modifier,
 	conversation: ConversationInfo,
 	messages: List<ConversationItem>,
-	scrollState: LazyListState = rememberLazyListState(),
+	scrollState: LazyListState = rememberLazyListState()
 ) {
 	val reversedMessages = messages.asReversed()
+	
+	val scrollOffsetMap by remember {
+		var scrollProgressModificationTime: Long? = null
+		var lastScrollOffsetMap: Map<Long, Float>? = null
+		
+		derivedStateOf {
+			val timeNow = SystemClock.uptimeMillis() / scrollProgressRateLimit
+			
+			val visibleItemsInfo = scrollState.layoutInfo.visibleItemsInfo
+			val height = scrollState.layoutInfo.viewportEndOffset.toFloat()
+			
+			if(scrollProgressModificationTime != timeNow) {
+				scrollProgressModificationTime = timeNow
+				
+				lastScrollOffsetMap = visibleItemsInfo
+					.associate { it.key as Long to (it.offset / height).coerceIn(0F, 1F) }
+			}
+			
+			lastScrollOffsetMap!!
+		}
+	}
 	
 	LazyColumn(
 		modifier = modifier,
@@ -58,15 +79,7 @@ fun MessageList(
 					else -> MessageFlowSpacing.GAP
 				}
 				
-				val scrollProgress by remember(conversationItem.localID) {
-					derivedStateOf {
-						val visibleItemInfo = scrollState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == conversationItem.localID }
-							?: return@derivedStateOf 0F
-						
-						(visibleItemInfo.offset.toFloat() / scrollState.layoutInfo.viewportEndOffset.toFloat())
-							.coerceIn(0F, 1F)
-					}
-				}
+				val scrollProgress = scrollOffsetMap[conversationItem.localID] ?: 1F
 				
 				MessageInfoListEntry(
 					conversationInfo = conversation,
