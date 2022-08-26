@@ -1,14 +1,12 @@
 package me.tagavari.airmessage.compose.component
 
 import android.app.Application
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -19,8 +17,6 @@ import me.tagavari.airmessage.compose.remember.rememberMediaCapture
 import me.tagavari.airmessage.compose.remember.rememberMediaRequest
 import me.tagavari.airmessage.compose.state.MessagingViewModel
 import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
-import me.tagavari.airmessage.enums.ServiceHandler
-import me.tagavari.airmessage.enums.ServiceType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,23 +90,12 @@ fun MessagingScreen(
 			onRemoveAttachment = { attachment ->
 				viewModel.removeQueuedFile(attachment)
 			},
-			onMessageSent = {},
+			onSend = {},
 			onTakePhoto = {
 				if(viewModel.conversation == null) return@MessageInputBar
 				
 				scope.launch {
 					captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
-						?.let { viewModel.addQueuedFile(it) }
-				}
-			},
-			onTakeVideo = {
-				//Use low-res video recordings if we're sending over SMS / MMS
-				val conversation = viewModel.conversation ?: return@MessageInputBar
-				val useLowResMedia = (conversation.serviceHandler == ServiceHandler.appleBridge && conversation.serviceType == ServiceType.appleSMS)
-						|| (conversation.serviceHandler == ServiceHandler.systemMessaging && conversation.serviceType == ServiceType.systemSMS)
-				
-				scope.launch {
-					captureMedia.requestCamera(if(useLowResMedia) MessagingMediaCaptureType.LOW_RES_VIDEO else MessagingMediaCaptureType.VIDEO)
 						?.let { viewModel.addQueuedFile(it) }
 				}
 			},
