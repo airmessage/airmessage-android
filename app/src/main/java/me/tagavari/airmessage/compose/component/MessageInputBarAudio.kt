@@ -9,14 +9,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.interop.GestureTrackable
@@ -34,11 +31,11 @@ private data class Positioning(
 	 * Gets if the provided coordinates fall within the bounds
 	 * of this positioning
 	 */
-	fun isInside(checkX: Float, checkY: Float): Boolean {
-		return checkX >= x
-				&& checkY >= y
-				&& checkX <= x + width
-				&& checkY <= y + height
+	fun isInside(checkX: Float, checkY: Float, leniency: Float = 0F): Boolean {
+		return checkX >= x - leniency
+				&& checkY >= y - leniency
+				&& checkX <= x + width + leniency
+				&& checkY <= y + height + leniency
 	}
 }
 
@@ -72,11 +69,11 @@ fun MessageInputBarAudio(
 				MotionEvent.ACTION_MOVE -> {
 					//Track hover states
 					sendButtonPositioning?.let { positioning ->
-						sendButtonHover = positioning.isInside(event.rawX, event.rawY)
+						sendButtonHover = positioning.isInside(event.rawX, event.rawY, 64F)
 					}
 					
 					recordButtonPositioning?.let { positioning ->
-						recordButtonHover = positioning.isInside(event.rawX, event.rawY)
+						recordButtonHover = positioning.isInside(event.rawX, event.rawY, 64F)
 					}
 					
 					false
