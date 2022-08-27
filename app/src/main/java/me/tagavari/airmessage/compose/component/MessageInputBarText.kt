@@ -6,10 +6,10 @@ import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -50,6 +51,7 @@ fun MessageInputBarText(
 	onChangeCollapseButtons: (Boolean) -> Unit,
 	onTakePhoto: () -> Unit,
 	onOpenContentPicker: () -> Unit,
+	onStartAudioRecording: () -> Unit,
 	@ServiceHandler serviceHandler: Int?,
 	@ServiceType serviceType: String?,
 	onSend: () -> Unit
@@ -233,16 +235,42 @@ fun MessageInputBarText(
 								)
 							}
 						} else {
+							/* val interactionSource = remember { MutableInteractionSource() }
+							
 							IconButton(
 								onClick = {},
 								modifier = Modifier.align(Alignment.Bottom),
 								colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
+								interactionSource = interactionSource
 							) {
 								Icon(
 									painter = painterResource(id = R.drawable.record_circle),
 									contentDescription = stringResource(id = R.string.action_recordaudio)
 								)
 							}
+							
+							LaunchedEffect(interactionSource) {
+								interactionSource.interactions.collect { interaction ->
+									if(interaction is PressInteraction.Press) {
+										onStartAudioRecording()
+									}
+								}
+							} */
+							
+							Icon(
+								modifier = Modifier
+									.padding(8.dp)
+									.pointerInput(Unit) {
+										detectTapGestures(
+											onPress = { event ->
+												onStartAudioRecording()
+											}
+										)
+									},
+								painter = painterResource(id = R.drawable.record_circle),
+								contentDescription = stringResource(id = R.string.action_recordaudio),
+								tint = MaterialTheme.colorScheme.secondary
+							)
 						}
 					}
 				}

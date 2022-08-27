@@ -1,12 +1,21 @@
 package me.tagavari.airmessage.compose.component
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import me.tagavari.airmessage.compose.remember.rememberAudioCapture
+import me.tagavari.airmessage.compose.util.rememberAsyncLauncherForActivityResult
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.messaging.QueuedFile
@@ -31,23 +40,42 @@ fun MessageInputBar(
 		if(floating) 2.dp else 0.dp
 	)
 	
-	Surface(
-		tonalElevation = surfaceElevation
+	val audioCapture = rememberAudioCapture()
+	
+	CompositionLocalProvider(
+		LocalContentColor provides MaterialTheme.colorScheme.surface,
+		LocalAbsoluteTonalElevation provides surfaceElevation
 	) {
-		Box(modifier = modifier.padding(8.dp)) {
-			MessageInputBarText(
-				messageText = messageText,
-				onMessageTextChange = onMessageTextChange,
-				attachments = attachments,
-				onRemoveAttachment = onRemoveAttachment,
-				collapseButtons = collapseButtons,
-				onChangeCollapseButtons = onChangeCollapseButtons,
-				onTakePhoto = onTakePhoto,
-				onOpenContentPicker = onOpenContentPicker,
-				serviceHandler = serviceHandler,
-				serviceType = serviceType,
-				onSend = onSend
-			)
+		Box(
+			modifier = Modifier.background(MaterialTheme.colorScheme.surfaceColorAtElevation(surfaceElevation))
+		) {
+			Box(modifier = modifier.padding(8.dp)) {
+				if(audioCapture.isRecording) {
+					MessageInputBarAudio(
+						audioCapture.duration
+					)
+				} else {
+					val scope = rememberCoroutineScope()
+					MessageInputBarText(
+						messageText = messageText,
+						onMessageTextChange = onMessageTextChange,
+						attachments = attachments,
+						onRemoveAttachment = onRemoveAttachment,
+						collapseButtons = collapseButtons,
+						onChangeCollapseButtons = onChangeCollapseButtons,
+						onTakePhoto = onTakePhoto,
+						onOpenContentPicker = onOpenContentPicker,
+						onStartAudioRecording = {
+							scope.launch {
+								audioCapture.startRecording()
+							}
+						},
+						serviceHandler = serviceHandler,
+						serviceType = serviceType,
+						onSend = onSend
+					)
+				}
+			}
 		}
 	}
 }
