@@ -136,14 +136,23 @@ fun MessageInputBarAudio(
 						.padding(vertical = 1.dp),
 					amplitudeList = amplitudeList,
 					displayType = if(isRecording) AudioVisualizerDisplayType.STREAM
-					else AudioVisualizerDisplayType.SUMMARY
+					else AudioVisualizerDisplayType.SUMMARY,
+					progress = if(playbackState is AudioPlaybackState.Playing)
+						playbackState.time.toFloat() / playbackState.totalDuration.toFloat()
+					else 1F
 				)
 				
 				Spacer(modifier = Modifier.width(4.dp))
 				
 				Text(
-					text = remember(duration) {
-						DateUtils.formatElapsedTime(duration.toLong())
+					text = remember(playbackState, duration) {
+						val displayTime = if(playbackState is AudioPlaybackState.Playing) {
+							playbackState.time / 1000
+						} else {
+							duration.toLong()
+						}
+						
+						DateUtils.formatElapsedTime(displayTime)
 					}
 				)
 			}

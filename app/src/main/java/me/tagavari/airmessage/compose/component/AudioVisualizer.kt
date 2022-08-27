@@ -15,6 +15,15 @@ private const val amplitudeFallStep = 1000
 private const val lineWidth = 6F
 private const val lineSpacing = 2F
 
+/**
+ * The display type to use for the audio visualizer.
+ *
+ * STREAM will display a single bar per entry, and push
+ * old entries out of bounds to the left.
+ *
+ * SUMMARY will stretch or compress the entries to show
+ * the entire waveform in the view.
+ */
 enum class AudioVisualizerDisplayType {
 	STREAM,
 	SUMMARY
@@ -24,14 +33,18 @@ enum class AudioVisualizerDisplayType {
 fun AudioVisualizer(
 	modifier: Modifier = Modifier,
 	amplitudeList: List<Int>,
-	displayType: AudioVisualizerDisplayType = AudioVisualizerDisplayType.STREAM
+	displayType: AudioVisualizerDisplayType = AudioVisualizerDisplayType.STREAM,
+	progress: Float = 1F
 ) {
-	val color = LocalContentColor.current
+	val solidColor = LocalContentColor.current
+	val transparentColor = solidColor.copy(alpha = 0.3F)
 	
 	Canvas(modifier = modifier) {
+		//Get the dimensions of the canvas
 		val canvasWidth = size.width
 		val canvasHeight = size.height
 		
+		//Estimate how many lines we'll be able to render
 		val lineCount = ceil(canvasWidth / (lineWidth + lineSpacing)).toInt()
 		
 		val displayList = when(displayType) {
@@ -40,7 +53,7 @@ fun AudioVisualizer(
 				amplitudeList.subList(
 					(amplitudeList.size - lineCount).coerceAtLeast(0),
 					amplitudeList.size
-				)
+				).asReversed()
 			}
 			AudioVisualizerDisplayType.SUMMARY -> {
 				//Stretch or compress the items to fit
@@ -78,36 +91,52 @@ fun AudioVisualizer(
 			}
 		}
 		
-		/* val sanitizedList = mutableListOf<Int>().also { list ->
-			var lastValue = 0
-			for(amplitude in amplitudeList) {
-				val clampedAmplitude = amplitude.coerceIn(amplitudeMin, amplitudeMax)
-				val smoothedAmplitude = clampedAmplitude.coerceAtLeast(lastValue - amplitudeFallStep)
-				
-				lastValue = smoothedAmplitude
-				list.add(smoothedAmplitude)
-			}
-		} */
+		//Make sure that all amplitudes fit within a preset range
 		val sanitizedList = displayList.map { it.coerceIn(amplitudeMin, amplitudeMax) }
 		
-		sanitizedList
-			.asReversed()
-			.asSequence()
-			.take(ceil(canvasWidth / (lineWidth + lineSpacing)).toInt())
-			.forEachIndexed { index, amplitude ->
-				val lineHeight = (amplitude.toFloat() / amplitudeMax.toFloat()) * canvasHeight
-				
+		//Get the pixel that the progress falls on
+		val progressPixelX = progress * canvasWidth
+		
+		sanitizedList.forEachIndexed { index, amplitude ->
+			//Calculate the line dimensions
+			val lineHeight = (amplitude.toFloat() / amplitudeMax.toFloat()) * canvasHeight
+			
+			val posX = canvasWidth - lineWidth - ((lineSpacing + lineWidth) * index)
+			val posY = (canvasHeight - lineHeight) / 2
+			
+			//How many pixels wide should be solid
+			val widthSolid = (progressPixelX - posX).coerceIn(0F, lineWidth)
+			//How many pixels wide should be transparent
+			val widthTransparent = ((posX + lineWidth) - progressPixelX).coerceIn(0F, lineWidth)
+			
+			if(widthSolid > 0) {
+				//Draw the line with a solid color
 				drawRect(
-					color = color,
+					color = solidColor,
 					topLeft = Offset(
-						x = canvasWidth - lineWidth - ((lineSpacing + lineWidth) * index),
-						y = (canvasHeight - lineHeight) / 2
+						x = posX,
+						y = posY
 					),
 					size = Size(
-						width = lineWidth,
+						width = widthSolid,
 						height = lineHeight
 					)
 				)
 			}
+			if(widthTransparent > 0) {
+				//Draw the line with a transparent color
+				drawRect(
+					color = transparentColor,
+					topLeft = Offset(
+						x = posX + widthSolid,
+						y = posY
+					),
+					size = Size(
+						width = widthTransparent,
+						height = lineHeight
+					)
+				)
+			}
+		}
 	}
 }
