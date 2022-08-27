@@ -61,7 +61,7 @@ fun MessageInputBarAudio(
 	var recordButtonHover by remember { mutableStateOf(false) }
 	
 	val currentSendButtonHover by rememberUpdatedState(sendButtonHover)
-	val currentRecordButtonHover by rememberUpdatedState(recordButtonHover)
+	//val currentRecordButtonHover by rememberUpdatedState(recordButtonHover)
 	
 	DisposableEffect(gestureTrackable, sendButtonPositioning, recordButtonPositioning) {
 		val listener: GestureTracker = listener@{ event ->
@@ -108,10 +108,11 @@ fun MessageInputBarAudio(
 		Surface(
 			modifier = Modifier.fillMaxWidth(0.6F),
 			shape = RoundedCornerShape(100),
-			tonalElevation = 8.dp
+			tonalElevation = 8.dp,
+			color = MaterialTheme.colorScheme.surfaceVariant
 		) {
 			CompositionLocalProvider(
-				LocalMinimumTouchTargetEnforcement provides false,
+				LocalMinimumTouchTargetEnforcement provides false
 			) {
 				Row(
 					verticalAlignment = Alignment.CenterVertically
@@ -164,7 +165,8 @@ fun MessageInputBarAudio(
 		Surface(
 			modifier = Modifier.wrapContentHeight(align = Alignment.Bottom, unbounded = true),
 			shape = RoundedCornerShape(100),
-			tonalElevation = 8.dp
+			tonalElevation = 8.dp,
+			color = MaterialTheme.colorScheme.surfaceVariant
 		) {
 			Column(modifier = Modifier.padding(8.dp)) {
 				IconButton(
@@ -185,7 +187,6 @@ fun MessageInputBarAudio(
 							.alpha(if(isRecording && sendButtonHover) 0.5F else 1F),
 						painter = painterResource(id = R.drawable.push_rounded),
 						contentDescription = null,
-						tint = MaterialTheme.colorScheme.primary
 					)
 				}
 				
@@ -207,9 +208,12 @@ fun MessageInputBarAudio(
 								)
 							}
 							.alpha(if(isRecording && recordButtonHover) 0.5F else 1F),
-						painter = painterResource(id = R.drawable.play_circle_rounded),
+						painter = when {
+							isRecording -> painterResource(id = R.drawable.stop_circle_rounded)
+							playbackState is AudioPlaybackState.Playing -> painterResource(id = R.drawable.pause_circle_rounded)
+							else -> painterResource(id = R.drawable.play_circle_rounded)
+						},
 						contentDescription = null,
-						tint = MaterialTheme.colorScheme.primary
 					)
 				}
 			}
