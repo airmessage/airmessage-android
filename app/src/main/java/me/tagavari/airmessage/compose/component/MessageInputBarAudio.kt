@@ -108,7 +108,7 @@ fun MessageInputBarAudio(
 		Surface(
 			modifier = Modifier.fillMaxWidth(0.6F),
 			shape = RoundedCornerShape(100),
-			tonalElevation = 4.dp
+			tonalElevation = 8.dp
 		) {
 			CompositionLocalProvider(
 				LocalMinimumTouchTargetEnforcement provides false,
@@ -164,7 +164,7 @@ fun MessageInputBarAudio(
 		Surface(
 			modifier = Modifier.wrapContentHeight(align = Alignment.Bottom, unbounded = true),
 			shape = RoundedCornerShape(100),
-			tonalElevation = 4.dp
+			tonalElevation = 8.dp
 		) {
 			Column(modifier = Modifier.padding(8.dp)) {
 				IconButton(
