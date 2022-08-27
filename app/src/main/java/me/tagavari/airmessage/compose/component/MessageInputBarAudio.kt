@@ -42,6 +42,7 @@ private data class Positioning(
 	}
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageInputBarAudio(
 	duration: Int,
@@ -112,49 +113,53 @@ fun MessageInputBarAudio(
 			shape = RoundedCornerShape(100),
 			tonalElevation = 4.dp
 		) {
-			Row(
-				modifier = Modifier.padding(horizontal = 12.dp),
-				verticalAlignment = Alignment.CenterVertically
+			CompositionLocalProvider(
+				LocalMinimumTouchTargetEnforcement provides false,
 			) {
-				if(!isRecording) {
-					IconButton(
-						onClick = onDiscard
-					) {
-						Icon(
-							painter = painterResource(id = R.drawable.close_circle),
-							contentDescription = stringResource(id = android.R.string.cancel)
-						)
-					}
-					
-					Spacer(modifier = Modifier.width(4.dp))
-				}
-				
-				AudioVisualizer(
-					modifier = Modifier
-						.weight(1F)
-						.fillMaxHeight()
-						.padding(vertical = 1.dp),
-					amplitudeList = amplitudeList,
-					displayType = if(isRecording) AudioVisualizerDisplayType.STREAM
-					else AudioVisualizerDisplayType.SUMMARY,
-					progress = if(playbackState is AudioPlaybackState.Playing)
-						playbackState.time.toFloat() / playbackState.totalDuration.toFloat()
-					else 1F
-				)
-				
-				Spacer(modifier = Modifier.width(4.dp))
-				
-				Text(
-					text = remember(playbackState, duration) {
-						val displayTime = if(playbackState is AudioPlaybackState.Playing) {
-							playbackState.time / 1000
-						} else {
-							duration.toLong()
+				Row(
+					verticalAlignment = Alignment.CenterVertically
+				) {
+					if(!isRecording) {
+						IconButton(
+							onClick = onDiscard
+						) {
+							Icon(
+								painter = painterResource(id = R.drawable.close_circle),
+								contentDescription = stringResource(id = android.R.string.cancel)
+							)
 						}
 						
-						DateUtils.formatElapsedTime(displayTime)
+						Spacer(modifier = Modifier.width(4.dp))
 					}
-				)
+					
+					AudioVisualizer(
+						modifier = Modifier
+							.weight(1F)
+							.fillMaxHeight()
+							.padding(vertical = 1.dp),
+						amplitudeList = amplitudeList,
+						displayType = if(isRecording) AudioVisualizerDisplayType.STREAM
+						else AudioVisualizerDisplayType.SUMMARY,
+						progress = if(playbackState is AudioPlaybackState.Playing)
+							playbackState.time.toFloat() / playbackState.totalDuration.toFloat()
+						else 1F
+					)
+					
+					Spacer(modifier = Modifier.width(4.dp))
+					
+					Text(
+						modifier = Modifier.padding(end = 12.dp),
+						text = remember(playbackState, duration) {
+							val displayTime = if(playbackState is AudioPlaybackState.Playing) {
+								playbackState.time / 1000
+							} else {
+								duration.toLong()
+							}
+							
+							DateUtils.formatElapsedTime(displayTime)
+						}
+					)
+				}
 			}
 		}
 		Spacer(modifier = Modifier.width(8.dp))
