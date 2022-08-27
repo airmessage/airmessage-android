@@ -2,6 +2,10 @@ package me.tagavari.airmessage.compose.component
 
 import android.text.format.DateUtils
 import android.view.MotionEvent
+import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -9,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -39,7 +44,7 @@ private data class Positioning(
 	}
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun MessageInputBarAudio(
 	duration: Int,
@@ -50,6 +55,7 @@ fun MessageInputBarAudio(
 	onTogglePlay: () -> Unit,
 	playbackState: AudioPlaybackState,
 	amplitudeList: List<Int>,
+	visible: Boolean
 ) {
 	val gestureTrackable = LocalContext.current.findActivity() as? GestureTrackable
 		?: throw IllegalStateException("Must be a GestureTrackerActivity")
@@ -63,7 +69,12 @@ fun MessageInputBarAudio(
 	val currentSendButtonHover by rememberUpdatedState(sendButtonHover)
 	//val currentRecordButtonHover by rememberUpdatedState(recordButtonHover)
 	
-	DisposableEffect(gestureTrackable, sendButtonPositioning, recordButtonPositioning) {
+	DisposableEffect(isRecording, gestureTrackable, sendButtonPositioning, recordButtonPositioning) {
+		//Ignore if we're not recording
+		if(!isRecording) {
+			return@DisposableEffect onDispose {}
+		}
+		
 		val listener: GestureTracker = listener@{ event ->
 			when(event.action) {
 				MotionEvent.ACTION_MOVE -> {
@@ -105,119 +116,135 @@ fun MessageInputBarAudio(
 		horizontalArrangement = Arrangement.End,
 		verticalAlignment = Alignment.Bottom
 	) {
-		Surface(
-			modifier = Modifier.fillMaxWidth(0.6F),
-			shape = RoundedCornerShape(100),
-			tonalElevation = 8.dp,
-			color = MaterialTheme.colorScheme.surfaceVariant
-		) {
-			CompositionLocalProvider(
-				LocalMinimumTouchTargetEnforcement provides false
+		if(visible) {
+			Surface(
+				modifier = Modifier.fillMaxWidth(0.6F),
+				shape = RoundedCornerShape(100),
+				tonalElevation = 8.dp,
+				color = MaterialTheme.colorScheme.surfaceVariant
 			) {
-				Row(
-					verticalAlignment = Alignment.CenterVertically
+				CompositionLocalProvider(
+					LocalMinimumTouchTargetEnforcement provides false
 				) {
-					if(!isRecording) {
-						IconButton(
-							onClick = onDiscard
-						) {
-							Icon(
-								painter = painterResource(id = R.drawable.close_circle),
-								contentDescription = stringResource(id = android.R.string.cancel)
-							)
-						}
-						
-						Spacer(modifier = Modifier.width(4.dp))
-					}
-					
-					AudioVisualizer(
-						modifier = Modifier
-							.weight(1F)
-							.fillMaxHeight()
-							.padding(vertical = 1.dp),
-						amplitudeList = amplitudeList,
-						displayType = if(isRecording) AudioVisualizerDisplayType.STREAM
-						else AudioVisualizerDisplayType.SUMMARY,
-						progress = if(playbackState is AudioPlaybackState.Playing)
-							playbackState.time.toFloat() / playbackState.totalDuration.toFloat()
-						else 1F
-					)
-					
-					Spacer(modifier = Modifier.width(4.dp))
-					
-					Text(
-						modifier = Modifier.padding(end = 12.dp),
-						text = remember(playbackState, duration) {
-							val displayTime = if(playbackState is AudioPlaybackState.Playing) {
-								playbackState.time / 1000
-							} else {
-								duration.toLong()
+					Row(
+						verticalAlignment = Alignment.CenterVertically
+					) {
+						if(!isRecording) {
+							IconButton(
+								onClick = onDiscard
+							) {
+								Icon(
+									painter = painterResource(id = R.drawable.close_circle),
+									contentDescription = stringResource(id = android.R.string.cancel)
+								)
 							}
 							
-							DateUtils.formatElapsedTime(displayTime)
+							Spacer(modifier = Modifier.width(4.dp))
 						}
-					)
+						
+						AudioVisualizer(
+							modifier = Modifier
+								.weight(1F)
+								.fillMaxHeight()
+								.padding(vertical = 1.dp),
+							amplitudeList = amplitudeList,
+							displayType = if(isRecording) AudioVisualizerDisplayType.STREAM
+							else AudioVisualizerDisplayType.SUMMARY,
+							progress = if(playbackState is AudioPlaybackState.Playing)
+								playbackState.time.toFloat() / playbackState.totalDuration.toFloat()
+							else 1F
+						)
+						
+						Spacer(modifier = Modifier.width(4.dp))
+						
+						Text(
+							modifier = Modifier.padding(end = 12.dp),
+							text = remember(playbackState, duration) {
+								val displayTime = if(playbackState is AudioPlaybackState.Playing) {
+									playbackState.time / 1000
+								} else {
+									duration.toLong()
+								}
+								
+								DateUtils.formatElapsedTime(displayTime)
+							}
+						)
+					}
 				}
 			}
 		}
+		
 		Spacer(modifier = Modifier.width(8.dp))
 		
-		Surface(
+		AnimatedVisibility(
 			modifier = Modifier.wrapContentHeight(align = Alignment.Bottom, unbounded = true),
-			shape = RoundedCornerShape(100),
-			tonalElevation = 8.dp,
-			color = MaterialTheme.colorScheme.surfaceVariant
+			visible = visible,
+			enter = fadeIn() + scaleIn(
+				animationSpec = spring(stiffness = 500F, dampingRatio = Spring.DampingRatioMediumBouncy),
+				transformOrigin = TransformOrigin(0.5F, 0.75F)
+			),
+			exit = fadeOut() + scaleOut(
+				animationSpec = spring(stiffness = 500F),
+				transformOrigin = TransformOrigin(0.5F, 0.75F)
+			)
 		) {
-			Column(modifier = Modifier.padding(8.dp)) {
-				IconButton(
-					onClick = onSend
-				) {
-					Icon(
-						modifier = Modifier
-							.size(48.dp)
-							.onGloballyPositioned { coordinates ->
-								val position = coordinates.positionInRoot()
-								sendButtonPositioning = Positioning(
-									x = position.x,
-									y = position.y,
-									width = coordinates.size.width.toFloat(),
-									height = coordinates.size.height.toFloat()
-								)
-							}
-							.alpha(if(isRecording && sendButtonHover) 0.5F else 1F),
-						painter = painterResource(id = R.drawable.push_rounded),
-						contentDescription = null,
-					)
-				}
-				
-				Spacer(modifier = Modifier.height(48.dp))
-				
-				IconButton(
-					onClick = onTogglePlay
-				) {
-					Icon(
-						modifier = Modifier
-							.size(48.dp)
-							.onGloballyPositioned { coordinates ->
-								val position = coordinates.positionInRoot()
-								recordButtonPositioning = Positioning(
-									x = position.x,
-									y = position.y,
-									width = coordinates.size.width.toFloat(),
-									height = coordinates.size.height.toFloat()
-								)
-							}
-							.alpha(if(isRecording && recordButtonHover) 0.5F else 1F),
-						painter = when {
-							isRecording ->
-								painterResource(id = R.drawable.stop_circle_rounded)
-							playbackState is AudioPlaybackState.Playing && playbackState.playing ->
-								painterResource(id = R.drawable.pause_circle_rounded)
-							else ->
-								painterResource(id = R.drawable.play_circle_rounded)
-						},
-						contentDescription = null,
-					)
+			Surface(
+				modifier = Modifier.wrapContentHeight(align = Alignment.Bottom, unbounded = true),
+				shape = RoundedCornerShape(100),
+				tonalElevation = 8.dp,
+				color = MaterialTheme.colorScheme.surfaceVariant
+			) {
+				Column(modifier = Modifier.padding(8.dp)) {
+					IconButton(
+						onClick = onSend
+					) {
+						Icon(
+							modifier = Modifier
+								.size(48.dp)
+								.onGloballyPositioned { coordinates ->
+									val position = coordinates.positionInRoot()
+									sendButtonPositioning = Positioning(
+										x = position.x,
+										y = position.y,
+										width = coordinates.size.width.toFloat(),
+										height = coordinates.size.height.toFloat()
+									)
+								}
+								.alpha(if(isRecording && sendButtonHover) 0.5F else 1F),
+							painter = painterResource(id = R.drawable.push_rounded),
+							contentDescription = null,
+						)
+					}
+					
+					Spacer(modifier = Modifier.height(48.dp))
+					
+					IconButton(
+						onClick = onTogglePlay
+					) {
+						Icon(
+							modifier = Modifier
+								.size(48.dp)
+								.onGloballyPositioned { coordinates ->
+									val position = coordinates.positionInRoot()
+									recordButtonPositioning = Positioning(
+										x = position.x,
+										y = position.y,
+										width = coordinates.size.width.toFloat(),
+										height = coordinates.size.height.toFloat()
+									)
+								}
+								.alpha(if(isRecording && recordButtonHover) 0.5F else 1F),
+							painter = when {
+								isRecording ->
+									painterResource(id = R.drawable.stop_circle_rounded)
+								playbackState is AudioPlaybackState.Playing && playbackState.playing ->
+									painterResource(id = R.drawable.pause_circle_rounded)
+								else ->
+									painterResource(id = R.drawable.play_circle_rounded)
+							},
+							contentDescription = null,
+						)
+					}
 				}
 			}
 		}
