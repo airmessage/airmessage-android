@@ -17,13 +17,15 @@ fun deriveAmplitudeList(
 	val amplitudeList = remember { mutableStateListOf<Int>() }
 	
 	LaunchedEffect(mediaRecorder, enable, interval) {
-		amplitudeList.clear()
-		
-		//Repeatedly add the max amplitude
-		while(enable) {
-			delay(interval)
-			val amplitude = mediaRecorder.maxAmplitude
-			amplitudeList.add(amplitude)
+		if(enable) {
+			amplitudeList.clear()
+			
+			//Repeatedly add the max amplitude
+			while(enable) {
+				delay(interval)
+				val amplitude = mediaRecorder.maxAmplitude
+				amplitudeList.add(amplitude)
+			}
 		}
 	}
 	

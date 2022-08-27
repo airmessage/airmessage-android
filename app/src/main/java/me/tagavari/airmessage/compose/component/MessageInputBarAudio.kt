@@ -2,13 +2,9 @@ package me.tagavari.airmessage.compose.component
 
 import android.text.format.DateUtils
 import android.view.MotionEvent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,11 +13,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.interop.GestureTrackable
 import me.tagavari.airmessage.compose.interop.GestureTracker
+import me.tagavari.airmessage.compose.remember.AudioPlaybackState
 import me.tagavari.airmessage.compose.util.findActivity
 
 private data class Positioning(
@@ -45,8 +45,13 @@ private data class Positioning(
 @Composable
 fun MessageInputBarAudio(
 	duration: Int,
+	isRecording: Boolean,
 	onStopRecording: () -> Unit,
-	amplitudeList: List<Int>
+	onSend: () -> Unit,
+	onDiscard: () -> Unit,
+	onTogglePlay: () -> Unit,
+	playbackState: AudioPlaybackState,
+	amplitudeList: List<Int>,
 ) {
 	val gestureTrackable = LocalContext.current.findActivity() as? GestureTrackable
 		?: throw IllegalStateException("Must be a GestureTrackerActivity")
@@ -56,6 +61,9 @@ fun MessageInputBarAudio(
 	
 	var sendButtonHover by remember { mutableStateOf(false) }
 	var recordButtonHover by remember { mutableStateOf(false) }
+	
+	val currentSendButtonHover by rememberUpdatedState(sendButtonHover)
+	val currentRecordButtonHover by rememberUpdatedState(recordButtonHover)
 	
 	DisposableEffect(gestureTrackable, sendButtonPositioning, recordButtonPositioning) {
 		val listener: GestureTracker = listener@{ event ->
@@ -75,6 +83,11 @@ fun MessageInputBarAudio(
 				MotionEvent.ACTION_UP -> {
 					//Stop recording when the user releases
 					onStopRecording()
+					
+					if(currentSendButtonHover) {
+						onSend()
+					}
+					
 					true
 				}
 				else -> false
@@ -103,12 +116,27 @@ fun MessageInputBarAudio(
 				modifier = Modifier.padding(horizontal = 12.dp),
 				verticalAlignment = Alignment.CenterVertically
 			) {
+				if(!isRecording) {
+					IconButton(
+						onClick = onDiscard
+					) {
+						Icon(
+							painter = painterResource(id = R.drawable.close_circle),
+							contentDescription = stringResource(id = android.R.string.cancel)
+						)
+					}
+					
+					Spacer(modifier = Modifier.width(4.dp))
+				}
+				
 				AudioVisualizer(
 					modifier = Modifier
 						.weight(1F)
 						.fillMaxHeight()
 						.padding(vertical = 1.dp),
-					amplitudeList = amplitudeList
+					amplitudeList = amplitudeList,
+					displayType = if(isRecording) AudioVisualizerDisplayType.STREAM
+					else AudioVisualizerDisplayType.SUMMARY
 				)
 				
 				Spacer(modifier = Modifier.width(4.dp))
@@ -128,43 +156,51 @@ fun MessageInputBarAudio(
 			tonalElevation = 4.dp
 		) {
 			Column(modifier = Modifier.padding(8.dp)) {
-				Icon(
-					modifier = Modifier
-						.size(48.dp)
-						.onGloballyPositioned { coordinates ->
-							val position = coordinates.positionInRoot()
-							sendButtonPositioning = Positioning(
-								x = position.x,
-								y = position.y,
-								width = coordinates.size.width.toFloat(),
-								height = coordinates.size.height.toFloat()
-							)
-						}
-						.alpha(if(sendButtonHover) 0.5F else 1F),
-					painter = painterResource(id = R.drawable.push_rounded),
-					contentDescription = null,
-					tint = MaterialTheme.colorScheme.primary
-				)
+				IconButton(
+					onClick = onSend
+				) {
+					Icon(
+						modifier = Modifier
+							.size(48.dp)
+							.onGloballyPositioned { coordinates ->
+								val position = coordinates.positionInRoot()
+								sendButtonPositioning = Positioning(
+									x = position.x,
+									y = position.y,
+									width = coordinates.size.width.toFloat(),
+									height = coordinates.size.height.toFloat()
+								)
+							}
+							.alpha(if(sendButtonHover) 0.5F else 1F),
+						painter = painterResource(id = R.drawable.push_rounded),
+						contentDescription = null,
+						tint = MaterialTheme.colorScheme.primary
+					)
+				}
 				
 				Spacer(modifier = Modifier.height(48.dp))
 				
-				Icon(
-					modifier = Modifier
-						.size(48.dp)
-						.onGloballyPositioned { coordinates ->
-							val position = coordinates.positionInRoot()
-							recordButtonPositioning = Positioning(
-								x = position.x,
-								y = position.y,
-								width = coordinates.size.width.toFloat(),
-								height = coordinates.size.height.toFloat()
-							)
-						}
-						.alpha(if(recordButtonHover) 0.5F else 1F),
-					painter = painterResource(id = R.drawable.play_circle_rounded),
-					contentDescription = null,
-					tint = MaterialTheme.colorScheme.primary
-				)
+				IconButton(
+					onClick = onTogglePlay
+				) {
+					Icon(
+						modifier = Modifier
+							.size(48.dp)
+							.onGloballyPositioned { coordinates ->
+								val position = coordinates.positionInRoot()
+								recordButtonPositioning = Positioning(
+									x = position.x,
+									y = position.y,
+									width = coordinates.size.width.toFloat(),
+									height = coordinates.size.height.toFloat()
+								)
+							}
+							.alpha(if(recordButtonHover) 0.5F else 1F),
+						painter = painterResource(id = R.drawable.play_circle_rounded),
+						contentDescription = null,
+						tint = MaterialTheme.colorScheme.primary
+					)
+				}
 			}
 		}
 	}

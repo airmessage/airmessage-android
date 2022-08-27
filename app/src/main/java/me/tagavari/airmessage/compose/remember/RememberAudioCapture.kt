@@ -48,12 +48,12 @@ fun rememberAudioCapture(): AudioCaptureState {
 	LaunchedEffect(isRecording.value) {
 		//Count seconds while recording
 		if(isRecording.value) {
+			recordingDuration.value = 0
+			
 			while(true) {
 				delay(1.seconds)
 				recordingDuration.value++
 			}
-		} else {
-			recordingDuration.value = 0
 		}
 	}
 	
