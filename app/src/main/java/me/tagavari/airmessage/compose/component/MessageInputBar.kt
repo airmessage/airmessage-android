@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.tagavari.airmessage.compose.remember.deriveAmplitudeList
 import me.tagavari.airmessage.compose.remember.rememberAudioCapture
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
@@ -57,7 +58,11 @@ fun MessageInputBar(
 							if(audioCapture.isRecording.value) {
 								audioCapture.stopRecording()
 							}
-						}
+						},
+						amplitudeList = deriveAmplitudeList(
+							mediaRecorder = audioCapture.mediaRecorder,
+							enable = audioCapture.isRecording.value
+						)
 					)
 				} else {
 					val scope = rememberCoroutineScope()

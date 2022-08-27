@@ -148,7 +148,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 		return true
 	}
 	
-	return object : AudioCaptureState(isRecording, recordingDuration) {
+	return object : AudioCaptureState(mediaRecorder, isRecording, recordingDuration) {
 		override suspend fun startRecording() = startAudioRecording()
 		
 		override fun stopRecording(forceDiscard: Boolean): File? = stopAudioRecording(forceDiscard)
@@ -156,6 +156,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 }
 
 abstract class AudioCaptureState(
+	val mediaRecorder: MediaRecorder,
 	val isRecording: State<Boolean>,
 	val duration: State<Int>
 ) {

@@ -45,7 +45,8 @@ private data class Positioning(
 @Composable
 fun MessageInputBarAudio(
 	duration: Int,
-	onStopRecording: () -> Unit
+	onStopRecording: () -> Unit,
+	amplitudeList: List<Int>
 ) {
 	val gestureTrackable = LocalContext.current.findActivity() as? GestureTrackable
 		?: throw IllegalStateException("Must be a GestureTrackerActivity")
@@ -99,15 +100,18 @@ fun MessageInputBarAudio(
 			tonalElevation = 4.dp
 		) {
 			Row(
-				modifier = Modifier.padding(4.dp),
+				modifier = Modifier.padding(horizontal = 12.dp),
 				verticalAlignment = Alignment.CenterVertically
 			) {
-				Box(
+				AudioVisualizer(
 					modifier = Modifier
 						.weight(1F)
-						.height(4.dp)
-						.background(Color.White)
+						.fillMaxHeight()
+						.padding(vertical = 1.dp),
+					amplitudeList = amplitudeList
 				)
+				
+				Spacer(modifier = Modifier.width(4.dp))
 				
 				Text(
 					text = remember(duration) {
