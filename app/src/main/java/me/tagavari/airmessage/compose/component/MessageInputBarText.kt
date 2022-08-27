@@ -250,7 +250,7 @@ fun MessageInputBarText(
 									},
 								painter = painterResource(id = R.drawable.record_circle),
 								contentDescription = stringResource(id = R.string.action_recordaudio),
-								tint = MaterialTheme.colorScheme.secondary
+								tint = MaterialTheme.colorScheme.onSurfaceVariant
 							)
 						}
 					}
