@@ -9,14 +9,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import me.tagavari.airmessage.BuildConfig
 import me.tagavari.airmessage.compose.util.rememberAsyncLauncherForActivityResult
 import me.tagavari.airmessage.constants.FileNameConstants
 import me.tagavari.airmessage.helper.AttachmentStorageHelper
 import java.io.File
+import java.io.IOException
 import kotlin.time.Duration.Companion.seconds
 
 private const val TAG = "rememberAudioCapture"
@@ -39,7 +38,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 	
 	val recordingFile = remember { mutableStateOf<File?>(null) }
 	val recordingDuration = remember { mutableStateOf(0) }
-	LaunchedEffect(isRecording) {
+	LaunchedEffect(isRecording.value) {
 		//Count seconds while recording
 		if(isRecording.value) {
 			while(true) {
@@ -68,6 +67,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 			true
 		} catch(exception: RuntimeException) {
 			//Media couldn't be captured, file is invalid
+			exception.printStackTrace()
 			false
 		}
 		
@@ -117,8 +117,8 @@ fun rememberAudioCapture(): AudioCaptureState {
 				stopAudioRecording()
 			}
 			
+			//Find a target file
 			val targetFile = withContext(Dispatchers.IO) {
-				//Find a target file
 				AttachmentStorageHelper.prepareContentFile(
 					context,
 					AttachmentStorageHelper.dirNameDraftPrepare,
@@ -132,9 +132,14 @@ fun rememberAudioCapture(): AudioCaptureState {
 			recordingFile.value = targetFile
 			
 			//Prepare the media recorder
-			@Suppress("BlockingMethodInNonBlockingContext")
-			withContext(Dispatchers.IO) {
-				prepare()
+			try {
+				@Suppress("BlockingMethodInNonBlockingContext")
+				withContext(Dispatchers.IO) {
+					prepare()
+				}
+			} catch(exception: IOException) {
+				exception.printStackTrace()
+				return false
 			}
 		}
 		
@@ -149,7 +154,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 	return object : AudioCaptureState(isRecording, recordingDuration) {
 		override suspend fun startRecording() = startAudioRecording()
 		
-		override suspend fun stopRecording(forceDiscard: Boolean): File? = stopAudioRecording(forceDiscard)
+		override fun stopRecording(forceDiscard: Boolean): File? = stopAudioRecording(forceDiscard)
 	}
 }
 
@@ -168,5 +173,5 @@ abstract class AudioCaptureState(
 	 * @param forceDiscard Whether to deliberately fail this recording
 	 * @return A reference to the output file, or null if the recording failed
 	 */
-	abstract suspend fun stopRecording(forceDiscard: Boolean = false): File?
+	abstract fun stopRecording(forceDiscard: Boolean = false): File?
 }

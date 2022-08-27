@@ -6,7 +6,9 @@ import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.forEachGesture
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
@@ -22,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -235,37 +238,16 @@ fun MessageInputBarText(
 								)
 							}
 						} else {
-							/* val interactionSource = remember { MutableInteractionSource() }
-							
-							IconButton(
-								onClick = {},
-								modifier = Modifier.align(Alignment.Bottom),
-								colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
-								interactionSource = interactionSource
-							) {
-								Icon(
-									painter = painterResource(id = R.drawable.record_circle),
-									contentDescription = stringResource(id = R.string.action_recordaudio)
-								)
-							}
-							
-							LaunchedEffect(interactionSource) {
-								interactionSource.interactions.collect { interaction ->
-									if(interaction is PressInteraction.Press) {
-										onStartAudioRecording()
-									}
-								}
-							} */
-							
 							Icon(
 								modifier = Modifier
 									.padding(8.dp)
 									.pointerInput(Unit) {
-										detectTapGestures(
-											onPress = { event ->
+										forEachGesture {
+											awaitPointerEventScope {
+												awaitFirstDown()
 												onStartAudioRecording()
 											}
-										)
+										}
 									},
 								painter = painterResource(id = R.drawable.record_circle),
 								contentDescription = stringResource(id = R.string.action_recordaudio),
