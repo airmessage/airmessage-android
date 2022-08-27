@@ -26,11 +26,18 @@ fun rememberAudioCapture(): AudioCaptureState {
 	
 	val requestAudioPermission = rememberAsyncLauncherForActivityResult(ActivityResultContracts.RequestPermission())
 	
-	var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
+	val mediaRecorder = remember {
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+			MediaRecorder(context)
+		} else {
+			@Suppress("DEPRECATION")
+			MediaRecorder()
+		}
+	}
 	DisposableEffect(mediaRecorder) {
 		//Clean up media recorder when out of scope
 		onDispose {
-			mediaRecorder?.release()
+			mediaRecorder.release()
 		}
 	}
 	
@@ -56,14 +63,13 @@ fun rememberAudioCapture(): AudioCaptureState {
 		}
 		
 		//Get the recording state
-		val localMediaRecorder = mediaRecorder ?: return null
 		val localRecordingFile = recordingFile.value ?: return null
 		
 		//Reset the recording state
 		isRecording.value = false
 		
 		val cleanStop: Boolean = try {
-			localMediaRecorder.stop()
+			mediaRecorder.stop()
 			true
 		} catch(exception: RuntimeException) {
 			//Media couldn't be captured, file is invalid
@@ -91,17 +97,9 @@ fun rememberAudioCapture(): AudioCaptureState {
 			return false
 		}
 		
-		//Reset or create the media recorder
-		val preparedMediaRecorder = mediaRecorder?.apply { reset() }
-			?: if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-				MediaRecorder(context)
-			} else {
-				@Suppress("DEPRECATION")
-				MediaRecorder()
-			}
-		
 		//Configure the media recorder
-		preparedMediaRecorder.apply {
+		mediaRecorder.apply {
+			reset()
 			setAudioSource(MediaRecorder.AudioSource.DEFAULT)
 			setOutputFormat(MediaRecorder.OutputFormat.AMR_NB)
 			setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
@@ -144,8 +142,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 		}
 		
 		//Start recording
-		mediaRecorder = preparedMediaRecorder
-		preparedMediaRecorder.start()
+		mediaRecorder.start()
 		isRecording.value = true
 		
 		return true
