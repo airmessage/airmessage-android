@@ -49,22 +49,26 @@ fun AudioVisualizer(
 				if(itemCount < lineCount) {
 					val newList = amplitudeList.toMutableList()
 					
-					//Copy items at even intervals
-					val missingItemCount = lineCount - itemCount
-					for(i in missingItemCount - 1 downTo 0) {
-						val index = ((i.toFloat() / missingItemCount.toFloat()) * (amplitudeList.size - 1)).toInt()
-						newList.add(index, newList[index])
+					if(amplitudeList.isNotEmpty()) {
+						//Copy items at even intervals
+						val missingItemCount = lineCount - itemCount
+						for(i in missingItemCount - 1 downTo 0) {
+							val index = ((i.toFloat() / missingItemCount.toFloat()) * (amplitudeList.size - 1)).toInt()
+							newList.add(index, newList[index])
+						}
 					}
 					
 					newList
 				} else if(itemCount > lineCount) {
 					val newList = amplitudeList.toMutableList()
 					
-					//Remove items at even intervals
-					val excessItemCount = itemCount - lineCount
-					for(i in excessItemCount - 1 downTo 0) {
-						val index = ((i.toFloat() / excessItemCount.toFloat()) * (amplitudeList.size - 1)).toInt()
-						newList.removeAt(index)
+					if(amplitudeList.isNotEmpty()) {
+						//Remove items at even intervals
+						val excessItemCount = itemCount - lineCount
+						for(i in excessItemCount - 1 downTo 0) {
+							val index = ((i.toFloat() / excessItemCount.toFloat()) * (amplitudeList.size - 1)).toInt()
+							newList.removeAt(index)
+						}
 					}
 					
 					newList
