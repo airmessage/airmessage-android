@@ -23,7 +23,6 @@ fun AttachmentQueueEntryMedia(
 		model = ImageRequest.Builder(LocalContext.current)
 			.data(queuedFile.file.either)
 			.crossfade(true)
-			.memoryCacheKey(MemoryCache.Key("mediaQueue", mapOf("id" to (queuedFile.localID?.toString() ?: ""))))
 			.build(),
 		modifier = Modifier
 			.fillMaxHeight()
